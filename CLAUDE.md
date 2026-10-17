@@ -168,7 +168,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   only** — not over a tracked change (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within
   `UPDATE_QUIET_MS` of a key sent to a drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips
   that wait, *update now* (`apply`) the switch, the hold and a change — not one the commits change too (`clash`,
-  2026-10-15; `whyNot`); Settings' row: a word, the commands under Details (`updWord`). What the commits touched starts again
+  2026-10-15; `whyNot`); Settings' row: `updWord`. What the commits touched starts again
   (`updateParts`): `npm install`, the agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached)
   when behind, the page — it reloads itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never
   mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `updRun`; the app's
@@ -180,8 +180,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `appWhyNot` → `app`, `appWhy`; `lookApp` every minute): build.sh stamps `PeixSource`, mac/'s tree as built
   (uncommitted work in), and one not `HEAD:mac` is behind. Rebuilt with a pull, else alone by *update now* or the switch
   once quiet — by the clock never twice for one source (`appBuild`) —, never over work in mac/; one build.sh at a time.
-  `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN`, `BOARD_APP` are the tests'.
-  → `test/update.test.mjs`, `auto-update.mjs`.
+  → `test/update.test.mjs` (its knobs: `UPDATE_DIR`, `UPDATE_*_BIN`, `NPM_BIN`, `BOARD_APP`), `auto-update.mjs`.
 * **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` is served with `<meta name="peix-page">`
   — a stamp of the file on disk and the serving boot (`SINCE`) —, every snapshot names the page on disk (`page`); one
   from a server started since, with another page, wants a reload as an update's does (`reload.want`). A reconnect to
@@ -335,8 +334,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `repoColor`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). A tile
   clicked reveals from the point (`revealFrom`, a view transition). **A colour that reads no token is one no theme
   reaches.** → `themes.mjs`.
-* **The header floats** (2026-10-09; the only one since 2026-10-14 — `<html data-head="float">` is in the markup,
-  never toggled, the hook of its rules): `#shead` and
+* **The header floats** (2026-10-09; `<html data-head="float">` in the markup, never toggled,
+  the hook of its rules): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of
   `#chat` placed in column 1: two overlapping items, one auto-placed, take two columns). A half with a strip pads down
   by `--float-h` (`floatH`, a ResizeObserver); one without runs up behind it — **but a drawer starts under it while its
@@ -411,8 +410,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
   ticked — **a card counts nothing**; hovered, the move's age, `.mt`: `turn.at`, else `movedAt`), the header's
   (`headMove`, `.hmove`). A new tag slides in (`moveMoments`, `#shead[data-sid]`). **Each PR's round** (2026-10-15;
-  `roundOf`): `.prround` under its `#prlist` row (`trackHtml` → `fillTrack`, the round before, Let go · Ask Claude ·
-  Undo; `.why` hidden); on the card each PR in play (`pipsHtml`, `pchip` in `prHue`; not at same height),
+  `roundOf`): `.prround` under its `#prlist` row (the round before, Let go · Ask Claude · Undo; `.why` hidden); on the card each PR in play (`pipsHtml`, `pchip` in `prHue`; not at same height),
   `answeredHtml` for `ANSWERED_MS`, `#rpop` beside it on its PRs (a pane page there, under). → `pr-rounds.mjs`.
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
   chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
@@ -495,17 +493,14 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light and its click the About box; the asking and monitor counts while any; the update, `updSeg`),
   `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
-  every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`: 5H, 1W, a model's initial, $ a cap in
-  money; a grant only in the rows, `uGrant`) — a click lifts its rows (`usageRows`: a bar in `--spend`, red from 90 % —
-  `uColor` —, the clock's tick `uPace`/`uSpan`, the time to reset, `.umoney`),
+  every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`, `uGrant`) — a click lifts its rows (`usageRows`, `uColor`, `uPace`/`uSpan`, `.umoney`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (24-hour, `hourCycle: 'h23'`; `clockTick`). `#sbLeft` and
   `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`, n
   the clauding chats and their agents): one `swim` animation whose pace is its length (`swimPaceTo`: its place kept —
   never `updatePlaybackRate`, a rate other than 1 keeps WebKit's frames on the main thread), never still; a span of
   two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups** — WebKit composites no group's transform, and the wag
   never stops (2026-10-13); `fishAt` reads where it is from the swim's own clock, never a rect, and `feed` (its
-  bubbles) is a frame loop only while one is out, reading no layout; a click is ⌥⌘A; `peix.state().swim` (`rate` the
-  pace it swims at). → `status-bar.mjs`, `small-motions.mjs`.
+  bubbles) is a frame loop only while one is out, reading no layout; a click is ⌥⌘A; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
   the bar. → `usage-bar.mjs`.
@@ -549,12 +544,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (several: the picker — from one of them the next selected, ⌥⌘G again the column's, `prPickAgain`; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
-  **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
+  **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **J** the timeline (`hotTimeline`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
   chat as steps of one dialog (`new` → `chats` → `folder` → `env`, `newChatIn()`), **O** the same on the setup's `quick`
   project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
   (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
-  (`hotReload`). **C T G E D pressed again from the tab they bring up** (a claude live here, a
-  zsh, a page at its one PR, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
+  (`hotReload`). **C T G E D J pressed again from the tab they bring up** (a claude live here, a
+  zsh, a page at its one PR, the editor, the changes, the timeline — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
   call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
   nothing to act on is a `note()`; a key held down is one press (`e.repeat`, the arrows aside) and `termAction` one
@@ -583,20 +578,18 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `spaceMode`; on at quit, `peixairada.fill`, back on at launch; `kill -USR1 $(pgrep -x peixAIrada)` too). **Its own
   Space** is macOS's (`.fullScreenPrimary`), below the housing: the page
   hears no fill. **Up to the notch is the fill** (`toggleFill`; `BoardWindow`,
-  borderless, the whole screen; `fill: on …` in the app log): the menu bar auto-hidden beside a camera housing, hidden
+  borderless, the whole screen): the menu bar auto-hidden beside a camera housing, hidden
   without one (`placeFill`, `fillOptions()`), let out by the pointer at the top (`menuOut`), tucked after a change of
   desktop (`tuckMenuBar`); the Dock out at its edge (`dockTick`); `.fullScreenNone`, a plain click on the green button the fill (`windowShouldZoom`); ⌘W leaves it first.
   `NSFullScreenMenuItemEverywhere` and `NSPrefersDisplaySafeAreaCompatibilityMode` are false. *Exit Full Screen* is
   View's item and the fish's, titles flipped in `validateMenuItem`. → `full-screen-pick.mjs`. **The lights come down with the menu bar**
   (2026-10-13; `lightsTick`):
-  a strip under it, over the pane too — the lights (`LightButton`: green `toggleFill`, yellow `lightsMinimize`, red
-  quits) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
+  a strip under it, over the pane too — the lights (`LightButton`) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
   the pointer is below the strip. **The fill gone on while the page heard it
   off says so once** (`fillHint`, under the head row): never on a load that finds it on (`state.fillHeard`), the
   first `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
   CSS px, null without one; only when new (`fillSaid`, 2026-10-15) — and **`layoutNotch()` lays the top row round it** (reads, then writes): the header's title left of the housing and its chips right
-  (`.shead.hole`), unless the whole title does not fit (a `Range` measures it; `scrollWidth` never reads under the
-  box's): `.tright`, the title jumps the housing — or, floating, runs under it (`.tunder`); what has not the room
+  (`.shead.hole`), unless the whole title does not fit (a `Range` measures it, never `scrollWidth`): `.tright`, the title jumps the housing — or, floating, runs under it (`.tunder`); what has not the room
   pads down by the strip (`.npad`).
   → `notch.mjs`.
 * **The pickers match fuzzily, and with something typed the best match leads**: `fuzzy(fields, q)` — each word
@@ -733,8 +726,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the split** (`unsplit` leaves it); the divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`). Stacked is
   `#groups.stack`; the second strip's `.gturn` turns it too. The app forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
-* **Tiles are the layout** (2026-10-10; the only one since 2026-10-14 — `main.tiles` is in the markup, never toggled,
-  the hook of the panels' rules): gaps, square panels, **each
+* **Tiles are the layout** (2026-10-10; `main.tiles` in the markup, never toggled, the hook of
+  the panels' rules): gaps, square panels, **each
   panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat` and `tileTints`;
   a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
   list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
@@ -788,6 +781,14 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`indexCopy`), lists `-z`, a file past `CHANGES_MAX` named in `left`. **Commit…, Push and PR… type the command into the chat's
   zsh, unrun** (`typeInShell`); a note on a line is a prompt typed into the drawer's claude (`sendToClaude`), else
   copied. → `test/changes.test.mjs`, `changes-tab.mjs`.
+* **The timeline tab is the chat and its PRs in one order** (2026-10-17; ⌥⌘J, `#tvBtn`): `timeline` in `timelineOpen`,
+  `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and the shown PRs'
+  ledgers (`tvLogOf`, again when a `pr.logged` moves); `tvModel` ties a turn to a PR it names, acts on or follows the
+  move of. Turns one line (`tvTurnSum`), a lane per PR (`tvLanes`, `tvStyle`), the Now bar (`tvGo`), folds (`tvRuns`,
+  `tvFold`). **The narrow** (`tvNarrow`, what differs from `tvInPlay`; `tvSolo`) rides the address, `#<id>/tl:p=repo.n…`
+  (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert
+  (`hash` → the app's `userInfo`). The tracks (`tvTracksHtml`: the PR list's head, else the timeline's) hold times,
+  placed by `fillTracks`. → `timeline.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
@@ -810,7 +811,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`prOfBranch`: open, or opened since) or commits of its own (`ownCommits`) on origin's default (`landed`) —, nothing in them (`busyIn`), on the branch it was made for, clean whatever `status.showUntrackedFiles` says,
   no commit no remote has (`keepWorktree`) — `git worktree remove`, never `--force`. *Switch this folder…* types
   `git switch <branch>` into the chat's zsh, unrun, and only when `GET /api/sessions/:id/switch?branch=`
-  (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`: `gitTopOf`, real; a nested worktree is its own; on it already is `headAt`'s), no chat
+  (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`), no chat
   mid-turn, nothing uncommitted, no merge or rebase, the branch out nowhere else — the menu's disabled row says why
   (`ctxRow`'s `off`). Opened in the editor picked (`openEditorAt`): Zed's window, or VS Code Web on a tab of the chat's
   (`state.paneWt`; `<repo> @ <branch>`, `ideLabels`). **Chat** (the row's, the launcher's) is `chatOnPr`: `newChat` in
@@ -834,8 +835,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `awaitEntries` / `takeEntries` / `mergeEntries`): while a fetch is out the stream's entries wait in `pending`, and
   only those past `upto` are taken; a summary older than a `session` event is not (`sessionSeen`). `#log` has no
   `scroll-behavior`. Nothing in it fetches from elsewhere (2026-10-14): images only from `data:`; DOMPurify forbids `<style>`, `style=`, form
-  controls but the checkbox, media, `picture`, SVG `image`/`use`, `srcset`/`poster`/`background`, an SVG `url()` not `#`. **The log's last child is the presence line** (`renderPresence()`, while clauding or asking; its word
-  shimmers, `shim()`, and turns over, `VERBS`, the markup still *clauding…*), **then the new-reply pill** (`.lognew`,
+  controls but the checkbox, media, `picture`, SVG `image`/`use`, `srcset`/`poster`/`background`, an SVG `url()` not `#`. **The log's last child is the presence line** (`renderPresence()`, while clauding or asking; `shim()`,
+  `VERBS`, the markup still *clauding…*), **then the new-reply pill** (`.lognew`,
   `logNew()`): new nodes go before that tail, marked `.in` (never on the first fill), or come up part by part when a
   reply lands at the log's end (`reveal`, `REVEAL_GAP`). **Anything else that appends to the log goes before the
   tail**, and "the last message" is `:scope > .msg:last-of-type`. → `transcript-live.mjs`.
@@ -1020,17 +1021,13 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, the theme following the emulated colour scheme and the tour taken**: the scenarios read the
-  words on the cards, and the ones about those turn the board's own on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, the theme following the emulated colour scheme and the tour taken**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up everything on any way out, all waiting on one cleanup (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
   (`#log[data-sid]`). **A rectangle is read after `ctx.settle()`**: cards slide after they arrive or move, dialogs rise;
-  `settle` waits for every finite animation and a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
-  `sleep`, `shot(label)`, `key(code)`, `cmd(code)`, `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`, `type(text, g)`
-  (the drawer), `fill(selector, text)` (a box), `drag(from, to, mid)`, `peix(expr)`,
-  `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. `ls scripts/scenarios/` is the regression
-  suite, one file per feature, named as the bullets above point to them.
+  `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`
+  (`server.api/post/…`, `fixture.chats`, `assert` too). `ls scripts/scenarios/`: one file per feature, as the bullets name them.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it

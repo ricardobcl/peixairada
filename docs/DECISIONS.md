@@ -5,6 +5,41 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-17. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-17 — one timeline for a chat and its PRs (T2, T3, the narrow, the folding, L4)
+
+Ricardo, on the study (https://claude.ai/artifact/2UTgxLtsfd496ommKuAgHy), its recommendation: "let's start with your
+recomendation: Timeline study: build T2, T3, T6 (N1, N2, N3, N4, N5), F1, F2, F3, F4, L1, L2, L4." The page's half,
+built against the ledger's contract while the server's half (the entry below) was built beside it; one commit each.
+
+* **T2, the timeline tab** (⌥⌘J — free on the board and in the app, which now forwards it; in Chrome it is the
+  console's, as ⌥⌘C is DevTools'): your prompts as bubbles, each turn as one line, the shown PRs' events between them,
+  newest at the bottom; a lane per PR (five, then one grey), the chat's own lane, the Now bar. A turn clicked shows the
+  transcript beside it at that turn, splitting the column if it has to; under a drawer that runs it says so instead —
+  the transcript is not there to show. An event with a page opens it. The tab is the changes' kind: kept across a
+  reload, carried across a /clear, ⌥⌘J again fills the column.
+* **L4 is the page's reading of the open chat's entries**: a turn is about a PR it names (its URL, repo#n, a #n no
+  other PR of the chat has), one it acted on (a `chat` event, tied to its tool call by the event's id), and the first
+  prompt after a PR's move. The server keeps nothing per turn: the card's popover drawn from the timeline was in the
+  recommendation but not in the picks, so it is not built, and the server's per-turn record with it.
+* **The narrow** (N1–N5): chips with solo; in play by default — the summary's rounds in play (`inPlay`, the card's
+  pips' rule) and every PR this chat acted on; when none, the PRs that ever came round, else the open ones, so a chat
+  a day old is not the chat alone. The three questions the study left open, answered as built: **soloing a PR shows
+  the turns about it** (About these is the default whenever the PRs shown are fewer than in play; All turns is a click,
+  kept until ⌥-click brings everything back); **newest at the bottom**, as the transcript, the Now bar under it;
+  **T3 replaces each PR row's strip** (`trackHtml`, `fillTrack` gone), the rows keeping their words and buttons. The
+  address carries the narrow (`#<id>/tl:p=storefront.482`): an alert of a PR's move lands on it, the app's notification
+  holding the address in its userInfo. The chips fold into *Scope ▾* only under 460 px, not the study's 640: a split
+  half is about 630 px on a laptop, and folding there hid them almost always; above it they wrap over the switches.
+* **The folding** (F1–F4): a run is consecutive in the list but for other PRs' events — a prompt or a turn ends it —
+  and stands at its last event, its move kept; CI passing folds even alone, failing never; a merge, a close, the
+  chat's own hand and every move stay out of folds. The ledger keeps no bots, so F2 is CI's alone.
+* **T3, the tracks**: in the PR list and at the timeline's head — not both on screen: with the list open above, the
+  timeline leaves its own out. The window is the chat's span, six hours at most, an hour at least.
+* **Not built, not picked**: N6 (keys inside the timeline), N7 (a query), F5 (a scrubber), L3 (a comment's words), L5
+  (one route); the done chat's "since you ticked it" fold from the study's awkward cases.
+* **Measured**: `npm run perf --against main` level on every number; with the tab open at rest in WebKit the page asks
+  for no frame (two in three seconds, the counts' roll); a hidden tab asks for none at all (`tvSoon`).
+
 ## Decisions of 2026-10-17 — a PR's ledger for the chat's timeline (L1, L2)
 
 Ricardo, picking from the one-timeline study (https://claude.ai/artifact/2UTgxLtsfd496ommKuAgHy): "Timeline study:
