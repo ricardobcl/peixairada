@@ -1797,6 +1797,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tv .tvr.cl .sum .tvat { color: var(--working); }
   #tv .tvr.cl .tools { flex-basis: 100%; display: grid; gap: 1px; font: var(--fs-xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
   #tv .tvr.cl .tools span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tv .tvr.cl .rep.all { white-space: normal; }
   #tv .tvr.ev[data-u] { cursor: pointer; }
   #tv .tvr.fold { cursor: pointer; color: var(--muted); } #tv .tvr.fold .ct { font-size: var(--fs-sm); }
   #tv .tvr.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
@@ -4819,12 +4820,12 @@ const toolName = n => {
     }
     return hit?.v || null;
   }
-  const EV_SAY = e => e.k === 'opened' ? 'opened it' : e.k === 'review' ? ({ APPROVED: 'approved', CHANGES_REQUESTED: 'asked for changes', DISMISSED: 'dismissed a review' }[e.s] || 'reviewed')
-    : e.k === 'comment' ? 'commented' : e.k === 'push' ? (e.f ? 'force-pushed' : e.n > 1 ? `pushed ${e.n} commits` : 'pushed') : e.k === 'ask' ? 'asked for your review'
+  const EV_SAY = e => e.k === 'opened' ? 'opened it' : e.k === 'review' ? ({ APPROVED: 'approved', CHANGES_REQUESTED: 'asked for changes', DISMISSED: 'dismissed a review' }[e.s] || 'reviewed') + (e.n > 1 ? ` ×${e.n}` : '')
+    : e.k === 'comment' ? (e.n > 1 ? `left ${e.n} comments` : 'commented') : e.k === 'push' ? (e.f ? 'force-pushed' : e.n > 1 ? `pushed ${e.n} commits` : 'pushed') : e.k === 'ask' ? 'asked for your review'
     : e.k === 'chat' ? `${{ push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied', merge: 'merged it', opened: 'opened it' }[e.x] || e.x}` : e.k === 'board' ? (e.x === 'back' ? 'took the let-go back' : 'let this round go')
     // what happened to the PR itself, and its CI (2026-10-17, the ledger's L2): `w` null is GitHub's, a bot's or no one's
     : e.k === 'merged' ? 'merged it' : e.k === 'closed' ? 'closed it' : e.k === 'reopened' ? 'reopened it' : e.k === 'ready' ? 'marked it ready for review'
-    : e.k === 'asked' ? (e.x ? `asked ${e.x} to review` : 'asked a team to review') : e.k === 'ci' ? (e.s === 'fail' ? 'CI failed' : 'CI passed') : e.k;
+    : e.k === 'asked' ? (e.x ? `asked ${e.x} to review` : 'asked a team to review') : e.k === 'ci' ? (e.s === 'fail' ? 'CI failed' : 'CI passed') + (e.n > 1 ? ` ×${e.n}` : '') : e.k;
   /** Who did it, as a small round mark: GitHub's face for a person the PR knows, else their initial; you, Claude, the board. */
   function evMark(e, faces) {
     if (e.said) return `<i class="ri you">${ICON.you}</i>`;
@@ -8385,14 +8386,14 @@ const toolName = n => {
   // asked again when one has moved); which turns are about which PR — named in it, acted on from it, the first after
   // its move — is the page's own reading of the entries (tvModel).
   const timelineOpen = new Set();   // chats with the tab, kept across a reload as the other tabs are (keepTabs)
-  const tv = { id: null, log: null, sig: '', asking: false, goto: null };
+  const tv = { id: null, log: null, sig: '', asking: false, goto: null, opened: new Set() };   // opened: the folds opened, the open chat's
   const TV_LANES = 5;               // a lane each for the first five PRs shown, the rest one grey lane between them
   const TV_EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
   // what the ledgers hold has moved: a PR's `logged` (the server's count of its ledger's changes), its state, its round
   const tvSig = s => (s.prs || []).map(p => `${p.url} ${p.logged || 0} ${p.state} ${p.turn?.movedAt || ''} ${(p.rounds || []).map(r => r.from + (r.end || '') + (r.let || '')).join()}`).join('\n');
   /** The open chat's ledgers: asked when the tab or the PR list wants them, and again once one of them has moved. */
   function tvLogOf(s) {
-    if (tv.id !== s.id) Object.assign(tv, { id: s.id, log: null, sig: '' });
+    if (tv.id !== s.id) { Object.assign(tv, { id: s.id, log: null, sig: '' }); tv.opened.clear(); }
     const sig = tvSig(s);
     if (sig !== tv.sig && !tv.asking && s.prs?.length) {
       tv.asking = true; const id = s.id;
@@ -8583,7 +8584,47 @@ const toolName = n => {
       if (t.tools.length || t.reply || !t.closed) rows.push({ k: 'cl', ms: Date.parse(t.end || t.last), o: 2, t });
     }
     for (const e of m.evs) if (sc.on.has(e.url) && !(e.turn && shown.has(e.turn))) rows.push({ k: 'ev', ms: e.ms, o: 1, e, mk: tvMark(m, e) });
-    return rows.sort((a, b) => a.ms - b.ms || a.o - b.o);
+    rows.sort((a, b) => a.ms - b.ms || a.o - b.o);
+    return sc.dens === 'all' ? rows : tvFold(tvRuns(rows));
+  }
+  // Folding (2026-10-17, the study's F1–F3), what keeps a busy PR readable; Everything undoes it, and the turns' one line.
+  /** F1: one person's events of one kind on one PR in a row — no word of yours or turn between them — are one line,
+   *  at the last of them (its move, when it was one), saying how many and from when. An answer or a let-go stands alone. */
+  function tvRuns(rows) {
+    const out = [], last = new Map();
+    const alone = r => r.mk.k === 'close' || r.mk.k === 'let' || ['board', 'chat', 'opened', 'merged', 'closed', 'reopened', 'ready'].includes(r.e.k);
+    for (const r of rows) {
+      if (r.k !== 'ev') { last.clear(); out.push(r); continue; }
+      const key = `${r.e.k} ${r.e.w} ${r.e.s || ''}`, was = last.get(r.e.url);
+      if (was && was.key === key && !alone(r) && !alone(was.r)) {
+        out.splice(out.lastIndexOf(was.r), 1);
+        const run = { ...r, e: { ...r.e, n: (was.r.e.n || 1) + (r.e.n || 1) }, from: was.r.from ?? was.r.ms, mk: r.mk.k ? r.mk : was.r.mk };
+        out.push(run); last.set(r.e.url, { key, r: run }); continue;
+      }
+      out.push(r); last.set(r.e.url, { key, r });
+    }
+    return out;
+  }
+  /** F2 and F3: between your words, what is neither a move nor an answer — CI passing alone, or two quiet events or
+   *  more — folds to one line saying whose they were, opened by a click; a check that fails, a merge, the chat's own
+   *  hand and every move stay out. */
+  const tvQuiet = r => r.k === 'ev' && !r.mk.k && r.e.k !== 'chat' && r.e.k !== 'board' && !['merged', 'closed', 'reopened', 'ready'].includes(r.e.k);
+  function tvFold(rows) {
+    const out = [];
+    for (let i = 0; i < rows.length;) {
+      if (!tvQuiet(rows[i])) { out.push(rows[i++]); continue; }
+      let j = i; while (j < rows.length && tvQuiet(rows[j])) j++;
+      const run = rows.slice(i, j), id = 'f:' + run[0].e.id, open = tv.opened.has(id);
+      if (run.length > 1 || run[0].e.k === 'ci') { out.push({ k: 'fold', ms: run[0].ms, id, items: run, open }); if (open) out.push(...run.map(r => ({ ...r, inFold: true }))); }
+      else out.push(run[0]);
+      i = j;
+    }
+    return out;
+  }
+  function tvFoldWords(s, m, items) {
+    const by = new Map();
+    for (const { e } of items) { const w = e.k === 'ci' ? 'CI' : e.w === '' ? 'you' : e.w || 'GitHub', c = by.get(e.url) || new Map(); c.set(w, (c.get(w) || 0) + 1); by.set(e.url, c); }
+    return [...by].map(([u, c]) => `${pchip(s, m.byUrl.get(u))} ${esc([...c].map(([w, n]) => n > 1 ? `${w} ×${n}` : w).join(', '))}`).join(' · ');
   }
   /** A PR's lane at a moment: thick inside a round at your move, dashed once that round was let go, thin otherwise. */
   function tvStyle(rs, ms) {
@@ -8595,8 +8636,8 @@ const toolName = n => {
   }
   /** What a row puts on one lane: the chat's lane its prompts and turns, a PR's its events and the turns that touch it. */
   function tvMarkOn(r, has) {
-    if (r.k === 'ev') return has(r.e.url) ? r.mk.k || 'dot' : null;
-    if (r.k === 'fold') return r.items.some(x => has(x.e.url)) ? 'small' : null;
+    if (r.k === 'ev') return has(r.e.url) ? (r.inFold ? 'small' : r.mk.k || 'dot') : null;
+    if (r.k === 'fold') return !r.open && r.items.some(x => has(x.e.url)) ? 'small' : null;
     if (r.k === 'you') return [...r.t.ref].some(has) ? 'ref' : null;
     const a = r.t.acts.find(x => has(x.url)); return a ? (r.t.closes?.has(a) ? 'close' : 'dot') : null;
   }
@@ -8643,15 +8684,17 @@ const toolName = n => {
   /** Who did it, before what they did: you (on GitHub, from this chat or another, on the board), a person, or no one. */
   const tvWho = (s, e) => e.k === 'chat' ? '<b>you</b> ' : e.k === 'board' || e.w === '' ? '<b>you</b> ' : e.w ? `<b>${esc(e.w)}</b> ` : '';
   const tvFrom = (s, e) => e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : '';
-  function tvRowHtml(s, m, r, lanes, faces) {
+  function tvRowHtml(s, m, sc, r, lanes, faces) {
     const tm = `<span class="tm">${r.k === 'fold' ? '' : esc(tvHm(r.ms))}</span><span class="lns" aria-hidden="true">${lanes}</span>`;
     if (r.k === 'you') return `<div class="tvr you" data-ms="${r.ms}" data-ts="${esc(r.t.at)}">${tm}<div class="ct"><span class="who">You</span><span class="bub">${tvText(s, r.t.you, 600)}</span></div></div>`;
-    if (r.k === 'cl') {
-      return `<div class="tvr cl" data-ms="${r.ms}" data-ts="${esc(r.t.at)}" data-urls="${esc(r.t.acts.map(a => a.url).join(' '))}" title="Show this turn in the transcript">${tm}<div class="ct"><span class="who">Claude</span><span class="sum">${tvTurnSum(s, m, r.t)}</span>${r.t.reply ? `<span class="rep">${tvText(s, tvSentence(r.t.reply), 240)}</span>` : ''}</div></div>`;
+    if (r.k === 'cl') {   // Everything: the reply's first lines and each call, not the turn's one line (F4)
+      const all = sc.dens === 'all', tools = all && r.t.tools.length ? `<span class="tools">${r.t.tools.slice(0, 12).map(u => `<span>${esc(toolName(u.name))} ${esc(pathTail(u.text || '', s.cwd))}</span>`).join('')}${r.t.tools.length > 12 ? `<span>… ${r.t.tools.length - 12} more</span>` : ''}</span>` : '';
+      return `<div class="tvr cl" data-ms="${r.ms}" data-ts="${esc(r.t.at)}" data-urls="${esc(r.t.acts.map(a => a.url).join(' '))}" title="Show this turn in the transcript">${tm}<div class="ct"><span class="who">Claude</span><span class="sum">${tvTurnSum(s, m, r.t)}</span>${tools}${r.t.reply ? `<span class="rep${all ? ' all' : ''}">${tvText(s, all ? r.t.reply : tvSentence(r.t.reply), all ? 600 : 240)}</span>` : ''}</div></div>`;
     }
+    if (r.k === 'fold') return `<div class="tvr fold" data-fold="${esc(r.id)}" data-ms="${r.ms}" role="button" aria-expanded="${r.open}" tabindex="0" title="${r.open ? 'Fold them again' : 'Show them'}">${tm}<div class="ct">${r.open ? '▾' : '▸'} ${r.items.length} more · ${tvFoldWords(s, m, r.items)}</div></div>`;
     const e = r.e, pr = m.byUrl.get(e.url), mk = r.mk;
     const tag = mk.k === 'move' ? RTAG.you : mk.k === 'close' ? `<span class="ok">✓ answers ${esc(mk.r.why)}</span>` : mk.k === 'let' ? RTAG.let : '';
-    return `<div class="tvr ev${mk.live ? ' live' : ''}" data-ms="${r.ms}" data-id="${esc(e.id)}" data-url="${esc(e.url)}"${e.u ? ` data-u="${esc(e.u)}" title="Open it on GitHub"` : ''}>${tm}<div class="ct">${evMark(e, faces)}${pchip(s, pr)}<span class="w${mk.k === 'bad' ? ' bad' : ''}">${tvWho(s, e)}${esc(e.w === null ? EV_SAY(e).replace(/ it$/, '') : EV_SAY(e))}${tvFrom(s, e)}</span>${tag}</div></div>`;
+    return `<div class="tvr ev${mk.live ? ' live' : ''}" data-ms="${r.ms}" data-id="${esc(e.id)}" data-url="${esc(e.url)}"${e.u ? ` data-u="${esc(e.u)}" title="Open it on GitHub"` : ''}>${tm}<div class="ct">${evMark(e, faces)}${pchip(s, pr)}<span class="w${mk.k === 'bad' ? ' bad' : ''}">${tvWho(s, e)}${esc(e.w === null ? EV_SAY(e).replace(/ it$/, '') : EV_SAY(e))}${tvFrom(s, e)}${r.from ? ` <span class="span">${esc(tvHm(r.from))}–${esc(tvHm(r.ms))}</span>` : ''}</span>${tag}</div></div>`;
   }
   /** The foot: where each PR shown stands — its round now, the one before, and a way to it. */
   function tvNowHtml(s, m, sc) {
@@ -8669,7 +8712,7 @@ const toolName = n => {
     let html = '', day = null;
     rows.forEach((r, i) => {
       const d = dayOf(r.ms); if (d !== day && (day !== null || d !== 'Today')) html += `<div class="tvday"><b>${esc(d)}</b></div>`;
-      day = d; html += tvRowHtml(s, m, r, tvLaneHtml(L, cells[i]), faces);
+      day = d; html += tvRowHtml(s, m, sc, r, tvLaneHtml(L, cells[i]), faces);
     });
     if (!rows.length) html = `<div class="tvnone">${!sc.chat && !sc.on.size ? 'Nothing in the narrow — ⌥-click a chip for everything in play' : m.turns.length || m.prs.length ? 'Nothing here yet' : 'No messages yet'}</div>`;
     // a ledger that let its oldest go (it keeps 150 a PR): the rest is GitHub's
@@ -8716,8 +8759,10 @@ const toolName = n => {
     if (sg?.dataset.turns) return tvSet(s, { turns: sg.dataset.turns });
     if (sg?.dataset.dens) return tvSet(s, { dens: sg.dataset.dens === 'fold' ? undefined : sg.dataset.dens });
     const cl = e.target.closest('.tvr.cl'); if (cl) return tvShowTurn(s, cl.dataset.ts, cl);
+    const f = e.target.closest('.tvr.fold'); if (f) { if (!tv.opened.delete(f.dataset.fold)) tv.opened.add(f.dataset.fold); return renderTimeline(s); }
     const ev = e.target.closest('.tvr.ev[data-u], .tvgh'); if (ev) return openExternal(ev.dataset.u, { s });
   });
+  $('#tv').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.tvr.fold')) { e.preventDefault(); e.target.click(); } });   // a fold is a button
   /** The element into the half that shows the tab, its place in the list kept as it moves. */
   function placeTimeline(s, p) {
     const el = $('#tv'), g = s ? p.indexOf('timeline') : -1;

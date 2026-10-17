@@ -84,6 +84,8 @@ export default async function (ctx) {
   const round = (n, k) => `(window.peix.session('${id}')?.prs || []).find(p => p.url.endsWith('/${n}'))?.rounds?.at(-1)?.${k}`;
   const rows = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvl .tvr')].map(r => ({ k: r.className.replace('tvr ', ''), t: [...r.querySelector('.ct').childNodes].map(n => n.textContent).join(' ').replace(/\\s+/g, ' ').trim(), ms: +r.dataset.ms || 0, lanes: r.querySelectorAll('.ln').length, em: [...r.querySelectorAll('.ln em')].map(e => e.className) })))`).then(JSON.parse);
 
+  const click = (sel, alt = false) => ctx.evaluate(`document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: ${alt} }))`);
+
   await ctx.openChat(id);
   await T(`${turn(482)} === 'you' && ${turn(479)} === 'you' && ${turn(486)} === 'you'`, 'three PRs at your move');
   // the board sees each round end as GitHub moves on: your comment on #482, your approval of #479
@@ -134,9 +136,29 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#tv .tvnr[data-k="you"] .tvgo').click()`);
   await T(`document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`, 'the move lit');
 
+  // F1 — kenji's four pushes, one line at the last (the move); F2 and F3 — CI passing folds, failing stays
+  out.folded = await rows();
+  const run = out.folded.find(r => /#479 kenji pushed 4 commits \d+:\d\d\s?[AP]?M?–\d+:\d\d/.test(r.t));
+  a.ok(run && run.em.includes('move') && /YOUR MOVE/i.test(run.t), `a run is one line, its move kept: ${out.folded.filter(r => /kenji/.test(r.t)).map(r => r.t)}`);
+  a.ok(!out.folded.some(r => /CI passed/.test(r.t)), 'CI passing folded');
+  const fold = out.folded.find(r => r.k === 'fold' && /#482 CI/.test(r.t));
+  a.ok(fold, `CI's line in a fold: ${out.folded.filter(r => r.k === 'fold').map(r => r.t)}`);
+  await click(`#tv .tvr.fold`);
+  await T(`document.querySelector('#tv .tvr.fold[aria-expanded="true"]') && [...document.querySelectorAll('#tv .tvr.ev')].some(r => r.textContent.includes('CI passed'))`, 'the fold opened');
+  await click(`#tv .tvr.fold`);
+  await T(`![...document.querySelectorAll('#tv .tvr.ev')].some(r => r.textContent.includes('CI passed'))`, 'and folded again');
+  // N4's Everything: no runs, no folds, each turn's calls
+  await click('#tv .tvseg [data-dens="all"]');
+  await T(`location.hash.endsWith('/tl:d=all') && document.querySelectorAll('#tv .tvr.ev[data-url$="/479"]').length >= 5 && document.querySelector('#tv .tvr.cl .tools')`, 'everything shown');
+  out.all = await rows();
+  a.ok(out.all.some(r => /CI passed/.test(r.t)) && !out.all.some(r => r.k === 'fold'), 'no folds');
+  a.ok(out.all.some(r => /^Claude .*Edit src\/checkout\/payments\.ts\s*Bash Open the PR/.test(r.t)), `a turn's calls listed: ${out.all.filter(r => r.k === 'cl').map(r => r.t)[0]}`);
+  await ctx.shot('2-everything');
+  await click('#tv .tvseg [data-dens="fold"]');
+  await T(`location.hash === '#${id}'`, 'folded again, the default');
+
   // N1 — the chips: the chat and each PR, the merged one only mentioned off
   const chips = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvc')].map(c => (c.classList.contains('on') ? '+' : '-') + c.textContent.trim()))`).then(JSON.parse);
-  const click = (sel, alt = false) => ctx.evaluate(`document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: ${alt} }))`);
   const chip = n => `#tv .tvc[data-url$="/${n}"]`;
   out.chips = await chips();
   a.deepEqual(out.chips, ['+Chat', '-#470merged', '+#479answered', '+#482your move', '+#486let go'], `the chips: ${out.chips}`);
