@@ -157,6 +157,26 @@ export default async function (ctx) {
   await click('#tv .tvseg [data-dens="fold"]');
   await T(`location.hash === '#${id}'`, 'folded again, the default');
 
+  // T3 — the tracks: at the timeline's head, and in the PR list in place of each row's own strip
+  const tracks = host => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('${host} .tvtrk3 .tk3[data-row]')].filter(r => !r.hidden).map(r => r.querySelector('.tl3').textContent))`).then(JSON.parse);
+  a.deepEqual(await tracks('#tv'), ['Chat', '#479', '#482', '#486'], 'the chat and each PR in play, a row each');
+  await ctx.evaluate(`document.querySelector('#prToggle').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
+  await T(`!document.querySelector('#prlist').hidden && document.querySelector('#prlist .tvtrk3')`, 'the PR list open, its tracks at its head');
+  a.deepEqual(await tracks('#prlist'), ['Chat', '#479', '#482', '#486'], 'the same rows in the PR list');
+  a.equal(await ctx.evaluate(`document.querySelectorAll('#prlist .prround .rtrack').length`), 0, 'no strip of its own under a row');
+  a.ok(await ctx.evaluate(`document.querySelectorAll('#prlist .prround .pract').length >= 2`), 'each row\'s words and buttons kept');
+  // the pointer on mara's move: the line through every row, and what happened then
+  const mv = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))([...document.querySelectorAll('#prlist .tvtrk3 .tk3[data-row$="/482"] .td.mv')].at(-1).getBoundingClientRect())`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: mv.x, y: mv.y });
+  await T(`!document.querySelector('#prlist .txh').hidden && /mara commented/.test(document.querySelector('#prlist .tsay').textContent)`, 'the crosshair saying what happened at that minute');
+  out.cross = await ctx.evaluate(`document.querySelector('#prlist .tsay').textContent`);
+  await ctx.shot('2-tracks');
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: mv.x, y: mv.y, button: 'left', clickCount: 1 });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: mv.x, y: mv.y, button: 'left', clickCount: 1 });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+  await T(`/kept/.test(document.querySelector('#prlist .tsay').textContent) && /mara/.test(document.querySelector('#prlist .tsay').textContent)`, 'a click keeps the line');
+  await ctx.evaluate(`document.querySelector('#prlist #prFold').click()`);
+
   // N1 — the chips: the chat and each PR, the merged one only mentioned off
   const chips = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvc')].map(c => (c.classList.contains('on') ? '+' : '-') + c.textContent.trim()))`).then(JSON.parse);
   const chip = n => `#tv .tvc[data-url$="/${n}"]`;
@@ -183,6 +203,7 @@ export default async function (ctx) {
   // the mentioned one in: its merge
   await click(chip(470));
   await T(`[...document.querySelectorAll('#tv .tvr.ev[data-url$="/470"]')].some(r => r.textContent.includes('merged'))`, '#470\'s merge in the timeline');
+  a.match(await ctx.evaluate(`document.querySelector('#tv .tvtrk3 .tnf').textContent`), /^#470 — nothing in the last \d+ h$/, 'its track folded: nothing of it in the window');
   // the right-click menu on a chip
   out.ctx = await ctx.evaluate(`(() => { const c = document.querySelector('${chip(486)}').getBoundingClientRect(); document.querySelector('${chip(486)}').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: c.left + 4, clientY: c.top + 4 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.textContent); })()`);
   a.deepEqual(out.ctx, ['Only this one', 'Leave it out', 'Open it on GitHub'], `the chip's menu: ${out.ctx}`);

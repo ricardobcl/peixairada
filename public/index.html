@@ -1411,20 +1411,36 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #prlist .pract { font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; }
   #prlist .pract:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .pract.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
-  /* each PR's round under its row (2026-10-15): the strip of its last rounds on the clock (fillTrack), the tag, since when,
-     the round before, and Let go · Ask Claude, or Undo — the row's own "your move · …" says it no more */
+  /* each PR's round under its row (2026-10-15): the tag, since when, the round before, and Let go · Ask Claude, or Undo —
+     the row's own "your move · …" says it no more; its strip on a clock of its own is the tracks' since 2026-10-17 */
   #prlist .prline.withround .why { display: none; }
   #prlist .prround { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 0 6px 61px; font-size: var(--fs-xs); }
   #prlist .prround[hidden] { display: none; }
   #prlist .prround .say { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
   #prlist .prround .was, #prlist .prround[data-k="them"] .say { color: var(--muted); }
-  .rtrack { position: relative; flex: none; width: 96px; height: 10px; border-radius: 5px; background: var(--ctl); }
-  .rtrack i { position: absolute; }
-  .rtrack .rs { top: 3px; height: 4px; border-radius: 2px; background: var(--ctl-hi); }
-  .rtrack .rs.open { background: var(--accent); } .rtrack .rs.answered { background: color-mix(in srgb, var(--pr-open) 75%, transparent); }
-  .rtrack .rs.let { background: repeating-linear-gradient(90deg, var(--muted) 0 2px, transparent 2px 4px); }
-  .rtrack .rd { top: 2px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 1.5px var(--panel); }
-  .rtrack .rd.open { background: var(--accent); } .rtrack .rd.answered { background: var(--pr-open); }
+  /* the tracks (2026-10-17, the study's T3): the chat and each PR shown as a row on one clock — the PR list's head, the timeline's */
+  .tvtrk3 { position: relative; display: grid; grid-template-columns: 58px minmax(0, 1fr); row-gap: 3px; column-gap: 8px; padding: 8px 12px 2px; }
+  .tvtrk3 .tk3 { display: contents; }
+  .tvtrk3 .tk3[hidden] { display: none; }
+  .tvtrk3 .tl3 { min-width: 0; overflow: hidden; font-size: var(--fs-xs); font-weight: 700; line-height: 16px; color: var(--muted); white-space: nowrap; }
+  .tvtrk3 .tp3 { position: relative; height: 16px; border-radius: var(--r-1); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .tvtrk3 .tp3 i { position: absolute; }
+  .tvtrk3 .tw { top: 5px; height: 6px; min-width: 2px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+  .tvtrk3 .ty { top: 3px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 1px; background: var(--muted); }
+  .tvtrk3 .tb { top: 5px; height: 6px; min-width: 3px; border-radius: 3px; background: var(--ctl-hi); }
+  .tvtrk3 .tb.you { background: var(--accent); } .tvtrk3 .tb.ok { background: color-mix(in srgb, var(--pr-open) 70%, transparent); }
+  .tvtrk3 .tb.let { top: 7px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--muted); }
+  .tvtrk3 .td { top: 8px; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--h, var(--muted)); }
+  .tvtrk3 .td.mv { box-shadow: 0 0 0 1.5px var(--panel), 0 0 0 3px var(--accent); }
+  .tvtrk3 .td.au { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; background: var(--muted); } .tvtrk3 .td.bad { background: var(--pr-closed); }
+  .tvtrk3 .tax { grid-column: 2; position: relative; height: 14px; }
+  .tvtrk3 .tax span { position: absolute; translate: -50% 0; font-size: var(--fs-2xs); line-height: 14px; color: var(--muted); white-space: nowrap; }
+  .tvtrk3 .tax span.nw { translate: -100% 0; }
+  .tvtrk3 .tnf { grid-column: 2; font-size: var(--fs-2xs); color: var(--muted); }
+  .tvtrk3 .txh { position: absolute; top: 6px; bottom: 16px; width: 1px; background: var(--ink); opacity: .5; pointer-events: none; }
+  .tsay { min-height: 18px; padding: 0 12px 6px 78px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tsay b { color: var(--ink); font-weight: 600; }
+  #tv .tvtrk { border-bottom: 1px solid var(--line); }
   #pick .pkchat { margin-left: 8px; font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #pick .pkchat:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
@@ -4133,7 +4149,7 @@ const toolName = n => {
       const tip = prTip(pr); if (el.title !== tip) el.title = tip;
     }
     for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
-    for (const el of root.querySelectorAll('.rtrack')) fillTrack(el);   // a PR's rounds on the clock (2026-10-15)
+    for (const el of root.querySelectorAll('.tvtrk3')) fillTracks(el);   // the chat and its PRs on one clock (2026-10-17)
   }
   const dayHtml = day => `<div class="gsep day" title="below: the chats you were in ${day === 'Yesterday' ? 'yesterday' : 'on ' + day}"><b>${day}</b></div>`;
   // ---- the people row: everyone in the PRs of the chats in view ---------------------------------------------------
@@ -4748,34 +4764,19 @@ const toolName = n => {
   const byWords = (r, s) => r.by ? `you ${BY[r.by.x] || 'answered'} from ${r.by.c === s.id ? 'this chat' : 'another chat'}` : 'you answered';
   const howWords = (r, s) => r.how === 'answered' ? byWords(r, s) : r.how === 'let go' ? 'let go' : r.how === 'gone' ? 'its reason went' : r.how || '';
   const prevWords = (r, s) => `${r.why} ${when(r.from)}${r.end ? ` → ${howWords(r, s)} ${when(r.end)}` : ''}`;
-  /** A round's strip: each round a bar on the time from the first one's start to now — placed by fillAges (fillTrack),
-   *  so the markup holds times and nothing that moves with the clock. */
-  const trackHtml = pr => `<span class="rtrack" aria-hidden="true">${(pr.rounds || []).map(r => {
-    const k = !r.end ? (r.let ? 'let' : 'open') : r.how === 'answered' ? 'answered' : r.how === 'let go' ? 'let' : 'gone';
-    return `<i class="rs ${k}" data-a="${esc(r.from)}" data-b="${esc(r.end || '')}"></i><i class="rd open" data-a="${esc(r.from)}"></i>${r.end ? `<i class="rd ${k}" data-a="${esc(r.end)}"></i>` : ''}`;
-  }).join('')}</span>`;
-  function fillTrack(el) {
-    const marks = [...el.children], now = Date.now(), t0 = Math.min(...marks.map(m => Date.parse(m.dataset.a)).filter(n => n));
-    if (!isFinite(t0)) return;
-    const span = Math.max(now - t0, 3600_000), x = ms => `${Math.max(0, Math.min(100, (ms - t0) / span * 100)).toFixed(2)}%`;
-    for (const m of marks) {
-      const a = Date.parse(m.dataset.a); if (m.style.left !== x(a)) m.style.left = x(a);
-      if (m.classList.contains('rs')) { const w = `${Math.max(1.5, ((Date.parse(m.dataset.b) || now) - a) / span * 100).toFixed(2)}%`; if (m.style.width !== w) m.style.width = w; }
-    }
-  }
   const RTAG = { you: '<b class="rtag move">your move</b>', let: '<b class="rtag let">let go</b>', ok: '<b class="rtag ok">answered</b>', them: '' };
   /** A round in words: since when and how long unanswered, let go, or how your word answered it — a row's and the timeline's. */
   const roundSay = (s, pr, r) => r.k === 'you' ? (r.cur ? `since ${when(r.cur.from)} · unanswered <span data-at="${esc(r.cur.from)}"></span>` : esc(pr.turn.why))
     : r.k === 'let' ? `${esc(pr.turn.why)} · let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''}, nothing since`
     : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}`
     : esc(pr.turn.why);
-  /** A PR row's round, under it: the strip, the tag, since when, the round before, and what can be done about it. */
+  /** A PR row's round, under it: the tag, since when, the round before, and what can be done about it. */
   function roundLine(s, pr, hide) {
     const r = roundOf(pr); if (!r || (r.k === 'them' && !r.prev)) return '';
     const say = roundSay(s, pr, r);
     const acts = r.k === 'you' ? `<button type="button" class="pract" data-pract="letgo" data-url="${esc(pr.url)}" title="Let this PR's round go — not your move until the next one, which tells you; the chat's other PRs keep theirs">Let go</button><button type="button" class="pract" data-pract="ask" data-url="${esc(pr.url)}" title="Type it into this chat's Claude, unsent — ⏎ sends it">Ask Claude</button>`
       : r.k === 'let' ? `<button type="button" class="pract" data-pract="undo" data-url="${esc(pr.url)}" title="Your move again, as it was">Undo</button>` : '';
-    return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}"${hide ? ' hidden' : ''}>${trackHtml(pr)}${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
+    return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}"${hide ? ' hidden' : ''}>${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
   }
   /** The chat's PRs in play — at your move, let go, answered within PIP_OK_MS —, the newest move first. */
   function inPlay(s) {
@@ -6686,9 +6687,13 @@ const toolName = n => {
     const rows = [...prs.map(pr => hide => prLine(s, pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
     // the list's foot (2026-10-13): "… n more" on the left, and in the middle an arrow up that folds the list as the
     // chips do — where the eye ends up, under the rows
+    const trk = prsOpen && prs.length ? (m => tvTracksHtml(s, m, tvScope(s, m)))(tvModel(s)) : '';   // the chat and its PRs on one clock (2026-10-17)
     const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
       + `<div class="pfoot">${rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : ''}<button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button></div>`;
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
+    // the tracks a box of their own at the head, so their news redraws no row
+    const tk = pl.querySelector(':scope > .prtrk') || pl.insertBefore(html2el('<div class="prtrk"></div>'), pl.firstChild);
+    setHtml(tk, trk); tk.hidden = !trk;
     fillAges(pl);
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     // pressed from the keyboard (no clicks counted, the button focused), the keys stay on the chips: the header they sat
@@ -8422,6 +8427,12 @@ const toolName = n => {
     }
     return out;
   }
+  /** …read again only when the entries grew or are another list: the PR list's head asks on every update of the header. */
+  const tvTurnsMemo = { arr: null, n: -1, turns: null };
+  function tvTurnsOf(arr) {
+    if (tvTurnsMemo.arr !== arr || tvTurnsMemo.n !== arr.length) Object.assign(tvTurnsMemo, { arr, n: arr.length, turns: tvTurns(arr) });
+    return tvTurnsMemo.turns.map(t => ({ ...t }));   // the model writes on its turns
+  }
   const reLit = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   /** The chat's PRs a piece of text names: its URL, repo#n, or #n when no other PR of the chat has that number. */
   function tvNames(s, text) {
@@ -8438,7 +8449,7 @@ const toolName = n => {
     const prs = [...s.prs || []].sort((a, b) => (a.number || 0) - (b.number || 0) || a.label.localeCompare(b.label)), byUrl = new Map(prs.map(p => [p.url, p])), log = tvLogOf(s);   // by number, as their hues go
     const led = new Map((log?.prs || []).filter(p => byUrl.has(p.url)).map(p => [p.url, p]));
     const roundsOf = url => led.get(url)?.rounds || byUrl.get(url)?.rounds || [];
-    const turns = tvTurns(state.entries), byTool = new Map();
+    const turns = tvTurnsOf(state.entries), byTool = new Map();
     for (const t of turns) {
       for (const u of t.tools) if (u.toolUseId) byTool.set(u.toolUseId, t);
       Object.assign(t, { ref: tvNames(s, t.you), acts: [], ms: Date.parse(t.at) });
@@ -8701,13 +8712,88 @@ const toolName = n => {
     const rows = m.prs.filter(p => sc.on.has(p.url)).map(pr => ({ pr, r: roundOf(pr) })).filter(x => x.r && (x.r.k !== 'them' || x.r.prev));
     return rows.length ? `<div class="tvnow">${rows.map(({ pr, r }) => `<div class="tvnr" data-k="${r.k}" data-url="${esc(pr.url)}">${pchip(s, pr)}${RTAG[r.k] || ''}<span class="say">${roundSay(s, pr, r)}</span>${r.prev ? `<span class="was">before: ${esc(prevWords(r.prev, s))}</span>` : ''}${r.k === 'them' ? '' : `<button type="button" class="tvgo" data-go="${esc(pr.url)}">${r.k === 'you' ? 'to the move' : 'show'}</button>`}</div>`).join('')}</div>` : '';
   }
+  // The tracks (2026-10-17, the study's T3; DevTools' tracks on one clock, Honeycomb's markers): the chat as a row — your
+  // words as ticks, Claude's work as bars — and each PR the narrow shows as one — its rounds as bars (the accent while at
+  // your move, green up to your answer, dashed once let go) and its events as dots —, on one time axis: the chat's span,
+  // the last six hours at most. The pointer draws a line through every row and says what happened at that minute; a
+  // click keeps it. In the PR list (each row's own strip before) and at the head of the timeline. The markup holds
+  // times alone, placed by fillAges (fillTracks), so the clock rebuilds nothing.
+  function tvTracksHtml(s, m, sc) {
+    const rows = [], firsts = [];
+    const sayOf = (e, pr) => `${pr.label.replace(/^.*?#/, '#')} ${e.k === 'chat' || e.k === 'board' || e.w === '' ? 'you ' : e.w ? e.w + ' ' : ''}${e.w === null ? EV_SAY(e).replace(/ it$/, '') : EV_SAY(e)}`;
+    if (sc.chat && m.turns.length) {
+      firsts.push(m.turns[0].ms);
+      rows.push(`<div class="tk3" data-row="chat"><span class="tl3">Chat</span><span class="tp3">${m.turns.map(t => `<i class="tw" data-a="${esc(t.at)}" data-b="${esc(t.end || '')}" data-say="Claude at work"></i>${t.you ? `<i class="ty" data-a="${esc(t.at)}" data-say="${esc(`you: ${String(t.you).replace(/\s+/g, ' ').slice(0, 80)}`)}"></i>` : ''}`).join('')}</span></div>`);
+    }
+    for (const p of m.prs.filter(p => sc.on.has(p.url))) {
+      const evs = m.evs.filter(e => e.url === p.url && (sc.dens === 'all' || e.k !== 'ci' || e.s === 'fail')), rs = m.roundsOf(p.url);
+      firsts.push(...evs.map(e => e.ms), ...rs.map(r => Date.parse(r.from)));
+      const bars = rs.map(r => {
+        const end = esc(r.end || ''), k = r.how === 'answered' ? 'ok' : r.how === 'let go' ? 'let' : !r.end ? 'you' : 'gone';
+        return r.let ? `<i class="tb you" data-a="${esc(r.from)}" data-b="${esc(r.let)}"></i><i class="tb let" data-a="${esc(r.let)}" data-b="${end}"></i>` : `<i class="tb ${k}" data-a="${esc(r.from)}" data-b="${end}"></i>`;
+      }).join('');
+      const dots = evs.map(e => { const mk = tvMark(m, e); return `<i class="td${mk.k === 'move' ? ' mv' : ''}${e.k === 'ci' ? (e.s === 'fail' ? ' bad' : ' au') : ''}" data-a="${esc(e.a)}" data-say="${esc(sayOf(e, p))}"></i>`; }).join('');
+      rows.push(`<div class="tk3" data-row="${esc(p.url)}" data-name="${esc(p.label.replace(/^.*?#/, '#'))}"><span class="tl3">${pchip(s, p)}</span><span class="tp3" style="--h:${prHue(s, p)}">${bars}${dots}</span></div>`);
+    }
+    if (!rows.length || !firsts.length) return '';
+    const from = new Date(m.turns[0]?.ms || Math.min(...firsts)).toISOString();
+    return `<div class="tvtrk3" data-from="${from}" aria-hidden="true">${rows.join('')}<span class="tnf" hidden></span><span class="tax"></span><i class="txh" hidden></i></div><div class="tsay" aria-hidden="true">the pointer over the rows says what happened when · a click keeps it</div>`;
+  }
+  const TRACK_MS = 6 * 3600_000;
+  function fillTracks(el) {
+    const now = Date.now(), from = Date.parse(el.dataset.from) || now;
+    const t0 = Math.min(Math.max(from, now - TRACK_MS), now - 3600_000), span = now - t0, x = ms => (ms - t0) / span * 100;   // an hour at least
+    el._t0 = t0; el._span = span;
+    const gone = [];
+    for (const row of el.querySelectorAll('.tk3[data-row]')) {
+      let any = false;
+      for (const i of row.querySelectorAll('i[data-a]')) {
+        const a = Date.parse(i.dataset.a), bar = 'b' in i.dataset, b = bar ? Date.parse(i.dataset.b) || now : a, off = b < t0 || a > now;
+        if (i.hidden !== off) i.hidden = off; if (off) continue; any = true;
+        const l = `${Math.max(0, x(a)).toFixed(2)}%`; if (i.style.left !== l) i.style.left = l;
+        if (bar) { const w = `${Math.max(.5, x(b) - Math.max(0, x(a))).toFixed(2)}%`; if (i.style.width !== w) i.style.width = w; }
+      }
+      if (row.hidden === any) row.hidden = !any;   // a row with nothing in the window folds
+      if (!any && row.dataset.name) gone.push(row.dataset.name);
+    }
+    const nf = el.querySelector('.tnf'), say = gone.length ? `${gone.join(' ')} — nothing in the last ${Math.round(span / 3600_000)} h` : '';
+    if (nf.textContent !== say) nf.textContent = say; nf.hidden = !say;
+    const step = span <= 2 * 3600_000 ? 1800_000 : span <= 4 * 3600_000 ? 3600_000 : 7200_000;
+    let h = ''; for (let t = Math.ceil(t0 / step) * step; t < now - step / 3; t += step) h += `<span style="left:${x(t).toFixed(2)}%">${esc(tvHm(t))}</span>`;
+    h += '<span class="nw" style="left:100%">now</span>';
+    const ax = el.querySelector('.tax'); if (ax._h !== h) ax.innerHTML = ax._h = h;
+  }
+  /** The line through the rows at a minute, and what happened there — within a few pixels' worth of time. */
+  function tvCrossAt(el, ms, kept) {
+    const plot = el.querySelector('.tk3:not([hidden]) .tp3'), xh = el.querySelector('.txh'), say = el.nextElementSibling; if (!plot || !el._span) return;
+    const r = plot.getBoundingClientRect(), box = el.getBoundingClientRect(), tol = el._span * 6 / r.width, words = [];
+    xh.hidden = false; xh.style.left = `${r.left - box.left + (ms - el._t0) / el._span * r.width}px`;
+    for (const i of el.querySelectorAll('.tk3:not([hidden]) i[data-say]:not([hidden])')) {
+      const a = Date.parse(i.dataset.a), b = 'b' in i.dataset ? Date.parse(i.dataset.b) || Date.now() : a;
+      if (i.classList.contains('tw') ? ms > a + tol && ms < b : Math.abs(ms - a) <= tol) words.push(i.dataset.say);
+    }
+    say.innerHTML = `<b>${esc(tvHm(ms))}</b>${kept ? ' · kept' : ''} · ${words.length ? esc([...new Set(words)].join(' · ')) : 'nothing within a few minutes'}`;
+  }
+  function tvCrossOff(el) {
+    if (el._kept != null) return tvCrossAt(el, el._kept, true);
+    el.querySelector('.txh').hidden = true;
+    el.nextElementSibling.textContent = 'the pointer over the rows says what happened when · a click keeps it';
+  }
+  const tvMsAt = (el, e) => { const plot = el.querySelector('.tk3:not([hidden]) .tp3'); if (!plot || !el._span) return null; const r = plot.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right ? null : el._t0 + (e.clientX - r.left) / r.width * el._span; };
+  for (const host of ['#tv', '#prlist']) {
+    $(host).addEventListener('pointermove', e => { const el = e.target.closest?.('.tvtrk3'); if (!el) return; const ms = tvMsAt(el, e); if (ms == null) tvCrossOff(el); else tvCrossAt(el, ms, false); });
+    $(host).addEventListener('pointerout', e => { const el = e.target.closest?.('.tvtrk3'); if (el && !el.contains(e.relatedTarget)) tvCrossOff(el); });
+    $(host).addEventListener('click', e => { const el = e.target.closest?.('.tvtrk3'); if (!el) return; const ms = tvMsAt(el, e); el._kept = ms == null || el._kept != null ? null : ms; if (el._kept == null) tvCrossOff(el); else tvCrossAt(el, ms, true); });
+  }
   let tvFrame = 0;
-  function tvSoon() { if (!tvFrame) tvFrame = requestAnimationFrame(() => { tvFrame = 0; const s = state.sessions.get(state.current); if (s && !$('#tv').hidden) renderTimeline(s); }); }
+  function tvSoon() { if (!tvFrame && !$('#tv').hidden) tvFrame = requestAnimationFrame(() => { tvFrame = 0; const s = state.sessions.get(state.current); if (s && !$('#tv').hidden) renderTimeline(s); }); }   // no tab on show, no frame asked for
   function renderTimeline(s) {
     const el = $('#tv'); if (el.hidden || !s) return;
     if (!el.firstElementChild) el.innerHTML = '<div class="tvbar"></div><div class="tvtrk" hidden></div><div class="tvl" aria-label="This chat and its PRs, in the order things happened"></div>';
     const m = tvModel(s), sc = tvScope(s, m), rows = tvRows(s, m, sc), { L, cells } = tvLanes(s, m, sc, rows);
     setHtml(el.querySelector('.tvbar'), tvBarHtml(s, m, sc));
+    const trk = el.querySelector('.tvtrk'), th = prefs.prsOpen && m.prs.length ? '' : tvTracksHtml(s, m, sc);   // the PR list open above shows them
+    setHtml(trk, th); trk.hidden = !th; fillAges(trk);
     const faces = new Map(m.prs.flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
     let html = '', day = null;
     rows.forEach((r, i) => {
