@@ -8395,7 +8395,7 @@ const toolName = n => {
   // asked again when one has moved); which turns are about which PR — named in it, acted on from it, the first after
   // its move — is the page's own reading of the entries (tvModel).
   const timelineOpen = new Set();   // chats with the tab, kept across a reload as the other tabs are (keepTabs)
-  const tv = { id: null, log: null, sig: '', asking: false, goto: null, opened: new Set() };   // opened: the folds opened, the open chat's
+  const tv = { id: null, log: null, sig: '', asking: false, goto: null, lit: null, opened: new Set() };   // opened: the folds opened, the open chat's; lit: the move gone to
   const TV_LANES = 5;               // a lane each for the first five PRs shown, the rest one grey lane between them
   const TV_EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
   // what the ledgers hold has moved: a PR's `logged` (the server's count of its ledger's changes), its state, its round
@@ -8815,21 +8815,32 @@ const toolName = n => {
     if (old.length) html = `<div class="tvold">${old.map(p => `<button type="button" class="tvgh" data-u="${esc(p.url)}">older on ${pchip(s, p)} — on GitHub ↗</button>`).join('')}</div>` + html;
     html += tvNowHtml(s, m, sc);
     const list = el.querySelector('.tvl'), lw = `${Math.max(1, L.length) * 14}px`;
-    const stick = list._sid !== s.id || list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    const lit = tv.lit?.id === s.id && performance.now() - tv.lit.t < TV_LIT_MS ? tv.lit : null;   // gone to a move a moment ago: stay there
+    const stick = !lit && (list._sid !== s.id || list.scrollHeight - list.scrollTop - list.clientHeight < 40);
     if (list.style.getPropertyValue('--lw') !== lw) list.style.setProperty('--lw', lw);
-    if (setHtml(list, html) || list._sid !== s.id) { fillAges(list); if (stick) list.scrollTop = list.scrollHeight; }
+    if (setHtml(list, html) || list._sid !== s.id) { fillAges(list); if (stick) list.scrollTop = list.scrollHeight; else if (lit) tvLight(list, lit); }
     list._sid = s.id;
-    if (tv.goto?.id === s.id && tv.log) { const g = tv.goto; tv.goto = null; tvGo(s, g.url); }
+    // the move gone to once the ledgers and the chat's own entries are both in (2026-10-17): from a card, the chat's
+    // transcript lands after the ledger, and its turns, drawn in, pushed the move out of sight
+    if (tv.goto?.id === s.id && tv.log && logOf.id === s.id) { const g = tv.goto; tv.goto = null; tvGo(s, g.url); }
+  }
+  const TV_LIT_MS = 2000;
+  /** The row gone to, found again in the list as it now stands, put in the middle and lit — carried on, not restarted. */
+  function tvLight(list, lit) {
+    const els = [...list.querySelectorAll('.tvr[data-ms]')].filter(x => x.dataset.url === lit.url || (x.dataset.urls || '').split(' ').includes(lit.url));
+    const el = els.sort((a, b) => Math.abs(a.dataset.ms - lit.at) - Math.abs(b.dataset.ms - lit.at))[0]; if (!el) return null;
+    el.scrollIntoView({ block: 'center', behavior: lit.smooth && !REDUCED.matches ? 'smooth' : 'auto' });
+    el.style.animationDelay = `${-Math.round(performance.now() - lit.t)}ms`;
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    return el;
   }
   /** To a PR's round in the list: the move that opened it, where it was let go, or what answered it — lit a moment. */
   function tvGo(s, url) {
     const pr = (s.prs || []).find(p => p.url === url), r = pr && roundOf(pr), list = $('#tv .tvl'); if (!list) return;
     const at = r?.cur ? Date.parse(r.k === 'you' ? r.cur.from : r.k === 'let' ? r.cur.let || r.cur.from : r.cur.end || r.cur.from) : Infinity;
-    const els = [...list.querySelectorAll('.tvr[data-ms]')].filter(x => x.dataset.url === url || (x.dataset.urls || '').split(' ').includes(url));
-    const el = els.sort((a, b) => Math.abs(a.dataset.ms - at) - Math.abs(b.dataset.ms - at))[0];
-    if (!el) return note(seen($('#tv')), `Nothing of ${pr ? pr.label : 'that PR'} in the timeline yet`);
-    el.scrollIntoView({ block: 'center', behavior: REDUCED.matches ? 'auto' : 'smooth' });
-    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    tv.lit = { id: s.id, url, at, t: performance.now(), smooth: true };
+    if (!tvLight(list, tv.lit)) { tv.lit = null; note(seen($('#tv')), `Nothing of ${pr ? pr.label : 'that PR'} in the timeline yet`); }
+    else tv.lit.smooth = false;
   }
   /** A turn clicked: the transcript beside the timeline, at that turn. Under a drawer that runs it is out of sight. */
   function tvShowTurn(s, ts, from) {
@@ -8857,6 +8868,7 @@ const toolName = n => {
     const f = e.target.closest('.tvr.fold'); if (f) { if (!tv.opened.delete(f.dataset.fold)) tv.opened.add(f.dataset.fold); return renderTimeline(s); }
     const ev = e.target.closest('.tvr.ev[data-u], .tvgh'); if (ev) return openExternal(ev.dataset.u, { s });
   });
+  for (const ev of ['wheel', 'pointerdown']) $('#tv').addEventListener(ev, () => { tv.lit = null; }, { passive: true });   // a hand on the list: its place is the hand's
   $('#tv').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.tvr.fold')) { e.preventDefault(); e.target.click(); } });   // a fold is a button
   /** The element into the half that shows the tab, its place in the list kept as it moves. */
   function placeTimeline(s, p) {
