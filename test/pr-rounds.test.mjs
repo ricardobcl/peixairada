@@ -49,10 +49,12 @@ test('the ledger takes an event once and gives none back: a short look loses not
   assert.equal(logEvents(url, all), false, 'the same look again: nothing new');
   assert.equal(logEvents(url, all.slice(0, 1)), false, 'a look that lacks some takes none away');
   assert.deepEqual(prLogs[url].ev.map(e => e.k), ['opened', 'push', 'comment', 'comment']);
-  const many = Array.from({ length: 20 }, (_, i) => ({ id: `comment:ana:${i}`, k: 'comment', w: 'ana', a: t(12, i) }));
+  assert.equal(prLogs[url].older, undefined, 'nothing let go yet');
+  const many = Array.from({ length: 150 }, (_, i) => ({ id: `comment:ana:${i}`, k: 'comment', w: 'ana', a: new Date(at(12) + i * 1000).toISOString().replace('.000', '') }));
   logEvents(url, many);
-  assert.equal(prLogs[url].ev.length, 16, 'sixteen at most, the newest');
-  assert.equal(prLogs[url].ev[0].a, t(12, 4));
+  assert.equal(prLogs[url].ev.length, 150, 'a hundred and fifty at most, the newest (sixteen before 2026-10-17)');
+  assert.equal(prLogs[url].ev[0].a, many[0].a);
+  assert.equal(prLogs[url].older, 1, 'and it says it let older ones go');
   assert.equal(logEvents(url, [...all, ...many]), false, 'what fell off the front stays out — GitHub\'s window still holds it');
 });
 
@@ -103,8 +105,8 @@ test('a round let go ends when the next move comes; one whose reason went ends a
   look({}, 11, 15);
   assert.deepEqual(s.prs[0].rounds.map(r => r.how), ['let go', 'gone']);
   setPrInfo(url, 'merged', 'PR', null, at(12));
-  assert.equal(prLogs[url], undefined, 'merged: its history goes with it');
-  assert.equal(s.prs[0].rounds, null);
+  assert.deepEqual(prLogs[url].r.map(r => r.how), ['let go', 'gone'], 'merged: its history stays while a chat names it (2026-10-17; it went with it)');
+  assert.deepEqual(s.prs[0].rounds.map(r => r.how), ['let go', 'gone']);
 });
 
 test('the server keeps a PR\'s history over a restart and hands it to the page', { timeout: 90_000 }, async () => {

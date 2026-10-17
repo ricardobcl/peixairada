@@ -167,8 +167,9 @@ let setup = {};
 // (2026-09-28). A PR come round to you un-ticks the chats that mention it (isDone), weighed by `at` — kept here so a
 // restart does not hand a move the board had already shown back to GitHub's own clock (moveTurn).
 let prTurns = {};
-// Each such PR's history, its rounds and events (2026-10-15; see prEvents and noteRounds): url -> { ev, r }.
-let prLogs = {};   // url -> { ev: [{ id, k, w, a, n?, s?, f?, x? }], r: [{ from, why, let?, end?, how?, them? }] }
+// Each PR's history, its rounds and events (2026-10-15; every PR a chat shows since 2026-10-17 — see prEvents and
+// noteRounds): url -> { ev, r, v, older?, seen? }.
+let prLogs = {};   // url -> { ev: [{ id, k, w, a, n?, s?, f?, x?, c? }], r: [{ from, why, let?, end?, how?, them? }], v: changes, older: 1?, seen: a day }
 // Keep the Mac awake — the chat header menu's switch (2026-10-08): a `caffeinate -i` of the server's own while it is
 // on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
 let awakeOn = false;
@@ -248,7 +249,10 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced }, null, 1));
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced }, null, 1);
+    // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a third of the bytes it took laid out
+    const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
+    writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -767,7 +771,7 @@ function notePr(s, url, ts, by, ref = null) {
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
     count: 0, by: null, firstAt: ts, ref,
     state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null, refs: prStatus.get(clean)?.refs ?? null,
-    rounds: roundsOf(clean)
+    rounds: roundsOf(clean), logged: loggedOf(clean)
   };
   if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
@@ -990,17 +994,16 @@ function setPrInfo(url, state, title, found, now = Date.now(), people, missing =
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from, released } = moveTurn(url, found, now);
-  if (state === 'merged' || state === 'closed') { if (prLogs[url]) { delete prLogs[url]; turnsDirty = true; } }   // its history ends with it
-  else noteRounds(url, found, moved, now, state);
+  noteRounds(url, found, moved, now, state);   // merged or closed, its round ends there and its history stays (2026-10-17; it went with it)
   const known = prStatus.get(url);
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
   if (missing) { state = known?.state ?? null; title = known?.title ?? null; checks = known?.checks ?? null; }
   refs ??= known?.refs ?? null;   // a PR we could not see keeps the branches we knew
   prStatus.set(url, { state, title, turn, people, checks, refs, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
-  const rounds = roundsOf(url), same = JSON.stringify(turn), faces = JSON.stringify(people), branches = JSON.stringify(refs), rs = JSON.stringify(rounds);
+  const rounds = roundsOf(url), logged = loggedOf(url), same = JSON.stringify(turn), faces = JSON.stringify(people), branches = JSON.stringify(refs), rs = JSON.stringify(rounds);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches || JSON.stringify(pr.rounds ?? null) !== rs) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; pr.rounds = rounds; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || pr.checks !== checks || pr.logged !== logged || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches || JSON.stringify(pr.rounds ?? null) !== rs) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; pr.rounds = rounds; pr.logged = logged; schedulePush(s); }
   }
   for (const s of chats) if (s.prActs.some(a => !a.url)) takeActs(s);   // a push to its branch, now that GitHub has named the branch
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it, or the next move after
@@ -1061,7 +1064,7 @@ function drainPrQueue() {
         : pr.isDraft ? 'draft' : 'open';
       if (!pr && none.has(`p${i}`)) forgetRef(url);
       const turn = pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined;
-      if (turn) logEvents(url, prEvents(pr, me));   // a PR you have a turn on: what this look saw, into its ledger
+      if (pr && me) logEvents(url, prEvents(pr, me));   // what this look saw, into its ledger — every PR a chat shows (2026-10-17; one you had a turn on before)
       setPrInfo(url, state, pr?.title || null, turn, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
@@ -1075,15 +1078,16 @@ function drainPrQueue() {
 // `pushes` are the newest commits and force-pushes, `asks` the review requests, both off the PR's timeline.
 // Every person comes with a face since 2026-09-29 (`avatarUrl`, a scalar: no cost) — prPeople, the cards' faces.
 const WHO = 'login __typename avatarUrl(size: 48)';
+const WINDOWS = { reviews: 20, comments: 20, pushes: 5, asks: 10 };   // how far back each look reaches (prEvents' `edge`)
 const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
   + ' headRefName baseRefName baseRefOid isCrossRepository headRepository { nameWithOwner }'   // where its branch is (2026-10-13): scalars, no cost
   + ' viewerLatestReview { submittedAt commit { oid } }'
   + ' reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }'
-  + ` reviews(last: 20) { nodes { author { ${WHO} } state submittedAt } }`
-  + ` comments(last: 20) { nodes { author { ${WHO} } createdAt } }`
-  + ' pushes: timelineItems(last: 5, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename'
+  + ` reviews(last: ${WINDOWS.reviews}) { nodes { author { ${WHO} } state submittedAt } }`
+  + ` comments(last: ${WINDOWS.comments}) { nodes { author { ${WHO} } createdAt } }`
+  + ` pushes: timelineItems(last: ${WINDOWS.pushes}, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename`
   + ` ... on HeadRefForcePushedEvent { createdAt actor { ${WHO} } } ... on PullRequestCommit { commit { committedDate author { user { login avatarUrl(size: 48) } } } } } }`
-  + ' asks: timelineItems(last: 10, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }'
+  + ` asks: timelineItems(last: ${WINDOWS.asks}, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }`
   + ' commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }';   // CI on the head (2026-10-09): the rollup alone, a point's worth
 /** The head commit's checks as the chat header says them: pass · fail · pending, or null for none (2026-10-09). */
 const CHECKS = { SUCCESS: 'pass', FAILURE: 'fail', ERROR: 'fail', PENDING: 'pending', EXPECTED: 'pending' };
@@ -1212,7 +1216,18 @@ function pruneTurns(now = Date.now()) {
   if (indexing) return;
   const named = new Set(); for (const s of sessions.values()) for (const p of s.prs) named.add(p.url);
   for (const [url, t] of Object.entries(prTurns)) if (!named.has(url) && now - (Date.parse(t.at) || 0) > TURN_KEEP_MS) delete prTurns[url];
-  for (const url of Object.keys(prLogs)) if (!prTurns[url] && !named.has(url)) delete prLogs[url];   // a ledger goes with its PR's record
+  pruneLogs(now);
+}
+/** A ledger stays while a chat not done for good names it, or its turn's record does, and LOG_KEEP_MS after the last
+ *  day either did (2026-10-17): the boot reads a transcript's tail, so a PR named before it is out of the chat's PRs
+ *  until the chat is read whole — as prTurns' month. */
+function pruneLogs(now = Date.now()) {
+  const day = isoS(now).slice(0, 10), live = new Set();
+  for (const s of sessions.values()) if (!forgotten(s)) for (const p of s.prs) live.add(p.url);
+  for (const [url, log] of Object.entries(prLogs)) {
+    if (live.has(url) || prTurns[url]) { if (log.seen !== day) log.seen = day; }
+    else if (now - (Date.parse(log.seen) || 0) > LOG_KEEP_MS) delete prLogs[url];
+  }
 }
 function moveTurn(url, t, now = Date.now()) {
   const prev = prTurns[url];
@@ -1244,7 +1259,7 @@ function waiveTurn(url) {
   prStatus.set(url, { ...known, turn });
   const open = openRound(url); if (open) open.let = isoS(Date.now());
   logBoard(url, 'let go');
-  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); schedulePush(s); } }
+  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); pr.logged = loggedOf(url); schedulePush(s); } }
   return true;
 }
 /** A round let go, taken back (2026-10-15): your move again, as it was — no alert, no un-tick, its time kept. */
@@ -1256,12 +1271,12 @@ function unwaiveTurn(url) {
   prStatus.set(url, { ...known, turn });
   const open = openRound(url); if (open) delete open.let;
   logBoard(url, 'back');
-  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); schedulePush(s); } }
+  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); pr.logged = loggedOf(url); schedulePush(s); } }
   return true;
 }
 
 // ---- …and its history (2026-10-15) ----------------------------------------------------------------------------------
-// A PR you have a turn on keeps a ledger (`prLogs`, the state file): its rounds — a move come round to you, and how it
+// A PR keeps a ledger (`prLogs`, the state file): its rounds — a move come round to you, and how it
 // ended: your word (`answered`), let go and then moved past (`let go`), its reason gone (`gone`), the PR merged or
 // closed — and its events: who opened, reviewed, commented, pushed or asked, from each look (prEvents), and what the
 // board did with it (let go). The page shows the rounds (each PR row's round and the one before, a card's pips and its
@@ -1269,48 +1284,62 @@ function unwaiveTurn(url) {
 // from one look: GitHub can answer a PR's timeline from hours before (2026-10-14), so an event is merged by its id and a
 // look without it takes nothing back, and a round closes as answered only on a word of yours newer than its move — a
 // look that reads "their move" with no such word leaves it open (`gone` after ROUND_GONE_MS of that).
-const LOG_EV_MAX = 16, LOG_ROUNDS_MAX = 6, ROUND_GONE_MS = 60 * 60_000;
+// The chat's timeline reads it (2026-10-17): every PR a chat shows has one, rounds only where you have a turn; 150
+// events and 30 rounds, past a merge or a close while a chat not done for good names it, and LOG_KEEP_MS after the
+// last day one did — the boot reads a transcript's tail, and a PR named before it is still the chat's (pruneTurns).
+const LOG_EV_MAX = 150, LOG_ROUNDS_MAX = 30, ROUND_GONE_MS = 60 * 60_000, LOG_KEEP_MS = 30 * 24 * 60 * 60_000;
 const isoS = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');   // GitHub's spelling, so the ledger's times sort as one
 /**
  * The events in one look at a PR (pure; PR_FIELDS' answer): `k` opened · review (`s` its state) · comment · push (`f`
  * a force-push) · ask (your review asked for), `w` who — '' for you —, `a` when; the bots left out, as the turn does. An
  * id is the kind, who and when: GitHub's times do not move, and a rebase's commits, one second each, are one push of `n`.
+ * The oldest of a window GitHub filled (`WINDOWS`) is marked `edge`: one the ledger has not got says GitHub held more
+ * before it than this look could see (2026-10-17; logEvents' `older`).
  */
 function prEvents(pr, me) {
   if (!pr) return [];
   const ev = new Map();
+  let from = null;   // the window being read, until its first event is marked
   const put = (k, by, a, more = {}) => {
     if (!a || !by?.login || isBot(by)) return;
     const id = `${k}:${by.login}:${a}${more.s ? ':' + more.s : ''}`, was = ev.get(id);
-    if (was) was.n = (was.n || 1) + 1; else ev.set(id, { id, k, w: by.login === me ? '' : by.login, a, ...more });
+    if (was) was.n = (was.n || 1) + 1; else ev.set(id, { id, k, w: by.login === me ? '' : by.login, a, ...more, ...from && { edge: 1 } });
+    from = null;
   };
+  const read = (name, f) => { const nodes = pr[name]?.nodes || []; from = nodes.length >= WINDOWS[name] ? name : null; for (const n of nodes) if (n) f(n); from = null; };
   put('opened', pr.author, pr.createdAt);
-  for (const r of pr.reviews?.nodes || []) if (r && r.state !== 'PENDING') put('review', r.author, r.submittedAt, { s: r.state });
-  for (const c of pr.comments?.nodes || []) put('comment', c?.author, c?.createdAt);
-  for (const n of pr.pushes?.nodes || []) {
-    if (n?.__typename === 'HeadRefForcePushedEvent') put('push', n.actor, n.createdAt, { f: 1 });
-    else put('push', n?.commit?.author?.user || pr.author, n?.commit?.committedDate);   // a commit GitHub ties to no one is the author's
-  }
-  for (const a of pr.asks?.nodes || []) if (a?.requestedReviewer?.login === me && a.createdAt) ev.set(`ask:${a.createdAt}`, { id: `ask:${a.createdAt}`, k: 'ask', w: null, a: a.createdAt });
+  read('reviews', r => { if (r.state !== 'PENDING') put('review', r.author, r.submittedAt, { s: r.state }); });
+  read('comments', c => put('comment', c.author, c.createdAt));
+  read('pushes', n => {
+    if (n.__typename === 'HeadRefForcePushedEvent') put('push', n.actor, n.createdAt, { f: 1 });
+    else put('push', n.commit?.author?.user || pr.author, n.commit?.committedDate);   // a commit GitHub ties to no one is the author's
+  });
+  read('asks', a => { if (a.requestedReviewer?.login === me && a.createdAt) ev.set(`ask:${a.createdAt}`, { id: `ask:${a.createdAt}`, k: 'ask', w: null, a: a.createdAt, ...from && { edge: 1 } }); from = null; });
   return [...ev.values()];
 }
-const logOf = url => prLogs[url] ||= { ev: [], r: [] };
+const logOf = url => prLogs[url] ||= { ev: [], r: [], v: 0 };
+const loggedOf = url => prLogs[url]?.v || 0;
+/** A ledger changed: its count (`v`, each chat's `pr.logged`) moves, so the page knows to ask for it again. */
+const bumpLog = url => { const log = logOf(url); log.v = (log.v || 0) + 1; turnsDirty = true; };
 /** Events into a PR's ledger by id: one it has is kept, a rebase's count grows, and once full one older than the oldest
- *  kept stays out — GitHub's windows still hold what the ledger let go, and would bring it back on every look. */
+ *  kept stays out — GitHub's windows still hold what the ledger let go, and would bring it back on every look. What
+ *  it let go, or a full window's oldest it never had (prEvents' `edge`), marks it `older`: GitHub has more before. */
 function logEvents(url, evs) {
   if (!evs.length) return false;
   const log = logOf(url), byId = new Map(log.ev.map(e => [e.id, e]));
-  let added = false;
-  for (const e of evs) {
+  let added = false, older = false;
+  for (const { edge, ...e } of evs) {
     const was = byId.get(e.id);
     if (was) { if ((e.n || 1) > (was.n || 1)) { was.n = e.n; added = true; } continue; }
-    if (log.ev.length >= LOG_EV_MAX && e.a < log.ev[0].a) continue;
+    if (edge) older = true;
+    if (log.ev.length >= LOG_EV_MAX && e.a < log.ev[0].a) { older = true; continue; }
     log.ev.push(e); byId.set(e.id, e); added = true;
   }
+  if (older && !log.older) { log.older = 1; added = true; }
   if (!added) return false;
   log.ev.sort((a, b) => a.a.localeCompare(b.a));
-  if (log.ev.length > LOG_EV_MAX) log.ev.splice(0, log.ev.length - LOG_EV_MAX);
-  turnsDirty = true;
+  if (log.ev.length > LOG_EV_MAX) { log.ev.splice(0, log.ev.length - LOG_EV_MAX); log.older = 1; }
+  bumpLog(url);
   return true;
 }
 /** What the board did with a PR — let go, back again — into its ledger. */
@@ -1332,7 +1361,7 @@ function noteRounds(url, t, moved, now = Date.now(), state = null) {
   if (!t) {
     if (!open) return false;
     Object.assign(open, { end: nowS, how: state === 'merged' || state === 'closed' ? state : 'gone' }); delete open.them;
-    turnsDirty = true; return true;
+    bumpLog(url); return true;
   }
   if (t.you) {
     if (open?.let && moved) { Object.assign(open, { end: nowS, how: 'let go' }); open = null; }
@@ -1348,7 +1377,7 @@ function noteRounds(url, t, moved, now = Date.now(), state = null) {
   }
   const r = prLogs[url]?.r;
   if (r && r.length > LOG_ROUNDS_MAX) r.splice(0, r.length - LOG_ROUNDS_MAX);
-  if (changed) turnsDirty = true;
+  if (changed) bumpLog(url);
   return changed;
 }
 
@@ -1477,7 +1506,8 @@ function takeActs(s) {
     const ev = { id: `chat:${s.id}:${a.id}`, k: 'chat', w: '', x: a.x, a: isoS(Date.parse(a.at) || Date.now()), c: s.id };
     if (!logEvents(url, [ev])) continue;
     const r = prLogs[url].r.at(-1);   // a round closed before the chat's line was read: said now
-    if (r?.how === 'answered' && !r.by && ANSWERS.has(a.x) && ev.a >= r.from) { Object.assign(r, byChat(url, r, isoS(Date.now()))); pushRounds(url); }
+    if (r?.how === 'answered' && !r.by && ANSWERS.has(a.x) && ev.a >= r.from) { Object.assign(r, byChat(url, r, isoS(Date.now()))); bumpLog(url); }
+    pushRounds(url);
     const age = Date.now() - Date.parse(a.at);
     if (!indexing && !s.silent && ANSWERS.has(a.x) && prTurns[url] && age >= 0 && age < 5 * 60_000) setTimeout(() => queuePr(url, 0), PR_CONFIRM_MS);
   }
@@ -1487,10 +1517,10 @@ function byChat(url, round, until) {
   const ev = (prLogs[url]?.ev || []).filter(e => e.k === 'chat' && ANSWERS.has(e.x) && e.a >= round.from && e.a <= until).at(-1);
   return ev ? { by: { c: ev.c, x: ev.x, a: ev.a } } : {};
 }
-/** A PR's rounds onto every chat that names it. */
+/** A PR's rounds, and its ledger's count, onto every chat that names it. */
 function pushRounds(url) {
-  const rounds = roundsOf(url), rs = JSON.stringify(rounds);
-  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr && JSON.stringify(pr.rounds ?? null) !== rs) { pr.rounds = rounds; schedulePush(s); } }
+  const rounds = roundsOf(url), rs = JSON.stringify(rounds), logged = loggedOf(url);
+  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr && (pr.logged !== logged || JSON.stringify(pr.rounds ?? null) !== rs)) { pr.rounds = rounds; pr.logged = logged; schedulePush(s); } }
 }
 
 /** A PR come round to you: one alert, on the chat touched last of those that mention it. */
@@ -4736,7 +4766,9 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/prlog$/))) {   // its PRs' ledgers (2026-10-15): the events and the rounds
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      return json(res, 200, { prs: s.prs.filter(shownPr).filter(p => prLogs[p.url]).map(p => ({ url: p.url, label: p.label, ev: prLogs[p.url].ev, rounds: prLogs[p.url].r })), said: s.prSaid || [] });
+      // every PR the chat shows, with a ledger or not (2026-10-17): `state` GitHub's spelling, `older` that it has more before
+      return json(res, 200, { prs: s.prs.filter(shownPr).map(p => ({ url: p.url, label: p.label, state: p.state ? p.state.toUpperCase() : null,
+        ev: prLogs[p.url]?.ev || [], rounds: prLogs[p.url]?.r || [], older: !!prLogs[p.url]?.older })), said: s.prSaid || [] });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
       const s = sessions.get(m[1]);
@@ -4896,7 +4928,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
