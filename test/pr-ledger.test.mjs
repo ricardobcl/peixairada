@@ -6,11 +6,12 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { makeFixture } from '../scripts/fixture.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prEvents, logEvents, noteRounds, setPrInfo, prTurn, newSession, notePr, sessions, prLogs, prTurns, pruneLogs, doneMarks, forGoodMarks } = await import('../server.mjs');
+const { prEvents, ciEvent, logEvents, noteRounds, setPrInfo, prTurn, newSession, notePr, sessions, prLogs, prTurns, pruneLogs, doneMarks, forGoodMarks } = await import('../server.mjs');
 
 const t = (h, m = 0, sec = 0) => new Date(Date.UTC(2026, 9, 17, h, m, sec)).toISOString().replace('.000', '');
 const at = (h, m = 0) => Date.UTC(2026, 9, 17, h, m);
@@ -115,5 +116,89 @@ test('/prlog lists every PR the chat shows, and the state file keeps each ledger
     const file = readFileSync(join(srv.dir, 'state.json'), 'utf8'), st = JSON.parse(file);
     assert.equal(Object.keys(st.prLogs).length, 2);
     for (const url of Object.keys(st.prLogs)) assert.ok(file.includes(`  ${JSON.stringify(url)}: {"ev":[`), 'a ledger on one line');
+  } finally { await srv.stop(); }
+});
+
+test('what happened to the PR itself, who asked whom to review, and each event\'s page — kept after the PR\'s own address', () => {
+  const url = 'https://github.com/acme/r/pull/20', gh = 'https://github.com/Acme/R/pull/20';
+  const ev = prEvents(pr({
+    author: user('me'),
+    comments: { nodes: [{ ...word(9, 'ana'), url: `${gh}#issuecomment-1` }] },
+    reviews: { nodes: [{ author: user('rui'), state: 'APPROVED', submittedAt: t(10), url: `${gh}#pullrequestreview-2` }] },
+    pushes: { nodes: [{ __typename: 'PullRequestCommit', url: `${gh}/commits/abc`, commit: { committedDate: t(9, 30), author: { user: { login: 'me' } } } }] },
+    asks: { nodes: [
+      { createdAt: t(8, 5), actor: user('me'), requestedReviewer: { __typename: 'User', login: 'rui' } },
+      { createdAt: t(8, 6), actor: user('me'), requestedReviewer: { __typename: 'Bot', login: 'copilot-pull-request-reviewer' } },
+      { createdAt: t(8, 7), actor: { login: 'acme-bot', __typename: 'Bot' }, requestedReviewer: null },
+      { createdAt: t(8, 8), actor: user('ana'), requestedReviewer: { __typename: 'User', login: 'me' } },
+    ] },
+    marks: { nodes: [
+      { __typename: 'ReadyForReviewEvent', createdAt: t(8, 1), url: `${gh}#event-3`, actor: user('me') },
+      { __typename: 'ClosedEvent', createdAt: t(10, 30), url: `${gh}#event-4`, actor: user('ana') },
+      { __typename: 'ReopenedEvent', createdAt: t(10, 40), actor: user('ana') },
+      { __typename: 'MergedEvent', createdAt: t(11), url: `${gh}#event-5`, actor: { login: 'merge-queue[bot]', __typename: 'Bot' } },
+      { __typename: 'ClosedEvent', createdAt: t(11, 0, 1), url: `${gh}#event-6`, actor: { login: 'merge-queue[bot]', __typename: 'Bot' } },
+    ] },
+  }), 'me', url);
+  assert.deepEqual(ev.map(e => [e.k, e.w, e.a, e.x ?? null, e.u ?? null]), [
+    ['opened', '', t(8), null, null],
+    ['review', 'rui', t(10), null, '#pullrequestreview-2'],
+    ['comment', 'ana', t(9), null, '#issuecomment-1'],
+    ['push', '', t(9, 30), null, '/commits/abc'],
+    ['asked', '', t(8, 5), 'rui', null],
+    ['asked', null, t(8, 7), null, null],
+    ['ask', null, t(8, 8), null, null],
+    ['ready', '', t(8, 1), null, '#event-3'],
+    ['closed', 'ana', t(10, 30), null, '#event-4'],
+    ['reopened', 'ana', t(10, 40), null, null],
+    ['merged', null, t(11), null, '#event-5'],
+  ], 'a bot asked to review is nobody; a merge by a bot is still the merge, and its close GitHub writes with it is not');
+  assert.equal(new Set(ev.map(e => e.id)).size, ev.length);
+  assert.equal(prEvents(pr({ comments: { nodes: [{ ...word(9, 'ana'), url: 'https://github.com/acme/other/pull/1#issuecomment-9' }] } }), 'me', url).find(e => e.k === 'comment').u,
+    'https://github.com/acme/other/pull/1#issuecomment-9', 'a page somewhere else kept whole');
+});
+
+test('CI turning green or red between two looks is an event; a first look, pending and no change are none', () => {
+  const look = (checks, head = 'A', o = {}) => ({ checks, refs: { headOid: head }, missing: false, ...o });
+  const now = at(12);
+  assert.equal(ciEvent(undefined, 'pass', 'A', now), null, 'a PR seen for the first time');
+  assert.equal(ciEvent(look('pending'), 'pending', 'A', now), null, 'pending is no event');
+  assert.equal(ciEvent(look('pass'), 'pass', 'A', now), null, 'no change');
+  assert.equal(ciEvent(look('pass', 'A', { missing: true }), 'fail', 'A', now), null, 'the last look did not see it');
+  assert.deepEqual(ciEvent(look('pending'), 'fail', 'A', now), { id: 'ci:fail:A', k: 'ci', w: null, s: 'fail', a: t(12), u: '/checks' });
+  assert.equal(ciEvent(look('fail'), 'pass', 'A', now).s, 'pass', 'red to green');
+  assert.equal(ciEvent(look(null), 'pass', 'A', now).s, 'pass', 'no checks, then green');
+  assert.deepEqual(ciEvent(look('pass', 'A'), 'pass', 'B', now)?.id, 'ci:pass:B', 'a new head green before a look saw it pending');
+});
+
+test('/prlog: a PR\'s CI and merge as GitHub\'s looks bring them, each event\'s page a whole address', { timeout: 90_000 }, async () => {
+  const dir = tmpDir('peix-ledger2-'), prs = join(dir, 'prs.json');
+  const now = Date.now(), iso = min => new Date(now - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+  const gh = 'https://github.com/acme/widgets/pull/7';
+  const write = (o = {}) => writeFileSync(prs, JSON.stringify({ 'acme/widgets#7': { state: 'OPEN', title: 'Seven', createdAt: iso(120), headRefOid: 'A', author: { login: 'me', __typename: 'User' },
+    comments: { nodes: [{ author: { login: 'ana', __typename: 'User' }, createdAt: iso(60), url: `${gh}#issuecomment-1` }] },
+    commits: { nodes: [{ commit: { statusCheckRollup: { state: 'PENDING' } } }] }, ...o } }));
+  write();
+  const fx = makeFixture(join(dir, 'claude'), [{ cwd: '/Users/test/widgets', prompt: `Look at ${gh}`, reply: 'Looked.' }]);
+  const id = fx.chats[0].id;
+  const srv = await startTestServer({ claudeDir: fx.dir, env: { FAKEGH_PRS: prs, PR_TTL_MS: '1' } });   // opening the chat asks again
+  const log = async () => (await srv.api(`api/sessions/${id}/prlog`)).body.prs[0];
+  const open = () => srv.api(`api/sessions/${id}/messages`);
+  try {
+    await waitFor(async () => (await log())?.ev?.length === 2, { timeout: 30_000, what: 'the first look' });
+    assert.deepEqual((await log()).ev.map(e => [e.k, e.u ?? null]), [['opened', null], ['comment', `${gh}#issuecomment-1`]], 'no CI event on a first look');
+    write({ commits: { nodes: [{ commit: { statusCheckRollup: { state: 'FAILURE' } } }] } });
+    await open();
+    await waitFor(async () => (await log()).ev.some(e => e.k === 'ci'), { what: 'CI gone red' });
+    await open(); await sleep(800);
+    assert.deepEqual((await log()).ev.filter(e => e.k === 'ci').map(e => [e.s, e.u]), [['fail', `${gh}/checks`]], 'once, however many looks read it red');
+    write({ state: 'MERGED', commits: { nodes: [{ commit: { statusCheckRollup: { state: 'FAILURE' } } }] },
+      marks: { nodes: [{ __typename: 'MergedEvent', createdAt: iso(1), url: `${gh}#event-9`, actor: { login: 'me', __typename: 'User' } }] } });
+    await open();
+    await waitFor(async () => (await log()).state === 'MERGED', { what: 'the merge' });
+    const merged = await log();
+    assert.deepEqual(merged.ev.filter(e => e.k === 'merged').map(e => [e.w, e.u]), [['', `${gh}#event-9`]]);
+    const sum = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+    assert.ok(sum.logged >= 3, 'the chat\'s PR says its ledger moved');
   } finally { await srv.stop(); }
 });

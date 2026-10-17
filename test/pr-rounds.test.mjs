@@ -36,6 +36,7 @@ test('a look\'s events: who opened, reviewed, commented, pushed and asked — yo
     ['push', '', t(11), 3, null],
     ['push', 'bob', t(12), null, 1],
     ['ask', null, t(13), null, null],
+    ['asked', null, t(13, 5), null, null],
   ]);
   assert.equal(new Set(ev.map(e => e.id)).size, ev.length, 'each its own id');
   assert.deepEqual(prEvents(mine({ pushes: { nodes: [commit(9, null)] } }), 'me').map(e => [e.k, e.w]), [['opened', ''], ['push', '']], 'a commit tied to no one is the author\'s');

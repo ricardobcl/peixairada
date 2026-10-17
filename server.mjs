@@ -250,7 +250,7 @@ function saveState() {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
     const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced }, null, 1);
-    // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a third of the bytes it took laid out
+    // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
     renameSync(tmp, STATE_FILE);
@@ -1064,7 +1064,10 @@ function drainPrQueue() {
         : pr.isDraft ? 'draft' : 'open';
       if (!pr && none.has(`p${i}`)) forgetRef(url);
       const turn = pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined;
-      if (pr && me) logEvents(url, prEvents(pr, me));   // what this look saw, into its ledger — every PR a chat shows (2026-10-17; one you had a turn on before)
+      if (pr && me) {   // what this look saw, into its ledger — every PR a chat shows (2026-10-17; one you had a turn on before)
+        const evs = prEvents(pr, me, url), ci = ciEvent(prStatus.get(url), prChecks(pr), pr.headRefOid);
+        logEvents(url, ci ? [...evs, ci] : evs);
+      }
       setPrInfo(url, state, pr?.title || null, turn, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
@@ -1078,16 +1081,22 @@ function drainPrQueue() {
 // `pushes` are the newest commits and force-pushes, `asks` the review requests, both off the PR's timeline.
 // Every person comes with a face since 2026-09-29 (`avatarUrl`, a scalar: no cost) — prPeople, the cards' faces.
 const WHO = 'login __typename avatarUrl(size: 48)';
-const WINDOWS = { reviews: 20, comments: 20, pushes: 5, asks: 10 };   // how far back each look reaches (prEvents' `edge`)
+const WINDOWS = { reviews: 20, comments: 20, pushes: 5, asks: 10, marks: 10 };   // how far back each look reaches (prEvents' `edge`)
+const ACTOR = 'actor { login __typename }';
 const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
   + ' headRefName baseRefName baseRefOid isCrossRepository headRepository { nameWithOwner }'   // where its branch is (2026-10-13): scalars, no cost
   + ' viewerLatestReview { submittedAt commit { oid } }'
   + ' reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }'
-  + ` reviews(last: ${WINDOWS.reviews}) { nodes { author { ${WHO} } state submittedAt } }`
-  + ` comments(last: ${WINDOWS.comments}) { nodes { author { ${WHO} } createdAt } }`
+  + ` reviews(last: ${WINDOWS.reviews}) { nodes { author { ${WHO} } state submittedAt url } }`
+  + ` comments(last: ${WINDOWS.comments}) { nodes { author { ${WHO} } createdAt url } }`
   + ` pushes: timelineItems(last: ${WINDOWS.pushes}, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename`
-  + ` ... on HeadRefForcePushedEvent { createdAt actor { ${WHO} } } ... on PullRequestCommit { commit { committedDate author { user { login avatarUrl(size: 48) } } } } } }`
-  + ` asks: timelineItems(last: ${WINDOWS.asks}, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }`
+  + ` ... on HeadRefForcePushedEvent { createdAt actor { ${WHO} } } ... on PullRequestCommit { url commit { committedDate author { user { login avatarUrl(size: 48) } } } } } }`
+  + ` asks: timelineItems(last: ${WINDOWS.asks}, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt ${ACTOR}`
+  + ' requestedReviewer { __typename ... on User { login } ... on Bot { login } ... on Team { slug } } } } }'
+  // what happened to the PR itself (2026-10-17, the chat's timeline): merged, closed, reopened, ready for review — who and when, scalars
+  + ` marks: timelineItems(last: ${WINDOWS.marks}, itemTypes: [MERGED_EVENT, CLOSED_EVENT, REOPENED_EVENT, READY_FOR_REVIEW_EVENT]) { nodes { __typename`
+  + ` ... on MergedEvent { createdAt url ${ACTOR} } ... on ClosedEvent { createdAt url ${ACTOR} } ... on ReopenedEvent { createdAt ${ACTOR} }`
+  + ` ... on ReadyForReviewEvent { createdAt url ${ACTOR} } } }`
   + ' commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }';   // CI on the head (2026-10-09): the rollup alone, a point's worth
 /** The head commit's checks as the chat header says them: pass · fail · pending, or null for none (2026-10-09). */
 const CHECKS = { SUCCESS: 'pass', FAILURE: 'fail', ERROR: 'fail', PENDING: 'pending', EXPECTED: 'pending' };
@@ -1295,27 +1304,56 @@ const isoS = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');   // Gi
  * id is the kind, who and when: GitHub's times do not move, and a rebase's commits, one second each, are one push of `n`.
  * The oldest of a window GitHub filled (`WINDOWS`) is marked `edge`: one the ledger has not got says GitHub held more
  * before it than this look could see (2026-10-17; logEvents' `older`).
+ * Since 2026-10-17, for the chat's timeline: asked (someone else's review asked for: `x` whose, `w` by whom) and the
+ * PR's own merged · closed · reopened · ready (for review) — these by a bot or nobody too, `w` null —, and `u` the
+ * event's page on GitHub, kept as what follows the PR's own address (`url`) when it starts with it.
  */
-function prEvents(pr, me) {
+function prEvents(pr, me, url = '') {
   if (!pr) return [];
   const ev = new Map();
   let from = null;   // the window being read, until its first event is marked
+  const at = u => !u ? {} : { u: url && u.toLowerCase().startsWith(url.toLowerCase()) ? u.slice(url.length) : u };
+  const whom = a => isBot(a) ? null : a.login === me ? '' : a.login;
+  const add = (id, e) => { ev.set(id, { id, ...e, ...from && { edge: 1 } }); from = null; };
   const put = (k, by, a, more = {}) => {
     if (!a || !by?.login || isBot(by)) return;
     const id = `${k}:${by.login}:${a}${more.s ? ':' + more.s : ''}`, was = ev.get(id);
-    if (was) was.n = (was.n || 1) + 1; else ev.set(id, { id, k, w: by.login === me ? '' : by.login, a, ...more, ...from && { edge: 1 } });
-    from = null;
+    if (was) { was.n = (was.n || 1) + 1; from = null; } else add(id, { k, w: by.login === me ? '' : by.login, a, ...more });
   };
   const read = (name, f) => { const nodes = pr[name]?.nodes || []; from = nodes.length >= WINDOWS[name] ? name : null; for (const n of nodes) if (n) f(n); from = null; };
   put('opened', pr.author, pr.createdAt);
-  read('reviews', r => { if (r.state !== 'PENDING') put('review', r.author, r.submittedAt, { s: r.state }); });
-  read('comments', c => put('comment', c.author, c.createdAt));
+  read('reviews', r => { if (r.state !== 'PENDING') put('review', r.author, r.submittedAt, { s: r.state, ...at(r.url) }); });
+  read('comments', c => put('comment', c.author, c.createdAt, at(c.url)));
   read('pushes', n => {
     if (n.__typename === 'HeadRefForcePushedEvent') put('push', n.actor, n.createdAt, { f: 1 });
-    else put('push', n.commit?.author?.user || pr.author, n.commit?.committedDate);   // a commit GitHub ties to no one is the author's
+    else put('push', n.commit?.author?.user || pr.author, n.commit?.committedDate, at(n.url));   // a commit GitHub ties to no one is the author's
   });
-  read('asks', a => { if (a.requestedReviewer?.login === me && a.createdAt) ev.set(`ask:${a.createdAt}`, { id: `ask:${a.createdAt}`, k: 'ask', w: null, a: a.createdAt, ...from && { edge: 1 } }); from = null; });
+  read('asks', a => {
+    const r = a.requestedReviewer;
+    if (!a.createdAt || isBot(r) && r?.login) return;   // a bot asked to review is nobody, as a bot's review is
+    if (r?.login === me) add(`ask:${a.createdAt}`, { k: 'ask', w: null, a: a.createdAt });
+    else { const x = r?.login || r?.slug || null; add(`asked:${x}:${a.createdAt}`, { k: 'asked', w: a.actor ? whom(a.actor) : null, x, a: a.createdAt }); }
+  });
+  const MARKS = { MergedEvent: 'merged', ClosedEvent: 'closed', ReopenedEvent: 'reopened', ReadyForReviewEvent: 'ready' };
+  const merged = (pr.marks?.nodes || []).filter(n => n?.__typename === 'MergedEvent').map(n => Date.parse(n.createdAt));
+  read('marks', n => {
+    const k = MARKS[n.__typename];
+    if (!k || !n.createdAt) return;
+    if (k === 'closed' && merged.some(m => Math.abs(m - Date.parse(n.createdAt)) < 60_000)) return;   // GitHub writes a merge's close too
+    add(`${k}:${n.createdAt}`, { k, w: n.actor ? whom(n.actor) : null, a: n.createdAt, ...at(n.url) });
+  });
   return [...ev.values()];
+}
+/**
+ * The head's checks turned green or red since the last look (pure; 2026-10-17): `known` that look's prStatus, none on
+ * a first look — a PR seen for the first time says nothing of a change. Pending is no event; a new head whose checks
+ * read as the old one's did is one (the rollup is the head's). At the look's time: GitHub gives a rollup none.
+ */
+function ciEvent(known, checks, head, now = Date.now()) {
+  if (!known || known.missing || (checks !== 'pass' && checks !== 'fail')) return null;
+  if (known.checks === checks && (!head || known.refs?.headOid === head)) return null;
+  const a = isoS(now);
+  return { id: `ci:${checks}:${head || a}`, k: 'ci', w: null, s: checks, a, u: '/checks' };
 }
 const logOf = url => prLogs[url] ||= { ev: [], r: [], v: 0 };
 const loggedOf = url => prLogs[url]?.v || 0;
@@ -4768,7 +4806,7 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       // every PR the chat shows, with a ledger or not (2026-10-17): `state` GitHub's spelling, `older` that it has more before
       return json(res, 200, { prs: s.prs.filter(shownPr).map(p => ({ url: p.url, label: p.label, state: p.state ? p.state.toUpperCase() : null,
-        ev: prLogs[p.url]?.ev || [], rounds: prLogs[p.url]?.r || [], older: !!prLogs[p.url]?.older })), said: s.prSaid || [] });
+        ev: (prLogs[p.url]?.ev || []).map(e => e.u && !/^https?:/.test(e.u) ? { ...e, u: p.url + e.u } : e), rounds: prLogs[p.url]?.r || [], older: !!prLogs[p.url]?.older })), said: s.prSaid || [] });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
       const s = sessions.get(m[1]);
@@ -4928,7 +4966,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
