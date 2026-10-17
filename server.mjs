@@ -35,6 +35,8 @@
 //      · what a chat changed: its folder's diff, for the changes tab (2026-10-10)
 //      · the editor at a branch: a working tree per branch (2026-10-13)
 //  The chat: the people the board is shared with, in a GitHub repo's issues (2026-10-17)
+//  Lunch: the reminder, and the menus of the places you go (2026-10-18)
+//      · reading a picture: claude -p, its answer held to a schema
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //      · Zed: the other editor, found and installed when it is picked (2026-10-13)
 //  The board's own code, kept up to date from its checkout (2026-10-12)
@@ -190,6 +192,9 @@ let peacockMoved = null;   // when Peacock's colours went into the setup (2026-1
 // The chat (2026-10-17; see chatTick): `owner/repo#room` -> the newest message shown there — after it, someone else's are
 // unread; and the chat repos whose GitHub mails were turned off (chatBoot), once each.
 let chatSeen = {}, chatQuiet = [];
+// Lunch (2026-10-18; see lunchTick): the day's menus and what you did about lunch — Going, In 15 min, back —, and the
+// Instagram ids of the setup's places (the stories' endpoint asks by id), kept across days.
+let lunchDay = { day: null, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 }, lunchIds = {};
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
 // the port — the agent behind the app's own, an `npm start` beside the agent — booted on the copy it had read at its
@@ -239,6 +244,8 @@ function loadState() {
     keyEnforced = st.keyEnforced === true;
     chatSeen = st.chatSeen && typeof st.chatSeen === 'object' ? st.chatSeen : {};
     chatQuiet = Array.isArray(st.chatQuiet) ? st.chatQuiet.filter(r => typeof r === 'string') : [];
+    if (st.lunch && typeof st.lunch === 'object' && typeof st.lunch.day === 'string') lunchDay = { ...lunchDay, ...st.lunch, menus: st.lunch.menus && typeof st.lunch.menus === 'object' ? st.lunch.menus : {} };
+    lunchIds = st.lunchIds && typeof st.lunchIds === 'object' ? st.lunchIds : {};
   } catch (e) {
     if (e.code !== 'ENOENT') {
       const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -256,7 +263,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, lunch: lunchDay, lunchIds }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
@@ -336,6 +343,15 @@ function cleanSetup(c, strict = false) {
     else if (!REPO_RE.test(repo)) { if (strict) return fail(`"${v?.repo ?? ''}" is not a GitHub repo — owner/name`); }
     else out.chat = { repo };
   }
+  if ('lunch' in c) {   // lunch (2026-10-18): when, which days, the places and where their menus are read — or null, none
+    const v = c.lunch;
+    if (v === null) out.lunch = null;
+    else {
+      const r = cleanLunch(v);
+      if (r.error) { if (strict) return fail(`lunch: ${r.error}`); }
+      else out.lunch = r.lunch;
+    }
+  }
   return { setup: out };
 }
 /** A Jira site as its origin — https://acme.atlassian.net — or null; http only on this Mac (a test's fake). */
@@ -348,7 +364,7 @@ const envRoots = () => process.env.ORG_DIR || process.env.ORG ? [{ dir: resolve(
 /** The setup the board runs on: what was set, the defaults for the rest — and, for the page, the file it lives in,
  *  why that file cannot be read (while it cannot), and whether the repos' folder was never answered (`ask`: the
  *  welcome). The three ride along on every answer and event; a PUT that hands them back is not read for them. */
-const boardConfig = () => ({ roots: setup.roots ?? envRoots(), quick: setup.quick ?? null, projects: setup.projects ?? {}, jira: setup.jira ?? null, chat: setup.chat ?? null,
+const boardConfig = () => ({ roots: setup.roots ?? envRoots(), quick: setup.quick ?? null, projects: setup.projects ?? {}, jira: setup.jira ?? null, chat: setup.chat ?? null, lunch: setup.lunch ?? null,
   file: CONFIG_FILE, error: configError, ask: !configError && setup.roots === undefined && !envRoots().length });
 const tildePath = p => p === homedir() || p.startsWith(homedir() + '/') ? '~' + p.slice(homedir().length) : p;
 // The file is the user's as much as the board's: written with two spaces and `~/…` for a folder under the home, so it
@@ -372,6 +388,7 @@ function saveConfig() {
   if (setup.projects) out.projects = setup.projects;
   if ('jira' in setup) out.jira = setup.jira;
   if ('chat' in setup) out.chat = setup.chat;
+  if ('lunch' in setup) out.lunch = setup.lunch;
   const was = readConfigFile().setup || {};
   let real = CONFIG_FILE;   // a symlink's target, a dangling one's too
   try { real = realpathSync(CONFIG_FILE); } catch { try { real = resolve(dirname(CONFIG_FILE), readlinkSync(CONFIG_FILE)); } catch {} }
@@ -400,12 +417,13 @@ function reloadConfig() {
   let at = 0; try { at = statSync(CONFIG_FILE).mtimeMs; } catch {}
   if (at === configStamp) return;
   configStamp = at;
-  const before = JSON.stringify(boardConfig()), jiraWas = JSON.stringify(setup.jira ?? null), chatWas = setup.chat?.repo ?? null, r = readConfigFile();
+  const before = JSON.stringify(boardConfig()), jiraWas = JSON.stringify(setup.jira ?? null), chatWas = setup.chat?.repo ?? null, lunchWas = JSON.stringify(setup.lunch ?? null), r = readConfigFile();
   if (r.error) { if (r.error !== configError) console.error(`[peixairada] ${r.error}`); configError = r.error; }
   else { setup = r.setup ? cleanSetup(r.setup).setup : {}; configError = null; }
   if (JSON.stringify(boardConfig()) !== before) { folderCache.clear(); broadcast('config', boardConfig()); }
   if (JSON.stringify(setup.jira ?? null) !== jiraWas) jiraReset();   // a root or a colour is no new site (2026-10-14)
   if ((setup.chat?.repo ?? null) !== chatWas) chatReset();
+  if (JSON.stringify(setup.lunch ?? null) !== lunchWas) lunchSetupChanged(lunchWas);
 }
 
 // ---- nothing under CLAUDE_DIR: Claude Code's, never the board's to write in --------------------------------------
@@ -2518,7 +2536,7 @@ function loadRegistry() {
     if (!name.endsWith('.json')) continue;
     let reg;
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
-    if (!reg.sessionId) continue;
+    if (!reg.sessionId || ownReader(reg)) continue;   // a lunch menu's reader (2026-10-18): the board's own claude, no chat
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
     found.get(reg.sessionId).push({ pid: reg.pid, procStart: reg.procStart, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
       status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
@@ -3747,6 +3765,352 @@ async function chatRoute(req, res, what, url) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Lunch: the reminder, and the menus of the places you go (2026-10-18)
+// ---------------------------------------------------------------------------------------------
+// Off until the setup names it (setup.lunch: {on, at, days, places: [{name, instagram, color}], stories, slack, model}).
+// On a lunch day the board reads each place's menu through the morning and says when it is lunch time — the status
+// bar's sign, the dishes in the fish's lane, a notification with Menus · Going · In 15 minutes, ⌥⌘M's chalkboard. Where
+// a menu comes from (docs/DECISIONS.md, 2026-10-18, and the study behind it):
+//   · the place's Instagram profile, logged out (lib/instagram.mjs look, headless Chrome): its newest posts — a week's
+//     card, a month's dishes in a caption, a menu posted today, a closure — and when its newest story went up;
+//   · its stories, through the board's own Instagram login (`stories`; the Chrome profile in LUNCH_DIR/chrome): most
+//     places post the day's menu only there, and Instagram shows no story to anyone logged out;
+//   · the setup's Slack channel (`slack`), where colleagues post those stories as screenshots, read by claude -p with
+//     Claude's Slack connector and its read tools alone.
+// Every picture is read by claude -p (`model`, haiku unless the setup says) into the days and dishes it shows, once:
+// LUNCH_DIR/reads.json keeps each read by the post's or the story's id. A reader is a claude of its own in
+// LUNCH_DIR/work, with no transcript (--no-session-persistence); the registry lists it while it runs, and
+// loadRegistry passes over it (ownReader). The day — its menus, Going, In 15 min, back — is the state file's.
+const LUNCH_DIR = join(dirname(STATE_FILE), 'lunch');
+const LUNCH_WORK = join(LUNCH_DIR, 'work'), LUNCH_CHROME = join(LUNCH_DIR, 'chrome'), LUNCH_READS = join(LUNCH_DIR, 'reads.json');
+const LUNCH_TICK_MS = Number(process.env.LUNCH_TICK_MS || 30_000);
+const LUNCH_SPAN_MS = 90 * 60_000;        // lunch time: from `at`, this long — the sign, the dishes in the lane
+const LUNCH_SNOOZE_MS = 15 * 60_000;
+const LUNCH_LOOKS = [-75, -40, -10, 5];   // minutes from `at`: Instagram looked at for the places still without a menu
+const LUNCH_SLACKS = [-10, 10];           // …and the channel read
+const LUNCH_RECENT_MS = 35 * 86_400_000;  // a post older than this is no menu of today's
+const LUNCH_READ_MAX = 6, LUNCH_STORY_MAX = 5, LUNCH_AGAIN_MS = 6 * 3_600_000;   // posts read per place a look; stories; a failed read asked again after
+const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+// a post worth reading though not posted today: a menu's words, a closure's, or a picture Instagram says is text
+const MENU_WORDS = /menu|ementa|almo[cç]o|prato|sugest|semana|di[aá]ria|executiv|buffet|encerrad|fechad|f[eé]rias|closed/i;
+const lunch = { busy: null, again: null, error: null, login: { state: 'unknown' }, loginRun: null, said: '', workReal: null, readers: new Set(), reads: null };
+const IG_HANDLE = /^[A-Za-z0-9._]{1,30}$/;
+/** The setup's lunch, shaped: {on, at 'HH:MM', days [0–6], places [{name, instagram?, color?}], stories, slack '#name'?,
+ *  model?} — or why not. */
+function cleanLunch(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return { error: 'expected {at, days, places}' };
+  const at = typeof v.at === 'string' ? v.at.trim() : '12:00', hm = at.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!hm) return { error: `"${at}" is not a time — 12:30` };
+  const days = Array.isArray(v.days) ? [...new Set(v.days.filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : [1, 2, 3, 4, 5];
+  const places = [];
+  for (const p of Array.isArray(v.places) ? v.places.slice(0, 20) : []) {
+    const name = typeof p?.name === 'string' ? p.name.trim() : '';
+    const ig = typeof p?.instagram === 'string' ? p.instagram.trim().replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/[/?#].*$/, '') : '';
+    const color = typeof p?.color === 'string' ? p.color.trim().toLowerCase() : '';
+    if (!name || name.length > 60) return { error: 'a place needs a name, 60 letters at most' };
+    if (ig && !IG_HANDLE.test(ig)) return { error: `"${p.instagram}" is not an Instagram account — its name, as in instagram.com/name` };
+    if (color && !/^#[0-9a-f]{6}$/.test(color)) return { error: `${name}: a colour is #rrggbb` };
+    if (places.some(x => x.name.toLowerCase() === name.toLowerCase())) continue;
+    places.push({ name, ...ig && { instagram: ig }, ...color && { color } });
+  }
+  const slack = typeof v.slack === 'string' && v.slack.trim() ? v.slack.trim().replace(/^#?/, '#') : null;
+  if (slack && !/^#[\w.-]{1,80}$/.test(slack)) return { error: `"${v.slack}" is not a Slack channel — #lunch` };
+  const model = typeof v.model === 'string' && v.model.trim() ? v.model.trim() : null;
+  if (model && !/^[\w.[\]-]{1,60}$/.test(model)) return { error: `"${model}" is not a model — haiku, sonnet` };
+  return { lunch: { on: v.on !== false, at: `${hm[1].padStart(2, '0')}:${hm[2]}`, days, places, stories: v.stories === true, slack, model } };
+}
+const lunchCfg = () => setup.lunch || null;
+const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const lunchAt = (cfg, t) => { const [h, m] = cfg.at.split(':').map(Number); return new Date(t).setHours(h, m, 0, 0); };
+/** Where the day stands: off (no lunch today), before, lunch (from `at` for LUNCH_SPAN_MS), snoozed (In 15 min), went
+ *  (Going), back (from lunch, or from a lock that spanned it), over. Pure. */
+function lunchPhase(cfg, st, t = Date.now()) {
+  if (!cfg?.on || !cfg.days.includes(new Date(t).getDay())) return 'off';
+  const at = lunchAt(cfg, t);
+  if (t < at) return 'before';
+  if (t >= at + LUNCH_SPAN_MS) return 'over';
+  if (st?.day === dayKey(t)) {
+    if (st.back) return 'back';
+    if (st.went) return 'went';
+    if (st.snooze > t) return 'snoozed';
+  }
+  return 'lunch';
+}
+/** What a read of a picture says of the day `today`: its dishes (and price), a month's dishes when no day is named, or
+ *  null. `at` is when the picture was posted: a card for one day with no date on it is the day it went up. Pure. */
+function dishesOn(read, today, at, now = Date.now()) {
+  if (!read?.isMenu) return null;
+  const days = Array.isArray(read.days) ? read.days.filter(d => Array.isArray(d?.dishes) && d.dishes.length) : [], wd = WEEKDAYS[new Date(`${today}T12:00`).getDay()];
+  const hit = days.find(d => d.date === today)
+    || (read.kind === 'day' && dayKey(at) === today && days.length === 1 && !days[0].date ? days[0] : null)
+    || (read.kind === 'week' && !days.some(d => d.date) && now - at < 7 * 86_400_000 ? days.find(d => d.weekday === wd) : null);
+  if (hit) return { dishes: hit.dishes.map(String), price: read.price || null };
+  if (read.kind === 'month' && now - at < LUNCH_RECENT_MS && !days.some(d => d.date)) {
+    const all = [...new Set(days.flatMap(d => d.dishes.map(String)))];
+    if (all.length) return { dishes: all, price: read.price || null, month: true };
+  }
+  return null;
+}
+/** A closure the read names that covers `today` — "closed 19 to 31 October" — or null. Pure. */
+const closedOn = (read, today) => read?.closed?.from && read.closed.from <= today && today <= (read.closed.to || read.closed.from) ? read.closed : null;
+/** The day's record, a new one at midnight. */
+function lunchToday(t = Date.now()) {
+  const day = dayKey(t);
+  if (lunchDay.day !== day) { lunchDay = { day, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 }; saveState(); }
+  return lunchDay;
+}
+const menuOf = p => lunchToday().menus[p.name] ||= {};
+const hasMenu = p => !!(lunchToday().menus[p.name]?.dishes?.length || lunchToday().menus[p.name]?.closed);
+function setMenu(p, m) { const day = lunchToday(); day.menus[p.name] = { ...day.menus[p.name], ...m, error: null }; saveState(); lunchSay(); }
+/** What every page knows: the setup, where the day stands, and each place's menu — its dishes, where and when they came
+ *  from, or why there are none yet. In the snapshot and every `lunch` event. */
+function lunchSummary(t = Date.now()) {
+  const cfg = lunchCfg();
+  if (!cfg) return { on: false, set: false, login: lunch.login };
+  const st = lunchToday(t);
+  return { on: cfg.on, set: true, at: cfg.at, days: cfg.days, phase: lunchPhase(cfg, st, t), day: st.day, went: st.went || null, snooze: st.snooze || null, back: st.back || null,
+    readAt: st.readAt || null, busy: lunch.busy, error: lunch.error, login: lunch.login, stories: cfg.stories, slack: cfg.slack, model: cfg.model || 'haiku',
+    places: cfg.places.map(p => {
+      const m = st.menus[p.name] || {};
+      const state = m.dishes?.length ? 'menu' : m.closed ? 'closed' : m.storyAt ? 'story' : !p.instagram && !cfg.slack ? 'none' : 'waiting';
+      return { name: p.name, instagram: p.instagram || null, color: p.color || null, state, dishes: m.dishes || [], price: m.price || null, month: !!m.month, src: m.src || null,
+        at: m.at || null, url: m.url || (p.instagram ? `https://www.instagram.com/${p.instagram}/` : null), storyAt: m.storyAt || null, closed: m.closed || null, error: m.error || null };
+    }) };
+}
+function lunchSay() { const s = JSON.stringify(lunchSummary()); if (s !== lunch.said) { lunch.said = s; broadcast('lunch', JSON.parse(s)); } }
+
+// ---- reading a picture: claude -p, its answer held to a schema ----------------------------------------------------
+const READ_SCHEMA = { type: 'object', required: ['isMenu', 'kind', 'days'], properties: {
+  isMenu: { type: 'boolean' }, kind: { type: 'string', enum: ['day', 'week', 'month', 'other'] },
+  days: { type: 'array', items: { type: 'object', required: ['dishes'], properties: { date: { type: ['string', 'null'] }, weekday: { type: ['string', 'null'], enum: [...WEEKDAYS, null] }, dishes: { type: 'array', items: { type: 'string' } } } } },
+  price: { type: ['string', 'null'] }, closed: { type: ['object', 'null'], properties: { from: { type: ['string', 'null'] }, to: { type: ['string', 'null'] } } } } };
+const SLACK_SCHEMA = { type: 'object', required: ['places'], properties: { places: { type: 'array', items: { type: 'object', required: ['name', 'dishes'], properties: {
+  name: { type: 'string' }, dishes: { type: 'array', items: { type: 'string' } }, price: { type: ['string', 'null'] }, postedAt: { type: ['string', 'null'] } } } } } };
+// the connector's reading tools, and nothing it could write with
+const SLACK_READ = ['slack_search_channels', 'slack_read_channel', 'slack_read_thread', 'slack_read_file', 'slack_search_public_and_private', 'slack_list_user_channels'].map(t => `mcp__claude_ai_Slack__${t}`);
+const whenSaid = (t, time = true) => new Date(t).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', ...time && { hour: '2-digit', minute: '2-digit' } });
+const READ_ASK = `Is it this restaurant's lunch menu — a menu of the day, an executive menu, a week's or a month's lunch menu? A dish's advert, an event, a promotion or opening hours are not.
+If it is: kind is "day" for one day's menu, "week" for several days, "month" for a month's dishes with no day to each. days lists each day it covers: its date as YYYY-MM-DD (the year is the post's) when one is written or follows from the post's own date, else null; the weekday as written (sun, mon, tue, wed, thu, fri, sat) or null; and that day's dishes exactly as written, one item per dish, starters, soups and desserts included, in the order shown. A "day" card with no date written has date null. price as written, or null.
+Whatever it is: closed is a closure it announces — {from, to} as YYYY-MM-DD — or null.`;
+/** One reader: a claude -p in LUNCH_WORK, the content (text, and pictures as base64) on stdin as one stream-json
+ *  message, its structured answer back. `tools`: the connector's tools it may use (the Slack read), with the user's
+ *  settings — the connectors come up with them —; without, no tool and no MCP at all. */
+function runReader({ content, schema, tools = null, timeout = 120_000 }) {
+  return new Promise((resolve, reject) => {
+    const bin = process.env.READER_BIN || claudeBin();
+    if (!bin) return reject(new Error('claude is not installed here'));
+    try { mkdirSync(LUNCH_WORK, { recursive: true }); lunch.workReal ||= realpathSync(LUNCH_WORK); } catch (e) { return reject(e); }
+    const args = ['-p', '--no-session-persistence', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', lunchCfg()?.model || 'haiku',
+      '--json-schema', JSON.stringify(schema), ...tools ? ['--allowedTools', tools.join(',')] : ['--strict-mcp-config', '--setting-sources', 'project'], '--tools', ''];
+    let child; try { child = spawn(bin, args, { cwd: LUNCH_WORK, env: drawerEnv(), stdio: ['pipe', 'pipe', 'pipe'] }); } catch (e) { return reject(e); }
+    lunch.readers.add(child.pid);
+    let out = '', err = '', done = false;
+    const end = (e, v) => { if (done) return; done = true; clearTimeout(timer); lunch.readers.delete(child.pid); e ? reject(e) : resolve(v); };
+    const timer = setTimeout(() => { try { child.kill(); } catch {} end(new Error(`claude gave no answer in ${Math.round(timeout / 1000)} s`)); }, timeout);
+    child.on('error', e => end(e));
+    child.stdout.on('data', d => { out += d; }); child.stderr.on('data', d => { err += d; });
+    child.stdin.on('error', () => {});
+    child.stdin.end(JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n');
+    child.on('close', code => {
+      const res = out.split('\n').map(l => { try { return JSON.parse(l); } catch { return null; } }).find(l => l?.type === 'result');
+      if (res && !res.is_error && res.structured_output) return end(null, res.structured_output);
+      end(new Error(res?.result ? `claude: ${String(res.result).slice(0, 200)}` : `claude ended (${code}) without an answer${err.trim() ? ` — ${err.trim().split('\n').pop().slice(0, 200)}` : ''}`));
+    });
+  });
+}
+const ownReader = reg => lunch.readers.has(reg.pid) || (!!lunch.workReal && reg.cwd === lunch.workReal);
+function lunchReads() {
+  if (lunch.reads) return lunch.reads;
+  lunch.reads = new Map();
+  try { for (const [k, v] of Object.entries(JSON.parse(readFileSync(LUNCH_READS, 'utf8')))) if (Date.now() - (v?.at || 0) < 40 * 86_400_000) lunch.reads.set(k, v); } catch {}
+  return lunch.reads;
+}
+function saveReads() {
+  try { mkdirSync(LUNCH_DIR, { recursive: true }); const tmp = `${LUNCH_READS}.${process.pid}.tmp`; writeFileSync(tmp, JSON.stringify(Object.fromEntries(lunchReads()))); renameSync(tmp, LUNCH_READS); }
+  catch (e) { console.error('[peixairada] lunch: could not keep the reads', e.message); }
+}
+/** A picture, as a reader takes it: base64 and its type. Instagram's are on its CDN, signed for a while. */
+async function pictureOf(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`the picture: HTTP ${r.status}`);
+  const type = (r.headers.get('content-type') || '').split(';')[0].trim(), buf = Buffer.from(await r.arrayBuffer());
+  if (!/^image\/(jpeg|png|gif|webp)$/.test(type)) throw new Error(`the picture is ${type || 'of no type'}`);
+  if (buf.length > 8 << 20) throw new Error('the picture is too large');
+  return { type, data: buf.toString('base64') };
+}
+/** A post's or a story's picture read — once: what came back is kept by its id, a failure asked again LUNCH_AGAIN_MS on. */
+async function readPicture({ id, image, caption = '', place, at, kind }) {
+  const reads = lunchReads(), hit = reads.get(id);
+  if (hit && (hit.r || Date.now() - hit.at < LUNCH_AGAIN_MS)) return hit.r;
+  let r = null, err = null;
+  try {
+    const pic = await pictureOf(image);
+    const text = `${place.name}${place.instagram ? ` (Instagram @${place.instagram})` : ''}, a restaurant, put this ${kind} on Instagram on ${whenSaid(at)}${caption ? `, captioned:\n«${caption.slice(0, 1500)}»` : '.'}\nToday is ${whenSaid(Date.now(), false)}.\n${READ_ASK}`;
+    r = await runReader({ content: [{ type: 'image', source: { type: 'base64', media_type: pic.type, data: pic.data } }, { type: 'text', text }], schema: READ_SCHEMA });
+  } catch (e) { err = e.message; console.error(`[peixairada] lunch: ${place.name}'s ${kind} ${id} not read — ${err}`); }
+  reads.set(id, { at: Date.now(), r, ...err && { err } }); saveReads();
+  if (err) throw new Error(err);
+  return r;
+}
+/** lib/instagram.mjs, or the tests' stand-in (INSTAGRAM_BIN): one command, its JSON. */
+function igRun(args, timeout) {
+  return new Promise(resolve => {
+    const bin = process.env.INSTAGRAM_BIN, cmd = bin || process.execPath, argv = bin ? args : [join(__dirname, 'lib', 'instagram.mjs'), ...args];
+    let out = '', child;
+    try { child = spawn(cmd, argv, { env: cleanEnv(), stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { return resolve({ error: e.message }); }
+    const timer = setTimeout(() => { try { child.kill(); } catch {} }, timeout);
+    child.on('error', e => { clearTimeout(timer); resolve({ error: e.message }); });
+    child.stdout.on('data', d => { out += d; });
+    child.on('close', () => { clearTimeout(timer); try { resolve(JSON.parse(out.trim().split('\n').pop())); } catch { resolve({ error: 'Instagram\'s look ended without an answer' }); } });
+  });
+}
+/** Each item through `fn`, `n` at a time. */
+async function pool(items, n, fn) { const q = [...items]; await Promise.all(Array.from({ length: Math.min(n, q.length) }, async () => { while (q.length) await fn(q.shift()); })); }
+
+/** The profiles (logged out): a post that is today's menu, a week's or a month's — read newest first, a few at most —, a
+ *  closure, and when the newest story went up. */
+async function lunchLook(places, today) {
+  const want = places.filter(p => p.instagram);
+  if (!want.length) return;
+  lunch.busy = 'Instagram'; lunchSay();
+  const r = await igRun(['look', ...want.map(p => p.instagram)], 4 * 60_000);
+  lunch.busy = 'reading'; lunchSay();
+  await pool(want, 3, async p => {
+    const got = Object.entries(r.places || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1];
+    if (!got || got.error) { menuOf(p).error = got?.error || r.error || 'Instagram did not answer'; return; }
+    if (got.id) lunchIds[p.instagram] = got.id;
+    const m = menuOf(p); m.error = null;
+    if (got.storyAt && dayKey(got.storyAt) === today) m.storyAt = got.storyAt;
+    const posts = (got.posts || []).filter(x => x.image && Date.now() - x.at < LUNCH_RECENT_MS && (dayKey(x.at) === today || MENU_WORDS.test(x.caption) || /image of text|imagem de texto/i.test(x.alt)));
+    for (const x of posts.slice(0, LUNCH_READ_MAX)) {
+      let read; try { read = await readPicture({ id: `p${x.pk}`, image: x.image, caption: x.caption, place: p, at: x.at, kind: 'post' }); } catch (e) { m.error = e.message; continue; }
+      const closed = closedOn(read, today); if (closed) { setMenu(p, { closed, src: 'post', at: x.at, url: x.url, dishes: [] }); return; }
+      const d = dishesOn(read, today, x.at); if (d) { setMenu(p, { ...d, src: 'post', at: x.at, url: x.url }); return; }
+    }
+    saveState(); lunchSay();
+  });
+}
+/** The stories, through the board's login: today's, newest first, until one is the menu. */
+async function lunchStories(places, today) {
+  const want = places.filter(p => p.instagram && lunchIds[p.instagram] && !hasMenu(p) && (menuOf(p).storyAt || !menuOf(p).error));
+  if (!lunchCfg()?.stories || !want.length || lunch.loginRun) return;
+  lunch.busy = 'stories'; lunchSay();
+  const r = await igRun(['stories', '--profile', LUNCH_CHROME, ...want.map(p => lunchIds[p.instagram])], 3 * 60_000);
+  lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : r.loggedIn === false ? { state: 'out' } : lunch.login;
+  if (!r.loggedIn) { if (r.error) lunch.error = `stories: ${r.error}`; return; }
+  if (r.error) lunch.error = `stories: ${r.error}`;
+  lunch.busy = 'reading'; lunchSay();
+  await pool(want, 3, async p => {
+    const items = (Object.entries(r.stories || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1] || []).filter(s => dayKey(s.at) === today);
+    if (items.length) menuOf(p).storyAt = Math.max(menuOf(p).storyAt || 0, items[0].at);
+    for (const s of items.slice(0, LUNCH_STORY_MAX)) {
+      let read; try { read = await readPicture({ id: `s${s.pk}`, image: s.image, place: p, at: s.at, kind: 'story' }); } catch (e) { menuOf(p).error = e.message; continue; }
+      const d = dishesOn(read, today, s.at); if (d) { setMenu(p, { ...d, src: 'story', at: s.at, url: s.url }); return; }
+    }
+  });
+}
+/** The setup's Slack channel: the day's screenshots, read for the places still without a menu. */
+async function lunchSlack(places, today) {
+  const ch = lunchCfg()?.slack, want = places.filter(p => !hasMenu(p));
+  if (!ch || !want.length) return;
+  lunch.busy = 'Slack'; lunchSay();
+  const text = `You collect restaurants' lunch menus for a dashboard. Read only: never post, react, upload or change anything in Slack.
+In Slack, find the channel ${ch} and read the messages posted on ${today} (the Mac's own time zone), threads included. People post screenshots of the restaurants' Instagram stories or posts with that day's lunch menu, often several images in one message. Open every image in those messages with slack_read_file and read it.
+For each of these restaurants, give the lunch menu for ${today} when an image shows it:
+${places.map(p => `- ${p.name}${p.instagram ? ` (Instagram @${p.instagram})` : ''}`).join('\n')}
+Copy each dish as written, one item per dish, in the order shown — starters, soups and desserts too. From a card covering a whole week, only ${today}'s row. price as written, or null. postedAt: the time the Slack message was posted, HH:MM. Leave out the restaurants no image shows a menu for.`;
+  let r;
+  try { r = await runReader({ content: [{ type: 'text', text }], schema: SLACK_SCHEMA, tools: SLACK_READ, timeout: 6 * 60_000 }); }
+  catch (e) { lunch.error = `${ch}: ${e.message}`; return; }
+  const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  for (const x of r.places || []) {
+    const p = want.find(q => norm(q.name) === norm(x.name)) || want.find(q => norm(x.name).includes(norm(q.name)) || norm(q.name).includes(norm(x.name)));
+    const hm = String(x.postedAt || '').match(/^(\d{1,2}):(\d{2})/);
+    if (p && Array.isArray(x.dishes) && x.dishes.length) setMenu(p, { dishes: x.dishes.map(String), price: x.price || null, src: 'slack', at: hm ? new Date().setHours(+hm[1], +hm[2], 0, 0) : Date.now(), url: null });
+  }
+}
+/** One round: the profiles, the stories, the channel (`slack`) — for the places still without a menu, or all of them
+ *  (`all`, Read again). One at a time; asked while one runs, it runs again after. */
+async function lunchRun({ slack = false, all = false } = {}) {
+  const cfg = lunchCfg();
+  if (!cfg?.places.length) return;
+  if (lunch.busy) { lunch.again = { slack: slack || !!lunch.again?.slack, all: all || !!lunch.again?.all }; return; }
+  const today = lunchToday().day, places = all ? cfg.places : cfg.places.filter(p => !hasMenu(p));
+  if (all) for (const p of places) { const m = menuOf(p); if (!m.dishes?.length) delete m.error; }
+  lunch.error = null; lunch.busy = 'starting'; lunchSay();
+  try {
+    await lunchLook(places, today);
+    await lunchStories(places, today);
+    if (slack) await lunchSlack(places, today);
+  } catch (e) { lunch.error = e.message; console.error('[peixairada] lunch:', e); }
+  finally { lunch.busy = null; lunchToday().readAt = Date.now(); saveState(); lunchSay(); }
+  if (lunch.again) { const a = lunch.again; lunch.again = null; return lunchRun(a); }
+}
+/** The setup's lunch changed: every page told, and a place new to it looked at — on a lunch day, before lunch is over. */
+function lunchSetupChanged(was) {
+  const cfg = lunchCfg(), old = new Set((JSON.parse(was || 'null')?.places || []).map(p => `${p.name}@${p.instagram || ''}`)), t = Date.now();
+  lunchSay();
+  if (cfg?.on && cfg.days.includes(new Date(t).getDay()) && t < lunchAt(cfg, t) + LUNCH_SPAN_MS && cfg.places.some(p => !old.has(`${p.name}@${p.instagram || ''}`))) lunchRun();
+}
+/** The clock, every LUNCH_TICK_MS: the looks of the morning, the channel's, the reminder at `at` (again at the end of
+ *  an In 15 min), and every page told when the day moves on. */
+function lunchTick(t = Date.now()) {
+  const cfg = lunchCfg();
+  if (cfg?.on && cfg.days.includes(new Date(t).getDay())) {
+    const st = lunchToday(t), at = lunchAt(cfg, t), span = t < at + LUNCH_SPAN_MS;
+    const due = (offs, done) => { let any = false; offs.forEach((m, i) => { if (t >= at + m * 60_000 && !done.includes(i)) { done.push(i); any = span; } }); return any; };
+    const look = due(LUNCH_LOOKS, st.looked), slack = due(LUNCH_SLACKS, st.slacked);
+    if (look || slack) { saveState(); lunchRun({ slack }); }
+    if (lunchPhase(cfg, st, t) === 'lunch' && st.alerted < (st.snooze || at)) { st.alerted = t; saveState(); lunchAlert(cfg); }
+  }
+  lunchSay();
+}
+/** Lunch time: an alert — the app's carries Menus · Going · In 15 minutes, a click opens the chalkboard. */
+function lunchAlert(cfg) {
+  const s = lunchSummary(), have = s.places.filter(p => p.dishes.length);
+  const main = p => p.dishes.find(d => !/^(sopa|creme|caldo|entrada|p[aã]o\b)/i.test(d)) || p.dishes[0];
+  const title = have.length ? `${have.length} menu${have.length === 1 ? '' : 's'} in` : 'No menu read yet';
+  const snippet = have.slice(0, 3).map(p => `${p.name}: ${main(p)}`).join(' · ') || 'The places you go, on ⌥⌘M';
+  const evt = { kind: 'lunch', sessionId: null, heading: `Lunch · ${cfg.at}`, title, snippet, ts: new Date().toISOString(), quiet: !notificationsOn };
+  broadcast('alert', evt);
+  if (notificationsOn) nativeNotify(evt.heading, title, snippet);
+}
+/** The board's Instagram login: a window to log in with (lib/instagram.mjs login), the stories read once it is in. */
+function lunchLogin() {
+  if (lunch.loginRun) return;
+  mkdirSync(LUNCH_CHROME, { recursive: true, mode: 0o700 });
+  lunch.login = { state: 'opening' }; lunchSay();
+  lunch.loginRun = igRun(['login', '--profile', LUNCH_CHROME], 16 * 60_000).then(r => {
+    lunch.loginRun = null;
+    lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : { state: 'out', ...r.error && { error: r.error } };
+    lunchSay();
+    if (r.loggedIn) lunchRun();
+  });
+}
+async function lunchRoute(req, res, url) {
+  if (req.method === 'GET') {
+    if (url.searchParams.has('login') && lunch.login.state === 'unknown' && !lunch.loginRun && existsSync(LUNCH_CHROME)) {   // Settings › Lunch open: whether the profile is logged in
+      const r = await igRun(['check', '--profile', LUNCH_CHROME], 60_000);
+      if (typeof r.loggedIn === 'boolean') lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : { state: 'out' };
+    } else if (url.searchParams.has('login') && lunch.login.state === 'unknown' && !existsSync(LUNCH_CHROME)) lunch.login = { state: 'out' };
+    return json(res, 200, lunchSummary());
+  }
+  if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST' });
+  const body = await jsonBody(req), cfg = lunchCfg(), act = body.act, t = Date.now();
+  if (!cfg && act !== 'logout') return json(res, 409, { error: 'lunch is not set up — Settings › Lunch' });
+  const st = lunchToday(t);
+  if (act === 'going') { st.went = t; st.snooze = 0; }
+  else if (act === 'snooze') { st.snooze = t + LUNCH_SNOOZE_MS; st.went = 0; }
+  else if (act === 'back') { st.back = t; }
+  else if (act === 'read') lunchRun({ slack: !!cfg.slack, all: true });
+  else if (act === 'login') lunchLogin();
+  else if (act === 'logout') { if (lunch.loginRun) return json(res, 409, { error: 'the login window is open' }); rmSync(LUNCH_CHROME, { recursive: true, force: true }); lunch.login = { state: 'out' }; }
+  else return json(res, 400, { error: 'expected {act: going | snooze | back | read | login | logout}' });
+  saveState(); lunchSay();
+  return json(res, 200, lunchSummary());
+}
+
+// ---------------------------------------------------------------------------------------------
 // VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 // ---------------------------------------------------------------------------------------------
 // The desktop app cannot be embedded, but the VS Code CLI can serve the same editor as a web page,
@@ -4242,7 +4606,7 @@ const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CON
   'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
-  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS',
+  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN',
   ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'open'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
@@ -5193,6 +5557,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && p === '/api/jira') return json(res, 200, await jiraInfo());
     if (p === '/api/chat') return chatRoute(req, res, null, url);   // the chat (2026-10-17): its own routes
     if ((m = p.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, m[1], url);
+    if (p === '/api/lunch') return lunchRoute(req, res, url);   // lunch (2026-10-18)
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {   // the Setup's token box: into the keychain, or out of it
       const body = req.method === 'PUT' ? await jsonBody(req) : {};
       const token = req.method === 'PUT' ? (typeof body.token === 'string' ? body.token.trim() : '') : '';
@@ -5212,11 +5577,12 @@ const server = createServer(async (req, res) => {
       }
       const r = cleanSetup(body, true);
       if (r.error) return json(res, 400, { error: r.error });
-      const jiraWas = JSON.stringify(setup.jira ?? null), chatWas = setup.chat?.repo ?? null;
+      const jiraWas = JSON.stringify(setup.jira ?? null), chatWas = setup.chat?.repo ?? null, lunchWas = JSON.stringify(setup.lunch ?? null);
       setup = { ...setup, ...r.setup };
       folderCache.clear();
       if (JSON.stringify(setup.jira ?? null) !== jiraWas) jiraReset();
       if ((setup.chat?.repo ?? null) !== chatWas) chatReset();
+      if (JSON.stringify(setup.lunch ?? null) !== lunchWas) lunchSetupChanged(lunchWas);
       const failed = saveConfig();
       broadcast('config', boardConfig());
       return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, { ok: true, config: boardConfig() });
@@ -5278,7 +5644,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), chat: chatSummary(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), chat: chatSummary(), lunch: lunchSummary(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       res.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key'));   // one come in with no key goes when it is required (requireKey)
@@ -5302,7 +5668,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -5375,7 +5741,8 @@ readPower();
 cpuBusy();   // the first sample: the status bar's first ask has a share to give
 pollRepos();
 setInterval(pollRepos, REPOS_POLL_MS);
-setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
+setInterval(reloadConfig, CONFIG_POLL_MS);
+setInterval(lunchTick, LUNCH_TICK_MS); setTimeout(lunchTick, Math.min(5000, LUNCH_TICK_MS));   // lunch's clock (2026-10-18): the morning's looks, the reminder   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
 readCheckout().then(async co => { Object.assign(upd, co); if (co.checkout) { upd.app = await readApp().catch(() => null); upd.appWhy = appWhyNot(false, false, false); } sayUpdate(); }, e => { upd.error = errText(e); });
 setInterval(lookApp, APP_LOOK_MS);
