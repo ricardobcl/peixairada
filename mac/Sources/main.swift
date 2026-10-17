@@ -384,6 +384,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     if hide { awayResponder = window.firstResponder }
     content.isHidden = hide
     if !hide, let r = awayResponder { window.makeFirstResponder(r); awayResponder = nil }
+    web.evaluateJavaScript("window.peixAway?.(\(hide))", completionHandler: nil)   // lunch's sign and fish (2026-10-18): a lock at lunch time is lunch
     logLine(hide ? "away: \(away.sorted().joined(separator: ", ")) — the board hidden" : "away: back — the board shown")
   }
 
@@ -797,13 +798,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to fold the chat
   // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes, A the overview and 0 the home (2026-10-10), R the
   // board reloaded (2026-10-13 — VS Code Web's ⌥⌘R, reveal in Finder, has no Finder to reveal in), V the folder in VS Code's
-  // own window (2026-10-14), J the chat's timeline (2026-10-17);
+  // own window (2026-10-14), J the chat's timeline (2026-10-17), M lunch's menus (2026-10-18);
   // and ⌘ + one of the
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column, and T a new tab (2026-10-13 — VS Code Web's
   // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j"]
+  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -1504,6 +1505,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, later], intentIdentifiers: [], options: []),
       UNNotificationCategory(identifier: "reply", actions: [done, later], intentIdentifiers: [], options: []),
       UNNotificationCategory(identifier: "later", actions: [later], intentIdentifiers: [], options: []),
+      // lunch time (2026-10-18): the menus (the board in front, ⌥⌘M's chalkboard), Going, or the reminder again in 15
+      // minutes — the server's In 15 min, so every page's sign agrees, and its alert comes back by itself
+      UNNotificationCategory(identifier: "lunch", actions: [
+        UNNotificationAction(identifier: "lunch-menus", title: "Menus", options: [.foreground]),
+        UNNotificationAction(identifier: "lunch-going", title: "Going", options: []),
+        UNNotificationAction(identifier: "lunch-snooze", title: "In 15 minutes", options: []),
+      ], intentIdentifiers: [], options: []),
     ])
     center.getNotificationSettings { settings in
       logLine("notifications: current authorization = \(settings.authorizationStatus.rawValue)")
@@ -1529,9 +1537,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     content.title = heading
     content.body = body
     content.sound = .default
-    content.userInfo = ["sessionId": sessionId, "hash": hash]
-    content.categoryIdentifier = sessionId.isEmpty ? "" : kind == "reply" ? (drawer ? "reply-drawer" : "reply") : "later"
-    let req = UNNotificationRequest(identifier: sessionId.isEmpty ? UUID().uuidString : sessionId,
+    content.userInfo = ["sessionId": sessionId, "hash": hash, "kind": kind]
+    content.categoryIdentifier = kind == "lunch" ? "lunch" : sessionId.isEmpty ? "" : kind == "reply" ? (drawer ? "reply-drawer" : "reply") : "later"
+    let req = UNNotificationRequest(identifier: kind == "lunch" ? "lunch" : sessionId.isEmpty ? UUID().uuidString : sessionId,
                                     content: content, trigger: nil)
     UNUserNotificationCenter.current().add(req) { [weak self] err in
       logLine("notify: UN add \(err.map { "failed: \($0.localizedDescription)" } ?? "ok")")
@@ -1554,7 +1562,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                               withCompletionHandler completionHandler: @escaping () -> Void) {
     let id = response.notification.request.content.userInfo["sessionId"] as? String ?? ""
     let hash = response.notification.request.content.userInfo["hash"] as? String ?? ""
+    let kind = response.notification.request.content.userInfo["kind"] as? String ?? ""
     switch response.actionIdentifier {
+    case "lunch-going", "lunch-snooze":
+      logLine("notify: lunch \(response.actionIdentifier)")
+      web.evaluateJavaScript("window.peixLunch?.(\(jsLit(response.actionIdentifier == "lunch-going" ? "going" : "snooze")))", completionHandler: nil)
+    case "lunch-menus":
+      showWindow(nil); web.evaluateJavaScript("window.peixLunch?.('menus')", completionHandler: nil)
+    case _ where kind == "lunch":   // the banner itself: the menus
+      showWindow(nil); web.evaluateJavaScript("window.peixLunch?.('menus')", completionHandler: nil)
     case "reply" where !id.isEmpty:   // into the chat's Claude, by the page (peixReply): the drawer's socket is the page's to speak
       let text = (response as? UNTextInputNotificationResponse)?.userText ?? ""
       logLine("notify: reply to \(id.prefix(8)) (\(text.count) chars)")
