@@ -3468,7 +3468,7 @@ const CHAT_FAST_MS = Number(process.env.CHAT_FAST_MS || 3000), CHAT_SLOW_MS = Nu
 const CHAT_GAP_MS = Number(process.env.CHAT_GAP_MS || 1000), CHAT_INVITES_MS = Number(process.env.CHAT_INVITES_MS || 10 * 60_000);
 const CHAT_ROOMS_MS = 60_000, CHAT_PLACES_MS = 60_000, CHAT_WATCH_MS = 30_000, CHAT_WINDOW = 100, CHAT_KEEP = 300, CHAT_BODY_MAX = 10_000, CHAT_SUGGEST = 12;
 const ROOM_LABEL = 'room', ROOM_MARK = 'peixAIrada chat';   // the label a room wears; the words a chat repo's description starts with
-const chat = { gen: 0, live: false, repo: null, me: null, role: null, org: false, rooms: [], msgs: new Map(), tags: new Map(), ready: false, error: null,
+const chat = { gen: 0, live: false, repo: null, me: null, role: null, org: false, rooms: [], msgs: new Map(), tags: new Map(), ready: false, error: null, missing: false,
   invites: [], invitesAt: 0, askedAt: 0, roomsAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
 const chatErr = (status, message) => Object.assign(new Error(message), { status });
 // Not the characters that let a line say other than it shows (2026-10-17): C0 controls but the newline and the tab, and
@@ -3504,7 +3504,7 @@ const chatUnread = n => { const seen = chatSeen[seenKey(n)] ?? Infinity; return 
 /** What every page knows of the chat: the repo, who you are in it, the rooms with their unread counts, the invitations
  *  waiting for you, what went wrong. In the snapshot and every `chat` event. */
 function chatSummary() {
-  return { on: !!setup.chat, repo: chat.repo || setup.chat?.repo || null, me: chat.me, role: chat.role, ready: chat.ready, error: chat.error, invites: chat.invites,
+  return { on: !!setup.chat, repo: chat.repo || setup.chat?.repo || null, me: chat.me, role: chat.role, ready: chat.ready, error: chat.error, missing: chat.missing, invites: chat.invites,
     rooms: chat.rooms.map(r => { const last = (chat.msgs.get(r.n) || []).at(-1); return { n: r.n, title: r.title, unread: chatUnread(r.n), last: last ? { who: last.who, at: last.at } : null }; }) };
 }
 function chatSay() { const s = JSON.stringify(chatSummary()); if (s !== chat.said) { chat.said = s; broadcast('chat', JSON.parse(s)); } }
@@ -3585,7 +3585,8 @@ async function chatBoot(gen) {
   catch (e) {
     if (e.status !== 404) throw e;
     await chatInvites(gen).catch(() => {});
-    throw Object.assign(chatErr(404, chat.invites.some(i => i.repo.toLowerCase() === want.toLowerCase()) ? `you are invited to ${want} — join it in Settings › Chat` : `${want} is not a repo you can read — not made yet, or not shared with you`), { quiet: true });
+    if (gen === chat.gen) chat.missing = true;   // Settings › Chat offers what it does with none (2026-10-18)
+    throw Object.assign(chatNotThere(want), { quiet: true });
   }
   if (gen !== chat.gen) return;
   Object.assign(chat, { repo: r.full_name, me: { login: me.login, face: me.avatar_url || null }, role: r.permissions?.admin ? 'admin' : r.permissions?.push ? 'write' : 'read', org: r.owner?.type === 'Organization' });
@@ -3594,6 +3595,7 @@ async function chatBoot(gen) {
   await chatLook(gen, true); if (gen !== chat.gen) return;
   chat.ready = true;
 }
+const chatNotThere = want => chatErr(404, chat.invites.some(i => i.repo.toLowerCase() === want.toLowerCase()) ? `you are invited to ${want} — join it in Settings › Chat` : `${want} is not a repo you can read — not made yet, or not shared with you`);
 /** The invitations waiting for you to a chat's repo — one whose description says it is one, or the setup's. */
 async function chatInvites(gen) {
   chat.invitesAt = chat.askedAt = Date.now();
@@ -3634,7 +3636,7 @@ function chatNext(ms = null) {
 /** The repo changed (the setup, a join, a leave): everything learnt of the old one is forgotten and the new one read. */
 function chatReset() {
   chat.gen++;
-  Object.assign(chat, { repo: setup.chat?.repo || null, me: null, role: null, org: false, rooms: [], ready: false, error: null, roomsAt: 0, pause: 0, pauseUntil: 0 });
+  Object.assign(chat, { repo: setup.chat?.repo || null, me: null, role: null, org: false, rooms: [], ready: false, error: null, missing: false, roomsAt: 0, pause: 0, pauseUntil: 0 });
   chat.msgs.clear(); chat.tags.clear();
   chatSay(); chatNext(0);
 }
@@ -3764,6 +3766,12 @@ async function chatRoute(req, res, what, url) {
       if (setup.chat && chat.ready && chat.role !== 'admin') await ghRest('DELETE', `/repos/${chat.repo}/collaborators/${chat.me.login}`).catch(e => { if (e.status !== 404) throw e; });
       chatPlaces.cache = null;
       const failed = setChatRepo(null);
+      return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());
+    }
+    if (M === 'POST' && what === 'use') {   // a chat by its repo — one GitHub lets you read, never a name it does not know (2026-10-18)
+      const { setup: s, error } = cleanSetup({ chat: { repo: body.repo } }, true); if (error || !s?.chat) throw chatErr(400, error || 'which repo?');
+      const r = await ghRest('GET', `/repos/${s.chat.repo}`).catch(async e => { if (e.status !== 404) throw e; await chatInvites(chat.gen).catch(() => {}); throw chatNotThere(s.chat.repo); });
+      const failed = setChatRepo(r.data.full_name);
       return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());
     }
     if (M === 'POST' && what === 'make') {   // a new private repo for the chat, its first room, and the setup naming it

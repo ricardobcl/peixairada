@@ -10608,10 +10608,10 @@ const toolName = n => {
     const n = (c.rooms || []).reduce((a, r) => a + r.unread, 0);
     return `<button class="seg chatseg${c.error ? ' err' : ''}" id="sbChat" title="${esc(c.error ? `The chat: ${c.error}` : `The chat in ${c.repo}${n ? ` — ${n} new` : ''} · click to open it`)}">${ICON.chat}chat${n ? `<b>${rn('chat', n)}</b>` : ''}</button>`;
   }
-  function chatSegClick() { if (state.chat.on) { if ($('#room').open) $('#room').close(); else chatOpen(); } else settingsAt('chat', '#chatSet'); }
+  function chatSegClick() { if (state.chat.on && !state.chat.missing) { if ($('#room').open) $('#room').close(); else chatOpen(); } else settingsAt('chat', '#chatSet'); }
   /** The panel, on a room (the last one shown, else the first) — or on its people. */
   function chatOpen(n = null, view = 'log') {
-    const c = state.chat; if (!c.on) return settingsAt('chat', '#chatSet');
+    const c = state.chat; if (!c.on || c.missing) return settingsAt('chat', '#chatSet');
     const dlg = $('#room'); chatUi.view = view; chatUi.sure = null;
     if (!dlg.open) { if ($('#hmenu').open) $('#hmenu').close(); dlg.show(); repostPane(); if (inApp) post({ type: 'focus' }); chatWatch(); }
     if (view === 'people') chatPeopleLoad();
@@ -10764,8 +10764,9 @@ const toolName = n => {
   function chatChanged() {
     if (state.chat.repo !== chatUi.repo) Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null });   // another repo: nothing of the last one's
     renderBar(); renderChatSet();
+    if (state.chat.missing && !chatUi.places && $('#settings').open) chatPlacesLoad();
     if (!$('#room').open) return;
-    if (!state.chat.on) return $('#room').close();
+    if (!state.chat.on || state.chat.missing) return $('#room').close();
     if (!state.chat.rooms.some(r => r.n === chatUi.n) && state.chat.ready) chatRoomTo(state.chat.rooms[0]?.n ?? null);
     chatDraw(); chatSeenNow();
   }
@@ -10781,38 +10782,40 @@ const toolName = n => {
     n.onclick = () => { window.focus(); chatOpen(a.room); n.close(); };
   }
   // Settings › Chat: off — the invitations waiting, the chats you can read already, a new one (its box filled with the
-  // newest organization you own, 2026-10-18), a repo by name; on — the repo, who you are in it, the people (the
-  // admin's), and leaving. What is typed is chatUi's, so a redraw keeps it.
+  // newest organization you own, 2026-10-18), a repo by name; the same under a setup's repo GitHub does not show you
+  // (`missing`), with Forget it; on — the repo, who you are in it, the people (the admin's), and leaving. What is typed
+  // is chatUi's, so a redraw keeps it.
   function chatSetHtml() {
     const c = state.chat, text = 'type="text" spellcheck="false" autocomplete="off"';
     const group = (title, kw, rows, foot) => `<section class="sgrp" data-kw="${kw}">${title ? `<h6 class="sgh">${title}</h6>` : ''}<div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
     const row = (b, small, ctl) => `<div class="srow set"><span class="sl"><b>${b}</b><small>${small}</small></span>${ctl}</div>`;
     const invites = (c.invites || []).map(i => row(`${chatFace(i.face)} ${esc(i.by || 'Someone')} invited you`, `to the chat in ${esc(i.repo)}${i.expired ? ' — expired: ask for another' : ''}`, `<button type="button" class="btn" data-chat="join" data-id="${i.id}"${i.expired ? ' disabled' : ''}>Join</button>`)).join('');
-    if (!c.on) {
+    if (!c.on || c.missing) {
       const p = chatUi.places, owner = p ? p.orgs[0]?.login || p.me.login : null, others = p ? p.orgs.slice(1).map(o => o.login) : [];
       let name = 'chat'; for (let i = 2; p?.chats.some(x => x.repo.toLowerCase() === `${owner}/${name}`.toLowerCase()); i++) name = `chat-${i}`;
       const where = chatUi.placesErr ? `<span class="serr">${esc(chatUi.placesErr)}</span>` : !p ? 'A private repo, in an organization you own or your account'
         : p.orgs.length ? `A private repo in ${esc(owner)}, ${others.length ? `the newest organization you own (or ${esc(others.join(', '))})` : 'the organization you own'} — then invite people from the chat`
         : 'A private repo in your account — in an organization of yours, people could join with Read alone';
       const found = (p?.chats || []).map(x => row(esc(x.repo), x.admin ? 'A chat you made — you are its admin' : 'A chat you are in', `<button type="button" class="btn" data-chat="use" data-repo="${esc(x.repo)}">Use</button>`)).join('');
-      return (invites ? group('Invitations', 'chat invitation join invite', invites) : '')
+      const gone = c.missing ? group('', 'chat repo github', row(esc(c.repo), `<span class="serr">${esc(c.error || 'not a repo you can read')}</span>`, '<button type="button" class="btn" data-chat="leave">Forget it</button>')) : '';
+      return gone + (invites ? group('Invitations', 'chat invitation join invite', invites) : '')
         + (found ? group('Your chats', 'chat repo github use', found) : '')
-        + group(invites || found ? 'Or' : '', 'chat repo github room make new join use',
+        + group(invites || found || gone ? 'Or' : '', 'chat repo github room make new join use',
           row('A new chat', where, `<span class="schat"><input ${text} class="schatnew" value="${esc(chatUi.newRepo ?? (owner ? `${owner}/${name}` : ''))}" placeholder="your-org/chat" aria-label="The new chat's repo"><button type="button" class="btn" data-chat="make">Make it</button></span>`)
-          + row(found ? 'Another chat you are in' : 'A chat you are in', 'Its repo, owner/name', `<span class="schat"><input ${text} class="schatrepo" value="${esc(chatUi.useRepo ?? '')}" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`),
-          'Off until a repo is set. A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.');
+          + row(found ? 'Another chat you are in' : 'A chat you are in', 'Its repo, owner/name — one GitHub lets you read', `<span class="schat"><input ${text} class="schatrepo" value="${esc(chatUi.useRepo ?? '')}" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`),
+          `${c.missing ? 'Off until the repo can be read.' : 'Off until a repo is set.'} A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.`);
     }
-    const admin = c.role === 'admin', state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${c.rooms.length} room${c.rooms.length === 1 ? '' : 's'} · ${admin ? 'you are its admin' : 'you are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}`;
+    const admin = c.role === 'admin', member = !!c.role && !admin, state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${c.rooms.length} room${c.rooms.length === 1 ? '' : 's'} · ${admin ? 'you are its admin' : 'you are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}`;
     return group('', 'chat repo github room people invite leave',
       row(esc(c.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>')
       + (admin ? row('People', 'Invite, cancel an invitation, remove — only you can', '<button type="button" class="btn" data-chat="people">Manage…</button>') : '')
-      + `<div class="srow set"><span class="sl"><b>${admin ? 'Stop the chat here' : 'Leave the chat'}</b><small>${admin ? 'The repo and its rooms stay on GitHub' : 'You leave the repo'}</small></span><button type="button" class="btn danger" data-chat="sure" aria-expanded="${chatUi.setSure}" aria-controls="chatSure">${admin ? 'Stop…' : 'Leave…'}</button>`
-      + `<div class="ssure" id="chatSure" role="group" aria-labelledby="chatSureSay"${chatUi.setSure ? '' : ' hidden'}><span id="chatSureSay">${admin ? 'The chat goes from this board; the repo, its rooms and its people stay on GitHub.' : 'You leave the repo and its history; coming back takes a new invitation.'}</span><button type="button" class="btn" data-chat="unsure">Cancel</button><button type="button" class="btn danger" data-chat="leave">${admin ? 'Stop the chat' : 'Leave the chat'}</button></div></div>`,
+      + `<div class="srow set"><span class="sl"><b>${!member ? 'Stop the chat here' : 'Leave the chat'}</b><small>${!member ? 'The repo and its rooms stay on GitHub' : 'You leave the repo'}</small></span><button type="button" class="btn danger" data-chat="sure" aria-expanded="${chatUi.setSure}" aria-controls="chatSure">${!member ? 'Stop…' : 'Leave…'}</button>`
+      + `<div class="ssure" id="chatSure" role="group" aria-labelledby="chatSureSay"${chatUi.setSure ? '' : ' hidden'}><span id="chatSureSay">${!member ? 'The chat goes from this board; the repo, its rooms and its people stay on GitHub.' : 'You leave the repo and its history; coming back takes a new invitation.'}</span><button type="button" class="btn" data-chat="unsure">Cancel</button><button type="button" class="btn danger" data-chat="leave">${!member ? 'Stop the chat' : 'Leave the chat'}</button></div></div>`,
       'Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you.');
   }
   function renderChatSet(force = false) { drawSetup($('#chatSet'), chatSetHtml(), force); }
   /** Settings › Chat in front: the invitations asked now, not in ten minutes — and with no chat, where one could be. */
-  function loadChatSet() { api('GET', '/api/chat?invites=1').then(d => { state.chat = d; chatChanged(); if (!d.on) chatPlacesLoad(); }, () => {}); }
+  function loadChatSet() { api('GET', '/api/chat?invites=1').then(d => { state.chat = d; chatChanged(); if (!d.on || d.missing) chatPlacesLoad(); }, () => {}); }
   function chatPlacesLoad() {
     if (chatUi.placesAsk) return;
     chatUi.placesAsk = true;
@@ -10829,7 +10832,7 @@ const toolName = n => {
     if (act === 'open') { settingsOpen(false); chatOpen(); }
     else if (act === 'people') { settingsOpen(false); chatOpen(null, 'people'); }
     else if (act === 'join') { b.disabled = true; api('POST', '/api/chat/join', { id: Number(b.dataset.id) }).then(d => { set(d); note($('#chatSet'), 'Joined — the chat is in the status bar'); }, err => { b.disabled = false; note(b, err.message, true); }); }
-    else if (act === 'use') { const repo = b.dataset.repo || box.value.trim(); if (repo) putConfig({ chat: { repo } }, b.dataset.repo ? b : box).then(ok => { if (ok) chatUi.useRepo = null; }); }
+    else if (act === 'use') { const repo = b.dataset.repo || box.value.trim(); if (repo) api('POST', '/api/chat/use', { repo }).then(d => { chatUi.useRepo = null; set(d); }, err => note(b.dataset.repo ? b : box, err.message, true)); }
     else if (act === 'make') { const repo = box.value.trim(); if (!repo) return; b.disabled = true; b.textContent = 'Making it…'; api('POST', '/api/chat/make', { repo }).then(d => { chatUi.newRepo = chatUi.places = null; set(d); note($('#chatSet'), `Made ${d.repo} — invite people from the chat`); }, err => { b.disabled = false; b.textContent = 'Make it'; note(b, err.message, true); }); }
     else if (act === 'sure' || act === 'unsure') { chatUi.setSure = act === 'sure'; renderChatSet(true); $('#chatSet').querySelector(act === 'sure' ? '#chatSure .btn' : '[data-chat="sure"]')?.focus(); }
     else if (act === 'leave') api('POST', '/api/chat/leave', {}).then(d => { chatUi.setSure = false; chatUi.places = null; set(d); chatPlacesLoad(); }, err => note(b, err.message, true));

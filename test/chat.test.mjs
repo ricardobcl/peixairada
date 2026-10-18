@@ -179,6 +179,29 @@ test('where a chat could be: the organizations you own, newest first, your accou
   } finally { await srv.stop(); await gh.close(); }
 });
 
+test('a repo GitHub does not show you: never taken by Use, and one in the setup said missing until it is forgotten', { timeout: 40_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana'], orgs: { 'acme-chat': ['me'] }, repos: { 'acme-chat/room': { rooms: [{ title: 'General' }] }, 'ana/hush': { perms: {} } } });
+  const srv = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+  try {
+    for (const repo of ['acme-chat/acme-chat', 'ana/hush']) {
+      const r = await srv.post('api/chat/use', { repo });
+      assert.equal(r.status, 404, repo); assert.match(r.body.error, /not a repo you can read/);
+    }
+    assert.equal((await srv.post('api/chat/use', { repo: 'acme-chat' })).status, 400, 'an owner alone is no repo');
+    assert.equal((await srv.api('api/config')).body.chat, null, 'nothing saved');
+    const r = await srv.post('api/chat/use', { repo: 'https://github.com/ACME-chat/room' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal((await srv.api('api/config')).body.chat.repo, 'acme-chat/room', 'GitHub\'s own spelling');
+    // a hand edit naming one that is not there: missing, which Settings › Chat shows as off with the repo to forget
+    await srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/acme-chat' } }) });
+    const c = await waitFor(async () => { const x = (await srv.api('api/chat')).body; return x.missing && x; }, { what: 'the repo said missing' });
+    assert.deepEqual([c.on, c.ready, c.repo], [true, false, 'acme-chat/acme-chat']);
+    assert.match(c.error, /not a repo you can read/);
+    assert.equal((await srv.post('api/chat/leave', {})).status, 200);
+    assert.deepEqual([(await srv.api('api/chat')).body.on, (await srv.api('api/config')).body.chat], [false, null]);
+  } finally { await srv.stop(); await gh.close(); }
+});
+
 test('the page\'s chat module draws words only: no drawer, no claude, no Reply…, its own sanitizer', () => {
   const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   const at = page.indexOf('  // ---- the chat: '), end = page.indexOf('\n  // ---- ', at + 10);

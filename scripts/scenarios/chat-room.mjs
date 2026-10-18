@@ -1,6 +1,7 @@
 // The chat (2026-10-17): a private repo of a fake GitHub (scripts/fakegithub.mjs) — rooms General and Random, ana a
 // member, and in General a message that tries HTML, an image and a link. What this checks: Settings › Chat lists the
-// chats you can read and fills a new one's box with the organization you own (2026-10-18), and takes one of the chats; the status bar has the chat, and its click the panel — the rooms as tabs, the messages with their faces,
+// chats you can read and fills a new one's box with the organization you own (2026-10-18), shows a setup's repo GitHub
+// does not show you as one to forget, refuses one by name you cannot read, and takes one of the chats; the status bar has the chat, and its click the panel — the rooms as tabs, the messages with their faces,
 // markdown drawn but no HTML, no image and no link but https; another board's message comes in; one typed is sent; a
 // room behind another tab counts unread on its tab and the bar, and is read once shown; the admin's people view
 // suggests eva (her PR is in a chat), invites rui by his login, removes ana after asking; your own message deleted; Esc
@@ -18,6 +19,7 @@ const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui', 'eva'], orgs: { '
     { title: 'Random', comments: [['ana', 'random thoughts']] },
   ] },
   'ana/talk': { perms: { me: 'pull' }, rooms: [{ title: 'Lobby', comments: [['ana', 'welcome']] }] },
+  'ana/hush': { perms: {} },
   'ana-chat/later': { perms: {}, rooms: [{ title: 'General' }] },
 } });
 const dir = tmpDir('peix-chatroom-'), prs = join(dir, 'prs.json');
@@ -40,13 +42,18 @@ export default async function (ctx) {
     const rect = sel => ctx.evaluate(`(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`);
 
     ctx.assert.equal(await ctx.evaluate(`!!${q('#sbChat')}`), false, 'no chat, no invitation: nothing in the bar');
-    // Settings › Chat: the chats you can read, and a new one's box filled with the organization you own
+    // a setup naming a repo GitHub does not show you; Settings › Chat: that repo to forget, the chats you can read, and a
+    // new one's box filled with the organization you own
+    await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/acme-chat' } }) });
+    await waitFor(async () => (await ctx.server.api('api/chat')).body.missing, { what: 'the repo said missing' });
     await ctx.cmd('Comma');
     await ctx.waitFor(`${q('#settings')}.open`, { what: 'the settings' });
     await ctx.evaluate(`${q('#settings .stabs [data-tab="chat"]')}.click()`);
     await ctx.waitFor(`!!${q('#chatSet [data-repo]')}`, { what: 'Settings › Chat, with the chats found' });
     out.off = await ctx.evaluate(`JSON.stringify({ found: [...document.querySelectorAll('#chatSet [data-repo]')].map(b => b.dataset.repo).sort(), fresh: ${q('#chatSet .schatnew')}.value,
-      where: ${q('#chatSet .schatnew')}.closest('.srow').querySelector('small').textContent })`).then(JSON.parse);
+      where: ${q('#chatSet .schatnew')}.closest('.srow').querySelector('small').textContent, gone: ${q('#chatSet .serr')}?.textContent, forget: ${q('#chatSet [data-chat="leave"]')}?.textContent })`).then(JSON.parse);
+    ctx.assert.match(out.off.gone, /acme-chat\/acme-chat is not a repo you can read/);
+    ctx.assert.equal(out.off.forget, 'Forget it');
     ctx.assert.deepEqual(out.off.found, ['acme-chat/room', 'ana/talk'], 'yours and the one you were let into; not one you cannot read');
     ctx.assert.equal(out.off.fresh, 'acme-chat/chat');
     ctx.assert.match(out.off.where, /in acme-chat, the organization you own/);
@@ -55,6 +62,10 @@ export default async function (ctx) {
     await ctx.fill('#chatSet .schatnew', 'acme-chat/typed');
     await ctx.evaluate(`document.activeElement.blur(); ${q('#settings .stabs [data-tab="general"]')}.click(); ${q('#settings .stabs [data-tab="chat"]')}.click()`);
     await ctx.waitFor(`${q('#chatSet .schatnew')}?.value === 'acme-chat/typed' && ${q('#chatSet')}._drawn.includes('acme-chat/typed')`, { what: 'the typed repo kept through a redraw' });
+    await ctx.fill('#chatSet .schatrepo', 'ana/hush');
+    await ctx.evaluate(`${q('#chatSet .schatrepo + [data-chat="use"]')}.click()`);
+    await ctx.waitFor(`/ana\\/hush is not a repo you can read/.test(document.querySelector('.note')?.textContent)`, { what: 'Use refusing a repo you cannot read' });
+    ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/acme-chat', 'nothing saved');
     await ctx.evaluate(`${q('#chatSet [data-repo="acme-chat/room"]')}.click()`);
     await ctx.waitFor(`/2 rooms · you are its admin/.test(${q('#chatSet')}.textContent)`, { what: 'the chat read, said in Settings' });
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/room');
