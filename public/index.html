@@ -2250,23 +2250,21 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }   /* read, not seen (2026-10-12): a state said by colour or motion alone */   /* the number, as text, out of sight */
   .rn.rolling .rcol > span { display: block; }   /* rolled by an animation of its own (rollIn, 2026-10-13), not a transition */
   .rn.rolling .rcol > span::before { content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9"; white-space: pre; }
-  /* ---- the chat (2026-10-17): a GitHub repo's rooms, in a panel over the board's foot ---- */
-  /* A non-modal dialog at the left of the status bar, where its segment is: the rooms as tabs, the messages, the box.
+  /* ---- the chat (2026-10-17): a GitHub repo's issue, in a panel over the board's foot ---- */
+  /* A non-modal dialog at the left of the status bar, where its segment is: one chat (2026-10-18) — the messages, the box.
      The owner's people view takes the messages' place. Square to the board's other panels; the words are other people's,
      drawn plain — no images, no colours of their own. */
   #room[open] { position: fixed; inset: auto auto 34px 8px; margin: 0; z-index: 44; width: min(420px, calc(100vw - 16px)); height: min(560px, calc(100vh - 92px)); padding: 0; box-sizing: border-box;
     display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-radius: var(--r-4); box-shadow: 0 14px 40px rgba(0, 0, 0, .28); overflow: hidden; }
-  #room [hidden] { display: none !important; }   /* the tabs, the buttons and the box set a display of their own */
+  #room [hidden] { display: none !important; }   /* the buttons and the box set a display of their own */
   #room :is(.rmlog, .rmpeople) { grid-row: 2; } #room .rmfoot { grid-row: 3; }   /* placed by hand: the people view stands in the messages' row */
   #room .rmhd { display: flex; align-items: center; gap: 2px; min-width: 0; padding: 6px 6px 6px 8px; border-bottom: 1px solid var(--line); }
-  #room .rmname { flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 8px; margin-right: 4px; }
-  #room .rmtabs { display: flex; gap: 2px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-  #room :is(.rmtab, .rmbtn) { flex: none; height: 26px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: var(--r-3); background: none; font: inherit; color: var(--muted); cursor: pointer; }
-  #room .rmtab { padding: 0 9px; font-size: var(--fs-sm); }
+  #room .rmtitle { flex: 1 1 auto; min-width: 0; padding-left: 2px; font-size: var(--fs-sm); font-weight: 650; color: var(--ink); }
+  #room .rmbtn { flex: none; height: 26px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: var(--r-3); background: none; font: inherit; color: var(--muted); cursor: pointer; }
   #room .rmbtn { width: 26px; justify-content: center; padding: 0; } #room .rmbtn .ic { width: 14px; height: 14px; }
-  #room :is(.rmtab, .rmbtn):is(:hover, .on) { background: var(--ctl); color: var(--ink); }
-  #room .rmtab[aria-selected="true"] { background: var(--ctl-hi); color: var(--ink); font-weight: 600; }
-  #room .rmtab b, #sbar .chatseg b { min-width: 16px; box-sizing: border-box; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 16px; text-align: center; }
+  #room .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }   /* × close, × delete: strokes, drawn by none of the board's rules here */
+  #room .rmbtn:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
+  #sbar .chatseg b { min-width: 16px; box-sizing: border-box; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 16px; text-align: center; }
   #room :is(.rmlog, .rmpeople) { overflow-y: auto; padding: 8px 12px; font-size: var(--fs-md); }
   #room .rmday { margin: 12px 0 2px; text-align: center; color: var(--muted); font-size: var(--fs-2xs); letter-spacing: .06em; text-transform: uppercase; }
   #room .rmmsg { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 9px; margin-top: 10px; }
@@ -2311,7 +2309,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room :is(.rmtab b, .rmwho) { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -2331,7 +2329,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmtab, #room .rmbtn) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2609,7 +2607,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <dialog id="ctxm" aria-label="Actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
 <dialog id="room" aria-label="Chat">
-  <div class="rmhd"><div class="rmtabs" id="rmtabs" role="tablist" aria-label="Rooms"></div><input type="text" class="rmfind rmname" id="rmNewName" placeholder="The new room's name — ⏎" aria-label="The new room's name" spellcheck="false" autocomplete="off" hidden><button type="button" class="rmbtn" id="rmNew" title="A new room" aria-label="A new room" hidden>＋</button><button type="button" class="rmbtn" id="rmPeople" title="People — invite and remove" aria-label="People" aria-pressed="false" hidden></button><button type="button" class="rmbtn" id="rmMore" title="More" aria-label="More"></button><button type="button" class="rmbtn" id="rmClose" title="Close · esc" aria-label="Close"></button></div>
+  <div class="rmhd"><span class="rmtitle" id="rmTitle">Chat</span><button type="button" class="rmbtn" id="rmPeople" title="People — invite and remove" aria-label="People" aria-pressed="false" hidden></button><button type="button" class="rmbtn" id="rmMore" title="More" aria-label="More"></button><button type="button" class="rmbtn" id="rmClose" title="Close · esc" aria-label="Close"></button></div>
   <div class="rmlog" id="rmlog" role="log" aria-label="Messages"></div>
   <div class="rmpeople" id="rmpeople" hidden><input type="text" class="rmfind" id="rmfind" placeholder="Invite someone — a GitHub login" aria-label="Invite someone: a GitHub login, or narrow the lists" spellcheck="false" autocomplete="off"><div id="rmplist"></div></div>
   <div class="rmfoot" id="rmfoot"><textarea id="rmbox" rows="1" placeholder="Message" aria-label="Message"></textarea><div class="rmsay" id="rmsay"></div></div>
@@ -2778,8 +2776,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     a.finished.then(() => endSoon(a), () => endSoon(a));
     return a;
   };
-  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, rooms: [], invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', chatRoom: null };
+  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3465,7 +3463,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg?.id === 'settings' && e.target === $('#sq') && $('#sq').value) { $('#sq').value = ''; settingsFind(); took = true; }   // a search let go first
-    else if (dlg?.id === 'room' && chatEscape()) took = true;   // the chat's panel: a room being named, a question, the people first
+    else if (dlg?.id === 'room' && chatEscape()) took = true;   // the chat's panel: a question, the people first
     else if (dlg) { dlg.close(); took = true; }
     else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) took = hotEscape();
     if (!took) return;
@@ -10572,16 +10570,16 @@ const toolName = n => {
     document.querySelector(`#slist > .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
   }
 
-  // ---- the chat: a GitHub repo's rooms, with the people the board is shared with (2026-10-17) -----------------------
-  // The server reads the repo (chatTick in server.mjs); every page gets what it knows — `chat`: the rooms with their
-  // unread counts, who you are there, the invitations waiting for you — and what changed in a room (`chatmsgs`). The
-  // panel (#room, a non-modal dialog over the status bar's left end, where its segment is) shows one room at a time:
-  // its tabs, its messages, a box. The repo's admin also gets the people — invite (the people of the chats' PRs
-  // suggested), cancel, remove — and makes and closes rooms. Settings › Chat makes a repo, joins one, or leaves.
+  // ---- the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17) -----------------------
+  // The server reads the repo (chatTick in server.mjs); every page gets what it knows — `chat`: its issue and what you
+  // have not read there, who you are, the invitations waiting for you — and what changed (`chatmsgs`). One chat, with no
+  // name and no rooms (2026-10-18): the panel (#room, a non-modal dialog over the status bar's left end, where its
+  // segment is) is its messages and a box. The repo's admin also gets the people — invite (the people of the chats' PRs
+  // suggested), cancel, remove. Settings › Chat makes a repo, joins one, or leaves.
   // What comes in is someone else's words, drawn by chatMd alone — markdown with no raw HTML, no images, no attribute
   // but a link's address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's
   // files and pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs).
-  const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, naming: false, sending: false, watch: 0, seenSent: 0, err: null, setSure: false,
+  const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, sending: false, watch: 0, seenSent: 0, err: null, setSure: false,
     places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null };
   $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
   const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => esc(t.text ?? ''), image: t => esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
@@ -10605,31 +10603,32 @@ const toolName = n => {
   function chatSeg() {
     const c = state.chat;
     if (!c.on) return c.invites?.length ? `<button class="seg chatseg inv" id="sbChat" title="${esc(`${c.invites[0].by || 'Someone'} invited you to the chat in ${c.invites[0].repo} — click to join it`)}">${ICON.chat}invited</button>` : '';
-    const n = (c.rooms || []).reduce((a, r) => a + r.unread, 0);
+    const n = c.unread || 0;
     return `<button class="seg chatseg${c.error ? ' err' : ''}" id="sbChat" title="${esc(c.error ? `The chat: ${c.error}` : `The chat in ${c.repo}${n ? ` — ${n} new` : ''} · click to open it`)}">${ICON.chat}chat${n ? `<b>${rn('chat', n)}</b>` : ''}</button>`;
   }
   function chatSegClick() { if (state.chat.on && !state.chat.missing) { if ($('#room').open) $('#room').close(); else chatOpen(); } else settingsAt('chat', '#chatSet'); }
-  /** The panel, on a room (the last one shown, else the first) — or on its people. */
-  function chatOpen(n = null, view = 'log') {
+  /** The panel, on the messages — or on the people. */
+  function chatOpen(view = 'log') {
     const c = state.chat; if (!c.on || c.missing) return settingsAt('chat', '#chatSet');
     const dlg = $('#room'); chatUi.view = view; chatUi.sure = null;
     if (!dlg.open) { if ($('#hmenu').open) $('#hmenu').close(); dlg.show(); repostPane(); if (inApp) post({ type: 'focus' }); chatWatch(); }
     if (view === 'people') chatPeopleLoad();
-    chatRoomTo(n ?? (c.rooms.some(r => r.n === prefs.chatRoom) ? prefs.chatRoom : c.rooms[0]?.n ?? null));
-    chatDraw(true); renderBar();
+    chatLoad(); chatDraw(true); renderBar(); chatSeenNow();   // what came while it was shut is read now
     if (view === 'log') $('#rmbox').focus(); else $('#rmfind').focus();
   }
-  async function chatRoomTo(n) {
+  /** The chat's messages, read as the panel first shows them — and again for another issue (the repo's, or its first
+   *  closed on GitHub). */
+  async function chatLoad() {
+    const n = state.chat.room;
     if (n === chatUi.n && (chatUi.msgs.length || chatUi.loading)) return;
     Object.assign(chatUi, { n, msgs: [], gone: new Set(), loading: n != null, err: null, sure: null, seenSent: 0 });
-    if (n != null && prefs.chatRoom !== n) { prefs.chatRoom = n; savePrefs(); }
     chatDraw(true); if (n == null) return;
-    try { const d = await api('GET', `/api/chat/messages?room=${n}`); if (chatUi.n !== n) return; chatTake(d.msgs.filter(m => !chatUi.gone.has(m.id)), []); }
+    try { const d = await api('GET', '/api/chat/messages'); if (chatUi.n !== n) return; if (d.room === n) chatTake(d.msgs.filter(m => !chatUi.gone.has(m.id)), []); }
     catch (e) { if (chatUi.n === n) chatUi.err = e.message; }
     if (chatUi.n !== n) return;
     chatUi.loading = false; chatDraw(true); chatSeenNow();
   }
-  /** Messages into the room shown, by their ids: an edit in place, a delete out (and kept out of a fetch still on its way). */
+  /** Messages into the panel, by their ids: an edit in place, a delete out (and kept out of a fetch still on its way). */
   function chatTake(add, gone) {
     const by = new Map(chatUi.msgs.map(m => [m.id, m]));
     for (const m of add) by.set(m.id, m);
@@ -10637,11 +10636,11 @@ const toolName = n => {
     chatUi.msgs = [...by.values()].sort((a, b) => a.id - b.id);
   }
   function chatLogHtml() {
-    const c = state.chat, r = c.rooms.find(x => x.n === chatUi.n), me = c.me?.login;
-    const sure = !chatUi.sure ? '' : `<div class="rmsure" role="group"><span>${chatUi.sure === 'leave' ? (c.role === 'admin' ? 'Stop the chat on this board? It stays on GitHub, and you its admin.' : 'Leave the chat? Coming back takes a new invitation.') : `Close ${esc(r?.title || 'this room')}? Its messages stay on GitHub.`}</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="${chatUi.sure}">${chatUi.sure === 'leave' ? (c.role === 'admin' ? 'Stop' : 'Leave') : 'Close it'}</button></div>`;
+    const c = state.chat, me = c.me?.login, admin = c.role === 'admin';
+    const sure = !chatUi.sure ? '' : `<div class="rmsure" role="group"><span>${admin ? 'Stop the chat on this board? It stays on GitHub, and you its admin.' : 'Leave the chat? Coming back takes a new invitation.'}</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="leave">${admin ? 'Stop' : 'Leave'}</button></div>`;
     if (!c.ready) return sure + `<div class="rmnone">${esc(c.error || 'Reading the chat…')}</div>`;
-    if (!r) return sure + `<div class="rmnone">No rooms yet${c.role === 'admin' ? ' — ＋ makes one' : ''}.</div>`;
-    if (!chatUi.msgs.length) return sure + `<div class="rmnone">${esc(chatUi.err || (chatUi.loading ? 'Reading…' : `Nothing said in ${r.title} yet.`))}</div>`;
+    if (c.room == null) return sure + `<div class="rmnone">No chat in ${esc(c.repo)} yet — its admin's board starts it.</div>`;
+    if (!chatUi.msgs.length) return sure + `<div class="rmnone">${esc(chatUi.err || (chatUi.loading ? 'Reading…' : 'Nothing said yet.'))}</div>`;
     let out = sure, prev = null;
     for (const m of chatUi.msgs) {
       if (!prev || dayOf(prev.at) !== dayOf(m.at)) { out += `<div class="rmday">${esc(dayOf(m.at))}</div>`; prev = null; }
@@ -10649,31 +10648,29 @@ const toolName = n => {
       out += `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}" data-id="${m.id}">${chatFace(m.face)}`
         + `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}</div>`
         + `<div class="rmbody">${chatMd(m.body)}</div>`
-        + (mine || c.role === 'admin' ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
+        + (mine || admin ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
       prev = m;
     }
     return out;
   }
   function chatDraw(toEnd = false) {
     const dlg = $('#room'); if (!dlg.open) return;
-    const c = state.chat, admin = c.role === 'admin', people = chatUi.view === 'people', r = c.rooms.find(x => x.n === chatUi.n);
-    setHtml($('#rmtabs'), c.rooms.map(x => `<button type="button" class="rmtab" role="tab" data-n="${x.n}" aria-selected="${x.n === chatUi.n && !people}" title="${esc(x.title)}">${esc(x.title)}${x.unread && (x.n !== chatUi.n || people) ? `<b>${x.unread}</b>` : ''}</button>`).join(''));
-    $('#rmtabs').hidden = chatUi.naming; $('#rmNewName').hidden = !chatUi.naming;
-    $('#rmNew').hidden = !admin; $('#rmPeople').hidden = !admin;
+    const c = state.chat, admin = c.role === 'admin', people = chatUi.view === 'people', r = c.room;
+    $('#rmTitle').textContent = people ? 'People' : 'Chat'; $('#rmPeople').hidden = !admin;
     $('#rmPeople').classList.toggle('on', people); $('#rmPeople').setAttribute('aria-pressed', String(people));
-    $('#rmlog').hidden = people; $('#rmpeople').hidden = !people; $('#rmfoot').hidden = people || !r;
+    $('#rmlog').hidden = people; $('#rmpeople').hidden = !people; $('#rmfoot').hidden = people || r == null;
     if (people) return chatPeopleDraw();
     const log = $('#rmlog'), atEnd = toEnd || log.scrollHeight - log.scrollTop - log.clientHeight < 48;
     setHtml(log, chatLogHtml());
     if (atEnd) log.scrollTop = log.scrollHeight;
-    $('#rmbox').placeholder = r ? `Message ${r.title} — ⏎ sends, ⇧⏎ a new line` : 'Message';
-    setHtml($('#rmsay'), c.repo ? `<span>${esc(c.me?.login ? `as ${c.me.login}` : '')}</span><a href="https://github.com/${esc(c.repo)}${r ? `/issues/${r.n}` : ''}" data-rm="gh" title="This room on GitHub — its messages are the issue's comments">${esc(c.repo)}${r ? ` #${r.n}` : ''}</a>` : '');
+    $('#rmbox').placeholder = 'Message — ⏎ sends, ⇧⏎ a new line';
+    setHtml($('#rmsay'), c.repo ? `<span>${esc(c.me?.login ? `as ${c.me.login}` : '')}</span><a href="https://github.com/${esc(c.repo)}${r != null ? `/issues/${r}` : ''}" data-rm="gh" title="The chat on GitHub — its messages are this issue's comments">${esc(c.repo)}</a>` : '');
   }
   function chatGrow() { const b = $('#rmbox'); b.style.height = 'auto'; b.style.height = `${Math.min(140, b.scrollHeight + 2)}px`; }
   async function chatSend() {
     const box = $('#rmbox'); if (!box.value.trim() || chatUi.sending || chatUi.n == null) return;
     chatUi.sending = true;
-    try { const d = await api('POST', '/api/chat/send', { room: chatUi.n, body: box.value }); box.value = ''; chatGrow(); if (d.msg.n === chatUi.n) chatTake([d.msg], []); chatDraw(true); }
+    try { const d = await api('POST', '/api/chat/send', { body: box.value }); box.value = ''; chatGrow(); if (d.msg.n === chatUi.n) chatTake([d.msg], []); chatDraw(true); }
     catch (e) { note(box, `Not sent: ${e.message}`, true); }
     finally { chatUi.sending = false; }
   }
@@ -10683,12 +10680,12 @@ const toolName = n => {
     const ping = () => { if ($('#room').open && !document.hidden) api('POST', '/api/chat/watch', {}).catch(() => {}); };
     ping(); chatUi.watch = setInterval(ping, 15_000);
   }
-  /** The room shown, read to its newest message — only while it is truly in front of you. */
+  /** The chat, read to its newest message — only while it is truly in front of you. */
   function chatSeenNow() {
     if (!$('#room').open || chatUi.view !== 'log' || chatUi.n == null || document.hidden || !document.hasFocus()) return;
-    const top = chatUi.msgs.at(-1)?.id, r = state.chat.rooms.find(x => x.n === chatUi.n);
-    if (!top || (!r?.unread && chatUi.seenSent >= top)) return;
-    chatUi.seenSent = top; api('POST', '/api/chat/seen', { room: chatUi.n, id: top }).catch(() => {});
+    const top = chatUi.msgs.at(-1)?.id;
+    if (!top || (!state.chat.unread && chatUi.seenSent >= top)) return;
+    chatUi.seenSent = top; api('POST', '/api/chat/seen', { id: top }).catch(() => {});
   }
   // the people (the admin's): who is in, who is invited, whom to invite — the box narrows all three, and invites a login
   // none of them has
@@ -10717,16 +10714,12 @@ const toolName = n => {
     catch (e) { note(anchor, e.message, true); }
   }
   $('#room').addEventListener('click', e => {
-    const tab = e.target.closest('.rmtab'); if (tab) { chatUi.view = 'log'; chatRoomTo(Number(tab.dataset.n)); chatDraw(true); $('#rmbox').focus(); return; }
     if (e.target.closest('#rmClose')) return $('#room').close();
     if (e.target.closest('#rmPeople')) { chatUi.view = chatUi.view === 'people' ? 'log' : 'people'; chatUi.sure = null; if (chatUi.view === 'people') { chatPeopleLoad(); $('#rmfind').focus(); } chatDraw(true); return; }
-    if (e.target.closest('#rmNew')) { chatUi.naming = !chatUi.naming; chatDraw(); if (chatUi.naming) $('#rmNewName').focus(); return; }
     const more = e.target.closest('#rmMore');
     if (more) {
-      const c = state.chat, r = c.rooms.find(x => x.n === chatUi.n), b = more.getBoundingClientRect();
-      return ctxShow([...(r ? [{ t: 'This room on GitHub', fn: () => openExternal(`https://github.com/${c.repo}/issues/${r.n}`, { s: null }) }] : []),
-        ...(c.role === 'admin' && r ? [{ t: `Close ${r.title}…`, warn: true, fn: () => { chatUi.view = 'log'; chatUi.sure = 'close'; chatDraw(); } }] : []),
-        { hr: true }, { t: 'Chat settings…', fn: () => settingsAt('chat', '#chatSet') },
+      const c = state.chat, b = more.getBoundingClientRect();
+      return ctxShow([...(c.room != null ? [{ t: 'The chat on GitHub', fn: () => openExternal(`https://github.com/${c.repo}/issues/${c.room}`, { s: null }) }, { hr: true }] : []), { t: 'Chat settings…', fn: () => settingsAt('chat', '#chatSet') },
         { t: c.role === 'admin' ? 'Stop the chat on this board…' : 'Leave the chat…', warn: true, fn: () => { chatUi.view = 'log'; chatUi.sure = 'leave'; chatDraw(); } }], b.left, b.bottom + 4, 'chat');
     }
     const a = e.target.closest('#rmlog a[href], #rmsay a[href]');
@@ -10735,7 +10728,6 @@ const toolName = n => {
     const login = b.closest('.rmp')?.dataset.login, id = Number(b.closest('.rmmsg')?.dataset.id);
     if (act === 'unsure') { chatUi.sure = null; chatDraw(); }
     else if (act === 'del') { b.closest('.rmmsg').classList.add('going'); chatAct('delete', { id }, b, () => { chatTake([], [id]); chatDraw(); }); }
-    else if (act === 'close') chatAct('close', { room: chatUi.n }, b, () => { chatUi.sure = null; });
     else if (act === 'leave') chatAct('leave', {}, b, d => { state.chat = d; $('#room').close(); chatChanged(); });
     else if (act === 'invite') chatAct('invite', { login }, b, d => { chatUi.people = d; $('#rmfind').value = ''; chatDraw(); note($('#rmfind'), d.invited ? `Invited ${d.login} — they join from their board, or GitHub's email` : `${d.login} is in already`); });
     else if (act === 'cancel') chatAct('cancel', { id: Number(b.dataset.id) }, b, d => { chatUi.people = d; chatDraw(); });
@@ -10746,19 +10738,13 @@ const toolName = n => {
   $('#rmbox').addEventListener('input', chatGrow);
   $('#rmfind').addEventListener('input', () => chatPeopleDraw());
   $('#rmfind').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#rmplist').querySelector('[data-rm="invite"]')?.click(); } });
-  $('#rmNewName').addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return; e.preventDefault();
-    const box = e.target, title = box.value.trim(); if (!title) return;
-    chatAct('room', { title }, box, d => { box.value = ''; chatUi.naming = false; chatUi.view = 'log'; chatRoomTo(d.room); chatDraw(true); });
-  });
-  /** Esc in the panel lets go of one thing at a time — a room being named, a question, the people — before the panel. */
+  /** Esc in the panel lets go of one thing at a time — a question, the people — before the panel. */
   function chatEscape() {
-    if (chatUi.naming) { chatUi.naming = false; $('#rmNewName').value = ''; chatDraw(); return true; }
     if (chatUi.sure) { chatUi.sure = null; chatDraw(); return true; }
     if (chatUi.view === 'people') { chatUi.view = 'log'; chatDraw(true); $('#rmbox').focus(); return true; }
     return false;
   }
-  $('#room').addEventListener('close', () => { clearInterval(chatUi.watch); chatUi.watch = 0; chatUi.naming = false; chatUi.sure = null; renderBar(); });
+  $('#room').addEventListener('close', () => { clearInterval(chatUi.watch); chatUi.watch = 0; chatUi.sure = null; renderBar(); });
   for (const ev of ['focus', 'visibilitychange']) window.addEventListener(ev, chatSeenNow);
   /** What the server knows changed: the bar, the panel, Settings' pane. */
   function chatChanged() {
@@ -10767,19 +10753,19 @@ const toolName = n => {
     if (state.chat.missing && !chatUi.places && $('#settings').open) chatPlacesLoad();
     if (!$('#room').open) return;
     if (!state.chat.on || state.chat.missing) return $('#room').close();
-    if (!state.chat.rooms.some(r => r.n === chatUi.n) && state.chat.ready) chatRoomTo(state.chat.rooms[0]?.n ?? null);
+    if (state.chat.ready && state.chat.room !== chatUi.n) chatLoad();
     chatDraw(); chatSeenNow();
   }
   function chatMsgs(d) { if (d.n !== chatUi.n) return; chatTake(d.add || [], d.gone || []); chatDraw(); chatSeenNow(); }
   /** A message from someone else, while the room is not in front of you: a chime in front, else the app's banner or the
    *  browser's — never with a Reply… (no session), and a click opens the room. */
   function chatAlert(a) {
-    if ($('#room').open && chatUi.view === 'log' && chatUi.n === a.room && document.visibilityState === 'visible' && document.hasFocus()) return;
+    if ($('#room').open && chatUi.view === 'log' && document.visibilityState === 'visible' && document.hasFocus()) return;
     if (document.visibilityState === 'visible' && document.hasFocus()) chime('reply');
     if (inApp) post({ type: 'alert', kind: 'chat', heading: a.heading || 'Chat', project: '', title: a.title || '', snippet: a.snippet || '', sessionId: '', hash: '', serverNotify: !!state.serverNotify, quiet: !!a.quiet, drawer: false });
     if (a.quiet || !('Notification' in window) || Notification.permission !== 'granted') return;
-    const n = new Notification(a.heading || 'Chat', { body: `${a.title}\n${a.snippet || ''}`, tag: `chat-${a.room}` });
-    n.onclick = () => { window.focus(); chatOpen(a.room); n.close(); };
+    const n = new Notification(a.heading || 'Chat', { body: `${a.title}\n${a.snippet || ''}`, tag: 'chat' });
+    n.onclick = () => { window.focus(); chatOpen(); n.close(); };
   }
   // Settings › Chat: off — the invitations waiting, the chats you can read already, a new one (its box filled with the
   // newest organization you own, 2026-10-18), a repo by name; the same under a setup's repo GitHub does not show you
@@ -10805,7 +10791,7 @@ const toolName = n => {
           + row(found ? 'Another chat you are in' : 'A chat you are in', 'Its repo, owner/name — one GitHub lets you read', `<span class="schat"><input ${text} class="schatrepo" value="${esc(chatUi.useRepo ?? '')}" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`),
           `${c.missing ? 'Off until the repo can be read.' : 'Off until a repo is set.'} A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.`);
     }
-    const admin = c.role === 'admin', member = !!c.role && !admin, state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${c.rooms.length} room${c.rooms.length === 1 ? '' : 's'} · ${admin ? 'you are its admin' : 'you are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}`;
+    const admin = c.role === 'admin', member = !!c.role && !admin, state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${admin ? 'You are its admin' : 'You are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}${c.room == null ? ' · no chat in it yet' : ''}`;
     return group('', 'chat repo github room people invite leave',
       row(esc(c.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>')
       + (admin ? row('People', 'Invite, cancel an invitation, remove — only you can', '<button type="button" class="btn" data-chat="people">Manage…</button>') : '')
@@ -10830,7 +10816,7 @@ const toolName = n => {
     const set = d => { state.chat = d; chatChanged(); };
     const act = b.dataset.chat, box = b.previousElementSibling;
     if (act === 'open') { settingsOpen(false); chatOpen(); }
-    else if (act === 'people') { settingsOpen(false); chatOpen(null, 'people'); }
+    else if (act === 'people') { settingsOpen(false); chatOpen('people'); }
     else if (act === 'join') { b.disabled = true; api('POST', '/api/chat/join', { id: Number(b.dataset.id) }).then(d => { set(d); note($('#chatSet'), 'Joined — the chat is in the status bar'); }, err => { b.disabled = false; note(b, err.message, true); }); }
     else if (act === 'use') { const repo = b.dataset.repo || box.value.trim(); if (repo) api('POST', '/api/chat/use', { repo }).then(d => { chatUi.useRepo = null; set(d); }, err => note(b.dataset.repo ? b : box, err.message, true)); }
     else if (act === 'make') { const repo = box.value.trim(); if (!repo) return; b.disabled = true; b.textContent = 'Making it…'; api('POST', '/api/chat/make', { repo }).then(d => { chatUi.newRepo = chatUi.places = null; set(d); note($('#chatSet'), `Made ${d.repo} — invite people from the chat`); }, err => { b.disabled = false; b.textContent = 'Make it'; note(b, err.message, true); }); }

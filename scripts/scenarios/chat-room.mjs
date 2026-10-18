@@ -1,12 +1,14 @@
-// The chat (2026-10-17): a private repo of a fake GitHub (scripts/fakegithub.mjs) — rooms General and Random, ana a
-// member, and in General a message that tries HTML, an image and a link. What this checks: Settings › Chat lists the
-// chats you can read and fills a new one's box with the organization you own (2026-10-18), shows a setup's repo GitHub
-// does not show you as one to forget, refuses one by name you cannot read, and takes one of the chats; the status bar has the chat, and its click the panel — the rooms as tabs, the messages with their faces,
-// markdown drawn but no HTML, no image and no link but https; another board's message comes in; one typed is sent; a
-// room behind another tab counts unread on its tab and the bar, and is read once shown; the admin's people view
-// suggests eva (her PR is in a chat), invites rui by his login, removes ana after asking; your own message deleted; Esc
-// lets go of the people view, then of the panel. In a repo where you are only a member the people and the new room are
-// not there, nor a delete on someone else's words; and an invitation is the bar's word and Settings' Join.
+// The chat (2026-10-17): a private repo of a fake GitHub (scripts/fakegithub.mjs) — its chat (the oldest issue labelled
+// room; one, with no name, 2026-10-18), another labelled issue the board leaves be, ana a member, and in the chat a
+// message that tries HTML, an image and a link. What this checks: Settings › Chat lists the chats you can read and
+// fills a new one's box with the organization you own, shows a setup's repo GitHub does not show you as one to forget,
+// refuses one by name you cannot read, and takes one of the chats; the status bar has the chat, and its click the
+// panel — no tabs, the messages with their faces, markdown drawn but no HTML, no image and no link but https; another
+// board's message comes in; one typed is sent; one said while the panel is shut counts unread in the bar, and is read
+// once shown, and one in the other issue is nobody's; the admin's people view suggests eva (her PR is in a chat),
+// invites rui by his login, removes ana after asking; your own message deleted; Esc lets go of the people view, then
+// of the panel. In a repo where you are only a member the people are not there, nor a delete on someone else's words;
+// and an invitation is the bar's word and Settings' Join.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpDir, waitFor } from '../../lib/testserver.mjs';
@@ -34,9 +36,9 @@ export default async function (ctx) {
   try {
     makeFixture(ctx.fixture.dir, [{ cwd: process.cwd(), at: new Date(Date.now() - 60_000), title: 'On the app', prompt: 'look at https://github.com/acme/app/pull/1', reply: 'looked' }]);
     const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
-    const panel = () => ctx.evaluate(`JSON.stringify({ open: ${q('#room')}.open, tabs: [...document.querySelectorAll('#rmtabs .rmtab')].map(t => t.textContent + (t.getAttribute('aria-selected') === 'true' ? '*' : '')),
+    const panel = () => ctx.evaluate(`JSON.stringify({ open: ${q('#room')}.open, title: ${q('#rmTitle')}.textContent, tabs: document.querySelectorAll('#room [role=tab], #rmtabs').length,
       msgs: [...document.querySelectorAll('#rmlog .rmmsg')].map(m => (m.classList.contains('cont') ? '+' : '') + (m.querySelector('.rmwho b')?.textContent || '') + ': ' + m.querySelector('.rmbody').textContent.trim()),
-      people: !${q('#rmPeople')}.hidden, nw: !${q('#rmNew')}.hidden, dels: document.querySelectorAll('#rmlog .rmdel').length, bar: ${q('#sbChat')}?.textContent || null })`).then(JSON.parse);
+      people: !${q('#rmPeople')}.hidden, dels: document.querySelectorAll('#rmlog .rmdel').length, bar: ${q('#sbChat')}?.textContent || null })`).then(JSON.parse);
     const enter = sel => ctx.evaluate(`${q(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))`);
     const esc = () => ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))`);
     const rect = sel => ctx.evaluate(`(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`);
@@ -67,18 +69,18 @@ export default async function (ctx) {
     await ctx.waitFor(`/ana\\/hush is not a repo you can read/.test(document.querySelector('.note')?.textContent)`, { what: 'Use refusing a repo you cannot read' });
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/acme-chat', 'nothing saved');
     await ctx.evaluate(`${q('#chatSet [data-repo="acme-chat/room"]')}.click()`);
-    await ctx.waitFor(`/2 rooms · you are its admin/.test(${q('#chatSet')}.textContent)`, { what: 'the chat read, said in Settings' });
+    await ctx.waitFor(`/You are its admin/.test(${q('#chatSet')}.textContent)`, { what: 'the chat read, said in Settings' });
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/room');
     await ctx.evaluate(`${q('#settingsClose')}.click()`);
 
-    // the bar's chat opens the panel on the first room
+    // the bar's chat opens the panel: the chat, no rooms
     await ctx.waitFor(`!!${q('#sbChat')}`, { what: 'the chat in the status bar' });
     await ctx.evaluate(`${q('#sbChat')}.click()`);
-    await ctx.waitFor(`document.querySelectorAll('#rmlog .rmmsg').length === 3`, { what: 'General\'s messages' });
+    await ctx.waitFor(`document.querySelectorAll('#rmlog .rmmsg').length === 3`, { what: 'the chat\'s messages' });
     out.open = await panel();
-    ctx.assert.deepEqual(out.open.tabs, ['General*', 'Random']);
+    ctx.assert.deepEqual([out.open.title, out.open.tabs], ['Chat', 0], 'one chat: no tabs, no name');
     ctx.assert.equal(out.open.msgs[0], 'ana: hello there');
-    ctx.assert.equal(out.open.people && out.open.nw, true, 'the admin\'s people and new room');
+    ctx.assert.equal(out.open.people, true, 'the admin\'s people');
     ctx.assert.equal(await ctx.evaluate(`document.activeElement === ${q('#rmbox')}`), true, 'the box has the keys');
     // someone else's words: markdown, but no HTML, no image, no link but https
     out.safe = await ctx.evaluate(`JSON.stringify({ strong: !!document.querySelector('#rmlog .rmbody strong'), imgs: [...document.querySelectorAll('#rmlog img')].filter(i => !i.classList.contains('face')).length,
@@ -97,14 +99,15 @@ export default async function (ctx) {
     ctx.assert.equal(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, 'yes — on it');
     ctx.assert.equal(await ctx.evaluate(`${q('#rmbox')}.value`), '', 'the box emptied');
 
-    // a room behind another tab counts unread, on its tab and the bar; shown, it is read
-    await ctx.evaluate(`${q('#rmtabs .rmtab[data-n="2"]')}.click()`);
-    await ctx.waitFor(`/random thoughts/.test(${q('#rmlog')}.textContent)`, { what: 'Random' });
-    gh.say('acme-chat/room', 1, 'ana', 'ping in General');
-    await ctx.waitFor(`${q('#rmtabs .rmtab[data-n="1"] b')}?.textContent === '1'`, { what: 'General\'s unread on its tab' });
-    ctx.assert.match((await panel()).bar, /chat1/, 'and in the bar');
-    await ctx.evaluate(`${q('#rmtabs .rmtab[data-n="1"]')}.click()`);
-    await waitFor(async () => (await ctx.server.api('api/chat')).body.rooms[0].unread === 0, { what: 'General read once shown' });
+    // said while the panel is shut: unread in the bar; shown, it is read — and the other labelled issue is nobody's
+    await ctx.evaluate(`${q('#rmClose')}.click()`);
+    gh.say('acme-chat/room', 2, 'ana', 'in the other issue');
+    gh.say('acme-chat/room', 1, 'ana', 'ping');
+    await ctx.waitFor(`${q('#sbChat')}.textContent === 'chat1'`, { what: 'the unread in the bar' });
+    await ctx.evaluate(`${q('#sbChat')}.click()`);
+    await ctx.waitFor(`/ping/.test(${q('#rmlog')}.textContent)`, { what: 'ana\'s ping in the panel' });
+    ctx.assert.ok(!/in the other issue/.test(await ctx.evaluate(`${q('#rmlog')}.textContent`)), 'another labelled issue is not the chat');
+    await waitFor(async () => (await ctx.server.api('api/chat')).body.unread === 0, { what: 'read once shown' });
     await ctx.waitFor(`${q('#sbChat')}.textContent === 'chat'`, { what: 'the bar\'s count gone' });
 
     // the people: eva suggested, rui invited by his login, ana removed after asking
@@ -133,13 +136,13 @@ export default async function (ctx) {
     await esc();
     ctx.assert.equal(await ctx.evaluate(`${q('#room')}.open`), false, 'Esc closes the panel');
 
-    // a repo where you are a member: no people, no new room, no delete on another's words
+    // a repo where you are a member: no people, no delete on another's words
     await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'ana/talk' } }) });
     await waitFor(async () => (await ctx.server.api('api/chat')).body.ready, { what: 'ana/talk read' });
     await ctx.evaluate(`${q('#sbChat')}.click()`);
-    await ctx.waitFor(`/welcome/.test(${q('#rmlog')}.textContent)`, { what: 'the Lobby' });
+    await ctx.waitFor(`/welcome/.test(${q('#rmlog')}.textContent)`, { what: 'ana/talk\'s chat' });
     out.member = await panel();
-    ctx.assert.deepEqual([out.member.tabs, out.member.people, out.member.nw, out.member.dels], [['Lobby*'], false, false, 0]);
+    ctx.assert.deepEqual([out.member.title, out.member.people, out.member.dels], ['Chat', false, 0]);
     await ctx.evaluate(`${q('#rmClose')}.click()`);
 
     // no chat, an invitation: the bar says so, Settings joins it
@@ -152,7 +155,7 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`${q('#sbChat')}?.textContent`), 'invited');
     await ctx.settle(); await ctx.shot('4-invited', await rect('#settings'));
     await ctx.evaluate(`${q('#chatSet [data-chat="join"]')}.click()`);
-    await ctx.waitFor(`/1 room · you are a member/.test(${q('#chatSet')}.textContent)`, { what: 'joined' });
+    await ctx.waitFor(`/You are a member/.test(${q('#chatSet')}.textContent)`, { what: 'joined' });
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'ana-chat/later');
     return out;
   } finally { await gh.close(); }

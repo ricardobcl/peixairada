@@ -1,7 +1,7 @@
-// The chat (2026-10-17): a private GitHub repo whose issues labelled `room` are the rooms and whose comments are the
-// messages. The setup's key (cleanSetup), and end to end against a fake GitHub: the owner's board reads the repo, turns
+// The chat (2026-10-17): a private GitHub repo whose oldest open issue labelled `room` is the chat — one, with no name
+// (2026-10-18) — and whose comments are the messages. The setup's key (cleanSetup), and end to end against a fake GitHub: the owner's board reads the repo, turns
 // GitHub's mails off, counts unread, takes what another board said, edited and deleted, sends one write at a time, and
-// manages the people — the suggestions from its chats' PRs, an invitation, a cancel, a removal, a room; a member's board
+// manages the people — the suggestions from its chats' PRs, an invitation, a cancel, a removal; a member's board
 // finds the invitation, joins as a reader, may not manage, and leaves; the look that finds nothing new is a 304; a
 // repo made from the board, and where one could be (the organizations you own, the chats you can read). The page's chat module is held to drawing words only: it reaches no drawer.
 import './env.mjs';
@@ -37,7 +37,7 @@ test('end to end: the owner\'s board and a member\'s, over a fake GitHub', { tim
   const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui', 'eva'], orgs: { 'acme-chat': ['me'] }, repos: {
     'acme-chat/room': { perms: { ana: 'pull' }, rooms: [
       { title: 'General', comments: [['ana', 'hello'], ['me', 'hi ana']] },
-      { title: 'Random' },
+      { title: 'Random', comments: [['ana', 'elsewhere']] },
       { title: 'a bug, not a room', labels: [], comments: [['ana', 'not chat']] },
     ] },
     'acme/other': { perms: { me: 'pull' }, description: 'some other repo' },
@@ -51,43 +51,45 @@ test('end to end: the owner\'s board and a member\'s, over a fake GitHub', { tim
   let member = null, sse = null;
   try {
     const chat = async (srv = owner) => (await srv.api('api/chat')).body;
-    const msgs = async (n, srv = owner) => (await srv.api(`api/chat/messages?room=${n}`)).body.msgs;
+    const msgs = async (srv = owner) => (await srv.api('api/chat/messages')).body.msgs;
     assert.equal((await chat()).on, false, 'no repo in the setup: no chat');
     const put = await owner.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }) });
     assert.equal(put.status, 200, JSON.stringify(put.body));
     const c = await waitFor(async () => { const x = await chat(); return x.ready && x; }, { what: 'the chat read' });
     assert.deepEqual([c.repo, c.role, c.me.login], ['acme-chat/room', 'admin', 'me']);
-    assert.deepEqual(c.rooms.map(r => [r.n, r.title, r.unread]), [[1, 'General', 0], [2, 'Random', 0]], 'the labelled issues are the rooms; what was said before the board first read them is not unread');
-    assert.deepEqual((await msgs(1)).map(m => [m.who, m.body]), [['ana', 'hello'], ['me', 'hi ana']]);
+    assert.deepEqual([c.room, c.unread, c.last.who], [1, 0, 'me'], 'the oldest open issue labelled room is the chat; what was said before the board first read it is not unread');
+    assert.ok(!('rooms' in c), 'one chat: no rooms');
+    assert.deepEqual((await msgs()).map(m => [m.who, m.body]), [['ana', 'hello'], ['me', 'hi ana']], 'its comments alone: not another room\'s, not a bug\'s');
     assert.deepEqual(gh.repo('acme-chat/room').subs.me, { subscribed: false, ignored: true }, 'GitHub\'s mails about the repo off');
 
     // another board speaks: it arrives, unread, and is said as an alert; nothing new is a 304
     sse = await stream(owner); await waitFor(() => sse.text.includes('event: snapshot'), { what: 'the stream' }); sse.mark();
     const said = gh.say('acme-chat/room', 1, 'ana', 'are you **there**?');
-    await waitFor(async () => (await chat()).rooms[0].unread === 1, { what: 'ana\'s message, unread' });
+    gh.say('acme-chat/room', 2, 'ana', 'in another room');
+    await waitFor(async () => (await chat()).unread === 1, { what: 'ana\'s message, unread' });
     await waitFor(() => sse.since().includes('"kind":"chat"'), { what: 'its alert' });
     const alert = JSON.parse(sse.since().match(/event: alert\ndata: (.+)/)[1]);
-    assert.deepEqual([alert.heading, alert.title, alert.snippet, alert.sessionId], ['General · chat', 'ana', 'are you there?', null]);
+    assert.deepEqual([alert.heading, alert.title, alert.snippet, alert.sessionId], ['Chat', 'ana', 'are you there?', null]);
+    assert.ok(!(await msgs()).some(m => m.body === 'in another room'), 'another labelled issue is not the chat');
     await waitFor(() => gh.calls.some(l => /^GET \/repos\/acme-chat\/room\/issues\/comments\?sort=created.* 304$/.test(l)), { what: 'a look that found nothing new, a 304' });
 
     // sent from the board: one write, the message back, no alert for your own words
     sse.mark();
-    const sent = await owner.post('api/chat/send', { room: 1, body: '  yes\r\nI am  ' });
+    const sent = await owner.post('api/chat/send', { body: '  yes\r\nI am  ' });
     assert.equal(sent.status, 200, JSON.stringify(sent.body));
     assert.deepEqual([sent.body.msg.who, sent.body.msg.body], ['me', 'yes\nI am']);
     assert.equal(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, 'yes\nI am');
-    assert.equal((await owner.post('api/chat/send', { room: 1, body: '   ' })).status, 400, 'nothing to send');
-    assert.equal((await owner.post('api/chat/send', { room: 3, body: 'x' })).status, 404, 'an issue that is not a room');
-    await owner.post('api/chat/seen', { room: 1, id: said });
-    assert.equal((await chat()).rooms[0].unread, 0);
+    assert.equal((await owner.post('api/chat/send', { body: '   ' })).status, 400, 'nothing to send');
+    await owner.post('api/chat/seen', { id: said });
+    assert.equal((await chat()).unread, 0);
     assert.ok(!/"kind":"chat"/.test(sse.since()), 'no alert for a message of yours');
 
     // edited and deleted elsewhere
     gh.edit(said, 'are you there? (edited)');
-    await waitFor(async () => (await msgs(1)).find(m => m.id === said)?.edited, { what: 'the edit' });
+    await waitFor(async () => (await msgs()).find(m => m.id === said)?.edited, { what: 'the edit' });
     gh.drop(said);
-    await waitFor(async () => !(await msgs(1)).some(m => m.id === said), { what: 'the delete' });
-    assert.ok((await msgs(1)).some(m => m.id === sent.body.msg.id), 'a message newer than the look is not judged gone');
+    await waitFor(async () => !(await msgs()).some(m => m.id === said), { what: 'the delete' });
+    assert.ok((await msgs()).some(m => m.id === sent.body.msg.id), 'a message newer than the look is not judged gone');
     assert.equal((await owner.post('api/chat/delete', { id: sent.body.msg.id })).status, 200);
     assert.ok(!gh.repo('acme-chat/room').issues[0].comments.some(x => x.id === sent.body.msg.id));
 
@@ -107,11 +109,8 @@ test('end to end: the owner\'s board and a member\'s, over a fake GitHub', { tim
     assert.deepEqual((await owner.post('api/chat/remove', { login: 'ana' })).body.members, []);
     assert.equal(gh.repo('acme-chat/room').perms.ana, undefined);
 
-    // a room made and closed
-    assert.equal((await owner.post('api/chat/room', { title: 'Design' })).status, 200);
-    assert.deepEqual((await chat()).rooms.map(r => r.title), ['General', 'Random', 'Design']);
-    assert.equal((await owner.post('api/chat/close', { room: 4 })).status, 200);
-    assert.deepEqual((await chat()).rooms.map(r => r.title), ['General', 'Random']);
+    // no rooms to make or close
+    for (const what of ['room', 'close']) assert.equal((await owner.post(`api/chat/${what}`, { title: 'Design', room: 1 })).status, 404, what);
 
     // rui's board: no chat yet, the invitation found (not another repo's), joined as a reader
     gh.invite('acme/other', 'rui', 'me');
@@ -127,17 +126,17 @@ test('end to end: the owner\'s board and a member\'s, over a fake GitHub', { tim
     assert.equal(JSON.parse(readFileSync(join(member.dir, 'config.json'), 'utf8')).chat.repo, 'acme-chat/room', 'into the setup file');
     assert.equal((await member.api('api/chat/people')).status, 403, 'a member manages nobody');
     assert.equal((await member.post('api/chat/invite', { login: 'eva' })).status, 403);
-    const hers = (await msgs(1, member)).find(m => m.who === 'ana');
+    const hers = (await msgs(member)).find(m => m.who === 'ana');
     assert.equal((await member.post('api/chat/delete', { id: hers.id })).status, 403, 'nor deletes someone else\'s words');
-    assert.equal((await member.post('api/chat/send', { room: 1, body: 'thanks for having me' })).status, 200, 'a reader posts');
-    await waitFor(async () => (await chat()).rooms[0].unread === 1, { what: 'rui\'s message on the owner\'s board' });
+    assert.equal((await member.post('api/chat/send', { body: 'thanks for having me' })).status, 200, 'a reader posts');
+    await waitFor(async () => (await chat()).unread === 1, { what: 'rui\'s message on the owner\'s board' });
     assert.equal((await member.post('api/chat/leave', {})).status, 200);
     assert.equal(gh.repo('acme-chat/room').perms.rui, undefined, 'a member leaving leaves the repo');
     assert.equal((await chat(member)).on, false);
   } finally { sse?.close(); await member?.stop(); await owner.stop(); await gh.close(); }
 });
 
-test('a repo made from the board: private, marked, its label and first room, and the setup naming it', { timeout: 40_000 }, async () => {
+test('a repo made from the board: private, marked, its label and its chat, and the setup naming it', { timeout: 40_000 }, async () => {
   const gh = await startFakeGitHub({ users: ['me'], orgs: { 'acme-chat': ['me'], elsewhere: ['someone'] } });
   const srv = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
   try {
@@ -148,10 +147,10 @@ test('a repo made from the board: private, marked, its label and first room, and
     const made = gh.repo('acme-chat/talk');
     assert.equal(made.private, true);
     assert.match(made.description, /^peixAIrada chat/);
-    assert.deepEqual(made.issues.map(i => [i.title, i.labels]), [['General', ['room']]]);
+    assert.deepEqual(made.issues.map(i => [i.title, i.labels]), [['Chat', ['room']]]);
     assert.deepEqual(made.subs.me, { subscribed: false, ignored: true });
     const c = await waitFor(async () => { const x = (await srv.api('api/chat')).body; return x.ready && x; }, { what: 'the new chat read' });
-    assert.deepEqual([c.repo, c.role, c.rooms.map(x => x.title)], ['acme-chat/talk', 'admin', ['General']]);
+    assert.deepEqual([c.repo, c.role, c.room], ['acme-chat/talk', 'admin', 1]);
     assert.equal((await srv.post('api/chat/make', { repo: 'acme-chat/talk' })).status, 400, 'a name taken');
   } finally { await srv.stop(); await gh.close(); }
 });
@@ -200,6 +199,26 @@ test('a repo GitHub does not show you: never taken by Use, and one in the setup 
     assert.equal((await srv.post('api/chat/leave', {})).status, 200);
     assert.deepEqual([(await srv.api('api/chat')).body.on, (await srv.api('api/config')).body.chat], [false, null]);
   } finally { await srv.stop(); await gh.close(); }
+});
+
+test('a repo with no chat in it: its admin\'s board starts one, a member\'s waits', { timeout: 40_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana'], orgs: { 'acme-chat': ['me'] }, repos: {
+    'acme-chat/bare': { perms: { ana: 'pull' }, rooms: [{ title: 'closed long ago', state: 'closed' }, { title: 'a bug', labels: [] }] } } });
+  const member = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'ana', ...FAST } });
+  const owner = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+  const use = srv => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/bare' } }) });
+  const ready = srv => waitFor(async () => { const x = (await srv.api('api/chat')).body; return x.ready && x; }, { what: 'the chat read' });
+  try {
+    await use(member);
+    const m = await ready(member);
+    assert.deepEqual([m.role, m.room], ['read', null]);
+    assert.equal((await member.post('api/chat/send', { body: 'hello?' })).status, 409, 'nothing to post to yet');
+    assert.equal(gh.repo('acme-chat/bare').issues.length, 2, 'a member\'s board makes nothing');
+    await use(owner);
+    const o = await ready(owner);
+    assert.equal(o.room, 3);
+    assert.deepEqual(gh.repo('acme-chat/bare').issues.map(i => [i.number, i.title, i.state, i.labels]).at(-1), [3, 'Chat', 'open', ['room']]);
+  } finally { await owner.stop(); await member.stop(); await gh.close(); }
 });
 
 test('the page\'s chat module draws words only: no drawer, no claude, no Reply…, its own sanitizer', () => {

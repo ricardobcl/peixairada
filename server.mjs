@@ -3449,12 +3449,12 @@ async function switchGuard(s, branch) {
 // ---------------------------------------------------------------------------------------------
 // The chat: the people the board is shared with, in a GitHub repo's issues (2026-10-17)
 // ---------------------------------------------------------------------------------------------
-// One private repo is the chat: each open issue labelled `room` a room, each comment a message (docs/DECISIONS.md, and
-// the research behind it in docs/studies/). GitHub is its server — who you are (the `gh` login every board has), who
+// One private repo is the chat: one issue, the oldest open one labelled `room`, its comments the messages — one chat,
+// with no name and no rooms to pick from (2026-10-18; docs/DECISIONS.md, and the research behind it in docs/studies/). GitHub is its server — who you are (the `gh` login every board has), who
 // may read and post (the repo's collaborators; on an organization's repo, Read), who invites and removes (its admin:
 // only that board draws it), the history a Mac asleep catches up on, and the moderation. Off until the setup names the
 // repo (setup.chat). Asked over REST with gh's own token, read once (`gh auth token`) and sent nowhere but GitHub, rather
-// than a `gh api` per look: one fixed URL — the newest CHAT_WINDOW comments of every room — with its ETag, so a look
+// than a `gh api` per look: one fixed URL — the repo's newest CHAT_WINDOW comments — with its ETag, so a look
 // that finds nothing new is a 304, which costs nothing of the rate limit (and which `gh api` reads as a failure).
 // Every CHAT_FAST_MS while a page shows the chat (it says so, POST /api/chat/watch), CHAT_SLOW_MS otherwise. Writes go
 // one at a time, CHAT_GAP_MS apart (GitHub's limits on content made). GitHub's mails about the repo are turned off as
@@ -3466,10 +3466,10 @@ async function switchGuard(s, branch) {
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const CHAT_FAST_MS = Number(process.env.CHAT_FAST_MS || 3000), CHAT_SLOW_MS = Number(process.env.CHAT_SLOW_MS || 20_000);
 const CHAT_GAP_MS = Number(process.env.CHAT_GAP_MS || 1000), CHAT_INVITES_MS = Number(process.env.CHAT_INVITES_MS || 10 * 60_000);
-const CHAT_ROOMS_MS = 60_000, CHAT_PLACES_MS = 60_000, CHAT_WATCH_MS = 30_000, CHAT_WINDOW = 100, CHAT_KEEP = 300, CHAT_BODY_MAX = 10_000, CHAT_SUGGEST = 12;
-const ROOM_LABEL = 'room', ROOM_MARK = 'peixAIrada chat';   // the label a room wears; the words a chat repo's description starts with
-const chat = { gen: 0, live: false, repo: null, me: null, role: null, org: false, rooms: [], msgs: new Map(), tags: new Map(), ready: false, error: null, missing: false,
-  invites: [], invitesAt: 0, askedAt: 0, roomsAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
+const CHAT_FIND_MS = 60_000, CHAT_PLACES_MS = 60_000, CHAT_WATCH_MS = 30_000, CHAT_WINDOW = 100, CHAT_KEEP = 300, CHAT_BODY_MAX = 10_000, CHAT_SUGGEST = 12;
+const ROOM_LABEL = 'room', ROOM_MARK = 'peixAIrada chat';   // the label the chat's issue wears; the words a chat repo's description starts with
+const chat = { gen: 0, live: false, repo: null, me: null, role: null, org: false, room: null, msgs: [], tags: new Map(), ready: false, error: null, missing: false,
+  invites: [], invitesAt: 0, askedAt: 0, foundAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
 const chatErr = (status, message) => Object.assign(new Error(message), { status });
 // Not the characters that let a line say other than it shows (2026-10-17): C0 controls but the newline and the tab, and
 // the bidirectional overrides and isolates.
@@ -3499,74 +3499,72 @@ async function ghToken(fresh = false) {
 /** A comment as the page gets it: whose (login, face), the room's number, the words (capped, the unsaid characters out). */
 const chatMsg = c => ({ id: c.id, n: Number(String(c.issue_url || '').split('/').pop()) || 0, who: c.user?.login || 'ghost', face: c.user?.avatar_url || null,
   body: String(c.body || '').replace(UNSAID, '').slice(0, CHAT_BODY_MAX), at: c.created_at, edited: c.updated_at && c.updated_at !== c.created_at ? c.updated_at : null, url: c.html_url || null });
-const seenKey = n => `${chat.repo}#${n}`;
-const chatUnread = n => { const seen = chatSeen[seenKey(n)] ?? Infinity; return (chat.msgs.get(n) || []).filter(m => m.id > seen && m.who !== chat.me?.login).length; };
-/** What every page knows of the chat: the repo, who you are in it, the rooms with their unread counts, the invitations
- *  waiting for you, what went wrong. In the snapshot and every `chat` event. */
+const seenKey = () => `${chat.repo}#${chat.room?.n}`;
+const chatUnread = () => { const seen = chatSeen[seenKey()] ?? Infinity; return chat.msgs.filter(m => m.id > seen && m.who !== chat.me?.login).length; };
+/** What every page knows of the chat: the repo, who you are in it, its issue with what you have not read and who said
+ *  the last word, the invitations waiting for you, what went wrong. In the snapshot and every `chat` event. */
 function chatSummary() {
+  const last = chat.msgs.at(-1);
   return { on: !!setup.chat, repo: chat.repo || setup.chat?.repo || null, me: chat.me, role: chat.role, ready: chat.ready, error: chat.error, missing: chat.missing, invites: chat.invites,
-    rooms: chat.rooms.map(r => { const last = (chat.msgs.get(r.n) || []).at(-1); return { n: r.n, title: r.title, unread: chatUnread(r.n), last: last ? { who: last.who, at: last.at } : null }; }) };
+    room: chat.room?.n ?? null, unread: chat.room ? chatUnread() : 0, last: last ? { who: last.who, at: last.at } : null };
 }
 function chatSay() { const s = JSON.stringify(chatSummary()); if (s !== chat.said) { chat.said = s; broadcast('chat', JSON.parse(s)); } }
-/** Messages into their rooms: a new one in place by its id, an edit over the one held; and with a window — the newest
+/** Messages into the chat: a new one in place by its id, an edit over the one held; and with a window — the newest
  *  comments of the repo, `floor` to `top` — one held in that span the window has not got is gone (deleted). Messages
- *  newer than the window are not its to judge (one sent while it was asked). The changed rooms: {n: {add, gone, fresh}}. */
+ *  newer than the window are not its to judge (one sent while it was asked); another issue's are not the chat's. What
+ *  changed: {add, gone, fresh}. */
 function chatTake(list, span = null) {
-  const changed = new Map(), of = n => changed.get(n) || changed.set(n, { add: [], gone: [], fresh: [] }).get(n);
-  for (const room of chat.rooms) {
-    const held = chat.msgs.get(room.n) || [], got = list.filter(m => m.n === room.n), at = new Map(held.map((m, i) => [m.id, i]));
-    for (const m of got) {
-      const i = at.get(m.id);
-      if (i === undefined) { held.push(m); of(room.n).add.push(m); of(room.n).fresh.push(m); }
-      else if (held[i].body !== m.body || held[i].edited !== m.edited) { held[i] = m; of(room.n).add.push(m); }
-    }
-    if (span) {
-      const keep = new Set(got.map(m => m.id));
-      for (let i = held.length - 1; i >= 0; i--) if (held[i].id >= span.floor && held[i].id <= span.top && !keep.has(held[i].id)) { of(room.n).gone.push(held[i].id); held.splice(i, 1); }
-    }
-    held.sort((a, b) => a.id - b.id);
-    if (held.length > CHAT_KEEP) held.splice(0, held.length - CHAT_KEEP);
-    chat.msgs.set(room.n, held);
+  const c = { add: [], gone: [], fresh: [] }; if (!chat.room) return c;
+  const held = chat.msgs, got = list.filter(m => m.n === chat.room.n), at = new Map(held.map((m, i) => [m.id, i]));
+  for (const m of got) {
+    const i = at.get(m.id);
+    if (i === undefined) { held.push(m); c.add.push(m); c.fresh.push(m); }
+    else if (held[i].body !== m.body || held[i].edited !== m.edited) { held[i] = m; c.add.push(m); }
   }
-  return changed;
-}
-/** What changed, to every page — and, unless `silent` (the first read of a room), an alert per room for what someone
- *  else said since you last saw it: never the words of a message you sent, never a Reply…. */
-function chatTell(changed, silent) {
-  for (const [n, c] of changed) {
-    if (c.add.length || c.gone.length) broadcast('chatmsgs', { n, add: c.add, gone: c.gone });
-    const room = chat.rooms.find(r => r.n === n), news = silent ? [] : c.fresh.filter(m => m.who !== chat.me?.login && m.id > (chatSeen[seenKey(n)] ?? Infinity));
-    if (!news.length || !room) continue;
-    const last = news.at(-1), who = [...new Set(news.map(m => m.who))];
-    const evt = { kind: 'chat', sessionId: null, room: n, heading: `${room.title} · chat`, title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who, snippet: plainSnippet(last.body, 140), ts: last.at, quiet: !notificationsOn };
-    broadcast('alert', evt);
-    if (notificationsOn && Date.now() > chat.watchUntil) nativeNotify(evt.heading, evt.title, evt.snippet);
+  if (span) {
+    const keep = new Set(got.map(m => m.id));
+    for (let i = held.length - 1; i >= 0; i--) if (held[i].id >= span.floor && held[i].id <= span.top && !keep.has(held[i].id)) { c.gone.push(held[i].id); held.splice(i, 1); }
   }
+  held.sort((a, b) => a.id - b.id);
+  if (held.length > CHAT_KEEP) held.splice(0, held.length - CHAT_KEEP);
+  return c;
 }
-async function chatRooms(gen) {
-  const url = `/repos/${chat.repo}/issues?labels=${ROOM_LABEL}&state=open&sort=created&direction=asc&per_page=100`;
+/** What changed, to every page — and, unless `silent` (the first read), an alert for what someone else said since you
+ *  last saw it: never the words of a message you sent, never a Reply…. */
+function chatTell(c, silent) {
+  if (!chat.room) return;
+  if (c.add.length || c.gone.length) broadcast('chatmsgs', { n: chat.room.n, add: c.add, gone: c.gone });
+  const news = silent ? [] : c.fresh.filter(m => m.who !== chat.me?.login && m.id > (chatSeen[seenKey()] ?? Infinity));
+  if (!news.length) return;
+  const last = news.at(-1), who = [...new Set(news.map(m => m.who))];
+  const evt = { kind: 'chat', sessionId: null, heading: 'Chat', title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who, snippet: plainSnippet(last.body, 140), ts: last.at, quiet: !notificationsOn };
+  broadcast('alert', evt);
+  if (notificationsOn && Date.now() > chat.watchUntil) nativeNotify(evt.heading, evt.title, evt.snippet);
+}
+/** The chat's issue: the oldest open one labelled `room` — the first, made with the repo; any other the board leaves
+ *  be. Its last messages are read as it is first seen; another since (that one closed on GitHub) starts over. */
+async function chatFind(gen) {
+  const url = `/repos/${chat.repo}/issues?labels=${ROOM_LABEL}&state=open&sort=created&direction=asc&per_page=1`;
   const r = await ghRest('GET', url, undefined, chat.tags.get(url));
-  chat.roomsAt = Date.now();
+  chat.foundAt = Date.now();
   if (gen !== chat.gen || r.status === 304) return;
   chat.tags.set(url, r.etag);
-  const rooms = (r.data || []).filter(i => !i.pull_request).map(i => ({ n: i.number, title: String(i.title || `#${i.number}`).replace(UNSAID, ''), count: i.comments || 0 }));
-  const fresh = rooms.filter(x => !chat.rooms.some(y => y.n === x.n));
-  for (const n of [...chat.msgs.keys()]) if (!rooms.some(x => x.n === n)) chat.msgs.delete(n);   // a room closed
-  chat.rooms = rooms;
-  for (const room of fresh) { await chatBackfill(gen, room); if (gen !== chat.gen) return; }
+  const i = (r.data || []).find(x => !x.pull_request), was = chat.room?.n;
+  chat.room = i ? { n: i.number, count: i.comments || 0 } : null;
+  if (chat.room?.n !== was) { chat.msgs = []; if (chat.room) await chatBackfill(gen); }
 }
-/** A room's last messages, as it is first seen: its last page or two of comments (a room's list runs oldest first). A
- *  room this board never showed counts nothing before now as unread. */
-async function chatBackfill(gen, room) {
-  const per = 50, last = Math.max(1, Math.ceil(room.count / per));
+/** The chat's last messages, as it is first seen: its last page or two of comments (an issue's list runs oldest first).
+ *  A chat this board never showed counts nothing before now as unread. */
+async function chatBackfill(gen) {
+  const room = chat.room, per = 50, last = Math.max(1, Math.ceil(room.count / per));
   let got = [];
   for (const page of room.count > per && room.count % per < 20 ? [last - 1, last] : [last]) {
     const r = await ghRest('GET', `/repos/${chat.repo}/issues/${room.n}/comments?per_page=${per}&page=${page}`);
-    if (gen !== chat.gen) return;
+    if (gen !== chat.gen || chat.room !== room) return;
     got = got.concat((r.data || []).map(chatMsg).map(m => ({ ...m, n: room.n })));
   }
   chatTake(got);
-  if (!(seenKey(room.n) in chatSeen)) { chatSeen[seenKey(room.n)] = got.reduce((a, m) => Math.max(a, m.id), 0); saveState(); }
+  if (!(seenKey() in chatSeen)) { chatSeen[seenKey()] = got.reduce((a, m) => Math.max(a, m.id), 0); saveState(); }
 }
 async function chatLook(gen, silent = false) {
   const url = `/repos/${chat.repo}/issues/comments?sort=created&direction=desc&per_page=${CHAT_WINDOW}`;
@@ -3574,8 +3572,13 @@ async function chatLook(gen, silent = false) {
   if (gen !== chat.gen || r.status === 304) return;
   chat.tags.set(url, r.etag);
   const got = (r.data || []).map(chatMsg), ids = got.map(m => m.id);
-  if (got.some(m => !chat.rooms.some(x => x.n === m.n)) && Date.now() - chat.roomsAt > 10_000) chat.roomsAt = 0;   // a room new since: the rooms again on the next look
   chatTell(chatTake(got, ids.length ? { floor: got.length >= CHAT_WINDOW ? Math.min(...ids) : 0, top: Math.max(...ids) } : null), silent);
+}
+/** The chat's issue, made and labelled: with the repo, and on its admin's board when none is open (a repo made by hand,
+ *  or its issue closed on GitHub). */
+async function chatStart(repo) {
+  await chatLabel(repo);
+  return ghRest('POST', `/repos/${repo}/issues`, { title: 'Chat', body: 'The peixAIrada chat: each comment here is a message.', labels: [ROOM_LABEL] });
 }
 /** The repo, as GitHub has it: who you are, and what you may do there. */
 async function chatBoot(gen) {
@@ -3591,7 +3594,8 @@ async function chatBoot(gen) {
   if (gen !== chat.gen) return;
   Object.assign(chat, { repo: r.full_name, me: { login: me.login, face: me.avatar_url || null }, role: r.permissions?.admin ? 'admin' : r.permissions?.push ? 'write' : 'read', org: r.owner?.type === 'Organization' });
   if (!chatQuiet.includes(chat.repo)) { await ghRest('PUT', `/repos/${chat.repo}/subscription`, { subscribed: false, ignored: true }); chatQuiet.push(chat.repo); saveState(); }
-  await chatRooms(gen); if (gen !== chat.gen) return;
+  await chatFind(gen); if (gen !== chat.gen) return;
+  if (!chat.room && chat.role === 'admin') { await chatStart(chat.repo); await chatFind(gen); if (gen !== chat.gen) return; }
   await chatLook(gen, true); if (gen !== chat.gen) return;
   chat.ready = true;
 }
@@ -3621,7 +3625,7 @@ async function chatTick() {
   try {
     if (!setup.chat) { if (Date.now() - chat.invitesAt >= CHAT_INVITES_MS) await chatInvites(gen); }
     else if (!chat.ready) await chatBoot(gen);
-    else { if (Date.now() - chat.roomsAt >= CHAT_ROOMS_MS) await chatRooms(gen); await chatLook(gen); }
+    else { if (Date.now() - chat.foundAt >= CHAT_FIND_MS) await chatFind(gen); await chatLook(gen); }
     if (gen === chat.gen) { chat.pause = 0; chat.pauseUntil = 0; chat.error = null; }
   } catch (e) { if (gen === chat.gen) chatFailed(e); }
   finally { chat.busy = false; chatSay(); chatNext(gen !== chat.gen ? 0 : null); }
@@ -3636,8 +3640,8 @@ function chatNext(ms = null) {
 /** The repo changed (the setup, a join, a leave): everything learnt of the old one is forgotten and the new one read. */
 function chatReset() {
   chat.gen++;
-  Object.assign(chat, { repo: setup.chat?.repo || null, me: null, role: null, org: false, rooms: [], ready: false, error: null, missing: false, roomsAt: 0, pause: 0, pauseUntil: 0 });
-  chat.msgs.clear(); chat.tags.clear();
+  Object.assign(chat, { repo: setup.chat?.repo || null, me: null, role: null, org: false, room: null, msgs: [], ready: false, error: null, missing: false, foundAt: 0, pause: 0, pauseUntil: 0 });
+  chat.tags.clear();
   chatSay(); chatNext(0);
 }
 function setChatRepo(repo) {
@@ -3656,7 +3660,7 @@ function chatWrite(fn) {
   chat.writes = run.catch(() => {});
   return run;
 }
-const chatLabel = repo => ghRest('POST', `/repos/${repo}/labels`, { name: ROOM_LABEL, color: '1f6feb', description: 'A room of the peixAIrada chat' }).catch(e => { if (e.status !== 422) throw e; });   // 422: it is there
+const chatLabel = repo => ghRest('POST', `/repos/${repo}/labels`, { name: ROOM_LABEL, color: '1f6feb', description: 'The issue that is the peixAIrada chat' }).catch(e => { if (e.status !== 422) throw e; });   // 422: it is there
 /** The people of your chats' PRs — prPeople's: authors, reviewers, commenters, pushers, no bots —, whom you might
  *  invite: by how many of those PRs each had a hand in, then by when they last did; the ones in `skip` left out. */
 function chatSuggest(skip) {
@@ -3700,41 +3704,41 @@ async function chatRoute(req, res, what, url) {
   const M = req.method, body = M === 'GET' ? {} : await jsonBody(req);
   const ready = () => { if (!setup.chat) throw chatErr(409, 'no chat repo in the setup'); if (!chat.ready) throw chatErr(409, chat.error || 'the chat is still being read'); };
   const admin = () => { ready(); if (chat.role !== 'admin') throw chatErr(403, `only ${chat.repo}'s admin does that`); };
-  const room = n => { const r = chat.rooms.find(x => x.n === Number(n)); if (!r) throw chatErr(404, 'no such room'); return r; };
+  const there = () => { if (!chat.room) throw chatErr(409, `no chat in ${chat.repo} yet — its admin's board starts it`); return chat.room.n; };
   const login = v => { const l = String(v ?? '').trim().replace(/^@/, ''); if (!ORG_NAME.test(l)) throw chatErr(400, `"${l}" is not a GitHub login`); return l; };
   try {
     if (M === 'GET' && !what) {
       if (url.searchParams.has('invites') && Date.now() - chat.askedAt > 1000) await chatInvites(chat.gen).catch(e => chatFailed(e));   // Settings › Chat open: asked now (a 304 when nothing changed), not in ten minutes — at boot too: invitesAt is the timer's, put off then
       return json(res, 200, chatSummary());
     }
-    if (M === 'GET' && what === 'messages') { const n = Number(url.searchParams.get('room')); return json(res, 200, { room: n, msgs: chat.msgs.get(n) || [], seen: chatSeen[seenKey(n)] ?? 0 }); }
+    if (M === 'GET' && what === 'messages') return json(res, 200, { room: chat.room?.n ?? null, msgs: chat.msgs, seen: chatSeen[seenKey()] ?? 0 });
     if (M === 'POST' && what === 'watch') {   // a page shows the chat: looked at often while it does
       const was = Date.now() < chat.watchUntil; chat.watchUntil = Date.now() + CHAT_WATCH_MS;
       if (!was && chat.ready && !chat.busy) chatNext(0);
       return json(res, 200, { ok: true });
     }
     if (M === 'POST' && what === 'seen') {
-      const n = room(body.room).n, id = Number(body.id) || 0;
-      if (id > (chatSeen[seenKey(n)] ?? 0)) { chatSeen[seenKey(n)] = id; saveState(); chatSay(); }
+      there(); const id = Number(body.id) || 0;
+      if (id > (chatSeen[seenKey()] ?? 0)) { chatSeen[seenKey()] = id; saveState(); chatSay(); }
       return json(res, 200, { ok: true });
     }
     if (M === 'POST' && what === 'send') {
-      ready(); const n = room(body.room).n, text = String(body.body ?? '').replace(/\r\n?/g, '\n').replace(UNSAID, '').trim();
+      ready(); const n = there(), text = String(body.body ?? '').replace(/\r\n?/g, '\n').replace(UNSAID, '').trim();
       if (!text) throw chatErr(400, 'nothing to send');
       if (text.length > CHAT_BODY_MAX) throw chatErr(400, `a message is ${CHAT_BODY_MAX} characters at most`);
       const r = await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues/${n}/comments`, { body: text }));
       const m = { ...chatMsg(r.data), n };
       chatTell(chatTake([m]), true);
-      if (m.id > (chatSeen[seenKey(n)] ?? 0)) { chatSeen[seenKey(n)] = m.id; saveState(); }
+      if (m.id > (chatSeen[seenKey()] ?? 0)) { chatSeen[seenKey()] = m.id; saveState(); }
       chatSay();
       return json(res, 200, { msg: m });
     }
     if (M === 'POST' && what === 'delete') {   // yours, or anyone's for the admin
-      ready(); const id = Number(body.id), n = [...chat.msgs].find(([, l]) => l.some(m => m.id === id))?.[0], m = n && chat.msgs.get(n).find(x => x.id === id);
+      ready(); const id = Number(body.id), m = chat.msgs.find(x => x.id === id);
       if (!m) throw chatErr(404, 'no such message');
       if (m.who !== chat.me?.login && chat.role !== 'admin') throw chatErr(403, 'not your message');
       await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/issues/comments/${id}`));
-      chat.msgs.set(n, chat.msgs.get(n).filter(x => x.id !== id)); broadcast('chatmsgs', { n, add: [], gone: [id] }); chatSay();
+      chat.msgs = chat.msgs.filter(x => x.id !== id); broadcast('chatmsgs', { n: m.n, add: [], gone: [id] }); chatSay();
       return json(res, 200, { ok: true });
     }
     if (M === 'GET' && what === 'people') { admin(); return json(res, 200, await chatPeople()); }
@@ -3747,14 +3751,6 @@ async function chatRoute(req, res, what, url) {
     }
     if (M === 'POST' && what === 'remove') { admin(); const l = login(body.login); await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/collaborators/${l}`)); return json(res, 200, await chatPeople()); }
     if (M === 'POST' && what === 'cancel') { admin(); await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/invitations/${Number(body.id)}`)); return json(res, 200, await chatPeople()); }
-    if (M === 'POST' && what === 'room') {   // a new room
-      admin(); const title = String(body.title ?? '').replace(UNSAID, '').trim().slice(0, 80); if (!title) throw chatErr(400, 'a room needs a name');
-      await chatLabel(chat.repo);
-      const r = await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues`, { title, body: `A room of the chat, made on the board by @${chat.me.login}.`, labels: [ROOM_LABEL] }));
-      await chatRooms(chat.gen); chatSay();
-      return json(res, 200, { room: r.data.number });
-    }
-    if (M === 'POST' && what === 'close') { admin(); const n = room(body.room).n; await chatWrite(() => ghRest('PATCH', `/repos/${chat.repo}/issues/${n}`, { state: 'closed' })); await chatRooms(chat.gen); chatSay(); return json(res, 200, { ok: true }); }
     if (M === 'POST' && what === 'join') {
       const inv = chat.invites.find(i => i.id === Number(body.id)); if (!inv) throw chatErr(404, 'no such invitation — it may have expired');
       await ghRest('PATCH', `/user/repository_invitations/${inv.id}`);
@@ -3782,8 +3778,7 @@ async function chatRoute(req, res, what, url) {
       const repo = r.data.full_name;
       chatPlaces.cache = null;
       await ghRest('PUT', `/repos/${repo}/subscription`, { subscribed: false, ignored: true }); if (!chatQuiet.includes(repo)) chatQuiet.push(repo);
-      await chatLabel(repo);
-      await ghRest('POST', `/repos/${repo}/issues`, { title: 'General', body: 'The first room of the chat.', labels: [ROOM_LABEL] });
+      await chatStart(repo);
       const failed = setChatRepo(repo);
       return failed ? json(res, 500, { error: `made ${repo}, but not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());
     }
