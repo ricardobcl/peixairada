@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
-import { parseProfile, pkOfCode, timeOfPk, storyItems } from '../lib/instagram.mjs';
+import { parseProfile, parseStories, pkOfCode, timeOfPk, storyItems } from '../lib/instagram.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
@@ -71,6 +71,12 @@ test('lib/instagram.mjs: a post\'s time from its id, a profile\'s own posts and 
   assert.equal(p.posts[0].caption, 'Ementa "da" semana');
   const items = storyItems({ items: [{ pk: '9', taken_at: 1792270415, image_versions2: { candidates: [{ url: 'small', width: 320 }, { url: 'big', width: 1080 }] } }] }, 'casa');
   assert.deepEqual(items, [{ pk: '9', at: 1792270415_000, image: 'big', video: false, url: 'https://www.instagram.com/stories/casa/9/' }]);
+  // a logged-in story page: the account's stories in the page's own data, before View story — another account's reel not its
+  const reel = (user, pk, t) => ({ id: '1', user: { username: user }, items: [{ id: `${pk}_1`, pk, taken_at: t, media_type: 1, image_versions2: { candidates: [{ url: `https://cdn/${pk}.jpg`, width: 1080 }] } }] });
+  const page = `<script type="application/json">{"require":[["x",{"__bbox":{"result":{"data":{"xdt_api__v1__feed__reels_media":{"reels_media":[${JSON.stringify(reel('casa', '41', 1792270415))},${JSON.stringify(reel('other', '42', 1792270999))}]}}}}]]}</script>`
+    + `<script>{"xdt_api__v1__feed__reels_media":{"reels_media":[${JSON.stringify(reel('casa', '43', 1792271000))}]}}</script>`;
+  assert.deepEqual(parseStories(page, 'Casa').map(x => [x.pk, x.at, x.image]), [['43', 1792271000_000, 'https://cdn/43.jpg'], ['41', 1792270415_000, 'https://cdn/41.jpg']]);
+  assert.deepEqual(parseStories('<p>no stories</p>', 'casa'), []);
 });
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';

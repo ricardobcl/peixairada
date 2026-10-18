@@ -192,9 +192,8 @@ let peacockMoved = null;   // when Peacock's colours went into the setup (2026-1
 // The chat (2026-10-17; see chatTick): `owner/repo#room` -> the newest message shown there — after it, someone else's are
 // unread; and the chat repos whose GitHub mails were turned off (chatBoot), once each.
 let chatSeen = {}, chatQuiet = [];
-// Lunch (2026-10-18; see lunchTick): the day's menus and what you did about lunch — Going, In 15 min, back —, and the
-// Instagram ids of the setup's places (the stories' endpoint asks by id), kept across days.
-let lunchDay = { day: null, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 }, lunchIds = {};
+// Lunch (2026-10-18; see lunchTick): the day's menus and what you did about lunch — Going, In 15 min, back.
+let lunchDay = { day: null, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 };
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
 // the port — the agent behind the app's own, an `npm start` beside the agent — booted on the copy it had read at its
@@ -245,7 +244,6 @@ function loadState() {
     chatSeen = st.chatSeen && typeof st.chatSeen === 'object' ? st.chatSeen : {};
     chatQuiet = Array.isArray(st.chatQuiet) ? st.chatQuiet.filter(r => typeof r === 'string') : [];
     if (st.lunch && typeof st.lunch === 'object' && typeof st.lunch.day === 'string') lunchDay = { ...lunchDay, ...st.lunch, menus: st.lunch.menus && typeof st.lunch.menus === 'object' ? st.lunch.menus : {} };
-    lunchIds = st.lunchIds && typeof st.lunchIds === 'object' ? st.lunchIds : {};
   } catch (e) {
     if (e.code !== 'ENOENT') {
       const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -263,7 +261,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, lunch: lunchDay, lunchIds }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
@@ -3978,7 +3976,6 @@ async function lunchLook(places, today) {
   await pool(want, 3, async p => {
     const got = Object.entries(r.places || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1];
     if (!got || got.error) { menuOf(p).error = got?.error || r.error || 'Instagram did not answer'; return; }
-    if (got.id) lunchIds[p.instagram] = got.id;
     const m = menuOf(p); m.error = null;
     if (got.storyAt && dayKey(got.storyAt) === today) m.storyAt = got.storyAt;
     const posts = (got.posts || []).filter(x => x.image && Date.now() - x.at < LUNCH_RECENT_MS && (dayKey(x.at) === today || MENU_WORDS.test(x.caption) || /image of text|imagem de texto/i.test(x.alt)));
@@ -3990,15 +3987,17 @@ async function lunchLook(places, today) {
     saveState(); lunchSay();
   });
 }
-/** The stories, through the board's login: today's, newest first, until one is the menu. */
+/** The stories, through the board's login: of the places whose story went up today (or whose profile said nothing),
+ *  each one's story page — today's, newest first, until one is the menu. */
 async function lunchStories(places, today) {
-  const want = places.filter(p => p.instagram && lunchIds[p.instagram] && !hasMenu(p) && (menuOf(p).storyAt || !menuOf(p).error));
+  const want = places.filter(p => p.instagram && !hasMenu(p) && (menuOf(p).storyAt || menuOf(p).error));
   if (!lunchCfg()?.stories || !want.length || lunch.loginRun) return;
   lunch.busy = 'stories'; lunchSay();
-  const r = await igRun(['stories', '--profile', LUNCH_CHROME, ...want.map(p => lunchIds[p.instagram])], 3 * 60_000);
+  const r = await igRun(['stories', '--profile', LUNCH_CHROME, ...want.map(p => p.instagram)], 4 * 60_000);
   lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : r.loggedIn === false ? { state: 'out' } : lunch.login;
   if (!r.loggedIn) { if (r.error) lunch.error = `stories: ${r.error}`; return; }
   if (r.error) lunch.error = `stories: ${r.error}`;
+  for (const [h, why] of Object.entries(r.errors || {})) { const p = want.find(q => q.instagram.toLowerCase() === h.toLowerCase()); if (p && !menuOf(p).storyAt) menuOf(p).error = `its stories: ${why}`; }
   lunch.busy = 'reading'; lunchSay();
   await pool(want, 3, async p => {
     const items = (Object.entries(r.stories || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1] || []).filter(s => dayKey(s.at) === today);

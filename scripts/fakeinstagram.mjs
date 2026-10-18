@@ -14,7 +14,7 @@ const out = o => process.stdout.write(JSON.stringify(o) + '\n');
 if (cmd === 'look') out({ places: Object.fromEntries(names.map(h => [h, d.profiles?.[h] || { error: 'no such account' }])) });
 else if (cmd === 'stories') {
   if (!d.loggedIn) out({ loggedIn: false, stories: {} });
-  else { const ids = new Set(names), by = Object.entries(d.profiles || {}).filter(([, p]) => ids.has(String(p.id))).map(([h]) => h); out({ loggedIn: true, user: d.user || 'me', stories: Object.fromEntries(by.map(h => [h, d.stories?.[h] || []])) }); }
+  else out({ loggedIn: true, user: d.user || 'me', stories: Object.fromEntries(names.map(h => [h, d.stories?.[h] || []])) });
 }
 else if (cmd === 'login') { d.loggedIn = true; d.user ||= 'me'; if (file) writeFileSync(file, JSON.stringify(d)); out({ loggedIn: true, user: d.user }); }
 else if (cmd === 'check') out({ loggedIn: !!d.loggedIn, user: d.loggedIn ? d.user || 'me' : null });

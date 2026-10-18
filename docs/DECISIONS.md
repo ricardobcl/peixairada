@@ -29,9 +29,14 @@ M3; sources S1, S2, S3, S4. hotkey M should present the menu (M2)".
   and `og:image` a cropped square, so neither is used.
 * **Stories through a login of the board's own** (S2): a Chrome profile in the state folder, logged into in a window
   the board opens (it closes once the session cookie is there), with the mock keychain so that window and the headless
-  runs read the same cookies; the stories asked of the web client's own endpoint (`/api/v1/feed/reels_media/`) from a
-  page of instagram.com. **Not yet run against a real login** — the endpoint's shape is the one scrapers document.
-  A second account is advised: one that views stories on a schedule can be challenged.
+  runs read the same cookies. **Each account's story page, read as it comes** (`parseStories`): logged in, it carries
+  the stories in its own data (the viewer's preloaded query, `xdt_api__v1__feed__reels_media`) under a *View as you?
+  — they will be able to see that you viewed their story* gate, so reading the page before *View story* is pressed
+  records no view. Built first on the web client's endpoint, `/api/v1/feed/reels_media/`: from a logged-in page it
+  answered 500 every way asked (one id or several, with the CSRF token, the www-claim and the ASBD id), the first
+  night's "stories: Instagram answered 500". Only the places whose story went up today are asked (the profile's
+  `latest_reel_media`), or whose profile could not be read. A second account is advised: one that views stories on a
+  schedule can be challenged.
 * **Claude reads every picture** (S3): `claude -p` with the picture as a stream-json message and the answer held to a
   JSON schema — is it a lunch menu, for one day, a week or a month, each day's dishes as written, a closure. Haiku read
   a week's card exactly in 4 s for $0.0015; each picture is read once (`reads.json`, by its id). **A print-mode claude
@@ -52,8 +57,7 @@ M3; sources S1, S2, S3, S4. hotkey M should present the menu (M2)".
 * Not picked: the bait (R1), feeding time (R2), the grill (R3), the build-up (R5), the clock (R6), the day's band (R7),
   the snail (R9); the list (M1), the wall (M4), finding a dish (M5), posting to the channel (M6), favourites (M7),
   picture and text (M8); a screenshot dropped on the board (S5).
-* Open: S2 against a real login; a place that posts its menu as a video story (its still is read); Instagram changing
-  its pages or the endpoint.
+* Open: a place that posts its menu as a video story (its still is read); Instagram changing its pages.
 
 ## Decisions of 2026-10-17, late night — a chat between the boards
 
