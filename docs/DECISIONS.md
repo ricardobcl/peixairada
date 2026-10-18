@@ -23,6 +23,13 @@ settings. shouldn't it be pre-populate with the new org?"
 * **Invitations as Settings › Chat opens, at boot too**: the five seconds between asks were counted from the boot,
   which puts off only the ten-minute timer, so a board just restarted hid an invitation; now a second after the last
   ask (a 304 when nothing changed costs nothing).
+* **A repo GitHub does not show you** — then: "I still see this on settings: > peixairada/peixairada is not a repo you
+  can read — not made yet, or not shared with you". The organization's name typed as a repo under *A chat you are in*
+  had been saved as it was, and the pane showed the chat as on: the error, and *Leave…* — no box to make one. Now *Use*
+  asks GitHub first (`POST /api/chat/use`: a 404 is said and nothing saved), and a setup's repo GitHub does not show
+  you (`missing`: a hand edit, a repo deleted, access taken away) is Settings › Chat as with none, its repo on top
+  with *Forget it*; the bar's chat opens Settings rather than the panel. Leaving is a member's word only once GitHub
+  said you are one; before, it is *Stop*.
 
 ## Decisions of 2026-10-18 — lunch: a reminder, and the menus of the places you go
 

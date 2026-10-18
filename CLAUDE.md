@@ -218,8 +218,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `room` the rooms, their comments the messages, over REST with gh's token (`ghRest`, `GITHUB_API`): the newest comments by
   one URL and its ETag, a 304 free; `CHAT_FAST_MS` while a page watches, writes `CHAT_GAP_MS` apart
   (`chatWrite`), the repo's mails off at first read (`chatQuiet`); only its `admin` manages people and rooms. No repo:
-  invitations looked for every `CHAT_INVITES_MS`, never at boot; `chatPlaces` says where one could be (2026-10-18).
-  → `test/chat.test.mjs`.
+  invitations every `CHAT_INVITES_MS`, never at boot. 2026-10-18: `chatPlaces` says where one could be; one GitHub
+  hides is `missing`, Settings › Chat as with none; `use` asks GitHub first. → `test/chat.test.mjs`.
 * **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places with no menu,
   the profile logged out and the stories through the board's login (`lib/instagram.mjs`), the Slack channel at
   `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's `dishesOn`'s;
@@ -271,7 +271,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   its own from the old digit — never a transition after a forced layout (2026-10-13).
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** and `allow-discrete`: a closed dialog is
   still `display: block` for 140 ms with `open` already off — read `open`, never `display`. One that must vanish at
-  once sets `transition: none`. `note()` fades its popup (`.out`) before removing it.
+  once sets `transition: none`. `note()` fades (`.out`) first.
 * **An age is `data-at`, never words in markup**: `fillAges(root)` writes `rel()` after the list's render, after
   `pickRender` and on the 30 s tick. **A card's `.time` carries nothing at all** — `fillAges` sets it from the chat —
   so neither the clock nor a tool call changes a card's html (a *prompt* still rebuilds it). `dayOf(ts)` is the one
@@ -510,10 +510,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
   the bar. → `usage-bar.mjs`.
-* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from the bar's `#sbChat`): rooms as tabs, the
-  messages drawn by `chatMd` alone (no raw HTML or image; https/mailto links, to the browser), the admin's people
-  (`chatPeopleDraw`, from `prPeople`); Settings › Chat joins, makes (its box filled), leaves (`chatSetHtml`). **No chat
-  code reaches a drawer, a claude or `md()`** (test/chat.test.mjs). → `chat-room.mjs`.
+* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from the bar's `#sbChat`): the messages drawn
+  by `chatMd` alone (no raw HTML or image; https/mailto links, to the browser), the admin's people (`chatPeopleDraw`,
+  from `prPeople`); Settings › Chat joins, makes, leaves (`chatSetHtml`). **No chat code reaches a drawer, a claude or
+  `md()`**. → `chat-room.mjs`.
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.

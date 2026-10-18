@@ -114,7 +114,9 @@ server to run and a Mac that slept catches up when it wakes.
   PRs, most often first, and takes any GitHub login. Only the repo's admin invites, cancels an invitation or removes
   someone — GitHub refuses it from anyone else's board too.
 - **Joining**: an invitation shows as *invited* in the status bar and in Settings › Chat, with *Join*; GitHub mails it
-  too. A chat you're already in is listed under *Your chats*, with *Use*; any other by its repo.
+  too. A chat you're already in is listed under *Your chats*, with *Use*; any other by its repo, which the board checks
+  with GitHub first. A chat set up whose repo you can't read (not made yet, renamed, access gone) shows with *Forget
+  it* above the same choices.
 - **Using it**: *chat* in the status bar opens the panel (its count is what you haven't read); the rooms are its tabs,
   ⏎ sends, ⇧⏎ is a new line, Esc closes. Markdown works; images don't show and links open in your browser. A message
   from someone else while the room isn't in front of you is a notification. ＋ makes a room (the owner's); ··· has the
