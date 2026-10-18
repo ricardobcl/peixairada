@@ -106,14 +106,15 @@ An optional chat between boards — off until you turn it on. It lives in a **pr
 labelled `room` is a room, each comment a message, and every board reads it with its own `gh` login, so there is no
 server to run and a Mac that slept catches up when it wakes.
 
-- **Starting it** (whoever owns it): Settings › Chat › *A new chat*, `your-org/chat` → *Make it*. The board makes the
-  repo private, its `room` label and a first room, *General*. A free GitHub organization is the best home: there its
+- **Starting it** (whoever owns it): Settings › Chat › *A new chat* comes filled in — the newest GitHub organization
+  you own and `chat` (your account if you own none) — and *Make it* makes it. The board makes the repo private, its
+  `room` label and a first room, *General*. A free GitHub organization is the best home: there its
   members can be readers only — on a personal account every collaborator can also push and delete anyone's messages.
 - **Inviting**: the chat's **People** (the two heads in its panel, the owner's alone) suggests the people of your chats'
   PRs, most often first, and takes any GitHub login. Only the repo's admin invites, cancels an invitation or removes
   someone — GitHub refuses it from anyone else's board too.
 - **Joining**: an invitation shows as *invited* in the status bar and in Settings › Chat, with *Join*; GitHub mails it
-  too. A chat you're already in: its repo under *A chat you are in*.
+  too. A chat you're already in is listed under *Your chats*, with *Use*; any other by its repo.
 - **Using it**: *chat* in the status bar opens the panel (its count is what you haven't read); the rooms are its tabs,
   ⏎ sends, ⇧⏎ is a new line, Esc closes. Markdown works; images don't show and links open in your browser. A message
   from someone else while the room isn't in front of you is a notification. ＋ makes a room (the owner's); ··· has the

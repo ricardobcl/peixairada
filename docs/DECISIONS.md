@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-18. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-18, later — Settings › Chat says where a chat could be
+
+Ricardo, the organization made and the chat pushed, in front of Settings › Chat: "not sure what I should put on
+settings. shouldn't it be pre-populate with the new org?"
+
+* **The board asks GitHub, the code names nobody** (`chatPlaces`, `GET /api/chat/places`): the organizations you own
+  (your memberships with the admin role), newest first by the day each was made — the one made for the chat, most
+  likely —, your account, and the chats you can read already (a repo whose description starts *peixAIrada chat*: in
+  an organization you own, your account, or one you were let into). The code is public and every colleague's board
+  asks for its own, so no organization's name is written anywhere.
+* **What Settings › Chat shows with none set**: *Your chats*, a row each with *Use*; *A new chat* with its box filled —
+  `<the newest organization you own>/chat` (`chat-2` when taken), its line naming the organization, or your account
+  when you own none; another chat by its repo. What is typed outlives a redraw.
+* **Not an organization you are only a member of**: an employer's is no place for a chat you made, and listing its
+  repos is pages of calls. Kept a minute; a make, a join or a leave forgets it.
+* **Invitations as Settings › Chat opens, at boot too**: the five seconds between asks were counted from the boot,
+  which puts off only the ten-minute timer, so a board just restarted hid an invitation; now a second after the last
+  ask (a 304 when nothing changed costs nothing).
+
 ## Decisions of 2026-10-18 — lunch: a reminder, and the menus of the places you go
 
 Ricardo: "I want to make a fun reminder that it's lunch time - maybe using the fish on the status bar. I would also like
