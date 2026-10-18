@@ -58,6 +58,9 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="lunch"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#lunchSet .srow.lplace:not(.add)').length === 3 && /Logged in/.test(document.querySelector('#lunchLoginRow')?.textContent)`, { what: 'the pane, logged in' });
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#lunchStories').checked && document.querySelector('#lunchAt').value`), lunchCfg.at);
+  // a pane longer than the dialog scrolls, down to the login (2026-10-18: the dialog's row was its content's height, cut off)
+  out.scroll = await ctx.evaluate(`JSON.stringify((b => { const r = document.querySelector('#lunchLoginRow'); r.scrollIntoView({ block: 'center' }); const a = b.getBoundingClientRect(), c = r.getBoundingClientRect(); return { over: b.scrollHeight > b.clientHeight, top: b.scrollTop, seen: c.top >= a.top && c.bottom <= a.bottom, inDialog: b.getBoundingClientRect().bottom <= document.querySelector('#settings').getBoundingClientRect().bottom + 1 }; })(document.querySelector('#sbody')))`).then(JSON.parse);
+  ctx.assert.deepEqual([out.scroll.over, out.scroll.top > 0, out.scroll.seen, out.scroll.inDialog], [true, true, true, true], `the pane scrolls to the login: ${JSON.stringify(out.scroll)}`);
   await ctx.evaluate(`(r => { r.querySelector('.lname').value = 'Semente'; r.querySelector('.lig').value = '@semente.place'; r.querySelector('.lig').dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#lunchSet .srow.lplace.add'))`);
   await waitFor(async () => (await ctx.server.api('api/config')).body.lunch?.places?.length === 4, { what: 'the place added' });
   const cfg = (await ctx.server.api('api/config')).body.lunch;

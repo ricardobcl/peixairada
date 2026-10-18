@@ -96,7 +96,7 @@
      The class is still `pop`: every row inside is styled as `.pop …`. */
   #settings { width: min(820px, 94vw); height: min(600px, 88vh); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; background: var(--panel); color: var(--ink); font-size: var(--fs-sm);
     box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 90px rgba(0, 0, 0, .45); }
-  #settings[open] { display: grid; grid-template-columns: 200px minmax(0, 1fr); outline: none; }
+  #settings[open] { display: grid; grid-template-columns: 200px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); outline: none; }   /* its one row the dialog's height, not its content's: a long pane scrolls in .sbody (2026-10-18) */
   #settings .snav { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 14px 10px 12px; background: color-mix(in srgb, var(--ink) 3%, var(--panel)); border-right: 1px solid var(--line); }
   #settings .sfind { position: relative; display: block; margin-bottom: 10px; }
   #settings .sfind .ic { position: absolute; left: 9px; top: 8px; width: 13px; height: 13px; fill: var(--muted); pointer-events: none; }
