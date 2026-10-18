@@ -1,6 +1,6 @@
 // The chat (2026-10-17): a private repo of a fake GitHub (scripts/fakegithub.mjs) — rooms General and Random, ana a
-// member, and in General a message that tries HTML, an image and a link. What this checks: Settings › Chat takes a repo
-// you are in; the status bar has the chat, and its click the panel — the rooms as tabs, the messages with their faces,
+// member, and in General a message that tries HTML, an image and a link. What this checks: Settings › Chat lists the
+// chats you can read and fills a new one's box with the organization you own (2026-10-18), and takes one of the chats; the status bar has the chat, and its click the panel — the rooms as tabs, the messages with their faces,
 // markdown drawn but no HTML, no image and no link but https; another board's message comes in; one typed is sent; a
 // room behind another tab counts unread on its tab and the bar, and is read once shown; the admin's people view
 // suggests eva (her PR is in a chat), invites rui by his login, removes ana after asking; your own message deleted; Esc
@@ -12,13 +12,13 @@ import { tmpDir, waitFor } from '../../lib/testserver.mjs';
 import { startFakeGitHub } from '../fakegithub.mjs';
 import { makeFixture } from '../fixture.mjs';
 
-const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui', 'eva'], orgs: { 'acme-chat': ['me'] }, repos: {
+const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui', 'eva'], orgs: { 'acme-chat': ['me'], 'ana-chat': ['ana'] }, repos: {
   'acme-chat/room': { perms: { ana: 'pull' }, rooms: [
     { title: 'General', comments: [['ana', 'hello **there**'], ['me', 'hi ana'], ['ana', 'see https://example.com/notes and <img src=x onerror="window.pwned=1"> and ![pic](https://evil.example/p.png) and [a file](vscode://file/etc/hosts)']] },
     { title: 'Random', comments: [['ana', 'random thoughts']] },
   ] },
   'ana/talk': { perms: { me: 'pull' }, rooms: [{ title: 'Lobby', comments: [['ana', 'welcome']] }] },
-  'acme-chat/later': { perms: {}, rooms: [{ title: 'General' }] },
+  'ana-chat/later': { perms: {}, rooms: [{ title: 'General' }] },
 } });
 const dir = tmpDir('peix-chatroom-'), prs = join(dir, 'prs.json');
 const face = login => ({ login, __typename: 'User', avatarUrl: gh.user(login).avatar_url });
@@ -40,14 +40,22 @@ export default async function (ctx) {
     const rect = sel => ctx.evaluate(`(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`);
 
     ctx.assert.equal(await ctx.evaluate(`!!${q('#sbChat')}`), false, 'no chat, no invitation: nothing in the bar');
-    // Settings › Chat: a repo you are in
+    // Settings › Chat: the chats you can read, and a new one's box filled with the organization you own
     await ctx.cmd('Comma');
     await ctx.waitFor(`${q('#settings')}.open`, { what: 'the settings' });
     await ctx.evaluate(`${q('#settings .stabs [data-tab="chat"]')}.click()`);
-    await ctx.waitFor(`!!${q('#chatSet .schatrepo')}`, { what: 'Settings › Chat' });
+    await ctx.waitFor(`!!${q('#chatSet [data-repo]')}`, { what: 'Settings › Chat, with the chats found' });
+    out.off = await ctx.evaluate(`JSON.stringify({ found: [...document.querySelectorAll('#chatSet [data-repo]')].map(b => b.dataset.repo).sort(), fresh: ${q('#chatSet .schatnew')}.value,
+      where: ${q('#chatSet .schatnew')}.closest('.srow').querySelector('small').textContent })`).then(JSON.parse);
+    ctx.assert.deepEqual(out.off.found, ['acme-chat/room', 'ana/talk'], 'yours and the one you were let into; not one you cannot read');
+    ctx.assert.equal(out.off.fresh, 'acme-chat/chat');
+    ctx.assert.match(out.off.where, /in acme-chat, the organization you own/);
     await ctx.settle(); await ctx.shot('1-settings-off', await rect('#settings'));
-    await ctx.fill('#chatSet .schatrepo', 'acme-chat/room');
-    await ctx.evaluate(`${q('#chatSet [data-chat="use"]')}.click()`);
+    // what is typed outlives a redraw: away to another pane and back draws the pane again
+    await ctx.fill('#chatSet .schatnew', 'acme-chat/typed');
+    await ctx.evaluate(`document.activeElement.blur(); ${q('#settings .stabs [data-tab="general"]')}.click(); ${q('#settings .stabs [data-tab="chat"]')}.click()`);
+    await ctx.waitFor(`${q('#chatSet .schatnew')}?.value === 'acme-chat/typed' && ${q('#chatSet')}._drawn.includes('acme-chat/typed')`, { what: 'the typed repo kept through a redraw' });
+    await ctx.evaluate(`${q('#chatSet [data-repo="acme-chat/room"]')}.click()`);
     await ctx.waitFor(`/2 rooms · you are its admin/.test(${q('#chatSet')}.textContent)`, { what: 'the chat read, said in Settings' });
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/room');
     await ctx.evaluate(`${q('#settingsClose')}.click()`);
@@ -125,16 +133,16 @@ export default async function (ctx) {
 
     // no chat, an invitation: the bar says so, Settings joins it
     await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: null }) });
-    gh.invite('acme-chat/later', 'me', 'ana');
+    gh.invite('ana-chat/later', 'me', 'ana');
     await ctx.cmd('Comma');
     await ctx.evaluate(`${q('#settings .stabs [data-tab="chat"]')}.click()`);
     await ctx.waitFor(`!!${q('#chatSet [data-chat="join"]')}`, { what: 'the invitation in Settings' });
-    ctx.assert.match(await ctx.evaluate(`${q('#chatSet')}.textContent`), /ana invited you.*acme-chat\/later/);
+    ctx.assert.match(await ctx.evaluate(`${q('#chatSet')}.textContent`), /ana invited you.*ana-chat\/later/);
     ctx.assert.equal(await ctx.evaluate(`${q('#sbChat')}?.textContent`), 'invited');
     await ctx.settle(); await ctx.shot('4-invited', await rect('#settings'));
     await ctx.evaluate(`${q('#chatSet [data-chat="join"]')}.click()`);
     await ctx.waitFor(`/1 room · you are a member/.test(${q('#chatSet')}.textContent)`, { what: 'joined' });
-    ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/later');
+    ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'ana-chat/later');
     return out;
   } finally { await gh.close(); }
 }

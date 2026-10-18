@@ -3466,10 +3466,10 @@ async function switchGuard(s, branch) {
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const CHAT_FAST_MS = Number(process.env.CHAT_FAST_MS || 3000), CHAT_SLOW_MS = Number(process.env.CHAT_SLOW_MS || 20_000);
 const CHAT_GAP_MS = Number(process.env.CHAT_GAP_MS || 1000), CHAT_INVITES_MS = Number(process.env.CHAT_INVITES_MS || 10 * 60_000);
-const CHAT_ROOMS_MS = 60_000, CHAT_WATCH_MS = 30_000, CHAT_WINDOW = 100, CHAT_KEEP = 300, CHAT_BODY_MAX = 10_000, CHAT_SUGGEST = 12;
+const CHAT_ROOMS_MS = 60_000, CHAT_PLACES_MS = 60_000, CHAT_WATCH_MS = 30_000, CHAT_WINDOW = 100, CHAT_KEEP = 300, CHAT_BODY_MAX = 10_000, CHAT_SUGGEST = 12;
 const ROOM_LABEL = 'room', ROOM_MARK = 'peixAIrada chat';   // the label a room wears; the words a chat repo's description starts with
 const chat = { gen: 0, live: false, repo: null, me: null, role: null, org: false, rooms: [], msgs: new Map(), tags: new Map(), ready: false, error: null,
-  invites: [], invitesAt: 0, roomsAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
+  invites: [], invitesAt: 0, askedAt: 0, roomsAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
 const chatErr = (status, message) => Object.assign(new Error(message), { status });
 // Not the characters that let a line say other than it shows (2026-10-17): C0 controls but the newline and the tab, and
 // the bidirectional overrides and isolates.
@@ -3596,7 +3596,7 @@ async function chatBoot(gen) {
 }
 /** The invitations waiting for you to a chat's repo — one whose description says it is one, or the setup's. */
 async function chatInvites(gen) {
-  chat.invitesAt = Date.now();
+  chat.invitesAt = chat.askedAt = Date.now();
   const url = '/user/repository_invitations?per_page=100';
   const r = await ghRest('GET', url, undefined, chat.tags.get(url));
   if (gen !== chat.gen || r.status === 304) return;
@@ -3674,6 +3674,25 @@ async function chatPeople() {
   const skip = new Set([chat.me?.login, ...members.map(m => m.login), ...invites.map(i => i.login)].filter(Boolean).map(l => l.toLowerCase()));
   return { members, invites, suggest: chatSuggest(skip) };
 }
+/** Where a chat could be, for Settings › Chat with none set (2026-10-18): the organizations you own, newest first (the
+ *  one made for the chat, most likely), your account, and the chats you can read already — a repo whose description
+ *  says it is one, in an organization you own, your account, or one you were let into. Not the organizations you are
+ *  only a member of: an employer's repos are no chat's, and listing them is pages of calls. Kept CHAT_PLACES_MS; a make,
+ *  a join or a leave forgets it. */
+async function chatPlaces() {
+  const c = chatPlaces.cache; if (c && Date.now() - c.at < CHAT_PLACES_MS) return c.data;
+  const [me, mine] = await Promise.all([ghRest('GET', '/user'), ghRest('GET', '/user/memberships/orgs?state=active&per_page=100')]);
+  const owned = (mine.data || []).filter(m => m.role === 'admin' && m.organization?.login).map(m => m.organization.login);
+  const orgs = (await Promise.all(owned.map(o => ghRest('GET', `/orgs/${o}`).then(r => r.data, () => null)))).filter(Boolean)   // one SSO keeps from the token: left out
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))).map(o => ({ login: o.login, face: o.avatar_url || null }));
+  const lists = await Promise.all([...orgs.map(o => `/orgs/${o.login}/repos?type=all&per_page=100`), '/user/repos?affiliation=owner,collaborator&sort=created&direction=desc&per_page=100']
+    .map(u => ghRest('GET', u).then(r => r.data || [], () => [])));
+  const chats = new Map();
+  for (const r of lists.flat()) if (String(r.description || '').startsWith(ROOM_MARK) && r.full_name) chats.set(r.full_name.toLowerCase(), { repo: r.full_name, admin: !!r.permissions?.admin });
+  const data = { me: { login: me.data.login, face: me.data.avatar_url || null }, orgs, chats: [...chats.values()] };
+  chatPlaces.cache = { at: Date.now(), data };
+  return data;
+}
 /** /api/chat and what is under it — every route keyed as the board's others. The admin's are GitHub's to refuse too. */
 async function chatRoute(req, res, what, url) {
   const M = req.method, body = M === 'GET' ? {} : await jsonBody(req);
@@ -3683,7 +3702,7 @@ async function chatRoute(req, res, what, url) {
   const login = v => { const l = String(v ?? '').trim().replace(/^@/, ''); if (!ORG_NAME.test(l)) throw chatErr(400, `"${l}" is not a GitHub login`); return l; };
   try {
     if (M === 'GET' && !what) {
-      if (url.searchParams.has('invites') && Date.now() - chat.invitesAt > 5000) await chatInvites(chat.gen).catch(e => chatFailed(e));   // Settings › Chat open: asked now, not in ten minutes
+      if (url.searchParams.has('invites') && Date.now() - chat.askedAt > 1000) await chatInvites(chat.gen).catch(e => chatFailed(e));   // Settings › Chat open: asked now (a 304 when nothing changed), not in ten minutes — at boot too: invitesAt is the timer's, put off then
       return json(res, 200, chatSummary());
     }
     if (M === 'GET' && what === 'messages') { const n = Number(url.searchParams.get('room')); return json(res, 200, { room: n, msgs: chat.msgs.get(n) || [], seen: chatSeen[seenKey(n)] ?? 0 }); }
@@ -3717,6 +3736,7 @@ async function chatRoute(req, res, what, url) {
       return json(res, 200, { ok: true });
     }
     if (M === 'GET' && what === 'people') { admin(); return json(res, 200, await chatPeople()); }
+    if (M === 'GET' && what === 'places') return json(res, 200, await chatPlaces());
     if (M === 'POST' && what === 'invite') {   // Read on an organization's repo; a personal account's collaborators are all writers
       admin(); const u = (await ghRest('GET', `/users/${login(body.login)}`).catch(e => { throw e.status === 404 ? chatErr(404, `no GitHub user ${body.login}`) : e; })).data;
       if (u.type !== 'User') throw chatErr(400, `${u.login} is not a person's account`);
@@ -3736,11 +3756,13 @@ async function chatRoute(req, res, what, url) {
     if (M === 'POST' && what === 'join') {
       const inv = chat.invites.find(i => i.id === Number(body.id)); if (!inv) throw chatErr(404, 'no such invitation — it may have expired');
       await ghRest('PATCH', `/user/repository_invitations/${inv.id}`);
+      chatPlaces.cache = null;
       const failed = setChatRepo(inv.repo);
       return failed ? json(res, 500, { error: `joined, but not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());
     }
     if (M === 'POST' && what === 'leave') {   // a member leaves the repo; its admin only stops using it here
       if (setup.chat && chat.ready && chat.role !== 'admin') await ghRest('DELETE', `/repos/${chat.repo}/collaborators/${chat.me.login}`).catch(e => { if (e.status !== 404) throw e; });
+      chatPlaces.cache = null;
       const failed = setChatRepo(null);
       return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());
     }
@@ -3750,6 +3772,7 @@ async function chatRoute(req, res, what, url) {
       const r = await ghRest('POST', owner.toLowerCase() === me.login.toLowerCase() ? '/user/repos' : `/orgs/${owner}/repos`,
         { name, private: true, description: `${ROOM_MARK} — its rooms are the issues labelled room`, has_issues: true, has_wiki: false, has_projects: false, has_discussions: false });
       const repo = r.data.full_name;
+      chatPlaces.cache = null;
       await ghRest('PUT', `/repos/${repo}/subscription`, { subscribed: false, ignored: true }); if (!chatQuiet.includes(repo)) chatQuiet.push(repo);
       await chatLabel(repo);
       await ghRest('POST', `/repos/${repo}/issues`, { title: 'General', body: 'The first room of the chat.', labels: [ROOM_LABEL] });

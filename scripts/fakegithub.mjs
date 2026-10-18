@@ -8,7 +8,8 @@
 //   const gh = await startFakeGitHub({ users: ['me', 'ana'], orgs: { 'acme-chat': ['me'] },
 //     repos: { 'acme-chat/room': { perms: { me: 'admin', ana: 'pull' }, rooms: [{ title: 'General', comments: [['ana', 'hi']] }] } } });
 //   … env GITHUB_API = gh.url … gh.say('acme-chat/room', 1, 'ana', 'hello') … await gh.close();
-// A repo's `org` is its owner's being one of `orgs` (whose admins may make repos there); `description` starts with the
+// A repo's `org` is its owner's being one of `orgs` (whose admins may make repos there; each made a day after the one
+// before it) or of `members` (organizations where those logins are members only); `description` starts with the
 // board's mark unless given. `say`, `edit` and `drop` change it as another board would; `invite(repo, login, by)` too.
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -16,13 +17,15 @@ import { createServer } from 'node:http';
 const face = login => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="hsl(${[...login].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360} 55% 55%)"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif">${login[0].toUpperCase()}</text></svg>`)}`;
 const ROLE = { pull: 1, push: 2, admin: 3 }, ROLE_NAME = { pull: 'read', push: 'write', admin: 'admin' };
 
-export async function startFakeGitHub({ users = ['me'], orgs = {}, repos = {} } = {}) {
+export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {}, repos = {} } = {}) {
   const people = new Map(), all = new Map(), calls = [];
   let nextId = 5000, inviteId = 700, clock = Date.parse('2026-10-17T09:00:00Z');
   const at = () => new Date(clock += 1000).toISOString();
   const user = login => { if (!people.has(login)) people.set(login, { login, id: people.size + 1, type: /\[bot\]$/.test(login) ? 'Bot' : 'User', avatar_url: face(login) }); return people.get(login); };
   for (const u of users) user(u);
-  const isOrg = owner => Object.keys(orgs).some(o => o.toLowerCase() === owner.toLowerCase());
+  const orgNames = [...Object.keys(orgs), ...Object.keys(members)], orgName = owner => orgNames.find(o => o.toLowerCase() === owner.toLowerCase());
+  const isOrg = owner => !!orgName(owner);
+  const orgOut = o => ({ login: o, id: 9000 + orgNames.indexOf(o), avatar_url: face(o), created_at: new Date(Date.parse('2026-01-01T00:00:00Z') + orgNames.indexOf(o) * 86_400_000).toISOString() });
   function makeRepo(full, { perms = {}, description, rooms = [], private: priv = true } = {}) {
     const [owner, name] = full.split('/'), r = { owner, name, full_name: full, private: priv, description: description ?? 'peixAIrada chat — its rooms are the issues labelled room', perms: { ...perms }, invitations: [], issues: [], labels: new Set(), subs: {} };
     if (!isOrg(owner)) r.perms[owner] = 'admin';
@@ -36,7 +39,7 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, repos = {} } 
     return r;
   }
   for (const [full, spec] of Object.entries(repos)) makeRepo(full, spec);
-  const role = (r, login) => r.perms[login] || (isOrg(r.owner) && orgs[Object.keys(orgs).find(o => o.toLowerCase() === r.owner.toLowerCase())]?.includes(login) ? 'admin' : null);
+  const role = (r, login) => r.perms[login] || (orgs[orgName(r.owner) || '']?.includes(login) ? 'admin' : null);
   const may = (r, login, need) => (ROLE[role(r, login)] || 0) >= ROLE[need];
   const issueOut = (r, i) => ({ number: i.number, title: i.title, state: i.state, user: i.user, labels: i.labels.map(name => ({ name })), comments: i.comments.length, url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}` });
   const commentOut = (r, i, c) => ({ id: c.id, user: c.user, body: c.body, created_at: c.created_at, updated_at: c.updated_at, issue_url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}`, html_url: `https://github.com/${r.full_name}/issues/${i.number}#issuecomment-${c.id}` });
@@ -63,6 +66,13 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, repos = {} } 
       let m;
       if (M === 'GET' && path === '/user') return send(200, user(me));
       if (M === 'GET' && (m = path.match(/^\/users\/([^/]+)$/))) return people.has(m[1]) ? send(200, user(m[1])) : no(404, 'Not Found');
+      if (M === 'GET' && path === '/user/memberships/orgs') return send(200, orgNames.filter(o => orgs[o]?.includes(me) || members[o]?.includes(me)).map(o => ({ organization: orgOut(o), role: orgs[o]?.includes(me) ? 'admin' : 'member', state: 'active' })));
+      if (M === 'GET' && (m = path.match(/^\/orgs\/([^/]+)$/))) return isOrg(m[1]) ? send(200, orgOut(orgName(m[1]))) : no(404, 'Not Found');
+      if (M === 'GET' && (m = path.match(/^\/orgs\/([^/]+)\/repos$/))) return isOrg(m[1]) ? send(200, [...all.values()].filter(r => r.owner.toLowerCase() === m[1].toLowerCase() && may(r, me, 'pull')).map(r => repoOut(r, me))) : no(404, 'Not Found');
+      if (M === 'GET' && path === '/user/repos') {   // affiliation: owner, collaborator (let in by name), organization_member
+        const aff = (q.get('affiliation') || 'owner,collaborator,organization_member').split(','), inOrg = r => [orgs, members].some(x => x[orgName(r.owner) || '']?.includes(me));
+        return send(200, [...all.values()].filter(r => (aff.includes('owner') && r.owner === me) || (aff.includes('collaborator') && r.owner !== me && r.perms[me]) || (aff.includes('organization_member') && inOrg(r))).map(r => repoOut(r, me)));
+      }
       if (M === 'GET' && path === '/user/repository_invitations') return send(200, [...all.values()].flatMap(r => r.invitations.filter(v => v.login === me).map(v => inviteOut(r, v))));
       if (M === 'PATCH' && (m = path.match(/^\/user\/repository_invitations\/(\d+)$/))) {
         for (const r of all.values()) { const v = r.invitations.find(x => x.id === Number(m[1]) && x.login === me); if (v) { r.invitations.splice(r.invitations.indexOf(v), 1); r.perms[me] = v.permission; return send(204); } }

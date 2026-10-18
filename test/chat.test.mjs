@@ -2,8 +2,8 @@
 // messages. The setup's key (cleanSetup), and end to end against a fake GitHub: the owner's board reads the repo, turns
 // GitHub's mails off, counts unread, takes what another board said, edited and deleted, sends one write at a time, and
 // manages the people — the suggestions from its chats' PRs, an invitation, a cancel, a removal, a room; a member's board
-// finds the invitation, joins as a reader, may not manage, and leaves; the look that finds nothing new is a 304; and a
-// repo made from the board. The page's chat module is held to drawing words only: it reaches no drawer.
+// finds the invitation, joins as a reader, may not manage, and leaves; the look that finds nothing new is a 304; a
+// repo made from the board, and where one could be (the organizations you own, the chats you can read). The page's chat module is held to drawing words only: it reaches no drawer.
 import './env.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -153,6 +153,29 @@ test('a repo made from the board: private, marked, its label and first room, and
     const c = await waitFor(async () => { const x = (await srv.api('api/chat')).body; return x.ready && x; }, { what: 'the new chat read' });
     assert.deepEqual([c.repo, c.role, c.rooms.map(x => x.title)], ['acme-chat/talk', 'admin', ['General']]);
     assert.equal((await srv.post('api/chat/make', { repo: 'acme-chat/talk' })).status, 400, 'a name taken');
+  } finally { await srv.stop(); await gh.close(); }
+});
+
+test('where a chat could be: the organizations you own, newest first, your account, and the chats you can read', { timeout: 40_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana'], orgs: { 'old-org': ['me'], 'acme-chat': ['me'], elsewhere: ['ana'] }, members: { acme: ['me'] }, repos: {
+    'acme-chat/room': { rooms: [{ title: 'General' }] },
+    'acme-chat/site': { description: 'a site' },
+    'ana/talk': { perms: { me: 'pull' } },
+    'elsewhere/hush': { perms: {} },
+    'acme/app': { description: 'peixAIrada chat — but an employer\'s org: never listed' },
+  } });
+  const srv = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+  try {
+    const p = (await srv.api('api/chat/places')).body;
+    assert.deepEqual(p.me.login, 'me');
+    assert.deepEqual(p.orgs.map(o => o.login), ['acme-chat', 'old-org'], 'owned only, the newest first');
+    assert.deepEqual(p.chats.map(c => [c.repo, c.admin]).sort(), [['acme-chat/room', true], ['ana/talk', false]]);
+    assert.ok(!gh.calls.some(c => /\/orgs\/acme[/?\s]/.test(c)), 'nothing asked of an organization you are only a member of');
+    const asked = gh.calls.length;
+    await srv.api('api/chat/places');
+    assert.equal(gh.calls.length, asked, 'kept a minute');
+    assert.equal((await srv.post('api/chat/make', { repo: 'acme-chat/chat' })).status, 200);
+    assert.ok((await srv.api('api/chat/places')).body.chats.some(c => c.repo === 'acme-chat/chat'), 'a make forgets it');
   } finally { await srv.stop(); await gh.close(); }
 });
 

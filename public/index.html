@@ -10581,7 +10581,8 @@ const toolName = n => {
   // What comes in is someone else's words, drawn by chatMd alone — markdown with no raw HTML, no images, no attribute
   // but a link's address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's
   // files and pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs).
-  const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, naming: false, sending: false, watch: 0, seenSent: 0, err: null, setSure: false };
+  const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, naming: false, sending: false, watch: 0, seenSent: 0, err: null, setSure: false,
+    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null };
   $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
   const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => esc(t.text ?? ''), image: t => esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
   const CHAT_TAGS = ['p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
@@ -10779,18 +10780,28 @@ const toolName = n => {
     const n = new Notification(a.heading || 'Chat', { body: `${a.title}\n${a.snippet || ''}`, tag: `chat-${a.room}` });
     n.onclick = () => { window.focus(); chatOpen(a.room); n.close(); };
   }
-  // Settings › Chat: off — the invitations waiting, a repo you are in, or a new one; on — the repo, who you are in it,
-  // the people (the admin's), and leaving
+  // Settings › Chat: off — the invitations waiting, the chats you can read already, a new one (its box filled with the
+  // newest organization you own, 2026-10-18), a repo by name; on — the repo, who you are in it, the people (the
+  // admin's), and leaving. What is typed is chatUi's, so a redraw keeps it.
   function chatSetHtml() {
     const c = state.chat, text = 'type="text" spellcheck="false" autocomplete="off"';
     const group = (title, kw, rows, foot) => `<section class="sgrp" data-kw="${kw}">${title ? `<h6 class="sgh">${title}</h6>` : ''}<div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
     const row = (b, small, ctl) => `<div class="srow set"><span class="sl"><b>${b}</b><small>${small}</small></span>${ctl}</div>`;
     const invites = (c.invites || []).map(i => row(`${chatFace(i.face)} ${esc(i.by || 'Someone')} invited you`, `to the chat in ${esc(i.repo)}${i.expired ? ' — expired: ask for another' : ''}`, `<button type="button" class="btn" data-chat="join" data-id="${i.id}"${i.expired ? ' disabled' : ''}>Join</button>`)).join('');
-    if (!c.on) return (invites ? group('Invitations', 'chat invitation join invite', invites) : '')
-      + group(invites ? 'Or' : '', 'chat repo github room make new join use',
-        row('A chat you are in', 'Its repo, owner/name', `<span class="schat"><input ${text} class="schatrepo" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`)
-        + row('A new chat', 'A private repo, made in an org or your account — then invite people from the chat', `<span class="schat"><input ${text} class="schatnew" placeholder="your-org/chat" aria-label="The new chat's repo"><button type="button" class="btn" data-chat="make">Make it</button></span>`),
-        'Off until a repo is set. A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.');
+    if (!c.on) {
+      const p = chatUi.places, owner = p ? p.orgs[0]?.login || p.me.login : null, others = p ? p.orgs.slice(1).map(o => o.login) : [];
+      let name = 'chat'; for (let i = 2; p?.chats.some(x => x.repo.toLowerCase() === `${owner}/${name}`.toLowerCase()); i++) name = `chat-${i}`;
+      const where = chatUi.placesErr ? `<span class="serr">${esc(chatUi.placesErr)}</span>` : !p ? 'A private repo, in an organization you own or your account'
+        : p.orgs.length ? `A private repo in ${esc(owner)}, ${others.length ? `the newest organization you own (or ${esc(others.join(', '))})` : 'the organization you own'} — then invite people from the chat`
+        : 'A private repo in your account — in an organization of yours, people could join with Read alone';
+      const found = (p?.chats || []).map(x => row(esc(x.repo), x.admin ? 'A chat you made — you are its admin' : 'A chat you are in', `<button type="button" class="btn" data-chat="use" data-repo="${esc(x.repo)}">Use</button>`)).join('');
+      return (invites ? group('Invitations', 'chat invitation join invite', invites) : '')
+        + (found ? group('Your chats', 'chat repo github use', found) : '')
+        + group(invites || found ? 'Or' : '', 'chat repo github room make new join use',
+          row('A new chat', where, `<span class="schat"><input ${text} class="schatnew" value="${esc(chatUi.newRepo ?? (owner ? `${owner}/${name}` : ''))}" placeholder="your-org/chat" aria-label="The new chat's repo"><button type="button" class="btn" data-chat="make">Make it</button></span>`)
+          + row(found ? 'Another chat you are in' : 'A chat you are in', 'Its repo, owner/name', `<span class="schat"><input ${text} class="schatrepo" value="${esc(chatUi.useRepo ?? '')}" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`),
+          'Off until a repo is set. A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.');
+    }
     const admin = c.role === 'admin', state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${c.rooms.length} room${c.rooms.length === 1 ? '' : 's'} · ${admin ? 'you are its admin' : 'you are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}`;
     return group('', 'chat repo github room people invite leave',
       row(esc(c.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>')
@@ -10800,8 +10811,15 @@ const toolName = n => {
       'Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you.');
   }
   function renderChatSet(force = false) { drawSetup($('#chatSet'), chatSetHtml(), force); }
-  /** Settings › Chat in front: the invitations asked now, not in ten minutes. */
-  function loadChatSet() { api('GET', '/api/chat?invites=1').then(d => { state.chat = d; chatChanged(); }, () => {}); }
+  /** Settings › Chat in front: the invitations asked now, not in ten minutes — and with no chat, where one could be. */
+  function loadChatSet() { api('GET', '/api/chat?invites=1').then(d => { state.chat = d; chatChanged(); if (!d.on) chatPlacesLoad(); }, () => {}); }
+  function chatPlacesLoad() {
+    if (chatUi.placesAsk) return;
+    chatUi.placesAsk = true;
+    api('GET', '/api/chat/places').then(d => { chatUi.places = d; chatUi.placesErr = null; }, e => { chatUi.placesErr = e.message; })
+      .finally(() => { chatUi.placesAsk = false; renderChatSet(); });
+  }
+  $('#chatSet').addEventListener('input', e => { if (e.target.matches('.schatnew')) chatUi.newRepo = e.target.value; else if (e.target.matches('.schatrepo')) chatUi.useRepo = e.target.value; });
   $('#chatSet').addEventListener('focusout', e => { if ($('#chatSet')._stale && !$('#chatSet').contains(e.relatedTarget)) renderChatSet(); });
   $('#chatSet').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.schatrepo, .schatnew')) { e.preventDefault(); e.target.nextElementSibling.click(); } });
   $('#chatSet').addEventListener('click', e => {
@@ -10811,10 +10829,10 @@ const toolName = n => {
     if (act === 'open') { settingsOpen(false); chatOpen(); }
     else if (act === 'people') { settingsOpen(false); chatOpen(null, 'people'); }
     else if (act === 'join') { b.disabled = true; api('POST', '/api/chat/join', { id: Number(b.dataset.id) }).then(d => { set(d); note($('#chatSet'), 'Joined — the chat is in the status bar'); }, err => { b.disabled = false; note(b, err.message, true); }); }
-    else if (act === 'use') { const repo = box.value.trim(); if (repo) putConfig({ chat: { repo } }, box); }
-    else if (act === 'make') { const repo = box.value.trim(); if (!repo) return; b.disabled = true; b.textContent = 'Making it…'; api('POST', '/api/chat/make', { repo }).then(d => { set(d); note($('#chatSet'), `Made ${d.repo} — invite people from the chat`); }, err => { b.disabled = false; b.textContent = 'Make it'; note(b, err.message, true); }); }
+    else if (act === 'use') { const repo = b.dataset.repo || box.value.trim(); if (repo) putConfig({ chat: { repo } }, b.dataset.repo ? b : box).then(ok => { if (ok) chatUi.useRepo = null; }); }
+    else if (act === 'make') { const repo = box.value.trim(); if (!repo) return; b.disabled = true; b.textContent = 'Making it…'; api('POST', '/api/chat/make', { repo }).then(d => { chatUi.newRepo = chatUi.places = null; set(d); note($('#chatSet'), `Made ${d.repo} — invite people from the chat`); }, err => { b.disabled = false; b.textContent = 'Make it'; note(b, err.message, true); }); }
     else if (act === 'sure' || act === 'unsure') { chatUi.setSure = act === 'sure'; renderChatSet(true); $('#chatSet').querySelector(act === 'sure' ? '#chatSure .btn' : '[data-chat="sure"]')?.focus(); }
-    else if (act === 'leave') api('POST', '/api/chat/leave', {}).then(d => { chatUi.setSure = false; set(d); }, err => note(b, err.message, true));
+    else if (act === 'leave') api('POST', '/api/chat/leave', {}).then(d => { chatUi.setSure = false; chatUi.places = null; set(d); chatPlacesLoad(); }, err => note(b, err.message, true));
   });
 
   // ---- alerts --------------------------------------------------------------------------
