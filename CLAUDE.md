@@ -214,12 +214,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **A PR knows who had a hand in it** (2026-09-29): `avatarUrl(size: 48)` on each person (`WHO`); `prPeople` —
   author, reviewers, commenters, pushers, newest first, `PEOPLE_MAX`, no you nor bots; a PR the
   call could not see keeps its faces.
-* **The chat is a GitHub repo's issues** (2026-10-17; setup.chat `{repo}`, `chatTick`, `chatRoute`): the issues labelled
-  `room` the rooms, their comments the messages, over REST with gh's token (`ghRest`, `GITHUB_API`): the newest comments by
-  one URL and its ETag, a 304 free; `CHAT_FAST_MS` while a page watches, writes `CHAT_GAP_MS` apart
-  (`chatWrite`), the repo's mails off at first read (`chatQuiet`); only its `admin` manages people and rooms. No repo:
-  invitations every `CHAT_INVITES_MS`, never at boot. 2026-10-18: `chatPlaces` says where one could be; one GitHub
-  hides is `missing`, Settings › Chat as with none; `use` asks GitHub first. → `test/chat.test.mjs`.
+* **The chat is a GitHub repo's issue** (2026-10-17; setup.chat `{repo}`, `chatTick`, `chatRoute`): one, unnamed
+  (2026-10-18), the oldest open labelled `room` (`chatFind`; `chatStart`, the admin's), its comments the messages, by
+  REST with gh's token (`ghRest`, `GITHUB_API`): the newest comments by one URL and ETag, a 304 free; `CHAT_FAST_MS`
+  while a page watches, writes `CHAT_GAP_MS` apart (`chatWrite`), its mails off (`chatQuiet`); only its `admin` manages
+  people. No repo: invitations every `CHAT_INVITES_MS`, never at boot; `chatPlaces`, where one could be. One GitHub
+  hides is `missing`; `use` asks GitHub first. → `test/chat.test.mjs`.
 * **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places with no menu,
   the profile logged out and the stories through the board's login (`lib/instagram.mjs`), the Slack channel at
   `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's `dishesOn`'s;

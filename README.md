@@ -100,8 +100,8 @@ live terminal or what it's doing right now. The arrows walk it, ⏎ opens one.
 
 ## 🗨️ A chat with the people you share it with
 
-Optional, and off until you set it up: a private GitHub repo whose issues are the rooms and whose comments are the
-messages — no server to run, read with the `gh` login every board already has. Its owner invites and removes people
+Optional, and off until you set it up: one chat, in a private GitHub repo — an issue whose comments are the
+messages, so there is no server to run, read with the `gh` login every board already has. Its owner invites and removes people
 (the people of your PRs suggested); the others join from Settings › Chat. See [the guide](docs/GUIDE.md#chat-with-the-people-you-share-it-with).
 
 ## 🔒 Good to know

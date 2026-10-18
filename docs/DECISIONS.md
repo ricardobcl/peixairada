@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-18. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-18, later still — one chat, with no name
+
+Ricardo, the chat made and used (a room *braga* made beside *General*): "let's simplify and have only 1 main chat (not
+named)".
+
+* **The rooms go.** The chat is the repo's oldest open issue labelled `room` — the one the board makes with the repo
+  (*Chat*; *General* in a repo made before) —, its comments the messages. Another labelled issue is left be on GitHub
+  (its comments never count nor show); none open, the admin's board makes one, a member's says there is none yet. One
+  look a minute for which issue it is (the first page of one, with its ETag).
+* **The panel is the chat**: no tabs, no ＋, no name box; its title *Chat* (*People* in the people view), the box *Message*;
+  ··· the chat on GitHub, its settings, Stop or Leave. The summary is the issue, its unread and last word — no list.
+* **Found on the way**: the panel's × and a message's × (delete) were never drawn — stroke icons no rule of the panel
+  stroked; and what came while the panel was shut stayed unread after it opened (only a new message or a room's
+  switch marked it read).
+
 ## Decisions of 2026-10-18, later — Settings › Chat says where a chat could be
 
 Ricardo, the organization made and the chat pushed, in front of Settings › Chat: "not sure what I should put on
