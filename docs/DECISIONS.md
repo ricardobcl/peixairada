@@ -2,8 +2,34 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-18. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-19. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-19 — a chat whose worktree is gone resumes
+
+Ricardo, a screenshot of the resume bar on a chat in `.claude/worktrees/lunch` — *Could not resume this chat: … is not
+there — its repo is checked out, but not this folder in it (a worktree since removed?)* —: "we want to avoid this.
+resuming a chat should work, regardless of being in a worktree or not".
+
+* **The worktree is made again, at its path** (`folderBack`, `putBack`, `restoreTree`): the chat's folder is where its
+  transcript says, its absolute paths in its context, its project the repo's — putting the tree back keeps all of that,
+  and keeps the chat off the main checkout other sessions share. On the chat's last `gitBranch` as the checkout has it
+  (lunch's was still there, merged into main six commits back), else origin's as last fetched — no network on a
+  resume —, else a new branch of that name from whichever main is ahead: a branch deleted once its work landed, on a
+  local main origin has not got yet (this repo's case — `origin/main` would lack the chat's own work). A detached chat
+  is detached there. A path deleted by hand, which git still holds with its branch, is taken back with `--force` for
+  that path alone, the branch checked first. Recorded in the state file's `worktrees`, so the sweep removes it as any
+  tree it made; one with nothing done in it stays.
+* **A branch out in another tree is that tree**: the chat resumes where its branch is checked out — the folder
+  switched to it, say — rather than a second tree git would refuse or a detached copy.
+* **Any other folder gone inside a checkout resumes in the nearest folder left** — and a worktree that cannot be made
+  in the repo's own folder, with why. Checked against Claude Code 2.1.303: `claude --resume <id>` scans every project
+  folder for `<id>.jsonl` when the one of the folder it starts in has none (a made-up id says *No conversation found*;
+  the real one went past the lookup), stays where it was started when the folder recorded is gone, and writes on in the
+  transcript it found. The fake claude does the same now.
+* **Only a chat's own spawns** (its resume, its zsh): a new chat in a folder that is not there is still refused —
+  nothing says which branch. **The bar says it first**: *Its worktree, … is gone — resuming makes it again, on lunch*,
+  or the folder it would start in; once started, a note under the header says where it is.
 
 ## Decisions of 2026-10-18, later still — one chat, with no name
 

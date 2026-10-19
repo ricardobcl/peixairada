@@ -71,7 +71,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakegithub.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs`, `fakeinstagram.mjs`, `fakereader.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed`, lunch's Instagram and reader — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakegithub.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs`, `fakeinstagram.mjs`, `fakereader.mjs` | `gh`, Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed`, lunch's Instagram and reader — what every test server runs instead of the real ones; each file's head says its knobs |
 | `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP, `img2webp`) → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -92,7 +92,6 @@ npm run map                         # rewrite the section maps at the top of ser
 | Jira tickets named | `KEY-123` in prose (inline code counts, fenced not), `…/browse/KEY-123` links and the chat's `gitBranch` — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is the site's** (`jiraProjects`, hourly; none before they are known, an answer from before a reset dropped — `jiraGen`) and **shown only once Jira answered** (`shownTickets`); one Jira lacks is let go (`noTicket`). `bulkfetch` (≤ 100 a call; `myself` for whose), Basic auth from setup.jira `{site, email}` and a token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (written by `security -i` from stdin); polled by `prEvery` like PRs; a failure as a whole pauses, 1 min doubling to 30. → `test/jira.test.mjs` |
 | Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). → `test/usage.test.mjs`, Findings: *plan usage* |
-| Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`) — only where Claude Code trusts the folder or one above (2026-10-16, `claudeTrusts`, `CLAUDE_JSON`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder, and the chat's live zsh holders with it, and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
@@ -397,8 +396,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   harness (`.click()` works on a closed menu). `#hmenu` is a **non-modal `<dialog>`**, static in the markup:
   `postPane` lowers the pane while it is up, Esc closes it, `runHotkey` closes it rather than let it swallow the key.
   Toggles leave it up (the click-outside test goes by `composedPath()`); actions close it. `>_` comes back into the
-  row while armed or failed; a note about a folded button anchors at ··· (`seen()`). → `head-menu.mjs`. The awake
-  switches are the status bar's (`#sbAwake`, `#sbLid`). → `keep-awake.mjs`.
+  row while armed or failed; a note about a folded button anchors at ··· (`seen()`). → `head-menu.mjs`.
 * **A PR's CI is said in the chat header only** (2026-10-09): `statusCheckRollup` in `PR_FIELDS` → `prChecks` →
   `checks` (pass · fail · pending) → `.ck` on `.hpr`, for open and draft PRs. **A change is seen** (`prMoments`, keyed
   by `data-url` and place, `prShown`): a first sight plays nothing. → `pr-checks.mjs`.
@@ -640,10 +638,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **A chat's folder not checked out is cloned before the chat starts** (2026-10-09): `spawnTerm` refuses a missing
   folder (or one being cloned) with `clone` — **`cloneFor(cwd)`: under a root with an org, `<root>/<name>[/…]` is
   `<org>/<name>`**, null under no such root or inside a repo that is there. The page's `withCheckout(key, spawn)`
-  clones and asks again, for a resume (`openTerminalFor`), ⌥⌘T and a new chat. What it draws reads `state.clones`
-  (`cloneShown`: the resume bar's progress `.cloning`/`--clone-p`, a new chat's `.clonebox`, the status bar's `.cl`).
-  A chat with no claude says `folderMissing` and `cloneRef` (not `gone`).
-  → `clone-folder.mjs`.
+  clones and asks again (a resume, ⌥⌘T, a new chat); its draws read `state.clones` (`cloneShown`: `.cloning`,
+  `.clonebox`, `.cl`). A chat with no claude says `folderMissing` and `cloneRef`. → `clone-folder.mjs`.
+* **A chat's worktree gone is made again by its resume** (2026-10-19; `folderBack` → `back`, `putBack`, `restoreTree`):
+  at its path, the repo there, on the chat's `gitBranch` — here, else origin's, else anew from the main ahead —; a
+  branch out in another tree is that tree. Any other folder gone in a checkout starts in the nearest one left (Claude
+  Code finds a chat by id). → `worktrees.test.mjs`, `folders.test.mjs`, `resume-worktree.mjs`.
 * **The settings are one modal dialog** (`#settings`): ⌘, (`CMDKEYS.Comma`; in the app the menu's *Settings…* asks
   `peixKey`), the header's ··· row (`#settingsBtn`) and the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
   rewrites the header). **A sidebar of panes and a search box** (2026-10-16; `settingsTab`, `prefs.settingsPane`;
@@ -1001,11 +1001,11 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   first, `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/` (and `KEY=`). Drive
   Chrome over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
-  WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView` (its head says the knobs);
+  WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView`;
   `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. A body asks the
   shell for `layers()` (the compositor's tree), `footprint()` (the web process's memory) and `say(line)`;
   `WK_BORDERS` / `WK_COUNTERS` draw layer borders and repaint counts into the shot (2026-10-13). The window is opaque and on screen by one pixel (off a
-  screen WebKit runs no frames); a locked screen or a sleeping display hides it, and it says so; a mirror of the main
+  screen WebKit runs no frames); a locked screen or a sleeping display hides it; a mirror of the main
   screen is not another screen.
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board with the lights on, the
   web process's CPU (`WK_PIDFILE`) at rest, with the pointer moving, scrolling and on home, a chat opened from its
@@ -1021,11 +1021,11 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
-  emulation on**, and cleans up everything on any way out, all waiting on one cleanup (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
+  emulation on**, and cleans up on any way out (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
   (`#log[data-sid]`). **A rectangle is read after `ctx.settle()`**: cards slide after they arrive or move, dialogs rise;
-  `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`
-  (`server.api/post/…`, `fixture.chats`, `assert` too). `ls scripts/scenarios/`: one file per feature, as the bullets name them.
+  `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`.
+  `ls scripts/scenarios/`: one file per feature, as the bullets name them.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it

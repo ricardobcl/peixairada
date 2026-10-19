@@ -57,7 +57,7 @@ Each is a tab of the chat; the column splits in two halves when there's more tha
 
 | Key | Beside the chat |
 |---|---|
-| ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes on a click (or ⌥⌘C), cloning its repo first when its folder isn't checked out. It survives the board's restarts. |
+| ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes on a click (or ⌥⌘C), cloning its repo first when its folder isn't checked out, and making its worktree again when that was removed (on the chat's branch). It survives the board's restarts. |
 | ⌥⌘T · ⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own — ⌘T opens another, or on a web page a blank tab, its address ready to type into. ⌘W closes the tab you are in. |
 | ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab (a chip in the header opens it too); its state, its CI and whose move it is under the header. With several, ⌥⌘G again from one picks another. |
 | ⌥⌘E · ⌥⌘V | 🧩 **VS Code Web** on the chat's folder — or ⌥⌘V, the folder in VS Code itself. A file path clicked in a chat opens at its line in VS Code or Zed, in its own window (Settings › General › Open files in). |
