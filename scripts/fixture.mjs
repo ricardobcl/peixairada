@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A ~/.claude look-alike for tests: projects/<slug>/<id>.jsonl per chat, an empty sessions/ (nothing alive).
 //   node scripts/fixture.mjs <dir>        # the default fixture (a two-PR chat, a plain one), prints its chats as JSON
-// Or from a script: makeFixture(dir, [{ id?, cwd, prompt, reply, title?, at?, model?, lines?, live? }]) → { dir, chats: […] }.
+// Or from a script: makeFixture(dir, [{ id?, cwd, prompt, reply, title?, at?, model?, branch?, lines?, live? }]) → { dir, chats: […] }.
 // The lines carry what server.mjs reads (fold()): user/assistant messages with text blocks, ai-title, pr-link —
 // and, through `lines` (toolLines / taskNoteLine below), the tool calls and task notifications a chat mid-work has.
 // `live: { pid, startedAt }` writes the registry file that makes a chat *alive*: the states that only exist while a
@@ -20,10 +20,10 @@ export const slugOf = cwd => cwd.replace(/[/.]/g, '-');
 export const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return d; };
 
 /** The JSONL lines of one chat: prompt, reply (end_turn), optionally an ai-title. `at` is the reply's time. */
-export function chatLines({ id, cwd, prompt, reply, title = null, at = yesterday(), entrypoint = 'cli', model = 'fixture-1' }) {
+export function chatLines({ id, cwd, prompt, reply, title = null, at = yesterday(), entrypoint = 'cli', model = 'fixture-1', branch = 'main' }) {
   const ts = ms => new Date(at.getTime() + ms).toISOString();
   const u = randomUUID(), a = randomUUID();
-  const base = { isSidechain: false, userType: 'external', entrypoint, cwd, sessionId: id, version: 'fixture', gitBranch: 'main' };
+  const base = { isSidechain: false, userType: 'external', entrypoint, cwd, sessionId: id, version: 'fixture', gitBranch: branch };
   const lines = [
     { ...base, parentUuid: null, type: 'user', message: { role: 'user', content: [{ type: 'text', text: prompt }] }, uuid: u, timestamp: ts(-60_000) },
     { ...base, parentUuid: u, type: 'assistant', message: { model, id: 'msg_' + a.slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text: reply }], stop_reason: 'end_turn' }, uuid: a, timestamp: ts(0) },

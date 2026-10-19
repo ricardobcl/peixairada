@@ -9,7 +9,7 @@
 // FAKE_TUI=fullscreen draws as `tui: fullscreen` does instead (see paint). It refuses to run without CLAUDE_DIR set to
 // something other than ~/.claude: it must never write the real one.
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { homedir, userInfo } from 'node:os';
 import { randomUUID } from 'node:crypto';
@@ -30,6 +30,12 @@ const slug = cwd.replace(/[/.]/g, '-');
 const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
 const sessDir = join(CLAUDE_DIR, 'sessions'), regFile = join(sessDir, `${process.pid}.json`);
 mkdirSync(projDir, { recursive: true }); mkdirSync(sessDir, { recursive: true });
+// resumed in another folder than its own (2026-10-19, a chat whose folder is gone): Claude Code finds the transcript by
+// its id in whichever project folder has it, one alone, and writes on there
+if (arg('--resume') && !existsSync(file)) {
+  const found = readdirSync(join(CLAUDE_DIR, 'projects')).map(d => join(CLAUDE_DIR, 'projects', d, `${sessionId}.jsonl`)).filter(f => existsSync(f));
+  if (found.length === 1) file = found[0];
+}
 const now = () => new Date().toISOString();
 let parent = null;
 const line = o => { appendFileSync(file, JSON.stringify(o) + '\n'); };

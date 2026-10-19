@@ -5996,7 +5996,7 @@ const toolName = n => {
   async function startShell(s, fresh) {
     if (!s.cwd) { note($('#shead'), 'No folder known for this chat', true); return null; }
     let t;
-    try { t = (await withCheckout(`shell:${s.id}`, () => api('POST', `/api/sessions/${s.id}/shell`, { ...termSize(), fresh }), c => note($('#shead'), `Its folder is not checked out — cloning ${c.ref} first, then the ${shName()}`))).terminal; }
+    try { const r = await withCheckout(`shell:${s.id}`, () => api('POST', `/api/sessions/${s.id}/shell`, { ...termSize(), fresh }), c => note($('#shead'), `Its folder is not checked out — cloning ${c.ref} first, then the ${shName()}`)); t = r.terminal; saidBack(r.back); }
     catch (e) { note($('#shead'), e.message, true); return null; }
     const now = state.sessions.get(s.id) || s;   // the SSE update says the same a moment later — or said it already
     if (!(now.shells || []).some(x => x.id === t.id)) now.shells = [...(now.shells || []), t];
@@ -10024,9 +10024,13 @@ const toolName = n => {
   }
   async function openTerminalFor(s) {
     if (termLive(s)) { syncTerm(s); renderHead(s); return; }
-    try { showTerminal(s, (await withCheckout(s.id, () => api('POST', `/api/sessions/${s.id}/terminal`, termSize()))).terminal); } catch (e) { drawer.err = e.message; }
+    try { const r = await withCheckout(s.id, () => api('POST', `/api/sessions/${s.id}/terminal`, termSize())); showTerminal(s, r.terminal); saidBack(r.back); } catch (e) { drawer.err = e.message; }
     renderHead(s);
   }
+  /** Where a chat whose folder was gone started (2026-10-19; the server's `back`): its worktree made again, the tree
+   *  its branch is out in, or the nearest folder left and why — said once, by the header. */
+  const saidBack = b => b && note($('#shead'), b.made ? `Its worktree is back: ${homePath(b.tree)}${b.branch ? ` on ${b.branch}` : ', detached'}`
+    : b.tree ? `${b.branch} is out in ${homePath(b.tree)} — started there` : `Its folder is gone — started in ${homePath(b.cwd)}${b.why ? ` (${b.why})` : ''}`, !!b.why);
   /** A drawer the server just started for `s`, attached in the half that holds its chat tab — if `s` is still the open
    *  chat (2026-10-03: attached into whatever half had the keys, under whichever chat was open by then). Otherwise the
    *  chat's summary carries it, and opening the chat again shows it. */
@@ -10173,11 +10177,14 @@ const toolName = n => {
     const more = err ? esc(err)
       : !s.cwd ? 'No folder is known for it, so it cannot be resumed from here.'
       : s.folderMissing && s.cloneRef ? `Its folder, ${where}, is not checked out — resuming clones <b>${esc(s.cloneRef)}</b> there first.`
+      // a worktree gone from a repo that is there is made again; a folder gone inside a checkout starts in what is left (2026-10-19)
+      : s.folderMissing && s.back?.tree ? `Its worktree, ${where}, is gone — resuming makes it again${s.gitBranch && s.gitBranch !== 'HEAD' ? `, on <code>${esc(s.gitBranch)}</code>` : ''}.`
+      : s.folderMissing && s.back?.near ? `Its folder, ${where}, is gone — resuming starts it in <code>${esc(homePath(s.back.near))}</code>, the nearest folder left.`
       : s.folderMissing ? `Its folder, ${where}, is not there, and no folder of repos with an org holds it to clone from. Put it back, then resume.`
       : inVsCode(s) ? 'Last used in VS Code. Resuming moves it here; the tab there will not follow.' : '';
     setHtml(box, `<span class="ric">${ICON.term}</span>
       <span class="t"><b>${err ? 'Could not resume this chat' : 'Claude isn’t running in this chat'}</b>${more ? `<span>${more}</span>` : ''}</span>
-      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
+      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     const go = box.querySelector('#resumeGo'); if (go) go.onclick = () => termAction(state.sessions.get(s.id) || s);
   }
   // ---- attachments: files dropped on the board, images pasted --------------------------------

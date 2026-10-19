@@ -691,8 +691,9 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // that checkout — while its claude runs, and not once you said you know
     drift: (d => d && { from: d.from, to: d.to, at: d.at, peers: s.peers || [] })(driftOf(s)), headNow: s.alive ? s.headNow : null,
     // its folder not there, and the repo a clone would bring it back from (2026-10-09; the resume bar says so before
-    // the resume clones it) — asked of a chat with no claude only: one running has its folder
-    ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null } : {})
+    // the resume clones it), or the worktree a resume makes again, the folder it starts in (2026-10-19, `back`) — asked
+    // of a chat with no claude only: one running has its folder
+    ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null, back: folderBack(s.cwd) } : {})
   };
 }
 
@@ -3321,12 +3322,53 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
   let path = join(dir, slug); for (let i = 2; existsSync(path); i++) path = join(dir, `${slug}-${i}`);
   try { await gitOut(main, ['worktree', 'add', '--quiet', ...start.map(a => a ?? path)]); }
   catch (e) { return fail(e, 'git worktree add failed'); }
-  // out of the repo's own status, where no ignore file says so already: the repo's info/exclude, never a tracked file
-  if (await gitOr(main, ['check-ignore', '-q', path], false) === false) try { appendFileSync(join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'), '\n/.claude/worktrees/\n'); } catch {}
-  worktreesMade[path] = { repo: main, branch: detach ? null : branch, pr: want?.url ?? null, ...want && { prState: prStatus.get(want.url)?.state ?? null }, head: await gitOr(path, ['rev-parse', 'HEAD']), at: new Date().toISOString() };
-  saveState();
+  await treeMade(main, path, { branch: detach ? null : branch, pr: want?.url ?? null, ...want && { prState: prStatus.get(want.url)?.state ?? null } });
   console.log(`[peixairada] worktree ${tildePath(path)} made for ${detach ? `PR #${want.n}, detached` : branch}`);
   return { path, branch: detach ? null : branch, made: true, detached: !!detach, here: false };
+}
+/** A tree just added: out of the repo's own status where no ignore file says so already (the repo's info/exclude, never
+ *  a tracked file), and in the state file's `worktrees` — the only trees the sweep ever removes. */
+async function treeMade(main, path, rec) {
+  if (await gitOr(main, ['check-ignore', '-q', path], false) === false) try { appendFileSync(join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'), '\n/.claude/worktrees/\n'); } catch {}
+  worktreesMade[path] = { repo: main, ...rec, head: await gitOr(path, ['rev-parse', 'HEAD']), at: new Date().toISOString() };
+  saveState();
+}
+/** A chat's worktree made again at its own path, for its resume (2026-10-19; folderBack's `tree`) — removed by the sweep
+ *  once its PR merged, by worktree.sh done, by hand. On the chat's branch as this checkout has it, else origin's as last
+ *  fetched (no network), else made anew from the default branch — this checkout's or origin's, whichever is ahead: a
+ *  branch deleted once its work landed, on a main here that origin has not got yet —; detached there for a chat that
+ *  was. Its branch out in another tree is that tree: the chat resumes there. Its own path deleted by hand, which git
+ *  still holds, is taken back (`--force`, for that path: the branch is checked first). Made by the board, the sweep
+ *  removes it as any other. */
+async function restoreTree(path, said) {
+  const repo = path.slice(0, path.lastIndexOf('/.claude/worktrees/'));
+  const w = await worktreesFor(repo); if (w.error) return { code: 409, error: w.error };
+  if (inClaudeDir(path)) return { code: 409, error: `${tildePath(path)} is under ${tildePath(CLAUDE_DIR)}, Claude Code's — the board writes nothing there` };
+  const branch = said && said !== 'HEAD' && await branchNameOk(w.main, said) ? said : null;
+  const out = branch && w.worktrees.find(t => t.branch === branch);
+  if (out) return { path: out.path, branch, made: false };
+  let real = path; try { real = join(realpathSync(repo), relative(repo, path)); } catch {}   // as git names its trees
+  const mine = w.gone.find(t => t.path === real || t.path === path), held = branch && w.gone.find(t => t.branch === branch && t !== mine);
+  if (held) return { code: 409, error: goneSay(branch, { gone: [held] }) };
+  const key = `${w.main}\0${branch || real}`;   // ensureWorktree's for a branch: one making of it at a time
+  if (wtAsking.has(key)) return wtAsking.get(key);
+  const p = (async () => {
+    const has = ref => gitOr(w.main, ['rev-parse', '--verify', '--quiet', ref]);
+    let start;
+    if (branch && await has(`refs/heads/${branch}`)) start = [real, branch];
+    else if (branch && await has(`refs/remotes/origin/${branch}`)) start = ['--track', '-b', branch, real, `refs/remotes/origin/${branch}`];
+    else {
+      const here = `refs/heads/${w.dflt}`, there = `refs/remotes/origin/${w.dflt}`, [h, t] = await Promise.all([has(here), has(there)]);
+      const from = h && (!t || await gitOr(w.main, ['merge-base', '--is-ancestor', there, here], false) !== false) ? here : t ? there : 'HEAD';   // full refs: never a branch of that name
+      start = branch ? ['--no-track', '-b', branch, real, from] : ['--detach', real, from];
+    }
+    try { await gitOut(w.main, ['worktree', 'add', '--quiet', ...mine ? ['--force'] : [], ...start]); }
+    catch (e) { return { code: 500, error: `git worktree add failed: ${String(e.stderr || e.message).trim().split('\n')[0]}` }; }
+    await treeMade(w.main, real, { branch, pr: null });
+    return { path: real, branch, made: true };
+  })().finally(() => wtAsking.delete(key));
+  wtAsking.set(key, p);
+  return p;
 }
 /** A worktree's node_modules linked to its main tree's — only when the lockfiles are the same (worktreesFor's `same`). */
 async function linkModules(path) {
@@ -4875,6 +4917,29 @@ function cloneFor(cwd) {
   }
   return null;
 }
+/** Where a chat whose folder is gone resumes when no clone brings it back (2026-10-19): a worktree inside a repo that is
+ *  there — `<repo>/.claude/worktrees/<name>`, the board's, worktree.sh's and Claude Code's --worktree's — is made again
+ *  at its path (`tree`, restoreTree); any other folder inside a checkout that is there resumes in the nearest folder of
+ *  it left (`near`) — Claude Code finds a chat by its id whichever folder it starts in, and writes on in its transcript.
+ *  Null for a folder that is there, and one in no checkout that is. */
+function folderBack(cwd) {
+  if (!cwd?.startsWith('/') || existsSync(cwd)) return null;
+  const m = WT_IN.exec(cwd), repo = m && cwd.slice(0, m.index), tree = m && `${repo}/.claude/worktrees/${m[1]}`;
+  if (m && existsSync(join(repo, '.git')) && !existsSync(tree)) return { tree, repo };
+  let d = dirname(cwd); while (d !== '/' && !existsSync(d)) d = dirname(d);
+  return gitTopOf(d) ? { near: d } : null;
+}
+/** A chat's folder gone from a repo that is there, put back for its resume or its zsh (2026-10-19): its worktree made
+ *  again, and the folder it was in inside it (else the nearest one of it there); a worktree that cannot be made is the
+ *  repo's own folder, and why. `cwd` is where the chat starts; null where folderBack has nowhere. */
+async function putBack(cwd, s) {
+  const b = folderBack(cwd); if (!b) return null;
+  if (!b.tree) return { cwd: b.near };
+  const r = await restoreTree(b.tree, s?.gitBranch);
+  if (!r.path) return { cwd: b.repo, why: r.error };
+  let at = join(r.path, relative(b.tree, cwd)); while (at !== r.path && !existsSync(at)) at = dirname(at);
+  return { cwd: at, tree: r.path, branch: r.branch, made: r.made };
+}
 // The clones under way, by the folder each is cloning into (2026-10-09): a second ask for one joins it — the folder is
 // there from git's first moment, and was "already there" to a second ask, which started claude in half a checkout —
 // and git's own progress (`--progress`: it writes none into a pipe otherwise) goes out as `clone` events, the page's
@@ -4951,7 +5016,16 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
   if (cwd === SCRATCH_DIR) try { mkdirSync(SCRATCH_DIR, { recursive: true }); } catch {}   // the no-folder chats' own: made on the first, and again after it was deleted
-  // not there — or being cloned: the page clones it (`clone`, the repo it was a checkout of) and asks again (2026-10-09)
+  // not there — or being cloned: the page clones it (`clone`, the repo it was a checkout of) and asks again (2026-10-09);
+  // a chat's own folder gone from a repo that is there is put back, or the chat starts in what is left of it (2026-10-19)
+  let back = null;
+  if (sessionId && !existsSync(cwd) && !cloneUnder(cwd) && !cloneFor(cwd)) {
+    back = await putBack(cwd, sessions.get(sessionId));
+    if (back) {
+      console.log(`[peixairada] ${tildePath(cwd)} is gone — ${back.made ? `its worktree made again, ${back.branch ? `on ${back.branch}` : 'detached'}` : back.tree ? `${back.branch} is out in ${tildePath(back.tree)}` : `started in ${tildePath(back.cwd)}${back.why ? `: ${back.why}` : ''}`}`);
+      back = { from: cwd, ...back }; cwd = back.cwd;
+    }
+  }
   if (!existsSync(cwd) || cloneUnder(cwd)) {
     const clone = cloneFor(cwd);
     return { code: 409, missing: cwd, clone, error: clone ? `${tildePath(cwd)} is not checked out — ${clone.ref} clones it`
@@ -4994,7 +5068,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   console.log(`[peixairada] terminal ${id}: ${shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
-  return { code: 201, terminal: termSummary(t) };
+  return { code: 201, terminal: termSummary(t), ...back && { back } };
 }
 
 /** On boot: the holders from before this server — adopt the ones that answer, clean up after the dead. All at once:
@@ -5693,7 +5767,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

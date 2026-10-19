@@ -16,7 +16,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 const tmp = tmpDir('peix-wt-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
 process.env.GIT_CONFIG_GLOBAL = '/dev/null'; process.env.GIT_CONFIG_NOSYSTEM = '1';   // no global ignore file: the board's own exclude is what keeps the trees out of status
-const { branchWhere, ensureWorktree, linkModules, newSession, prRefs, projectDir, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
+const { branchWhere, ensureWorktree, folderBack, linkModules, newSession, prRefs, projectDir, putBack, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();
@@ -227,4 +227,44 @@ test('a branch whose tree was deleted by hand is said so, never handed back as i
   const r = await ensureWorktree({ cwd: co, branch: 'feat/gone' });
   assert.deepEqual([r.code, r.path], [409, undefined]); assert.match(r.error, /^feat\/gone is out in .*gone-tree, a folder deleted by hand/);
   assert.match((await branchWhere(co, 'feat/gone')).error, /deleted by hand/);
+});
+
+// A chat's worktree gone — the sweep after its PR merged, worktree.sh done, by hand — and the chat resumed (2026-10-19):
+// the tree made again at its own path, on the chat's branch as it stands, else made anew from whichever main is ahead,
+// this checkout's or origin's; a branch out in another tree is that tree; a folder gone inside the checkout itself
+// starts in the nearest folder of it left.
+test('a chat\'s worktree gone is made again for its resume, a folder gone in the checkout is the nearest one left (2026-10-19)', async () => {
+  const chat = branch => Object.assign(newSession(randomUUID(), null), { gitBranch: branch });
+  const head = r => git(co, 'rev-parse', r);
+  // its branch still here: the tree on it again, the folder it was in the nearest there is of it
+  git(co, 'worktree', 'add', '-q', '-b', 'feat/again', wt('again'), 'main'); git(co, 'worktree', 'remove', wt('again'));
+  const gone = Object.assign(newSession(randomUUID(), null), { cwd: join(wt('again'), 'src'), gitBranch: 'feat/again' });
+  assert.deepEqual(summary(gone).back, { tree: wt('again'), repo: real }, 'the summary says the resume makes it again');
+  assert.deepEqual(await putBack(gone.cwd, gone), { cwd: wt('again'), tree: wt('again'), branch: 'feat/again', made: true });
+  assert.equal(git(wt('again'), 'branch', '--show-current'), 'feat/again');
+  assert.deepEqual([worktreesMade[wt('again')].branch, worktreesMade[wt('again')].pr], ['feat/again', null], 'the board’s to sweep as any it made');
+  assert.deepEqual(summary(gone).back, { near: wt('again') }, 'the tree there now, its src not: a resume starts in the tree');
+  // its branch gone after it landed: a new one of that name, from the main that is ahead
+  git(co, 'update-ref', 'refs/heads/main', git(co, 'commit-tree', '-p', 'origin/main', '-m', 'landed here first', 'origin/main^{tree}'));
+  assert.deepEqual(await putBack(wt('landed'), chat('feat/landed-here')), { cwd: wt('landed'), tree: wt('landed'), branch: 'feat/landed-here', made: true });
+  assert.equal(git(wt('landed'), 'rev-parse', 'HEAD'), head('main'), 'this checkout’s main, ahead of origin’s');
+  assert.throws(() => git(wt('landed'), 'rev-parse', '--abbrev-ref', '@{u}'), 'tracking nothing');
+  git(co, 'update-ref', 'refs/heads/main', head('origin/main~1'));
+  await putBack(wt('behind'), chat('feat/behind'));
+  assert.equal(git(wt('behind'), 'rev-parse', 'HEAD'), head('origin/main'), 'origin’s, when this checkout’s main is behind it');
+  // deleted by hand: git still holds that path and its branch — taken back
+  rmSync(wt('again'), { recursive: true, force: true });
+  assert.deepEqual(await putBack(wt('again'), chat('feat/again')), { cwd: wt('again'), tree: wt('again'), branch: 'feat/again', made: true });
+  assert.equal(git(wt('again'), 'branch', '--show-current'), 'feat/again');
+  // its branch out in another tree: that tree, nothing made
+  assert.deepEqual(await putBack(wt('elsewhere'), chat('feat/b')), { cwd: real, tree: real, branch: 'feat/b', made: false });
+  assert.equal(existsSync(wt('elsewhere')), false);
+  // detached: detached again, at the main ahead
+  const d = await putBack(wt('looked'), chat('HEAD'));
+  assert.deepEqual([d.branch, d.made, git(wt('looked'), 'rev-parse', 'HEAD')], [null, true, head('origin/main')]);
+  assert.throws(() => git(wt('looked'), 'symbolic-ref', '-q', 'HEAD'), 'detached');
+  // not a worktree: the nearest folder of the checkout left; in no checkout, nowhere
+  assert.deepEqual(await putBack(join(co, 'gone', 'deeper'), chat('feat/b')), { cwd: co });
+  assert.equal(folderBack(join(tmp, 'nowhere', 'x')), null);
+  assert.equal(folderBack(co), null, 'a folder that is there');
 });

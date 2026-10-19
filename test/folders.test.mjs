@@ -5,9 +5,11 @@
 // the page can carry on into the new-chat flow with it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { makeFixture, slugOf } from '../scripts/fixture.mjs';
 
 test('the org folders are listed, and a clone is refused a name that is not one', { timeout: 60_000 }, async () => {
   const root = tmpDir('peix-org-');
@@ -91,6 +93,53 @@ test('a folder not there: the repo that clones it, a clone joined, its progress,
     await waitFor(() => events.some(e => e.ref === 'acme/no-such-repo' && e.done && e.error), { what: 'the failure said on the stream' });
   } finally {
     ctl.abort();
+    await srv.stop();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// A chat's worktree removed with its repo there (2026-10-19; "Could not resume this chat … a worktree since removed?"
+// before): the resume makes the tree again at its path, on the chat's branch, and the chat runs there; a folder gone
+// inside a checkout resumes in the nearest folder left, writing on in the transcript it has. The fake claude finds a
+// transcript by its id in any project folder, as Claude Code does.
+test('a chat\'s worktree gone: resumed where it was, its tree made again; a folder gone in a checkout: resumed in what is left', { timeout: 60_000 }, async () => {
+  const root = realpathSync(tmpDir('peix-org-')), repo = join(root, 'widgets'), tree = join(repo, '.claude', 'worktrees', 'lunch');
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+  const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();
+  execFileSync('git', ['init', '-q', '-b', 'main', repo], { env }); writeFileSync(join(repo, 'a.js'), 'a\n'); git(repo, 'add', '.'); git(repo, 'commit', '-qm', 'base');
+  git(repo, 'worktree', 'add', '-q', '-b', 'lunch', tree); git(repo, 'worktree', 'remove', tree);
+  const fx = makeFixture(tmpDir('peix-fx-'), [
+    { cwd: tree, branch: 'lunch', title: 'In a worktree', prompt: 'the lunch menus', reply: 'Done, on lunch.' },
+    { cwd: join(repo, 'packages', 'gone'), title: 'In a folder since deleted', prompt: 'and here?', reply: 'Here too.' },
+  ]);
+  const [inTree, inGone] = fx.chats;
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { ORG_DIR: root, ORG: 'acme' } });
+  const made = [];
+  try {
+    const sum = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    assert.deepEqual([(await sum(inTree.id)).folderMissing, (await sum(inTree.id)).cloneRef, (await sum(inTree.id)).back], [true, null, { tree, repo }], 'the bar can say the resume makes it again');
+    assert.deepEqual((await sum(inGone.id)).back, { near: repo });
+    const r = await srv.post(`api/sessions/${inTree.id}/terminal`, { cols: 100, rows: 30 });
+    assert.equal(r.status, 201, JSON.stringify(r.body)); made.push(r.body.terminal.id);
+    assert.deepEqual(r.body.back, { from: tree, cwd: tree, tree, branch: 'lunch', made: true });
+    assert.equal(git(tree, 'branch', '--show-current'), 'lunch', 'the tree again, on the chat’s branch');
+    await waitFor(async () => { const s = await sum(inTree.id); return s.alive && s.live?.cwd === tree; }, { what: 'the chat resumed in its tree' });
+    assert.match(srv.logText(), /worktrees\/lunch is gone — its worktree made again, on lunch/);
+    const g = await srv.post(`api/sessions/${inGone.id}/terminal`, { cols: 100, rows: 30 });
+    assert.equal(g.status, 201, JSON.stringify(g.body)); made.push(g.body.terminal.id);
+    assert.deepEqual(g.body.back, { from: join(repo, 'packages', 'gone'), cwd: repo });
+    await waitFor(async () => { const s = await sum(inGone.id); return s.alive && s.live?.cwd === repo; }, { what: 'the other chat resumed in the repo' });
+    // the screen's first frame: the fake printed the chat's history back, read from the transcript it found by its id
+    const screen = () => new Promise(res => {
+      const ws = new WebSocket(srv.ws(`api/terminals/${g.body.terminal.id}/ws`)); ws.binaryType = 'arraybuffer';
+      const done = v => { clearTimeout(t); try { ws.close(); } catch {} res(v); }, t = setTimeout(() => done(''), 1500);
+      ws.onmessage = e => { if (typeof e.data !== 'string') done(Buffer.from(e.data).toString('utf8')); }; ws.onerror = () => done('');
+    });
+    await waitFor(async () => (await screen()).includes('and here?'), { what: 'the resumed chat’s history on its screen' });
+    assert.ok(!readdirSync(join(fx.dir, 'projects', slugOf(repo))).includes(`${inGone.id}.jsonl`), 'no second transcript: it writes on in its own');
+    assert.ok(!existsSync(join(repo, 'packages')), 'nothing made for a plain folder');
+  } finally {
+    for (const id of made) await srv.api(`api/terminals/${id}`, { method: 'DELETE' }).catch(() => {});
     await srv.stop();
     rmSync(root, { recursive: true, force: true });
   }
