@@ -12,7 +12,8 @@
 // page alone keeps its strip for the address; a click on a page tells the board its half has the keys
 // (peixPaneFocus); ⌥⌘W closes the tab the keys are in, and ··· closes the editor. Since 2026-10-11 (the studies' Q5) the
 // page in front is its own address: its tab grows into the field, ‹ › ↻ ↗ inside it, and a page behind wears its name;
-// since 2026-10-20 a copy button beside ↻ copies the address whole, whatever is selected in it.
+// since 2026-10-20 a copy button beside ↻ copies the address whole, whatever is selected in it, and the copy is said
+// in the address itself — the words rolled in over it, the button's ✓ — and then the address is back.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -65,9 +66,9 @@ export default async function (ctx) {
   await ctx.evaluate(`window.__clip = []; navigator.clipboard.writeText = t => { window.__clip.push(t); return Promise.resolve(); }`);
   await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.purl').click()`);
   out.url.copied = await ctx.evaluate(`window.__clip.slice(-1)[0] ?? null`);
-  out.url.note = await ctx.evaluate(`document.querySelector('.note')?.textContent || null`);
+  out.url.said = await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.ptab.on.addr.copied > .psaid[role="status"]')?.textContent || null`);
   ctx.assert.equal(out.url.copied, deep, 'the whole address, scheme and all');
-  ctx.assert.match(out.url.note || '', /copied/i, 'and a note says so');
+  ctx.assert.equal(out.url.said, 'Address copied', 'and the address says so, in itself — not a note under the strip, under the pane\'s page in the app');
   // …unless part of it is selected by hand: that click is someone copying their own selection
   await ctx.evaluate(`(el => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); })(document.querySelector(${STRIP}).querySelector('.purl'))`);
   await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.purl').click()`);
@@ -75,11 +76,18 @@ export default async function (ctx) {
   ctx.assert.equal(out.url.selected, 1, 'a selection inside it wins');
   // …but not over the copy button beside ↻ (2026-10-20): the whole address, and no nav to the shell
   const navs = () => ctx.evaluate(`window.__posts.filter(m => m.type === 'nav').length`), navsBefore = await navs();
-  await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove()); document.querySelector(${STRIP}).querySelector('.ptab.on.addr > .navs .pcopy').click()`);
-  out.url.button = await ctx.evaluate(`JSON.stringify({ clip: window.__clip, note: document.querySelector('.note')?.textContent || null })`).then(JSON.parse);
+  await ctx.waitFor(`!document.querySelector(${STRIP}).querySelector('.ptab.addr.copied')`, { what: 'the address back after the first copy' });
+  await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.ptab.on.addr > .navs .pcopy').click()`);
+  await ctx.settle();
+  const copyLook = () => ctx.evaluate(`(t => JSON.stringify({ copied: t.classList.contains('copied'), said: getComputedStyle(t.querySelector('.psaid')).opacity, url: getComputedStyle(t.querySelector('.purl')).opacity, tick: getComputedStyle(t.querySelector('.pcopy > .ok')).opacity, sheets: getComputedStyle(t.querySelector('.pcopy > .cp')).opacity }))(document.querySelector(${STRIP}).querySelector('.ptab.on.addr'))`).then(JSON.parse);
+  out.url.button = { clip: await ctx.evaluate(`window.__clip`), look: await copyLook() };
   ctx.assert.deepEqual(out.url.button.clip, [deep, deep], 'the copy button: the whole address, the selection in it or not');
-  ctx.assert.match(out.url.button.note || '', /copied/i, 'and a note says so');
+  ctx.assert.deepEqual(out.url.button.look, { copied: true, said: '1', url: '0', tick: '1', sheets: '0' }, 'the words over the address, the button a ✓');
+  await ctx.shot('copied', await ctx.evaluate(`(r => ({ x: r.left, y: r.top - 8, width: r.width, height: r.height + 16, scale: 2 }))(document.querySelector(${STRIP}).querySelector('.ptab.on.addr').getBoundingClientRect())`));
   ctx.assert.equal(await navs(), navsBefore, 'it moves no page');
+  await ctx.waitFor(`!document.querySelector(${STRIP}).querySelector('.ptab.addr.copied')`, { what: 'the address back' });
+  await ctx.settle();
+  ctx.assert.deepEqual(await copyLook(), { copied: false, said: '0', url: '1', tick: '0', sheets: '1' }, '…and then the address again, the sheets on the button');
   await ctx.evaluate(`getSelection().removeAllRanges(); document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.nav[data-nav="reload"]').click()`);
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'nav').pop())`).then(JSON.parse), { type: 'nav', what: 'reload' });
