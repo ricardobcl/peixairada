@@ -5,6 +5,29 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-20. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-20, later still — a poll in the chat
+
+Ricardo: "can we implemente polls, for example to know who want to go to lunch?"
+
+* **A poll is a message; a vote is a GitHub reaction on it.** GitHub has eight reactions, so a poll has eight answers
+  at most. A reaction is someone's, so a vote says who as well as how many; it needs nothing GitHub lacks (no second
+  issue, no comment per vote in the chat), and one given on github.com counts. The body reads on GitHub too: a mark
+  GitHub hides (`<!-- peixAIrada poll -->`, `: several` when several answers each), the question, a line per answer —
+  its reaction, then its words —, and how to vote there. Answers take 👍 🎉 🚀 ❤️ 👀 😄 😕 in turn; one that says no
+  (*No*, *Não*, *Not today*…) wears 👎.
+* **One answer each unless the asker says several**: another answer moves your vote (the reaction before taken back on
+  GitHub too), the same one again takes it back. On GitHub someone can react to two answers of a one-each poll; the
+  newest counts.
+* **The votes cost a call only when they moved**: the comments' list the chat already reads carries each comment's
+  reaction counts (a vote changes its ETag; a look that finds nothing is still a 304), and a poll's voters are asked
+  when its counts moved — and once a minute while it is a day old, with its own ETag, since two people trading answers
+  leave the counts as they were. Your own vote is drawn at once and then kept as written, with the counts it makes,
+  not asked again: GitHub's lists may lag its writes, and a look finding others' votes making the counts yours made
+  would see nothing move.
+* **Lunch asks it**: the poll's form has *Lunch* — the question at lunch's time, the places not closed today and *Not
+  today*: who is going and where, in one —, and lunch's chalkboard has *Ask the chat*, the form filled.
+* **Not done**: closing a poll, a deadline, and anonymous votes (a reaction is always someone's).
+
 ## Decisions of 2026-10-20, later — a drawer's last column, whole
 
 Ricardo, a screenshot of a drawer's right edge — two full lines of a reply, the last glyph of each (an `o`, an `e`)

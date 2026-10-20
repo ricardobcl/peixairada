@@ -120,6 +120,10 @@ server to run and a Mac that slept catches up when it wakes.
 - **Using it**: *chat* in the status bar opens the panel (its count is what you haven't read); ⏎ sends, ⇧⏎ is a new
   line, Esc closes. Markdown works; images don't show and links open in your browser. A message from someone else
   while the panel isn't in front of you is a notification. ··· has the chat on GitHub, its settings, and leaving.
+- **Polls**: the bar chart beside the box asks a question with two to eight answers — one answer each, or *Several
+  each*. Everyone's votes show under each answer, by name; a click votes, another answer moves your vote, the same one
+  again takes it back. *Lunch* fills it in with your lunch places and *Not today*. A vote is a reaction on GitHub —
+  the poll's message there says which reaction is which answer —, so a vote given there counts too.
 
 The board turns off GitHub's own emails about the chat's repo for you (its notifications, *ignored*) — otherwise every
 message would mail everyone. What anyone says stays in their message: nothing from the chat is ever typed into a
@@ -136,7 +140,7 @@ turns it on. Give it a time (the reminder's), the days, and each place with its 
   day's menu. A Slack channel where colleagues post the menus as screenshots is read too, if you name one. Claude reads
   each picture once, on your plan (*Read by*: Haiku unless you pick Sonnet).
 - **⌥⌘M** shows them on a chalkboard, any time; home shows it too until lunch. A place's name opens its Instagram in
-  your browser. *Read again* reads them now.
+  your browser. *Read again* reads them now. With the chat on, *Ask the chat* asks who's going, and where, as a poll.
 - **At lunch time** a sign drops into the status bar's lane over the fish — *LUNCH* — and the day's dishes scroll under
   it; a click on either is the chalkboard. A notification comes with *Menus · Going · In 15 minutes*.
 - **Going**: the sign says *ENJOY* and the fish swims off the bar. Lock the Mac and it reads *BACK SOON*; come back

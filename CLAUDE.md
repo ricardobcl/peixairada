@@ -215,10 +215,11 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   call could not see keeps its faces.
 * **The chat is a GitHub repo's issue** (2026-10-17; setup.chat `{repo}`, `chatTick`, `chatRoute`): one, unnamed
   (2026-10-18), the oldest open labelled `room` (`chatFind`; `chatStart`, the admin's), its comments the messages, by
-  REST with gh's token (`ghRest`, `GITHUB_API`): the newest comments by one URL and ETag, a 304 free; `CHAT_FAST_MS`
-  while a page watches, writes `CHAT_GAP_MS` apart (`chatWrite`), its mails off (`chatQuiet`); only its `admin` manages
-  people. No repo: invitations every `CHAT_INVITES_MS`, never at boot; `chatPlaces`, where one could be. One GitHub
-  hides is `missing`; `use` asks GitHub first. → `test/chat.test.mjs`.
+  REST with gh's token (`ghRest`, `GITHUB_API`): the newest comments by one URL and ETag (a 304 free), `CHAT_FAST_MS`
+  while watched, writes `CHAT_GAP_MS` apart (`chatWrite`), its mails off (`chatQuiet`); only its `admin` manages
+  people. **A poll is a message, a vote its reaction** (2026-10-20; `pollOf`; `chatVotes` when the list's `rx` moves).
+  No repo: invitations every `CHAT_INVITES_MS`, never at boot; `chatPlaces`. One GitHub hides is `missing`; `use` asks
+  first. → `test/chat.test.mjs`.
 * **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places not `settled`
   (a month's dishes are not, 2026-10-20), the profile logged out, the stories logged in (`lib/instagram.mjs`),
   the Slack channel at `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's
@@ -509,10 +510,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
   the bar. → `usage-bar.mjs`.
-* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from the bar's `#sbChat`): the messages drawn
-  by `chatMd` alone (no raw HTML or image; https/mailto links, to the browser), the admin's people (`chatPeopleDraw`,
-  from `prPeople`); Settings › Chat joins, makes, leaves (`chatSetHtml`). **No chat code reaches a drawer, a claude or
-  `md()`**. → `chat-room.mjs`.
+* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd`
+  alone (no raw HTML or image; https/mailto links, to the browser), polls (`chatPollHtml`, `chatPollForm`), the
+  admin's people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`).
+  **No chat code reaches a drawer, a claude or `md()`**. → `chat-room.mjs`, `chat-poll.mjs`.
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
@@ -1069,5 +1070,4 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   or closed PRs are cached forever.
 * **The app is signed for this machine only**, not for distribution.
 * **Chat-level pins** were dropped for sorting by your own last touch.
-* **Anonymous people in the chat** — GitHub has none; a keyed lane on Nostr relays or a Durable Object, later:
-  `docs/studies/chat-transports.md`.
+* **Anonymous people in the chat** — later: `docs/studies/chat-transports.md`.
