@@ -3551,14 +3551,15 @@ function chatMsg(c) {
 }
 // A poll's body, as GitHub shows it too: a mark it hides, the question, a line per answer — the reaction that votes for
 // it, then its words —, and how to vote there. The reactions in the order answers take them; an answer that says no
-// wears 👎.
+// wears 👎. Markdown alone, no raw HTML (2026-10-20): a board from before polls draws it as words and escapes HTML, so
+// the mark is a link's definition, which it hides too — the first poll's HTML comment is read still.
 const POLL_RX = { '+1': '👍', hooray: '🎉', rocket: '🚀', heart: '❤️', eyes: '👀', laugh: '😄', confused: '😕', '-1': '👎' };
-const POLL_MARK = /^<!-- peixAIrada poll(: several)? -->/, POLL_NO = /^(no|n[aã]o|nope|nah|not\b|skip|pass)/i, POLL_MAX = 8, POLL_Q_MAX = 200, POLL_A_MAX = 80;
+const POLL_MARK = /^(?:\[\/\/\]: # \(|<!-- )peixAIrada poll(: several)?(?:\)| -->)/, POLL_NO = /^(no|n[aã]o|nope|nah|not\b|skip|pass)/i, POLL_MAX = 8, POLL_Q_MAX = 200, POLL_A_MAX = 80;
 const pollLine = (v, max) => String(v ?? '').replace(UNSAID, '').replace(/\s+/g, ' ').trim().slice(0, max);
 function pollBody(q, answers, many) {
   const free = Object.keys(POLL_RX).filter(r => r !== '-1'), no = answers.findIndex(a => POLL_NO.test(a));
   const lines = answers.map((a, i) => `${POLL_RX[i === no ? '-1' : free.shift() ?? '-1']} ${a}`);
-  return `<!-- peixAIrada poll${many ? ': several' : ''} -->\n📊 **${q}**\n\n${lines.join('\n')}\n\n<sub>A poll: vote with the reaction beside your answer — ${many ? 'as many as you like' : 'one each'}.</sub>`;
+  return `[//]: # (peixAIrada poll${many ? ': several' : ''})\n📊 **${q}**\n\n${lines.join('\n')}\n\n*A poll: vote with the reaction beside your answer — ${many ? 'as many as you like' : 'one each'}.*`;
 }
 /** A poll from a message's words: {q, opts: [{r, label}], many} — or null, for a message that is none. */
 function pollOf(body) {

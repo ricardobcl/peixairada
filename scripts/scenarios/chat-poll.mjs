@@ -1,10 +1,10 @@
 // A poll in the chat (2026-10-20): a fake GitHub (scripts/fakegithub.mjs) with the chat, ana and rui in it, and lunch set
 // up with two places. What this checks: the box's poll button opens the form in the box's place and Esc lets it go;
 // what is typed is kept through a row added, and ⏎ walks down to a new answer; Lunch fills it with lunch's places and
-// Not today; Ask posts it — on GitHub a comment that reads as words, a line per answer with the reaction that votes for
-// it — and the panel draws it as a poll; a click votes (your reaction on GitHub), another answer moves it (one each), the
-// same one again takes it back; ana's vote, given on GitHub, comes in with her name; lunch's dialog asks the chat with the
-// form filled.
+// Not today; Ask posts it — on GitHub, and on a board from before polls, a comment that reads as words, a line per answer
+// with the reaction that votes for it — and the panel draws it as a poll; a click votes (your reaction on GitHub), another
+// answer moves it (one each), the same one again takes it back; ana's vote, given on GitHub, comes in with her name;
+// lunch's dialog asks the chat with the form filled.
 import { waitFor } from '../../lib/testserver.mjs';
 import { startFakeGitHub } from '../fakegithub.mjs';
 
@@ -58,7 +58,11 @@ export default async function (ctx) {
     await click('#rmform [data-pf="post"]');
     await ctx.waitFor(`!!${q('#rmlog .rmpoll')} && ${q('#rmform')}.hidden`, { what: 'the poll, posted' });
     out.body = gh.repo('acme-chat/room').issues[0].comments.at(-1).body;
-    ctx.assert.match(out.body, /^<!-- peixAIrada poll -->\n📊 \*\*Lunch at 12:30\?\*\*\n\n👍 Ramen Break\n🎉 Casa do Professor\n👎 Not today\n/, 'GitHub reads it as words, a reaction to each answer');
+    ctx.assert.match(out.body, /^\[\/\/\]: # \(peixAIrada poll\)\n📊 \*\*Lunch at 12:30\?\*\*\n\n👍 Ramen Break\n🎉 Casa do Professor\n👎 Not today\n/, 'GitHub reads it as words, a reaction to each answer');
+    // a board from before polls: chatMd's markdown, raw HTML escaped — words only, the mark hidden
+    out.before = await ctx.evaluate(`(() => { const t = document.createElement('template');
+      t.innerHTML = new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => t.text.replace(/</g, '&lt;') } }).parse(${JSON.stringify(out.body)}); return t.content.textContent.trim(); })()`);
+    ctx.assert.match(out.before, /^📊 Lunch at 12:30\?\s+👍 Ramen Break🎉 Casa do Professor👎 Not today\s+A poll: vote with the reaction beside your answer — one each\.$/, 'a board without polls: the words, no mark, no tag');
     out.posted = (await poll())[0];
     ctx.assert.deepEqual(out.posted.opts.map(o => [o.label, o.n, o.mine]), [['Ramen Break', 0, false], ['Casa do Professor', 0, false], ['Not today', 0, false]]);
     ctx.assert.match(out.posted.foot, /Nobody has answered yet · one answer each/);

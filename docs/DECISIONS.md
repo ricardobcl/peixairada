@@ -12,9 +12,15 @@ Ricardo: "can we implemente polls, for example to know who want to go to lunch?"
 * **A poll is a message; a vote is a GitHub reaction on it.** GitHub has eight reactions, so a poll has eight answers
   at most. A reaction is someone's, so a vote says who as well as how many; it needs nothing GitHub lacks (no second
   issue, no comment per vote in the chat), and one given on github.com counts. The body reads on GitHub too: a mark
-  GitHub hides (`<!-- peixAIrada poll -->`, `: several` when several answers each), the question, a line per answer —
+  GitHub hides (`[//]: # (peixAIrada poll)`, `: several` when several answers each), the question, a line per answer —
   its reaction, then its words —, and how to vote there. Answers take 👍 🎉 🚀 ❤️ 👀 😄 😕 in turn; one that says no
   (*No*, *Não*, *Not today*…) wears 👎.
+* **A board from before polls reads one as words** — Ricardo, the first poll in the chat: "I think the other user in
+  the chat in not see the poll rendered correctly". Its mark was an HTML comment and its last line `<sub>`, and the
+  chat's markdown escapes raw HTML, so a colleague's board, from origin, showed both as text round the poll's words.
+  The body is markdown alone now: the mark a link's definition, which marked and GitHub both hide, the last line in
+  italics — such a board shows the question, the answers with their reactions, and how to vote. The first poll's
+  comment is read as a poll still. Buttons need the board updated; a vote given on GitHub counts meanwhile.
 * **One answer each unless the asker says several**: another answer moves your vote (the reaction before taken back on
   GitHub too), the same one again takes it back. On GitHub someone can react to two answers of a one-each poll; the
   newest counts.

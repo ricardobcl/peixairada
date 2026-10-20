@@ -179,15 +179,17 @@ test('where a chat could be: the organizations you own, newest first, your accou
   } finally { await srv.stop(); await gh.close(); }
 });
 
-test('a poll\'s body: GitHub reads it as words, the board as a poll — a no wears 👎, eight answers at most', () => {
+test('a poll\'s body: GitHub and a board without polls read it as words, the board as a poll — a no wears 👎, eight answers at most', () => {
   const body = pollBody('Lunch at 12:30?', ['Ramen Break', 'Casa do Professor', 'Not today'], false);
-  assert.equal(body, '<!-- peixAIrada poll -->\n📊 **Lunch at 12:30?**\n\n👍 Ramen Break\n🎉 Casa do Professor\n👎 Not today\n\n<sub>A poll: vote with the reaction beside your answer — one each.</sub>');
+  assert.equal(body, '[//]: # (peixAIrada poll)\n📊 **Lunch at 12:30?**\n\n👍 Ramen Break\n🎉 Casa do Professor\n👎 Not today\n\n*A poll: vote with the reaction beside your answer — one each.*');
+  assert.doesNotMatch(pollBody('x', ['a', 'b'], true), /</, 'no raw HTML: a board from before polls shows it as text');
   assert.deepEqual(pollOf(body), { q: 'Lunch at 12:30?', many: false, opts: [{ r: '+1', label: 'Ramen Break' }, { r: 'hooray', label: 'Casa do Professor' }, { r: '-1', label: 'Not today' }] });
   const eight = pollOf(pollBody('Which?', ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], true));
   assert.deepEqual([eight.many, eight.opts.map(o => o.r).join(' ')], [true, '+1 hooray rocket heart eyes laugh confused -1']);
   assert.equal(eight.opts[3].label, 'd', '❤️ with its variation selector, and without');
-  assert.equal(pollOf('<!-- peixAIrada poll -->\n❤ **x**\n📊 Where?\n❤ here\n👀 there').opts[0].label, 'here');
-  for (const not of ['📊 **Lunch?**\n👍 yes\n👎 no', '<!-- peixAIrada poll -->\n📊 **Lunch?**\n👍 yes', '<!-- peixAIrada poll -->\n👍 yes\n👎 no'])
+  assert.equal(pollOf('[//]: # (peixAIrada poll)\n❤ **x**\n📊 Where?\n❤ here\n👀 there').opts[0].label, 'here');
+  assert.deepEqual(pollOf('<!-- peixAIrada poll: several -->\r\n📊 **Lunch?**\r\n\r\n👍 yes\r\n👎 no\r\n\r\n<sub>A poll</sub>'), { q: 'Lunch?', many: true, opts: [{ r: '+1', label: 'yes' }, { r: '-1', label: 'no' }] }, 'the first poll\'s mark, edited on GitHub');
+  for (const not of ['📊 **Lunch?**\n👍 yes\n👎 no', '[//]: # (peixAIrada poll)\n📊 **Lunch?**\n👍 yes', '[//]: # (peixAIrada poll)\n👍 yes\n👎 no'])
     assert.equal(pollOf(not), null, JSON.stringify(not));
 });
 
@@ -206,7 +208,7 @@ test('a poll end to end: votes are reactions — yours moved on one answer each,
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const id = r.body.msg.id;
     assert.deepEqual([r.body.msg.poll.q, r.body.msg.poll.opts.map(o => o.r), r.body.msg.votes], ['Lunch at 12:30?', ['+1', '-1'], []]);
-    assert.match(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, /^<!-- peixAIrada poll -->\n📊 \*\*Lunch at 12:30\?\*\*\n\n👍 Going\n👎 Not today\n/);
+    assert.match(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, /^\[\/\/\]: # \(peixAIrada poll\)\n📊 \*\*Lunch at 12:30\?\*\*\n\n👍 Going\n👎 Not today\n/);
     const vote = async (r, want) => { const x = await srv.post('api/chat/vote', { id, r }); assert.equal(x.status, 200, JSON.stringify(x.body)); assert.deepEqual(x.body.msg.votes.map(v => `${v.who}:${v.r}`).sort(), want); };
     await vote('+1', ['me:+1']);
     await vote('-1', ['me:-1']);   // one answer each: the one before taken back, on GitHub too
