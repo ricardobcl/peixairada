@@ -12,10 +12,20 @@ Ricardo: "add a copy URL button on web pages"
 * **A page's address has a copy button, between ↻ and ↗** (`.pcopy`, `ICON.copyAddr`: two sheets, a stroke as the
   strip's glyphs are). A click on the address copied it already (2026-09-21), but nothing said so but its tooltip.
   The button copies what the address does — the whole URL, scheme and all, the editor's too behind *VS Code ·
-  folder* —, through the same `copyPaneUrl`, with the same note, under the button. **A selection in the address does
-  not stop it**: on the address that click is someone copying their own part; on the button it is asking for the
-  whole. It is a `.nav` for its look and none for the shell: it posts no `{type: 'nav'}`.
-* `pane-tabs.mjs`: the button after a selection — the whole address handed to the clipboard, the note, no nav.
+  folder* —, through the same `copyPaneUrl`, and says so as the address's click does (below). **A selection in the
+  address does not stop it**: on the address that click is someone copying their own part; on the button it is asking
+  for the whole. It is a `.nav` for its look and none for the shell: it posts no `{type: 'nav'}`.
+* **The copy is said in the address itself** — Ricardo, next: "do some animation or something so that it's clear that
+  the copy was made". The note `copyPaneUrl` put up was under the strip, where in the app the page's own view lies
+  over the board's: nobody ever saw it — the address's click (2026-09-21) had said nothing all along, and a page tab
+  is the app's alone. Now (`addrSay`, `.copied` on the tab, `.psaid` a status): the address rolls up and away, the
+  words *Address copied* spring in from below, the button's two sheets give way to a ✓ drawn in the ready green on a
+  green tint, and 1.4 s on the address rolls back down; a failure says *Could not copy* there, red, 4 s. What leaves
+  goes in 0.1–0.18 s, what arrives just after it on `--spring`; each rule carries the transition its state is reached
+  by. The tab clips the roll (`overflow: hidden`) — checked in WebKit's compositor frames at 30, 90 and 600 ms.
+  Reduced motion: the same words and ✓, faded in place (`--roll`, `--pop`), the ✓ not drawn.
+* `pane-tabs.mjs`: the button after a selection — the whole address handed to the clipboard, no nav; the address's
+  click and the button said in the address (the words over it, the ✓, the sheets gone) and then the address back.
 
 ## Decisions of 2026-10-20, later still — a poll in the chat
 
