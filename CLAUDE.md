@@ -886,15 +886,14 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   → `drawer-switch.mjs`.
 * **`fitTerm` sends a resize only when the size moved, and once it has stopped moving** (120 ms; at once with `now`,
   as a socket opens): `tm.sent` is per attachment (`attachTerm`), forgotten on focus and on coming into view (another page may have sized
-  the PTY); a send that moves the size is a SIGWINCH and a whole repaint. The
-  prefs' `termSize` is saved only when it changed.
+  the PTY). The prefs' `termSize` is saved only when it changed.
 * **The drawer's geometry**: `grid-template-columns: minmax(0, 1fr)` on `#term` and `#chat`, `min-width: 0;
   overflow: hidden` on `.tbody`, and `.tbody { box-sizing: content-box }` (the fit addon reads the padded size under
   the border-box rule). Refits on the body's `ResizeObserver`, a display-scale change (`watchDpr`), focus and
-  visibility. → Findings: *run off the right edge*, *round two*.
+  visibility. → Findings: *run off the right edge*, *round two*. **A glyph's width is read to the fraction**
+  (`exactGlyphs`, 2026-10-20): xterm's `offsetWidth / 32` drifts a column at a time, the last cut. → `drawer-fit.mjs`.
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), which clears the screen *it*
-  serializes and echoes the clear back to every page on that drawer — so a re-attach and a restart stay clear. A
-  nudge follows. ⌃L is the shell's own.
+  serializes and echoes the clear back to every page on that drawer. A nudge follows. ⌃L is the shell's own.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is
   *⌥ is Meta* (`prefs.optMeta`, on). → Findings: *Shift+Enter*.
 * **The Mac's line-editing keys are iTerm's Natural Text Editing** (`MAC_EDIT` / `macEdit`): ⌘← ⌘→ ⌃A ⌃E, ⌘⌫ ⌃U,
@@ -914,8 +913,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   provider beside the web-links addon (`termLinks`, `peix.links(y)`). → `chat-links.mjs`.
 * **Files open in VS Code or Zed; ⌥⌘E is VS Code Web either way** (2026-10-13; `prefs.editor`, `EDITORS`, `#edPick`
   in Settings › General): both open `<scheme>://file/<path>:<line>:<col>` in the app's own window, which the app
-  hands to the system and a browser follows as a link (never `window.open`, which leaves a blank tab). Zed has no web
-  version to frame, so `#webBtn` stays VS Code Web and Zed's own window is `#zedBtn` (`onZed()`); **the settings say so
+  hands to the system and a browser follows as a link (never `window.open`). `#webBtn` stays VS Code Web and
+  Zed's own window is `#zedBtn` (`onZed()`); **the settings say so
   in words under the pick** (`ZED_NOT` in `#edSay`). A switch redraws the transcript (`logView.arr = null`), so its links
   follow; the drawer's are read on hover. → `chat-links.mjs`. **Picking Zed without it installs it** (`wantZed` →
   `POST /api/editors/zed/install` → `installZed`: `brew install --cask zed`, one at a time, then `lsregister -f`);

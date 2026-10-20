@@ -5,6 +5,27 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-20. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-20, later — a drawer's last column, whole
+
+Ricardo, a screenshot of a drawer's right edge — two full lines of a reply, the last glyph of each (an `o`, an `e`)
+a stroke short, black past it to the tile's border —: "some users report text being cut slightly on the right edge".
+
+* **xterm's DOM renderer drifts a column at a time** (5.5.0, and 6.0.0 still): it reads a glyph's width as
+  `offsetWidth / 32` — a whole number of px over 32 glyphs — and brings each glyph to its cell by the letter-spacing
+  that leaves (`_setDefaultSpacing`, and the row factory's spacing per span). 12 px SF Mono is 7.418 px a glyph, read
+  as 7.406: 0.012 px too much a column, and the last glyph of 160 sits 1.9 px past its row, which is `overflow:
+  hidden` — the cut. Measured in WebKit at 160 columns: 12 px +1.87, 13 px (⌘+) +0.79, 18 px +0.31, cut; 11, 14–16, 20
+  and 24 px 0.3–2.5 px short, the glyphs left of their cells and nothing cut. The screenshot's pitch, 14.85 px at 2×,
+  is 12 px's cell. Chrome's monospace drifts too: 1.03 px at 176 columns. Hence *some* users: the default size, and a
+  wide drawer.
+* **The same measure with the fraction kept** (`exactGlyphs`, on the drawer's xterm and a tile's): the measuring span's
+  computed width — a tile's `scale()` does not reach it, as it would a `getBoundingClientRect` —, the caches cleared,
+  the default spacing taken again. Within 0.02 px at every size above. It reaches xterm's privates
+  (`_core._renderService._renderer.value._widthCache`), guarded — a build without them keeps its own measure; the
+  version is pinned and the vendored file stays node_modules' own (`npm run check`).
+* `drawer-fit.mjs` asks it at each of its steps (attach, 2×, ⌘+): the last glyph of a rule the screen's width ends at
+  its row's edge, within 0.25 px. Before, 1.03 px past it at the first.
+
 ## Decisions of 2026-10-20 — lunch: a month's dishes wait on the day's
 
 Ricardo, the first lunch day with the login: "ramen break has a story with an updated menu - can we fix that logic?"
