@@ -3,7 +3,8 @@
 // GitHub's mails off, counts unread, takes what another board said, edited and deleted, sends one write at a time, and
 // manages the people — the suggestions from its chats' PRs, an invitation, a cancel, a removal; a member's board
 // finds the invitation, joins as a reader, may not manage, and leaves; the look that finds nothing new is a 304; a
-// repo made from the board, and where one could be (the organizations you own, the chats you can read). The page's chat module is held to drawing words only: it reaches no drawer.
+// repo made from the board, and where one could be (the organizations you own, the chats you can read); a poll, its votes
+// GitHub's reactions (2026-10-20). The page's chat module is held to drawing words only: it reaches no drawer.
 import './env.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture } from '../scripts/fixture.mjs';
 import { startFakeGitHub } from '../scripts/fakegithub.mjs';
-import { cleanSetup } from '../server.mjs';
+import { cleanSetup, pollBody, pollOf } from '../server.mjs';
 
 test('cleanSetup: the chat\'s repo as owner/name, from its address too; null or an empty one is none', () => {
   for (const v of ['acme-chat/room', ' https://github.com/acme-chat/room.git ', 'github.com/acme-chat/room/']) assert.deepEqual(cleanSetup({ chat: { repo: v } }, true).setup.chat, { repo: 'acme-chat/room' }, v);
@@ -176,6 +177,63 @@ test('where a chat could be: the organizations you own, newest first, your accou
     assert.equal((await srv.post('api/chat/make', { repo: 'acme-chat/chat' })).status, 200);
     assert.ok((await srv.api('api/chat/places')).body.chats.some(c => c.repo === 'acme-chat/chat'), 'a make forgets it');
   } finally { await srv.stop(); await gh.close(); }
+});
+
+test('a poll\'s body: GitHub reads it as words, the board as a poll — a no wears 👎, eight answers at most', () => {
+  const body = pollBody('Lunch at 12:30?', ['Ramen Break', 'Casa do Professor', 'Not today'], false);
+  assert.equal(body, '<!-- peixAIrada poll -->\n📊 **Lunch at 12:30?**\n\n👍 Ramen Break\n🎉 Casa do Professor\n👎 Not today\n\n<sub>A poll: vote with the reaction beside your answer — one each.</sub>');
+  assert.deepEqual(pollOf(body), { q: 'Lunch at 12:30?', many: false, opts: [{ r: '+1', label: 'Ramen Break' }, { r: 'hooray', label: 'Casa do Professor' }, { r: '-1', label: 'Not today' }] });
+  const eight = pollOf(pollBody('Which?', ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], true));
+  assert.deepEqual([eight.many, eight.opts.map(o => o.r).join(' ')], [true, '+1 hooray rocket heart eyes laugh confused -1']);
+  assert.equal(eight.opts[3].label, 'd', '❤️ with its variation selector, and without');
+  assert.equal(pollOf('<!-- peixAIrada poll -->\n❤ **x**\n📊 Where?\n❤ here\n👀 there').opts[0].label, 'here');
+  for (const not of ['📊 **Lunch?**\n👍 yes\n👎 no', '<!-- peixAIrada poll -->\n📊 **Lunch?**\n👍 yes', '<!-- peixAIrada poll -->\n👍 yes\n👎 no'])
+    assert.equal(pollOf(not), null, JSON.stringify(not));
+});
+
+test('a poll end to end: votes are reactions — yours moved on one answer each, kept on several; one given on GitHub counts', { timeout: 40_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui'], orgs: { 'acme-chat': ['me'] }, repos: { 'acme-chat/room': { perms: { ana: 'pull', rui: 'pull' }, rooms: [{ title: 'General', comments: [['ana', 'hi']] }] } } });
+  const srv = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+  let sse = null;
+  try {
+    await srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }) });
+    await waitFor(async () => (await srv.api('api/chat')).body.ready, { what: 'the chat read' });
+    for (const [body, why] of [[{ q: '', answers: ['a', 'b'] }, /asks something/], [{ q: 'x', answers: ['a', ' '] }, /two answers at least/], [{ q: 'x', answers: ['a', 'A'] }, /say the same/],
+      [{ q: 'x', answers: 'abcdefghi'.split('') }, /8 answers at most/]]) {
+      const r = await srv.post('api/chat/poll', body); assert.equal(r.status, 400); assert.match(r.body.error, why);
+    }
+    const r = await srv.post('api/chat/poll', { q: '  Lunch\nat 12:30? ', answers: ['Going', 'Not today'] });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const id = r.body.msg.id;
+    assert.deepEqual([r.body.msg.poll.q, r.body.msg.poll.opts.map(o => o.r), r.body.msg.votes], ['Lunch at 12:30?', ['+1', '-1'], []]);
+    assert.match(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, /^<!-- peixAIrada poll -->\n📊 \*\*Lunch at 12:30\?\*\*\n\n👍 Going\n👎 Not today\n/);
+    const vote = async (r, want) => { const x = await srv.post('api/chat/vote', { id, r }); assert.equal(x.status, 200, JSON.stringify(x.body)); assert.deepEqual(x.body.msg.votes.map(v => `${v.who}:${v.r}`).sort(), want); };
+    await vote('+1', ['me:+1']);
+    await vote('-1', ['me:-1']);   // one answer each: the one before taken back, on GitHub too
+    assert.deepEqual(gh.repo('acme-chat/room').issues[0].comments.at(-1).reactions.map(x => `${x.user.login}:${x.content}`), ['me:-1']);
+    await vote('-1', []);   // yours again: taken back
+    assert.equal((await srv.post('api/chat/vote', { id, r: 'rocket' })).status, 400, 'not one of its answers');
+    assert.equal((await srv.post('api/chat/vote', { id: 1, r: '+1' })).status, 404, 'no poll');
+    // ana votes on GitHub, twice on a poll of one answer each: her newest counts; and rui with a reaction no answer has
+    sse = await stream(srv); sse.mark();
+    gh.react(id, 'ana', '-1'); gh.react(id, 'ana', '+1'); gh.react(id, 'rui', 'heart');
+    const poll = async () => (await srv.api('api/chat/messages')).body.msgs.find(m => m.id === id);
+    await waitFor(async () => (await poll()).votes.length === 1, { what: 'ana\'s vote, read' });
+    assert.deepEqual((await poll()).votes.map(v => `${v.who}:${v.r}`), ['ana:+1']);
+    await waitFor(() => /event: chatmsgs\ndata: .*"who":"ana","face":[^}]*"r":"\+1"/.test(sse.since()) || sse.since().includes('"r":"+1","who":"ana"'), { what: 'the votes, to every page' });
+    const asked = gh.calls.filter(l => l.includes(`/comments/${id}/reactions?`) && l.startsWith('GET')).length;
+    await new Promise(ok => setTimeout(ok, 1200));
+    assert.equal(gh.calls.filter(l => l.includes(`/comments/${id}/reactions?`) && l.startsWith('GET')).length, asked, 'votes not asked again while the counts stand');
+    // several answers each: a second vote keeps the first; ana's, said on GitHub, alerts nobody but reads as a poll
+    sse.mark();
+    gh.say('acme-chat/room', 1, 'ana', pollBody('Where?', ['Ramen Break', 'Casa do Professor'], true));
+    await waitFor(() => sse.since().includes('📊 Where?'), { what: 'the alert, the question as its words' });
+    const where = (await srv.api('api/chat/messages')).body.msgs.at(-1);
+    assert.equal(where.poll.many, true);
+    for (const [r, want] of [['+1', ['me:+1']], ['hooray', ['me:+1', 'me:hooray']]]) {
+      const x = await srv.post('api/chat/vote', { id: where.id, r }); assert.deepEqual(x.body.msg.votes.map(v => `${v.who}:${v.r}`).sort(), want);
+    }
+  } finally { sse?.close(); await srv.stop(); await gh.close(); }
 });
 
 test('a repo GitHub does not show you: never taken by Use, and one in the setup said missing until it is forgotten', { timeout: 40_000 }, async () => {

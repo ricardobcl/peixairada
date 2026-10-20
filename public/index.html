@@ -2285,9 +2285,23 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #room .rmmsg.going { opacity: .45; }
   #room .rmnone { padding: 36px 16px; color: var(--muted); font-size: var(--fs-sm); text-align: center; text-wrap: balance; }
   #room .rmfoot { display: grid; gap: 4px; padding: 8px; border-top: 1px solid var(--line); }
-  #room :is(.rmfoot textarea, .rmfind) { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
+  #room :is(.rmfoot textarea, .rmfind, .rmform input[type="text"]) { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
   #room .rmfoot textarea { min-height: 34px; max-height: 140px; resize: none; display: block; }
-  #room :is(.rmfoot textarea, .rmfind):focus { border-color: var(--accent); }
+  #room :is(.rmfoot textarea, .rmfind, .rmform input[type="text"]):focus { border-color: var(--accent); }
+  #room .rmrow { display: flex; gap: 4px; align-items: flex-end; } #room .rmrow textarea { flex: 1 1 auto; min-width: 0; } #room .rmrow .rmbtn { height: 34px; width: 30px; }
+  /* a poll (2026-10-20): an answer a row, its share of the people who answered a fill from the left; yours edged in the accent */
+  #room .rmpoll { display: grid; gap: 4px; margin-top: 2px; }
+  #room .rmq { display: flex; gap: 6px; align-items: center; font-weight: 650; } #room .rmq .ic { flex: none; width: 14px; height: 14px; color: var(--accent); }
+  #room .rmopt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 6px 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+    background-color: var(--ctl); background-image: linear-gradient(to right, color-mix(in srgb, var(--accent) 20%, transparent) var(--p), transparent var(--p)); }
+  #room .rmopt:hover { background-color: var(--ctl-hi); } #room .rmopt.mine { border-color: var(--accent); }
+  #room .rmopt .rmol { min-width: 0; overflow-wrap: anywhere; } #room .rmopt b { font-weight: 650; color: var(--muted); } #room .rmopt.mine b { color: var(--accent); }
+  #room .rmvs { grid-column: 1 / -1; display: flex; align-items: center; gap: 3px; min-width: 0; font-size: var(--fs-2xs); color: var(--muted); }
+  #room .rmvs .vf { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--ctl); } #room .rmvs span { margin-left: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #room .rmpf { font-size: var(--fs-2xs); color: var(--muted); }
+  #room .rmform { display: grid; gap: 6px; } #room .rma { display: flex; gap: 4px; align-items: center; } #room .rma input { flex: 1 1 auto; min-width: 0; }
+  #room .rmpfoot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--fs-sm); color: var(--muted); } #room .rmpfoot .spacer { flex: 1; }
+  #room .rmpfoot label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; } #room .btn.go { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   #room .rmsay { display: flex; gap: 10px; justify-content: space-between; font-size: var(--fs-2xs); color: var(--muted); } #room .rmsay a { color: inherit; }
   #room .rmpeople h6 { margin: 14px 0 6px; color: var(--muted); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; } #room .rmpeople h6:first-of-type { margin-top: 10px; }
   #room .rmp { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 4px 0; }
@@ -2309,7 +2323,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -2329,7 +2343,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2610,7 +2624,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="rmhd"><span class="rmtitle" id="rmTitle">Chat</span><button type="button" class="rmbtn" id="rmPeople" title="People — invite and remove" aria-label="People" aria-pressed="false" hidden></button><button type="button" class="rmbtn" id="rmMore" title="More" aria-label="More"></button><button type="button" class="rmbtn" id="rmClose" title="Close · esc" aria-label="Close"></button></div>
   <div class="rmlog" id="rmlog" role="log" aria-label="Messages"></div>
   <div class="rmpeople" id="rmpeople" hidden><input type="text" class="rmfind" id="rmfind" placeholder="Invite someone — a GitHub login" aria-label="Invite someone: a GitHub login, or narrow the lists" spellcheck="false" autocomplete="off"><div id="rmplist"></div></div>
-  <div class="rmfoot" id="rmfoot"><textarea id="rmbox" rows="1" placeholder="Message" aria-label="Message"></textarea><div class="rmsay" id="rmsay"></div></div>
+  <div class="rmfoot" id="rmfoot"><div class="rmform" id="rmform" role="group" aria-label="A poll" hidden></div><div class="rmrow" id="rmrow"><textarea id="rmbox" rows="1" placeholder="Message" aria-label="Message"></textarea><button type="button" class="rmbtn" id="rmPollBtn" title="A poll — ask the chat something" aria-label="A poll"></button></div><div class="rmsay" id="rmsay"></div></div>
 </dialog>
 <dialog id="lock" aria-labelledby="lockTitle">
   <span class="wlogo" aria-hidden="true"></span>
@@ -3599,6 +3613,7 @@ const toolName = n => {
     // Zed's mark (Simple Icons, CC0): the editor row and the setting when Zed is the editor (2026-10-13)
     zed: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z"/></svg>',
     // the chat (2026-10-17): a speech bubble, its status-bar segment and Settings' pane; two heads, its people
+    poll: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5h11M4.5 11V7.5M8 11V3.5M11.5 11V6"/></svg>',   // a poll in the chat (2026-10-20): a bar chart
     chat: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.6A1.6 1.6 0 0 1 4.1 2h7.8a1.6 1.6 0 0 1 1.6 1.6v5.8A1.6 1.6 0 0 1 11.9 11H7.2l-3.2 3v-3a1.6 1.6 0 0 1-1.5-1.6Z"/></svg>',
     people: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.75 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.5-.25a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM1 14c0-2.4 2.1-4.2 4.75-4.2S10.5 11.6 10.5 14Zm10.5 0c0-1.4-.45-2.6-1.25-3.5.35-.1.7-.15 1.05-.15 2.1 0 3.7 1.4 3.7 3.4v.25Z"/></svg>'
   };
@@ -10591,14 +10606,15 @@ const toolName = n => {
   // The server reads the repo (chatTick in server.mjs); every page gets what it knows — `chat`: its issue and what you
   // have not read there, who you are, the invitations waiting for you — and what changed (`chatmsgs`). One chat, with no
   // name and no rooms (2026-10-18): the panel (#room, a non-modal dialog over the status bar's left end, where its
-  // segment is) is its messages and a box. The repo's admin also gets the people — invite (the people of the chats' PRs
+  // segment is) is its messages and a box. A poll is a message (2026-10-20): its answers are buttons, a vote GitHub's
+  // reaction on it (the server's chatVotes); the box's ▤ asks one, and lunch's dialog one about lunch. The repo's admin also gets the people — invite (the people of the chats' PRs
   // suggested), cancel, remove. Settings › Chat makes a repo, joins one, or leaves.
   // What comes in is someone else's words, drawn by chatMd alone — markdown with no raw HTML, no images, no attribute
   // but a link's address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's
   // files and pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs).
   const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, sending: false, watch: 0, seenSent: 0, err: null, setSure: false,
-    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null };
-  $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
+    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null, poll: null, voting: new Set() };
+  $('#rmPollBtn').innerHTML = ICON.poll; $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
   const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => esc(t.text ?? ''), image: t => esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
   const CHAT_TAGS = ['p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
   const chatHtml = new Map();
@@ -10631,7 +10647,7 @@ const toolName = n => {
     if (!dlg.open) { if ($('#hmenu').open) $('#hmenu').close(); dlg.show(); repostPane(); if (inApp) post({ type: 'focus' }); chatWatch(); }
     if (view === 'people') chatPeopleLoad();
     chatLoad(); chatDraw(true); renderBar(); chatSeenNow();   // what came while it was shut is read now
-    if (view === 'log') $('#rmbox').focus(); else $('#rmfind').focus();
+    if (view !== 'log') $('#rmfind').focus(); else (chatUi.poll ? $('#rmform input') : $('#rmbox')).focus();
   }
   /** The chat's messages, read as the panel first shows them — and again for another issue (the repo's, or its first
    *  closed on GitHub). */
@@ -10664,12 +10680,93 @@ const toolName = n => {
       const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000, mine = m.who === me;
       out += `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}" data-id="${m.id}">${chatFace(m.face)}`
         + `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}</div>`
-        + `<div class="rmbody">${chatMd(m.body)}</div>`
+        + `<div class="rmbody">${m.poll ? chatPollHtml(m) : chatMd(m.body)}</div>`
         + (mine || admin ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
       prev = m;
     }
     return out;
   }
+  /** A poll as the panel draws it: the question, an answer a row — a click votes for it, again takes it back —, its share
+   *  of the people who answered, and who, you first. */
+  function chatPollHtml(m) {
+    const p = m.poll, me = state.chat.me?.login, votes = m.votes || [], people = new Set(votes.map(v => v.who)).size;
+    const rows = p.opts.map(o => {
+      const vs = votes.filter(v => v.r === o.r).sort((a, b) => (b.who === me) - (a.who === me)), mine = vs.some(v => v.who === me);
+      return `<button type="button" class="rmopt${mine ? ' mine' : ''}" data-rm="vote" data-r="${esc(o.r)}" aria-pressed="${mine}" style="--p:${people ? Math.round(vs.length / people * 100) : 0}%">`
+        + `<span class="rmol">${esc(o.label)}</span><b>${vs.length}</b>`
+        + (vs.length ? `<span class="rmvs">${vs.slice(0, 6).map(v => chatFace(v.face, 'vf')).join('')}<span>${esc(vs.map(v => v.who === me ? 'you' : v.who).join(', '))}</span></span>` : '') + '</button>';
+    }).join('');
+    return `<div class="rmpoll"><div class="rmq">${ICON.poll}<span>${esc(p.q)}</span></div>${rows}`
+      + `<div class="rmpf">${people ? `${people} answered` : 'Nobody has answered yet'} · ${p.many ? 'as many answers as you like' : 'one answer each'}</div></div>`;
+  }
+  /** Your answer, drawn at once and then as GitHub took it; on a poll of one answer each it moves yours. */
+  async function chatVote(id, r) {
+    const m = chatUi.msgs.find(x => x.id === id), me = state.chat.me;
+    if (!m?.poll || !me || chatUi.voting.has(id)) return;
+    const before = m.votes || [], had = before.some(v => v.who === me.login && v.r === r);
+    chatUi.voting.add(id);
+    chatTake([{ ...m, votes: had ? before.filter(v => !(v.who === me.login && v.r === r)) : [...before.filter(v => m.poll.many || v.who !== me.login), { r, who: me.login, face: me.face, at: new Date().toISOString() }] }], []); chatDraw();
+    try { const d = await api('POST', '/api/chat/vote', { id, r }); if (d.msg.n === chatUi.n) chatTake([d.msg], []); }
+    catch (e) { const now = chatUi.msgs.find(x => x.id === id); if (now) chatTake([{ ...now, votes: before }], []); chatDraw(); note($(`#rmlog .rmmsg[data-id="${id}"] .rmq`) || $('#rmlog'), `Not voted: ${e.message}`, true); }
+    finally { chatUi.voting.delete(id); }
+    chatDraw();
+  }
+  // the poll's form, in the box's place: the question, two answers or more — eight at most, one for each reaction GitHub
+  // has —, one answer each or several. What is typed is chatUi.poll's; the form is drawn again only when its rows change.
+  function chatPollForm(fill = null) {
+    chatUi.poll = fill === false ? null : { q: '', answers: ['', ''], many: false, ...fill };
+    if (chatUi.poll && chatUi.poll.answers.length < 2) chatUi.poll.answers.push(...Array(2 - chatUi.poll.answers.length).fill(''));
+    chatPollDraw();
+    if (chatUi.poll) $(`#rmform [data-pf="${fill?.q ? 'post' : 'q'}"]`).focus(); else $('#rmbox').focus();
+  }
+  function chatPollDraw() {
+    const p = chatUi.poll, form = $('#rmform'), text = 'type="text" spellcheck="false" autocomplete="off"';
+    form.hidden = !p; $('#rmrow').hidden = !!p; if (!p) return;
+    const lunch = state.lunch?.set;
+    form.innerHTML = `<input ${text} data-pf="q" maxlength="200" placeholder="Ask the chat — Lunch at 12:30?" aria-label="The question" value="${esc(p.q)}">`
+      + p.answers.map((a, i) => `<div class="rma"><input ${text} data-pf="a" data-i="${i}" maxlength="80" placeholder="Answer ${i + 1}" aria-label="Answer ${i + 1}" value="${esc(a)}">`
+        + (p.answers.length > 2 ? `<button type="button" class="rmbtn" data-pf="drop" data-i="${i}" title="Drop this answer" aria-label="Drop answer ${i + 1}">${ICON.close}</button>` : '') + '</div>').join('')
+      + `<div class="rmpfoot"><button type="button" class="btn" data-pf="add"${p.answers.length >= 8 ? ' disabled title="Eight at most — one for each reaction GitHub has"' : ''}>Add an answer</button>`
+      + `<label><input type="checkbox" data-pf="many"${p.many ? ' checked' : ''}>Several each</label><span class="spacer"></span>`
+      + (lunch ? '<button type="button" class="btn" data-pf="lunch" title="Who is going to lunch, and where — lunch\'s places">Lunch</button>' : '')
+      + '<button type="button" class="btn" data-pf="cancel">Cancel</button><button type="button" class="btn go" data-pf="post">Ask</button></div>';
+  }
+  /** Lunch's poll: who is going and where — the day's places not closed, and Not today. */
+  function lunchPoll() {
+    const l = state.lunch || {}, places = (l.places || []).filter(p => p.state !== 'closed').map(p => p.name).slice(0, 7);
+    return { q: l.at ? `Lunch at ${l.at}?` : 'Lunch?', answers: [...places.length ? places : ['Going'], 'Not today'], many: false };
+  }
+  async function chatPollPost(btn) {
+    const p = chatUi.poll; if (!p || chatUi.sending) return;
+    chatUi.sending = true; btn.disabled = true;
+    try { const d = await api('POST', '/api/chat/poll', { q: p.q, answers: p.answers.filter(a => a.trim()), many: p.many }); if (d.msg.n === chatUi.n) chatTake([d.msg], []); chatPollForm(false); chatDraw(true); }
+    catch (e) { btn.disabled = false; note(btn, `Not asked: ${e.message}`, true); }
+    finally { chatUi.sending = false; }
+  }
+  $('#rmform').addEventListener('input', e => {
+    const p = chatUi.poll, f = e.target.dataset.pf; if (!p) return;
+    if (f === 'q') p.q = e.target.value; else if (f === 'a') p.answers[Number(e.target.dataset.i)] = e.target.value; else if (f === 'many') p.many = e.target.checked;
+  });
+  $('#rmform').addEventListener('click', e => {
+    const b = e.target.closest('button[data-pf]'), p = chatUi.poll; if (!b || !p) return;
+    const f = b.dataset.pf;
+    if (f === 'add' && p.answers.length < 8) { p.answers.push(''); chatPollDraw(); $(`#rmform [data-pf="a"][data-i="${p.answers.length - 1}"]`).focus(); }
+    else if (f === 'drop') { p.answers.splice(Number(b.dataset.i), 1); chatPollDraw(); $('#rmform [data-pf="a"]').focus(); }
+    else if (f === 'lunch') chatPollForm(lunchPoll());
+    else if (f === 'cancel') chatPollForm(false);
+    else if (f === 'post') chatPollPost(b);
+  });
+  // ⏎ walks down the form, a new answer past the last; ⌘⏎ asks
+  $('#rmform').addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.target.type === 'checkbox') return;
+    e.preventDefault();
+    const p = chatUi.poll, f = e.target.dataset.pf, i = f === 'q' ? -1 : Number(e.target.dataset.i);
+    if (e.metaKey || e.ctrlKey) return chatPollPost($('#rmform [data-pf="post"]'));
+    if (f !== 'q' && f !== 'a') return;
+    if (i + 1 < p.answers.length) return $(`#rmform [data-pf="a"][data-i="${i + 1}"]`).focus();
+    if (e.target.value.trim() && p.answers.length < 8) { p.answers.push(''); chatPollDraw(); $(`#rmform [data-pf="a"][data-i="${p.answers.length - 1}"]`).focus(); }
+    else $('#rmform [data-pf="post"]').focus();
+  });
   function chatDraw(toEnd = false) {
     const dlg = $('#room'); if (!dlg.open) return;
     const c = state.chat, admin = c.role === 'admin', people = chatUi.view === 'people', r = c.room;
@@ -10732,6 +10829,7 @@ const toolName = n => {
   }
   $('#room').addEventListener('click', e => {
     if (e.target.closest('#rmClose')) return $('#room').close();
+    if (e.target.closest('#rmPollBtn')) return chatPollForm(chatUi.poll ? false : {});
     if (e.target.closest('#rmPeople')) { chatUi.view = chatUi.view === 'people' ? 'log' : 'people'; chatUi.sure = null; if (chatUi.view === 'people') { chatPeopleLoad(); $('#rmfind').focus(); } chatDraw(true); return; }
     const more = e.target.closest('#rmMore');
     if (more) {
@@ -10744,6 +10842,7 @@ const toolName = n => {
     const act = e.target.closest('[data-rm]')?.dataset.rm, b = e.target.closest('[data-rm]'); if (!act) return;
     const login = b.closest('.rmp')?.dataset.login, id = Number(b.closest('.rmmsg')?.dataset.id);
     if (act === 'unsure') { chatUi.sure = null; chatDraw(); }
+    else if (act === 'vote') chatVote(id, b.dataset.r);
     else if (act === 'del') { b.closest('.rmmsg').classList.add('going'); chatAct('delete', { id }, b, () => { chatTake([], [id]); chatDraw(); }); }
     else if (act === 'leave') chatAct('leave', {}, b, d => { state.chat = d; $('#room').close(); chatChanged(); });
     else if (act === 'invite') chatAct('invite', { login }, b, d => { chatUi.people = d; $('#rmfind').value = ''; chatDraw(); note($('#rmfind'), d.invited ? `Invited ${d.login} — they join from their board, or GitHub's email` : `${d.login} is in already`); });
@@ -10758,6 +10857,7 @@ const toolName = n => {
   /** Esc in the panel lets go of one thing at a time — a question, the people — before the panel. */
   function chatEscape() {
     if (chatUi.sure) { chatUi.sure = null; chatDraw(); return true; }
+    if (chatUi.poll && chatUi.view === 'log') { chatPollForm(false); return true; }
     if (chatUi.view === 'people') { chatUi.view = 'log'; chatDraw(true); $('#rmbox').focus(); return true; }
     return false;
   }
@@ -10765,7 +10865,7 @@ const toolName = n => {
   for (const ev of ['focus', 'visibilitychange']) window.addEventListener(ev, chatSeenNow);
   /** What the server knows changed: the bar, the panel, Settings' pane. */
   function chatChanged() {
-    if (state.chat.repo !== chatUi.repo) Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null });   // another repo: nothing of the last one's
+    if (state.chat.repo !== chatUi.repo) { Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null, poll: null }); chatPollDraw(); }   // another repo: nothing of the last one's
     renderBar(); renderChatSet();
     if (state.chat.missing && !chatUi.places && $('#settings').open) chatPlacesLoad();
     if (!$('#room').open) return;
@@ -11027,6 +11127,7 @@ const toolName = n => {
     return `<span class="lstat">${esc(st)}${l.error ? ` · <span class="serr">${esc(l.error)}</span>` : ''}</span>`
       + `<button type="button" class="btn" data-lunch="read"${l.busy ? ' disabled' : ''}>Read again</button>`
       + (now ? `<button type="button" class="btn" data-lunch="snooze"${l.phase === 'before' ? ' disabled title="At lunch time"' : ''}>In 15 min</button><button type="button" class="btn go" data-lunch="going">Going</button>` : '')
+      + (state.chat.ready && state.chat.room != null ? '<button type="button" class="btn" data-lunch="poll" title="A poll in the chat: who is going, and where">Ask the chat</button>' : '')
       + '<button type="button" class="btn" data-lunch="settings">Settings…</button><span><kbd>esc</kbd></span>';
   }
   function drawLunch(force = false) {
@@ -11035,6 +11136,7 @@ const toolName = n => {
   }
   async function lunchAct(act, anchor) {
     if (act === 'settings') { if ($('#lunchd').open) $('#lunchd').close(); return settingsAt('lunch', '#lunchOnRow'); }
+    if (act === 'poll') { if ($('#lunchd').open) $('#lunchd').close(); chatOpen(); return chatPollForm(lunchPoll()); }   // the chat's poll, filled (2026-10-20)
     try { state.lunch = await api('POST', '/api/lunch', { act }); lunchChanged(); }
     catch (e) { if (anchor) note(anchor, `Not done: ${e.message}`, true); }
   }

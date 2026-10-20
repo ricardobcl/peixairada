@@ -1,6 +1,6 @@
 // A stand-in for GitHub's REST API (2026-10-17): the calls the chat makes — who you are and who someone is, a repo with
-// its collaborators and invitations, its issues (the rooms) and their comments, a label, the repo's subscription, a repo
-// made — on a loopback port, for the tests and the scenarios. A token is `fake-token-<login>` (the fake gh's `auth
+// its collaborators and invitations, its issues (the rooms) and their comments with their reactions (a poll's votes), a
+// label, the repo's subscription, a repo made — on a loopback port, for the tests and the scenarios. A token is `fake-token-<login>` (the fake gh's `auth
 // token`); one it does not know is a 401. Every GET answers with a weak ETag of its body, and a 304 to that ETag; `calls`
 // holds each request as `METHOD path status`. Who may do what follows GitHub's roles: `pull` reads, opens issues and
 // comments, deletes its own; `push` also labels, closes and deletes anyone's; `admin` also invites and removes.
@@ -10,16 +10,18 @@
 //   … env GITHUB_API = gh.url … gh.say('acme-chat/room', 1, 'ana', 'hello') … await gh.close();
 // A repo's `org` is its owner's being one of `orgs` (whose admins may make repos there; each made a day after the one
 // before it) or of `members` (organizations where those logins are members only); `description` starts with the
-// board's mark unless given. `say`, `edit` and `drop` change it as another board would; `invite(repo, login, by)` too.
+// board's mark unless given. `say`, `edit` and `drop` change it as another board would; `invite(repo, login, by)` and
+// `react(id, login, content)` (a vote; `unreact` takes it back) too.
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const face = login => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="hsl(${[...login].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360} 55% 55%)"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif">${login[0].toUpperCase()}</text></svg>`)}`;
 const ROLE = { pull: 1, push: 2, admin: 3 }, ROLE_NAME = { pull: 'read', push: 'write', admin: 'admin' };
+const REACTIONS = ['+1', '-1', 'laugh', 'confused', 'heart', 'hooray', 'rocket', 'eyes'];
 
 export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {}, repos = {} } = {}) {
   const people = new Map(), all = new Map(), calls = [];
-  let nextId = 5000, inviteId = 700, clock = Date.parse('2026-10-17T09:00:00Z');
+  let nextId = 5000, inviteId = 700, reactionId = 90_000, clock = Date.parse('2026-10-17T09:00:00Z');
   const at = () => new Date(clock += 1000).toISOString();
   const user = login => { if (!people.has(login)) people.set(login, { login, id: people.size + 1, type: /\[bot\]$/.test(login) ? 'Bot' : 'User', avatar_url: face(login) }); return people.get(login); };
   for (const u of users) user(u);
@@ -33,7 +35,7 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
     for (const room of rooms) {
       const i = { number: r.issues.length + 1, title: room.title, labels: room.labels || ['room'], state: room.state || 'open', user: user(room.by || owner), comments: [] };
       if (i.labels.includes('room')) r.labels.add('room');
-      for (const [by, body] of room.comments || []) { const t = at(); i.comments.push({ id: nextId++, user: user(by), body, created_at: t, updated_at: t }); }
+      for (const [by, body] of room.comments || []) { const t = at(); i.comments.push({ id: nextId++, user: user(by), body, created_at: t, updated_at: t, reactions: [] }); }
       r.issues.push(i);
     }
     return r;
@@ -42,7 +44,9 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
   const role = (r, login) => r.perms[login] || (orgs[orgName(r.owner) || '']?.includes(login) ? 'admin' : null);
   const may = (r, login, need) => (ROLE[role(r, login)] || 0) >= ROLE[need];
   const issueOut = (r, i) => ({ number: i.number, title: i.title, state: i.state, user: i.user, labels: i.labels.map(name => ({ name })), comments: i.comments.length, url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}` });
-  const commentOut = (r, i, c) => ({ id: c.id, user: c.user, body: c.body, created_at: c.created_at, updated_at: c.updated_at, issue_url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}`, html_url: `https://github.com/${r.full_name}/issues/${i.number}#issuecomment-${c.id}` });
+  const commentOut = (r, i, c) => ({ id: c.id, user: c.user, body: c.body, created_at: c.created_at, updated_at: c.updated_at, issue_url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}`, html_url: `https://github.com/${r.full_name}/issues/${i.number}#issuecomment-${c.id}`,
+    reactions: Object.fromEntries([['total_count', c.reactions.length], ...REACTIONS.map(k => [k, c.reactions.filter(x => x.content === k).length])]) });
+  const react = (c, login, content) => { let x = c.reactions.find(y => y.user.login === login && y.content === content); if (x) return [200, x]; x = { id: reactionId++, user: user(login), content, created_at: at() }; c.reactions.push(x); return [201, x]; };
   const repoOut = (r, login) => ({ full_name: r.full_name, name: r.name, private: r.private, description: r.description, owner: { login: r.owner, type: isOrg(r.owner) ? 'Organization' : 'User' },
     permissions: { admin: may(r, login, 'admin'), push: may(r, login, 'push'), pull: may(r, login, 'pull') } });
   const inviteOut = (r, v) => ({ id: v.id, invitee: user(v.login), inviter: user(v.by), created_at: v.created_at, expired: !!v.expired, permissions: v.permission === 'pull' ? 'read' : 'write', repository: { full_name: r.full_name, description: r.description, private: r.private } });
@@ -138,7 +142,13 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
       if ((m = rest.match(/^\/issues\/(\d+)\/comments$/))) {
         const i = r.issues.find(x => x.number === Number(m[1])); if (!i) return no(404, 'Not Found');
         if (M === 'GET') { const per = Math.min(100, Number(q.get('per_page')) || 30), page = Math.max(1, Number(q.get('page')) || 1); return send(200, i.comments.slice((page - 1) * per, page * per).map(c => commentOut(r, i, c))); }
-        if (M === 'POST') { const t = at(), c = { id: nextId++, user: user(me), body: String(body.body || ''), created_at: t, updated_at: t }; i.comments.push(c); return send(201, commentOut(r, i, c)); }
+        if (M === 'POST') { const t = at(), c = { id: nextId++, user: user(me), body: String(body.body || ''), created_at: t, updated_at: t, reactions: [] }; i.comments.push(c); return send(201, commentOut(r, i, c)); }
+      }
+      if ((m = rest.match(/^\/issues\/comments\/(\d+)\/reactions(?:\/(\d+))?$/))) {   // anyone who reads reacts; a reaction is taken back by its own
+        const f = find(Number(m[1])); if (!f || f.r !== r) return no(404, 'Not Found');
+        if (M === 'GET' && !m[2]) return send(200, f.c.reactions.slice(0, Math.min(100, Number(q.get('per_page')) || 30)));
+        if (M === 'POST' && !m[2]) { if (!REACTIONS.includes(body.content)) return send(422, { message: 'Validation Failed' }); return send(...react(f.c, me, body.content)); }
+        if (M === 'DELETE' && m[2]) { const x = f.c.reactions.find(y => y.id === Number(m[2])); if (!x) return no(404, 'Not Found'); if (x.user.login !== me) return no(403, 'Must own the reaction'); f.c.reactions.splice(f.c.reactions.indexOf(x), 1); return send(204); }
       }
       if (M === 'DELETE' && (m = rest.match(/^\/issues\/comments\/(\d+)$/))) {
         const f = find(Number(m[1])); if (!f || f.r !== r) return no(404, 'Not Found');
@@ -153,9 +163,11 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
   return {
     url: `http://127.0.0.1:${server.address().port}`, calls, repo,
     /** A message another board sent: its id. */
-    say(full, n, login, body) { const t = at(), c = { id: nextId++, user: user(login), body, created_at: t, updated_at: t }; repo(full).issues.find(i => i.number === n).comments.push(c); return c.id; },
+    say(full, n, login, body) { const t = at(), c = { id: nextId++, user: user(login), body, created_at: t, updated_at: t, reactions: [] }; repo(full).issues.find(i => i.number === n).comments.push(c); return c.id; },
     edit(id, body) { const f = find(id); f.c.body = body; f.c.updated_at = at(); },
     drop(id) { const f = find(id); f.i.comments.splice(f.i.comments.indexOf(f.c), 1); },
+    react(id, login, content) { return react(find(id).c, login, content)[1].id; },
+    unreact(id, login, content) { const c = find(id).c; c.reactions = c.reactions.filter(x => !(x.user.login === login && x.content === content)); },
     invite(full, login, by) { const r = repo(full); user(login); r.invitations.push({ id: inviteId++, login, by, created_at: at(), permission: isOrg(r.owner) ? 'pull' : 'push' }); },
     user,
     close: () => new Promise(ok => { server.closeAllConnections?.(); server.close(ok); }),

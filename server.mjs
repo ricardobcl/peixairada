@@ -3503,6 +3503,9 @@ async function switchGuard(s, branch) {
 // the board first reads it (its subscription, ignored): each message would mail every member otherwise. With no repo
 // set, a board looks for an invitation to one every CHAT_INVITES_MS (one call, a 304 when nothing changed) — not at boot —, and
 // whenever Settings › Chat is opened.
+// A poll is a message (2026-10-20): a question and up to eight answers, each one of the eight reactions GitHub has — a
+// vote is that reaction on the comment, so it says who as well as how many, and one given on GitHub counts. A poll's
+// votes are asked of GitHub when its counts on the comments' list moved (POLL_RX, chatVotes).
 // What comes in is someone else's words: the page draws it in a module of its own, and nothing here or there hands it
 // to a drawer, a claude or a notification's Reply… (test/chat.test.mjs holds the page to that).
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
@@ -3538,9 +3541,37 @@ async function ghToken(fresh = false) {
   ghToken.cache = { token, at: Date.now() };
   return token;
 }
-/** A comment as the page gets it: whose (login, face), the room's number, the words (capped, the unsaid characters out). */
-const chatMsg = c => ({ id: c.id, n: Number(String(c.issue_url || '').split('/').pop()) || 0, who: c.user?.login || 'ghost', face: c.user?.avatar_url || null,
-  body: String(c.body || '').replace(UNSAID, '').slice(0, CHAT_BODY_MAX), at: c.created_at, edited: c.updated_at && c.updated_at !== c.created_at ? c.updated_at : null, url: c.html_url || null });
+/** A comment as the page gets it: whose (login, face), the room's number, the words (capped, the unsaid characters out);
+ *  a poll's question and answers (`poll`), and its counts as the list has them (`rx`). */
+function chatMsg(c) {
+  const body = String(c.body || '').replace(UNSAID, '').slice(0, CHAT_BODY_MAX), poll = pollOf(body);
+  return { id: c.id, n: Number(String(c.issue_url || '').split('/').pop()) || 0, who: c.user?.login || 'ghost', face: c.user?.avatar_url || null,
+    body, at: c.created_at, edited: c.updated_at && c.updated_at !== c.created_at ? c.updated_at : null, url: c.html_url || null,
+    ...poll && { poll, rx: poll.opts.map(o => c.reactions?.[o.r] ?? 0).join(' ') } };
+}
+// A poll's body, as GitHub shows it too: a mark it hides, the question, a line per answer — the reaction that votes for
+// it, then its words —, and how to vote there. The reactions in the order answers take them; an answer that says no
+// wears 👎.
+const POLL_RX = { '+1': '👍', hooray: '🎉', rocket: '🚀', heart: '❤️', eyes: '👀', laugh: '😄', confused: '😕', '-1': '👎' };
+const POLL_MARK = /^<!-- peixAIrada poll(: several)? -->/, POLL_NO = /^(no|n[aã]o|nope|nah|not\b|skip|pass)/i, POLL_MAX = 8, POLL_Q_MAX = 200, POLL_A_MAX = 80;
+const pollLine = (v, max) => String(v ?? '').replace(UNSAID, '').replace(/\s+/g, ' ').trim().slice(0, max);
+function pollBody(q, answers, many) {
+  const free = Object.keys(POLL_RX).filter(r => r !== '-1'), no = answers.findIndex(a => POLL_NO.test(a));
+  const lines = answers.map((a, i) => `${POLL_RX[i === no ? '-1' : free.shift() ?? '-1']} ${a}`);
+  return `<!-- peixAIrada poll${many ? ': several' : ''} -->\n📊 **${q}**\n\n${lines.join('\n')}\n\n<sub>A poll: vote with the reaction beside your answer — ${many ? 'as many as you like' : 'one each'}.</sub>`;
+}
+/** A poll from a message's words: {q, opts: [{r, label}], many} — or null, for a message that is none. */
+function pollOf(body) {
+  const head = POLL_MARK.exec(body); if (!head) return null;
+  let q = null; const opts = [];
+  for (const raw of body.slice(head[0].length).split('\n')) {
+    const l = raw.trim();
+    if (q === null) { if (l.startsWith('📊')) q = l.slice(2).trim().replace(/^\*\*(.*)\*\*$/, '$1').trim(); continue; }
+    const r = Object.keys(POLL_RX).find(k => l.startsWith(POLL_RX[k].replace('\ufe0f', '')));
+    if (r && !opts.some(o => o.r === r) && opts.length < POLL_MAX) opts.push({ r, label: l.slice(POLL_RX[r].replace('\ufe0f', '').length).replace(/^\ufe0f/, '').trim() });
+  }
+  return q && opts.length >= 2 ? { q, opts, many: !!head[1] } : null;
+}
 const seenKey = () => `${chat.repo}#${chat.room?.n}`;
 const chatUnread = () => { const seen = chatSeen[seenKey()] ?? Infinity; return chat.msgs.filter(m => m.id > seen && m.who !== chat.me?.login).length; };
 /** What every page knows of the chat: the repo, who you are in it, its issue with what you have not read and who said
@@ -3561,7 +3592,7 @@ function chatTake(list, span = null) {
   for (const m of got) {
     const i = at.get(m.id);
     if (i === undefined) { held.push(m); c.add.push(m); c.fresh.push(m); }
-    else if (held[i].body !== m.body || held[i].edited !== m.edited) { held[i] = m; c.add.push(m); }
+    else if (held[i].body !== m.body || held[i].edited !== m.edited || held[i].rx !== m.rx) { const { votes, votesRx, votesAt } = held[i]; held[i] = { ...m, votes, votesRx, votesAt }; c.add.push(held[i]); }
   }
   if (span) {
     const keep = new Set(got.map(m => m.id));
@@ -3579,7 +3610,7 @@ function chatTell(c, silent) {
   const news = silent ? [] : c.fresh.filter(m => m.who !== chat.me?.login && m.id > (chatSeen[seenKey()] ?? Infinity));
   if (!news.length) return;
   const last = news.at(-1), who = [...new Set(news.map(m => m.who))];
-  const evt = { kind: 'chat', sessionId: null, heading: 'Chat', title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who, snippet: plainSnippet(last.body, 140), ts: last.at, quiet: !notificationsOn };
+  const evt = { kind: 'chat', sessionId: null, heading: 'Chat', title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who, snippet: last.poll ? `📊 ${last.poll.q}` : plainSnippet(last.body, 140), ts: last.at, quiet: !notificationsOn };
   broadcast('alert', evt);
   if (notificationsOn && Date.now() > chat.watchUntil) nativeNotify(evt.heading, evt.title, evt.snippet);
 }
@@ -3605,7 +3636,7 @@ async function chatBackfill(gen) {
     if (gen !== chat.gen || chat.room !== room) return;
     got = got.concat((r.data || []).map(chatMsg).map(m => ({ ...m, n: room.n })));
   }
-  chatTake(got);
+  await chatVotes(gen, chatTake(got)); if (gen !== chat.gen) return;
   if (!(seenKey() in chatSeen)) { chatSeen[seenKey()] = got.reduce((a, m) => Math.max(a, m.id), 0); saveState(); }
 }
 async function chatLook(gen, silent = false) {
@@ -3614,7 +3645,32 @@ async function chatLook(gen, silent = false) {
   if (gen !== chat.gen || r.status === 304) return;
   chat.tags.set(url, r.etag);
   const got = (r.data || []).map(chatMsg), ids = got.map(m => m.id);
-  chatTell(chatTake(got, ids.length ? { floor: got.length >= CHAT_WINDOW ? Math.min(...ids) : 0, top: Math.max(...ids) } : null), silent);
+  const c = chatTake(got, ids.length ? { floor: got.length >= CHAT_WINDOW ? Math.min(...ids) : 0, top: Math.max(...ids) } : null);
+  await chatVotes(gen, c); if (gen !== chat.gen) return;
+  chatTell(c, silent);
+}
+/** The votes of each poll whose counts moved since its votes were asked (`rx`, the comments' list's) — and of one a day
+ *  old at most once a minute, a 304 when nothing moved: two people trading answers leave the counts as they were. Who
+ *  gave which of its answers; on a poll of one answer each, a person's newest. A poll changed joins what changed. */
+async function chatVotes(gen, c) {
+  const now = Date.now();
+  for (const m of chat.msgs) {
+    if (!m.poll || (m.votesRx === m.rx && (now - (m.votesAt || 0) < CHAT_FIND_MS || now - Date.parse(m.at) > 86_400_000))) continue;
+    const url = `/repos/${chat.repo}/issues/comments/${m.id}/reactions?per_page=100`, rx = m.rx;
+    const r = await ghRest('GET', url, undefined, chat.tags.get(url)).catch(e => { if (e.status === 404) return null; throw e; });   // 404: deleted since
+    if (gen !== chat.gen) return;
+    m.votesRx = rx; m.votesAt = Date.now();
+    if (!r || r.status === 304) continue;
+    chat.tags.set(url, r.etag); m.votes = votesOf(m.poll, r.data);
+    if (!c.add.includes(m)) c.add.push(m);
+  }
+}
+function votesOf(poll, list) {
+  const ok = new Set(poll.opts.map(o => o.r)), newest = new Map();
+  const all = (list || []).filter(x => ok.has(x.content) && x.user?.login).map(x => ({ id: x.id, r: x.content, who: x.user.login, face: x.user.avatar_url || null, at: x.created_at || '' }));
+  if (poll.many) return all;
+  for (const v of all) { const was = newest.get(v.who); if (!was || v.at > was.at || (v.at === was.at && v.id > was.id)) newest.set(v.who, v); }
+  return all.filter(v => newest.get(v.who) === v);
 }
 /** The chat's issue, made and labelled: with the repo, and on its admin's board when none is open (a repo made by hand,
  *  or its issue closed on GitHub). */
@@ -3748,6 +3804,13 @@ async function chatRoute(req, res, what, url) {
   const admin = () => { ready(); if (chat.role !== 'admin') throw chatErr(403, `only ${chat.repo}'s admin does that`); };
   const there = () => { if (!chat.room) throw chatErr(409, `no chat in ${chat.repo} yet — its admin's board starts it`); return chat.room.n; };
   const login = v => { const l = String(v ?? '').trim().replace(/^@/, ''); if (!ORG_NAME.test(l)) throw chatErr(400, `"${l}" is not a GitHub login`); return l; };
+  const sent = async (n, r) => {   // a message of yours, sent: held, said to every page, read
+    const m = { ...chatMsg(r.data), n };
+    if (m.poll) Object.assign(m, { votes: [], votesRx: m.rx, votesAt: Date.now() });   // new: nobody has voted
+    const c = chatTake([m]); await chatVotes(chat.gen, c); chatTell(c, true);
+    if (m.id > (chatSeen[seenKey()] ?? 0)) { chatSeen[seenKey()] = m.id; saveState(); }
+    chatSay(); return chat.msgs.find(x => x.id === m.id) || m;
+  };
   try {
     if (M === 'GET' && !what) {
       if (url.searchParams.has('invites') && Date.now() - chat.askedAt > 1000) await chatInvites(chat.gen).catch(e => chatFailed(e));   // Settings › Chat open: asked now (a 304 when nothing changed), not in ten minutes — at boot too: invitesAt is the timer's, put off then
@@ -3768,12 +3831,36 @@ async function chatRoute(req, res, what, url) {
       ready(); const n = there(), text = String(body.body ?? '').replace(/\r\n?/g, '\n').replace(UNSAID, '').trim();
       if (!text) throw chatErr(400, 'nothing to send');
       if (text.length > CHAT_BODY_MAX) throw chatErr(400, `a message is ${CHAT_BODY_MAX} characters at most`);
-      const r = await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues/${n}/comments`, { body: text }));
-      const m = { ...chatMsg(r.data), n };
-      chatTell(chatTake([m]), true);
-      if (m.id > (chatSeen[seenKey()] ?? 0)) { chatSeen[seenKey()] = m.id; saveState(); }
-      chatSay();
-      return json(res, 200, { msg: m });
+      return json(res, 200, { msg: await sent(n, await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues/${n}/comments`, { body: text }))) });
+    }
+    if (M === 'POST' && what === 'poll') {   // a question and its answers, as a message (2026-10-20)
+      ready(); const n = there(), q = pollLine(body.q, POLL_Q_MAX), answers = (Array.isArray(body.answers) ? body.answers : []).map(a => pollLine(a, POLL_A_MAX)).filter(Boolean);
+      if (!q) throw chatErr(400, 'a poll asks something');
+      if (answers.length < 2) throw chatErr(400, 'a poll has two answers at least');
+      if (answers.length > POLL_MAX) throw chatErr(400, `${POLL_MAX} answers at most — one for each reaction GitHub has`);
+      if (new Set(answers.map(a => a.toLowerCase())).size < answers.length) throw chatErr(400, 'two answers say the same');
+      return json(res, 200, { msg: await sent(n, await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues/${n}/comments`, { body: pollBody(q, answers, !!body.many) }))) });
+    }
+    if (M === 'POST' && what === 'vote') {   // your answer to a poll, given or taken back; on a poll of one answer each, the one before taken back
+      ready(); const id = Number(body.id), m = chat.msgs.find(x => x.id === id), r = String(body.r ?? '');
+      if (!m?.poll) throw chatErr(404, 'no such poll');
+      if (!m.poll.opts.some(o => o.r === r)) throw chatErr(400, 'not one of its answers');
+      const url = `/repos/${chat.repo}/issues/comments/${id}/reactions`;
+      let list = (await ghRest('GET', `${url}?per_page=100`)).data || [];
+      const had = list.filter(x => x.user?.login === chat.me.login && m.poll.opts.some(o => o.r === x.content)), again = had.find(x => x.content === r);
+      const drop = async x => { await chatWrite(() => ghRest('DELETE', `${url}/${x.id}`)); list = list.filter(y => y.id !== x.id); };
+      if (again) await drop(again);
+      else {
+        const made = (await chatWrite(() => ghRest('POST', url, { content: r }))).data;
+        if (made?.id && !list.some(y => y.id === made.id)) list.push(made);
+        if (!m.poll.many) for (const x of had) await drop(x);
+      }
+      // the votes as written, not asked again (GitHub's list may lag its writes), and the counts they make: a look that
+      // finds others' votes making the same counts as yours did would see nothing moved
+      const held = chat.msgs.find(x => x.id === id) || m;
+      held.votes = votesOf(held.poll, list); held.rx = held.votesRx = held.poll.opts.map(o => list.filter(x => x.content === o.r).length).join(' ');
+      broadcast('chatmsgs', { n: held.n, add: [held], gone: [] });
+      return json(res, 200, { msg: held });
     }
     if (M === 'POST' && what === 'delete') {   // yours, or anyone's for the admin
       ready(); const id = Number(body.id), m = chat.msgs.find(x => x.id === id);
@@ -3816,7 +3903,7 @@ async function chatRoute(req, res, what, url) {
       const full = String(body.repo ?? '').trim(); if (!REPO_RE.test(full)) throw chatErr(400, `"${full}" is not owner/name`);
       const [owner, name] = full.split('/'), me = (await ghRest('GET', '/user')).data;
       const r = await ghRest('POST', owner.toLowerCase() === me.login.toLowerCase() ? '/user/repos' : `/orgs/${owner}/repos`,
-        { name, private: true, description: `${ROOM_MARK} — its rooms are the issues labelled room`, has_issues: true, has_wiki: false, has_projects: false, has_discussions: false });
+        { name, private: true, description: `${ROOM_MARK} — the issue labelled room is the chat`, has_issues: true, has_wiki: false, has_projects: false, has_discussions: false });
       const repo = r.data.full_name;
       chatPlaces.cache = null;
       await ghRest('PUT', `/repos/${repo}/subscription`, { subscribed: false, ignored: true }); if (!chatQuiet.includes(repo)) chatQuiet.push(repo);
@@ -5791,7 +5878,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
