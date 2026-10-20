@@ -753,12 +753,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the same chat): the highlight slides (`.ptabpill`, the new tab `.slid` until it lands), a new tab grows in, a closed
   one folds as a stand-in **`.ptabgone` — never a `.ptab`**, so counts of tabs count the real ones.
 * **The strip is one family of controls** (2026-10-11): every tab, nav button and field 26 px, `--r-3`, no fill at
-  rest; **the tab in front and the half with the keys in `--tablit`** (the chat's colour lifted, set on `#chat`),
+  rest; **the tab in front and the half with the keys in `--tablit`** (the chat's colour lifted, on `#chat`),
   never the accent; glyphs are strokes (`ICON.back` …, `.ic.st`). A tab's × is over its mark under the pointer; under
   640 px (`.ptabs` is a size container) the tabs behind fold to marks and lose the × (⌥⌘W). **The page in front is its
-  own address**: `div.ptab.addr` (it holds buttons) with `.purl` (`urlHtml`, `addrHtml`) and `.navs`; a click on the
-  address copies it; the tab drag ignores it. The half's ◫/⊟ and ⨯ are behind ⋯ (`.gmore` → `.gopen`; `.click()` on
-  `.gturn` / `.gclose` works folded). Split, each half is a tile (`#gsplit` the gap); under the floating
+  own address**: `div.ptab.addr` with `.purl` (`urlHtml`, `addrHtml`) and `.navs`; a click on the address or `.pcopy`
+  (2026-10-20) copies it; the tab drag ignores it. The half's ◫/⊟ and ⨯ are behind ⋯ (`.gmore` → `.gopen`; `.click()`
+  on `.gturn` / `.gclose` works folded). Split, each half is a tile (`#gsplit` the gap); under the floating
   header `#groups` pads by `--float-h`, not the halves. → `pane-tabs.mjs`, `split-halves.mjs`.
 * **A half whose one tab is not a web page has no strip** (`.lone`, of no height: the tile's border says where the keys
   are, so moving them resizes no terminal). A web page alone keeps its strip, an empty half keeps

@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-20. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-20, night — a copy button on a page's address
+
+Ricardo: "add a copy URL button on web pages"
+
+* **A page's address has a copy button, between ↻ and ↗** (`.pcopy`, `ICON.copyAddr`: two sheets, a stroke as the
+  strip's glyphs are). A click on the address copied it already (2026-09-21), but nothing said so but its tooltip.
+  The button copies what the address does — the whole URL, scheme and all, the editor's too behind *VS Code ·
+  folder* —, through the same `copyPaneUrl`, with the same note, under the button. **A selection in the address does
+  not stop it**: on the address that click is someone copying their own part; on the button it is asking for the
+  whole. It is a `.nav` for its look and none for the shell: it posts no `{type: 'nav'}`.
+* `pane-tabs.mjs`: the button after a selection — the whole address handed to the clipboard, the note, no nav.
+
 ## Decisions of 2026-10-20, later still — a poll in the chat
 
 Ricardo: "can we implemente polls, for example to know who want to go to lunch?"
