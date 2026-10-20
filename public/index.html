@@ -7539,6 +7539,16 @@ const toolName = n => {
   // ESC f) and ⌥⌫ (ESC DEL) xterm already sends. ⇧ held, or ⌃, or ⌘ and ⌥ together (⌥⌘← is a tab), is not one of them.
   const MAC_EDIT = { 'cmd:ArrowLeft': '\x01', 'cmd:ArrowRight': '\x05', 'cmd:Backspace': '\x15', 'cmd:Delete': '\x0b', 'alt:Delete': '\x1bd' };
   const macEdit = e => e.ctrlKey || e.shiftKey || e.metaKey === e.altKey ? undefined : MAC_EDIT[`${e.metaKey ? 'cmd' : 'alt'}:${e.key}`];
+  // xterm's DOM renderer reads a glyph's width as offsetWidth / 32, a whole px over 32 glyphs, and brings each glyph to
+  // its cell by the letter-spacing that leaves (2026-10-20): 12 px SF Mono's 7.418 read as 7.406 is 0.012 px too much a
+  // column, and the last glyph of 160 sat 2 px past its row, which clips it — the right edge of every full line cut. The
+  // same measure with the fraction kept: the computed width, which a tile's scale does not reach. Still offsetWidth in 6.0.
+  function exactGlyphs(xt) {
+    const r = xt._core?._renderService?._renderer?.value, wc = r?._widthCache;
+    if (typeof wc?._measure !== 'function' || typeof r._setDefaultSpacing !== 'function') return;
+    wc._measure = function (c, v) { const el = this._measureElements[v]; el.textContent = c.repeat(32); return parseFloat(getComputedStyle(el).width) / 32 || 0; };
+    wc.clear(); r._setDefaultSpacing(); xt.refresh(0, xt.rows - 1);
+  }
   function ensureXterm(tm) {
     if (tm.xt) return;
     tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false, screenReaderMode: readerOn() });
@@ -7562,7 +7572,7 @@ const toolName = n => {
     tm.fit = new FitAddon.FitAddon(); tm.xt.loadAddon(tm.fit);
     tm.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
     tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) });   // the paths on a line (2026-09-26)
-    tm.xt.open($(tm.el.tbody));
+    tm.xt.open($(tm.el.tbody)); exactGlyphs(tm.xt);
     tm.xt.onData(d => termSend(tm, d));
     tm.xt.onWriteParsed(() => roomSoon(tm));   // under the floating header or behind it (checkRoom)
     $(tm.el.tbody).addEventListener('mousedown', () => focusGroup(tm.g));   // typing in a half is being in it
@@ -9117,7 +9127,7 @@ const toolName = n => {
     if (!m) {
       const el = document.createElement('div'); el.className = 'mini'; el.inert = true;   // a picture: its helper textarea out of the tab order (2026-10-12)
       const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
-      xt.open(el);
+      xt.open(el); exactGlyphs(xt);
       const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`)); ws.binaryType = 'arraybuffer';
       ws.onmessage = e => { if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data), () => cropSoon(m)); else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear()); };
       m = { xt, ws, el, cols: xt.cols, rows: xt.rows, scale: 1, foot: 0 };

@@ -12,7 +12,18 @@ export default async function (ctx) {
     const d = await ctx.peix('term()');
     ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `${label}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`);
     ctx.assert.deepEqual({ cols: d.propose.cols, rows: d.propose.rows }, { cols: d.cols, rows: d.rows }, `${label}: fit would change nothing`);
-    return d;
+    // …and the glyphs keep to the grid (2026-10-20): the last of a rule the width of the screen ends where its row does —
+    // a glyph's width read to a whole px over 32 drifted every column, and the last one past its row was clipped
+    const e = await ctx.evaluate(`(() => {
+      const row = [...document.querySelectorAll('#termBody .xterm-rows > div')].find(r => /^─{20,}$/.test(r.textContent));
+      if (!row) return null;
+      const w = document.createTreeWalker(row, NodeFilter.SHOW_TEXT); let t, n; while ((n = w.nextNode())) t = n;
+      const g = document.createRange(); g.setStart(t, t.length - 1); g.setEnd(t, t.length);
+      return { cols: row.textContent.length, past: g.getBoundingClientRect().right - row.getBoundingClientRect().right };
+    })()`);
+    ctx.assert.ok(e, `${label}: a rule across the screen`);
+    ctx.assert.ok(Math.abs(e.past) < 0.25, `${label}: the last of ${e.cols} columns ends at its row's edge (${e.past.toFixed(3)} px past it)`);
+    return { ...d, past: e.past };
   };
   // The body must fill its half, strip or no strip: a hidden strip is display:none, and a half whose rows are not
   // placed by hand slides the body into the `auto` row, where it sizes itself to the terminal instead of the pane
