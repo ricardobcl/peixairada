@@ -2,8 +2,25 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-19. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-20. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-20 — lunch: a month's dishes wait on the day's
+
+Ricardo, the first lunch day with the login: "ramen break has a story with an updated menu - can we fix that logic?"
+The chalkboard had Ramen Break's four dishes from its month's post (8 October, *this month's dishes*); at 10:03 it put
+up the week's card as a story — *Semana de 20 a 23, Almoços de outubro*: Tuesday hummus, Wednesday okonomiyaki,
+Thursday tortilha, Friday tofu tikka masala. The profile's look saw the story go up, but a place with any dishes was
+done for the day, so no round read it.
+
+* **A month's dishes are not a menu for the day** (`settled`): a place holding only them is looked at again each round
+  — its profile, its stories, the channel — and a day's dishes from any of them take their place; a month's never takes
+  a day's (`setMenu`, so Read again keeps the story's). A menu set replaces the one before, its story's time kept — a
+  merge left `month` on a story's day.
+* **A story's read is kept with its place and time** (`reads.json`: `place`, `kind`, `posted`, `url`), and each round
+  first asks the kept stories for today (`lunchKept`, no network): a week's card says Wednesday's to Friday's dishes
+  after Instagram has let the story go (a day on; the looks start 75 minutes before lunch). A story's closure counts as
+  a post's does. Reads kept before this carry no place and are passed over.
 
 ## Decisions of 2026-10-19 — a chat whose worktree is gone resumes
 

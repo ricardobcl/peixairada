@@ -3844,7 +3844,9 @@ async function chatRoute(req, res, what, url) {
 //   · the setup's Slack channel (`slack`), where colleagues post those stories as screenshots, read by claude -p with
 //     Claude's Slack connector and its read tools alone.
 // Every picture is read by claude -p (`model`, haiku unless the setup says) into the days and dishes it shows, once:
-// LUNCH_DIR/reads.json keeps each read by the post's or the story's id. A reader is a claude of its own in
+// LUNCH_DIR/reads.json keeps each read by the post's or the story's id — a story's with its place and time, so a week's
+// card still says the day's dishes once Instagram has let the story go (lunchKept). A month's dishes are a place's
+// until something says which is today's: a story, a post, the channel (2026-10-20). A reader is a claude of its own in
 // LUNCH_DIR/work, with no transcript (--no-session-persistence); the registry lists it while it runs, and
 // loadRegistry passes over it (ownReader). The day — its menus, Going, In 15 min, back — is the state file's.
 const LUNCH_DIR = join(dirname(STATE_FILE), 'lunch');
@@ -3926,8 +3928,14 @@ function lunchToday(t = Date.now()) {
   return lunchDay;
 }
 const menuOf = p => lunchToday().menus[p.name] ||= {};
-const hasMenu = p => !!(lunchToday().menus[p.name]?.dishes?.length || lunchToday().menus[p.name]?.closed);
-function setMenu(p, m) { const day = lunchToday(); day.menus[p.name] = { ...day.menus[p.name], ...m, error: null }; saveState(); lunchSay(); }
+/** A place a round need not look for any more: today's dishes, or closed. A month's dishes, with no day to each, are
+ *  not — a story, a post or the channel may still say which is today's (2026-10-20). */
+const settled = p => { const m = lunchToday().menus[p.name]; return !!(m?.closed || (m?.dishes?.length && !m.month)); };
+/** A place's menu for today, in place of what it had (its story's time kept) — but a month's never takes a day's. */
+function setMenu(p, m) {
+  if (m.month && settled(p)) return;
+  const day = lunchToday(); day.menus[p.name] = { storyAt: day.menus[p.name]?.storyAt, ...m, error: null }; saveState(); lunchSay();
+}
 /** What every page knows: the setup, where the day stands, and each place's menu — its dishes, where and when they came
  *  from, or why there are none yet. In the snapshot and every `lunch` event. */
 function lunchSummary(t = Date.now()) {
@@ -4004,8 +4012,9 @@ async function pictureOf(url) {
   if (buf.length > 8 << 20) throw new Error('the picture is too large');
   return { type, data: buf.toString('base64') };
 }
-/** A post's or a story's picture read — once: what came back is kept by its id, a failure asked again LUNCH_AGAIN_MS on. */
-async function readPicture({ id, image, caption = '', place, at, kind }) {
+/** A post's or a story's picture read — once: what came back is kept by its id, with whose it is and when it went up,
+ *  a failure asked again LUNCH_AGAIN_MS on. */
+async function readPicture({ id, image, caption = '', place, at, kind, url }) {
   const reads = lunchReads(), hit = reads.get(id);
   if (hit && (hit.r || Date.now() - hit.at < LUNCH_AGAIN_MS)) return hit.r;
   let r = null, err = null;
@@ -4014,7 +4023,7 @@ async function readPicture({ id, image, caption = '', place, at, kind }) {
     const text = `${place.name}${place.instagram ? ` (Instagram @${place.instagram})` : ''}, a restaurant, put this ${kind} on Instagram on ${whenSaid(at)}${caption ? `, captioned:\n«${caption.slice(0, 1500)}»` : '.'}\nToday is ${whenSaid(Date.now(), false)}.\n${READ_ASK}`;
     r = await runReader({ content: [{ type: 'image', source: { type: 'base64', media_type: pic.type, data: pic.data } }, { type: 'text', text }], schema: READ_SCHEMA });
   } catch (e) { err = e.message; console.error(`[peixairada] lunch: ${place.name}'s ${kind} ${id} not read — ${err}`); }
-  reads.set(id, { at: Date.now(), r, ...err && { err } }); saveReads();
+  reads.set(id, { at: Date.now(), r, ...err && { err }, place: (place.instagram || place.name).toLowerCase(), kind, posted: at, url }); saveReads();
   if (err) throw new Error(err);
   return r;
 }
@@ -4048,7 +4057,7 @@ async function lunchLook(places, today) {
     if (got.storyAt && dayKey(got.storyAt) === today) m.storyAt = got.storyAt;
     const posts = (got.posts || []).filter(x => x.image && Date.now() - x.at < LUNCH_RECENT_MS && (dayKey(x.at) === today || MENU_WORDS.test(x.caption) || /image of text|imagem de texto/i.test(x.alt)));
     for (const x of posts.slice(0, LUNCH_READ_MAX)) {
-      let read; try { read = await readPicture({ id: `p${x.pk}`, image: x.image, caption: x.caption, place: p, at: x.at, kind: 'post' }); } catch (e) { m.error = e.message; continue; }
+      let read; try { read = await readPicture({ id: `p${x.pk}`, image: x.image, caption: x.caption, place: p, at: x.at, kind: 'post', url: x.url }); } catch (e) { m.error = e.message; continue; }
       const closed = closedOn(read, today); if (closed) { setMenu(p, { closed, src: 'post', at: x.at, url: x.url, dishes: [] }); return; }
       const d = dishesOn(read, today, x.at); if (d) { setMenu(p, { ...d, src: 'post', at: x.at, url: x.url }); return; }
     }
@@ -4056,9 +4065,9 @@ async function lunchLook(places, today) {
   });
 }
 /** The stories, through the board's login: of the places whose story went up today (or whose profile said nothing),
- *  each one's story page — today's, newest first, until one is the menu. */
+ *  each one's story page — today's, newest first, until one is the menu or a closure. */
 async function lunchStories(places, today) {
-  const want = places.filter(p => p.instagram && !hasMenu(p) && (menuOf(p).storyAt || menuOf(p).error));
+  const want = places.filter(p => p.instagram && !settled(p) && (menuOf(p).storyAt || menuOf(p).error));
   if (!lunchCfg()?.stories || !want.length || lunch.loginRun) return;
   lunch.busy = 'stories'; lunchSay();
   const r = await igRun(['stories', '--profile', LUNCH_CHROME, ...want.map(p => p.instagram)], 4 * 60_000);
@@ -4071,14 +4080,27 @@ async function lunchStories(places, today) {
     const items = (Object.entries(r.stories || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1] || []).filter(s => dayKey(s.at) === today);
     if (items.length) menuOf(p).storyAt = Math.max(menuOf(p).storyAt || 0, items[0].at);
     for (const s of items.slice(0, LUNCH_STORY_MAX)) {
-      let read; try { read = await readPicture({ id: `s${s.pk}`, image: s.image, place: p, at: s.at, kind: 'story' }); } catch (e) { menuOf(p).error = e.message; continue; }
+      let read; try { read = await readPicture({ id: `s${s.pk}`, image: s.image, place: p, at: s.at, kind: 'story', url: s.url }); } catch (e) { menuOf(p).error = e.message; continue; }
+      const closed = closedOn(read, today); if (closed) { setMenu(p, { closed, src: 'story', at: s.at, url: s.url, dishes: [] }); return; }
       const d = dishesOn(read, today, s.at); if (d) { setMenu(p, { ...d, src: 'story', at: s.at, url: s.url }); return; }
     }
   });
 }
+/** The stories read on the days before that still say today's: a week's card or a closure, gone from Instagram a day
+ *  after it went up (2026-10-20) — the newest first, no network. */
+function lunchKept(places, today) {
+  const kept = [...lunchReads().values()].filter(v => v.kind === 'story' && v.r && v.posted).sort((a, b) => b.posted - a.posted);
+  for (const p of places) {
+    if (!p.instagram || settled(p)) continue;
+    for (const v of kept.filter(v => v.place === p.instagram.toLowerCase())) {
+      const closed = closedOn(v.r, today); if (closed) { setMenu(p, { closed, src: 'story', at: v.posted, url: v.url || null, dishes: [] }); break; }
+      const d = dishesOn(v.r, today, v.posted); if (d && !d.month) { setMenu(p, { ...d, src: 'story', at: v.posted, url: v.url || null }); break; }
+    }
+  }
+}
 /** The setup's Slack channel: the day's screenshots, read for the places still without a menu. */
 async function lunchSlack(places, today) {
-  const ch = lunchCfg()?.slack, want = places.filter(p => !hasMenu(p));
+  const ch = lunchCfg()?.slack, want = places.filter(p => !settled(p));
   if (!ch || !want.length) return;
   lunch.busy = 'Slack'; lunchSay();
   const text = `You collect restaurants' lunch menus for a dashboard. Read only: never post, react, upload or change anything in Slack.
@@ -4096,13 +4118,15 @@ Copy each dish as written, one item per dish, in the order shown — starters, s
     if (p && Array.isArray(x.dishes) && x.dishes.length) setMenu(p, { dishes: x.dishes.map(String), price: x.price || null, src: 'slack', at: hm ? new Date().setHours(+hm[1], +hm[2], 0, 0) : Date.now(), url: null });
   }
 }
-/** One round: the profiles, the stories, the channel (`slack`) — for the places still without a menu, or all of them
- *  (`all`, Read again). One at a time; asked while one runs, it runs again after. */
+/** One round: the stories kept, the profiles, the stories, the channel (`slack`) — for the places still without today's
+ *  menu, or all of them (`all`, Read again). One at a time; asked while one runs, it runs again after. */
 async function lunchRun({ slack = false, all = false } = {}) {
   const cfg = lunchCfg();
   if (!cfg?.places.length) return;
   if (lunch.busy) { lunch.again = { slack: slack || !!lunch.again?.slack, all: all || !!lunch.again?.all }; return; }
-  const today = lunchToday().day, places = all ? cfg.places : cfg.places.filter(p => !hasMenu(p));
+  const today = lunchToday().day;
+  lunchKept(cfg.places, today);
+  const places = all ? cfg.places : cfg.places.filter(p => !settled(p));
   if (all) for (const p of places) { const m = menuOf(p); if (!m.dishes?.length) delete m.error; }
   lunch.error = null; lunch.busy = 'starting'; lunchSay();
   try {

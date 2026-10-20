@@ -219,10 +219,11 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   while a page watches, writes `CHAT_GAP_MS` apart (`chatWrite`), its mails off (`chatQuiet`); only its `admin` manages
   people. No repo: invitations every `CHAT_INVITES_MS`, never at boot; `chatPlaces`, where one could be. One GitHub
   hides is `missing`; `use` asks GitHub first. → `test/chat.test.mjs`.
-* **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places with no menu,
-  the profile logged out and the stories through the board's login (`lib/instagram.mjs`), the Slack channel at
-  `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's `dishesOn`'s;
-  **a reader is no chat** (`ownReader`); alert kind `lunch`. → `test/lunch.test.mjs`.
+* **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places not `settled`
+  (a month's dishes are not, 2026-10-20), the profile logged out, the stories logged in (`lib/instagram.mjs`),
+  the Slack channel at `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's
+  `dishesOn`'s, a week's story kept (`lunchKept`); **a reader is no chat** (`ownReader`); alert kind `lunch`.
+  → `test/lunch.test.mjs`.
 
 ## The board
 

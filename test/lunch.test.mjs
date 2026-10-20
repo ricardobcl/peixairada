@@ -157,3 +157,48 @@ test('end to end: a week\'s post, a story once logged in, the channel, each pict
     assert.ok(!(await srv.api('api/sessions')).body.sessions.some(s => s.id === 'reader-0000'), 'not on the board');
   } finally { sse.close(); await srv.stop(); }
 });
+
+test('a month\'s dishes stand until a story says which is today\'s, and the week\'s story is kept for the days after it is gone', { timeout: 60_000 }, async () => {
+  const now = Date.now(), today = dayKey(now), before = earlier();
+  const month = { isMenu: true, kind: 'month', days: [{ date: null, weekday: null, dishes: ['Tortilha e aioli', 'Hummus e vegetais', 'Okonomiyaki'] }], price: '12€', closed: null };
+  const week = { isMenu: true, kind: 'week', price: '12€', closed: null,
+    days: [{ date: dayKey(now - DAY), weekday: null, dishes: ['Tortilha e aioli'] }, { date: today, weekday: null, dishes: ['Hummus e vegetais'] }, { date: dayKey(now + DAY), weekday: null, dishes: ['Okonomiyaki'] }] };
+  const post = { code: 'M1', pk: '7101', at: now - 3 * DAY, caption: 'Almoços de outubro', alt: '', image: PNG, url: 'https://www.instagram.com/p/M1/' };
+  const lunch = { at: '23:59', days: [0, 1, 2, 3, 4, 5, 6], places: [{ name: 'Ramen', instagram: 'ramen.place' }], stories: true };
+  const put = srv => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lunch }) });
+  const ramen = async srv => (await srv.api('api/lunch')).body.places[0], idle = async srv => !(await srv.api('api/lunch')).body.busy;
+  const lines = file => { try { return readFileSync(file, 'utf8').trim().split('\n').filter(Boolean); } catch { return []; } };
+
+  // today: the month's post, then the week's story once logged in — and Read again keeps the day's
+  let srv = await startTestServer();
+  try {
+    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ loggedIn: false, profiles: { 'ramen.place': { id: '22', storyAt: before, posts: [post] } },
+      stories: { 'ramen.place': [{ pk: '9101', at: before, image: PNG, url: 'https://www.instagram.com/stories/ramen.place/9101/' }] } }));
+    writeFileSync(srv.env.FAKEREADER_FILE, JSON.stringify({ reads: { 'Almoços de outubro': month, 'put this story': week } }));
+    assert.equal((await put(srv)).status, 200);
+    await waitFor(async () => (await ramen(srv)).state === 'menu' && await idle(srv), { what: 'the month\'s dishes' });
+    assert.deepEqual([(await ramen(srv)).dishes.length, (await ramen(srv)).month, (await ramen(srv)).src], [3, true, 'post']);
+    await srv.post('api/lunch', { act: 'login' });
+    await waitFor(async () => (await ramen(srv)).src === 'story' && await idle(srv), { what: 'the story read over the month\'s' });
+    let r = await ramen(srv);
+    assert.deepEqual([r.dishes, r.month, r.storyAt, r.url], [['Hummus e vegetais'], false, before, 'https://www.instagram.com/stories/ramen.place/9101/'], 'today\'s row of the week');
+    await srv.post('api/lunch', { act: 'read' });
+    await waitFor(() => idle(srv), { what: 'Read again done' });
+    r = await ramen(srv);
+    assert.deepEqual([r.dishes, r.src], [['Hummus e vegetais'], 'story'], 'the month\'s post, looked at again, does not take the day\'s place');
+  } finally { await srv.stop(); }
+
+  // the day after: the story gone from Instagram, its read kept says the day's — no Instagram, no reader
+  srv = await startTestServer();
+  try {
+    mkdirSync(join(srv.dir, 'lunch'), { recursive: true });
+    writeFileSync(join(srv.dir, 'lunch', 'reads.json'), JSON.stringify({ s9100: { at: now - DAY, r: week, place: 'ramen.place', kind: 'story', posted: now - DAY, url: 'https://www.instagram.com/stories/ramen.place/9100/' } }));
+    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ loggedIn: true, profiles: { 'ramen.place': { id: '22', storyAt: 0, posts: [post] } } }));
+    writeFileSync(srv.env.FAKEREADER_FILE, JSON.stringify({ reads: { 'Almoços de outubro': month } }));
+    assert.equal((await put(srv)).status, 200);
+    await waitFor(async () => (await ramen(srv)).state === 'menu' && await idle(srv), { what: 'the kept story\'s day' });
+    const r = await ramen(srv);
+    assert.deepEqual([r.dishes, r.month, r.src, r.at], [['Hummus e vegetais'], false, 'story', now - DAY]);
+    assert.deepEqual([lines(srv.env.FAKEIG_LOG), lines(srv.env.FAKEREADER_LOG)], [[], []], 'nothing asked of Instagram nor read');
+  } finally { await srv.stop(); }
+});
