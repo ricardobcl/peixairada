@@ -11,7 +11,8 @@
 // tab is not a web page has no strip (claude alone on the left, the editor alone on the right), a
 // page alone keeps its strip for the address; a click on a page tells the board its half has the keys
 // (peixPaneFocus); ⌥⌘W closes the tab the keys are in, and ··· closes the editor. Since 2026-10-11 (the studies' Q5) the
-// page in front is its own address: its tab grows into the field, ‹ › ↻ ↗ inside it, and a page behind wears its name.
+// page in front is its own address: its tab grows into the field, ‹ › ↻ ↗ inside it, and a page behind wears its name;
+// since 2026-10-20 a copy button beside ↻ copies the address whole, whatever is selected in it.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -72,6 +73,13 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.purl').click()`);
   out.url.selected = await ctx.evaluate(`window.__clip.length`);
   ctx.assert.equal(out.url.selected, 1, 'a selection inside it wins');
+  // …but not over the copy button beside ↻ (2026-10-20): the whole address, and no nav to the shell
+  const navs = () => ctx.evaluate(`window.__posts.filter(m => m.type === 'nav').length`), navsBefore = await navs();
+  await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove()); document.querySelector(${STRIP}).querySelector('.ptab.on.addr > .navs .pcopy').click()`);
+  out.url.button = await ctx.evaluate(`JSON.stringify({ clip: window.__clip, note: document.querySelector('.note')?.textContent || null })`).then(JSON.parse);
+  ctx.assert.deepEqual(out.url.button.clip, [deep, deep], 'the copy button: the whole address, the selection in it or not');
+  ctx.assert.match(out.url.button.note || '', /copied/i, 'and a note says so');
+  ctx.assert.equal(await navs(), navsBefore, 'it moves no page');
   await ctx.evaluate(`getSelection().removeAllRanges(); document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.nav[data-nav="reload"]').click()`);
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'nav').pop())`).then(JSON.parse), { type: 'nav', what: 'reload' });
