@@ -8,7 +8,7 @@ set -eu
 DIR=$(cd "$(dirname "$0")" && pwd -P)
 ROOT=$(cd "$DIR/.." && pwd -P)
 command -v node >/dev/null || { echo "node not found on PATH — the one that ran npm install is bundled" >&2; exit 1; }
-VERSION=$(node -p "require('$ROOT/package.json').version")   # the one version, package.json's — the About box shows it
+VERSION=$(node "$ROOT/lib/version.mjs" "$ROOT")   # the one version, counted from the checkout's history (2026-10-21) — the About box shows it
 BUILD="$DIR/build"
 APP="$BUILD/peixAIrada.app"
 # The deployment target must be explicit. swiftc's default follows the *toolchain*, not this Mac:
@@ -80,6 +80,8 @@ cp "$(readlink -f "$NODE_BIN")" "$APP/Contents/Resources/node"
 chmod +x "$APP/Contents/Resources/node"
 echo "  node $("$APP/Contents/Resources/node" --version) bundled"
 cp "$ROOT/package.json" "$APP/Contents/Resources/package.json"
+# the bundled server has no history to count: its package.json says the version it was built at
+node -e 'const fs = require("fs"), [f, v] = process.argv.slice(1), p = JSON.parse(fs.readFileSync(f, "utf8")); p.version = v; fs.writeFileSync(f, JSON.stringify(p, null, 2) + "\n")' "$APP/Contents/Resources/package.json" "$VERSION"
 cp -R "$ROOT/public" "$APP/Contents/Resources/public"
 # The server imports ws and node-pty, so the bundle carries node_modules — installed here first if
 # it is missing. The xterm packages are dev-only (vendored copies live in public/vendor) and are
@@ -100,7 +102,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleVersion</key><string>$VERSION</string>
   <key>PeixSource</key><string>$SOURCE</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_OS</string>
   <key>NSHighResolutionCapable</key><true/>

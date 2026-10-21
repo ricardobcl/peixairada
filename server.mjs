@@ -66,6 +66,7 @@ import { execFile, execFileSync, spawn } from 'node:child_process';
 import { format, promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { versionFrom } from './lib/version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
@@ -88,9 +89,10 @@ const CLAUDE_DIR = process.env.CLAUDE_DIR || join(homedir(), '.claude');
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
 const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
 const PORT = Number(process.env.PORT || 7331);
-// The About box's facts (2026-09-27): the package's version, this process, and where the board reads and writes.
+// The About box's facts (2026-09-27): the board's version — the checkout's, counted from its history (2026-10-21,
+// readCheckout), else package.json's —, this process, and where the board reads and writes.
 const PKG = (() => { try { return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')); } catch { return {}; } })();
-const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL), user: userInfo().username, host: hostname().replace(/\.local$/, ''), scratch: SCRATCH_DIR });
+const aboutInfo = () => ({ version: upd.version || PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL), user: userInfo().username, host: hostname().replace(/\.local$/, ''), scratch: SCRATCH_DIR });
 const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
@@ -4515,6 +4517,9 @@ async function readCheckout() {
   let here = UPDATE_DIR; try { here = realpathSync(UPDATE_DIR); } catch {}
   if (!top || realpathSync(top) !== here) return { checkout: false };
   const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null };
+  // the board's version at that commit (2026-10-21, lib/version.mjs): counted once per HEAD
+  if (co.head === upd.head && upd.version) co.version = upd.version;
+  else { const git = args => gitIn(args).catch(() => ''); co.version = await versionFrom((() => { try { return JSON.parse(readFileSync(join(UPDATE_DIR, 'package.json'), 'utf8')).version; } catch { return PKG.version; } })(), git) || null; }
   co.branch = await gitIn(['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => null);
   if (!co.branch) return co;
   co.remote = await gitIn(['config', `branch.${co.branch}.remote`]).catch(() => null);

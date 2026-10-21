@@ -10001,7 +10001,7 @@ const toolName = n => {
     // …and a count that has something behind it is a way there (2026-10-12): the chat asking you, the overview, the PRs
     const go = (k, n, html) => n ? `<button class="hgo" data-go="${k}" title="${HOME_GO[k]}">${html}</button>` : html;
     const facts = [
-      kv('Board', `${esc(a.version || '?')} ${sep} up ${a.since ? dur(Date.now() - a.since) : '?'}${inApp ? ` ${sep} the app` : ''}`),
+      kv('Board', `${esc(state.update?.version || a.version || '?')} ${sep} up ${a.since ? dur(Date.now() - a.since) : '?'}${inApp ? ` ${sep} the app` : ''}`),
       kv('Chats', `${all.filter(s => !s.done).length} ${sep} ${go('ov', alive.length, `${alive.length} live`)} ${sep} ${go('ask', alive.filter(asking).length, hot('em', alive.filter(asking).length, `${alive.filter(asking).length} asking you`))} ${sep} ${go('ov', all.filter(s => bucket(s) === 'working').length, hot('u', all.filter(s => bucket(s) === 'working').length, `${all.filter(s => bucket(s) === 'working').length} clauding`))}`),
       kv('Agents', `${go('ov', agents, `${agents} at work`)} ${sep} ${go('ov', tasks, `${tasks} watching`)} ${sep} ${drawers} in a drawer here`),
       kv('Today', d ? `Claude worked <strong>${dur(d.totals.worked)}</strong> ${sep} waited on you ${hot('em', d.totals.waited, dur(d.totals.waited))}` : '…'),
@@ -11293,7 +11293,7 @@ const toolName = n => {
   function aboutOpen() {
     const a = state.about || {}, all = projectList()[0] || {};
     const facts = [
-      ['version', esc(a.version || '?')],
+      ['version', esc(state.update?.version || a.version || '?')],
       ['code', (u => !u?.checkout ? (u?.checkout === false ? 'not a git checkout' : '?') : `<code>${shortSha(u.head)}</code>${u.branch ? ` on ${esc(u.branch)}` : ''}${u.last ? ` · updated ${rel(u.last.at)} ago` : ''}${u.on ? ' · updates itself' : ''}`)(state.update)],
       ['server', `http://127.0.0.1:${a.port || location.port}${a.node ? ` · node ${esc(a.node)}` : ''}${a.pid ? ` · pid ${a.pid}` : ''}${a.since ? ` · up ${rel(a.since)}` : ''}`],
       ['reads', `${esc(homePath(a.claudeDir || '~/.claude'))} — and writes nothing there`],
