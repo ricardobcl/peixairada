@@ -39,7 +39,7 @@ export default async function (ctx) {
   // a PR chip's own menu
   await right(`${card}.querySelector('.cpr[data-url$="/pull/13"]')`);
   out.chip = await rows();
-  ctx.assert.deepEqual(out.chip, ['Open the PR', 'Its timelineits events and the turns about it · ⌥⌘J', 'Take it off this chat']);
+  ctx.assert.deepEqual(out.chip, ['Open the PR', 'Copy its link', 'Its timelineits events and the turns about it · ⌥⌘J', 'Take it off this chat']);   // its link (2026-10-21)
   await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent === 'Take it off this chat').click()`);
   await ctx.waitFor(`window.peix.session(${JSON.stringify(two.id)}).prs.length === 1`, { timeout: 10_000, what: '#13 off the chat' });
   // the launcher has the rows for the open chat

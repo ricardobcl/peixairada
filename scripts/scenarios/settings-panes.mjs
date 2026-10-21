@@ -27,7 +27,7 @@ export default async function (ctx) {
   await ctx.settle();
   out.opened = await look();
   ctx.assert.deepEqual([out.opened.focus, out.opened.title, out.opened.panes], ['sq', 'General', ['general']], 'the box has the keys, General in front');
-  ctx.assert.deepEqual(out.opened.rows, ['Notifications', 'Sounds', 'Open files in'], 'General\'s rows (full screen is the app\'s)');
+  ctx.assert.deepEqual(out.opened.rows, ['Notifications', 'Sounds', 'In-app editor', 'External editor'], 'General\'s rows (full screen and links are the app\'s)');
   await ctx.shot('1-general', await box());
 
   // each pane alone, named in the head; ↓ from a tab walks to the next
