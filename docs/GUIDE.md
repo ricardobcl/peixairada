@@ -60,7 +60,7 @@ Each is a tab of the chat; the column splits in two halves when there's more tha
 | ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes on a click (or ⌥⌘C), cloning its repo first when its folder isn't checked out, and making its worktree again when that was removed (on the chat's branch). It survives the board's restarts. |
 | ⌥⌘T · ⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own — ⌘T opens another, or on a web page a blank tab, its address ready to type into. ⌘W closes the tab you are in. |
 | ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab (a chip in the header opens it too); its state, its CI and whose move it is under the header. With several, ⌥⌘G again from one picks another. |
-| ⌥⌘E · ⌥⌘V | 🧩 **VS Code Web** on the chat's folder — or ⌥⌘V, the folder in VS Code itself. A file path clicked in a chat opens at its line in VS Code or Zed, in its own window (Settings › General › Open files in). |
+| ⌥⌘E · ⌥⌘V | 🧩 **VS Code Web** on the chat's folder — or ⌥⌘V, the folder in the external editor: VS Code, or Zed (Settings › General › External editor), in its own window. A file path clicked in a chat opens there at its line. |
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, the branch against its base, or a PR's, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
 | ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. Press a tab's key again from it (⌥⌘C, ⌥⌘T, ⌥⌘G, ⌥⌘E, ⌥⌘D) and its half fills the column (⌥⌘G with several PRs: their picker first); once more, both are back. |
 
@@ -159,7 +159,7 @@ than your own: one that watches stories on a schedule can be challenged.
 | ⌥⌘↑ ⌥⌘↓ | previous · next chat |
 | ⌥⌘C | this chat's Claude, in the pane |
 | ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · VS Code Web · the PR |
-| ⌥⌘V | the chat's folder in VS Code, its own window |
+| ⌥⌘V | the chat's folder in the external editor (VS Code or Zed), its own window |
 | ⌘T · ⌘W | a new tab — a shell, or a page from a page · close the tab you are in (VS Code Web's editors first, as in VS Code) |
 | ⌘2 · ⌘0 | split · close the other half |
 | ⌥⌘B | fold the list |

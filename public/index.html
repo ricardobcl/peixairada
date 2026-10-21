@@ -2580,7 +2580,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="audio chime sound tick"><label class="sl" for="soundsOn"><b>Sounds</b><small>A tick for a reply, two notes for a question, while it is in front</small></label><input type="checkbox" class="sw" role="switch" id="soundsOn"></div>
         </div></section>
         <section class="sgrp"><h6 class="sgh" id="sgFiles">Files</h6><div class="slist" role="group" aria-labelledby="sgFiles">
-          <div class="srow set" data-kw="editor vscode zed path link file open"><span class="sl" id="slEd"><b>Open files in</b><small>A path clicked in a chat opens there, at its line</small></span><span class="sseg" role="radiogroup" aria-labelledby="slEd" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span><div class="edsay" id="edSay" role="status" hidden></div></div>
+          <div class="srow set" data-kw="external editor vscode zed path link file folder open window"><span class="sl" id="slEd"><b>External editor</b><small>In its own window: a path clicked in a chat at its line, and ⌥⌘V the chat's folder</small></span><span class="sseg" role="radiogroup" aria-labelledby="slEd" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span><div class="edsay" id="edSay" role="status" hidden></div></div>
         </div></section>
         <section class="sgrp" id="fsRow" hidden><h6 class="sgh" id="sgWindow">Window</h6><div class="slist" role="group" aria-labelledby="sgWindow">
           <div class="srow set" data-kw="full screen notch space fill green button window"><label class="sl" for="fsPick"><b>Full screen</b><small>What ⌃⌘F and the green button do</small></label><span class="ssel"><select id="fsPick"><option value="fill">Up to the notch</option><option value="space">Its own Space</option></select></span></div>
@@ -5638,8 +5638,7 @@ const toolName = n => {
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
         { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
         ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
-        ...(s.cwd ? [{ name: 'Its folder in VS Code — its own window', sub: of, hint: '⌥⌘V', fn: hotVsCodeApp }] : []),
-        ...(onZed() && s.cwd ? [{ name: 'Its folder in Zed — its own window', sub: of, fn: () => $('#zedBtn')?.click() }] : []),
+        ...(s.cwd ? [{ name: `Its folder in ${editor().name} — its own window`, sub: of, hint: '⌥⌘V', fn: hotEditorApp }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
@@ -5762,7 +5761,7 @@ const toolName = n => {
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back · VS Code Web whichever editor files open in — Zed has no web version', ['alt:KeyE']],
-    ['⌥⌘V', 'This chat', 'its folder in VS Code, its own window', 'the app, outside the board — ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
+    ['⌥⌘V', 'This chat', 'its folder in the external editor, its own window', 'VS Code, or Zed — Settings › General › External editor · outside the board: ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several — from one of them, the next selected, and ⌥⌘G once more fills the column · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘J', 'This chat', 'its timeline, on a tab — the chat and its PRs in one order', 'your prompts, each of Claude\'s turns as a line, the PRs\' events between them, a lane per PR · the Now bar says each one\'s round · a turn clicked shows it in the transcript · again from it: its half fills the column, and back', ['alt:KeyJ']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
@@ -5829,7 +5828,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotVsCodeApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5966,12 +5965,14 @@ const toolName = n => {
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
-  // ⌥⌘V (2026-10-14): the folder in VS Code itself — its own window, outside the board, whichever editor files open in;
-  // ⌥⌘E is VS Code Web on a tab. The open chat's folder, else the project in view when that is a folder.
-  function hotVsCodeApp() {
+  // ⌥⌘V (2026-10-14): the folder in the external editor — VS Code, or Zed when that is picked (2026-10-21; VS Code
+  // whatever the pick before) —, its own window, outside the board; ⌥⌘E is the board's own, on a tab. The open chat's
+  // folder, else the project in view when that is a folder.
+  function hotEditorApp() {
     const dir = state.sessions.get(state.current)?.cwd || (prefs.project?.startsWith('/') ? prefs.project : null);
     if (!dir) return note($('#shead'), 'Open a chat first — or pick a project that is a folder');
-    openExternal(EDITORS.vscode.file + encodeURI(dir));
+    if (zedMissing()) return zedNote($('#shead'));
+    openExternal(fileUrl(dir));
   }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
@@ -6358,7 +6359,7 @@ const toolName = n => {
       text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into, and a chat whose claude has ended offers to resume it here.` },
     { id: 'open', side: 'below', at: () => state.current ? onScreen($('#moreBtn')) : null, title: 'Its terminal, GitHub, editor and diff',
       text: () => `${state.current ? 'Everything the chat has' : 'Once a chat is open, everything it has'}, a key away — each on a tab beside it, and the same key again fills the column with it.${state.current ? ' Claude, the changes and VS Code Web are in <b>···</b> too.' : ''}${inApp ? '' : ' In a browser, GitHub and VS Code Web open in tabs of their own.'}`,
-      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', 'its folder in VS Code Web · <kbd>⌥⌘V</kbd> in VS Code itself'], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR'], ['⌥⌘J', 'its timeline: the chat and its PRs in one order']]) },
+      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', `its folder in VS Code Web · <kbd>⌥⌘V</kbd> in ${editor().name} itself`], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR'], ['⌥⌘J', 'its timeline: the chat and its PRs in one order']]) },
     { id: 'split', at: () => state.current ? $('#groups') : null, title: 'Two halves, side by side or stacked',
       text: () => '<kbd>⌘2</kbd> splits the chat column side by side, <kbd>⌥⌘2</kbd> one over the other: the digit is the half, the modifier the layout, so <kbd>⌘1</kbd> <kbd>⌘2</kbd> or <kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> move between the halves, turning the split. A new tab opens in the second half; drag a tab across to move it; <kbd>⌘0</kbd> closes the other half.',
       pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
@@ -6697,7 +6698,7 @@ const toolName = n => {
   // a 40 000-character line of them took 800 ms on the main thread; an @ that begins a word (Claude Code's) still may.
   const PATH_RE = /(?<![\w.\/~+-])(?<![\w.\/~+@-]@)(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
   const EXT_RE = /\.[A-Za-z0-9]{1,8}$/;
-  // The editor files open in (2026-10-13, prefs.editor, Settings › Board › Chats): VS Code or Zed. Each opens a file at a
+  // The external editor (2026-10-13, prefs.editor, Settings › General): VS Code or Zed. Each opens a file at a
   // line from a URL of the same shape — <scheme>://file/<absolute path>:<line>:<col>, the path percent-decoded —, which
   // the app hands to the system and a browser asks about. ⌥⌘E is VS Code Web on a tab of the pane whichever is picked
   // (2026-10-13, later): Zed has no web build to frame, and its own window is ··· 's *the folder in Zed*. A switch
@@ -6722,9 +6723,9 @@ const toolName = n => {
   // Until it is there, ··· 's folder in Zed and a file link say so where they were clicked (zedNote) rather than hand the
   // system a URL nothing answers. Under the pick, whenever Zed is picked, what it is not: in the pane (ZED_NOT).
   const ZED_GET = 'https://zed.dev/download';
-  const ZED_NOT = 'Zed opens in its own window, outside the board — it has no web version the pane could show. ⌥⌘E stays VS Code Web, on a tab here; ··· has the chat\'s folder in Zed.';
+  const ZED_NOT = 'Zed opens in its own window, outside the board — it has no web version the pane could show. ⌥⌘E stays VS Code Web, on a tab here; ⌥⌘V and ··· open the chat\'s folder in Zed.';
   const zedMissing = () => onZed() && !!state.editors?.zed && !state.editors.zed.app;
-  const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › General › Open files in installs it";
+  const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › General › External editor installs it";
   function zedNote(at) { note(at, zedWhy(), true); }
   async function loadEditors() { try { state.editors = await api('GET', '/api/editors'); } catch {} edSay(); }
   async function installZed() {
@@ -6915,7 +6916,7 @@ const toolName = n => {
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
       `<button class="hmi" id="tvBtn" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them">${ICON.timeline}<span class="lbl">timeline</span><span class="k">⌥⌘J</span></button>`,
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
-      s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">↗</span></button>` : '',
+      s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">⌥⌘V</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${shellsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
