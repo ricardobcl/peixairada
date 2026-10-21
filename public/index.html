@@ -233,6 +233,11 @@
   .pop .setup :is(input[type=text], input[type=password]):focus { outline: none; background: var(--panel); border-color: var(--accent); }
   .pop .setup input:disabled { opacity: .5; pointer-events: none; }
   .pop .setup input::placeholder { color: var(--muted); opacity: .85; }
+  /* the sites a page still opens in the board (2026-10-21): a box as the setup's, with its edge at rest — it stands alone */
+  #boardSites { font: inherit; font-size: var(--fs-md); width: 240px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: var(--ink); }
+  #boardSites:focus { outline: none; background: var(--panel); border-color: var(--accent); }
+  #boardSites:disabled { opacity: .5; }
+  #boardSites::placeholder { color: var(--muted); opacity: .85; }
   /* the org: github.com/ and the name, one pill */
   .pop .sorgw { display: inline-flex; align-items: center; height: 28px; padding-left: 9px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-sm); color: var(--muted); cursor: text; }
   .pop .sorgw:hover { background: var(--ctl-hi); }
@@ -2583,6 +2588,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="in-app editor vscode web vim tab board folder"><span class="sl" id="slInEd"><b>In-app editor</b><small>⌥⌘E, the chat's folder on a tab beside it</small></span><span class="sseg" role="radiogroup" aria-labelledby="slInEd" id="inEdPick"><button type="button" role="radio" data-ined="vscode">VS Code Web</button><button type="button" role="radio" data-ined="vim">Vim</button></span></div>
           <div class="srow set" data-kw="external editor vscode zed path link file folder open window"><span class="sl" id="slEd"><b>External editor</b><small>In its own window: a path clicked in a chat at its line, and ⌥⌘V the chat's folder</small></span><span class="sseg" role="radiogroup" aria-labelledby="slEd" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span><div class="edsay" id="edSay" role="status" hidden></div></div>
         </div></section>
+        <section class="sgrp" id="linksRow" hidden><h6 class="sgh" id="sgLinks">Links</h6><div class="slist" role="group" aria-labelledby="sgLinks">
+          <div class="srow set" data-kw="links web pages open browser board pane tab github external safari chrome"><span class="sl" id="slPages"><b>Web pages open</b><small>A link in a chat, a PR or a ticket — and one out of a page here to another site</small></span><span class="sseg" role="radiogroup" aria-labelledby="slPages" id="pagesPick"><button type="button" role="radio" data-out="0">In the board</button><button type="button" role="radio" data-out="1">In the browser</button></span></div>
+          <div class="srow set sub" id="sitesRow" data-kw="links sites addresses prefixes board github kept keep"><label class="sl" for="boardSites"><b>…but these, in the board</b><small data-d="An address's start each, commas between: github.com, or github.com/acme" data-off="Every page opens in the board"></small></label><input type="text" id="boardSites" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="github.com"></div>
+        </div></section>
         <section class="sgrp" id="fsRow" hidden><h6 class="sgh" id="sgWindow">Window</h6><div class="slist" role="group" aria-labelledby="sgWindow">
           <div class="srow set" data-kw="full screen notch space fill green button window"><label class="sl" for="fsPick"><b>Full screen</b><small>What ⌃⌘F and the green button do</small></label><span class="ssel"><select id="fsPick"><option value="fill">Up to the notch</option><option value="space">Its own Space</option></select></span></div>
         </div></section>
@@ -2825,7 +2834,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: false, boardSites: ['github.com'], skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -6640,6 +6649,25 @@ const toolName = n => {
   applyFull();
   const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
   const IN_PANE = /^https?:\/\//;   // every web page (2026-09-26; GitHub and the board's own before, the rest went to the browser)
+  // …unless the browser is picked (2026-10-21, prefs.pagesOut, Settings › General › Links): then only the sites the board
+  // keeps (prefs.boardSites, github.com at first), each an address's start — a scheme or www. or none, matched whole up
+  // to a / ? # or : — and the rest goes to the browser. A link out of a page in the pane to another site goes the same
+  // way: the shell asks peixLinkOut. VS Code Web is the board's own, whatever the pick; an address typed into a blank tab
+  // is asked for here.
+  const siteOf = p => String(p).trim().replace(/^[a-z][\w+.-]*:\/\//i, '').replace(/^www\./i, '').toLowerCase();
+  const sitesKept = () => (prefs.boardSites || []).map(siteOf).filter(Boolean);
+  const inBoard = url => !prefs.pagesOut || sitesKept().some(p => { const u = siteOf(url); return u.startsWith(p) && (p.endsWith('/') || /^(?:$|[/?#:])/.test(u.slice(p.length))); });
+  window.peixLinkOut = url => inApp && IN_PANE.test(url) && !inBoard(url);
+  const pagesPick = () => {
+    for (const b of document.querySelectorAll('#pagesPick [data-out]')) b.setAttribute('aria-checked', String(!!+b.dataset.out === !!prefs.pagesOut));
+    const r = $('#sitesRow'), say = r.querySelector('small'), box = $('#boardSites');
+    r.classList.toggle('off', !prefs.pagesOut); box.disabled = !prefs.pagesOut; say.textContent = prefs.pagesOut ? say.dataset.d : say.dataset.off;
+    if (document.activeElement !== box) box.value = (prefs.boardSites || []).join(', ');
+    $('#linksRow').hidden = !inApp;
+  };
+  for (const b of document.querySelectorAll('#pagesPick [data-out]')) b.addEventListener('click', () => { prefs.pagesOut = !!+b.dataset.out; savePrefs(); pagesPick(); });
+  $('#boardSites').addEventListener('change', e => { prefs.boardSites = [...new Set(e.target.value.split(/[\s,]+/).map(x => x.trim()).filter(Boolean))]; savePrefs(); pagesPick(); });
+  pagesPick();
   /** `ide`: the folder's editor, which only the editor's own row opens (2026-10-03; any http://127.0.0.1:<port>/ was
    *  taken for it before — a dev server's link replaced the folder's editor). `s`: the chat it is for, the open one
    *  unless said — an answer that comes after that chat was left records its tab there and shows nothing. */
@@ -6647,7 +6675,7 @@ const toolName = n => {
     // in a browser an app's URL (vscode://, zed://) is followed as a link is — the browser hands it over, or asks —, not
     // in a tab of its own, which stays blank (2026-10-13)
     if (!inApp) { if (IN_PANE.test(url)) window.open(url, '_blank', 'noopener'); else { const a = document.createElement('a'); a.href = url; a.click(); } return; }
-    if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }   // vscode://, zed://, mailto:… — the system's
+    if (!IN_PANE.test(url) || !s || (!ide && !inBoard(url))) { post({ type: 'external', url }); return; }   // vscode://, zed://, mailto:… — the system's; a page off the board's sites, the browser
     // A page of the chat, on a tab of its own in the strip (2026-09-20): web pages one per URL, in the order first
     // opened — a PR, a docs page, a dev server (2026-09-26; the strip's ↗ is the way out to the browser); the folder's
     // editor, one per folder. Remembered here so they come back with the chat; the shell keeps a web view per page and

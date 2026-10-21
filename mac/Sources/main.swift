@@ -498,6 +498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     paneOverlay.wantsLayer = true
     paneOverlay.layer?.backgroundColor = NSColor.clear.cgColor
     paneDelegate.open = { [weak self] w, url in self?.paneOpen(w, url) }
+    paneDelegate.linkOut = { [weak self] url, done in self?.paneLinkOut(url, done) ?? done(false) }
   }
   /// A page's new window, for the board to put on a tab beside it (2026-10-21) — or, the board saying no (a view not
   /// the open chat's), loaded where it came from, as before.
@@ -508,6 +509,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       logLine("pane: a new window from \(key) — \(url.host ?? "?") \(taken ? "on a tab of its own" : "loaded where it was asked")")
       if !taken { w?.load(URLRequest(url: url)) }
     }
+  }
+  /// Whether a link out of a page goes to the browser (2026-10-21): the board's rule (`peixLinkOut`, its Links setting).
+  /// No board to ask, or no answer: the page keeps it, as before.
+  private func paneLinkOut(_ url: URL, _ done: @escaping (Bool) -> Void) {
+    web.evaluateJavaScript("window.peixLinkOut ? !!window.peixLinkOut(\(jsLit(url.absoluteString))) : false") { v, _ in done((v as? Bool) == true) }
   }
   /// The web view for a page, made on first use (and then loaded by the caller). Touches the recency order
   /// and lets the oldest go once there are too many — never one of the current chat's.
@@ -1693,6 +1699,7 @@ final class BoardWebView: WKWebView {
 
 final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   var open: ((WKWebView, URL) -> Void)?   // a new window's web page, to the board (AppDelegate.paneOpen)
+  var linkOut: ((URL, @escaping (Bool) -> Void) -> Void)?   // whether a link out goes to the browser, the board's word (AppDelegate.paneLinkOut)
   /// A page's new window — a link with target=_blank, a window.open — is a tab of the chat's own, as a browser's new tab
   /// (2026-10-21). It was loaded in the view it came from: VS Code Web opens every link out that way, and the editor's
   /// tab has no strip, so GitHub filled its half with no address and no way back. Not a web page: loaded here, where
@@ -1714,6 +1721,16 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
       if clicked && PaneDelegate.outSchemes.contains(scheme) { NSWorkspace.shared.open(url) }
       else { logLine("pane: \(scheme): not opened, from \(webView.url?.host ?? "?") — \(clicked ? "not a scheme handed on" : "no link clicked in the page")") }
       return decisionHandler(.cancel)
+    }
+    // A link to another site clicked in a page (2026-10-21): the board says whether it goes to the browser — Settings ›
+    // General › Links, *in the browser* but for the sites it keeps. The page's own site, a script, a redirect, a frame:
+    // here, as ever. A new window's link is the board's already (open, above).
+    if let url = action.request.url, let ask = linkOut, action.navigationType == .linkActivated, action.targetFrame?.isMainFrame == true,
+       url.host?.lowercased() != webView.url?.host?.lowercased() {
+      return ask(url) { out in
+        if out { logLine("pane: a link to \(url.host ?? "?") — to the browser"); NSWorkspace.shared.open(url) }
+        decisionHandler(out ? .cancel : .allow)
+      }
     }
     decisionHandler(.allow)
   }
