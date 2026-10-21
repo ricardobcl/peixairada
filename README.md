@@ -79,8 +79,9 @@ and whether you've answered. Nothing to do yet? ⌥-click *your move* to let the
 
 ## 🧩 VS Code beside the chat
 
-⌥⌘E opens VS Code Web on the chat's folder in the pane, a tab of the chat like any other; ⌥⌘V opens the folder in
-your external editor, VS Code or Zed, in its own window — and a file path in the chat opens there at its line.
+⌥⌘E opens VS Code Web on the chat's folder in the pane, a tab of the chat like any other — or vim, in a terminal there,
+if that is your pick (Settings › General › In-app editor); ⌥⌘V opens the folder in your external editor, VS Code or
+Zed, in its own window — and a file path in the chat opens there at its line.
 
 <img src="docs/shots/clip-vscode.webp" alt="⌥⌘E opens VS Code Web on the chat's repo beside the transcript; pressed again it fills the column; a file opened from Quick Open">
 

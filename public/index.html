@@ -2580,6 +2580,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="audio chime sound tick"><label class="sl" for="soundsOn"><b>Sounds</b><small>A tick for a reply, two notes for a question, while it is in front</small></label><input type="checkbox" class="sw" role="switch" id="soundsOn"></div>
         </div></section>
         <section class="sgrp"><h6 class="sgh" id="sgFiles">Files</h6><div class="slist" role="group" aria-labelledby="sgFiles">
+          <div class="srow set" data-kw="in-app editor vscode web vim tab board folder"><span class="sl" id="slInEd"><b>In-app editor</b><small>⌥⌘E, the chat's folder on a tab beside it</small></span><span class="sseg" role="radiogroup" aria-labelledby="slInEd" id="inEdPick"><button type="button" role="radio" data-ined="vscode">VS Code Web</button><button type="button" role="radio" data-ined="vim">Vim</button></span></div>
           <div class="srow set" data-kw="external editor vscode zed path link file folder open window"><span class="sl" id="slEd"><b>External editor</b><small>In its own window: a path clicked in a chat at its line, and ⌥⌘V the chat's folder</small></span><span class="sseg" role="radiogroup" aria-labelledby="slEd" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span><div class="edsay" id="edSay" role="status" hidden></div></div>
         </div></section>
         <section class="sgrp" id="fsRow" hidden><h6 class="sgh" id="sgWindow">Window</h6><div class="slist" role="group" aria-labelledby="sgWindow">
@@ -2824,7 +2825,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3646,6 +3647,7 @@ const toolName = n => {
     branch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>',
     // Zed's mark (Simple Icons, CC0): the editor row and the setting when Zed is the editor (2026-10-13)
+    vim: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 .6 15.4 8 8 15.4.6 8Zm-3.4 4.4h2l1.4 4.4L9.4 5h2l-2.5 6.2H7.1Z"/></svg>',   // the in-app editor's other (2026-10-21): a V in a diamond, as vim's own
     zed: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z"/></svg>',
     // the chat (2026-10-17): a speech bubble, its status-bar segment and Settings' pane; two heads, its people
     poll: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5h11M4.5 11V7.5M8 11V3.5M11.5 11V6"/></svg>',   // a poll in the chat (2026-10-20): a bar chart
@@ -5637,7 +5639,7 @@ const toolName = n => {
         ...(shellLive(s) ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }] : []),
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
         { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
-        ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
+        ...(inApp || onVim() ? [{ name: `Its folder in ${inEdName()}`, sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
         ...(s.cwd ? [{ name: `Its folder in ${editor().name} — its own window`, sub: of, hint: '⌥⌘V', fn: hotEditorApp }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
@@ -5760,7 +5762,7 @@ const toolName = n => {
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
-    ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back · VS Code Web whichever editor files open in — Zed has no web version', ['alt:KeyE']],
+    ['⌥⌘E', 'This chat', 'its folder in the in-app editor, on a tab', 'VS Code Web, or vim in a terminal — Settings › General › In-app editor · again from it: its half fills the column, and back', ['alt:KeyE']],
     ['⌥⌘V', 'This chat', 'its folder in the external editor, its own window', 'VS Code, or Zed — Settings › General › External editor · outside the board: ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several — from one of them, the next selected, and ⌥⌘G once more fills the column · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘J', 'This chat', 'its timeline, on a tab — the chat and its PRs in one order', 'your prompts, each of Claude\'s turns as a line, the PRs\' events between them, a lane per PR · the Now bar says each one\'s round · a turn clicked shows it in the transcript · again from it: its half fills the column, and back', ['alt:KeyJ']],
@@ -5912,7 +5914,7 @@ const toolName = n => {
   // brings up), ⌥⌘E on the editor, ⌥⌘D on the changes; with one half, what it always did.
   function zoomAgain(on) { const s = state.sessions.get(state.current); return !!(s && on(tabOf(s), s) && toggleZoom(s)); }
   function hotClaudeKey() { return zoomAgain((k, s) => k === 'chat' && termLive(s)) || hotClaude(); }
-  function hotShellKey() { return zoomAgain(isShellTab) || hotShell(); }
+  function hotShellKey() { return zoomAgain((k, s) => isShellTab(k) && !isVimTab(s, k)) || hotShell(); }
   const ghPages = s => s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : [];   // what ⌥⌘G opens
   // With several PRs (2026-10-16), ⌥⌘G again from one of them is their picker, the next one selected — ⏎ goes there, and
   // ⌥⌘G once more (prPickAgain) fills the column: the other PRs were a mouse's two clicks away while it zoomed at once.
@@ -5927,7 +5929,7 @@ const toolName = n => {
     const s = state.sessions.get(pick.ctx.sid); $('#pick').close();
     if (s && s.id === state.current) toggleZoom(s);
   }
-  function hotVsCodeKey() { return zoomAgain(k => /^ide:/.test(k || '')) || hotVsCode(); }
+  function hotVsCodeKey() { return zoomAgain((k, s) => /^ide:/.test(k || '') || isVimTab(s, k)) || hotVsCode(); }
   function hotDiffKey() { return zoomAgain(k => k === 'changes') || hotDiff(); }
   /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
   function hotReload() { location.reload(); }
@@ -6037,7 +6039,7 @@ const toolName = n => {
   // another, 2026-10-13); `exit` or the tab's × ends it. A failure is a note. Answers the zsh it showed, or null.
   async function hotShell() {
     const s = state.sessions.get(state.current); if (!s) { noChat(); return null; }
-    const on = shellOfTab(s, tabOf(s)) || shellsOf(s)[0];
+    const on = (isVimTab(s, tabOf(s)) ? null : shellOfTab(s, tabOf(s))) || zshsOf(s)[0];
     if (!on) return startShell(s, false);
     setTab(s, 'shell:' + on.id); syncTerm(s); focusBoard(); focusTerm();
     return on;
@@ -6058,7 +6060,27 @@ const toolName = n => {
     return t;
   }
   /** A zsh tab's name: the shell's, and its place among the chat's when it has several — zsh, zsh 2, zsh 3. */
-  const shLabel = (s, k) => { const i = shellsOf(s).findIndex(t => 'shell:' + t.id === k); return shName() + (i > 0 ? ` ${i + 1}` : ''); };
+  const shLabel = (s, k) => {
+    const t = shellOfTab(s, k), like = shellsOf(s).filter(x => !x.editor === !t?.editor), i = like.findIndex(x => 'shell:' + x.id === k);
+    if (t?.editor) return 'vim' + (t.cwd && t.cwd !== s.cwd ? ` · ${t.cwd.split('/').pop()}` : i > 0 ? ` ${i + 1}` : '');   // another folder's: a worktree, by its name
+    return shName() + (i > 0 ? ` ${i + 1}` : '');
+  };
+  /** Vim in a folder of the chat's on a tab (2026-10-21, the in-app editor): the one it has there shown, else one
+      started — in its own folder by default, or `dir`, a worktree of a PR's branch. Answers it, or null. */
+  async function openVim(s, dir = s.cwd, at = $('#shead')) {
+    if (!dir) { note(at, 'No folder known for this chat', true); return null; }
+    const have = shellsOf(s).find(t => t.editor && t.cwd === dir);
+    if (have) { if (state.current === s.id) { setTab(s, 'shell:' + have.id); syncTerm(s); focusBoard(); focusTerm(); } return have; }
+    let t;
+    try { const r = await withCheckout(`vim:${s.id}`, () => api('POST', `/api/sessions/${s.id}/shell`, { ...termSize(), vim: true, dir }), c => note(at, `Its folder is not checked out — cloning ${c.ref} first, then vim`)); t = r.terminal; saidBack(r.back); }
+    catch (e) { note(at, `Vim did not start: ${e.message}`, true); return null; }
+    const now = state.sessions.get(s.id) || s;
+    if (!(now.shells || []).some(x => x.id === t.id)) now.shells = [...(now.shells || []), t];
+    if (state.current !== s.id) return t;
+    openNewTab(now, 'shell:' + t.id);
+    syncTerm(now); focusBoard(); focusTerm();
+    return t;
+  }
   // ⌘T (2026-10-13): a new tab of the kind the keys are in. In a terminal — claude's drawer, a zsh — or on the chat, the
   // changes or an empty half, another zsh in the chat's folder, as iTerm's ⌘T; on a page — GitHub, VS Code Web, a blank
   // tab — a blank tab, as a browser's (openBlank). Either opens where a new tab does (openNewTab).
@@ -6358,8 +6380,8 @@ const toolName = n => {
     { id: 'chat', at: () => state.current ? [$('#groups'), $('#resume')] : $('#chat'), title: () => state.current ? 'The chat, live' : 'The chat you open comes up here',
       text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into, and a chat whose claude has ended offers to resume it here.` },
     { id: 'open', side: 'below', at: () => state.current ? onScreen($('#moreBtn')) : null, title: 'Its terminal, GitHub, editor and diff',
-      text: () => `${state.current ? 'Everything the chat has' : 'Once a chat is open, everything it has'}, a key away — each on a tab beside it, and the same key again fills the column with it.${state.current ? ' Claude, the changes and VS Code Web are in <b>···</b> too.' : ''}${inApp ? '' : ' In a browser, GitHub and VS Code Web open in tabs of their own.'}`,
-      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', `its folder in VS Code Web · <kbd>⌥⌘V</kbd> in ${editor().name} itself`], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR'], ['⌥⌘J', 'its timeline: the chat and its PRs in one order']]) },
+      text: () => `${state.current ? 'Everything the chat has' : 'Once a chat is open, everything it has'}, a key away — each on a tab beside it, and the same key again fills the column with it.${state.current ? ` Claude, the changes and ${inEdName()} are in <b>···</b> too.` : ''}${inApp ? '' : ' In a browser, GitHub and VS Code Web open in tabs of their own.'}`,
+      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', `its folder in ${inEdName()} · <kbd>⌥⌘V</kbd> in ${editor().name} itself`], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR'], ['⌥⌘J', 'its timeline: the chat and its PRs in one order']]) },
     { id: 'split', at: () => state.current ? $('#groups') : null, title: 'Two halves, side by side or stacked',
       text: () => '<kbd>⌘2</kbd> splits the chat column side by side, <kbd>⌥⌘2</kbd> one over the other: the digit is the half, the modifier the layout, so <kbd>⌘1</kbd> <kbd>⌘2</kbd> or <kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> move between the halves, turning the split. A new tab opens in the second half; drag a tab across to move it; <kbd>⌘0</kbd> closes the other half.',
       pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
@@ -6718,12 +6740,25 @@ const toolName = n => {
     logView.arr = null; renderLog(); renderHead(s);   // the transcript's links and ··· name the editor
   });
   edPick();
+  // The in-app editor (2026-10-21, prefs.inEditor, Settings › General): what ⌥⌘E opens on a tab beside the chat — VS Code
+  // Web, or vim in a terminal in the chat's folder (openVim: the server's holder, a tab as a zsh is, `shell:<id>` with
+  // its `editor`). ··· 's row, the launcher and a PR row's Editor ▾ name it.
+  const IN_EDITORS = { vscode: 'VS Code Web', vim: 'Vim' };
+  const onVim = () => prefs.inEditor === 'vim';
+  const inEdName = () => IN_EDITORS[onVim() ? 'vim' : 'vscode'];
+  const inEdPick = () => { for (const b of document.querySelectorAll('#inEdPick [data-ined]')) b.setAttribute('aria-checked', String(b.dataset.ined === (onVim() ? 'vim' : 'vscode'))); };
+  for (const b of document.querySelectorAll('#inEdPick [data-ined]')) b.addEventListener('click', () => {
+    if (b.getAttribute('aria-checked') === 'true') return;
+    prefs.inEditor = b.dataset.ined; savePrefs(); inEdPick(); edSay();
+    const s = state.sessions.get(state.current); if (s) renderHead(s);   // ··· names it
+  });
+  inEdPick();
   // Zed picked and not on this Mac is Zed installed (2026-10-13): the server's `brew install --cask zed`, the line under
   // the pick saying how far it is (edSay, from the `editor` events), failed and why, or — no Homebrew — where to get it.
   // Until it is there, ··· 's folder in Zed and a file link say so where they were clicked (zedNote) rather than hand the
   // system a URL nothing answers. Under the pick, whenever Zed is picked, what it is not: in the pane (ZED_NOT).
   const ZED_GET = 'https://zed.dev/download';
-  const ZED_NOT = 'Zed opens in its own window, outside the board — it has no web version the pane could show. ⌥⌘E stays VS Code Web, on a tab here; ⌥⌘V and ··· open the chat\'s folder in Zed.';
+  const ZED_NOT = 'Zed opens in its own window, outside the board — it has no web version the pane could show. ⌥⌘E is the in-app editor, on a tab here; ⌥⌘V and ··· open the chat\'s folder in Zed.';
   const zedMissing = () => onZed() && !!state.editors?.zed && !state.editors.zed.app;
   const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › General › External editor installs it";
   function zedNote(at) { note(at, zedWhy(), true); }
@@ -6864,7 +6899,8 @@ const toolName = n => {
     ? 'Focus view is on in this session — your prompt, the summary and the reply only. Click to show every step again (/focus in the terminal)'
     : 'Focus view: your prompt, the summary and the reply only, the steps hidden. Click to turn it on (/focus in the terminal)';
   const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
-  const ZED_TIP = "Open this folder in Zed — its own window, outside the board: Zed has no web version the pane could show (⌥⌘E is VS Code Web here)";
+  const ZED_TIP = "Open this folder in Zed — its own window, outside the board: Zed has no web version the pane could show (⌥⌘E is the in-app editor here) · ⌥⌘V";
+  const VIM_TIP = "Open this folder in vim — in a terminal on a tab beside the chat; :q closes it, as does its × (which leaves it up, saying so, over unsaved work) · ⌥⌘E";
   // The header, the menu and the PR rows are set only when their markup changed (2026-09-27): every SSE update of the
   // open chat rebuilt all three — a live <dialog>, its rows detached under the pointer — and rebound nine handlers,
   // then laid the notch and the chips out again. The handlers are still bound on every call: they close over `s`,
@@ -6900,7 +6936,7 @@ const toolName = n => {
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === projDir(s.cwd) ? ' on' : ''}" title="${s.cwd && prefs.project === projDir(s.cwd) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${driftChip(s)}${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, VS Code Web${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
+      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${inEdName()}${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -6915,10 +6951,10 @@ const toolName = n => {
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
       `<button class="hmi" id="tvBtn" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them">${ICON.timeline}<span class="lbl">timeline</span><span class="k">⌥⌘J</span></button>`,
-      s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
+      s.cwd ? `<button class="hmi" id="webBtn" title="${onVim() ? VIM_TIP : WEB_TIP}">${onVim() ? ICON.vim : ICON.vscode}<span class="lbl">${inEdName()}</span><span class="k">⌥⌘E</span></button>` : '',
       s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">⌥⌘V</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
-      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${shellsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
+      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${zshsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
@@ -6962,6 +6998,7 @@ const toolName = n => {
     const wb = $('#webBtn');
     const zb = $('#zedBtn'); if (zb) zb.onclick = () => { menu.close(); if (zedMissing()) zedNote(seen(zb)); else openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
     if (wb) wb.onclick = async () => {
+      if (onVim()) { menu.close(); return openVim(s, s.cwd, seen(wb)); }
       wb.disabled = true; wb.querySelector('.lbl').textContent = 'starting…';
       try {
         const d = await api('POST', '/api/vscode-web');
@@ -6973,7 +7010,7 @@ const toolName = n => {
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
     const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
     $('#tvBtn').onclick = () => { menu.close(); hotTimeline(); };
-    const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + shellsOf(s)[0].id; if (k) dropTab(s, k); };
+    const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) && !isVimTab(s, tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + zshsOf(s)[0].id; if (k) dropTab(s, k); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
@@ -7344,19 +7381,21 @@ const toolName = n => {
   }
   // ---- the editor at a PR's branch (2026-10-13) ------------------------------------------------------------------------
   // The folder that has the branch, else a worktree of its own inside the repo (POST /api/worktrees: found, or made),
-  // or the PR's head detached for review only — opened in the editor picked: VS Code Web on a tab of the chat named
-  // `<repo> @ <branch>`, or Zed's window. Switching the chat's own folder is offered last, typed into its zsh unrun, and
+  // or the PR's head detached for review only — opened in the in-app editor (2026-10-21; Zed's window when it was the
+  // pick, before): VS Code Web on a tab of the chat named `<repo> @ <branch>`, or vim there; the external editor a row
+  // of its own. Switching the chat's own folder is offered last, typed into its zsh unrun, and
   // only when nothing else works there (GET …/switch says why not).
   const repoName = w => (w?.main || '').split('/').pop();
   async function editorMenu(s, url, at) {
     const pr = (s.prs || []).find(p => p.url === url), r = pr?.refs; if (!pr || !r) return;
     const w = await wtNow(s.cwd), where = whereOf(s, pr), name = repoName(w), b = r.head;
     const guard = r.fork || where?.k === 'here' ? null : await api('GET', `/api/sessions/${s.id}/switch?branch=${encodeURIComponent(b)}`).catch(e => ({ ok: false, why: [e.message] }));
-    const inEd = onZed() ? 'in Zed' : 'in VS Code Web', tree = where?.path && w?.worktrees.find(t => t.path === where.path);
+    const inEd = `in ${inEdName()}`, tree = where?.path && w?.worktrees.find(t => t.path === where.path);
     const rows = [];
     if (where?.k === 'here') rows.push({ t: `Open this folder ${inEd}`, sub: `it is on ${b}`, fn: () => openEditorAt(s, where.path, null, at) });
     else if (where?.k === 'wt') rows.push({ t: `Open ${where.t} ${inEd}`, sub: `${treeName(w, where.path)} · on ${b}`, fn: () => openEditorAt(s, where.path, `${name} @ ${b}`, at) });
     else if (!r.fork) rows.push({ t: `A worktree for it, ${inEd}`, sub: `${name}/.claude/worktrees/${b.replace(/[^\w.-]+/g, '-')} · on ${b}, tracking origin`, fn: () => worktreeFor(s, { pr: url }, `${name} @ ${b}`, at) });
+    if (where?.path) rows.push({ t: `…or in ${editor().name}, its own window`, sub: 'the external editor — outside the board', fn: () => zedMissing() ? zedNote(at) : openExternal(fileUrl(where.path)) });   // 2026-10-21: Zed picked was Editor ▾'s before
     rows.push({ t: r.fork ? `Review it, detached, ${inEd}` : 'Review only, detached', sub: `at ${r.headOid ? r.headOid.slice(0, 7) : 'its head'} — nothing to commit to; removed once the PR is merged or closed and nothing is in it`, fn: () => worktreeFor(s, { pr: url, detach: true }, `${name} @ #${pr.number}`, at) });
     if (tree?.modules === 'same') rows.push({ t: `Link node_modules from ${name}`, sub: 'its lockfile is the same — nothing installed', fn: () => api('POST', '/api/worktrees/modules', { path: tree.path }).then(() => { wtData.delete(s.cwd); note(at, 'node_modules linked'); }, e => note(at, e.message, true)) });
     else if (tree?.modules === 'differ') rows.push({ t: 'npm ci there…', sub: `its lockfile differs — typed into the ${shName()}, not run`, fn: () => typeInShell(s, `cd ${shellWord(tree.path)} && npm ci`, at) });
@@ -7374,10 +7413,10 @@ const toolName = n => {
     wtData.delete(s.cwd); renderHead(state.sessions.get(s.id));   // where its branch lives, again
     openEditorAt(s, t.path, t.here ? null : label, at);
   }
-  /** A folder in the editor picked: Zed's window, or VS Code Web on a tab of the chat — the chat's own folder its
-   *  usual tab, any other one of its own, named by `label`. */
+  /** A folder in the in-app editor: vim on a tab of the chat, or VS Code Web on one — the chat's own folder its usual
+   *  tab, any other one of its own, named by `label`. */
   async function openEditorAt(s, path, label, at) {
-    if (onZed()) return zedMissing() ? zedNote(at) : openExternal(fileUrl(path));
+    if (onVim()) return openVim(s, path, at);
     let d; try { d = await api('POST', '/api/vscode-web'); } catch (e) { return note(at, `VS Code Web did not start: ${e.message}`, true); }
     const u = vswebAt(d, path);
     if (label && path !== s.cwd) ideLabels.set(u, label);
@@ -7859,9 +7898,12 @@ const toolName = n => {
   /** The chat's zsh tabs (2026-10-13: ⌘T opens another beside the first): every live one, oldest first — the server's
       `shells`, each its tab `shell:<terminal id>`. */
   const shellsOf = s => (s?.shells || (s?.shell ? [s.shell] : [])).filter(t => t.exited === null);
-  const shellLive = s => shellsOf(s).length > 0;
+  // …and a vim of the in-app editor's is one of those tabs (2026-10-21, `editor`), never the chat's zsh
+  const zshsOf = s => shellsOf(s).filter(t => !t.editor);
+  const shellLive = s => zshsOf(s).length > 0;
   const isShellTab = k => /^shell:/.test(k || '');
   const shellOfTab = (s, k) => shellsOf(s).find(t => 'shell:' + t.id === k) || null;
+  const isVimTab = (s, k) => !!shellOfTab(s, k)?.editor;
   // Which tab a chat is on — page state, per chat: 'chat' (the claude session while it runs here, else the rendered
   // chat), 'shell:<id>' while a zsh of it lives, or one of its pages in the app's pane — 'gh:<url>' a GitHub page (a PR each),
   // 'ide:<url>' its folder's editor (2026-09-20). The pages a chat opened are remembered here (state.paneGh per chat,
@@ -8048,6 +8090,7 @@ const toolName = n => {
         + `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘0 from that one">${ICON.close}</button></span>` : '';
       const html = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
+        : isVimTab(s, k) ? tab(k, shLabel(s, k), `Vim in ${shellOfTab(s, k).cwd || s.cwd || 'its folder'} · ⌥⌘E`, 'Quit vim — it stays, saying so, over unsaved work', ICON.vim)
         : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
         : k === 'timeline' ? tab(k, 'timeline', 'This chat and its PRs in the order things happened · ⌥⌘J', 'Close the timeline', ICON.timeline)
@@ -8357,6 +8400,8 @@ const toolName = n => {
   // browser (2026-10-13; the half's first did before): the one to its right, else its left — a zsh's at once, while the
   // server is still ending it.
   function closeTab(s, k) {
+    // vim is asked to quit (2026-10-21): its tab goes when it does — and stays in front, saying why, over unsaved work
+    if (isVimTab(s, k)) { api('DELETE', `/api/terminals/${shellOfTab(s, k).id}`).catch(e => note(seen($('#ptabs')), `Could not quit vim: ${e.message}`, true)); return false; }
     const p = placeOf(s), g = p.indexOf(k);
     if (g >= 0) { const ks = keysIn(s, g), i = ks.indexOf(k); p[g] = ks[i + 1] || ks[i - 1] || null; tabs.set(s.id, p); }
     if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); syncTerm(s); return; }
@@ -8374,7 +8419,7 @@ const toolName = n => {
       rather than stay in an empty half or on a zsh on its way out (a zsh ends when the server says so, a moment on). */
   function dropTab(s, k) {
     const g = isSplit(s) ? homeOf(s, k) : 0, last = keysIn(s, g).length === 1;
-    closeTab(s, k);
+    if (closeTab(s, k) === false) return;   // vim, asked to quit
     if (last && g === focusG) { showChat(s); syncTerm(s); }
     focusBoard(); focusTerm();
   }

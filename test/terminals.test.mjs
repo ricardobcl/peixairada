@@ -190,6 +190,44 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
   } finally { await srv.stop(); }
 });
 
+test('vim, the in-app editor\'s other pick (2026-10-21): a tab beside the zsh, in the chat\'s folder or another, asked to quit — never killed over unsaved work', { timeout: 40_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1], other = realpathSync(tmpDir('peix-wt-'));
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { FAKE_VIM_DIRTY: '' } });
+  try {
+    const zsh = (await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 })).body.terminal;
+    const r = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const v = r.body.terminal; assert.deepEqual([v.shell, v.editor, v.resume, v.cwd], [true, 'vim', false, chat.cwd]);
+    const a = attach(srv, v.id, { until: 'fake vim', timeout: 10_000 }), out = await a;
+    assert.match(out.all, new RegExp(`fake vim — ${realpathSync(chat.cwd).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} — \\.`), 'vim ran in the chat\'s folder, on it');
+    const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+    assert.deepEqual(s.shells.map(x => [x.id, x.editor]), [[zsh.id, null], [v.id, 'vim']], 'its tab among the zsh\'s');
+    assert.equal(s.shell.id, zsh.id, 'and never the chat\'s zsh');
+    const again = await srv.post(`api/sessions/${chat.id}/shell`, {});
+    assert.equal(again.body.terminal.id, zsh.id, 'the zsh asked for again is the zsh');
+    const there = await srv.post(`api/sessions/${chat.id}/shell`, { vim: true, dir: other });
+    assert.equal(there.status, 201, JSON.stringify(there.body)); assert.equal(there.body.terminal.cwd, other, 'another folder: a worktree of its PR');
+    assert.equal((await srv.post(`api/sessions/${chat.id}/shell`, { vim: true, dir: 'relative/x' })).status, 400);
+    // closed: asked to quit, and it does
+    assert.equal((await srv.api(`api/terminals/${v.id}`, { method: 'DELETE' })).status, 200);
+    await waitFor(async () => (await srv.terminals()).find(x => x.id === v.id)?.exited === 0, { what: 'vim quitting on :qa' });
+    assert.ok(srv.logText().includes(`terminal ${v.id}: vim in `), 'the log names it');
+  } finally { await srv.stop(); }
+  // with unsaved work it says so and stays
+  const dirty = await startTestServer({ claudeDir: fx.dir, fake: true, env: { FAKE_VIM_DIRTY: '1' } });
+  try {
+    const v = (await dirty.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true })).body.terminal;
+    const a = attach(dirty, v.id, { until: 'E162', timeout: 10_000 }); await a.opened;
+    await waitFor(() => a.text().includes('fake vim'), { what: 'vim up' });
+    await dirty.api(`api/terminals/${v.id}`, { method: 'DELETE' });
+    const out = await a;
+    assert.ok(out.all.includes('E162: No write since last change'), 'vim said why');
+    await sleep(500);
+    assert.equal((await dirty.terminals()).find(x => x.id === v.id)?.exited, null, 'and lives on, the work in it');
+  } finally { await dirty.stop(); }
+});
+
 test('two asks for a chat\'s drawer at once start one claude, and a pid the registry outlived is no claude, nor signalled', { timeout: 40_000 }, async () => {
   const { spawn } = await import('node:child_process');
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });

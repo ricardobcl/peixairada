@@ -4750,10 +4750,11 @@ let termSeq = 0;
 const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 
 /** The chat's drawer (`shell` false) or its zsh (true) — a live one over an exited one still lingering in `terms`. The
- *  same rule as termIndex, for one chat. */
-function drawerOf(s, shell) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !!t.shell === shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
+ *  same rule as termIndex, for one chat. An editor's tab (`editor`, 2026-10-21) is a shell's kind, and never its zsh. */
+function drawerOf(s, shell) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !!t.shell === shell && !t.editor && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 const termOf = s => drawerOf(s, false), shellOf = s => drawerOf(s, true);
-/** Every zsh of the chat (2026-10-13: ⌘T opens another), the exited ones still lingering too, oldest first — each its tab. */
+/** Every zsh of the chat (2026-10-13: ⌘T opens another) and its editors' (vim), the exited ones still lingering too,
+ *  oldest first — each its tab. */
 const byStart = (a, b) => String(a.startedAt).localeCompare(String(b.startedAt));
 const shellsOf = s => [...terms.values()].filter(t => t.sessionId === s.id && t.shell).sort(byStart);
 const NO_TERMS = Object.freeze({ term: null, shell: null, shells: [] });
@@ -4765,7 +4766,7 @@ function termIndex() {
     if (!t.sessionId) continue;
     let e = m.get(t.sessionId); if (!e) m.set(t.sessionId, e = { term: null, shell: null, shells: [] });
     const k = t.shell ? 'shell' : 'term';
-    if (!e[k] || (e[k].exited !== null && t.exited === null)) e[k] = t;
+    if (!t.editor && (!e[k] || (e[k].exited !== null && t.exited === null))) e[k] = t;
     if (t.shell) e.shells.push(t);
   }
   for (const e of m.values()) e.shells.sort(byStart);
@@ -4773,7 +4774,7 @@ function termIndex() {
 }
 function termSummary(t) {
   return t ? {
-    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, task: t.task || null, startedAt: t.startedAt, exited: t.exited,
+    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, editor: t.editor || null, task: t.task || null, startedAt: t.startedAt, exited: t.exited,
     cols: t.cols, rows: t.rows, clients: t.clients.size, connected: !!(t.sock && !t.sock.destroyed), lastSnapshotChars: t.lastSnap,
   } : null;
 }
@@ -4798,7 +4799,7 @@ const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CON
   'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
-  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN',
+  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN',
   ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'open'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
@@ -5126,6 +5127,9 @@ function cloneRepo(name, rootDir, done) {
 // tab is still that shell and claude goes through zsh, as it always did.
 const LOGIN_SHELL = (() => { try { const sh = userInfo().shell; return sh && existsSync(sh) ? sh : '/bin/zsh'; } catch { return '/bin/zsh'; } })();
 const RUN_SHELL = /\/(zsh|bash)$/.test(LOGIN_SHELL) ? LOGIN_SHELL : '/bin/zsh';
+// The in-app editor's other pick (2026-10-21): vim in the chat's folder, on a tab as a zsh is — run as claude is, through
+// the login shell, so the vim its PATH finds. VIM_BIN for another one, or the tests' stand-in.
+const VIM_BIN = process.env.VIM_BIN || 'vim';
 
 /**
  * Start `claude` (or `claude --resume <id>`, or `task <name>` — a launcher, see above) in `cwd`: write the spec, spawn
@@ -5135,9 +5139,9 @@ const RUN_SHELL = /\/(zsh|bash)$/.test(LOGIN_SHELL) ? LOGIN_SHELL : '/bin/zsh';
  * shell's pid, which is the pid the registry will report — with a launcher, task takes the pid and claude is a
  * descendant, which linkTermToRegistry knows.
  */
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, task = null }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
-  const bin = shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
+  const bin = editor ? VIM_BIN : shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
   if (cwd === SCRATCH_DIR) try { mkdirSync(SCRATCH_DIR, { recursive: true }); } catch {}   // the no-folder chats' own: made on the first, and again after it was deleted
@@ -5157,13 +5161,13 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
       : boardConfig().roots.some(r => r.org && (cwd + sep).startsWith(r.dir + sep)) ? `${tildePath(cwd)} is not there — its repo is checked out, but not this folder in it (a worktree since removed?)`
       : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Projects)` };
   }
-  const args = task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
+  const args = editor ? ['.'] : task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
   const sock = join(TERMS_DIR, `${id}.sock`);
   if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId, cwd, bin, args, shell, sh: shell ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -5190,7 +5194,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
     }
   }
   terms.set(id, t);
-  console.log(`[peixairada] terminal ${id}: ${shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
+  console.log(`[peixairada] terminal ${id}: ${editor || (shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : ''))} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t), ...back && { back } };
@@ -5206,7 +5210,7 @@ async function adoptHolder(f) {
   let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { return; }
   const id = meta.id || f.slice(0, -5);
   const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
-  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, task: meta.task ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, editor: meta.editor ?? null, task: meta.task ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
   try {
     await connectHolder(t);
     terms.set(id, t);
@@ -5277,9 +5281,12 @@ function linkTermToRegistry(pid, s, ppids = null) {
  *  ask gets the first one's answer. */
 const spawning = new Map();   // `<chat>:claude` | `<chat>:shell` -> the spawn under way
 const spawnOnce = (key, run) => { let p = spawning.get(key); if (!p) spawning.set(key, p = run().finally(() => spawning.delete(key))); return p; };
-/** End the process in a drawer; an exited one is let go at once instead of lingering. */
+/** End the process in a drawer; an exited one is let go at once instead of lingering. Vim is asked to quit, as you would
+ *  (2026-10-21): with nothing unsaved it does, and its tab goes; with something, it stays and says so — never killed
+ *  over your edits. */
 function killTerm(t) {
-  if (t.exited === null) holderSend(t, { t: 'kill' });
+  if (t.exited === null && t.editor === 'vim') holderSend(t, { t: 'in', d: '\x1b\x1b:qa\r' });
+  else if (t.exited === null) holderSend(t, { t: 'kill' });
   else { holderSend(t, { t: 'quit' }); terms.delete(t.id); }
 }
 
@@ -5607,6 +5614,13 @@ const server = createServer(async (req, res) => {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
       const body = await jsonBody(req), spec = { cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true };
+      // the in-app editor's vim (2026-10-21): in the chat's folder, or `dir` — a worktree of its PR's branch —, one start
+      // per folder at a time; the page shows one it has before asking for another
+      if (body.vim === true) {
+        if (typeof body.dir === 'string' && body.dir) { if (!isAbsolute(body.dir)) return json(res, 400, { error: 'dir must be an absolute path' }); spec.cwd = body.dir; }
+        const r = await spawnOnce(`${s.id}:vim:${spec.cwd}`, () => spawnTerm({ ...spec, editor: 'vim' }));
+        return json(res, r.code, r);
+      }
       if (body.fresh === true) { const r = await spawnTerm(spec); return json(res, r.code, r); }
       const have = shellOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });

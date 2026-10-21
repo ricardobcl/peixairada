@@ -5,13 +5,14 @@
 // worktree, offers review only, links node_modules (nothing installed) and says why the folder is not switched; #14's
 // "a worktree for it" makes .claude/worktrees/feat-tax-rounding, opens VS Code Web on it as the tab "widgets @
 // feat/tax-rounding", and the row then says where it is — the folder's branch and tree untouched; with the other chat
-// gone and the edit undone, "Switch this folder…" types `git switch feat/tax-rounding` into the chat's zsh, unrun.
+// gone and the edit undone, "Switch this folder…" types `git switch feat/tax-rounding` into the chat's zsh, unrun. The
+// external editor is a row beside the tree's own, and Vim picked opens the tree in vim on a tab (2026-10-21).
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
-import { tmpDir } from '../../lib/testserver.mjs';
+import { tmpDir, waitFor } from '../../lib/testserver.mjs';
 
 const root = realpathSync(tmpDir('peix-edbr-'));
 const claudeDir = join(root, 'claude'), origin = join(root, 'origin.git'), seed = join(root, 'seed'), repo = join(root, 'work', 'widgets');
@@ -74,14 +75,24 @@ export default async function (ctx) {
 
   // #15: its worktree, review only, node_modules linked, and why the folder is not switched
   out.menu15 = await openMenu(15);
-  ctx.assert.deepEqual(out.menu15.map(r => r[0]), ['Open worktree feat-rates in VS Code Web', 'Review only, detached', 'Link node_modules from widgets', 'Switch this folder to feat/rates…'], JSON.stringify(out.menu15));
+  ctx.assert.deepEqual(out.menu15.map(r => r[0]), ['Open worktree feat-rates in VS Code Web', '…or in VS Code, its own window', 'Review only, detached', 'Link node_modules from widgets', 'Switch this folder to feat/rates…'], JSON.stringify(out.menu15));
   ctx.assert.equal(out.menu15[0][1], 'widgets/.claude/worktrees/feat-rates · on feat/rates');
-  ctx.assert.deepEqual(out.menu15[3].slice(1), ['not offered: feat/rates is out in feat-rates — open that instead · another chat works here — Checkout spacing · 1 file is not committed', true], 'the switch, disabled, saying why');
+  ctx.assert.deepEqual(out.menu15[4].slice(1), ['not offered: feat/rates is out in feat-rates — open that instead · another chat works here — Checkout spacing · 1 file is not committed', true], 'the switch, disabled, saying why');
   await ctx.settle(); await ctx.shot('1-editor-menu');
   await pick('Link node_modules');
   await ctx.waitFor(`!document.querySelector('#ctxm').open`, { what: 'the menu closed' });
   for (let i = 0; i < 50 && !existsSync(join(wt('feat-rates'), 'node_modules')); i++) await ctx.sleep(100);
   ctx.assert.ok(lstatSync(join(wt('feat-rates'), 'node_modules')).isSymbolicLink(), 'node_modules linked, nothing installed');
+
+  // the in-app editor Vim (2026-10-21): #15's worktree opened in vim, on a tab of its own, run in it
+  await ctx.evaluate(`document.querySelector('#inEdPick [data-ined="vim"]').click()`);
+  await ctx.waitFor(`document.querySelector('${ed(15)}')`, { what: 'Editor ▾ again, its trees read anew' });
+  out.menu15v = await openMenu(15);
+  ctx.assert.deepEqual(out.menu15v.slice(0, 2).map(r => r[0]), ['Open worktree feat-rates in Vim', '…or in VS Code, its own window']);
+  await pick('Open worktree feat-rates in Vim');
+  const vim = await waitFor(async () => (await ctx.server.terminals()).find(t => t.editor === 'vim' && t.cwd === wt('feat-rates') && t.exited === null), { what: 'vim in the worktree' });
+  await ctx.waitFor(`window.peix.state().tab === 'shell:${vim.id}'`, { what: 'its tab in front' });
+  await ctx.evaluate(`document.querySelector('#inEdPick [data-ined="vscode"]').click()`);
 
   // #14: a worktree for it — made, opened in VS Code Web on a tab named for it; the folder as it was
   out.menu14 = await openMenu(14);

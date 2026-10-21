@@ -52,7 +52,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.zed.anchors[1][2], `Open ${cwd}/src/app.js:42 in Zed`);
   ctx.assert.equal(out.zed.anchors[7][2], `Open ${cwd}/src/y.ts:3 in Zed`, 'the [file:3](…#L3) one too');
   ctx.assert.deepEqual(out.zed.rows, ['VS Code Web', 'its folder in Zed'], '··· keeps VS Code Web and adds the folder in Zed');
-  ctx.assert.match(out.zed.said, /^Zed opens in its own window, outside the board .* ⌥⌘E stays VS Code Web/, 'the settings say what Zed is not');
+  ctx.assert.match(out.zed.said, /^Zed opens in its own window, outside the board .* ⌥⌘E is the in-app editor/, 'the settings say what Zed is not');
   // what each opens, the browser's ways out caught: the folder in Zed followed as a link (the app hands it to the system),
   // ⌥⌘E still VS Code Web (its server asked, then its page)
   out.zed.opened = await ctx.evaluate(`(async () => {
