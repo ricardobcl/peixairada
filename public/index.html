@@ -1392,7 +1392,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :is(.prrow, .pkrow)[data-state="open"] .st { color: var(--pr-open); } :is(.prrow, .pkrow)[data-state="merged"] .st { color: var(--pr-merged); }
   :is(.prrow, .pkrow)[data-state="closed"] .st { color: var(--pr-closed); } :is(.prrow, .pkrow)[data-state="draft"] .st { color: var(--pr-draft); }
   .prrow .num { flex: none; color: var(--muted); font-size: var(--fs-xs); }
-  .prrow .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .prrow .t { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  /* its link copied, next to its name (2026-10-21): the row's own under the pointer, the rest pushed right by it; a ✓ in
+     the ready green once copied (.did). A mark in the link, not a button — a button in a link is the link's: the
+     right-click menu copies it too, from the keys */
+  .prrow .prcopy { flex: none; display: inline-grid; place-items: center; align-self: center; width: 18px; height: 18px; margin: 0 auto 0 -5px; border-radius: var(--r-1); color: var(--muted); opacity: 0; cursor: copy; transition: opacity .12s, background-color .12s; }
+  .prrow:hover .prcopy, .prrow .prcopy.did { opacity: 1; }
+  .prrow .prcopy:hover { background: var(--ctl-hi); color: var(--ink); }
+  .prrow .prcopy .ic { grid-area: 1 / 1; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: opacity .14s, scale .32s var(--spring); }
+  .prrow .prcopy .ok { opacity: 0; scale: var(--pop, .5); color: var(--idle); stroke-width: 2; }
+  .prrow .prcopy.did { background: color-mix(in srgb, var(--idle) 18%, transparent); }
+  .prrow .prcopy.did .cp { opacity: 0; scale: var(--pop, .5); }
+  .prrow .prcopy.did .ok { opacity: 1; scale: none; }
   .prrow .t.pending { font-weight: 400; color: var(--muted); font-style: italic; }
   .prrow .meta { flex: none; color: var(--muted); font-size: var(--fs-xs); }
   .prrow .why { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; }
@@ -2481,6 +2492,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
+    .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
     .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button):active { scale: none; }   /* a press does not dip */
   }
 
@@ -6804,8 +6816,9 @@ const toolName = n => {
   const UNLINK_TIP = '⌥-click: take it off this chat — naming it again yourself brings it back';
   // its age and the tooltip that says it are fillAges's (2026-10-14): the clock in the markup redrew the rows, and a row
   // pressed as it was redrawn opened nothing
+  const COPY_LINK = `<span class="prcopy" aria-hidden="true" title="Copy its link">${ICON.copyAddr}${ICON.copied}</span>`;   // a row's (2026-10-21)
   const prTip = pr => `${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`;
-  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta" data-at="${esc(pr.lastAt || '')}"></span></a>`;
+  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${COPY_LINK}${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta" data-at="${esc(pr.lastAt || '')}"></span></a>`;
   // Where each of a chat's PR branches is checked out (2026-10-13): the checkout's working trees, asked when the PR rows
   // or the changes tab's picker want them and kept a while (GET /api/worktrees) — only for a chat with PRs.
   const wtData = new Map();   // cwd → { at, v, asking }
@@ -6839,7 +6852,7 @@ const toolName = n => {
       ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own">Chat</button>` : ''}</span>` : ''}</div>${round}`;
   };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
-  const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
+  const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span>${COPY_LINK}<span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
   // session running in the drawer (2026-09-20). It is the running CLI's state, not the board's: there is no key and no
   // API for it, so the button types the command into our own holder and reads the line the session prints back — what
@@ -7129,7 +7142,7 @@ const toolName = n => {
     const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
-      return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Its timeline', sub: 'its events and the turns about it · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, url); } }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
+      return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Copy its link', fn: () => copyText(url).then(ok => note(chip, ok ? 'Link copied' : 'Could not copy it', !ok)) }, { t: 'Its timeline', sub: 'its events and the turns about it · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, url); } }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
     }
     const hm = e.target.closest('#shead .hmove');
     if (hm) { const s = state.sessions.get(state.current); return s && [{ t: 'Let this round go — the next move tells you', fn: () => letGo(s, $('#shead .hmove')) }]; }
@@ -7219,6 +7232,18 @@ const toolName = n => {
     e.preventDefault(); e.stopPropagation();
     const s = state.sessions.get(state.current);
     if (e.altKey) letGo(s, mv); else tvOpenOn(s, movedPrs(s)[0]?.url);
+  }, true);
+  // A row's link copied (2026-10-21): its mark next to its name — the link not followed — and said on the mark itself, a
+  // ✓ for COPIED_MS; a redraw of the rows takes it with it
+  $('#prlist').addEventListener('click', async e => {
+    const c = e.target.closest('.prrow .prcopy'); if (!c) return;
+    e.preventDefault(); e.stopPropagation();
+    const row = c.closest('.prrow'), url = row.dataset.url || row.getAttribute('href') || '';
+    if (!/^https?:\/\//.test(url)) return;
+    const ok = await copyText(url);
+    if (!ok) return note(c, 'Could not copy it', true);
+    c.classList.add('did'); c.title = 'Link copied';
+    clearTimeout(c._did); c._did = setTimeout(() => { c.classList.remove('did'); c.title = 'Copy its link'; }, COPIED_MS);
   }, true);
   $('#prlist').addEventListener('click', e => {   // before #chat's link handler, which would open the PR
     const r = e.altKey && e.target.closest('.prrow[data-url]'); if (!r) return;

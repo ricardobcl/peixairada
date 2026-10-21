@@ -1,8 +1,8 @@
 // The chat's PRs in the header (2026-09-24). What this checks: a chat with PRs
 // shows them as the cards' chips in the header row, one button, with the rows under the header folded; a click
 // unfolds them and a second folds them back, as does the arrow up at the open list's foot (2026-10-13), clicked or
-// pressed with Enter — the keys then on the chips; the fold outlives a reload (a pref, not the chat's); a row still opens
-// its PR; a chip opens its own, the rows left folded, and a caret after the chips unfolds them (2026-10-16); a chat
+// pressed with Enter — the keys then on the chips; the fold outlives a reload (a pref, not the chat's); a row's link is
+// copied from the mark next to its name (2026-10-21); a row still opens its PR; a chip opens its own, the rows left folded, and a caret after the chips unfolds them (2026-10-16); a chat
 // without PRs has neither. ⌥ over a chip, or a row, shows an ✕ in red without moving a thing, and
 // ⌥-click takes that PR off the chat (2026-10-11): gone from the header, the rows and the server's summary, kept off
 // when Claude names it again and across a restart (its lines read afresh), back when you name it.
@@ -75,6 +75,28 @@ export default async function (ctx) {
   ctx.assert.ok(out.aged.kept, 'every row kept its node');
   ctx.assert.ok(out.age.every(([m, t]) => m && m === t), `the age in the row and its tooltip: ${JSON.stringify(out.age)}`);
   ctx.assert.ok(out.aged.ages.every(([m, t], i) => m === t && m !== out.age[i][0]), `…both two days on: ${JSON.stringify(out.aged.ages)}`);
+
+  // its link copied from the mark next to its name (2026-10-21): shown under the pointer, a real click copies the row's
+  // address — the PR not opened —, and the mark says so with a ✓ that goes again
+  await ctx.settle();
+  await ctx.evaluate(`window.__clip = []; navigator.clipboard.writeText = t => { window.__clip.push(t); return Promise.resolve(); }`);
+  const cpAt = await ctx.evaluate(`JSON.stringify((r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#prlist .prrow .prcopy').getBoundingClientRect()))`).then(JSON.parse);
+  const look = () => ctx.evaluate(`JSON.stringify((c => ({ shown: getComputedStyle(c).opacity, did: c.classList.contains('did'), title: c.title, clip: window.__clip, pr: window.peix.state().pr || null,
+    next: Math.round(c.getBoundingClientRect().left - c.closest('.prrow').querySelector('.t').getBoundingClientRect().right) }))(document.querySelector('#prlist .prrow .prcopy')))`).then(JSON.parse);
+  out.copyRest = await ctx.evaluate(`getComputedStyle(document.querySelector('#prlist .prrow .prcopy')).opacity`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: cpAt.x, y: cpAt.y });
+  await ctx.settle();
+  for (const type of ['mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: cpAt.x, y: cpAt.y, button: 'left', clickCount: 1 });
+  await ctx.waitFor(`window.__clip.length === 1`, { what: 'the link copied' });
+  await ctx.settle();
+  out.copied = await look();
+  await ctx.shot('2c-copied', { x: 400, y: 0, width: 1300, height: 160 });
+  const firstUrl = await ctx.evaluate(`document.querySelector('#prlist .prrow').dataset.url`);
+  ctx.assert.equal(out.copyRest, '0', 'the mark out of sight at rest');
+  ctx.assert.deepEqual([out.copied.shown, out.copied.did, out.copied.title, out.copied.clip, out.copied.pr], ['1', true, 'Link copied', [firstUrl], null], 'copied, said on the mark, the PR not opened');
+  ctx.assert.ok(out.copied.next >= 0 && out.copied.next <= 8, `next to its name (${out.copied.next} px after the title)`);
+  await ctx.waitFor(`!document.querySelector('#prlist .prrow .prcopy').classList.contains('did')`, { what: 'the ✓ gone again' });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 500 });
 
   // a row still opens its PR — the board says which, and no strip comes under the header (2026-09-24)
   await ctx.evaluate(`document.querySelector('#prlist .prrow').click()`);
