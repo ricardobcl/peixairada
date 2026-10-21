@@ -2,8 +2,33 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-20. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-21. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-21 — a page's new window is a tab
+
+Ricardo, with a shot of a GitHub page filling the right half, no strip over it: "sometimes GH tab has the web tab,
+sometimes it doesn't … what's the gap here? should always be there"
+
+* **What it was**: no page tab had lost its strip. The page in the shot was the *editor's* view. VS Code Web opens
+  every link out — a PR from its source control, a push's URL in its terminal — as a new window (`window.open(url,
+  '_blank')`), and the shell's `createWebViewWith` loaded every new window in the view that asked for it (since
+  2026-09-20: a web view with no UI delegate drops `target=_blank`). The editor's tab, alone in its half, has no strip
+  by design (2026-09-28), so GitHub filled the half with no address, no ‹, the editor gone under it. Opened from the
+  board — a chip, ⌥⌘G, a link in the chat — a page is a `gh:` tab with its strip: hence *sometimes*.
+* **A new window is a tab of the chat's, beside the page that asked** (`PaneDelegate.open` → `AppDelegate.paneOpen` →
+  `window.peixPaneOpen(key, url)` → `openExternal`): in that half, in front, the keys on it, under the strip — a
+  browser's new tab. Every page's, not the editor's alone: a GitHub link with `target=_blank` no longer takes its own
+  page's place either. The board says no for a view not the open chat's, and the shell loads it where it was asked,
+  as before; a scheme not http(s) goes through the navigation policy as it did (2026-10-14's guard). The app's log
+  says which.
+* Ruled out first: a stale rect for the pane, the page posted where a strip had been — a probe over opening a page,
+  switching chats and back, a reload, the PR rows, a zsh beside it found the page under its strip every time.
+* Not done: the editor's view following a link in its own main frame (no new window asked for) would still be the
+  editor's tab's; not seen from VS Code Web.
+* `pane-tabs.mjs`: the editor alone on the right asks for a window — a page tab beside it, the strip back with the page
+  under it, the keys on it; another chat's view or a `file:` URL refused; closed, the editor alone again. The shell's
+  half is typechecked only: no harness drives a pane view's new window.
 
 ## Decisions of 2026-10-20, night — a copy button on a page's address
 

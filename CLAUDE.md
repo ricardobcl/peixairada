@@ -673,14 +673,15 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `{type: 'chat', project, title, cwd}` from `renderHead` and `leaveChat` (`postChat`: the window's title and
   `representedURL`). `refreshBadges` redraws only on a change (`badged`); a newly asking chat with the app in the back
   bounces the Dock once.
-* **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell:<id>` per
-  live zsh (`shellsOf`, the server's `shells`; named zsh, zsh 2…), `gh:<url>` per web page the chat opened and `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat, the
-  keys) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read through `placeOf()`. `syncTerm()` keeps
-  both bodies right and posts one `{type:'pane', id, keys, panes, focus}` (`postPane`): the shell keeps a web view per
-  page (`paneViews`, up to `paneViewsMax`, the chat's own spared). **The overlay covers the whole window** and lets a
-  click on no page through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`; × forgets a page (`closeTab`). In a
-  browser the tabs are chat and zsh only (`inApp`). A `WKWebView`, as GitHub cannot be iframed; `PaneDelegate`, or
-  `target=_blank` is dropped. → Findings: *the pane*.
+* **The page owns the tabs**: each half's strip lists `chat` (`claude` while it runs here), `shell:<id>` per live zsh
+  (`shellsOf`; zsh, zsh 2…), `gh:<url>` per web page the chat opened and `ide:<url>` for its folder's editor —
+  `tabKeys()` from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`,
+  read through `placeOf()`. `syncTerm()` keeps both bodies right and posts one `{type:'pane', id, keys, panes, focus}`
+  (`postPane`): the shell keeps a web view per page (`paneViews`, up to `paneViewsMax`, the chat's own spared). **The
+  overlay covers the window**, a click on no page let through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`;
+  × forgets a page (`closeTab`). In a browser the tabs are chat and zsh only (`inApp`). **A page's new window is a tab
+  beside it** (2026-10-21, `PaneDelegate.open` → `peixPaneOpen`), never its own view: the editor's tab has no strip.
+  → Findings: *the pane*.
 * **A page opened again is the tab still at it** (2026-10-13, `openExternal` → `pageTab`): the page or further in
   (`atPage`: then `/`, `?`, `#` or the end); a tab followed elsewhere leaves it a new tab, `gh2:<url>`, `gh3:`…
   (`pageKey`, `isPageTab`; the shell loads a key's URL past its first colon), never a key whose lingering view
