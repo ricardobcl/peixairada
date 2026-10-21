@@ -5,6 +5,72 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-21. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-21, later — two editors, pages out to the browser, the log's clock, a counted version, commit messages, a PR row's copy
+
+Ricardo, a list:
+
+> - we should have an option for in-app editor (vscode web as default, vim as option)
+> - we should have an option for external editor (vscode as defailt, zed as an option)
+> - we should have an option to open non-github.com links externally by default instead of in-app (or maybe even
+>   allow to add the list of url prefixes that should open in-app)
+> - server logs should have timestamps
+> - can we start using a simple one line commit message with the resto of the content in the message, but separated
+>   by a new empty line?
+> - can we also bump automatically the semver version for every push or commit?
+> - add a copy link next to the PR name on the PR expanded list up top
+
+* **Two editors, two picks** (Settings › General › Files). *External editor* is the old *Open files in* — VS Code, or
+  Zed —, named for what it is: its own window, outside the board, where a path clicked in a chat opens at its line.
+  **⌥⌘V now opens the picked one** (`hotEditorApp`); it was VS Code whatever the pick (2026-10-14), and an option for
+  the external editor that ⌥⌘V ignored would have been half of one. ··· keeps no VS Code row (taken out 2026-09-29, by
+  request); its Zed row shows ⌥⌘V. *In-app editor* is new: what ⌥⌘E opens on a tab beside the chat — VS Code Web, or
+  vim. A PR row's Editor ▾ opens its tree in the in-app editor; with Zed picked it used to open Zed's window, so the
+  external editor is a row of its own there now.
+* **Vim is a terminal tab, a holder like a zsh's** (`editor: 'vim'` on the spec; `VIM_BIN`, `vim` by default), run
+  through the login shell as claude is — `exec vim .`, the vim the PATH finds, netrw on the folder. It is one of the
+  chat's `shells` (so it attaches, refits, survives a restart and follows a /clear as a zsh does) but never *the* zsh:
+  ⌥⌘T, `typeInShell` (Commit…, Push, `npm ci`), the server's answer to a zsh asked for again and the zsh row of ···
+  all skip it (`zshsOf`, `drawerOf`). ⌥⌘E shows the vim the chat already has in that folder. **Closing it asks it to
+  quit** — ESC ESC `:qa` CR into its PTY (`killTerm`), never a kill: with nothing unsaved it goes and its tab with it;
+  with something unsaved vim stays, saying E162, and the tab stays in front (`closeTab` returns false, `dropTab` moves
+  nothing). Done ends a chat's processes the same way, so Done leaves a vim with unsaved work standing. Not done: a
+  file link opening at its line in that vim — links are the external editor's.
+* **Pages out to the browser** (Settings › General › Links, the app's alone — in a browser every page is a tab of its
+  own already). *In the board* is the default and as before; *In the browser* keeps only the sites listed under it,
+  `github.com` to begin with, and sends the rest out. A site is an address's start, matched whole up to `/ ? # :` — so
+  `github.com` is not `github.company.com` nor `gist.github.com` —; a scheme or `www.` is ignored, a path narrows it
+  (`github.com/acme`), a port names a dev server (`localhost:3000`). One rule (`inBoard`) for every way a page opens:
+  `openExternal` (a link in the transcript, a PR chip or row, a ticket) and a page's new window (`peixPaneOpen`, the
+  morning's), and **a link clicked in a page to another host**, which the shell now asks the board about
+  (`PaneDelegate.linkOut` → `peixLinkOut`) before following it: GitHub's own links stay, a CI's details or a docs page
+  go out. A script's navigation, a redirect or a frame stays where it is. VS Code Web is the board's own whatever the
+  pick, and an address typed into a blank tab (⌘T) is asked for there, so it opens there.
+* **The server's log says when** each line was said: `console.log` · `info` · `warn` · `error` wrapped once, when
+  server.mjs runs as the program, each line led by `toISOString()` — UTC, as the app's log writes its own, to the
+  millisecond. The holders' own logs are unchanged.
+* **Commit messages**: a subject line, a blank line, the body — CLAUDE.md says so at its head, for every session.
+  Today's commits are the first.
+* **The version is counted, not bumped.** A hook bumping package.json on every commit was weighed and left: several
+  sessions commit to main at once, a worktree's commits are cherry-picked onto it, and each would clash on that one
+  line; an amend would bump twice; and every update would look like a change of packages (`updateParts`: `deps`). So
+  `lib/version.mjs` counts it: package.json's major and minor, and for the patch the commits since that version was
+  set (the last commit that changed how often `"version": "0.1.0"` is written — git's pickaxe — so a line moved or a
+  comma added does not reset it). 0.1.0 was set by the first commit: today's board is 0.1.7xx. The same commit is the
+  same version in every clone. The server counts it once per HEAD with the checkout's other facts (`readCheckout` →
+  `update.version`, the About box and home), build.sh stamps it into the app (`CFBundleShortVersionString`,
+  `CFBundleVersion`, and the bundled package.json, as the app's copy has no history). A new minor is package.json's
+  version changed by hand; the count starts again from there.
+* **A PR row's link is copied from a mark next to its name** (`.prcopy`, the copy sheets and the ✓ of the address's
+  copy button): under the pointer only, a click copies the PR's URL without opening it, and the ✓ in the ready green
+  says so for 1.4 s on the mark itself. The row is a link, and a button in a link is the link's, so the mark is a span
+  the row's click handler takes first; from the keys, the right-click menu on a PR — a row, a header chip, a card's
+  chip — has *Copy its link*. The title stops stretching to the age so the mark can sit right after it. A ticket's row
+  has the same.
+* Checked: `npm test` (224); every scenario — three held what the settings and a PR's menu said before (and
+  `cog-setup` had missed Lunch's pane since 2026-10-18), now all 100; the new page loaded in WebKit; the shell
+  type-checked, built and installed (0.1.727). Not driven: a link clicked inside a page in the app's pane — the board's
+  half of it (`peixLinkOut`) is `links-out.mjs`'s, the shell's is a click in the real app.
+
 ## Decisions of 2026-10-21 — a page's new window is a tab
 
 Ricardo, with a shot of a GitHub page filling the right half, no strip over it: "sometimes GH tab has the web tab,
