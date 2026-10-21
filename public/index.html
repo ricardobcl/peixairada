@@ -1467,6 +1467,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #prlist .pfold { grid-column: 2; display: grid; place-items: center; width: 56px; height: 18px; padding: 0; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #prlist .pfold:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .pfold .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  /* …and on its right the timeline, a key away (2026-10-21) */
+  #prlist .ptl { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; }
+  #prlist .ptl:hover { background: var(--ctl-hi); color: var(--ink); }
+  #prlist .ptl .ic.st { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #prlist .ptl kbd { font: inherit; font-weight: 500; opacity: .75; }
   /* ---- a second claude on this chat: VS Code opened a chat that runs here (see renderRival) ---- */
   #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--fs-sm); color: var(--ink); min-width: 0; line-height: 1.4; }
   #rival[hidden] { display: none; }
@@ -6998,14 +7003,11 @@ const toolName = n => {
     if (prs.length) wtOf(s.cwd, () => renderHead(state.sessions.get(s.id)));   // where their branches are, for the rows
     const rows = [...prs.map(pr => hide => prLine(s, pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
     // the list's foot (2026-10-13): "… n more" on the left, and in the middle an arrow up that folds the list as the
-    // chips do — where the eye ends up, under the rows
-    const trk = prsOpen && prs.length ? (m => tvTracksHtml(s, m, tvScope(s, m)))(tvModel(s)) : '';   // the chat and its PRs on one clock (2026-10-17)
+    // chips do — where the eye ends up, under the rows; on the right the way to the timeline (2026-10-21), whose tracks
+    // stood at the list's head (2026-10-17): the tab is the timeline, a key away
     const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
-      + `<div class="pfoot">${rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : ''}<button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button></div>`;
+      + `<div class="pfoot">${rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : ''}<button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button>${prs.length ? `<button class="ptl" id="prTl" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them — on a tab (⌥⌘J)">${ICON.timeline}<span>Timeline</span><kbd>⌥⌘J</kbd></button>` : ''}</div>`;
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
-    // the tracks a box of their own at the head, so their news redraws no row
-    const tk = pl.querySelector(':scope > .prtrk') || pl.insertBefore(html2el('<div class="prtrk"></div>'), pl.firstChild);
-    setHtml(tk, trk); tk.hidden = !trk;
     fillAges(pl);
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     // pressed from the keyboard (no clicks counted, the button focused), the keys stay on the chips: the header they sat
@@ -7020,6 +7022,7 @@ const toolName = n => {
       showPrs(!prefs.prsOpen, e);
     };
     pl.querySelector('#prFold').onclick = e => showPrs(false, e);
+    const tl = pl.querySelector('#prTl'); if (tl) tl.onclick = () => hotTimeline();
     if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
     renderResume(s); renderRival(s); tvSoon();
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
@@ -8777,7 +8780,7 @@ const toolName = n => {
         tv.asking = false; if (tv.id !== id) return;
         tv.sig = sig; if (v) { tv.log = v; prlogs.set(id, { at: Date.now(), v }); }   // the card's popover reads the same
         const now = state.sessions.get(id); if (!now || state.current !== id) return;
-        tvSoon(); if (prefs.prsOpen) renderHead(now);
+        tvSoon();
       });
     }
     return tv.log;
@@ -8886,7 +8889,7 @@ const toolName = n => {
     for (const k of Object.keys(n)) if (n[k] === undefined) delete n[k];
     if (Object.keys(n).length) tvNarrow.set(s.id, n); else tvNarrow.delete(s.id);
     tvAddress(s); keepTabsSoon();
-    if (state.current === s.id) { renderTimeline(s); if (prefs.prsOpen) renderHead(s); }
+    if (state.current === s.id) renderTimeline(s);
   }
   function tvToggle(s, url) {
     const sc = tvScope(s, tvModel(s)), on = new Set(sc.on);
@@ -9091,7 +9094,7 @@ const toolName = n => {
   // words as ticks, Claude's work as bars — and each PR the narrow shows as one — its rounds as bars (the accent while at
   // your move, green up to your answer, dashed once let go) and its events as dots —, on one time axis: the chat's span,
   // the last six hours at most. The pointer draws a line through every row and says what happened at that minute; a
-  // click keeps it. In the PR list (each row's own strip before) and at the head of the timeline. The markup holds
+  // click keeps it. At the head of the timeline (the PR list's head too, 2026-10-17 to 2026-10-21). The markup holds
   // times alone, placed by fillAges (fillTracks), so the clock rebuilds nothing.
   function tvTracksHtml(s, m, sc) {
     const rows = [], firsts = [];
@@ -9155,7 +9158,7 @@ const toolName = n => {
     el.nextElementSibling.textContent = 'the pointer over the rows says what happened when · a click keeps it';
   }
   const tvMsAt = (el, e) => { const plot = el.querySelector('.tk3:not([hidden]) .tp3'); if (!plot || !el._span) return null; const r = plot.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right ? null : el._t0 + (e.clientX - r.left) / r.width * el._span; };
-  for (const host of ['#tv', '#prlist']) {
+  for (const host of ['#tv']) {
     $(host).addEventListener('pointermove', e => { const el = e.target.closest?.('.tvtrk3'); if (!el) return; const ms = tvMsAt(el, e); if (ms == null) tvCrossOff(el); else tvCrossAt(el, ms, false); });
     $(host).addEventListener('pointerout', e => { const el = e.target.closest?.('.tvtrk3'); if (el && !el.contains(e.relatedTarget)) tvCrossOff(el); });
     $(host).addEventListener('click', e => { const el = e.target.closest?.('.tvtrk3'); if (!el) return; const ms = tvMsAt(el, e); el._kept = ms == null || el._kept != null ? null : ms; if (el._kept == null) tvCrossOff(el); else tvCrossAt(el, ms, true); });
@@ -9167,7 +9170,7 @@ const toolName = n => {
     if (!el.firstElementChild) el.innerHTML = '<div class="tvbar"></div><div class="tvtrk" hidden></div><div class="tvl" aria-label="This chat and its PRs, in the order things happened"></div>';
     const m = tvModel(s), sc = tvScope(s, m), rows = tvRows(s, m, sc), { L, cells } = tvLanes(s, m, sc, rows);
     setHtml(el.querySelector('.tvbar'), tvBarHtml(s, m, sc));
-    const trk = el.querySelector('.tvtrk'), th = prefs.prsOpen && m.prs.length ? '' : tvTracksHtml(s, m, sc);   // the PR list open above shows them
+    const trk = el.querySelector('.tvtrk'), th = tvTracksHtml(s, m, sc);
     setHtml(trk, th); trk.hidden = !th; fillAges(trk);
     const faces = new Map(m.prs.flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
     let html = '', day = null;

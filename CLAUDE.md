@@ -285,8 +285,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   every element (`*`) so it follows a borrowed `--ink`. Text boxes, dialogs and popovers keep their edges, as does a
   semantic one (a failure's red, an open box's accent).
 * **The header's shadow on a scrolled transcript** is `.shead::before` on a scroll-driven animation (`#log`'s
-  `--log` timeline, through `main`'s `timeline-scope`); `--shade` from the scroll listener without scroll timelines
-  (`SCROLL_TIMELINES`).
+  `--log` timeline, through `main`'s `timeline-scope`); else `--shade` from the scroll listener (`SCROLL_TIMELINES`).
 * **A name too long fades, not …** (`fadeOver`, `fadeSoon`): a mask only where `.over` says it overflows — the header's
   title and `.purl` on every draw, a card's title once per node (`.ovr`) and when the list's width moves.
 * **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash, the wallpaper) —
@@ -414,7 +413,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the move's line,
   the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`. `#prlist`
   (`prefs.prsOpen`) is rendered folded too (the harness reads `#prlist .prrow`); open, its foot's arrow folds it
-  (2026-10-13, `#prFold`), ▾ then ▴. → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
+  (2026-10-13, `#prFold`), ▾ then ▴; `#prTl` at its right the timeline (2026-10-21). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
   `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
@@ -792,7 +791,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `tvFold`). **The narrow** (`tvNarrow` vs `tvInPlay`; `tvSolo`; you and Claude a chip each) rides the address, `#<id>/tl:p=repo.n…`
   (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert,
   a PR row's Timeline, the menus; the move gone to once both are in (`tv.lit`). Its word
-  (`tvHint`) till seen (`prefs.tvSeen`). The tracks (`tvTracksHtml`) hold times for `fillTracks`. → `timeline-tab.mjs`.
+  (`tvHint`) till seen (`prefs.tvSeen`). Its tracks (`tvTracksHtml`, its alone) hold times for `fillTracks`. → `timeline-tab.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and

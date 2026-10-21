@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-21. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-21, later still — the PR list's tracks go, the timeline a button away
+
+Ricardo: "on the expanded PR list, remove the pseudo-timeline up to and put somewhere a button shortcut to open the
+real timeline (hotkey J)"
+
+* **The tracks leave the PR list** (T3's, 2026-10-17: the chat and each PR as rows on one clock, at the list's head).
+  The list is the PRs again — their rows, rounds and buttons —, and the tracks are the timeline tab's alone, where
+  they always show now (they hid there while the list was open above, as both on screen was one too many). The two
+  header redraws that only fed them — the ledger's arrival, a change of the narrow — go with them.
+* **The timeline is a button at the list's foot**, on the right of the fold arrow: *Timeline ⌥⌘J*, the whole
+  timeline on its tab (`hotTimeline` — the tab opened or brought forward, never the column filled: that is ⌥⌘J's
+  again from the tab). Each row's own *Timeline* stays, for that PR alone.
+* `timeline-tab.mjs`: no tracks in the open list, the timeline's own kept beside it, the crosshair checked there, and
+  the list's button bringing the tab back after it was closed.
+
 ## Decisions of 2026-10-21, later — two editors, pages out to the browser, the log's clock, a counted version, commit messages, a PR row's copy
 
 Ricardo, a list:

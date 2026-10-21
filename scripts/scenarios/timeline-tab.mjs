@@ -160,24 +160,35 @@ export default async function (ctx) {
   await click('#tv .tvseg [data-dens="fold"]');
   await T(`location.hash === '#${id}'`, 'folded again, the default');
 
-  // T3 — the tracks: at the timeline's head, and in the PR list in place of each row's own strip
+  // T3 — the tracks: at the timeline's head. The PR list has none (2026-10-21; its head, 2026-10-17): its foot is a way
+  // to the timeline, ⌥⌘J's
   const tracks = host => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('${host} .tvtrk3 .tk3[data-row]')].filter(r => !r.hidden).map(r => r.querySelector('.tl3').textContent))`).then(JSON.parse);
   a.deepEqual(await tracks('#tv'), ['Chat', '#479', '#482', '#486'], 'the chat and each PR in play, a row each');
   await ctx.evaluate(`document.querySelector('#prToggle').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
-  await T(`!document.querySelector('#prlist').hidden && document.querySelector('#prlist .tvtrk3')`, 'the PR list open, its tracks at its head');
-  a.deepEqual(await tracks('#prlist'), ['Chat', '#479', '#482', '#486'], 'the same rows in the PR list');
+  await T(`!document.querySelector('#prlist').hidden && document.querySelector('#prlist #prTl')`, 'the PR list open, the timeline at its foot');
+  a.equal(await ctx.evaluate(`document.querySelectorAll('#prlist .tvtrk3, #prlist .prtrk').length`), 0, 'no tracks in the list');
+  a.deepEqual(await tracks('#tv'), ['Chat', '#479', '#482', '#486'], 'the timeline keeps its own while the list is open');
   a.equal(await ctx.evaluate(`document.querySelectorAll('#prlist .prround .rtrack').length`), 0, 'no strip of its own under a row');
   a.ok(await ctx.evaluate(`document.querySelectorAll('#prlist .prround .pract').length >= 2`), 'each row\'s words and buttons kept');
-  // the pointer on mara's move: the line through every row, and what happened then
-  const mv = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))([...document.querySelectorAll('#prlist .tvtrk3 .tk3[data-row$="/482"] .td.mv')].at(-1).getBoundingClientRect())`);
+  out.tlBtn = await ctx.evaluate(`document.querySelector('#prlist #prTl').textContent`);
+  a.equal(out.tlBtn, 'Timeline⌥⌘J');
+  await ctx.settle();
+  await ctx.shot('2-pr-list', await ctx.evaluate(`(r => ({ x: r.left - 4, y: r.top - 4, width: r.width + 8, height: r.height + 8 }))(document.querySelector('#prlist').getBoundingClientRect())`));
+  // the pointer on mara's move, in the timeline's tracks: the line through every row, and what happened then
+  const mv = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))([...document.querySelectorAll('#tv .tvtrk3 .tk3[data-row$="/482"] .td.mv')].at(-1).getBoundingClientRect())`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: mv.x, y: mv.y });
-  await T(`!document.querySelector('#prlist .txh').hidden && /mara commented/.test(document.querySelector('#prlist .tsay').textContent)`, 'the crosshair saying what happened at that minute');
-  out.cross = await ctx.evaluate(`document.querySelector('#prlist .tsay').textContent`);
+  await T(`!document.querySelector('#tv .txh').hidden && /mara commented/.test(document.querySelector('#tv .tsay').textContent)`, 'the crosshair saying what happened at that minute');
+  out.cross = await ctx.evaluate(`document.querySelector('#tv .tsay').textContent`);
   await ctx.shot('2-tracks');
   await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: mv.x, y: mv.y, button: 'left', clickCount: 1 });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: mv.x, y: mv.y, button: 'left', clickCount: 1 });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
-  await T(`/kept/.test(document.querySelector('#prlist .tsay').textContent) && /mara/.test(document.querySelector('#prlist .tsay').textContent)`, 'a click keeps the line');
+  await T(`/kept/.test(document.querySelector('#tv .tsay').textContent) && /mara/.test(document.querySelector('#tv .tsay').textContent)`, 'a click keeps the line');
+  // the list's Timeline: the tab closed, a click brings it back in front
+  await ctx.key('KeyW');
+  await T(`!window.peix.state().tabs.includes('timeline')`, 'the timeline tab closed');
+  await ctx.evaluate(`document.querySelector('#prlist #prTl').click()`);
+  await T(`window.peix.state().tab === 'timeline' && !document.querySelector('#tv').hidden && document.querySelector('#tv .tvtrk3')`, 'the timeline again, from the list');
   await ctx.evaluate(`document.querySelector('#prlist #prFold').click()`);
 
   // N1 — the chips: the chat and each PR, the merged one only mentioned off
