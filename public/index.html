@@ -951,6 +951,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .top .tprs { flex: 999 0 0; min-width: min-content; max-width: max-content; margin-left: -5px; display: grid; direction: rtl; grid-template-columns: 1fr repeat(var(--under), 0fr); column-gap: 5px;
     overflow-x: auto; scrollbar-width: none; transition: grid-template-columns .3s var(--spring), column-gap .3s var(--spring); }
   .card .top .tprs::-webkit-scrollbar { display: none; }
+  /* what a card leaves out (2026-10-21, Settings › Chat list › Show on a card) */
+  #sessions[data-hide~="prs"] .card .top .tprs:not(.ttks), #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
+  #sessions[data-hide~="faces"] .card .top .faces, #sessions[data-hide~="rounds"] .card .prpips { display: none; }
   .card .top .tprs:hover { grid-template-columns: 1fr repeat(var(--under), var(--span)); column-gap: 0; }
   .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
   .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
@@ -2630,6 +2633,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="card size cards density large medium compact"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
           <div class="srow set sub" id="laneRow" data-kw="card size larger lane needs you asking"><label class="sl" for="cardsByLane"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></label><input type="checkbox" class="sw" role="switch" id="cardsByLane"></div>
           <div class="srow set sub" id="evenRow" data-kw="card size same height even uniform compact"><label class="sl" for="cardsEven"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></label><input type="checkbox" class="sw" role="switch" id="cardsEven"></div>
+          <div class="srow set" data-kw="card busy faces avatars people github tickets jira prs pull requests rounds chips show hide" id="cardPartsRow"><span class="sl"><b>Show on a card</b><small>Its PRs, their rounds, its tickets and the faces on its PRs</small></span><span class="schecks"><label><input type="checkbox" data-part="prs"> PRs</label><label><input type="checkbox" data-part="rounds"> Rounds</label><label><input type="checkbox" data-part="tickets"> Tickets</label><label><input type="checkbox" data-part="faces"> Faces</label></span></div>
         </div></section>
       </div>
       <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
@@ -2848,7 +2852,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3268,12 +3272,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // word and CSS hides by the list's data-cards, so the slider re-renders nothing. A pending question is not a word of
   // either: it stays at every size, the one line on a card that asks you to act.
   const CARD_SIZES = ['large', 'medium', 'compact'];
+  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces'];
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
     const v = CARD_SIZES.indexOf(prefs.cards);
     $('#sessions').dataset.cards = prefs.cards;
     $('#sessions').toggleAttribute('data-bylane', !!prefs.cardsByLane); $('#cardsByLane').checked = !!prefs.cardsByLane;
     $('#sessions').toggleAttribute('data-even', prefs.cards === 'compact' && !!prefs.cardsEven);   // compact's own switch
+    // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
+    // the same, so a change redraws no card
+    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS;
+    $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
+    for (const c of $('#cardPartsRow').querySelectorAll('input')) c.checked = parts.includes(c.dataset.part);
     $('#cardsEven').checked = !!prefs.cardsEven;
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
     for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
@@ -3285,6 +3295,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     listChanged();   // the cards changed height under the same scroll position
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); };
+  for (const c of $('#cardPartsRow').querySelectorAll('input')) c.addEventListener('change', () => { prefs.cardParts = [...$('#cardPartsRow').querySelectorAll('input:checked')].map(x => x.dataset.part); savePrefs(); applyCards(); });
   // …and by lane (2026-10-12, a switch, off): the lanes that want you — a question, a PR at your move, Claude at work, a
   // new reply — large whatever the slider says, the rest at its size. cardHtml marks those cards .roomy; the list's
   // data-bylane lets the mark count, so the switch, like the slider, re-renders nothing.
