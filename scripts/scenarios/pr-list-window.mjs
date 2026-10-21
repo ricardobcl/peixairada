@@ -3,7 +3,8 @@
 // list's do: "↓ n more" on a fog, a click scrolling a window's worth, a dot in the accent when one out there is at your
 // move. The fixture's two-PR chat is told of fourteen more, which the fake gh titles. What this checks: the button's
 // place and its tab; every row there, the window shorter than they are; the ends' counts as it scrolls, by a pill and by
-// a scroll; the dot; a redraw of the rows keeping the window's place.
+// a scroll; the dot; a redraw of the rows keeping the window's place; the foot dragged to size the window (2026-10-21,
+// later), kept, and given back by a double-click.
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +39,40 @@ export default async function (ctx) {
   const below = +out.first.down.match(/\d+/)[0];
   a.ok(below >= 3 && below < 16, `${below} below`);
   await ctx.shot('1-window', await ctx.evaluate(`(r => ({ x: r.left - 4, y: r.top - 4, width: r.width + 8, height: r.height + 8 }))(document.querySelector('#prlist').getBoundingClientRect())`));
+
+  // the foot is the list's handle (2026-10-21, later): dragged up, the window shorter, and kept; dragged down past the
+  // rows, as tall as they are; a double-click its own height again — the arrow in the foot still a click
+  const sh = () => ctx.evaluate(`Math.round(document.querySelector('#prScroll').getBoundingClientRect().height)`);
+  const drag = async dy => {
+    const grip = await ctx.evaluate(`(r => ({ x: Math.round(r.left + 20), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#prlist .pfoot').getBoundingClientRect())`);   // where the foot is now
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grip.x, y: grip.y });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: grip.x, y: grip.y, button: 'left', clickCount: 1 });
+    for (let i = 1; i <= 5; i++) await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grip.x, y: grip.y + dy * i / 5, button: 'left', buttons: 1 });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: grip.x, y: grip.y + dy, button: 'left', clickCount: 1 });
+    await ctx.settle();
+  };
+  out.h0 = await sh();
+  a.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#prlist .pfoot')).cursor`), 'ns-resize', 'the foot says it resizes');
+  await drag(-80);
+  out.h1 = await sh();
+  a.ok(Math.abs(out.h1 - (out.h0 - 80)) <= 2, `dragged up 80 px: ${out.h0} → ${out.h1}`);
+  a.equal(await ctx.evaluate(`window.peix.prefs().prsHeight`), out.h1, 'kept as a pref');
+  a.match((await look()).down, /^↓ \d+ more$/, 'more below, counted again');
+  await drag(400);
+  out.h2 = await sh();
+  a.ok(out.h2 > out.h0 && out.h2 <= out.first.sh + 1, `dragged down past the rows: ${out.h2}, as tall as they are (${out.first.sh})`);
+  a.equal((await look()).down, null, 'nothing below');
+  await ctx.evaluate(`document.querySelector('#prlist .pfoot').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`);
+  await ctx.settle();
+  a.deepEqual([await sh(), await ctx.evaluate(`window.peix.prefs().prsHeight`)], [out.h0, null], 'a double-click: its own height again');
+  await drag(-80);
+  await ctx.reload();
+  await ctx.openChat(two.id);
+  await ctx.waitFor(`document.querySelectorAll('#prScroll .prrow').length === 16`, { what: 'the rows again' });
+  await ctx.settle();
+  a.equal(await sh(), out.h1, 'the height outlives a reload');
+  await ctx.evaluate(`document.querySelector('#prlist .pfoot').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`);
+  await ctx.settle();
 
   // the lower pill: a window's worth down, the upper one on
   const pill = q => ctx.evaluate(`(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#prlist .pedge.${q} button').getBoundingClientRect())`);

@@ -1461,7 +1461,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #pick .pkchat { margin-left: 8px; font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #pick .pkchat:hover { background: var(--ctl-hi); color: var(--ink); }
   /* The list's foot (2026-10-13): an arrow up, centred on the controls' fill, folds it as the chips above do. */
-  #prlist .pfoot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 3px; }
+  #prlist .pfoot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 3px; cursor: ns-resize; touch-action: none; }
+  /* …and the foot is the list's handle (2026-10-21): dragged up or down it sizes the rows' window — a grip each side of
+     the arrow says so; double-clicked, the window's own height again */
+  #prlist .pfoot::before, #prlist .pfoot::after { content: ''; width: 26px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 16%, transparent); transition: background-color var(--t-hover); }
+  #prlist .pfoot::before { grid-column: 1; justify-self: end; margin-right: 12px; } #prlist .pfoot::after { grid-column: 3; justify-self: start; margin-left: 12px; }
+  #prlist .pfoot:hover::before, #prlist .pfoot:hover::after, #prlist .pfoot.drag::before, #prlist .pfoot.drag::after { background: color-mix(in srgb, var(--ink) 34%, transparent); }
+  body.prsizing { cursor: ns-resize; user-select: none; }
   #prlist .pfold { grid-column: 2; display: grid; place-items: center; width: 56px; height: 18px; padding: 0; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #prlist .pfold:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .pfold .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -1476,7 +1482,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      list's (.sedge): a pill over a fog of the list's ground for what is out of sight past each, a dot in the accent when
      a PR out there is at your move. The fog lets every click through; only the pill takes one. No native scrollbar. */
   #prlist .pwin { position: relative; min-width: 0; }
-  #prlist .pscroll { position: relative; display: grid; gap: 1px; max-height: min(36vh, 236px); overflow-y: auto; scrollbar-width: none; }
+  #prlist .pscroll { position: relative; display: grid; gap: 1px; max-height: var(--prs-h, min(36vh, 236px)); overflow-y: auto; scrollbar-width: none; }
   #prlist .pscroll::-webkit-scrollbar { display: none; }
   #prlist .pedge { position: absolute; left: 0; right: 0; z-index: 2; display: flex; justify-content: center; height: 26px; pointer-events: none; opacity: 0; transition: opacity .15s; }
   #prlist .pedge.up { top: 0; align-items: flex-start; background: linear-gradient(var(--panel) 35%, transparent); }
@@ -2852,7 +2858,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -7025,6 +7031,7 @@ const toolName = n => {
     // The list (2026-10-21): the timeline up top, a key away; every row in a window that scrolls, its two ends saying
     // what is out of sight past them (prEdges, as the chat list's); at the foot an arrow up that folds it as the chips do
     // (2026-10-13) — where the eye ends up, under the rows. The rows were six, the rest behind "… n more", before.
+    pl.style.setProperty('--prs-h', prefs.prsHeight ? `${prefs.prsHeight}px` : '');
     const prsHtml = (prs.length ? `<div class="ptop"><button type="button" class="ptl" id="prTl" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them — on a tab (⌥⌘J)">${ICON.timeline}<span>Timeline</span><kbd>⌥⌘J</kbd></button></div>` : '')
       + `<div class="pwin"><div class="pscroll" id="prScroll">${[...prs.map(pr => prLine(s, pr)), ...tks.map(ticketRow)].join('')}</div>`
       + '<div class="pedge up"><button type="button" data-dir="-1" tabindex="-1"></button></div><div class="pedge down"><button type="button" data-dir="1" tabindex="-1"></button></div></div>'
@@ -7372,6 +7379,29 @@ const toolName = n => {
     });
   }
   $('#prlist').addEventListener('scroll', e => { if (e.target.id === 'prScroll') prEdgesSoon(); }, { capture: true, passive: true });   // a scroll does not bubble
+  // The list's height (2026-10-21): its foot dragged up or down sizes the rows' window — the board's, kept in
+  // prefs.prsHeight —, two rows' worth at least and most of the window at most; a double-click gives it its own again.
+  // The arrow in the foot is still a click.
+  $('#prlist').addEventListener('pointerdown', e => {
+    const foot = e.target.closest('.pfoot'); if (!foot || e.target.closest('button') || e.button !== 0) return;
+    const sc = $('#prScroll'); if (!sc) return;
+    e.preventDefault(); foot.setPointerCapture(e.pointerId);
+    const y0 = e.clientY, h0 = sc.getBoundingClientRect().height, max = Math.max(80, innerHeight * .75);
+    const was = prefs.prsHeight;
+    foot.classList.add('drag'); document.body.classList.add('prsizing');
+    // the height is the pref while it moves (a redraw of the list mid-drag reads it), saved once let go
+    const move = ev => { prefs.prsHeight = Math.round(Math.min(max, Math.max(44, h0 + ev.clientY - y0))); $('#prlist').style.setProperty('--prs-h', `${prefs.prsHeight}px`); prEdgesSoon(); };
+    const up = () => {
+      for (const [t, f] of [['pointermove', move], ['pointerup', up], ['lostpointercapture', up]]) foot.removeEventListener(t, f);
+      foot.classList.remove('drag'); document.body.classList.remove('prsizing');
+      if (prefs.prsHeight !== was) savePrefs();
+    };
+    foot.addEventListener('pointermove', move); foot.addEventListener('pointerup', up); foot.addEventListener('lostpointercapture', up);
+  });
+  $('#prlist').addEventListener('dblclick', e => {
+    if (!e.target.closest('.pfoot') || e.target.closest('button')) return;
+    prefs.prsHeight = null; savePrefs(); $('#prlist').style.setProperty('--prs-h', ''); prEdgesSoon();
+  });
   new ResizeObserver(() => prEdgesSoon()).observe($('#prlist'));
   $('#prlist').addEventListener('click', e => {
     const b = e.target.closest('.pedge button'); if (!b) return;
