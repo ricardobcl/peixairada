@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-21. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-21, late night — the PR list sized by hand, a card's parts optional, GitHub alone in the board
+
+Ricardo:
+
+> - can we make the PR dropdown resizable (up or down)?
+> - make the GH avatars, tickets, PR list optional on settings, so people can customiza how "busy" the card view is.
+> - make the default to only open GH link in the in-app browser
+
+* **The PR list's foot is its handle**: dragged up or down it sizes the rows' window (`prefs.prsHeight` → `--prs-h` on
+  `#prlist`, so a redraw of the rows keeps it), from two rows' worth to three quarters of the window; dragged past the
+  rows it is as tall as they are. A grip each side of the fold arrow and the `ns-resize` cursor say so; the arrow is still
+  a click, and a double-click on the foot gives the window its own height again. The height is the pref while it moves
+  — a session event redrawing the list mid-drag reads it — and is saved once let go.
+* **What a card shows besides its words** (Settings › Chat list › *Show on a card*, the status bar's checkbox row's
+  shape): its PRs (the chip stack), their rounds (the pips under it), its tickets and the faces on its PRs, all on by
+  default. *PR list* read as the chip stack — it fans out into the list under the pointer —, and the rounds made a fourth
+  box: the busiest line a card has. What is left out is hidden by CSS (`#sessions[data-hide~=…]`), the markup the same,
+  so a change redraws no card and the reconciles stay as they were. The move line (`.prmove`, *your move*) is no part:
+  it is the card's state, as the ring is.
+* **Pages but GitHub's open in the browser by default** — *In the browser*, the sites kept `github.com`. A board saved
+  with *In the board* (the default for the hours between) is moved once (`linksMoved`, as `cardsMoved` moved the cards to
+  compact); a choice after that stays. The harness keeps every page in the board unless a scenario asks (the pane's
+  scenarios open pages of every kind); `links-out.mjs` asks for the move.
+* Checked: `card-parts.mjs` (the boxes, each part hidden with no card redrawn, a reload, all back), `pr-list-window.mjs`
+  (dragged up 80 px and kept, down past the rows, a double-click, a reload), `links-out.mjs` (the default, the move), and
+  the scenarios round them.
+
 ## Decisions of 2026-10-21, night — the PR list scrolls, the timeline up top
 
 Ricardo, next: "the button should be up top, centered and more visible/pretty. also, instead of having "more X..."

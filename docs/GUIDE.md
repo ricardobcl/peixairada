@@ -64,10 +64,11 @@ Each is a tab of the chat; the column splits in two halves when there's more tha
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, the branch against its base, or a PR's, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
 | ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. Press a tab's key again from it (⌥⌘C, ⌥⌘T, ⌥⌘G, ⌥⌘E, ⌥⌘D) and its half fills the column (⌥⌘G with several PRs: their picker first); once more, both are back. |
 
-GitHub and VS Code open in the chat in the Mac app; in a browser they open in a tab of their own. In the app every web
-page opens on a tab of the chat — or, with Settings › General › Links › *In the browser*, only the sites you keep there
-(github.com to begin with; an address's start each, like `github.com/acme`), the rest in your browser, a link out of a
-page to another site too.
+GitHub and VS Code open in the chat in the Mac app; in a browser they open in a tab of their own. In the app GitHub's pages
+open on a tab of the chat and every other page in your browser, a link out of a page to another site too; Settings ›
+General › Links keeps more sites in the board (an address's start each, like `github.com/acme` or `localhost:3000`), or
+every page. The cards' PRs, rounds, tickets and faces can each be left out (Settings › Chat list › Show on a card), and
+the PR list under the header is as tall as you drag its foot.
 
 <table>
   <tr>

@@ -279,7 +279,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `pickRender` and on the 30 s tick. **A card's `.time` carries nothing at all** — `fillAges` sets it from the chat —
   so neither the clock nor a tool call changes a card's html (a *prompt* still rebuilds it). `dayOf(ts)` is the one
   spelling of a day (`Today` · `Yesterday` · the weekday · `DD-MM-YYYY`). The who-line's time is
-  `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })`.
+  `toLocaleTimeString`'s numeric hour, 2-digit minute.
 * **Controls wear a fill, never a grey edge** (2026-09-28): `border: 1px solid transparent` and `background:
   var(--ctl)`, `var(--ctl-hi)` under the pointer; a state is a tint of its colour. `--ctl` is the ink at 7 %, set on
   every element (`*`) so it follows a borrowed `--ink`. Text boxes, dialogs and popovers keep their edges, as does a
@@ -413,7 +413,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the move's line,
   the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`. `#prlist`
   (`prefs.prsOpen`) is rendered folded too (the harness reads `#prlist .prrow`); open, its foot's arrow folds it
-  (2026-10-13, `#prFold`), ▾ then ▴; `#prTl` up top; the rows scroll (`#prScroll`), its ends as the list's (`prEdges`, 2026-10-21). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
+  (2026-10-13, `#prFold`), ▾ then ▴; `#prTl` up top; the rows scroll (`#prScroll`), its ends as the list's (`prEdges`, 2026-10-21);
+  dragging the foot sizes it (`prefs.prsHeight`). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
   `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
@@ -435,7 +436,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane*
   (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height***
   (`prefs.cardsEven` → `#sessions[data-even]`): one title line, the question left to the red edge, and the move line or
-  `.moveslot` — an invisible line of its metrics, never `.prmove`, which the harness reads. → `card-sizes.mjs`.
+  `.moveslot` — an invisible line of its metrics, never `.prmove`, which the harness reads. → `card-sizes.mjs`. **Its PRs,
+  rounds, tickets and faces each optional** (2026-10-21, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone). → `card-parts.mjs`.
 * **A card is square** (`border-radius: 0`, the ring's too). **Its title row reads title · chips · time · F ·
   unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age (`.trow .time`) shows under the
   pointer only, by `opacity`, keeping its room. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`; not on the
@@ -455,9 +457,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   tool call is not a word, **a PR come round to you is**, at `turn.movedAt` — `movedAt(s)`, both copies), newest first;
   a project ranks by its newest chat. Every count goes by `bucket()`, where an asking chat is a ready one — only the
   order knows. **Each group has a lane head** (`laneHtml`, `.gsep.lane.<group>`, its count at the right; none under a
-  query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first; the harness opens
-  every lane unless a scenario's `prefs` say otherwise). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
-  today's** (2026-10-14): newest first, what stands over a lane's first label is today. **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
+  query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
+  today's** (2026-10-14). **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
   Ready goes; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies are the funnel's filters,
   never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its newest cards and a
   `.gsep.more` line for the rest, which shows them until a reload (`laneMore`); the open chat's card whatever its place;
@@ -503,9 +504,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
   every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`, `uGrant`) — a click lifts its rows (`usageRows`, `uColor`, `uPace`/`uSpan`, `.umoney`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (`clockTick`, 24-hour). `#sbLeft` and
-  `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`): one `swim` animation whose pace is its length (`swimPaceTo` — never
-  `updatePlaybackRate`: a rate other than 1 keeps WebKit's frames on the main thread); two svgs, body (`.fb`) and tail
-  (`.ft`), **never SVG groups** (WebKit composites no group's transform); `fishAt` reads the swim's clock, never a rect,
+  `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`): one `swim` animation whose pace is its length (`swimPaceTo`, never
+  `updatePlaybackRate`); two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups**; `fishAt` reads the swim's clock, never a rect,
   and `feed` is a frame loop only while a bubble is out; a click is ⌥⌘A; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
@@ -678,7 +678,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   overlay covers the window**, a click on no page let through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`;
   × forgets a page (`closeTab`). In a browser the tabs are chat and zsh only (`inApp`). **A page's new window is a tab
   beside it** (2026-10-21, `PaneDelegate.open` → `peixPaneOpen`).
-  **Which pages are the board's** (2026-10-21, `inBoard`, `prefs.pagesOut`, `boardSites`): all, or the sites kept; the
+  **Which pages are the board's** (2026-10-21, `inBoard`, `prefs.pagesOut`, `boardSites`): the sites kept (the default), or all; the
   rest go `external`, a link out of a pane page to another host too (`PaneDelegate.linkOut` → `peixLinkOut`).
   → Findings: *the pane*, `links-out.mjs`.
 * **A page opened again is the tab still at it** (2026-10-13, `openExternal` → `pageTab`): the page or further in
@@ -1017,7 +1017,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen, every page in the board**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up on any way out (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
