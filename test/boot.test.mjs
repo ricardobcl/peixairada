@@ -1,6 +1,6 @@
 // The boot's scan of every transcript (2026-10-14): a line that throws in the folding is that line lost, never the
 // file nor the boot — one AskUserQuestion whose options were not a list ended the server for good; and what is written
-// while the boot runs is read, the transcripts being watched before they are scanned.
+// while the boot runs is read, the transcripts being watched before they are scanned. And the log says when (2026-10-21).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -37,6 +37,9 @@ test('a line that throws is skipped: the boot comes up, the rest of the file and
     assert.equal(m.status, 200, JSON.stringify(m.body).slice(0, 300));
     assert.equal(m.body.entries.findLast(e => e.role === 'assistant' && e.kind === 'text')?.text, 'and past this one');
     assert.equal((srv.logText().match(/a line could not be folded/g) || []).length, 1, 'said once for the file');
+    // and every line it logged says when (2026-10-21)
+    assert.match(srv.logText(), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z \[peixairada\] listening on /m);
+    assert.doesNotMatch(srv.logText(), /^\[peixairada\]/m, 'no line without its time');
   } finally { await srv.stop(); }
 });
 

@@ -63,11 +63,19 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { cpus, freemem, homedir, hostname, networkInterfaces, tmpdir, totalmem, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
-import { promisify } from 'node:util';
+import { format, promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+// Every line the server logs says when (2026-10-21): the agent's log is appended to for weeks, and a line without its
+// time could not be placed — UTC, as the app's log writes it, to the millisecond. Run as the program only: a test that
+// imports the module keeps its own console.
+if (isMain) for (const k of ['log', 'info', 'warn', 'error']) {
+  const say = console[k].bind(console);
+  console[k] = (...a) => say(`${new Date().toISOString()} ${format(...a)}`);
+}
 const execFileP = promisify(execFile);
 // node-pty is the one native module here. Its prebuilt spawn-helper arrives from npm without the
 // executable bit, which surfaces as "posix_spawnp failed" on the first terminal — fix it before the
@@ -5880,7 +5888,6 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
 export { pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
-const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();
