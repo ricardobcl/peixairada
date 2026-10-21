@@ -657,10 +657,10 @@
   .sedge.down { align-self: end; align-items: flex-end; justify-content: flex-end; height: 24px; padding: 0 14px 4px 0; background: linear-gradient(transparent, var(--bg) 80%); }
   main.scompact .sedge.down { justify-content: center; padding-right: 0; }   /* the rail: no room to one side */
   .sedge.on { opacity: 1; }
-  :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: var(--fs-xs); line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: var(--r-4); padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
+  :is(.sedge, .lognew, .pedge) button { pointer-events: auto; font: inherit; font-size: var(--fs-xs); line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: var(--r-4); padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
   .sedge:not(.on) button { pointer-events: none; }
-  :is(.sedge, .lognew) button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 15%, var(--panel)); }
-  .sedge b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  :is(.sedge, .lognew, .pedge) button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 15%, var(--panel)); }
+  :is(.sedge, .pedge) b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
   .sedge i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .sedge i.ask { background: var(--needs); } .sedge i.work { background: var(--working); }
   main.scompact .sedge button { padding: 1px 5px; gap: 2px; }
@@ -1115,11 +1115,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
   .act.tk.fg { color: #fff; background: var(--needs); }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1400,11 +1400,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .prrow .t { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
   /* its link copied, next to its name (2026-10-21): the row's own under the pointer, the rest pushed right by it; a ✓ in
      the ready green once copied (.did). A mark in the link, not a button — a button in a link is the link's: the
-     right-click menu copies it too, from the keys */
+     right-click menu copies it too, from the keys. Its sheets are an .ic.st, and .prrow .st is the state's word: it
+     takes the mark's colour, never the state's */
   .prrow .prcopy { flex: none; display: inline-grid; place-items: center; align-self: center; width: 18px; height: 18px; margin: 0 auto 0 -5px; border-radius: var(--r-1); color: var(--muted); opacity: 0; cursor: copy; transition: opacity .12s, background-color .12s; }
   .prrow:hover .prcopy, .prrow .prcopy.did { opacity: 1; }
   .prrow .prcopy:hover { background: var(--ctl-hi); color: var(--ink); }
-  .prrow .prcopy .ic { grid-area: 1 / 1; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: opacity .14s, scale .32s var(--spring); }
+  .prrow .prcopy .ic { grid-area: 1 / 1; width: 12px; height: 12px; color: inherit; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: opacity .14s, scale .32s var(--spring); }
   .prrow .prcopy .ok { opacity: 0; scale: var(--pop, .5); color: var(--idle); stroke-width: 2; }
   .prrow .prcopy.did { background: color-mix(in srgb, var(--idle) 18%, transparent); }
   .prrow .prcopy.did .cp { opacity: 0; scale: var(--pop, .5); }
@@ -1414,11 +1415,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .prrow .why { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; }
   .prrow .why.let { color: var(--muted); font-weight: 500; }   /* a round let go (2026-10-12): still said, quietly */
   .prrow:hover .t { text-decoration: underline; }
-  .prrow[hidden] { display: none; }
   /* a PR row's own controls (2026-10-13): where its branch lives, then what to do with it — after the row's link, not
      in it (a button in a link is the link's) */
   #prlist .prline { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-  #prlist .prline[hidden] { display: none; }
   #prlist .prline > .prrow { flex: 1 1 auto; }
   #prlist .prwhere { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
   #prlist .prwhere .ic { width: 11px; height: 11px; fill: currentColor; }
@@ -1431,7 +1430,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      the row's own "your move · …" says it no more; its strip on a clock of its own is the tracks' since 2026-10-17 */
   #prlist .prline.withround .why { display: none; }
   #prlist .prround { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 0 6px 61px; font-size: var(--fs-xs); }
-  #prlist .prround[hidden] { display: none; }
   #prlist .prround .say { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
   #prlist .prround .was, #prlist .prround[data-k="them"] .say { color: var(--muted); }
   /* the tracks (2026-10-17, the study's T3): the chat and each PR shown as a row on one clock — the PR list's head, the timeline's */
@@ -1459,19 +1457,30 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tv .tvtrk { border-bottom: 1px solid var(--line); }
   #pick .pkchat { margin-left: 8px; font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #pick .pkchat:hover { background: var(--ctl-hi); color: var(--ink); }
-  #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
-  #prlist .more:hover { text-decoration: underline; }
-  /* The list's foot (2026-10-13): an arrow up, centred on the controls' fill, folds it as the chips above do — and the
-     rest's "… n more" keeps the left of the same line. */
+  /* The list's foot (2026-10-13): an arrow up, centred on the controls' fill, folds it as the chips above do. */
   #prlist .pfoot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 3px; }
   #prlist .pfold { grid-column: 2; display: grid; place-items: center; width: 56px; height: 18px; padding: 0; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #prlist .pfold:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .pfold .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  /* …and on its right the timeline, a key away (2026-10-21) */
-  #prlist .ptl { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; }
-  #prlist .ptl:hover { background: var(--ctl-hi); color: var(--ink); }
-  #prlist .ptl .ic.st { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  #prlist .ptl kbd { font: inherit; font-weight: 500; opacity: .75; }
+  /* The timeline up top (2026-10-21): the list's own way to it, centred, a pill in the accent with its key beside it */
+  #prlist .ptop { display: flex; justify-content: center; padding: 3px 0 7px; }
+  #prlist .ptl { display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: var(--fs-xs); font-weight: 650; padding: 3px 5px 3px 11px; border: 1px solid color-mix(in srgb, var(--accent) 36%, transparent); border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent); cursor: pointer; white-space: nowrap; box-shadow: 0 2px 10px -4px color-mix(in srgb, var(--accent) 55%, transparent); }
+  #prlist .ptl:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+  #prlist .ptl .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  #prlist .ptl kbd { font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  /* The list's window (2026-10-21): every row, scrolled — about six PRs' worth at most — and its two ends as the chat
+     list's (.sedge): a pill over a fog of the list's ground for what is out of sight past each, a dot in the accent when
+     a PR out there is at your move. The fog lets every click through; only the pill takes one. No native scrollbar. */
+  #prlist .pwin { position: relative; min-width: 0; }
+  #prlist .pscroll { position: relative; display: grid; gap: 1px; max-height: min(36vh, 236px); overflow-y: auto; scrollbar-width: none; }
+  #prlist .pscroll::-webkit-scrollbar { display: none; }
+  #prlist .pedge { position: absolute; left: 0; right: 0; z-index: 2; display: flex; justify-content: center; height: 26px; pointer-events: none; opacity: 0; transition: opacity .15s; }
+  #prlist .pedge.up { top: 0; align-items: flex-start; background: linear-gradient(var(--panel) 35%, transparent); }
+  #prlist .pedge.down { bottom: 0; align-items: flex-end; background: linear-gradient(transparent, var(--panel) 65%); }
+  #prlist .pedge.on { opacity: 1; }
+  #prlist .pedge:not(.on) button { pointer-events: none; }
+  #prlist .pedge i.you { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--accent); }
   /* ---- a second claude on this chat: VS Code opened a chat that runs here (see renderRival) ---- */
   #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--fs-sm); color: var(--ink); min-width: 0; line-height: 1.4; }
   #rival[hidden] { display: none; }
@@ -2368,7 +2377,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
-  #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
+  #slist, #log, #picklist, #pfolders, #prScroll, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
   .card .top .tprs { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
@@ -2384,7 +2393,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2503,7 +2512,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
     .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
-    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -2838,7 +2847,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     a.finished.then(() => endSoon(a), () => endSoon(a));
     return a;
   };
-  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
+  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: false, boardSites: ['github.com'], skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -5010,12 +5019,12 @@ const toolName = n => {
     : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}`
     : esc(pr.turn.why);
   /** A PR row's round, under it: the tag, since when, the round before, and what can be done about it. */
-  function roundLine(s, pr, hide) {
+  function roundLine(s, pr) {
     const r = roundOf(pr); if (!r || (r.k === 'them' && !r.prev)) return '';
     const say = roundSay(s, pr, r);
     const acts = r.k === 'you' ? `<button type="button" class="pract" data-pract="letgo" data-url="${esc(pr.url)}" title="Let this PR's round go — not your move until the next one, which tells you; the chat's other PRs keep theirs">Let go</button><button type="button" class="pract" data-pract="ask" data-url="${esc(pr.url)}" title="Type it into this chat's Claude, unsent — ⏎ sends it">Ask Claude</button>`
       : r.k === 'let' ? `<button type="button" class="pract" data-pract="undo" data-url="${esc(pr.url)}" title="Your move again, as it was">Undo</button>` : '';
-    return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}"${hide ? ' hidden' : ''}>${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
+    return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}">${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
   }
   /** The chat's PRs in play — at your move, let go, answered within PIP_OK_MS —, the newest move first. */
   function inPlay(s) {
@@ -6875,7 +6884,6 @@ const toolName = n => {
   // fills its chip, on the card and in the header, and its row says why; `them` only says so in the tooltip.
   const turnOf = pr => pr.turn ? (pr.turn.you ? 'you' : 'them') : '';
   const turnTip = pr => !pr.turn ? '' : pr.turn.you ? `your move — ${pr.turn.why}` : pr.turn.waived ? `your move, let go this round — ${pr.turn.why}; the next move tells you` : pr.turn.why;
-  const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
   // A PR's CI on its head commit (2026-10-09, the chat header only — the cards have enough to say): GitHub's rollup of
   // its checks, a badge on the header's chip and a word on its row; none for a PR merged or closed.
   const prCk = pr => pr.checks && (pr.state === 'open' || pr.state === 'draft') ? pr.checks : null;
@@ -6887,7 +6895,7 @@ const toolName = n => {
   // pressed as it was redrawn opened nothing
   const COPY_LINK = `<span class="prcopy" aria-hidden="true" title="Copy its link">${ICON.copyAddr}${ICON.copied}</span>`;   // a row's (2026-10-21)
   const prTip = pr => `${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`;
-  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${COPY_LINK}${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta" data-at="${esc(pr.lastAt || '')}"></span></a>`;
+  const prRow = pr => `<a class="prrow" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${COPY_LINK}${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta" data-at="${esc(pr.lastAt || '')}"></span></a>`;
   // Where each of a chat's PR branches is checked out (2026-10-13): the checkout's working trees, asked when the PR rows
   // or the changes tab's picker want them and kept a while (GET /api/worktrees) — only for a chat with PRs.
   const wtData = new Map();   // cwd → { at, v, asking }
@@ -6915,13 +6923,13 @@ const toolName = n => {
   }
   /** A PR's row and its own controls beside it (2026-10-13): where its branch lives, Diff, and — for a PR of this
    *  checkout's repo whose branch GitHub has named — the editor at that branch. */
-  const prLine = (s, pr, hide) => {
-    const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs, round = roundLine(s, pr, hide);
-    return `<div class="prline${round ? ' withround' : ''}"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="timeline" data-url="${esc(pr.url)}" title="Its timeline: this PR’s events and the turns about it, in one order (⌥⌘J)">Timeline</button><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
+  const prLine = (s, pr) => {
+    const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs, round = roundLine(s, pr);
+    return `<div class="prline${round ? ' withround' : ''}">${prRow(pr)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="timeline" data-url="${esc(pr.url)}" title="Its timeline: this PR’s events and the turns about it, in one order (⌥⌘J)">Timeline</button><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
       ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own">Chat</button>` : ''}</span>` : ''}</div>${round}`;
   };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
-  const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span>${COPY_LINK}<span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
+  const ticketRow = t => `<a class="prrow tk" data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span>${COPY_LINK}<span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
   // session running in the drawer (2026-09-20). It is the running CLI's state, not the board's: there is no key and no
   // API for it, so the button types the command into our own holder and reads the line the session prints back — what
@@ -6998,18 +7006,22 @@ const toolName = n => {
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
     if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; fillAges(menu); phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu — and its age, which the markup leaves out
-    if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
     const pl = $('#prlist'); pl.hidden = (!prs.length && !tks.length) || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
     if (prs.length) wtOf(s.cwd, () => renderHead(state.sessions.get(s.id)));   // where their branches are, for the rows
-    const rows = [...prs.map(pr => hide => prLine(s, pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
-    // the list's foot (2026-10-13): "… n more" on the left, and in the middle an arrow up that folds the list as the
-    // chips do — where the eye ends up, under the rows; on the right the way to the timeline (2026-10-21), whose tracks
-    // stood at the list's head (2026-10-17): the tab is the timeline, a key away
-    const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
-      + `<div class="pfoot">${rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : ''}<button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button>${prs.length ? `<button class="ptl" id="prTl" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them — on a tab (⌥⌘J)">${ICON.timeline}<span>Timeline</span><kbd>⌥⌘J</kbd></button>` : ''}</div>`;
-    if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
-    fillAges(pl);
-    const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
+    // The list (2026-10-21): the timeline up top, a key away; every row in a window that scrolls, its two ends saying
+    // what is out of sight past them (prEdges, as the chat list's); at the foot an arrow up that folds it as the chips do
+    // (2026-10-13) — where the eye ends up, under the rows. The rows were six, the rest behind "… n more", before.
+    const prsHtml = (prs.length ? `<div class="ptop"><button type="button" class="ptl" id="prTl" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them — on a tab (⌥⌘J)">${ICON.timeline}<span>Timeline</span><kbd>⌥⌘J</kbd></button></div>` : '')
+      + `<div class="pwin"><div class="pscroll" id="prScroll">${[...prs.map(pr => prLine(s, pr)), ...tks.map(ticketRow)].join('')}</div>`
+      + '<div class="pedge up"><button type="button" data-dir="-1" tabindex="-1"></button></div><div class="pedge down"><button type="button" data-dir="1" tabindex="-1"></button></div></div>'
+      + `<div class="pfoot"><button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button></div>`;
+    if (prsHtml !== drawn.prs) {
+      const was = state.prsFor === s.id ? $('#prScroll')?.scrollTop || 0 : 0;   // the same chat's list redrawn keeps its place
+      pl.innerHTML = drawn.prs = prsHtml;
+      if (was) $('#prScroll').scrollTop = was;
+    }
+    state.prsFor = s.id;
+    fillAges(pl); prEdgesSoon();
     // pressed from the keyboard (no clicks counted, the button focused), the keys stay on the chips: the header they sat
     // in, or the arrow, is gone with the draw
     const showPrs = (open, e) => { const keys = !e.detail && document.activeElement === e.currentTarget; prefs.prsOpen = open; savePrefs(); renderHead(s); if (keys) $('#prToggle')?.focus(); };
@@ -7324,6 +7336,32 @@ const toolName = n => {
     const s = state.sessions.get(state.current); if (!s?.drift) return;
     s.drift = null; renderHead(s); renderBoard();
     api('POST', `/api/sessions/${s.id}/drift`).catch(err => note($('#shead'), `Could not set the branch's move aside: ${err.message}`, true));
+  });
+  // The PR list's ends (2026-10-21), as the chat list's (drawEdges): what is out of sight past each — a row is when its
+  // middle is — counted on a pill, the accent's dot when one of them is at your move; a click scrolls a window's worth.
+  // Read once a frame, after a draw, a scroll or a resize.
+  function prEdgesSoon() { if (!prEdgesSoon.raf) prEdgesSoon.raf = requestAnimationFrame(() => { prEdgesSoon.raf = 0; prEdges(); }); }
+  function prEdges() {
+    const sc = $('#prScroll'); if (!sc || $('#prlist').hidden) return;
+    const top = sc.scrollTop, bottom = top + sc.clientHeight, out = [{ n: 0, you: 0 }, { n: 0, you: 0 }];
+    for (const r of sc.querySelectorAll(':scope > :is(.prline, .prrow.tk)')) {
+      const mid = r.offsetTop + r.offsetHeight / 2, o = mid < top ? out[0] : mid > bottom ? out[1] : null; if (!o) continue;
+      o.n++; if (r.querySelector('.prrow[data-turn="you"]')) o.you++;
+    }
+    out.forEach((o, i) => {
+      const el = sc.parentElement.querySelector(i ? '.pedge.down' : '.pedge.up'), b = el.firstElementChild, key = `${o.n}/${o.you}`;
+      el.classList.toggle('on', o.n > 0);
+      if (b.dataset.key === key) return;
+      b.dataset.key = key; if (!o.n) return;
+      b.innerHTML = `${i ? '↓' : '↑'} <b>${o.n}</b> more${o.you ? '<i class="you"></i>' : ''}`;
+      b.title = `${o.n} more ${i ? 'below' : 'above'}${o.you ? ` — ${o.you} at your move` : ''} · click to scroll ${i ? 'down' : 'up'}`;
+    });
+  }
+  $('#prlist').addEventListener('scroll', e => { if (e.target.id === 'prScroll') prEdgesSoon(); }, { capture: true, passive: true });   // a scroll does not bubble
+  new ResizeObserver(() => prEdgesSoon()).observe($('#prlist'));
+  $('#prlist').addEventListener('click', e => {
+    const b = e.target.closest('.pedge button'); if (!b) return;
+    const sc = $('#prScroll'); sc.scrollBy({ top: +b.dataset.dir * Math.max(40, sc.clientHeight - 40), behavior: REDUCED.matches ? 'auto' : 'smooth' });
   });
   $('#prlist').addEventListener('click', e => {   // a PR row's own controls (2026-10-13)
     const b = e.target.closest('.pract'); if (!b) return;

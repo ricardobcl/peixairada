@@ -284,8 +284,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   var(--ctl)`, `var(--ctl-hi)` under the pointer; a state is a tint of its colour. `--ctl` is the ink at 7 %, set on
   every element (`*`) so it follows a borrowed `--ink`. Text boxes, dialogs and popovers keep their edges, as does a
   semantic one (a failure's red, an open box's accent).
-* **The header's shadow on a scrolled transcript** is `.shead::before` on a scroll-driven animation (`#log`'s
-  `--log` timeline, through `main`'s `timeline-scope`); else `--shade` from the scroll listener (`SCROLL_TIMELINES`).
+* **The header's shadow on a scrolled transcript** is `.shead::before` on a scroll-driven animation (`#log`'s `--log`
+  timeline, `main`'s `timeline-scope`); else `--shade` (`SCROLL_TIMELINES`).
 * **A name too long fades, not …** (`fadeOver`, `fadeSoon`): a mask only where `.over` says it overflows — the header's
   title and `.purl` on every draw, a card's title once per node (`.ovr`) and when the list's width moves.
 * **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash, the wallpaper) —
@@ -413,7 +413,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the move's line,
   the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`. `#prlist`
   (`prefs.prsOpen`) is rendered folded too (the harness reads `#prlist .prrow`); open, its foot's arrow folds it
-  (2026-10-13, `#prFold`), ▾ then ▴; `#prTl` at its right the timeline (2026-10-21). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
+  (2026-10-13, `#prFold`), ▾ then ▴; `#prTl` up top; the rows scroll (`#prScroll`), its ends as the list's (`prEdges`, 2026-10-21). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
   `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
@@ -487,7 +487,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The list's two ends count the cards out of sight** (`#sup` / `#sdown`, `.sedge`, over the list's grid cell, so
   `#slist` has a definite `grid-column`): a card is out of sight when its *middle* is past the edge (`drawEdges`, by
   `offsetTop`, hence `#slist { position: relative }`); a dot red for one asking, amber for clauding; a click scrolls a
-  screenful. → `list-ends.mjs`.
+  screenful; the PR list's likewise (`.pedge`). → `list-ends.mjs`.
 * **The timeline is the list's scrollbar, out of sight until called** (`#tline`, over the list's cell, `display:
   none` on the rail; the native scrollbar hidden): the pointer held at the list's edge (`TL_EDGE`, `TL_DWELL_MS`; gone
   `TL_HIDE_MS` after) shows it (`#sessions.tlshow`). **To scale**: its height is the list's `scrollHeight`, a label
@@ -868,8 +868,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The drawer is automatic**: the pane's body while the chat runs here, gone when the process exits (`termEnded`);
   `syncTerm` on every open and update. **⌥⌘T is a zsh tab** beside it (a holder with `shell: true`, `shellOf()`,
   `s.shell`), **⌘T another** (`fresh` on the POST, never one at a time; `shellsOf`, `s.shells`, oldest first). **Vim**
-  (2026-10-21, `openVim`): a holder with `editor`, one of `shells`, never the zsh (`zshsOf`, `drawerOf`), asked to
-  quit (`:qa`, `killTerm`). **Done
+  (2026-10-21, `openVim`): a holder with `editor`, among `shells`, never the zsh (`zshsOf`), asked to quit (`killTerm`). **Done
   ends the chat's processes** — the drawer's holders and a claude live elsewhere (SIGTERM). **An idle drawer ends
   itself** (`sweepDrawers`, on the registry poll): a claude idle, no sub-agent or task at work, no page attached, and no
   word in the chat nor the drawer's start within `DRAWER_IDLE_MS` (24 h; 0 off) — the card goes stale and `>_` resumes
@@ -913,8 +912,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`openExternal(url, { ide, s })`). The transcript is linkified as rendered (`linkify`); the drawer has a link
   provider beside the web-links addon (`termLinks`, `peix.links(y)`). → `chat-links.mjs`.
 * **Two editors, two picks** (Settings › General): the external one (2026-10-13; `prefs.editor`, `EDITORS`, `#edPick`:
-  VS Code or Zed — file links, ⌥⌘V `hotEditorApp`, `#zedBtn`) opens `<scheme>://file/<path>:<line>:<col>` (the app
-  hands it on; a browser follows it, never `window.open`); the in-app one (2026-10-21; `prefs.inEditor`,
+  VS Code or Zed — file links, ⌥⌘V `hotEditorApp`, `#zedBtn`) opens `<scheme>://file/<path>:<line>:<col>` (handed
+  to the system; never `window.open`); the in-app one (2026-10-21; `prefs.inEditor`,
   `#inEdPick`: VS Code Web or vim) is ⌥⌘E, `#webBtn`, Editor ▾. A switch redraws the transcript (`logView.arr = null`), so its links
   follow; the drawer's are read on hover. → `chat-links.mjs`. **Picking Zed without it installs it** (`wantZed` →
   `POST /api/editors/zed/install` → `installZed`: `brew install --cask zed`, one at a time, then `lsregister -f`);

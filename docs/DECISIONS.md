@@ -5,6 +5,27 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-21. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-21, night — the PR list scrolls, the timeline up top
+
+Ricardo, next: "the button should be up top, centered and more visible/pretty. also, instead of having "more X..."
+make it scrollable and make it obvious that there are more PRs (like we do on chat sidebar)"
+
+* **The timeline is the list's head**, centred: a pill in the accent — its mark, *Timeline*, and ⌥⌘J in a chip of its
+  own — over the rows, where the foot's corner had it an hour before. The fold arrow stays the foot's.
+* **Every row, in a window that scrolls** (`#prScroll`, about six PRs' worth — `min(36vh, 236px)` —, no native
+  scrollbar): the six rows and "… n more" (`PR_ROWS`, `state.prsAll`) are gone. **Its two ends are the chat list's**
+  (`.sedge`, 2026-09-25): a pill over a fog of the list's ground — *↓ 6 more*, *↑ 3 more* — for the rows whose middle is
+  past that end, with the accent's dot when one of them is at your move; a click scrolls a window's worth (`prEdges`,
+  once a frame after a draw, a scroll or a resize). A redraw of the same chat's rows keeps the window's place; another
+  chat's starts at its top.
+* **Found on the way**: the copy mark next to an open PR's name was green, a merged one's purple. Its sheets are an
+  `.ic.st` (a stroke icon) and `.prrow .st` is the state's word, so the state's colour reached the icon; the mark's
+  icon now takes the mark's colour.
+* `pr-list-window.mjs`: sixteen PRs — the button centred above the window, every row there, the ends counting as it
+  scrolls by a pill and to the bottom, the dot, a redraw keeping the place, the button opening the tab, and the mark
+  grey on an open PR. The PR list's other scenarios pass as they were (three of them failed once with Chrome gone
+  under the load of the run, then passed).
+
 ## Decisions of 2026-10-21, later still — the PR list's tracks go, the timeline a button away
 
 Ricardo: "on the expanded PR list, remove the pseudo-timeline up to and put somewhere a button shortcut to open the
