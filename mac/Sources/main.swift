@@ -497,6 +497,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     paneOverlay = PaneOverlay()
     paneOverlay.wantsLayer = true
     paneOverlay.layer?.backgroundColor = NSColor.clear.cgColor
+    paneDelegate.open = { [weak self] w, url in self?.paneOpen(w, url) }
+  }
+  /// A page's new window, for the board to put on a tab beside it (2026-10-21) — or, the board saying no (a view not
+  /// the open chat's), loaded where it came from, as before.
+  private func paneOpen(_ w: WKWebView, _ url: URL) {
+    guard let key = paneViews.first(where: { $0.value === w })?.key else { w.load(URLRequest(url: url)); return }
+    web.evaluateJavaScript("window.peixPaneOpen ? !!window.peixPaneOpen(\(jsLit(key)), \(jsLit(url.absoluteString))) : false") { [weak w] v, _ in
+      let taken = (v as? Bool) == true
+      logLine("pane: a new window from \(key) — \(url.host ?? "?") \(taken ? "on a tab of its own" : "loaded where it was asked")")
+      if !taken { w?.load(URLRequest(url: url)) }
+    }
   }
   /// The web view for a page, made on first use (and then loaded by the caller). Touches the recency order
   /// and lets the oldest go once there are too many — never one of the current chat's.
@@ -1681,9 +1692,15 @@ final class BoardWebView: WKWebView {
 }
 
 final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
+  var open: ((WKWebView, URL) -> Void)?   // a new window's web page, to the board (AppDelegate.paneOpen)
+  /// A page's new window — a link with target=_blank, a window.open — is a tab of the chat's own, as a browser's new tab
+  /// (2026-10-21). It was loaded in the view it came from: VS Code Web opens every link out that way, and the editor's
+  /// tab has no strip, so GitHub filled its half with no address and no way back. Not a web page: loaded here, where
+  /// the policy below hands it on or not.
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-    if let url = navigationAction.request.url { webView.load(URLRequest(url: url)) }
+    guard let url = navigationAction.request.url else { return nil }
+    if let open, ["http", "https"].contains(url.scheme?.lowercased() ?? "") { open(webView, url) } else { webView.load(URLRequest(url: url)) }
     return nil
   }
   /// What a page in the pane may hand to another app (2026-10-14): a link clicked in its own main frame — not a script, a

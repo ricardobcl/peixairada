@@ -232,6 +232,22 @@ export default async function (ctx) {
   await ctx.evaluate(`window.peixPaneFocus(${JSON.stringify(ghK)})`);
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'and one on the PR, back to the left');
 
+  // a new window the editor asks for (2026-10-21; VS Code Web's links out, as the shell hands them on): a page tab beside
+  // the editor, in front, under the half's strip — never the editor's own view, whose tab has none
+  const away = 'https://github.com/acme/widgets/pulls';
+  ctx.assert.equal(await ctx.evaluate(`window.peixPaneOpen(${JSON.stringify(ideK)}, ${JSON.stringify(away)})`), true, 'the board takes the editor\'s new window');
+  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify('gh:' + away)}`, { what: 'the page on a tab beside the editor' });
+  ctx.assert.deepEqual(await strips(), [['chat', 'gh'], ['gh', 'ide']], 'the page in the editor\'s half, on a tab of its own');
+  ctx.assert.deepEqual(await lone(), [false, false], '…so that half has its strip, with the page\'s address');
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys on the new tab, as a browser\'s');
+  const opened = await lastPane(), under = await ctx.evaluate(`Math.round(document.querySelector('#ptabsB').getBoundingClientRect().bottom)`);
+  ctx.assert.equal(opened.panes.find(p => p.key === 'gh:' + away)?.top, under, 'the page placed under the strip');
+  ctx.assert.equal(await ctx.evaluate(`window.peixPaneOpen('gh:https://nowhere.example/', ${JSON.stringify(away)})`), false, 'a view not the open chat\'s: the shell loads it where it is');
+  ctx.assert.equal(await ctx.evaluate(`window.peixPaneOpen(${JSON.stringify(ideK)}, 'file:///etc/hosts')`), false, 'nor a page that is not the web\'s');
+  await ctx.evaluate(`document.querySelector('#ptabsB .ptab.on .x').click()`);
+  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(ideK)}`, { what: 'the page closed, the editor in front again' });
+  ctx.assert.deepEqual(await lone(), [false, true], 'the editor alone again, no strip');
+
   // the chat dragged onto the right half: the transcript goes with its tab, and the PR alone on the left keeps its
   // strip — its address is worth the room
   await ctx.drag('#ptabs .ptab[data-tab="chat"]', '#gbodyB');

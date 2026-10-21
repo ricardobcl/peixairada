@@ -8132,6 +8132,11 @@ const toolName = n => {
   // …and ⌘W in VS Code Web with no editor open (2026-10-14), which the editor keeps from the Window menu: the shell
   // hears it from the page and names the view's tab, which goes as ⌘W's would — by that key, not the half's.
   window.peixPaneClose = key => { const s = state.sessions.get(state.current); if (s && tabKeys(s).includes(key)) dropTab(s, key); };
+  // …and a new window a page asks for (2026-10-21): a link with target=_blank, VS Code Web's every link out — a tab of
+  // the chat's own, as a browser's new tab. The shell loaded it in the view it came from, and the editor's tab has no
+  // strip: GitHub filled its half with no address and no way back. False — a view not the open chat's, not a web
+  // page — and the shell loads it there still.
+  window.peixPaneOpen = (key, url) => { const s = state.sessions.get(state.current); if (!s || !IN_PANE.test(url) || !paneKeys(s).includes(key)) return false; openExternal(url, { s }); return true; };
   // A tab dragged to the other half moves there (2026-09-25) — the strips list only their own tabs now, so this is
   // how one goes across. Pointer events and not HTML drag and drop: the drop can land over the app's pane, a native
   // view the page cannot see, and the board's web view keeps getting the drag's moves (AppKit sends them to the view
