@@ -1,6 +1,6 @@
 // The chat list's magnifier, fuzzy since 2026-09-25, and ⌥⌘F, which
-// opens it from anywhere. What is checked: the key opens the box with the keyboard in it — the rail opening first when
-// the list is folded —; the box matches the way ⌥⌘K does (letters in order, no chat holding the query literally) and
+// opens it from anywhere. What is checked: the key opens the box with the keyboard in it — the list showing first when
+// it is hidden —; the box matches the way ⌥⌘K does (letters in order, no chat holding the query literally) and
 // the best match leads, *against* the board's order; the lines between states and days are left out while a query is
 // on and come back with Esc; the letters that matched are bolded on the card; ↑↓ walk the cards from the box and ⏎
 // opens the one marked, keeping the query; and the cog lists the key. A PR's number finds the chat that has it, in the
@@ -34,17 +34,17 @@ export default async function (ctx) {
   ctx.assert.ok(out.before.lines >= 1, 'with nothing typed the day lines are there');
   ctx.assert.ok(out.before.cards.indexOf('Arrest the drift') < out.before.cards.indexOf('Wallet resolvers'), 'the board puts the newer chat first');
 
-  // ⌥⌘F, the list folded to its rail: the list opens and the box has the keyboard
-  await ctx.cmd('KeyB'); ctx.assert.equal(!!(await ctx.peix('prefs()')).sessionsCompact, false, 'plain ⌘B is not the board\'s since 2026-10-02');
-  await ctx.key('KeyB'); ctx.assert.equal((await ctx.peix('prefs()')).sessionsCompact, true, '⌥⌘B folds the list');
+  // ⌥⌘F, the list hidden: the list shows and the box has the keyboard
+  await ctx.cmd('KeyB'); ctx.assert.equal(!!(await ctx.peix('prefs()')).listHidden, false, 'plain ⌘B is not the board\'s since 2026-10-02');
+  await ctx.key('KeyB'); ctx.assert.equal((await ctx.peix('prefs()')).listHidden, true, '⌥⌘B hides the list');
   await ctx.key('KeyF');
   out.opened = {
-    folded: (await ctx.peix('prefs()')).sessionsCompact,
+    hiddenList: (await ctx.peix('prefs()')).listHidden,
     hidden: await ctx.evaluate(`document.querySelector('#q').hidden`),
     focused: await ctx.evaluate(`document.activeElement?.id || null`),
     searching: await ctx.evaluate(`document.querySelector('#filters').classList.contains('searching')`),
   };
-  ctx.assert.deepEqual(out.opened, { folded: false, hidden: false, focused: 'q', searching: true }, '⌥⌘F opens the rail and puts the keyboard in the box');
+  ctx.assert.deepEqual(out.opened, { hiddenList: false, hidden: false, focused: 'q', searching: true }, '⌥⌘F shows the list and puts the keyboard in the box');
 
   // fuzzy: no chat holds `pln cht` anywhere, the plain chat leads, its letters bolded, the lines gone, the first card marked
   await type(ctx, 'pln cht');

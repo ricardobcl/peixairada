@@ -206,10 +206,10 @@
     #settings .stabs button { width: auto; }
     #settings .sfootnav { display: none; }
   }
-  /* The setup (2026-09-28; dressed the same night): the folders of repos, ⌥⌘O's project, the projects' short names and
-     colours (the Projects pane), and Jira's (its own) — groups as every pane's are. A path or a name is text until the
-     pointer or the keyboard is on it; the small fields (the org, the short name) and the pickers wear a fill; a
-     project's row leads with its square as the rail draws it, in its colour; × comes with the pointer. */
+  /* The setup (2026-09-28; dressed the same night): the folders of repos, ⌥⌘O's project, the projects' colours (the
+     Projects pane), and Jira's (its own) — groups as every pane's are. A path or a name is text until the
+     pointer or the keyboard is on it; the small fields (the org) and the pickers wear a fill; a project's row leads
+     with its square, in its colour; × comes with the pointer. */
   .pop .setup { display: grid; gap: 18px; font-size: var(--fs-sm); color: var(--muted); }
   .pop .slist { border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
   .pop .srow { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 22px; gap: 8px; align-items: center; min-height: 44px; padding: 7px 10px 7px 12px; }
@@ -218,7 +218,6 @@
   .pop .srow.proj .sedit { display: none; grid-column: 2 / -1; align-items: center; gap: 8px; padding: 2px 0 2px; }
   .pop .srow.proj.open .sedit { display: flex; }
   .pop .sedc { font-size: var(--fs-sm); color: var(--muted); }
-  .pop .sabl { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
   .pop .srow.proj + .srow::before { left: 64px; }
   .pop .srow.padd { grid-template-columns: 22px minmax(0, 1fr); }
   .pop .srow.quick { grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; }
@@ -246,13 +245,11 @@
   .pop .srow .pn { display: grid; min-width: 0; }
   .pop .srow .pn b { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); font-weight: 600; color: var(--ink); }
   .pop .srow .pn small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* a project's square, the rail's: its short name on its colour, the ink that reads there (--nocolor without one) */
+  /* a project's square: its short name on its colour, the ink that reads there (--nocolor without one) */
   .pop .stile { display: grid; place-items: center; width: 42px; height: 30px; padding: 0; border: 0; background: var(--nocolor); color: var(--ink); font: inherit; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; overflow: hidden; white-space: nowrap; }
   .pop button.stile { cursor: pointer; }
   .pop button.stile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .pop .srow.proj.open .stile { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
-  .pop .setup input.sab { width: 60px; padding: 0 4px; text-align: center; font-weight: 700; letter-spacing: .4px; background: var(--ctl); }
-  .pop .setup input.sab:hover { background: var(--ctl-hi); }
   .pop .ssw { position: relative; width: 22px; height: 22px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 20%, transparent); cursor: pointer; transition: transform .12s; }
   .pop .ssw:hover { transform: scale(1.1); }
   .pop .ssw.none { background: none; box-shadow: none; border: 1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent); }
@@ -341,37 +338,10 @@
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
   main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
   main.notch #sessions.npad .sedge.up { padding-top: calc(5px + var(--notch-top, 0px)); }
-  /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
-     The width is set here, not inline, so the splitter's saved width comes back on unfold. */
-  /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
-     and the card's own edge — so what is clauding, how many agents are out, what is watching and what is asking
-     still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
-  main.scompact #sessions { width: 58px; min-width: 0; }
-  main.scompact #stitle > :not(.ab), main.scompact #splitter { display: none; }
-  main.scompact #stitle .ab { display: block; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; color: var(--ink); }
-  main.scompact #stitle { justify-content: center; padding: 5px 0 13px; border-top: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
-  main.scompact #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, var(--panel)); }
-  main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
-  main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
-    background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
-  main.scompact #slist > .card > * { display: none; }
-  main.scompact #slist > .card .abbr { display: block; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; max-width: 100%; overflow: hidden; }
-  /* (2026-10-12) a short name of three letters or four set smaller, so it fits its square rather than lose its end;
-     a dot where the chat wants you without a ring or a red edge to say it — a PR at your move, a new reply — and a
-     square that has waited longer than four days (Idle) or is done, dimmed */
-  main.scompact #slist > .card .abbr[data-n="3"] { font-size: var(--fs-2xs); letter-spacing: 0; }
-  main.scompact #slist > .card .abbr:is([data-n="4"], [data-n="5"]) { font-size: 8.5px; letter-spacing: -.2px; }
-  .card .rdot { display: none; }
-  main.scompact #slist > .card:is([data-want="move"], [data-want="replied"]) .rdot { display: block; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 0 1.5px var(--panel); }
-  main.scompact #slist > .card[data-want="move"] .rdot { background: var(--accent); border-radius: var(--r-1); transform: rotate(45deg); }
-  main.scompact #slist > .card:is([data-rank="idle"], [data-rank="done"]) { filter: saturate(.35) brightness(.8); }
-  main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
-  /* …but a lane's head is its mark and its count (2026-10-12), so a folded lane can be opened from the rail */
-  main.scompact #slist .gsep.lane[data-lane] { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 4px 0 0; padding: 3px 0; letter-spacing: 0; }
-  main.scompact #slist .gsep.lane[data-lane] :is(.ln, .lc) { display: none; }
-  main.scompact #slist .gsep.lane[data-lane] b { margin: 0; }
-  main.scompact #slist .gsep.lane.shut { opacity: .7; }
-  main.scompact #slist .none { padding: 14px 2px; font-size: var(--fs-2xs); }
+  /* The list hidden (⌥⌘B, the status bar's first button — 2026-10-25; folded to a rail of squares from 2026-09-22):
+     it and its splitter out of the layout, the chat the whole width. display: none, so nothing on a card is drawn or
+     runs while it is away — no ring turns, no ping goes out. Its width stays the splitter's, inline. */
+  main.lhide :is(#sessions, #splitter) { display: none; }
   /* The bar between the list and the chat (2026-09-26): a gap of the tiles', dragged to size the list. It was the open
      chat's colour down to its card, black under it, until tiles were the only layout (2026-10-14). */
   #splitter { width: 8px; flex: none; cursor: col-resize; position: relative; }
@@ -467,7 +437,6 @@
   #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
   #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 40%, var(--panel)); }
   #stitle > .t { flex: 0 1 auto; min-width: 0; display: block; overflow: hidden; text-overflow: ellipsis; }   /* a block, so a long name ends in … */
-  #stitle .ab { display: none; }   /* the short name, for the rail */
   #stitle .sx { flex: none; margin-left: auto; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: var(--fs-lg); font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
   #sbar #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
@@ -522,8 +491,6 @@
      the memory the same (WebKit gives no backing to a layer out of sight). 544 CALayers for 400 cards. */
   #slist > .card { will-change: transform; }
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
-  main.scompact #slist { scrollbar-width: auto; }
-  main.scompact #slist::-webkit-scrollbar { display: initial; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   /* Between the clauding cards and the ready ones, Claude's mark in pixels, alone and centred (2026-09-27; a
      school of ><> swimming right since 2026-09-20, kept as one node across renders so it did not jolt, then for an
@@ -559,7 +526,6 @@
   .gsep.more { margin: 4px 10px 2px; padding: 3px 0; text-align: center; cursor: pointer; border-radius: var(--r-2); }
   .gsep.more:hover { color: var(--ink); background: var(--ctl); }
   .gsep.more .ms { display: none; }
-  main.scompact #slist .gsep.more { display: block; margin: 2px 0; letter-spacing: 0; } main.scompact #slist .gsep.more .mn { display: none; } main.scompact #slist .gsep.more .ms { display: inline; }
   .gsep.lane[data-lane]:hover .ln { color: var(--ink); }
   .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
   .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
@@ -606,7 +572,6 @@
   #slist .none .nfish svg { display: block; opacity: .85; }
   #slist .none .nfish .b { fill: var(--accent); } #slist .none .nfish .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #slist .none .nfish .e { fill: var(--bg); }
   #slist .none .bub { position: absolute; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--muted); pointer-events: none; }
-  main.scompact #slist .none .nfish, main.scompact #slist .none b + span { display: none; }
   /* ---- the chat list's timeline: its days, down the left edge ---- */
   /* (2026-09-25; pared down 2026-09-26) A slim rail down the far left of the list, beside its coloured edge, the list
      in miniature: at rest the thumb alone, an orange pill where the window is — an overlay scrollbar, on the left.
@@ -628,7 +593,6 @@
   .tl-glass { grid-row: 1; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
     background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
   #sessions.tlon .tl-glass { opacity: 1; }
-  main.scompact #tline { display: none; }
   #tline > *, #tline .tl-lab { position: absolute; }
   #tline .tl-labs { inset: 0; pointer-events: none; }
   /* The rail's reach for the pointer (2026-09-25): from the window's left edge — over the list's 4 px coloured edge,
@@ -655,7 +619,6 @@
   /* the lower one at the right, on a shorter fog (2026-10-12): centred, it sat on the last card's your-move line — the
      line that card most had to say, and left-aligned, so the right is where a card's last line is most often empty */
   .sedge.down { align-self: end; align-items: flex-end; justify-content: flex-end; height: 24px; padding: 0 14px 4px 0; background: linear-gradient(transparent, var(--bg) 80%); }
-  main.scompact .sedge.down { justify-content: center; padding-right: 0; }   /* the rail: no room to one side */
   .sedge.on { opacity: 1; }
   :is(.sedge, .lognew, .pedge) button { pointer-events: auto; font: inherit; font-size: var(--fs-xs); line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: var(--r-4); padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
   .sedge:not(.on) button { pointer-events: none; }
@@ -663,8 +626,6 @@
   :is(.sedge, .pedge) b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
   .sedge i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .sedge i.ask { background: var(--needs); } .sedge i.work { background: var(--working); }
-  main.scompact .sedge button { padding: 1px 5px; gap: 2px; }
-  main.scompact .sedge .w { display: none; }   /* the rail has room for the arrow and the number */
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
   .card { --repo: initial; background: var(--panel); border: 2px solid transparent; border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26; 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
@@ -708,14 +669,14 @@
      itself. */
   .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { scale: .99; transition-duration: .06s; transition-timing-function: ease-out; }
   /* Hover is that light — the edge's glow stays as it is at rest (it grew across the card until 2026-10-09); the open
-     card and the magnifier's mark keep theirs. Not on the rail's squares, too small for it. */
-  main:not(.scompact) .card:hover { --spot: 55%; }
+     card and the magnifier's mark keep theirs. */
+  .card:hover { --spot: 55%; }
   /* The colour as it reads on the panel (2026-10-09, late night): the edge, the glow, the light under the pointer, the
      border of a hovered, open or clauding card and the ring's track wear --lift — the project's colour with its
      lightness held where it shows against the panel: no darker than .62 in the dark (a black, a navy, a maroon were a
      shadow there, the black's edge a fixed grey of its own), no lighter than .72 in the light (a yellow, a cyan were a
      haze on white). Hue and chroma kept, so a black is a grey; a colour already in range is itself. --repo stays the
-     colour as set — the project's name reads its own way (below), and the rail's squares, the header and the splitter
+     colour as set — the project's name reads its own way (below), and the header and the splitter
      (the open card's bleed into it too) wear it as it is. */
   .card { --lift: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
   :root[data-theme="dark"] .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
@@ -832,7 +793,6 @@
   .card .top .chip.wtb { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--muted); background: none; padding-left: 0; font-weight: 600; text-transform: none; letter-spacing: 0; }
   .card .top .chip.wtb .ic { width: 10px; height: 10px; fill: currentColor; flex: none; }
   .card .top .chip.elsewhere { display: inline-flex; align-items: center; padding: 0 4px; } .card .top .chip.elsewhere .ic { width: 11px; height: 11px; }
-  .card .abbr { display: none; }   /* only the folded rail shows it */
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
      wash */
@@ -1161,6 +1121,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbFind, #sbLeft, #sbRight { display: flex; align-items: stretch; flex: none; min-width: 0; }
   #sbFind { padding: 0 8px; border-right: 1px solid var(--line); }
   #sbFind #filters { flex: none; gap: 4px; }
+  /* the list's switch (2026-10-25), first in the bar: the Mac's sidebar mark, its pane filled while the list shows */
+  #sbList { align-self: center; height: 20px; margin-right: 4px; } #sbList .ic { width: 14px; height: 14px; }
+  #sbList .lpane { transition: opacity .15s var(--ease-out); } #sbList[aria-pressed="false"] .lpane { opacity: 0; }
   #sbar .fq { flex: none; width: 210px; }
   #sbPeople { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; }
   #sbPeople:has(> #people:not([hidden])) { border-right: 1px solid var(--line); }   /* GitHub's mark and the faces before the fish (2026-10-11, later): the mark stays put as they fold */
@@ -1966,6 +1929,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.tiles.notch { --screen-r: 10px; }
   main.tiles.notch > #sessions { border-top-left-radius: var(--screen-r); overflow: hidden; }
   main.tiles.notch > #chat { border-top-right-radius: var(--screen-r); overflow: hidden; }
+  main.tiles.notch.lhide > #chat { border-top-left-radius: var(--screen-r); }   /* the list hidden: the chat's tile has that corner too */
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
@@ -2413,7 +2377,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
-    :is(.gsep.lane > i, .rdot, .ck, .tst, .pc, .badge, .card .trow .drift) { forced-color-adjust: none; }
+    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .card .trow .drift) { forced-color-adjust: none; }
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
 
@@ -2485,6 +2449,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
+    #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
@@ -2580,7 +2545,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="resume" hidden></div>
   </section>
 </main>
-<footer id="sbar"><div id="sbFind"><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
+<footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-labelledby="spTitle" tabindex="-1">
   <aside class="snav">
     <label class="sfind"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg><input type="search" id="sq" placeholder="Search" aria-label="Search the settings" aria-controls="sbody" autocomplete="off" spellcheck="false"></label>
@@ -2858,7 +2823,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2880,6 +2845,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // the state chips went (2026-10-11, later) — the lanes fold instead (lanesShut, Done shut to begin with); a filter
   // saved before is dropped, or a state switched off then would be hidden with nothing left to bring it back
   delete prefs.filter; delete prefs.filters;
+  // the list folded to a rail (sessionsCompact) became the list hidden (2026-10-25): a folded one is hidden
+  if ('sessionsCompact' in prefs) { prefs.listHidden = !!prefs.sessionsCompact; delete prefs.sessionsCompact; }
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
   for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar']) delete prefs[k];
@@ -2956,7 +2923,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
     return on ? cards[qsel.i] || null : null;
   }
-  const qShow = on => { const inp = $('#q'); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
+  const qShow = on => { const inp = $('#q'); if (on) showList(); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
   // the box and the filter, on #filters itself (the status bar's)
   {
     const btn = $('#qBtn'), inp = $('#q');
@@ -3561,16 +3528,27 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     e.preventDefault(); e.stopPropagation();
   }, true);
 
-  // ---- sessions column width ----------------------------------------------------------
-  function applySessionsCompact() {
-    $('#main').classList.toggle('scompact', !!prefs.sessionsCompact);
-    $('#sessions').style.width = prefs.sessionsCompact ? '' : prefs.sessionsWidth + 'px';
+  // ---- the chat list: shown or hidden, and its width -------------------------------------------------------------------
+  // Hidden (2026-10-25; folded to a rail of squares from 2026-09-22): the list out of the layout and the chat the whole
+  // width (main.lhide) — the status bar's first button (#sbList, the sidebar's mark, its pane filled while the list
+  // shows) or ⌥⌘B (⌘B until 2026-10-02, VS Code's key for its sidebar — the chat list is the column beside the chat). As
+  // every ⌥⌘ letter, it is forwarded from the pane's pages: VS Code Web gives up its ⌥⌘B (the secondary side bar) and
+  // keeps its ⌘B, and GitHub its bold. What only narrows the list — the magnifier, a filter, a face, a project — shows
+  // it again (showList). Shown, its scroll is where it was, and the rings made anew turn in step (phaseAnims).
+  function applyList() {
+    const hide = !!prefs.listHidden, list = $('#sessions'), b = $('#sbList');
+    if (hide && !$('#main').classList.contains('lhide')) applyList.top = $('#slist').scrollTop;   // display: none forgets it
+    $('#main').classList.toggle('lhide', hide);
+    list.style.width = prefs.sessionsWidth + 'px';
+    if (hide && list.classList.contains('kf')) { list.classList.remove('kf'); $('#chat').classList.add('kf'); }   // the keys' border on what is left
+    if (!hide && applyList.top != null) { $('#slist').scrollTop = applyList.top; applyList.top = null; phaseAnims(); }
+    b.setAttribute('aria-pressed', String(!hide)); b.title = `${hide ? 'Show' : 'Hide'} the chat list (⌥⌘B)`;
   }
-  // ⌥⌘B is the same switch from the keyboard (2026-09-22; ⌘B until 2026-10-02, VS Code's key for its sidebar — the
-  // chat list is the column beside the chat). As every ⌥⌘ letter, it is forwarded from the pane's pages: VS Code Web
-  // gives up its ⌥⌘B (the secondary side bar) and keeps its ⌘B, and GitHub its bold.
-  function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
-  applySessionsCompact();
+  function setList(show) { if (show === !prefs.listHidden) return; prefs.listHidden = !show; savePrefs(); applyList(); }
+  function toggleList() { setList(!!prefs.listHidden); }
+  function showList() { setList(true); }
+  $('#sbList').onclick = toggleList;
+  applyList();
   {
     // The left button only (2026-10-03: a right or ⌃-click started a drag whose mouseup the context menu swallowed, and
     // the column followed the bare pointer); the list's left edge is read once, at the press — read per move, it was a
@@ -3763,10 +3741,10 @@ const toolName = n => {
   // pickers: ⌥⌘O's project wears a crystal ball (2026-09-20, for oracle, the investigations folder that runs claude
   // against the clusters; since 2026-09-28 whichever project the cog names for ⌥⌘O).
   const projIcon = name => name && name === state.config.quick ? ICON.oracle : '';
-  // The short name a project wears on a card in the folded chat list (2026-09-22).
-  // The rule is the initial of each part of a hyphenated name, or the first two letters of a single word — which
-  // gives NS, AS, MS, FC on its own; the cog names the ones whose spoken short name is not that.
-  const projAbbr = name => projCfg(String(name || '')).abbr || abbrRule(name);
+  // A project's short name, on its square in Settings › Projects (2026-09-22; on a card in the folded chat list, and
+  // its box beside the colour, until 2026-10-25 — a hand-set `abbr` in the setup still names the square). The rule is
+  // the initial of each part of a hyphenated name, or the first two letters of a single word — which gives NS, AS, MS,
+  // FC on its own.
   function abbrRule(name) {
     const n = String(name || '');
     const parts = n.split(/[^A-Za-z0-9]+/).filter(Boolean);
@@ -4218,7 +4196,7 @@ const toolName = n => {
     replied: { name: 'New replies', none: 'No new replies', tip: 'chats Claude answered since you last looked', test: s => bucket(s) === 'ready' && replied(s) },
   };
   const listFilter = () => FILTERS[prefs.listFilter] || null;
-  const wantOf = s => FILTERS.move.test(s) ? 'move' : FILTERS.replied.test(s) ? 'replied' : '';   // the rail's dot
+  const wantOf = s => FILTERS.move.test(s) ? 'move' : FILTERS.replied.test(s) ? 'replied' : '';
   // the cards large with cards by lane on: a chat asking you, clauding, at your move or with a new reply
   const roomy = s => asking(s) || bucket(s) === 'working' || !!wantOf(s);
   // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
@@ -4271,9 +4249,8 @@ const toolName = n => {
 
   // ---- render: both lists ------------------------------------------------------------
   // A lane folds (2026-10-11, later; three state chips filtered the list before): its head is a toggle, its cards hidden
-  // and its count kept — prefs.lanesShut, Done and Idle shut to begin with. On the rail as well (2026-10-12; not before,
-  // when it drew no heads to open one by): there a head is its mark and its count, a click still folding it.
-  const laneShut = g => (prefs.lanesShut || []).includes(g);   // the rail too since 2026-10-12: its heads are its marks and counts
+  // and its count kept — prefs.lanesShut, Done and Idle shut to begin with.
+  const laneShut = g => (prefs.lanesShut || []).includes(g);
   /** What the stream says, drawn once a frame (2026-10-03): a gh batch is a burst of `session` events in one task, and
    *  each drew the whole list. A frame, or 100 ms where there are no frames (a hidden window: the badge still follows). */
   function renderBoardSoon() {
@@ -4466,6 +4443,7 @@ const toolName = n => {
     if (e.target.closest('.pgh')) { prefs.peopleCompact = prefs.peopleCompact === false; savePrefs(); renderBoard(); return; }
     const b = e.target.closest('button[data-login]'); if (!b) return;
     prefs.person = prefs.person === b.dataset.login ? null : b.dataset.login; savePrefs(); renderBoard();
+    if (prefs.person) showList();
   });
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
@@ -4498,10 +4476,9 @@ const toolName = n => {
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
     // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
-    // and nothing at all on ALL, which is what no filter means. On the rail the short name (projAbbr, the squares'
-    // rule) is the picker's handle.
+    // and nothing at all on ALL, which is what no filter means.
     $('#stitle').hidden = p.key === ALL;
-    setHtml($('#stitle'), p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="ab">${esc(projAbbr(p.name))}</span><span class="sx" title="Every project again (ALL)">×</span>`);
+    setHtml($('#stitle'), p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="sx" title="Every project again (ALL)">×</span>`);
     $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
@@ -4609,7 +4586,7 @@ const toolName = n => {
   const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
   function drawCards(items, empty) {
     const list = $('#slist'), want = new Set(), nodes = [], fresh = new Set(), redrawn = [], lines = new Map(), seen = new Map();
-    const move = !!drawCards.drawn && !REDUCED.matches;
+    const move = !!drawCards.drawn && !REDUCED.matches && !prefs.listHidden;   // hidden, nothing to see move
     drawCards.drawn = true;
     for (const it of items) {
       if (!it.id) {   // a line: the node it had, by its html and how many of the same came before it
@@ -4841,7 +4818,7 @@ const toolName = n => {
     return x >= 1 ? y : y + tl.K * (Math.sign(d) * TL_R * (TL_D + 1) * x / (TL_D * x + 1) - d);
   };
   function drawTimeline(g = listGeom()) {
-    if (!g.railOn) return;   // folded to the rail of squares: no room, and nothing drawn
+    if (!g.railOn) return;   // the list hidden: nothing drawn
     const rail = g.rail, runs = tl.runs;
     // the runs' markup, only when the runs themselves change (an SSE update re-renders the list every few seconds)
     const sig = runs.map(r => `${r.g}${r.day}${r.n}${r.i}${tlText(r)}`).join('|');   // the words too: "yesterday" moves on at midnight with no run changing
@@ -5160,7 +5137,7 @@ const toolName = n => {
   const RPOP_AT = '.card .top .tprs, .card .state.prmove, .card .state.prans, .card .prpips';
   $('#slist').addEventListener('pointerover', e => {
     const a = e.target.closest(RPOP_AT);
-    if (!a || $('main').classList.contains('scompact')) return;
+    if (!a) return;
     if (a === rpop.anchor) return;
     const id = a.closest('.card').dataset.id;
     if (rpop.sid === id && rpop.el?.classList.contains('on')) { rpop.anchor = a; return; }   // another of the same card's PRs: it stays
@@ -5257,14 +5234,13 @@ const toolName = n => {
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" data-want="${wantOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
+    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}
-      <span class="abbr" data-n="${projAbbr(s.project).length}" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span><i class="rdot" aria-hidden="true"></i>
     </div>`;
   }
   // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,
@@ -5300,7 +5276,7 @@ const toolName = n => {
       }
     }
   }
-  function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); }   // the header's folder name is the toggle's other end
+  function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); if (key !== ALL) showList(); }   // the header's folder name is the toggle's other end
   // ---- ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name. ----
   // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
@@ -5667,7 +5643,7 @@ const toolName = n => {
       { name: 'Search the chat list', hint: '⌥⌘F', fn: hotFind },
       ...Object.entries(FILTERS).filter(([k]) => prefs.listFilter !== k).map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
       ...(prefs.listFilter ? [{ name: 'Show every chat again', sub: ` — no ${listFilter().name.toLowerCase()} filter`, fn: () => setFilter(null) }] : []),
-      { name: prefs.sessionsCompact ? 'Unfold the chat list' : 'Fold the chat list to a rail', hint: '⌥⌘B', fn: toggleSessions },
+      { name: prefs.listHidden ? 'Show the chat list' : 'Hide the chat list', hint: '⌥⌘B', fn: toggleList },
       { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
       { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
       { name: 'Every key', hint: '?', fn: keysOpen },
@@ -5816,7 +5792,7 @@ const toolName = n => {
     ['⌥⌘1 ⌥⌘2', 'Layout', 'the top half, the bottom one', '⌥⌘2 splits the chat that way the first time; side by side, either turns it', ['alt:Digit1', 'alt:Digit2']],
     ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
     ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
-    ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
+    ['⌥⌘B', 'Layout', 'hide the chat list, and show it again', 'the chat takes the whole width · the status bar\'s first button too', ['alt:KeyB']],
     ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › General picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar at the top edge · remembered across launches', []],
     ['⌥⌘R', 'Look', 'reload the board', 'the chat you are on kept · ⇧⌘R restarts the server too, in the app · ⌘R is the page\'s in the pane', ['alt:KeyR']],
     ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
@@ -5873,7 +5849,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -6023,11 +5999,8 @@ const toolName = n => {
   // chat, or one the list does not show, the top or the bottom; the ends stop.
   // ⌥⌘F (2026-09-25): the chat list's magnifier, from anywhere, and it
   // matches as K does — what K has that the list did not was the matcher, not the dialog. The list keeps what the
-  // picker hides: the done chats, the project in view, the state chips. Folded to the rail, the list opens for it.
-  function hotFind() {
-    if (prefs.sessionsCompact) toggleSessions();
-    focusBoard(); qShow(true);
-  }
+  // picker hides: the done chats, the project in view, the state chips. Hidden, the list shows for it (qShow).
+  function hotFind() { focusBoard(); qShow(true); }
   function hotMove(dir) {
     const cards = [...document.querySelectorAll('#slist > .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
     const i = cards.findIndex(c => c.dataset.id === state.current);
@@ -6174,7 +6147,7 @@ const toolName = n => {
   async function loadJira() { try { setupUi.jira = await api('GET', '/api/jira'); } catch { setupUi.jira = null; } renderSetup(); }
   const cfgProjects = () => state.config.projects || {};
   const setupNames = () => [...new Set(projectList().filter(p => p.key !== ALL).map(p => p.name))].sort((a, b) => a.localeCompare(b));
-  /** A project's square in the setup, as the rail draws it: its colour and the ink that reads on it. */
+  /** A project's square in the setup: its colour and the ink that reads on it. */
   function tileStyle(name, byName) {
     const p = byName.get(name), color = (p && ownColor(p.cwds)) || projCfg(name).color;
     return color ? `background:${color};color:${inkOn(color)}` : '';
@@ -6187,13 +6160,13 @@ const toolName = n => {
     const org = (v, ph) => `<label class="sorgw" title="The GitHub org ＋ clone asks for — empty, nothing is cloned into this folder">github.com/<input ${text} class="sorg" value="${esc(v)}" placeholder="${ph}"></label>`;
     const rootRow = (r, i) => `<div class="srow root" data-i="${i}"><span class="sic">${ICON.folder}</span><input ${text} class="sdir" value="${esc(homePath(r.dir))}" title="${esc(r.dir)}">${org(r.org, 'org')}<button class="sdel" title="Forget this folder — nothing in it is touched" aria-label="Forget ${esc(homePath(r.dir))}">×</button></div>`;
     // a project's square is its short name on its colour, once (2026-10-16; a square, a short name's box and a colour's
-    // circle side by side before): a click opens both under it, the colour and the short name
+    // circle side by side before): a click opens its colour under it (and the short name's box, until 2026-10-25)
     const projRow = n => {
       const p = projs[n] || {}, bp = byName.get(n), open = setupUi.open === n;
-      return `<div class="srow proj${open ? ' open' : ''}" data-name="${esc(n)}"><button type="button" class="stile" style="${tileStyle(n, byName)}" aria-expanded="${open}" aria-label="The short name and colour of ${esc(n)}" title="Its short name and colour — click to change them">${esc(p.abbr || abbrRule(n))}</button>`
+      return `<div class="srow proj${open ? ' open' : ''}" data-name="${esc(n)}"><button type="button" class="stile" style="${tileStyle(n, byName)}" aria-expanded="${open}" aria-label="The colour of ${esc(n)}" title="Its colour — click to change it">${esc(p.abbr || abbrRule(n))}</button>`
         + `<span class="pn" title="${esc(bp ? bp.cwds.map(homePath).join('\n') : n)}"><b>${projIcon(n)}${esc(n)}</b>${bp ? `<small>${esc(bp.cwds.map(homePath).join(' · '))}</small>` : ''}</span>`
-        + `<button class="sdel" title="Forget the short name and colour of ${esc(n)}" aria-label="Forget ${esc(n)}">×</button>`
-        + `<div class="sedit"><label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} — click to change, ⌥-click to take it off` : 'A colour for it — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label><span class="sedc">${p.color ? 'Colour' : 'No colour'}</span><label class="sabl">Short name <input ${text} class="sab" value="${esc(p.abbr || '')}" placeholder="${esc(abbrRule(n))}" maxlength="6" title="Its short name on the rail (⌥⌘B) — empty, its initials"></label></div></div>`;
+        + `<button class="sdel" title="Forget the colour of ${esc(n)}" aria-label="Forget ${esc(n)}">×</button>`
+        + `<div class="sedit"><label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} — click to change, ⌥-click to take it off` : 'A colour for it — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label><span class="sedc">${p.color ? 'Colour' : 'No colour'}</span></div></div>`;
     };
     const quick = [...new Set([...(c.quick ? [c.quick] : []), ...all])];
     const group = (title, kw, rows, foot) => `<section class="sgrp" data-kw="${kw}"><h6 class="sgh">${title}</h6><div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
@@ -6201,7 +6174,7 @@ const toolName = n => {
       + group('Repository folders', 'roots repos repositories folder org github clone', roots.map(rootRow).join('')
         + `<div class="srow root add"><span class="sic">＋</span><input ${text} class="sdir" placeholder="Add a folder of repos — ~/code">${org('', 'org')}<span></span></div>`, '⌥⌘N lists every folder in these. With a GitHub org, ＋ clone fetches one you don’t have.')
       + group('Quick chat', 'quick chat new oracle', `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label>`, 'Its environments first, when its Taskfile launches claude.')
-      + group('Projects', 'project colour color short name abbreviation rail', names.map(projRow).join('') + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`, 'A short name for the folded list (⌥⌘B), and a colour; the chat header’s square sets it too.');
+      + group('Projects', 'project colour color', names.map(projRow).join('') + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`, 'A colour for its cards, its chats’ header and their tiles; the chat header’s square sets it too.');
     // the two keys the setup names, for the ? sheet: one line each, the rest under it (2026-10-12; a list in the
     // settings' Keys pane until 2026-10-16)
     keyNotes.quickKey = { html: c.quick ? `a new chat in ${esc(c.quick)}` : 'a new chat in the setup\'s quick project — none yet', title: c.quick ? 'its environments first, when its Taskfile launches Claude, then their open chats' : 'Settings › Projects › Quick chat names it' };
@@ -6273,19 +6246,17 @@ const toolName = n => {
         t.value = ''; t.blur();
         return api('PUT', '/api/jira/token', { token }).then(d => { setupUi.jira = d; renderSetup(true); }, e => note(t, `Not saved: ${e.message}`, true));
       }
-      if (t.classList.contains('sadd')) { if (!t.value) return; setupUi.pending.add(t.value); const n = t.value; setupUi.open = n; renderSetup(true); box.querySelector(`.srow.proj[data-name="${CSS.escape(n)}"] .sab`)?.focus(); return; }
+      if (t.classList.contains('sadd')) { if (!t.value) return; setupUi.pending.add(t.value); const n = t.value; setupUi.open = n; renderSetup(true); box.querySelector(`.srow.proj[data-name="${CSS.escape(n)}"] .ssw input`)?.focus(); return; }
       if (row?.classList.contains('root')) { if (row.classList.contains('add') && !row.querySelector('.sdir').value.trim()) return; return putConfig({ roots: rootsInBox() }, t); }
       if (row?.classList.contains('proj')) {
         const name = row.dataset.name;
-        if (t.classList.contains('sab')) return setProject(name, { abbr: t.value.trim() }, t);
         if (t.type === 'color') { clearTimeout(setupUi.colorTimer); if (setupUi.colors.get(name) !== t.value) { setupUi.colors.set(name, t.value); setProject(name, { color: t.value }, row); } }
       }
     });
     // A colour previews on the board as the panel moves and is written once it rests — the header's square's way; the
-    // row's square follows it, and a short name as it is typed.
+    // row's square follows it.
     box.addEventListener('input', e => {
       const t = e.target;
-      if (t.classList.contains('sab')) { const row = t.closest('.srow.proj'); row.querySelector('.stile').textContent = t.value.trim() || abbrRule(row.dataset.name); return; }
       if (t.type !== 'color') return;
       const row = t.closest('.srow.proj'), name = row.dataset.name, hex = t.value;
       state.config.projects = { ...cfgProjects(), [name]: { ...cfgProjects()[name], color: hex } };
@@ -6304,13 +6275,13 @@ const toolName = n => {
       if (cfgProjects()[name]) setProject(name, { abbr: '', color: '' }, x); else renderSetup(true);
     });
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
-    // a square clicked opens its colour and short name under it, and closes another's
+    // a square clicked opens its colour under it, and closes another's
     box.addEventListener('click', e => {
       const tile = e.target.closest('.srow.proj .stile'); if (!tile) return;
       const row = tile.closest('.srow.proj'), on = setupUi.open !== row.dataset.name;
       setupUi.open = on ? row.dataset.name : null;
       for (const r of box.querySelectorAll('.srow.proj')) { const o = r.dataset.name === setupUi.open; r.classList.toggle('open', o); r.querySelector('.stile').setAttribute('aria-expanded', String(o)); }
-      if (on) row.querySelector('.sab').focus();
+      if (on) row.querySelector('.ssw input').focus();
     });
   }
   $('#sfileCopy').onclick = e => { const b = e.currentTarget; copyText(state.config.file || '').then(ok => note(b, ok ? 'Copied' : 'Could not copy it', !ok)); };
@@ -6397,7 +6368,7 @@ const toolName = n => {
   // it saying what the part is and its keys — ← → or the buttons, esc or Skip to leave. It comes up on its own once,
   // after the first run's question is answered (welcomeAnswer, unless prefs.toured), and whenever asked: Settings'
   // head, the launcher (⌥⌘L), home's keys line, the ? sheet and the About box. A step's part is looked for on the
-  // board as it stands — a chat open or not, the list folded to a rail, the status bar on or off —: one that is not
+  // board as it stands — a chat open or not, the list hidden or not —: one that is not
   // there shows the card in the middle, or is left out when the step is about it alone (`need`). Look, don't touch: the
   // board under the veil is inert, and nothing is opened, folded or moved for the tour but a card brought into view.
   const tour = { steps: [], i: 0, els: [], drawn: '', timer: 0, done: false };
@@ -6412,11 +6383,11 @@ const toolName = n => {
       text: () => 'The terminal’s, VS Code’s and the board’s own — read from what Claude Code already writes, and never written to. Here are the main parts, in a couple of minutes.',
       how: () => '<kbd>←</kbd> <kbd>→</kbd> to move · <kbd>esc</kbd> to leave — Settings, <kbd>⌥⌘L</kbd> and home take you round again' },
     { id: 'list', at: () => $('#slist > .card') ? $('#slist') : $('#sessions'), title: 'The one waiting for you is on top',
-      text: () => `${$('#slist > .card') ? '' : 'Empty for now — <kbd>⌥⌘N</kbd> starts a chat. '}Every chat sorts into lanes by what it needs: <b>Asking you</b>, <b>Clauding</b>, <b>Ready</b>, then <b>Idle</b> and <b>Done</b>, folded. In each lane the newest word leads; a lane’s head folds it.` },
+      text: () => `${prefs.listHidden ? 'Hidden for now — <kbd>⌥⌘B</kbd>, or the first button at the foot’s left, brings it back. ' : $('#slist > .card') ? '' : 'Empty for now — <kbd>⌥⌘N</kbd> starts a chat. '}Every chat sorts into lanes by what it needs: <b>Asking you</b>, <b>Clauding</b>, <b>Ready</b>, then <b>Idle</b> and <b>Done</b>, folded. In each lane the newest word leads; a lane’s head folds it.` },
     { id: 'card', need: true, at: tourCard, title: 'A card is a chat',
       text: () => 'Its edge says what it is doing without opening it: a light running round while Claude works, a slow one while a monitor watches, red pings while it asks you something. Its PRs sit at the top right. <b>✓</b> ticks it done; a right-click has the rest.' },
-    { id: 'find', side: 'above', at: () => onScreen($('#filters')), title: 'Find a chat',
-      text: () => 'The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the chats with a new reply, or a PR at your move. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.' },
+    { id: 'find', side: 'above', at: () => onScreen($('#sbFind')), title: 'Find a chat',
+      text: () => 'The first button hides the list, for the room, and brings it back — <kbd>⌥⌘B</kbd>. The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the chats with a new reply, or a PR at your move. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.' },
     { id: 'new', mid: true, title: 'A new chat, anywhere',
       text: () => '<kbd>⌥⌘N</kbd> asks where — nowhere in particular, the project in view, another, any repo in your folders, or one to clone — then offers its open chats, or a new one: in the folder, or <b>on a new branch</b>, in a worktree of its own. Claude starts in a terminal on the board, and the chat has its card at once. <kbd>⌥⌘O</kbd> goes straight to your quick project.',
       pic: () => `<div class="tmock"><div class="hd"><kbd>⌥⌘N</kbd> › widgets</div><div class="r on">＋ new chat</div><div class="r">＋ new chat on a new branch<small>a worktree</small></div><div class="r"><i style="--c: var(--idle)"></i>Fix the checkout retry<small>ready</small></div><div class="r"><i style="--c: var(--working)"></i>Bump the SDK<small>clauding</small></div></div>` },
@@ -7290,7 +7261,7 @@ const toolName = n => {
   // face narrowing it too (2026-10-14; the project's alone before, a count the list did not show). A press on the funnel
   // that closed its own menu leaves it closed.
   let fCounts = {};
-  function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); renderBoard(); $('#slist').scrollTop = 0; }
+  function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); if (prefs.listFilter) showList(); renderBoard(); $('#slist').scrollTop = 0; }
   function drawFilter(p, narrow = () => true) {
     const f = listFilter(), b = $('#fBtn'), fl = b.querySelector('.fl');
     fCounts = Object.fromEntries(Object.entries(FILTERS).map(([k, x]) => [k, p.sessions.filter(s => x.test(s) && narrow(s)).length]));
@@ -10771,7 +10742,7 @@ const toolName = n => {
   // header's, while the header's own title waits hidden; the header's colour eases as it always has. A click only:
   // ⌥⌘↑↓ walks the list a card at a time, and a key's move is instant.
   function flyFrom(card) {
-    const t = card.querySelector('.title'); if (!t || REDUCED.matches || prefs.sessionsCompact) return null;
+    const t = card.querySelector('.title'); if (!t || REDUCED.matches) return null;
     const r = t.getBoundingClientRect(), cs = getComputedStyle(t);
     return { text: t.textContent, x: r.left, y: r.top, size: parseFloat(cs.fontSize), color: cs.color, weight: cs.fontWeight, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.35 };
   }
@@ -10788,13 +10759,13 @@ const toolName = n => {
   // Located (2026-10-11): a chat opened from somewhere other than its card — ⌥⌘K, the launcher, a notification, the
   // overview, a tile, the home — flashes its card once, a light sweeping across it, so the eye finds where it lives.
   function locateCard(id) {
-    const c = document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`); if (!c || REDUCED.matches || prefs.sessionsCompact) return;
+    const c = document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`); if (!c || REDUCED.matches || prefs.listHidden) return;
     c.querySelector(':scope > .loc')?.remove();
     const l = html2el('<span class="loc" aria-hidden="true"><i></i></span>'); c.append(l); noteMotion(id, 'locate');
     l.firstChild.animate([{ transform: 'translateX(-100%)' }, { transform: 'translateX(250%)' }], { duration: 650, easing: 'cubic-bezier(.4, 0, .2, 1)', id: 'locate' }).onfinish = () => l.remove();
   }
   // The board showed the chat (2026-10-12): the server keeps when, and a reply after it is a new one (the New replies
-  // filter, the rail's dot, the Dock's badge). On opening it, and on a reply landing while it is the chat in front; the
+  // filter, the Dock's badge). On opening it, and on a reply landing while it is the chat in front; the
   // summary is told at once, so its card does not wait for the server's push to stop being new.
   function markSeen(id) {
     const s = state.sessions.get(id), at = new Date().toISOString(); if (!s) return;

@@ -1,8 +1,8 @@
 // The cog's setup (2026-09-28): what had been written into the page and the server for one Mac, set from the
-// popover — a folder of repos and its org, ⌥⌘O's project, a short name and a colour per project — and the switch
+// popover — a folder of repos and its org, ⌥⌘O's project, a colour per project (a short name too, until 2026-10-25) — and the switch
 // that is this browser's (⌥ as Meta; fold code and how a date is written were beside it for a day, 2026-09-28). Each is set the way a hand would, a
 // box and its change, and read back from the server's word and from what it paints: the folders ⌥⌘N offers, the
-// crystal ball, the rail's short name, a card's colour, the day lines. A folder that is not there is refused, beside
+// crystal ball, a card's colour, the day lines. A folder that is not there is refused, beside
 // the box, and the row stays as the server has it.
 import { mkdirSync, realpathSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -73,27 +73,22 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#keysheet').close()`);
   await openSetup();
 
-  // ---- a short name for the rail, a colour, and ⌥-click to take it off ----
+  // ---- a colour, and ⌥-click to take it off ----
   await set('.sadd', repo);
-  await ctx.waitFor(`document.activeElement?.matches('#setup .srow.proj[data-name="${repo}"] .sab')`, { what: 'the new row, its short name box with the keyboard' });
-  await set(`.srow.proj[data-name="${repo}"] .sab`, 'PX');
-  await until(async () => (await cfg()).projects[repo]?.abbr === 'PX', { what: 'the short name saved' });
-  await ctx.cmd('Comma');   // the modal takes the keys: closed for ⌥⌘B
-  await ctx.key('KeyB'); await ctx.settle();
-  out.abbr = await ctx.evaluate(`${cardOf(two.id)}.querySelector('.abbr').textContent`);
-  ctx.assert.equal(out.abbr, 'PX', "the rail's square says it");
-  await ctx.key('KeyB'); await ctx.settle();
-  await openSetup();
-  // the square once (2026-10-16): the short name on it, its box and the colour under it only once it is clicked
+  await ctx.waitFor(`document.activeElement?.matches('#setup .srow.proj[data-name="${repo}"] .ssw input')`, { what: 'the new row, its colour with the keyboard' });
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#setup .sab')`), false, 'no short name to type since 2026-10-25: the list’s rail that wore it went');
+  await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').click()`);   // closed again
+  // the square once (2026-10-16): its initials on it, the colour under it only once it is clicked
   const shown = sel => `(e => !!e && e.getClientRects().length > 0)(document.querySelector('#setup .srow.proj[data-name="${repo}"] ${sel}'))`;
-  out.square = await ctx.evaluate(`({ text: document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').textContent, box: ${shown('.sab')}, colour: ${shown('.ssw')} })`);
-  ctx.assert.deepEqual(out.square, { text: 'PX', box: false, colour: false }, 'the square alone, closed');
+  out.square = await ctx.evaluate(`({ text: document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').textContent, colour: ${shown('.ssw')} })`);
+  ctx.assert.equal(out.square.colour, false, 'the square alone, closed');
+  ctx.assert.match(out.square.text, /^[A-Z0-9]{1,4}$/, 'its initials on it');
   await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').click()`);
-  out.opened = await ctx.evaluate(`({ box: ${shown('.sab')}, colour: ${shown('.ssw')}, keys: document.activeElement?.matches('.sab'), expanded: document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').getAttribute('aria-expanded') })`);
-  ctx.assert.deepEqual(out.opened, { box: true, colour: true, keys: true, expanded: 'true' }, 'a click opens its short name, with the keys, and its colour');
+  out.opened = await ctx.evaluate(`({ colour: ${shown('.ssw')}, keys: document.activeElement?.matches('.ssw input'), expanded: document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').getAttribute('aria-expanded') })`);
+  ctx.assert.deepEqual(out.opened, { colour: true, keys: true, expanded: 'true' }, 'a click opens its colour, with the keys');
   await ctx.settle(); await ctx.shot('square-open');
   await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').click()`);
-  ctx.assert.equal(await ctx.evaluate(shown('.sab')), false, 'and closes them again');
+  ctx.assert.equal(await ctx.evaluate(shown('.ssw')), false, 'and closes it again');
   await set('.sadd', tmp);
   await set(`.srow.proj[data-name="${tmp}"] input[type=color]`, '#cc3366');
   await until(async () => (await cfg()).projects[tmp]?.color === '#cc3366', { what: 'the colour saved' });

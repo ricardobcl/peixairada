@@ -1,7 +1,7 @@
 // The board without its projects column (2026-09-24). What this checks: there is no column; the list's foot names the
 // project — on a row of its own since 2026-10-08, and the chat header's folder name toggles it — and is the way to
 // another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and no colour square since
-// 2026-09-27 —, open list or rail; the two things only the column's rows did are in the picker (✎ on a named project,
+// 2026-09-27 —; the two things only the column's rows did are in the picker (✎ on a named project,
 // ＋ new project last); the settings are the header's ··· and ⌘,; and the fish — the status bar's since 2026-10-09 (it
 // headed the list's foot row until then) — is the About box (2026-09-27).
 import { readFileSync } from 'node:fs';
@@ -70,18 +70,14 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.fresh, { editor: true, title: 'New project', name: '' }, '＋ new project opens an empty editor');
   await ctx.evaluate(`document.querySelector('#pdlg').close()`);
 
-  // The rail keeps, for a project, its short name — the picker's handle there (the square, until 2026-09-27)
+  // The list hidden (⌥⌘B), a project picked shows it, narrowed (2026-10-25; the list folded to a rail kept the project's
+  // short name as the picker's handle until then)
+  await ctx.key('KeyB');
+  await ctx.waitFor(`window.peix.prefs().listHidden`, { what: 'the list hidden' });
   await ctx.key('KeyP');
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
-  await ctx.key('KeyB');
-  out.rail = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#stitle > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.className + ':' + e.textContent))`).then(JSON.parse);
-  ctx.assert.ok(out.rail.length === 1 && /^ab:\S{1,3}$/.test(out.rail[0]), `on the rail the head is the project's short name alone: ${JSON.stringify(out.rail)}`);
-  await ctx.evaluate(`document.querySelector('#stitle .ab').click()`);
-  ctx.assert.equal(await pickOpen(), true, 'and it opens the picker');
-  await closePick();
-  await ctx.shot('3-rail', { x: 0, y: 0, width: 300, height: 1000 });
+  await ctx.waitFor(`!window.peix.prefs().listHidden && !document.querySelector('#stitle').hidden`, { what: 'the list shown for the project, its foot naming it' });
 
-  await ctx.key('KeyB');
   // The settings (2026-09-28): no cog in the list — the chat header's ···, a chat or none, and ⌘,; a modal, centred
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#cogBtn, #pfoot')`), false, 'no cog in the list');
   await ctx.evaluate(`document.querySelector('#noChatMore').click()`);

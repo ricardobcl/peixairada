@@ -39,16 +39,16 @@ export default async function (ctx) {
   await key('Enter');
   await ctx.waitFor(`!document.querySelector('#pick').open && window.peix.state().current === '${gadgets.id}'`, { what: 'the chat opened' });
 
-  // > an action: the list folds
+  // > an action: the list hides
   await ctx.key('KeyL');
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher again' });
-  await ctx.fill('#pickq', '>fold');
-  await ctx.waitFor(`document.querySelector('#picklist .pkrow.sel')?.textContent.includes('Fold the chat list')`, { what: 'the fold action first' });
+  await ctx.fill('#pickq', '>hide chat list');
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.sel')?.textContent.includes('Hide the chat list')`, { what: 'the hide action first' });
   ctx.assert.ok((await rows()).every(r => r.kind === 'action' || r.kind === 'toggle'), '> leaves only actions and switches');
   await key('Enter');
-  await ctx.waitFor(`document.querySelector('#main').classList.contains('scompact')`, { what: 'the list folded' });
+  await ctx.waitFor(`document.querySelector('#main').classList.contains('lhide')`, { what: 'the list hidden' });
   await ctx.key('KeyB');
-  await ctx.waitFor(`!document.querySelector('#main').classList.contains('scompact')`, { what: 'unfolded' });
+  await ctx.waitFor(`!document.querySelector('#main').classList.contains('lhide')`, { what: 'shown again' });
 
   // Toggle ›: a switch flipped, the menu stays; ← back out
   await ctx.key('KeyL');

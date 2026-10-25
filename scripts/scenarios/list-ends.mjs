@@ -84,19 +84,6 @@ export default async function (ctx) {
     ctx.assert.notDeepEqual([out.compact.up.n, out.compact.down.n], [before.up.n, before.down.n], 'and the counts moved with them');
     await ctx.evaluate(`document.querySelector('#cardsSize [data-v="0"]').click()`);
 
-    // folded to the rail: the number and the arrow, no word
-    await ctx.key('KeyB');
-    await ctx.waitFor(`document.querySelector('#main').classList.contains('scompact')`, { what: 'the rail' });
-    await scrollTo(ctx, 150);
-    out.rail = await ends(ctx);
-    ctx.assert.ok(out.rail.up.on && out.rail.down.on, 'twenty-four squares run past the rail both ways');
-    ctx.assert.deepEqual([out.rail.up.n, out.rail.down.n], out.rail.want, 'the rail counts its squares the same way');
-    ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sdown .w')).display`), 'none', 'the word is left out on the rail');
-    const fits = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), b = document.querySelector('#sdown button').getBoundingClientRect(); return b.left >= s.left && b.right <= s.right; })()`);
-    ctx.assert.ok(fits, 'the pill fits the rail');
-    await ctx.shot('rail', { x: 0, y: 0, width: 200, height: 1000 });
-    await ctx.key('KeyB');
-
     return out;
   } finally {
     for (const p of sleeps) p.kill();

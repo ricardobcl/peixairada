@@ -2,8 +2,43 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-21. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-25 — the chat list hides, its switch first in the status bar
+
+Ricardo: "the hotkey B minimizes the chat column but I don't think having it minimized brings anything and we should
+switch to just hiding it, to maximize real-estate. we should have am obvious toggle to hide/show the column, either top
+left and/or left on status bar below"
+
+* **⌥⌘B hides the list; it no longer folds it.** The rail of squares (2026-09-22) is gone, its CSS, the cards' `.abbr`
+  and `.rdot`, the foot's `.ab` and `projAbbr` with it. Hidden, the list and its splitter are `display: none` and the
+  chat has the whole width (`main.lhide`). What the rail still told — something asking, clauding, watching — the status
+  bar's left says (the asking and monitor counts), the Dock's badge and the menu bar count, and ⌥⌘A shows every chat.
+* **The switch is the status bar's first button** (`#sbList`), before the magnifier and the funnel: the list's controls
+  together, in a place that is there whether the list is or not (the bar always is, since 2026-10-14). The Mac's sidebar
+  mark, its left pane filled while the list shows, its tooltip what a click does. Not top left: shown, that corner is
+  the list's own first card, and hidden it is the chat header's title, which the header lays round the camera housing
+  at the notch (`layoutNotch`) — a button there moves what that measures, and its place would change with the state.
+* **What only narrows the list shows it** (`showList`): the magnifier (⌥⌘F or its button), a filter from the funnel, a
+  face, a project picked (⌥⌘P, the header's folder name, the launcher, a new named one). Hidden, each did nothing to
+  see. ⌥⌘↑↓ still walk the chats in the list's order; a chat opened from elsewhere sweeps no card.
+* **Hidden is `display: none`, measured in both engines**: no animation at all on a hidden card — three clauding cards
+  in WebKit, seven animations under `#sessions` shown (three rings, the clauding lane's marks), none hidden, the compositor's rules
+  kept; shown again each is running at start 0 (`phaseAnims()` from `applyList`: the rings are new animations then). The
+  list's scroll is kept by hand across it (`display: none` forgets it). At the notch the chat's tile takes the screen's
+  top left corner too. A board saved folded comes back hidden, once (`sessionsCompact` → `listHidden`).
+* **The short name went with the rail**: it was the rail's and nothing else's. Settings › Projects keeps the square, its
+  colour under it; its box is gone. A short name in the setup file still names the square, and the server still reads
+  and keeps it.
+* **Left as it is**: main.swift's comment on the keys it forwards still says B folds the list — a change under `mac/`
+  makes every board rebuild its app, too much for a word; the next Swift change takes it.
+* Checked: `list-hide.mjs` (the button and ⌥⌘B, the chat's width, no animation hidden, the rules, ⌥⌘↓, the scroll and
+  the rings back, ⌥⌘F and a filter, a reload, the old pref both ways, the notch's corners); the scenarios that folded the
+  list, now hiding it or not at all (`card-signals`, `chat-filter`, `launcher`, `list-ends`, `timeline`, `project-cue`,
+  `cog-setup`), and the ones round them; `npm run perf` within its ceilings, no rule broken. `head-float.mjs` fails
+  on main as here (a pixel in *the words move up with it*), and so do three of `lunch.test.mjs`'s on this Sunday. The
+  README's pictures drawn again: the button is in every bar, and ⌥⌘D's shows the list hidden.
 
 ## Decisions of 2026-10-21, late night — the PR list sized by hand, a card's parts optional, GitHub alone in the board
 

@@ -19,6 +19,7 @@ export default async function (ctx) {
   try {
     mkdirSync(OUT, { recursive: true });
     for (const f of ['board-dark', 'board-light', 'simple-dark', 'simple-light', 'cards-dark', 'timeline-dark', 'picker-dark']) rmSync(join(OUT, `${f}.png`), { force: true });
+    rmSync(join(OUT, 'look-rail.webp'), { force: true });   // the list folded to a rail, a look until 2026-10-25
     await scale(2);
     await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: PAGE });
     await ctx.server.post(`/api/sessions/${chat('Rewrite the getting-started guide').id}/done`, { done: true });
@@ -58,8 +59,7 @@ export default async function (ctx) {
     // 6 · the ways it can look, smaller: each a switch or a key, the board reloaded on it
     await scale(1);
     const looks = [
-      ['look-rail', { sessionsCompact: true }, true],
-      ['look-tokyo', { sessionsCompact: false, cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
+      ['look-tokyo', { cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
       ['look-latte', { skinDark: null, skinLight: 'catppuccin-latte' }, false],
     ];
     for (const [name, prefs, dark] of looks) {
@@ -103,8 +103,8 @@ export default async function (ctx) {
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 600, y: 500 });
     await snap('chat-dark');
 
-    // 9 · ⌥⌘D, the chat's changes beside it — the list folded to its rail (⌥⌘B), for the room
-    await ctx.key('KeyB'); await ctx.waitFor(`window.peix.prefs().sessionsCompact`, { what: 'the rail' });
+    // 9 · ⌥⌘D, the chat's changes beside it — the list hidden (⌥⌘B), for the room
+    await ctx.key('KeyB'); await ctx.waitFor(`window.peix.prefs().listHidden`, { what: 'the list hidden' });
     await ctx.key('KeyD'); await ctx.waitFor(`window.peix.state().tab === 'changes' && document.querySelector('#chg .dfile, #chg .dl, #chg pre, #chg table')`, { what: 'the changes', timeout: 15000 }).catch(() => ctx.log('the changes did not show as expected'));
     await ctx.sleep(800);
     await snap('changes-dark');

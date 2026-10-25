@@ -76,24 +76,19 @@ the PR list under the header is as tall as you drag its foot.
     <td><img width="420" src="shots/overview-dark.webp" alt="⌥⌘A: every live chat in columns — asking you, clauding, watching — each showing what it is doing"></td>
   </tr>
   <tr>
-    <td align="center"><sub>⌥⌘D — the diff of what Claude just did, the list folded to a rail (⌥⌘B)</sub></td>
+    <td align="center"><sub>⌥⌘D — the diff of what Claude just did, the list hidden for the room (⌥⌘B)</sub></td>
     <td align="center"><sub>⌥⌘A — every agent at once, by what it wants from you</sub></td>
   </tr>
 </table>
 
 ## Make it yours
 
-Every look is in Settings › Appearance and Chat list (⌘,), or a key: the list folded to a rail of squares (⌥⌘B), Omarchy's
-twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one
-of each following it; your projects keep their hue in the theme's shades.
+Every look is in Settings › Appearance and Chat list (⌘,), or a key: the chat list hidden and the chat the whole width
+(⌥⌘B, or the first button in the status bar, whose mark says which), Omarchy's twelve themes (⌥⌘Y — Tokyo Night,
+Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one of each following it; your projects
+keep their hue in the theme's shades.
 
 <table>
-  <tr>
-    <td align="center" colspan="2"><img width="420" src="shots/look-rail.webp" alt="The list folded to a rail of squares, one per chat"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2"><sub><b>⌥⌘B</b> — the list folded to a rail, a square per chat</sub></td>
-  </tr>
   <tr>
     <td><img width="420" src="shots/look-tokyo.webp" alt="The Tokyo Night theme"></td>
     <td><img width="420" src="shots/look-latte.webp" alt="The Catppuccin Latte theme, in light mode"></td>
@@ -166,7 +161,7 @@ than your own: one that watches stories on a schedule can be challenged.
 | ⌥⌘V | the chat's folder in the external editor (VS Code or Zed), its own window |
 | ⌘T · ⌘W | a new tab — a shell, or a page from a page · close the tab you are in (VS Code Web's editors first, as in VS Code) |
 | ⌘2 · ⌘0 | split · close the other half |
-| ⌥⌘B | fold the list |
+| ⌥⌘B | hide the chat list, and show it again |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |
 | ⌥⌘M | lunch: today's menus, on a chalkboard |

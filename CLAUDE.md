@@ -232,7 +232,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 
 * **Two columns**: the selected project's chats → the chat. **The list's foot is the project filter's whole cue**
   (`#sessions` rows: the list `minmax(0, 1fr)`, the project): `#stitle` names the project (`hidden` on ALL; a click is
-  ⌥⌘P, × back to ALL), and the chat header's folder name toggles it (`.repo.on`); on the rail, `projAbbr` (`.ab`). The
+  ⌥⌘P, × back to ALL), and the chat header's folder name toggles it (`.repo.on`). The
   fish, the search and the funnel are the status bar's; no ＋, cog or « » (⌥⌘N, ⌘,, ⌥⌘B). At the
   notch the cards start under the strip (`.npad`); elsewhere flush with the top. → `project-cue.mjs`. A chat is *ready · clauding · done*
   (`bucket()`); the server keeps the finer `status` for notifications and the badge.
@@ -261,7 +261,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `radial-gradient` layer at `--mx` / `--my`, `--spot` strong in `--spotc` — registered, not inheriting, so a move
   restyles one card; `spotSoon` writes it once a frame on the `:hover` card, and after a render (a card redrawn under
   a still pointer is a new node), **the card's rect read once** — again after a scroll, a render or a resize, never
-  every frame (2026-10-13). Not on the rail. → `card-spot.mjs`.
+  every frame (2026-10-13). → `card-spot.mjs`.
 * **Type, corners and motion are tokens**: `--fs-2xs` … `--fs-xl` (10–18 px), `--r-1` … `--r-5` (3–14 px), and
   `--ease-out`, `--spring`, `--spring-soft` (`linear()` curves, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
@@ -318,9 +318,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   document clock, every card in step, by its `currentTime` first, then its `startTime` — only when something new may have started: a render
   queues it when `drawCards` changed the list (it says so), `renderBoardSoon` runs a queued one at once, and a run at
   once clears the queued one (2026-10-13). → `card-signals.mjs`.
-* **Folded (⌥⌘B), the list is a rail of squares**: `projAbbr` on a solid tint of the colour, the card's own edge
-  (ring, agents, monitor, question) still read; inside the card everything is `display: none` but `.abbr` (it carries
-  the tooltip) and `.rdot` (a PR at your move or a new reply, `wantOf` → `data-want`). The lanes fold on the rail too.
+* **Hidden (⌥⌘B, `#sbList` first in the status bar), the list is out of the layout** (2026-10-25; `prefs.listHidden` →
+  `main.lhide`, `applyList`): `#sessions` and `#splitter` `display: none` — no card runs a thing —, the chat the whole
+  width. **What only narrows the list shows it** (`showList`: the magnifier, a filter, a face, a project); shown, its
+  scroll is back and `phaseAnims()` phases the new rings. → `list-hide.mjs`.
 * **A project is a folder** (the registry's `cwd`, never the transcript's) **or a named set of folders** (state
   file); worktrees under a repo count as the repo — a named project's by its prefix (`inFolder`), its colour by
   the repo's name (`colorKey`), and **a folder project keyed by the repo for a chat in `<repo>/.claude/worktrees/<name>`**
@@ -373,7 +374,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **A colour as dark as that black turns it grey** (`nearBlack` → `main.darkchat`). **On a card, a colour too dark
   or too light for the panel is held where it shows**: `--lift` (`oklch(from … max(l, .62) c h)` dark, `min(l, .72)`
   light) for the edge, glow, spot, border and track; the glow's colour `--wash` is `--lift` but on
-  `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (rail, header). → the black step of `project-colors.mjs`.
+  `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (the header). → the black step of `project-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
   open; ⌥⌘0): the sea (`makeSea`, a canvas that outlives the draws, 15 fps on screen, at rest after
   `SEA_REST_MS` with no input, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
@@ -430,7 +431,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
   GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving
-  the view, lets go. Drawn only when its markup changed (`peopleDrawn`); none on the rail. → `people-row.mjs`.
+  the view, lets go. Drawn only when its markup changed (`peopleDrawn`). → `people-row.mjs`.
 * **A card comes in three sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and
   Claude's last reply —, *medium* the last word, *compact* neither. `cardHtml` always writes both `.snip`s (the older
   `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane*
@@ -440,8 +441,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   rounds, tickets and faces each optional** (2026-10-21, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone). → `card-parts.mjs`.
 * **A card is square** (`border-radius: 0`, the ring's too). **Its title row reads title · chips · time · F ·
   unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age (`.trow .time`) shows under the
-  pointer only, by `opacity`, keeping its room. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`; not on the
-  rail). → `card-marks.mjs`.
+  pointer only, by `opacity`, keeping its room. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
+  → `card-marks.mjs`.
 * **Only the open card and a clauding one wear the colour round their border**; the rest have the lit left edge alone
   (`background-origin: border-box` under a transparent border). **ALL** (`key: 'all'`) is `BLACK` through
   `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. `#splitter`
@@ -468,7 +469,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   *New replies* (`replied`: a ready chat whose last word is Claude's and came after the board last showed it —
   `seenAt`, the server's `seen` in the state file, `POST /api/sessions/:id/seen` from `markSeen`; `seenSince` for a
   chat never shown). Done chats never. On, the list is narrowed before anything counts it, every match shows (the
-  heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. The rail's dot, the Dock's
+  heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. The Dock's
   badge and the menu bar read `replied` too. → `test/seen.test.mjs`, `lanes.mjs`, `pr-turn.mjs`.
 * **A card clicked open flies its title into the header** (`flyFrom`, `flyTitle`, `.flytitle`) — the click handler
   only, never a key, a picker or the chat already open.
@@ -489,8 +490,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `#slist` has a definite `grid-column`): a card is out of sight when its *middle* is past the edge (`drawEdges`, by
   `offsetTop`, hence `#slist { position: relative }`); a dot red for one asking, amber for clauding; a click scrolls a
   screenful; the PR list's likewise (`.pedge`). → `list-ends.mjs`.
-* **The timeline is the list's scrollbar, out of sight until called** (`#tline`, over the list's cell, `display:
-  none` on the rail; the native scrollbar hidden): the pointer held at the list's edge (`TL_EDGE`, `TL_DWELL_MS`; gone
+* **The timeline is the list's scrollbar, out of sight until called** (`#tline`, over the list's cell; the native
+  scrollbar hidden): the pointer held at the list's edge (`TL_EDGE`, `TL_DWELL_MS`; gone
   `TL_HIDE_MS` after) shows it (`#sessions.tlshow`). **To scale**: its height is the list's `scrollHeight`, a label
   where its run starts (`tl.runs`, built in `renderSessionList`: one day and one group; none under a query), the thumb
   (`TL_W`, ≥ `TL_MIN`) the window. **The swell is a fisheye** round the pointer (`tlWarp`, `TL_R`, `TL_MAX`), which
@@ -499,7 +500,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13); `show()` and
   anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
-  `renderBar`, `body`'s grid row 2): `#sbFind` (`#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
+  `renderBar`, `body`'s grid row 2): `#sbFind` (`#sbList`, `#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light and its click the About box; the asking and monitor counts while any; the chat, `chatSeg`; the update, `updSeg`),
   `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
   every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`, `uGrant`) — a click lifts its rows (`usageRows`, `uColor`, `uPace`/`uSpan`, `.umoney`),
@@ -536,7 +537,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   true` (the welcome's only) makes a folder under the home; in the app Choose… is an `NSOpenPanel` (`peixFolder`).
   Settings' Projects and Jira panes
   (`renderSetup` → `#setup`, `#jiraSet`; not redrawn under a box with the keys) are reached by
-  `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`, `.srow.proj` (its `.stile` opens `.ssw` and `.sab`), `.sadd` — keep those names. → `test/config.test.mjs`, `cog-setup.mjs`, `welcome.mjs`.
+  `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`, `.srow.proj` (its `.stile` opens `.ssw`), `.sadd` — keep those names. → `test/config.test.mjs`, `cog-setup.mjs`, `welcome.mjs`.
 * **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size — a hole in a
   veil (the hole's own shadow) round each step's part, the card on the side with room. Once on its own after the
   welcome's answer (`prefs.toured`; the harness's `true`), again from Settings' sidebar, ⌥⌘L, home, the ? sheet and About.
@@ -739,7 +740,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`) — a move repaints
   nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
   `HOUSING_R` by eye) and the row keeps `notchPad()` clear; the top corners round as the screen's
-  (`main.tiles.notch`, `--screen-r`) only where a housing says the screen is a MacBook's. → `tiles.mjs`.
+  (`main.tiles.notch`, `--screen-r`; the list hidden, both the chat's) only where a housing says the screen is a MacBook's. → `tiles.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).
@@ -961,8 +962,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `letGoEnded` (`Element.prototype.animate`'s) cancels each when done, timeline nulled. → `animations-let-go.mjs`.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read
   everything first; keep it so.
-* `projIcon(name)` marks ⌥⌘O's project wherever its name is written; `projAbbr` is the rail's squares. Both, and a
-  folder's colour, read the setup by the shown name (`projCfg`) — never a map in the code.
+* `projIcon(name)` marks ⌥⌘O's project wherever its name is written. It, and a folder's colour, read the setup by the
+  shown name (`projCfg`) — never a map in the code.
 * **The small controls' hover ease is an `:is()` with ids in it, so it weighs an id**: a `transition` of its own on a
   `.cpr`, `.btn`, `.act`… needs an id in its selector, or it is the ease's, silently — ask `getAnimations()` mid-move.
 * **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`; the
