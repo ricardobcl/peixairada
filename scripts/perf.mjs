@@ -231,7 +231,7 @@ async function measure(b, tag) {
 // ---- the runs, interleaved when there are two trees: A B, B A, … so a drift in this Mac's load falls on both ----
 const results = new Map();
 try {
-  const here = await startBoard(ROOT, 'this tree');
+  await startBoard(ROOT, 'this tree');
   if (AGAINST) {
     const sha = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short', AGAINST], { encoding: 'utf8' }).stdout.trim();
     if (!sha) throw new Error(`no such commit: ${AGAINST}`);

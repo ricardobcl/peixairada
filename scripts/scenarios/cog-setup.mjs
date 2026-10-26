@@ -76,7 +76,6 @@ export default async function (ctx) {
   // ---- a colour, and ⌥-click to take it off ----
   await set('.sadd', repo);
   await ctx.waitFor(`document.activeElement?.matches('#setup .srow.proj[data-name="${repo}"] .ssw input')`, { what: 'the new row, its colour with the keyboard' });
-  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#setup .sab')`), false, 'no short name to type since 2026-10-25: the list’s rail that wore it went');
   await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').click()`);   // closed again
   // the square once (2026-10-16): its initials on it, the colour under it only once it is clicked
   const shown = sel => `(e => !!e && e.getClientRects().length > 0)(document.querySelector('#setup .srow.proj[data-name="${repo}"] ${sel}'))`;

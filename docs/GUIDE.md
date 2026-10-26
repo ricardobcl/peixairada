@@ -220,7 +220,7 @@ or *key* to find a setting wherever it is):
 - **Chat list** — card size (compact, or larger only where a chat needs you).
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
-  project ⌥⌘O starts a chat in, a short name and a colour per project, and the projects you hid.
+  project ⌥⌘O starts a chat in, a colour per project, and the projects you hid.
 - **Jira** — your site, email and API token (the token goes to your keychain, never into the file).
 - **Chat** — the chat's repo: a new one, one you're in, an invitation to join; or leaving it (see below).
 - **Updates & access** — where the board's update stands and whether it updates itself (off to begin with: the status

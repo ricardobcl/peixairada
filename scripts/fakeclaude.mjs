@@ -200,7 +200,7 @@ function clearSession() {
   out('\x1b[2J\x1b[H'); shown = []; mark = 0;
   say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (cleared) · ${cwd}`, '']); commit();
 }
-const timer = setInterval(tick, 1000);
+setInterval(tick, 1000);
 process.stdout.on('resize', FULL ? paint : drawLive);
 let ctrlC = 0, busy = false, focusView = false;
 // The keys, read as a terminal app reads them (2026-10-14): escape sequences whole — focus reports, arrows and the

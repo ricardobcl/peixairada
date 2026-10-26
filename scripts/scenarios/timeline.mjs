@@ -5,7 +5,7 @@
 // pointer come out over the cards as labels, the nearest largest, pushed apart so none overlap. Dragged it scrolls the
 // list, a day clicked is scrolled to, a wheel over it scrolls; off it, it goes. What this checks is the runs, where the
 // labels and the thumb sit against the list, the rail's place and its thumb's look, the call and the going, the swell,
-// the three ways of moving the list from the rail, a query (no days) and the rail of squares (no timeline).
+// the three ways of moving the list from the rail, and a query (no days).
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';

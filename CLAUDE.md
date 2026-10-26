@@ -263,7 +263,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   a still pointer is a new node), **the card's rect read once** — again after a scroll, a render or a resize, never
   every frame (2026-10-13). → `card-spot.mjs`.
 * **Type, corners and motion are tokens**: `--fs-2xs` … `--fs-xl` (10–18 px), `--r-1` … `--r-5` (3–14 px), and
-  `--ease-out`, `--spring`, `--spring-soft` (`linear()` curves, read by the script through `cssToken`) and `--t-hover`.
+  `--ease-out`, `--spring` (a `linear()` curve, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
   dips by the `scale` property** (the FLIP's `transform` and the ring's stay theirs): a card 99 % unless the press is on
   a control in it (`:has`), small controls 97 % — never the address, nor a tab pressed on its × (it moved

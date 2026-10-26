@@ -16,7 +16,7 @@
 <style>
   /* The type scale and the radii (2026-10-12): eighteen sizes from 9 to 19 px in half-pixel steps and fourteen radii
      were one of each a rule wanted. Seven sizes, five radii; a new rule takes one of them (a fit that needs its own —
-     the rail's four-letter names — keeps its number). */
+     the initials in a 16 px face — keeps its number). */
   :root { --fs-2xs: 10px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
     --r-1: 3px; --r-2: 4px; --r-3: 6px; --r-4: 10px; --r-5: 14px; }
   :root {
@@ -35,15 +35,14 @@
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #6f6e66; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
-    /* Motion (2026-10-11): one ease out for what settles, and two springs for what arrives with a touch of overshoot —
-       linear() curves of a damped oscillator (damping .6 and .82) sampled at 40 stops; --t-hover the small controls'
-       ease. The script reads the springs from here (SPRING, SPRING_SOFT), so a curve is written once. */
+    /* Motion (2026-10-11): one ease out for what settles, and a spring for what arrives with a touch of overshoot — a
+       linear() curve of a damped oscillator (damping .6) sampled at 40 stops; --t-hover the small controls' ease. The
+       script reads the spring from here (SPRING), so the curve is written once. */
     --ease-out: cubic-bezier(.2, .7, .2, 1); --t-hover: .12s;
     /* Grain (2026-10-11): a tile of still noise, faint white speckles, laid over the board's broad gradients — the chat
        header's and the tiles' wallpaper — where a dark gradient across a wide box bands into steps. */
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
     --spring: linear(0, .025, .09, .182, .29, .405, .52, .63, .731, .819, .895, .957, 1.006, 1.043, 1.068, 1.085, 1.093, 1.095, 1.092, 1.085, 1.076, 1.065, 1.055, 1.044, 1.033, 1.024, 1.016, 1.009, 1.003, .999, .995, .993, .992, .991, .991, .991, .992, .993, .994, .995, 1);
-    --spring-soft: linear(0, .013, .048, .099, .16, .228, .298, .369, .439, .506, .569, .628, .682, .73, .774, .813, .847, .876, .902, .924, .942, .957, .97, .98, .989, .995, 1, 1.004, 1.007, 1.009, 1.01, 1.011, 1.011, 1.011, 1.011, 1.01, 1.009, 1.009, 1.008, 1.007, 1);
     color-scheme: light;
   }
   /* The board's appearance is its own (2026-10-12): data-theme on the root, dark or light — set before the first paint by
@@ -637,9 +636,8 @@
   /* The glow eases (2026-09-27, night, for the wash it was then): registered percentages that the hover and the open
      card raise, so the gradient transitions (a gradient cannot go to a flat colour, and two gradients only when nothing
      but their colours differ). In fast, out slower: the destination's transition is the one that runs, so .card:hover
-     shortens it. The ring's ::after cover inherits the background and follows. --slope is the old wash's, unused. */
+     shortens it. The ring's ::after cover inherits the background and follows. */
   @property --tint { syntax: '<percentage>'; inherits: false; initial-value: 37%; }
-  @property --slope { syntax: '<percentage>'; inherits: false; initial-value: 8%; }
   @property --reach { syntax: '<percentage>'; inherits: false; initial-value: 24%; }
   @property --fall { syntax: '<number>'; inherits: false; initial-value: .5; }
   /* The glow under the pointer (2026-10-09; a switch until 2026-10-14): a round light of the colour between the
@@ -2742,7 +2740,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   css · home (2026-10-10): the column with no chat open — fastfetch's block, then the day
 //   css · ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column
 //   css · project editor
-//   css · the chat (2026-10-17): a GitHub repo's rooms, in a panel over the board's foot
+//   css · the chat (2026-10-17): a GitHub repo's issue, in a panel over the board's foot
 //   css · the small print: wrapping, figures, selection, focus, overscroll
 //   css · reduced motion: the board says the same, still
 //   css · lunch (2026-10-18): the sign and the day's dishes in the fish's lane, ⌥⌘M's chalkboard, Settings › Lunch
@@ -2750,7 +2748,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · the board's key (2026-10-16)
 //   js  · header controls
 //   js  · themes: one keystroke re-skins the board (2026-10-10)
-//   js  · sessions column width
+//   js  · the chat list: shown or hidden, and its width
 //   js  · helpers
 //   js  · the status bar: the machine at the window's foot (2026-10-09)
 //   js  · plan usage: the status bar's pies and their rows
@@ -2790,7 +2788,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · attachments: files dropped on the board, images pasted
 //   js  · a second claude on this chat
 //   js  · transcript rendering
-//   js  · the chat: a GitHub repo's rooms, with the people the board is shared with (2026-10-17)
+//   js  · the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17)
 //   js  · alerts
 //   js  · lunch: the reminder, and the menus of the places you go (2026-10-18)
 //   js  · the chat column across a reload (2026-10-16)
@@ -3381,7 +3379,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const wornKey = () => skinPreview ?? (prefs.skinFollow ? slotOf(sysDark()) : prefs.skin);
   /** The theme worn now, null for the board's own. */
   const skinOn = () => SKINS[wornKey()] ? wornKey() : null;
-  const skinName = k => SKINS[k]?.name || 'the board’s own';
   /** The appearance picked: auto (following macOS), dark or light. */
   const lookMode = () => prefs.skinFollow ? 'auto' : skinDarkOf(prefs.skin) ? 'dark' : 'light';
   const skinLabel = k => SKINS[k]?.name || `the board’s own ${skinDarkOf(k) ? 'dark' : 'light'}`;
@@ -3998,7 +3995,7 @@ const toolName = n => {
   }, 2600);   // the fish, for the bar's connection: the same mark, belly-up while the stream is down
   function renderBar() {
     if (!state.snapshots) return;
-    const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+    const all = [...state.sessions.values()], n = f => all.filter(f).length;
     const ask = n(s => asking(s));
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     const left = [`<button class="seg conn${bar.conn ? '' : ' off'}${bar.back ? ' back' : ''}" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box">${FISH_LOGO()}${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
@@ -4196,9 +4193,8 @@ const toolName = n => {
     replied: { name: 'New replies', none: 'No new replies', tip: 'chats Claude answered since you last looked', test: s => bucket(s) === 'ready' && replied(s) },
   };
   const listFilter = () => FILTERS[prefs.listFilter] || null;
-  const wantOf = s => FILTERS.move.test(s) ? 'move' : FILTERS.replied.test(s) ? 'replied' : '';
   // the cards large with cards by lane on: a chat asking you, clauding, at your move or with a new reply
-  const roomy = s => asking(s) || bucket(s) === 'working' || !!wantOf(s);
+  const roomy = s => asking(s) || bucket(s) === 'working' || FILTERS.move.test(s) || FILTERS.replied.test(s);
   // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
   // of them, so `wapi` has to be somewhere in the project or the branch and cannot be spelled out of letters
   // borrowed from a title and a prompt (2026-09-21). Short and identifying first — ties go to the earlier field.
@@ -4537,7 +4533,7 @@ const toolName = n => {
   const FLIP_MS = 220, ENTER_MS = 180, LEAVE_MS = 200;
   // The motion tokens, read once from :root (2026-10-11) — the CSS is where a curve is written.
   const cssToken = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const EASE_OUT = cssToken('--ease-out') || 'ease-out', SPRING = cssToken('--spring') || 'ease-out', SPRING_SOFT = cssToken('--spring-soft') || 'ease-out';
+  const EASE_OUT = cssToken('--ease-out') || 'ease-out', SPRING = cssToken('--spring') || 'ease-out';
   const MOTION = [];   // the last moves the list made, {id, kind, at} — window.peix.motion(), so a check need not catch a 200 ms slide in the act
   const noteMotion = (id, kind, dy = 0) => { MOTION.push({ id, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 1000) MOTION.shift(); };   // a check slices it from a length it read: kept long enough not to roll under it (64 until 2026-10-11, when the counts' rolls and the live lines came)
   const slide = (el, kind, frames, opts, dy = 0) => { noteMotion(el.dataset.id || null, kind, dy); return follow(el.animate(frames, { ...opts, id: kind })); };
@@ -6136,11 +6132,11 @@ const toolName = n => {
   // ---- the setup: the cog's second half (2026-09-28) ---------------------------------------------------------------
   // Handed to colleagues, the board had to stop knowing one Mac. What had been written into this page and the server
   // for one Mac is set here, under the switches: the folders the repos live in, each with the GitHub org ＋ clone asks
-  // (`roots`), the project ⌥⌘O starts a chat in (`quick`), and a short name and a colour per project (`projects`). It
-  // is the server's (`config` in its state file, a `config` event), so the app and every browser agree — the switches
-  // above it are this browser's. A box is written on change, a colour as the panel rests; what the server refuses is
-  // said beside it and the row put back. The markup is drawn only when it changed, and never under a box that has the
-  // keyboard: that waits for the focus to leave the section.
+  // (`roots`), the project ⌥⌘O starts a chat in (`quick`), and a colour per project (`projects`; a short name by
+  // hand). It is the server's (`config` in its state file, a `config` event), so the app and every browser agree — the
+  // switches above it are this browser's. A box is written on change, a colour as the panel rests; what the server
+  // refuses is said beside it and the row put back. The markup is drawn only when it changed, and never under a box
+  // that has the keyboard: that waits for the focus to leave the section.
   const setupUi = { open: null, pending: new Set(), colors: new Map(), colorTimer: null, raf: 0, jira: null };
   /** What the server says of Jira (2026-10-08): the site, where the token is, who you are there, what went wrong — asked
    *  as the settings open and after every change to it. */

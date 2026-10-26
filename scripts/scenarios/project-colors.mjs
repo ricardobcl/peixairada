@@ -59,7 +59,7 @@ export default async function (ctx) {
     await ctx.settle();
 
     const look = () => ctx.evaluate(`JSON.stringify((() => {
-      const cs = (el, p) => el ? getComputedStyle(el).getPropertyValue(p) : null, root = document.documentElement;
+      const cs = (el, p) => el ? getComputedStyle(el).getPropertyValue(p) : null;
       const card = id => document.querySelector('#slist > .card[data-id="' + id + '"]'), plain = card(${JSON.stringify(onPr.id)});
       return {
         repo: [${JSON.stringify(busy.id)}, ${JSON.stringify(onPr.id)}].map(id => card(id).style.getPropertyValue('--repo')),

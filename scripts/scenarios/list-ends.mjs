@@ -1,8 +1,8 @@
 // The chat list's two ends (2026-09-25): a pill at the top and one at the bottom counting the cards more than half
 // out of sight that way, with a dot when one of them is asking you (red) or clauding (the working colour). What
 // this checks is the counts against the cards' own rectangles at the top, in the middle and at the end of the list,
-// the dot, a click on a pill scrolling a screenful, the counts following the cog's card size without a scroll, and
-// the folded rail keeping the number without the word. The list is narrowed to the scenario's folder with ⌥⌘P.
+// the dot, a click on a pill scrolling a screenful, and the counts following the cog's card size without a scroll.
+// The list is narrowed to the scenario's folder with ⌥⌘P.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';

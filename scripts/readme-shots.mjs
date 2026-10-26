@@ -2,7 +2,7 @@
 //   npm run scenario -- scripts/readme-shots.mjs
 // and look at docs/shots/ before committing them. Not in scripts/scenarios/: it checks nothing, it draws. The clips are
 // readme-clips.mjs's. WebP rather than PNG: the grain made each PNG megabytes.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chat, endBoard, kit, OUT, PAGE, VS, W, H } from './readme-board.mjs';
 export { meta } from './readme-board.mjs';
@@ -18,8 +18,6 @@ export default async function (ctx) {
   const VSC = `127.0.0.1:${VS.port}`;
   try {
     mkdirSync(OUT, { recursive: true });
-    for (const f of ['board-dark', 'board-light', 'simple-dark', 'simple-light', 'cards-dark', 'timeline-dark', 'picker-dark']) rmSync(join(OUT, `${f}.png`), { force: true });
-    rmSync(join(OUT, 'look-rail.webp'), { force: true });   // the list folded to a rail, a look until 2026-10-25
     await scale(2);
     await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: PAGE });
     await ctx.server.post(`/api/sessions/${chat('Rewrite the getting-started guide').id}/done`, { done: true });

@@ -3,7 +3,7 @@
 // x 771.5 to 956.5, measured): the chat list's head stays at the top while the list ends short of the housing; the chat
 // header keeps its title left of the housing and its chips and ··· right of it, nothing of the row under it; a list
 // dragged under the housing pads its head down, and the header, too far left for a title, pads down too; a list past
-// the housing leaves a header that lifts as it is; the rail is the lifted case; and the fill going off puts it all
+// the housing leaves a header that lifts as it is; the list hidden is the lifted case; and the fill going off puts it all
 // back. Since 2026-09-28: what follows the title stands at the far right, the header is black from the project's name
 // on, and a title that does not fit left of the housing runs on under it (the floating header's way, the only header
 // since 2026-10-14; it went right of the housing before) — a short one stays left.
@@ -80,13 +80,13 @@ export default async function (ctx) {
   ctx.assert.ok(out.past.headLeft >= NOTCH.right, `the header starts past the housing (${out.past.headLeft})`);
   ctx.assert.equal(out.past.headPad, 7, '…at its own padding');
 
-  // Back to the usual width, and the rail: the lifted case with a hole
+  // Back to the usual width, and the list hidden (⌥⌘B): the lifted case with a hole
   await listWidth(380);
   await ctx.key('KeyB'); await ctx.sleep(250);
-  out.rail = await read();
-  ctx.assert.deepEqual([out.rail.listPad, out.rail.chatPad, out.rail.hole], [false, false, true], 'the rail: lifted, the header holed');
-  ctx.assert.deepEqual(out.rail.underHousing, [], 'nothing under the housing on the rail');
-  await ctx.shot('3-rail', { x: 0, y: 0, width: 1728, height: 60 });
+  out.hidden = await read();
+  ctx.assert.deepEqual([out.hidden.listPad, out.hidden.chatPad, out.hidden.hole], [false, false, true], 'the list hidden: lifted, the header holed');
+  ctx.assert.deepEqual(out.hidden.underHousing, [], 'nothing under the housing with the list hidden');
+  await ctx.shot('3-list-hidden', { x: 0, y: 0, width: 1728, height: 60 });
   await ctx.key('KeyB'); await ctx.sleep(250);
 
   // A redraw of the header keeps its way round the housing (the h2 is rebuilt): the chips' fold toggled

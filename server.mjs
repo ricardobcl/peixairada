@@ -596,7 +596,7 @@ function newSession(id, file) {
     startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
     openedAt: null,    // when a page last opened the chat (ms): its PRs are polled as if it had just been touched (prEvery)
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
-    rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
+    rivals: [],   // other live processes on this chat (registry entries beyond `live`) — the page's hasRival
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null, tasksGone: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks, the calls that started them, and the ids the poll let go (letTaskGo)
@@ -607,11 +607,6 @@ function newSession(id, file) {
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []   // the kinds of alert owed (queueNotify), a Set
   };
 }
-
-// Where a chat lives: the registry's entry point while it runs, else the last one its transcript
-// recorded. Every line the CLI writes carries it, so a chat that was ever continued in VS Code says so
-// at its tail, and one taken to a terminal with `claude --resume` stops saying so.
-function inVsCode(s) { return (s.live?.entrypoint || s.entrypoint) === 'claude-vscode'; }
 
 // Whether the chat is blocked on you, in Claude Code's own words: every interactive claude writes `status`
 // (busy · idle · waiting · shell) to its registry file on each change, and `waitingFor` while it is waiting —
@@ -691,6 +686,8 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity, startedAt: s.startedAt,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
+    // where it lives (the page's inVsCode): the registry's entry point while it runs, else the last its transcript
+    // recorded — every line carries it, so a chat continued in VS Code says so at its tail, and one resumed elsewhere stops
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(mine.term), shell: termSummary(mine.shell), shells: mine.shells.map(termSummary), entryCount: s.entryCount, loaded: s.loaded, file: s.file,
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
