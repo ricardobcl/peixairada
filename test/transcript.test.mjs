@@ -68,7 +68,7 @@ test('titles: the board title beats the user\'s, which beats the PR\'s, which be
   assert.equal(summary(s).title, 'Mine');
 });
 
-test('PRs: most recently mentioned first, mentions counted, the oldest open one names the chat', () => {
+test('PRs: most recently mentioned first, mentions counted; the chat\'s own PR names it', () => {
   const s = newSession('s6', '/x/s6.jsonl');
   fold(s, user('see https://github.com/acme/r/pull/10 and https://github.com/acme/r/pull/11', { i: 0 }));
   fold(s, assistant([{ type: 'text', text: 'Also https://github.com/acme/r/pull/10 again, and https://github.com/acme/r/pull/12/files' }], 'end_turn', 1));
@@ -77,13 +77,37 @@ test('PRs: most recently mentioned first, mentions counted, the oldest open one 
   assert.equal(s.prs.find(p => p.number === 12).label, 'r#12');
   assert.equal(s.prs.find(p => p.number === 12).url, 'https://github.com/acme/r/pull/12');   // /files stripped
   assert.equal(prTitle(s), null);   // nothing titled yet
-  for (const p of s.prs) { p.title = 'PR ' + p.number; p.state = p.number === 11 ? 'merged' : 'open'; }
-  assert.equal(prTitle(s), 'PR 10');   // 10 and 12 open; 10 was mentioned first (firstAt)
-  for (const p of s.prs) p.state = 'merged';
-  assert.equal(prTitle(s), 'PR 10');   // none open → the oldest still wins, so the title survives the merge
+  for (const p of s.prs) { p.title = 'PR ' + p.number; p.state = p.number === 12 ? 'open' : 'merged'; }
+  assert.equal(prTitle(s), 'PR 10', 'the first you named, merged, over the open one Claude brought up');
+  s.prs.find(p => p.number === 10).title = null;
+  assert.equal(prTitle(s), null, 'its title not in yet: none, not the next one\'s');
+  s.prs.find(p => p.number === 10).title = 'PR 10';
   fold(s, { type: 'pr-link', prUrl: 'https://github.com/acme/r/pull/11', timestamp: ts(5) });
   assert.equal(s.prs[0].number, 11);   // a pr-link line reorders but does not count as a mention
   assert.equal(s.prs[0].count, 1);
+  assert.equal(prTitle(s), 'PR 11', 'one the chat opened or pushed to before one you named');
+});
+
+test('PRs Claude only mentioned title nothing, and the cap puts them aside before the chat\'s own', () => {
+  const s = newSession('s7', '/x/s7.jsonl');
+  fold(s, user('review https://github.com/acme/r/pull/1', { i: 0 }));
+  fold(s, assistant([{ type: 'text', text: 'Related: https://github.com/acme/r/pull/2' }], 'end_turn', 1));
+  for (const p of s.prs) { p.title = 'PR ' + p.number; p.state = p.number === 1 ? 'merged' : 'open'; }
+  assert.equal(prTitle(s), 'PR 1', 'merged, it still names the chat');
+  const other = newSession('s8', '/x/s8.jsonl');
+  fold(other, assistant([{ type: 'text', text: 'Related: https://github.com/acme/r/pull/2' }], 'end_turn', 1));
+  other.prs[0].title = 'PR 2'; other.prs[0].state = 'open';
+  assert.equal(prTitle(other), null, 'a PR Claude brought up is not the chat\'s');
+
+  // forty more, one at a time: the oldest heard of goes first, the one you named stays
+  for (let n = 100; n < 140; n++) fold(s, assistant([{ type: 'text', text: `see https://github.com/acme/r/pull/${n}` }], 'end_turn', 2));
+  assert.equal(s.prs.length, 40);
+  assert.ok(s.prs.some(p => p.number === 1), 'the chat\'s own is kept');
+  assert.ok(!s.prs.some(p => p.number === 2), 'the oldest it only heard of went');
+  assert.equal(prTitle(s), 'PR 1');
+  fold(s, user('and https://github.com/acme/r/pull/2 again?', { i: 9 }));
+  const back = s.prs.find(p => p.number === 2);
+  assert.deepEqual([back.firstAt, back.count, back.named != null], [ts(1), 2, true], 'named again, it is back as it was, first heard at its first sighting');
 });
 
 // Work that outlives the turn: a Monitor (or a background Bash) keeps running after the reply, and the transcript

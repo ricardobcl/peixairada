@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-27, later — a chat's PRs are its own
+
+Ricardo: "it may be my impression, but some chats seem to have a lot of PRs associated that don't seem related? do a
+deep investigation to make sure there's no "contamination" happening" — and, on the findings, "do it".
+
+* **Nothing leaks between chats.** Every chat's transcript was read again on its own through `indexFile` and `fold`
+  (an import, `indexing` true: no GitHub) and set beside the live `/api/sessions`. All 381 chats matched, and so did
+  every PR on them (689 on 228 chats): each came from that chat's own file. One chat differed only by `MAX_PRS`'s cut.
+  No PR came from a line another session wrote, a compaction's summary, a skill or a sub-agent, and the page's cards
+  and sessions matched the API. What looked unrelated was named in the chat itself, and four rules made too much of it:
+* **The chat's title is its own PR** (`prTitle`, `linked`, `named`): the first it opened or pushed to (a pr-link line),
+  else the first you named, kept through its merge; a PR Claude only mentioned titles nothing, and the AI's title
+  stands. The oldest PR still open did: once the chat's PR merged, any open one it had brought up took the title — a
+  review of `widgets#40` read "Close the old cache" after Claude said that #38 could be closed —, and a chat that asked
+  for the state of your open PRs took the title of whichever the answer named first. 32 chats wore a PR's title that
+  was neither. **Past `MAX_PRS` the oldest PR the chat only heard of goes, never its own**, and is kept aside whole
+  (`prsGone`), so naming it again brings it back with its first sighting: an answer naming sixty PRs had pushed the
+  chat's own out halfway and back in, dated by the answer. The README's board writes the pr-link its `gh pr create`
+  would have (`prLinkLine`).
+
 ## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once, a page's address edited
 
 Ricardo:

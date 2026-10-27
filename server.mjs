@@ -590,6 +590,7 @@ function newSession(id, file) {
     slug: file ? basename(dirname(file)) : null,
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [], tickets: [], ticketBranch: null,
+    prSeq: 0, prsGone: null,   // notePr: the order PRs were heard in, and those MAX_PRS put aside
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
     compacting: false,   // the turn is a /compact you typed: its compact_boundary ends it (fold)
     clearedAt: null,   // the time of the /clear this transcript begins with, if it does (tickCleared)
@@ -793,7 +794,10 @@ const MAX_PRS = 40;
  * Code writes several of those per PR, so they order the list and date it but do not count as mentions.
  * Most recently mentioned first, so the header leads with the PR in play now. `ref` is how a short reference named it
  * (`bare`, a `#12`; `repo`, with its repo — see below); a URL or a pr-link line has none, and makes the PR the chat's
- * whatever GitHub says.
+ * whatever GitHub says. The chat's own PRs are marked in the order it made them its own (2026-10-27): `linked` at its
+ * first pr-link line, `named` at the first time you named it — what titles the chat (prTitle). Past MAX_PRS the oldest
+ * PR it only heard of goes, never one of its own (a listing of sixty PRs pushed out the one the chat was about), and is
+ * kept aside whole (`prsGone`), so naming it again brings it back as it was, its first sighting with it.
  */
 /** A PR's one spelling: GitHub's owner and repo names are any case, so `Acme/Widgets` and `acme/widgets` were two PRs —
  *  two chips, two turns, two alerts for one move (2026-10-03). The label keeps the case first seen. */
@@ -805,19 +809,29 @@ function notePr(s, url, ts, by, ref = null) {
   if (ref && noPr.has(clean)) return;
   const at = s.prs.findIndex(p => p.url === clean), off = unlinked[s.id]?.[clean];
   if (off && at < 0 && !(by === 'user' && ts > off)) return;   // taken off the chat, and not named by you since
-  const pr = at >= 0 ? s.prs.splice(at, 1)[0] : {
+  const gone = at < 0 && s.prsGone?.get(clean);
+  if (gone) s.prsGone.delete(clean);
+  const pr = at >= 0 ? s.prs.splice(at, 1)[0] : gone || {
     url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
-    count: 0, by: null, firstAt: ts, ref,
-    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null, refs: prStatus.get(clean)?.refs ?? null,
-    rounds: roundsOf(clean), logged: loggedOf(clean)
+    count: 0, by: null, firstAt: ts, ref, linked: null, named: null
   };
+  if (at < 0) {   // what GitHub has said of it since, a PR put aside included
+    const i = prStatus.get(clean);
+    Object.assign(pr, { state: i?.state ?? null, title: i?.title ?? null, turn: i?.turn ?? null, people: i?.people ?? null, checks: i?.checks ?? null, refs: i?.refs ?? null, rounds: roundsOf(clean), logged: loggedOf(clean) });
+  }
   if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
+  const seq = ++s.prSeq;
+  if (by == null) pr.linked ??= seq; else if (by === 'user') pr.named ??= seq;
   pr.lastAt = ts || pr.lastAt || null;
   s.prs.unshift(pr);
-  if (s.prs.length > MAX_PRS) s.prs.length = MAX_PRS;
+  if (s.prs.length > MAX_PRS) {
+    const i = s.prs.findLastIndex(p => p.linked == null && p.named == null);
+    const [out] = s.prs.splice(i >= 0 ? i : s.prs.length - 1, 1);
+    (s.prsGone ||= new Map()).set(out.url, out);
+  }
   if (!indexing) queuePr(clean);   // at boot this would ask GitHub about every PR in every transcript
 }
 
@@ -932,18 +946,15 @@ function forgetRef(url) {
 }
 
 /**
- * Which PR names the chat. Several can come up in one conversation, and the oldest one still open is
- * the one being worked on: the later ones are usually references — the PR this one follows, the one it
- * conflicts with — while merged and closed are finished business. When none is open the oldest wins
- * anyway, so a card keeps its title through the merge instead of flipping back to Claude's. Titles
- * arrive from `gh` with the state, so this is null until that lands.
+ * Which PR names the chat (2026-10-27): its own — the first it opened or pushed to (a pr-link line, Claude Code's
+ * record of the session's PR), else the first you named — through its merge and after. A PR Claude only mentioned names
+ * nothing, and the AI's title stands: the oldest PR still open did, so a chat whose PR merged took the title of any open
+ * one it had brought up, and one that listed your open PRs the title of whichever came first. Titles arrive from `gh`
+ * with the state, so this is null until that lands — for that PR, not the next.
  */
 function prTitle(s) {
-  const titled = s.prs.filter(p => p.title && shownPr(p) && !pastRef(p));
-  if (!titled.length) return null;
-  const open = titled.filter(p => p.state === 'open' || p.state === 'draft');
-  return (open.length ? open : titled)
-    .reduce((a, b) => (String(a.firstAt || '') <= String(b.firstAt || '') ? a : b)).title;
+  const first = k => s.prs.reduce((a, p) => p[k] != null && shownPr(p) && !pastRef(p) && !(a?.[k] < p[k]) ? p : a, null);
+  return (first('linked') || first('named'))?.title ?? null;
 }
 
 // ---- …and whether they are open, merged or closed --------------------------------------------

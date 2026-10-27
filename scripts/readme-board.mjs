@@ -16,7 +16,7 @@ import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeFixture, replyLines, taskNoteLine, toolLines } from './fixture.mjs';
+import { makeFixture, prLinkLine, replyLines, taskNoteLine, toolLines } from './fixture.mjs';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const OUT = join(ROOT, 'docs', 'shots');
@@ -153,6 +153,7 @@ export const { chats } = makeFixture(claudeDir, [
       ...replyLines({ id, cwd: SF, text: gridReply, at: ago(37), model: FABLE }),
       userLine(id, SF, 'yes, open it', ago(35)),
       ...toolLines({ id, cwd: SF, name: 'Bash', input: { command: 'gh pr create --fill', description: 'Open the PR' }, result: 'https://github.com/acme/storefront/pull/479', at: ago(34) }),
+      prLinkLine({ id, url: 'https://github.com/acme/storefront/pull/479', at: ago(34) }),
       ...replyLines({ id, cwd: SF, text: 'Opened https://github.com/acme/storefront/pull/479 — the visual snapshots for the grid are updated in the same commit.', at: ago(33), model: FABLE }),
     ] },
   // clauding: a tool call in flight

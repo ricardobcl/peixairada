@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { replyLines, toolLines } from './fixture.mjs';
+import { prLinkLine, replyLines, toolLines } from './fixture.mjs';
 import { chat, endBoard, FABLE, kit, meta as board, OUT, PAGE, PRS, prsFile, VS } from './readme-board.mjs';
 
 export const meta = { ...board, env: { ...board.env, PR_TTL_MS: '1000', PR_WATCH_MS: '2000' }, prefs: { ...board.prefs, cards: 'compact' } };
@@ -268,6 +268,7 @@ export default async function (ctx) {
         append(c, [{ ...lines(c).at(-1), type: 'user', uuid: randomUUID(), timestamp: new Date().toISOString(), message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: ask, content: 'User has answered your questions: "Which queue should the webhooks go through?"="SQS".' }] } }]);
         await sleep(1200);
         append(c, toolLines({ id: c.id, cwd: c.cwd, name: 'Bash', input: { command: 'gh pr create --draft --fill', description: 'Open the PR' }, result: 'https://github.com/acme/billing-api/pull/57', at: new Date() }));
+        append(c, [prLinkLine({ id: c.id, url: 'https://github.com/acme/billing-api/pull/57' })]);
         await sleep(1200);
         append(c, replyLines({ id: c.id, cwd: c.cwd, text: 'Webhooks now go on SQS and the handler answers at once. Opened https://github.com/acme/billing-api/pull/57 as a draft.', at: new Date(), model: FABLE }));
         await ctx.waitFor(`window.peix.session(${JSON.stringify(c.id)})?.prs?.some(p => p.state)`, { what: '#57 answered', timeout: 15000 }).catch(() => ctx.log('#57 not answered'));

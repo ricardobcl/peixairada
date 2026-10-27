@@ -54,6 +54,12 @@ export function taskNoteLine({ id, cwd, taskId, summary = '', event = '', status
   return { ...lineBase(id, cwd), parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: at.toISOString(), message: { role: 'user', content: [{ type: 'text', text: body }] } };
 }
 
+/** The `pr-link` line Claude Code writes once the chat has opened or pushed to a PR — what makes it the chat's own. */
+export function prLinkLine({ id, url, at = new Date() }) {
+  const m = /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/.exec(url);
+  return { type: 'pr-link', sessionId: id, prNumber: Number(m?.[2]), prUrl: url, prRepository: m?.[1], timestamp: at.toISOString() };
+}
+
 /** A turn of plain words that ends (stop_reason 'end_turn') — the chat goes ready. */
 export function replyLines({ id, cwd, text, at = new Date(), model = 'fixture-1' }) {
   return [{ ...lineBase(id, cwd), parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: at.toISOString(),
