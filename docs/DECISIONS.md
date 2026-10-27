@@ -40,6 +40,13 @@ deep investigation to make sure there's no "contamination" happening" — and, o
   `-c '…'`) — of 228 commands with them, the 8 that only quoted them (a grep, a script's regex) opened nothing.
   Claude Code's own pr-link lines are not the board's to judge, and they misjudge too: one was written for this
   investigation's chat when a script's output showed a `gh pr create` and a PR's URL.
+* **The boot reads a chat's first `HEAD_BYTES` (64 KB) for its PRs** (`headPrs`), beside its last `TAIL_BYTES`: the
+  PR a chat is about is most often in its first prompt — "review <url>" —, and 346 of the 381 chats were read from
+  their tail, so the card went without it, titled by another, until the chat was opened. Only what names a PR is read
+  there, as `fold` reads it (a test holds the two to the same PRs); the rest of the head is the past. Read against
+  every transcript: of the 217 tailed chats with a PR of their own, the boot now finds the one that titles them in 177
+  (85 before), none in 5, and another in 35 — those whose first PR is in the middle of a long file, which only opening
+  reads (2.3 GB in all; reading it whole at boot is not on).
 
 ## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once, a page's address edited
 

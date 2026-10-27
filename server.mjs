@@ -97,6 +97,7 @@ const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
 const TAIL_BYTES = Number(process.env.TAIL_BYTES || 512 * 1024);
+const HEAD_BYTES = Number(process.env.HEAD_BYTES || 64 * 1024);   // where a chat tailed at boot is read for its PRs too (headPrs)
 const MAX_ENTRIES = Number(process.env.MAX_ENTRIES || 800);
 const REGISTRY_POLL_MS = Number(process.env.REGISTRY_POLL_MS || 10_000);   // pids die silently; so do background commands (sweepTasks)
 // Where the done ticks live. macOS keeps app data in Application Support (same place the
@@ -2284,6 +2285,7 @@ function indexFile(file, { full = false } = {}) {
   s.truncatedHead = start > 0;
   s.dec = new StringDecoder('utf8'); s.reading = true;
   try {
+    if (start > 0) readLines(fd, 0, Math.min(HEAD_BYTES, start), raw => parseLine(raw, line => headPrs(s, line), file));   // its last line, cut, is dropped
     let skip = start > 0;   // a tail starts mid-line: the first "line" is the end of one
     s.partial = readLines(fd, start, st.size, raw => { if (skip) skip = false; else parseLine(raw, line => fold(s, line), file); }, s.dec);
   } finally { closeSync(fd); s.reading = false; }
@@ -2298,6 +2300,27 @@ function indexFile(file, { full = false } = {}) {
   fileToSession.set(file, id);
   if (prev) { for (const k of prev.pendingNotify || []) queueNotify(s, k); schedulePush(s); }   // the alerts still owed, and the fresh summary
   return s;
+}
+
+/** The PRs at the head of a transcript the boot reads only the tail of (2026-10-27): the chat's own is most often named
+ *  in its first prompt — "review <url>" — and the card went without it, titled by another, until the chat was opened.
+ *  Only what names a PR, read as fold reads it: the rest of the head is the past, and the tail's to tell. */
+function headPrs(s, line) {
+  const ts = line.timestamp || null, c = line.message?.content, blocks = Array.isArray(c) ? c : [];
+  if (line.type === 'pr-link') { const url = line.prUrl || line.url; if (url) notePr(s, url, ts, null); return; }
+  if ((line.type !== 'user' && line.type !== 'assistant') || line.isSidechain) return;
+  if (line.cwd) s.cwd = line.cwd;   // a short reference is the folder's repo's; the tail's lines have the last word
+  if (line.type === 'assistant') {
+    for (const b of blocks) {
+      if (b?.type === 'text' && b.text?.trim()) notePrs(s, b.text, ts, 'claude');
+      else if (b?.type === 'tool_use' && b.name === 'Bash') noteOpening(s, b, ts);
+    }
+  } else if (!line.isMeta && !line.isCompactSummary) {
+    const results = blocks.filter(b => b?.type === 'tool_result');
+    if (results.length) { for (const b of results) if (s.opening.size) noteOpened(s, b); return; }
+    const raw = textOf(c), text = cleanPrompt(raw);
+    if (text && !raw.startsWith('[Request interrupted') && !SYNTHETIC_RE.test(text)) notePrs(s, text, ts, 'user');
+  }
 }
 
 /** Called on fs events: read what was appended since the last offset. */
@@ -4833,7 +4856,7 @@ function termEnv() {
 // VSCODE_CLI_DATA_DIR, JIRA_API_TOKEN) and the holder's TERM_LINGER_MS, which the holder keeps from its PTY. A knob
 // added to the server joins the list (terminals.test reads the server for them).
 const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
-  'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
+  'MAX_ENTRIES', 'TAIL_BYTES', 'HEAD_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
   'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN',
