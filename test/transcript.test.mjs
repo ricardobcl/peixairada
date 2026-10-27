@@ -110,6 +110,40 @@ test('PRs Claude only mentioned title nothing, and the cap puts them aside befor
   assert.deepEqual([back.firstAt, back.count, back.named != null], [ts(1), 2, true], 'named again, it is back as it was, first heard at its first sighting');
 });
 
+test('a listing of other PRs puts none on the chat; a report on its own, or your list, does', () => {
+  const pulls = (from, n) => Array.from({ length: n }, (_, i) => `https://github.com/acme/r/pull/${from + i}`).join(', ');
+  const s = newSession('s9', '/x/s9.jsonl');
+  fold(s, user('review https://github.com/acme/r/pull/1', { i: 0 }));
+  fold(s, assistant([{ type: 'text', text: `Your open PRs: ${pulls(100, 10)}` }], 'end_turn', 1));
+  assert.deepEqual(s.prs.map(p => p.number), [1], 'ten at once, all new: a listing, none taken');
+  fold(s, assistant([{ type: 'text', text: `Related: ${pulls(200, 9)}` }], 'end_turn', 2));
+  assert.equal(s.prs.length, 10, 'nine is no listing');
+  fold(s, assistant([{ type: 'text', text: `Where they stand: ${pulls(200, 9)} and https://github.com/acme/r/pull/1, https://github.com/acme/r/pull/300` }], 'end_turn', 3));
+  assert.equal(s.prs.length, 11, 'eleven, most of them the chat\'s already: a report, the new one taken');
+  assert.equal(s.prs[0].number, 300);
+  fold(s, user(`these too: ${pulls(400, 12)}`, { i: 4 }));
+  assert.equal(s.prs.length, 23, 'a list of yours is yours');
+  fold(s, assistant([{ type: 'text', text: `Still open: ${pulls(100, 10)}` }], 'end_turn', 5));
+  assert.equal(s.prs.length, 33, 'listed again, they are the chat\'s business: a review\'s second report');
+  assert.equal(s.prs.find(p => p.number === 100).firstAt, ts(1), 'first heard when they were first listed');
+});
+
+test('a gh pr create the chat ran makes what it printed the chat\'s own, a loop\'s too; words about it do not', () => {
+  const s = newSession('s10', '/x/s10.jsonl');
+  const call = (id, command, i) => assistant([{ type: 'tool_use', name: 'Bash', id, input: { command } }], 'tool_use', i);
+  const result = (id, content, i, isError = false) => ({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content, is_error: isError }] }, timestamp: ts(i), cwd: '/tmp/repo' });
+  fold(s, user('open the PRs', { i: 0 }));
+  fold(s, call('t1', 'for r in a b; do gh pr create -R acme/$r --fill; done', 1));
+  fold(s, result('t1', 'https://github.com/acme/a/pull/7\nhttps://github.com/acme/b/pull/9', 2));
+  fold(s, call('t2', 'grep -n "gh pr create" notes.md', 3));
+  fold(s, result('t2', 'notes.md:3: gh pr create gave https://github.com/acme/c/pull/5', 4));
+  fold(s, call('t3', 'gh pr create --fill', 5));
+  fold(s, result('t3', 'failed, see https://github.com/acme/d/pull/2', 6, true));
+  assert.deepEqual(s.prs.map(p => [p.label, p.linked != null, p.count]), [['b#9', true, 0], ['a#7', true, 0]]);
+  for (const p of s.prs) { p.title = p.label; p.state = 'open'; }
+  assert.equal(prTitle(s), 'a#7', 'the first it opened names it');
+});
+
 // Work that outlives the turn: a Monitor (or a background Bash) keeps running after the reply, and the transcript
 // says so — the tool_result carries the task's id, `<task-notification>` lines its events, and one with a <status>
 // its end. The summary only reports what a *live* claude could still be running (see runningTasks).

@@ -24,6 +24,22 @@ deep investigation to make sure there's no "contamination" happening" — and, o
   (`prsGone`), so naming it again brings it back with its first sighting: an answer naming sixty PRs had pushed the
   chat's own out halfway and back in, dated by the answer. The README's board writes the pr-link its `gh pr create`
   would have (`prLinkLine`).
+* **Claude's listing of other PRs puts none on the chat** (`LIST_MIN`): a text of Claude's naming ten or more, most of
+  them new to the chat, touches no PR — the state of your open PRs, a Slack digest, what a project has open, the PRs
+  closed for inactivity. 22 chats had 203 of the board's 689 PRs from texts naming five or more; a size alone would
+  have cost the chats that report on their own (a review of a stack, the PRs a chat opened in a loop), whose texts name
+  mostly PRs they have, so those count as any text does, and so does a list you paste. A listing's new PRs are heard
+  of (`prsHeard`): listed again, they are the chat's business — a review's second report —, first heard at the first.
+  That is also what keeps a long review's PRs at boot, where the tail's first report names PRs the unread middle had
+  (one chat: twenty PRs back). Read against every transcript, whole: 79 PRs off nine chats, none of them the chat's
+  work; at boot, 21 more off three chats whose one report in the tail names PRs only the middle had — back when the
+  chat is opened. The scenario that gave a chat fourteen PRs in Claude's words gives them in yours (`pr-list-window`).
+  **What a `gh pr create` printed is the chat's own**, as a
+  pr-link makes it (`noteOpening`, `noteOpened`): Claude Code wrote pr-links for a few of the seventeen PRs one chat
+  opened in a loop over repos. The words must start a command (`OPENS_RE`: first, after `;` `&&` `|` `do` `$(`, in a
+  `-c '…'`) — of 228 commands with them, the 8 that only quoted them (a grep, a script's regex) opened nothing.
+  Claude Code's own pr-link lines are not the board's to judge, and they misjudge too: one was written for this
+  investigation's chat when a script's output showed a `gh pr create` and a PR's URL.
 
 ## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once, a page's address edited
 

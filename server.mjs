@@ -590,7 +590,7 @@ function newSession(id, file) {
     slug: file ? basename(dirname(file)) : null,
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [], tickets: [], ticketBranch: null,
-    prSeq: 0, prsGone: null,   // notePr: the order PRs were heard in, and those MAX_PRS put aside
+    prSeq: 0, prsGone: null, prsHeard: new Map(),   // notePr: the order PRs were heard in, those MAX_PRS put aside, those a listing named (notePrs)
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
     compacting: false,   // the turn is a /compact you typed: its compact_boundary ends it (fold)
     clearedAt: null,   // the time of the /clear this transcript begins with, if it does (tickCleared)
@@ -603,6 +603,7 @@ function newSession(id, file) {
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null, tasksGone: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks, the calls that started them, and the ids the poll let go (letTaskGo)
     branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
     prActs: [], actsWait: new Map(),   // what its Bash did to a PR — a push, a review, a reply — and the calls still waiting on their result (prActs)
+    opening: new Map(),   // its Bash calls with a `gh pr create` in them, waiting on their result (noteOpening)
     headNow: null, diskDrift: null, diskSeen: null, headOk: null, peers: [],      // its checkout's HEAD as read on the poll, and what that says (noteHead)
     linesIn: 0,   // its own lines come in since the read (noteBranch): a disk move under a chat at work waits for one (noteHead)
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []   // the kinds of alert owed (queueNotify), a Set
@@ -815,8 +816,9 @@ function notePr(s, url, ts, by, ref = null) {
     url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
-    count: 0, by: null, firstAt: ts, ref, linked: null, named: null
+    count: 0, by: null, firstAt: s.prsHeard.get(clean) ?? ts, ref, linked: null, named: null
   };
+  s.prsHeard.delete(clean);
   if (at < 0) {   // what GitHub has said of it since, a PR put aside included
     const i = prStatus.get(clean);
     Object.assign(pr, { state: i?.state ?? null, title: i?.title ?? null, turn: i?.turn ?? null, people: i?.people ?? null, checks: i?.checks ?? null, refs: i?.refs ?? null, rounds: roundsOf(clean), logged: loggedOf(clean) });
@@ -835,6 +837,22 @@ function notePr(s, url, ts, by, ref = null) {
   if (!indexing) queuePr(clean);   // at boot this would ask GitHub about every PR in every transcript
 }
 
+/** The PRs a Bash call of the chat's opened (2026-10-27): a command that runs `gh pr create` — first in a command, in a
+ *  loop over repos, a `$(…)`, a `bash -c` —, and every PR URL its output printed, once it ended without an error, is the
+ *  chat's own as a pr-link line makes one: Claude Code writes none for most of a loop's. Only where a command starts: a
+ *  script, a grep or a regex with the words in it opened nothing. */
+const OPENS_RE = /(?:^|[;&|({`\n]|\$\(|\b(?:do|then|else|xargs)\s|-c\s+['"])\s*(?:\w+=\S*\s+)*gh\s+pr\s+create\b/;
+function noteOpening(s, b, ts) {
+  if (!b.id || !OPENS_RE.test(b.input?.command || '')) return;
+  s.opening.set(b.id, ts);
+  if (s.opening.size > ACTS_MAX) s.opening.delete(s.opening.keys().next().value);
+}
+function noteOpened(s, b) {
+  const at = s.opening.get(b.tool_use_id); if (at === undefined) return;
+  s.opening.delete(b.tool_use_id);
+  if (!b.is_error) for (const m of resultText(b).matchAll(PR_RE)) if (prMatch(m[0])) notePr(s, m[0], at, null);
+}
+
 /** Take a PR off a chat (2026-10-11): gone from its chips, its title, its turn and its polls, and kept off (`unlinked`). */
 function unlinkPr(s, url) {
   const at = s.prs.findIndex(p => p.url === url);
@@ -847,6 +865,12 @@ function unlinkPr(s, url) {
 /** Scan one message, in the order it says things. A PR said twice in it counts once, where first said, and as the
  *  fullest of the ways it was said: a URL, then a short reference with its repo, then a bare `#12`. */
 const SAID_AS = { bare: 1, repo: 2 };
+// A listing (2026-10-27): Claude naming LIST_MIN PRs or more at once, most of them new to the chat — the state of your
+// open PRs, a Slack digest, what a project has open — is an answer about other work, and it put every one of them on the
+// chat: its chips, their turns un-ticking it, their alerts. It touches no PR; its new ones are only heard of
+// (`prsHeard`), so a report on the chat's own PRs — mostly ones it has, or listed before — counts as any text does, the
+// second report of a review that the boot read from its first. So does a list you paste.
+const LIST_MIN = 10;
 function notePrs(s, text, ts, by) {
   if (!text) return;
   text = String(text);
@@ -855,6 +879,10 @@ function notePrs(s, text, ts, by) {
   for (const r of [...urls, ...text.includes('#') ? refsIn(s, text) : []].sort((a, b) => a.at - b.at)) {
     const f = said.get(r.key);
     if (!f) said.set(r.key, r); else if ((SAID_AS[r.ref] ?? 3) > (SAID_AS[f.ref] ?? 3)) Object.assign(f, { url: r.url, ref: r.ref });
+  }
+  if (by === 'claude' && said.size >= LIST_MIN) {
+    const fresh = [...said.keys()].filter(k => !s.prs.some(p => p.url === k) && !s.prsGone?.has(k) && !s.prsHeard.has(k));
+    if (fresh.length * 2 > said.size) { for (const k of fresh) s.prsHeard.set(k, ts); return; }
   }
   for (const r of said.values()) notePr(s, r.url, ts, by, r.ref);
   // your words that name its PRs, for their history beside GitHub's (2026-10-15: the pointer on a card's PRs)
@@ -2110,6 +2138,7 @@ function fold(s, line) {
         for (const b of toolResults) {
           startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
           if (s.actsWait.size) noteActsDone(s, b);
+          if (s.opening.size) noteOpened(s, b);
           if (s.askOpen?.id === b.tool_use_id) { noteSpan(s, 'a', s.askOpen.from, ts); s.askOpen = null; }   // a question and its answer: the time it waited on you
         }
         s.lastActivity = ts;
@@ -2169,7 +2198,7 @@ function fold(s, line) {
           if (NEEDS_INPUT_TOOLS.has(b.name)) { const opts = b.input?.questions?.[0]?.options, list = Array.isArray(opts) ? opts : [];   // a model's own input: options as a string once (2026-10-14)
             s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: list.length, labels: list.slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
-          if (b.name === 'Bash') { noteGitCmd(s.gitCmds, b.input?.command, ts, m.id); noteActsCalled(s, b, ts, line.gitBranch); }
+          if (b.name === 'Bash') { noteGitCmd(s.gitCmds, b.input?.command, ts, m.id); noteActsCalled(s, b, ts, line.gitBranch); noteOpening(s, b, ts); }
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
       }

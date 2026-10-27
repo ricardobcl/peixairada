@@ -1,7 +1,8 @@
 // The header's PR list as a window (2026-10-21): the timeline up top, centred — the list's own way to it, ⌥⌘J's —, every
 // row in a box that scrolls (no "… n more" any more), and its two ends saying what is out of sight past them as the chat
 // list's do: "↓ n more" on a fog, a click scrolling a window's worth, a dot in the accent when one out there is at your
-// move. The fixture's two-PR chat is told of fourteen more, which the fake gh titles. What this checks: the button's
+// move. The fixture's two-PR chat is given fourteen more in your words — Claude's listing of them would be no PR of
+// the chat's (2026-10-27) —, which the fake gh titles. What this checks: the button's
 // place and its tab; every row there, the window shorter than they are; the ends' counts as it scrolls, by a pill and by
 // a scroll; the dot; a redraw of the rows keeping the window's place; the foot dragged to size the window (2026-10-21,
 // later), kept, and given back by a double-click.
@@ -9,6 +10,7 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpDir } from '../../lib/testserver.mjs';
+import { randomUUID } from 'node:crypto';
 import { replyLines } from '../fixture.mjs';
 
 const file = join(tmpDir('peix-prwin-'), 'prs.json'), MORE = Array.from({ length: 14 }, (_, i) => 20 + i);
@@ -18,7 +20,9 @@ export const meta = { server: true, fixture: 'auto', prefs: { prsOpen: true }, e
 
 export default async function (ctx) {
   const [two] = ctx.fixture.chats, out = {}, a = ctx.assert;
-  appendFileSync(two.file, replyLines({ id: two.id, cwd: two.cwd, text: `And the rest: ${MORE.map(n => `https://github.com/acme/repo-a/pull/${n}`).join(' ')}` }).map(l => JSON.stringify(l)).join('\n') + '\n');
+  const yours = { type: 'user', isSidechain: false, cwd: two.cwd, sessionId: two.id, uuid: randomUUID(), timestamp: new Date().toISOString(),
+    message: { role: 'user', content: [{ type: 'text', text: `And the rest: ${MORE.map(n => `https://github.com/acme/repo-a/pull/${n}`).join(' ')}` }] } };
+  appendFileSync(two.file, [yours, ...replyLines({ id: two.id, cwd: two.cwd, text: 'Noted.' })].map(l => JSON.stringify(l)).join('\n') + '\n');
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prScroll .prrow').length === 16 && ![...document.querySelectorAll('#prScroll .prrow .t')].some(t => t.classList.contains('pending'))`, { timeout: 15_000, what: 'sixteen rows, titled' });
   await ctx.settle();
