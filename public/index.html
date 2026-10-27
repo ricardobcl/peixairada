@@ -300,7 +300,11 @@
   #sbar .conn .logo rect { display: none; }
   #sbar .conn .logo :is(.fishg g, .stars) { fill: var(--idle); }
   #sbar .conn .logo .fishg path[fill] { fill: var(--bar, var(--panel)); }
-  #sbar .conn.off .logo { filter: grayscale(1); opacity: .6; }
+  /* the fish alone says the connection (2026-10-27): the ready green on the stream, amber trying again, red turned away */
+  #sbar .seg.conn { padding: 0 9px; }
+  #sbar .conn.off .logo .fishg g { fill: var(--working); } #sbar .conn.lost .logo .fishg g { fill: var(--needs); }
+  /* what is watching: the card's mark and the count, in the watch colour (2026-10-27) */
+  #sbar .seg.mons { gap: 4px; color: var(--watch); font-weight: 600; } #sbar .mons .ic { width: 12px; height: 12px; }
 
   /* ---- layout: sessions | splitter | chat (one half or two) ---- */
   main { display: flex; min-height: 0; min-width: 0; }
@@ -3841,7 +3845,7 @@ const toolName = n => {
   // plan usage as small meters (a click: its rows in a panel over the board) and the Mac kept awake. On by default; the
   // settings' switch hides it, and the list's foot gets its usage back. Drawn when its markup changes (setHtml), from
   // renderBoard, the usage, the awake state, the stream's open and error, and each stats answer.
-  const bar = { stats: {}, conn: true, open: false, busy: false };
+  const bar = { stats: {}, conn: true, lost: false, open: false, busy: false };
   const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
   const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
   const FISH_LOGO = () => $('#logo').innerHTML;
@@ -3998,11 +4002,15 @@ const toolName = n => {
     const all = [...state.sessions.values()], n = f => all.filter(f).length;
     const ask = n(s => asking(s));
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
-    const left = [`<button class="seg conn${bar.conn ? '' : ' off'}${bar.back ? ' back' : ''}" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box">${FISH_LOGO()}${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
+    // the connection is the fish alone (2026-10-27; *connected* beside it before), its colour the state: green on the
+    // stream, amber belly-up while it tries again, red when the server turned it away (the lock's) — the words out of sight
+    const link = bar.conn ? ['', 'connected', 'Connected to the board\'s server'] : bar.lost ? [' off lost', 'disconnected', 'The server turned the stream away'] : [' off', 'reconnecting', 'The server is not answering — reconnecting'];
+    const left = [`<button class="seg conn${link[0]}${bar.back ? ' back' : ''}" title="${link[2]} — click for the About box">${FISH_LOGO()}<span class="vh">${link[1]}</span></button>`,
       // the live chats and the drawers and shells went (2026-10-11, later); what waits on you and what is watching stay,
-      // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before)
+      // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before); what is
+      // watching is the card's mark and its count (2026-10-27), the word out of sight
       ...(ask ? [`<button class="seg ask" title="chats waiting on your answer — click for the next one">${`<em>${rn('asking', ask)} asking you</em>`}</button>`] : []),
-      ...(mons ? [`<span class="seg" title="monitors and background commands running">${rn('mons', mons)} watching</span>`] : [])];
+      ...(mons ? [`<span class="seg mons" title="${mons} monitor${mons > 1 ? 's' : ''} and background commands running">${ICON.watch}${rn('mons', mons)}<span class="vh"> watching</span></span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const cs = chatSeg(); if (cs) left.splice(1, 0, cs);   // the chat (2026-10-17), after the connection
     left.push(updSeg());
@@ -11506,10 +11514,10 @@ const toolName = n => {
     const es = new EventSource(keyed('/events'));
     es.onopen = () => {
       const was = !bar.conn;
-      bar.conn = true; bar.back = was; renderBar();
+      bar.conn = true; bar.lost = false; bar.back = was; renderBar();
       if (was) { noteMotion(null, 'fishback'); clearTimeout(bar.backT); bar.backT = setTimeout(() => { bar.back = false; renderBar(); }, 900); }
     };
-    es.onerror = () => { bar.conn = false; bar.back = false; renderBar(); if (es.readyState === EventSource.CLOSED) api('GET', '/api/key').catch(() => {}); };   // a stream turned away: for want of the key, the lock
+    es.onerror = () => { bar.conn = false; bar.back = false; bar.lost = es.readyState === EventSource.CLOSED; renderBar(); if (bar.lost) api('GET', '/api/key').catch(() => {}); };   // a stream turned away: for want of the key, the lock
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds

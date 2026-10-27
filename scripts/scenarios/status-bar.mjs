@@ -1,5 +1,6 @@
 // The status bar (2026-10-09, the design studies' F — Orca's; always there since 2026-10-14): the machine at the
-// window's foot. What this checks: it is under the board, saying the connection and the chats; the search and the
+// window's foot. What this checks: it is under the board, saying the connection (the fish alone, its colour the state,
+// 2026-10-27) and the chats; the search and the
 // filter are in it, far left, and work from there; the plan usage is its meters and a click shows its rows; the
 // connection opens the About box; CPU and memory are in it from the start and the settings add Claude's memory, asked of
 // the server. The faces in its middle are people-row.mjs's, keeping the Mac awake keep-awake.mjs's.
@@ -21,7 +22,15 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 2`, { what: 'the bar with the usage in it' });
   out.rest = await look();
   ctx.assert.deepEqual([out.rest.hidden, out.rest.bottom, out.rest.mainBottom], [false, 8, -8], `at the window's foot, under the board, the tiles' gap round it: ${JSON.stringify(out.rest)}`);
-  ctx.assert.equal(out.rest.segs[0], 'connected');
+  ctx.assert.equal(out.rest.segs[0], 'connected', 'the connection said, out of sight');
+  // …by the fish alone (2026-10-27): no word beside it, its colour the state's — green on the stream, amber trying again,
+  // red turned away (the classes the bar's draw sets, read at once)
+  out.fish = await ctx.evaluate(`(b => { const fill = () => getComputedStyle(b.querySelector('.logo .fishg g')).fill, on = fill(); b.classList.add('off'); const trying = fill(); b.classList.add('lost'); const lost = fill(); b.classList.remove('off', 'lost');
+    const css = v => { const d = document.createElement('i'); d.style.color = 'var(' + v + ')'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; };
+    return JSON.stringify({ shown: [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim(), said: b.querySelector('.vh')?.textContent, w: Math.round(b.getBoundingClientRect().width), on, trying, lost, want: [css('--idle'), css('--working'), css('--needs')] }); })(document.querySelector('#sbar .conn'))`).then(JSON.parse);
+  ctx.assert.deepEqual([out.fish.shown, out.fish.said], ['', 'connected'], `no word beside the fish: ${JSON.stringify(out.fish)}`);
+  ctx.assert.ok(out.fish.w <= 36, `the fish's width alone: ${out.fish.w}`);
+  ctx.assert.deepEqual([out.fish.on, out.fish.trying, out.fish.lost], out.fish.want, 'green, amber, red');
   ctx.assert.ok(!out.rest.segs.some(t => /\blive$|drawer|shell/.test(t)), `no live count, no drawers or shells (2026-10-11): ${JSON.stringify(out.rest.segs)}`);
   // the clock, far right (2026-10-11, later): the time on a 24-hour clock (2026-10-11, late night), the day in its tooltip
   // read just after a minute turned, the clock may not have ticked yet: this minute or the one before (2026-10-14)

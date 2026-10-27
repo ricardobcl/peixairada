@@ -500,16 +500,18 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13); `show()` and
   anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
-  `renderBar`, `body`'s grid row 2): `#sbFind` (`#sbList`, `#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
-  fish the SSE light and its click the About box; the asking and monitor counts while any; the chat, `chatSeg`; the update, `updSeg`),
-  `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
-  every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`, `uGrant`) — a click lifts its rows (`usageRows`, `uColor`, `uPace`/`uSpan`, `.umoney`),
+  `renderBar`, `body`'s grid row 2): `#sbFind` (`#sbList`, `#filters`), `#sbLeft` (the connection, `bar.conn`, its
+  fish the SSE light — alone, its colour the state (`bar.lost`, 2026-10-27), belly-up while down (animations:
+  the bar redraws it) —, its click the About box; the asking and
+  monitor counts while any (`ICON.watch`); the chat, `chatSeg`; the update, `updSeg`),
+  `#sbPeople` (`#people`), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
+  every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pies (`sbMeter`, `uGrant`) — a click lifts its rows (`usageRows`, `uPace`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (`clockTick`, 24-hour). `#sbLeft` and
   `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`): one `swim` animation whose pace is its length (`swimPaceTo`, never
   `updatePlaybackRate`); two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups**; `fishAt` reads the swim's clock, never a rect,
   and `feed` is a frame loop only while a bubble is out; a click is ⌥⌘A; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
-  back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
+  back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` leaves it out of
   the bar. → `usage-bar.mjs`.
 * **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd`
   alone (no raw HTML or image; https/mailto links, to the browser), polls (`chatPollHtml`, `chatPollForm`), the
@@ -651,8 +653,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`.nomatch`) and marks it (`::highlight(sfind)`), Esc lets a search go first. **A setting is a `.srow.set`** — `.sl`
   (name, one line), its control right — in a `.sgrp` (`.sgh`, `.slist`, `.sgf`); a dependent `.sub`, `.off` with the
   reason, never hidden; `data-kw` feeds search. → `settings-panes.mjs`. The class is `pop`: rows keep `.pop …` rules. **It is modal**: the pane down, the ⌥⌘ / ⌘ keys swallowed — close it first (the scenarios
-  do); `close` drops a setup row half typed. **The fish is the SSE light**, belly-up while the stream is down
-  (`FISH_LOGO()`, `<template id="logo">`; animations, not transitions: the bar redraws it).
+  do); `close` drops a setup row half typed.
 * **Every `pre` in the transcript is inside a `.codebox`** (`md()`): the bar (language, copy) is its first child; a
   block over six lines is always folded, `details.codefold > summary + .codebox`. A rule that reaches a `pre` goes
   through the box; the copy click is delegated on `#log`.

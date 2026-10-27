@@ -2,7 +2,7 @@
 // is running, the time left, how many events — was in the card's markup, so every event and every minute drew the card
 // anew (the cards are reconciled by their markup). It is written after the draw now, as an age is. What this checks:
 // a chat with a monitor that has reported once; an event more keeps the card's node and its tooltip counts two; the
-// header's chip of the open chat says the same and counts the next.
+// header's chip of the open chat says the same and counts the next; the status bar counts it by the same mark.
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs';
@@ -24,6 +24,11 @@ export default async function (ctx) {
     const card = `document.querySelector('#slist > .card[data-id="${w.id}"]')`, tip = `${card}?.querySelector('.chip.watch')?.title`;
     const event = text => appendFileSync(w.file, JSON.stringify(taskNoteLine({ id: w.id, cwd, taskId: mon, summary: 'Monitor event: "CI checks on PR #382"', event: text })) + '\n');
     await ctx.waitFor(`${card}?.classList.contains('watching') && !!${tip}`, { what: 'the watching card and its chip' });
+    // the status bar counts it by the card's mark, the word out of sight (2026-10-27)
+    out.bar = await ctx.evaluate(`(b => b && JSON.stringify({ mark: b.querySelector('svg.ic')?.innerHTML === ${card}.querySelector('.chip.watch svg.ic')?.innerHTML,
+      shown: [...b.childNodes].filter(n => !n.classList?.contains('vh')).map(n => n.textContent).join('').trim(), said: b.textContent.trim(), color: getComputedStyle(b).color === getComputedStyle(${card}.querySelector('.chip.watch')).color }))(document.querySelector('#sbLeft .mons'))`).then(JSON.parse);
+    ctx.assert.deepEqual(out.bar, { mark: true, shown: '1', said: '1 watching', color: true }, `the bar's watching: ${JSON.stringify(out.bar)}`);
+    await ctx.settle(); await ctx.shot('bar', await ctx.evaluate(`(r => ({ x: r.left, y: r.top - 6, width: Math.min(420, r.width + 8), height: r.height + 12, scale: 2 }))(document.querySelector('#sbLeft').getBoundingClientRect())`));
     await ctx.settle();
     out.before = await ctx.evaluate(`(window.__wcard = ${card}, ${tip})`);
     ctx.assert.match(out.before, /^monitor: CI checks on PR #382 · \d+m left · 1 event$/, `the chip's tooltip: ${out.before}`);

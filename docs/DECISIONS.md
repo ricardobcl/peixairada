@@ -2,8 +2,24 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-25. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-27 — the status bar's fish alone
+
+Ricardo:
+
+> - the "connected" on the status bar should just be the fish icon with colors mapping to the status
+> - the "1 watching" should also use the same icon as the card and remove the text
+
+* **The connection is the fish alone, in three colours**: the ready green on the stream, amber while the EventSource
+  tries again (belly-up and bobbing, as before), red once it has given up — the server turned it away, which is the
+  lock's case (`bar.lost`, `readyState === CLOSED` at the error). The grey that stood for *down* went: the colour is
+  now the state. The words stay, out of sight (`.vh`) and in the tooltip, so the scenario still reads `connected`.
+* **What is watching is the card's mark and the count** (`ICON.watch`, `.seg.mons` in `--watch`), the word out of sight.
+  The asking count keeps its words: it is a button that walks the chats, and red words are what make it one.
+* Checked: `status-bar.mjs` (no word beside the fish; green, amber, red), `watch-chip.mjs` (the card's mark, the count,
+  the watch colour); `npm test`.
 
 ## Decisions of 2026-10-25 — the chat list hides, its switch first in the status bar
 
