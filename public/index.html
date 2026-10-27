@@ -2308,6 +2308,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #room .rmmsg .edited { margin-left: 4px; font-size: var(--fs-2xs); color: var(--muted); }
   #room .rmdel { position: absolute; top: -2px; right: -4px; width: 22px; height: 22px; opacity: 0; } #room .rmmsg:is(:hover, :focus-within) .rmdel { opacity: 1; }
   #room .rmmsg.going { opacity: .45; }
+  /* yours on its way (chatSend, 2026-10-27): faded until GitHub has it; one that did not go, its words as typed and why */
+  #room .rmmsg.out:not(.fail) .rmbody { opacity: .55; }
+  #room .rmfail { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 3px; font-size: var(--fs-xs); color: var(--needs); }
+  #room .rmfail .btn { height: 22px; padding: 0 8px; font-size: var(--fs-xs); }
   #room .rmnone { padding: 36px 16px; color: var(--muted); font-size: var(--fs-sm); text-align: center; text-wrap: balance; }
   #room .rmfoot { display: grid; gap: 4px; padding: 8px; border-top: 1px solid var(--line); }
   #room :is(.rmfoot textarea, .rmfind, .rmform input[type="text"]) { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
@@ -10817,7 +10821,7 @@ const toolName = n => {
   // but a link's address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's
   // files and pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs).
   const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, sending: false, watch: 0, seenSent: 0, err: null, setSure: false,
-    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null, poll: null, voting: new Set() };
+    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null, poll: null, voting: new Set(), out: [], outSeq: 0, sendQ: Promise.resolve() };
   $('#rmPollBtn').innerHTML = ICON.poll; $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
   const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => esc(t.text ?? ''), image: t => esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
   const CHAT_TAGS = ['p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
@@ -10877,15 +10881,19 @@ const toolName = n => {
     const sure = !chatUi.sure ? '' : `<div class="rmsure" role="group"><span>${admin ? 'Stop the chat on this board? It stays on GitHub, and you its admin.' : 'Leave the chat? Coming back takes a new invitation.'}</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="leave">${admin ? 'Stop' : 'Leave'}</button></div>`;
     if (!c.ready) return sure + `<div class="rmnone">${esc(c.error || 'Reading the chat…')}</div>`;
     if (c.room == null) return sure + `<div class="rmnone">No chat in ${esc(c.repo)} yet — its admin's board starts it.</div>`;
-    if (!chatUi.msgs.length) return sure + `<div class="rmnone">${esc(chatUi.err || (chatUi.loading ? 'Reading…' : 'Nothing said yet.'))}</div>`;
+    // yours on their way (chatSend) after everything said, as you see them: faded while they go, and one that did not go
+    // says so under its words — Try again, or Edit (its words back in the box)
+    const outs = chatUi.out.filter(o => o.n === chatUi.n).map(o => ({ who: me || 'you', face: c.me?.face, at: o.at, body: o.body, out: o }));
+    if (!chatUi.msgs.length && !outs.length) return sure + `<div class="rmnone">${esc(chatUi.err || (chatUi.loading ? 'Reading…' : 'Nothing said yet.'))}</div>`;
     let out = sure, prev = null;
-    for (const m of chatUi.msgs) {
+    for (const m of [...chatUi.msgs, ...outs]) {
       if (!prev || dayOf(prev.at) !== dayOf(m.at)) { out += `<div class="rmday">${esc(dayOf(m.at))}</div>`; prev = null; }
-      const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000, mine = m.who === me;
-      out += `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}" data-id="${m.id}">${chatFace(m.face)}`
-        + `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}</div>`
+      const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000, mine = m.who === me || !!m.out, o = m.out;
+      out += `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}${o ? ` out${o.err ? ' fail' : ''}` : ''}" ${o ? `data-out="${o.key}"` : `data-id="${m.id}"`}>${chatFace(m.face)}`
+        + `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}${o && !o.err ? '<span class="vh">sending</span>' : ''}</div>`
         + `<div class="rmbody">${m.poll ? chatPollHtml(m) : chatMd(m.body)}</div>`
-        + (mine || admin ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
+        + (o?.err ? `<div class="rmfail" role="status"><span>Not sent: ${esc(o.err)}</span><button type="button" class="btn" data-rm="retry">Try again</button><button type="button" class="btn" data-rm="edit" title="Its words back in the box">Edit</button></div>`
+          : !o && (mine || admin) ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
       prev = m;
     }
     return out;
@@ -10985,12 +10993,28 @@ const toolName = n => {
     setHtml($('#rmsay'), c.repo ? `<span>${esc(c.me?.login ? `as ${c.me.login}` : '')}</span><a href="https://github.com/${esc(c.repo)}${r != null ? `/issues/${r}` : ''}" data-rm="gh" title="The chat on GitHub — its messages are this issue's comments">${esc(c.repo)}</a>` : '');
   }
   function chatGrow() { const b = $('#rmbox'); b.style.height = 'auto'; b.style.height = `${Math.min(140, b.scrollHeight + 2)}px`; }
-  async function chatSend() {
-    const box = $('#rmbox'); if (!box.value.trim() || chatUi.sending || chatUi.n == null) return;
-    chatUi.sending = true;
-    try { const d = await api('POST', '/api/chat/send', { body: box.value }); box.value = ''; chatGrow(); if (d.msg.n === chatUi.n) chatTake([d.msg], []); chatDraw(true); }
-    catch (e) { note(box, `Not sent: ${e.message}`, true); }
-    finally { chatUi.sending = false; }
+  /** Your message, in the log as ⏎ is pressed (2026-10-27; the box waited on GitHub before): drawn on its way, then as
+   *  GitHub's comment once the server has it. One that did not go stays where it was said, saying so — on this page
+   *  alone, since nobody else has it. Sent one after another, in the order typed (the server writes them so anyway). */
+  function chatSend() {
+    const box = $('#rmbox'), body = box.value; if (!body.trim() || chatUi.n == null) return;
+    box.value = ''; chatGrow();
+    const o = { key: ++chatUi.outSeq, n: chatUi.n, body, at: new Date().toISOString(), err: null };
+    chatUi.out.push(o); chatDraw(true); chatPost(o);
+  }
+  function chatPost(o) {
+    chatUi.sendQ = chatUi.sendQ.then(async () => {
+      try { const d = await api('POST', '/api/chat/send', { body: o.body }); chatUi.out = chatUi.out.filter(x => x !== o); if (d.msg.n === chatUi.n) chatTake([d.msg], []); }
+      catch (e) { o.err = e.message; }
+      chatDraw();
+    });
+  }
+  /** A message that did not go: sent again, as the newest — or its words back in the box, before what is typed there. */
+  function chatRetry(key, edit) {
+    const o = chatUi.out.find(x => x.key === key); if (!o) return;
+    chatUi.out = chatUi.out.filter(x => x !== o);
+    if (edit) { const box = $('#rmbox'); box.value = o.body + (box.value.trim() ? '\n' + box.value : ''); chatGrow(); chatDraw(); box.focus(); return; }
+    Object.assign(o, { at: new Date().toISOString(), err: null }); chatUi.out.push(o); chatDraw(true); chatPost(o);
   }
   /** While the panel is up the server looks often (POST /api/chat/watch, every 15 s), else every 20 s. */
   function chatWatch() {
@@ -11047,6 +11071,7 @@ const toolName = n => {
     const login = b.closest('.rmp')?.dataset.login, id = Number(b.closest('.rmmsg')?.dataset.id);
     if (act === 'unsure') { chatUi.sure = null; chatDraw(); }
     else if (act === 'vote') chatVote(id, b.dataset.r);
+    else if (act === 'retry' || act === 'edit') chatRetry(Number(b.closest('.rmmsg')?.dataset.out), act === 'edit');
     else if (act === 'del') { b.closest('.rmmsg').classList.add('going'); chatAct('delete', { id }, b, () => { chatTake([], [id]); chatDraw(); }); }
     else if (act === 'leave') chatAct('leave', {}, b, d => { state.chat = d; $('#room').close(); chatChanged(); });
     else if (act === 'invite') chatAct('invite', { login }, b, d => { chatUi.people = d; $('#rmfind').value = ''; chatDraw(); note($('#rmfind'), d.invited ? `Invited ${d.login} — they join from their board, or GitHub's email` : `${d.login} is in already`); });
@@ -11069,7 +11094,7 @@ const toolName = n => {
   for (const ev of ['focus', 'visibilitychange']) window.addEventListener(ev, chatSeenNow);
   /** What the server knows changed: the bar, the panel, Settings' pane. */
   function chatChanged() {
-    if (state.chat.repo !== chatUi.repo) { Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null, poll: null }); chatPollDraw(); }   // another repo: nothing of the last one's
+    if (state.chat.repo !== chatUi.repo) { Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null, poll: null, out: [] }); chatPollDraw(); }   // another repo: nothing of the last one's
     renderBar(); renderChatSet();
     if (state.chat.missing && !chatUi.places && $('#settings').open) chatPlacesLoad();
     if (!$('#room').open) return;
@@ -11077,7 +11102,17 @@ const toolName = n => {
     if (state.chat.ready && state.chat.room !== chatUi.n) chatLoad();
     chatDraw(); chatSeenNow();
   }
-  function chatMsgs(d) { if (d.n !== chatUi.n) return; chatTake(d.add || [], d.gone || []); chatDraw(); chatSeenNow(); }
+  function chatMsgs(d) {
+    if (d.n !== chatUi.n) return;
+    // a new one of yours takes the place of the first on its way with its words (chatSend): the stream can bring it
+    // before the send's own answer
+    const me = state.chat.me?.login, held = new Set(chatUi.msgs.map(m => m.id));
+    for (const m of d.add || []) {
+      const o = !held.has(m.id) && m.who === me && chatUi.out.find(x => !x.err && x.n === m.n && x.body.replace(/\r\n?/g, '\n').trim() === String(m.body ?? '').trim());
+      if (o) chatUi.out = chatUi.out.filter(x => x !== o);
+    }
+    chatTake(d.add || [], d.gone || []); chatDraw(); chatSeenNow();
+  }
   /** A message from someone else, while the room is not in front of you: a chime in front, else the app's banner or the
    *  browser's — never with a Reply… (no session), and a click opens the room. */
   function chatAlert(a) {

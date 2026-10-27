@@ -5,12 +5,13 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-27 — the status bar's fish alone
+## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once
 
 Ricardo:
 
 > - the "connected" on the status bar should just be the fish icon with colors mapping to the status
 > - the "1 watching" should also use the same icon as the card and remove the text
+> - the chat when entering a message, it has a delay posting the message. we should be optimist and post it immediately on the UI so it feels snappy. if something goes wrong, we just say that on the chat (only to the user that posted)
 
 * **The connection is the fish alone, in three colours**: the ready green on the stream, amber while the EventSource
   tries again (belly-up and bobbing, as before), red once it has given up — the server turned it away, which is the
@@ -18,8 +19,18 @@ Ricardo:
   now the state. The words stay, out of sight (`.vh`) and in the tooltip, so the scenario still reads `connected`.
 * **What is watching is the card's mark and the count** (`ICON.watch`, `.seg.mons` in `--watch`), the word out of sight.
   The asking count keeps its words: it is a button that walks the chats, and red words are what make it one.
+* **Your message is in the log as ⏎ is pressed.** The wait was the server's: one write at a time, `CHAT_GAP_MS` after
+  the last (GitHub's limits on content made in a burst), then GitHub's REST call, before the box emptied. Now
+  `chatSend` empties the box and draws the message from `chatUi.out` — faded, after everything said — and the posts go
+  one after another in the order typed (`chatUi.sendQ`), as the server writes them anyway. GitHub's comment takes its
+  place from the send's answer, or from the stream if that comes first (`chatMsgs` drops the first one on its way with
+  the same words — only there, not in a load, where an old message of yours could say the same). One that fails stays
+  where it was said with *Not sent: <why>*, *Try again* (sent as the newest) and *Edit* (its words back in the box):
+  on that page alone, since nobody else ever had it. Polls and votes are as they were — a vote was drawn at once
+  already, and a poll is a form you asked from.
 * Checked: `status-bar.mjs` (no word beside the fish; green, amber, red), `watch-chip.mjs` (the card's mark, the count,
-  the watch colour); `npm test`.
+  the watch colour), `chat-room.mjs` (a send held: drawn at once, faded, last, the box empty; then GitHub's, once; one
+  refused: said there, not on GitHub, Try again sends it, Edit puts it back), `chat-poll.mjs`; `npm test`.
 
 ## Decisions of 2026-10-25 — the chat list hides, its switch first in the status bar
 

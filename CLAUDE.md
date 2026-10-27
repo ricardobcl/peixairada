@@ -515,7 +515,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the bar. → `usage-bar.mjs`.
 * **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd`
   alone (no raw HTML or image; https/mailto links, to the browser), polls (`chatPollHtml`, `chatPollForm`), the
-  admin's people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`).
+  admin's people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`). **Yours is in the log at ⏎** (2026-10-27,
+  `chatUi.out`): faded till GitHub has it; one not sent says so there alone (`chatRetry`).
   **No chat code reaches a drawer, a claude or `md()`**. → `chat-room.mjs`, `chat-poll.mjs`.
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`

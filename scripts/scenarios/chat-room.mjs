@@ -93,11 +93,41 @@ export default async function (ctx) {
     // another board's message comes in; one typed here goes out
     gh.say('acme-chat/room', 1, 'ana', 'are you around?');
     await ctx.waitFor(`/are you around/.test(${q('#rmlog')}.textContent)`, { what: 'ana\'s new message' });
+    // …in the log as ⏎ is pressed (2026-10-27): the send held here, it is drawn on its way, the box empty, and takes its
+    // place as GitHub's comment once let go
+    await ctx.evaluate(`window.__send = []; window.__hold = true; window.__fail = null; (real => { window.fetch = (u, o) => !String(u).includes('/api/chat/send') ? real(u, o)
+      : window.__fail ? Promise.resolve(new Response(JSON.stringify({ error: window.__fail }), { status: 502, headers: { 'content-type': 'application/json' } }))
+      : window.__hold ? new Promise(go => window.__send.push(() => go(real(u, o)))) : real(u, o); })(window.fetch)`);
+    const outs = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#rmlog .rmmsg.out')].map(m => ({ body: m.querySelector('.rmbody').textContent.trim(), fail: m.querySelector('.rmfail span')?.textContent || null, faded: getComputedStyle(m.querySelector('.rmbody')).opacity })))`).then(JSON.parse);
     await ctx.fill('#rmbox', 'yes — on it');
     await enter('#rmbox');
-    await ctx.waitFor(`[...document.querySelectorAll('#rmlog .rmmsg.mine')].some(m => /yes — on it/.test(m.textContent))`, { what: 'the message sent' });
+    out.going = { outs: await outs(), box: await ctx.evaluate(`${q('#rmbox')}.value`), held: await ctx.evaluate(`window.__send.length`) };
+    ctx.assert.deepEqual(out.going, { outs: [{ body: 'yes — on it', fail: null, faded: '0.55' }], box: '', held: 1 }, `drawn at once, faded, the box emptied, the server not yet asked: ${JSON.stringify(out.going)}`);
+    ctx.assert.equal(await ctx.evaluate(`${q('#rmlog .rmmsg:last-of-type')}.matches('.mine.out')`), true, 'the last in the log');
+    await ctx.settle(); await ctx.shot('2b-sending', await rect('#room'));
+    await ctx.evaluate(`window.__hold = false; window.__send.shift()()`);
+    await ctx.waitFor(`[...document.querySelectorAll('#rmlog .rmmsg.mine[data-id]')].some(m => /yes — on it/.test(m.textContent)) && !document.querySelector('#rmlog .rmmsg.out')`, { what: 'the message sent, GitHub\'s comment in its place' });
     ctx.assert.equal(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, 'yes — on it');
-    ctx.assert.equal(await ctx.evaluate(`${q('#rmbox')}.value`), '', 'the box emptied');
+    ctx.assert.equal(await ctx.evaluate(`[...document.querySelectorAll('#rmlog .rmmsg')].filter(m => /yes — on it/.test(m.textContent)).length`), 1, 'once');
+    // one that does not go says so where it is, to you alone: Try again sends it; Edit puts its words back in the box
+    await ctx.evaluate(`window.__fail = 'GitHub said no'`);
+    await ctx.fill('#rmbox', 'second try');
+    await enter('#rmbox');
+    await ctx.waitFor(`!!${q('#rmlog .rmmsg.out.fail')}`, { what: 'the message that did not go' });
+    out.failed = await outs();
+    ctx.assert.deepEqual(out.failed, [{ body: 'second try', fail: 'Not sent: GitHub said no', faded: '1' }]);
+    ctx.assert.ok(!gh.repo('acme-chat/room').issues[0].comments.some(c => c.body === 'second try'), 'nobody else has it');
+    await ctx.settle(); await ctx.shot('2c-not-sent', await rect('#room'));
+    await ctx.evaluate(`window.__fail = null; ${q('#rmlog .rmmsg.out.fail [data-rm="retry"]')}.click()`);
+    await ctx.waitFor(`[...document.querySelectorAll('#rmlog .rmmsg.mine[data-id]')].some(m => /second try/.test(m.textContent)) && !document.querySelector('#rmlog .rmmsg.out')`, { what: 'sent again' });
+    ctx.assert.equal(gh.repo('acme-chat/room').issues[0].comments.at(-1).body, 'second try');
+    await ctx.evaluate(`window.__fail = 'offline'`);
+    await ctx.fill('#rmbox', 'third');
+    await enter('#rmbox');
+    await ctx.waitFor(`!!${q('#rmlog .rmmsg.out.fail')}`, { what: 'another that did not go' });
+    await ctx.evaluate(`window.__fail = null; ${q('#rmlog .rmmsg.out.fail [data-rm="edit"]')}.click()`);
+    ctx.assert.deepEqual([await ctx.evaluate(`${q('#rmbox')}.value`), await ctx.evaluate(`!!${q('#rmlog .rmmsg.out')}`), await ctx.evaluate(`document.activeElement === ${q('#rmbox')}`)], ['third', false, true], 'its words back in the box, with the keys');
+    await ctx.evaluate(`(b => { b.value = ''; b.dispatchEvent(new InputEvent('input', { bubbles: true })); })(${q('#rmbox')})`);
 
     // said while the panel is shut: unread in the bar; shown, it is read — and the other labelled issue is nobody's
     await ctx.evaluate(`${q('#rmClose')}.click()`);
