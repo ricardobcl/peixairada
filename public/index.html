@@ -1564,8 +1564,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      under it the list of what ⏎ would open — the pickers' rows, on the panel. */
   .ptab.addr.blank { cursor: text; }
   .ptab.addr.blank:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
-  .ptab.addr .paddr { flex: 1 1 auto; min-width: 0; height: 22px; margin: 0 4px 0 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }
+  .ptab.addr :is(.paddr, .pedit) { flex: 1 1 auto; min-width: 0; height: 22px; margin: 0 4px 0 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }
   .ptab.addr .paddr::placeholder { color: var(--muted); }
+  /* a page's address is a box when clicked (2026-10-27, addrEditAt), lit as a blank tab's while it has the keys */
+  .ptab.addr .purl[data-key^="gh"] { cursor: text; }
+  .ptab.addr.editing:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
   .gblank { min-height: 0; overflow: auto; background: var(--panel); display: grid; align-content: start; justify-items: center; gap: 12px; padding: 28px 16px; }
   .gblank .blist { width: min(640px, 100%); display: grid; gap: 2px; }
   .gblank .bhd { padding: 0 8px 4px; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); }
@@ -8022,6 +8025,7 @@ const toolName = n => {
   // address on screen. Kept per key, so switching tabs and coming back keeps it; the shell re-sends on every pane
   // message, which is what gives it back after a board reload.
   const paneUrls = new Map();
+  let addrEdit = null;   // a page's address being edited, { sid, key, q } (addrEditAt)
   const bareUrl = u => u.replace(/^https?:\/\//, '');
   /** An address as the strip shows it: no scheme, the host quieter than the rest (2026-10-11). */
   const urlHtml = u => { const b = bareUrl(u), i = b.indexOf('/'); return i < 0 ? `<span class="h">${esc(b)}</span>` : `<span class="h">${esc(b.slice(0, i + 1))}</span>${esc(b.slice(i + 1))}`; };
@@ -8032,6 +8036,7 @@ const toolName = n => {
   const ideLabel = k => ideLabels.get(pageUrl(k)) || null;
   const addrHtml = (k, u) => k.startsWith('ide:') && (ideLabel(k) || ideName(u)) ? `<span class="h">VS Code · </span>${esc(ideLabel(k) || ideName(u))}` : urlHtml(u);
   const pageUrl = k => k.slice(k.indexOf(':') + 1);   // where a tab was opened — all the shell reads of its key
+  const purlTip = (k, u) => `${u} — ${/^gh\d*:/.test(k) ? 'click to change it' : 'click to copy'}`;   // a page's address is edited, the editor's copied (2026-10-27)
   const paneUrl = k => paneUrls.get(k) || pageUrl(k);
   /** An address at a page: the page, or further into it — a PR's files, a comment on it, its checks. */
   const atPage = (addr, url) => { const u = url.replace(/\/+$/, ''); return addr === url || addr.startsWith(u) && /^([/?#]|$)/.test(addr.slice(u.length)); };
@@ -8049,7 +8054,7 @@ const toolName = n => {
     if (paneUrls.get(key) !== url) keepTabsSoon();   // where a tab went decides what opening its page again does (pageTab)
     paneUrls.set(key, url);
     for (const el of document.querySelectorAll('.purl')) {
-      if (el.dataset.key === key) { el.dataset.url = url; el.innerHTML = addrHtml(key, url); el.title = url + ' — click to copy'; el.closest('.ptabs')._drawn = null; }
+      if (el.dataset.key === key) { el.dataset.url = url; el.innerHTML = addrHtml(key, url); el.title = purlTip(key, url); el.closest('.ptabs')._drawn = null; }
     }
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
@@ -8172,7 +8177,10 @@ const toolName = n => {
       const tab = (k, label, title, x, icon = '') => {
         const close = x ? `<span class="x" title="${esc(x)}">${ICON.close}</span>` : '';
         if (cur === k && isBlankTab(k)) return `<div class="ptab on addr blank" role="tab" aria-selected="true" data-tab="${esc(k)}" title="${esc('A new tab — type an address, or words to search' + tip)}">${icon}<input class="paddr" type="text" placeholder="Search or enter an address" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">${close}</div>`;
-        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" role="tab" aria-selected="true" tabindex="0" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${addrHtml(k, paneUrl(k))}</span><span class="navs">`
+        const editing = cur === k && addrEdit?.sid === s?.id && addrEdit.key === k;   // a page's address, clicked: a box (2026-10-27)
+        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr${editing ? ' editing' : ''}" role="tab" aria-selected="true" tabindex="0" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${editing
+          ? `<input class="pedit" type="text" data-key="${esc(k)}" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">`
+          : `<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(purlTip(k, paneUrl(k)))}">${addrHtml(k, paneUrl(k))}</span>`}<span class="navs">`
           + `<button class="nav" data-nav="back" title="Back">${ICON.back}</button><button class="nav" data-nav="forward" title="Forward">${ICON.forward}</button><button class="nav" data-nav="reload" title="Reload">${ICON.reload}</button><button class="nav pcopy" title="Copy this page's address">${ICON.copyAddr}${ICON.copied}</button><button class="nav" data-nav="external" title="Open this page in your browser">${ICON.external}</button></span>${close}</div>`;
         return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" role="tab" aria-selected="${cur === k}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
       };
@@ -8194,16 +8202,17 @@ const toolName = n => {
         + half;
       // the strip moves (2026-10-11): what it held is read before it is drawn anew, for tabMotion — only when it will be
       const prev = el._drawn !== html && el._sid === s?.id && !REDUCED.matches ? [...el.querySelectorAll('.ptab[data-tab]')].map(b => ({ k: b.dataset.tab, l: b.offsetLeft, w: b.offsetWidth, on: b.classList.contains('on'), html: b.innerHTML })) : null;
-      const box = el.querySelector('.ptab.blank .paddr'), typing = box && document.activeElement === box && [box.selectionStart, box.selectionEnd];
+      const box = el.querySelector('.ptab.blank .paddr, .ptab.editing .pedit'), typing = box && document.activeElement === box && [box.selectionStart, box.selectionEnd];
       const drew = setHtml(el, html);
       if (drew && prev?.length) tabMotion(el, prev);   // a strip coming out of hiding just appears
       // a blank tab's box keeps what was typed out of the markup, so typing redraws nothing — and is given it back when
       // something else redraws the strip, the keys and the caret too
-      const nb = drew && el.querySelector('.ptab.blank .paddr');   // not a closed one's stand-in, folding
-      if (nb) { nb.value = blankOf(s, nb.closest('.ptab').dataset.tab)?.q || ''; if (typing) { nb.focus(); nb.setSelectionRange(...typing); } }
+      const nb = drew && el.querySelector('.ptab.blank .paddr, .ptab.editing .pedit');   // not a closed one's stand-in, folding
+      if (nb) { nb.value = nb.matches('.pedit') ? addrEdit.q : blankOf(s, nb.closest('.ptab').dataset.tab)?.q || ''; if (typing) { nb.focus(); nb.setSelectionRange(...typing); } }
       if (el._drawn === html) fadeSoon();
       el._sid = s?.id;
     }
+    if (addrEdit && !document.querySelector('.ptabs .ptab.editing')) addrEdit = null;   // its tab gone from the front: let go
   }
   // A strip that changed under the same chat moves rather than jumps (2026-10-11, Linear's and Arc's strips): the
   // highlight slides from the tab that had it to the one that has it (a pill over the strip, the new tab plain until it
@@ -8270,10 +8279,11 @@ const toolName = n => {
     if (e.target.closest('.gclose')) return closeHalf(g);
     const s = state.sessions.get(state.current); if (!s) return;
     if (e.target.closest('.gturn')) return stackSplit(s, !stacked.has(s.id));
-    const cp = e.target.closest('.pcopy'); if (cp) return copyPaneUrl(cp.closest('.ptab').querySelector('.purl'), cp);
-    const nav = e.target.closest('.nav'); if (nav) { focusGroup(g); post({ type: 'nav', what: nav.dataset.nav }); return; }
-    const url = e.target.closest('.purl'); if (url) return copyPaneUrl(url);
-    if (e.target.closest('.paddr')) return;   // a blank tab's address: typed into, not a tab to open
+    const cp = e.target.closest('.pcopy');
+    if (cp) { const k = cp.closest('.ptab').dataset.tab; if (addrEdit) addrLeave(s); return copyPaneUrl(strip.querySelector(`.ptab[data-tab="${CSS.escape(k)}"] .purl`), cp); }   // the page's address, not what is typed over it
+    const nav = e.target.closest('.nav'); if (nav) { focusGroup(g); if (addrEdit) addrLeave(s); post({ type: 'nav', what: nav.dataset.nav }); return; }
+    const url = e.target.closest('.purl'); if (url) return isPageTab(url.dataset.key) ? addrEditAt(s, url.dataset.key, g) : copyPaneUrl(url);
+    if (e.target.closest('.paddr, .pedit')) return;   // a blank tab's address, a page's being edited: typed into, not a tab to open
     const b = e.target.closest('.ptab'); if (!b) return;
     const k = b.dataset.tab;
     if (e.target.closest('.x')) return closeTab(s, k);
@@ -8289,7 +8299,7 @@ const toolName = n => {
   }, true);
   // …and a click on a page in the pane, which the shell reports (2026-09-28): a native view over the half, so the page
   // never saw it, and ⌘W and ⌥⌘W went on acting on the half the keys had been in before.
-  window.peixPaneFocus = key => { const s = state.sessions.get(state.current), g = s ? placeOf(s).indexOf(key) : -1; if (g >= 0) focusGroup(g); };
+  window.peixPaneFocus = key => { const s = state.sessions.get(state.current), g = s ? placeOf(s).indexOf(key) : -1; if (addrEdit) addrLeave(s); if (g >= 0) focusGroup(g); };   // an address being edited is put back, as a click in a browser's page does
   // …and ⌘W in VS Code Web with no editor open (2026-10-14), which the editor keeps from the Window menu: the shell
   // hears it from the page and names the view's tab, which goes as ⌘W's would — by that key, not the half's.
   window.peixPaneClose = key => { const s = state.sessions.get(state.current); if (s && tabKeys(s).includes(key)) dropTab(s, key); };
@@ -8314,7 +8324,7 @@ const toolName = n => {
       drag = null;
     };
     $('#groups').addEventListener('pointerdown', e => {
-      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl, .paddr')) return;   // the address and its buttons are not the tab's handle
+      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl, .paddr, .pedit')) return;   // the address and its buttons are not the tab's handle
       if (!splitNow()) return;
       drag = { k: b.dataset.tab, from: b.closest('.ptabs').id === 'ptabsB' ? 1 : 0, x: e.clientX, y: e.clientY, b, ghost: null };
     });
@@ -8375,6 +8385,46 @@ const toolName = n => {
     w.style.left = x + 'px'; w.style.width = wd + 'px'; w.textContent = text;
     tab.classList.toggle('cperr', !!err); tab.classList.add('copied');
     clearTimeout(tab._said); tab._said = setTimeout(() => tab.classList.remove('copied'), err ? 4000 : COPIED_MS);
+  }
+  /** A page's address, clicked (2026-10-27; a click copied it before, and the copy is its button's now): a browser's
+      address bar — the whole URL in a box, selected; ⏎ goes where it says (an address, a bare host, else a search:
+      typedPage) in that same view, its history kept, and the page has the keys again; esc puts the address back and
+      gives the page the keys; the box left any other way puts it back too. What is typed is addrEdit's, not the
+      markup's, so a redraw of the strip keeps it (renderTabs). In the app the board's view takes the keys from the page
+      for it ({type: 'focus'}), and 'keys' gives them back. */
+  function addrEditAt(s, k, g) {
+    focusGroup(g); post({ type: 'focus' });
+    addrEdit = { sid: s.id, key: k, q: paneUrl(k) }; renderTabs(s);
+    const box = document.querySelector('.ptabs .ptab.editing .pedit'); if (box) { box.value = addrEdit.q; box.focus(); box.select(); }
+  }
+  function addrLeave(s, keys) {
+    const k = addrEdit?.key; addrEdit = null;
+    if (s) renderTabs(s);
+    if (k && keys) post({ type: 'nav', what: 'keys', key: k });
+  }
+  function addrGo(s, raw) {
+    const k = addrEdit?.key, url = raw.trim() && typedPage(raw.trim()).url;
+    if (!url) return addrLeave(s, true);
+    addrEdit = null; renderTabs(s);
+    if (!IN_PANE.test(url)) return openExternal(url, { s });
+    post({ type: 'nav', what: 'go', key: k, url });
+  }
+  {
+    const at = () => state.sessions.get(state.current);
+    $('#groups').addEventListener('input', e => { if (e.target.matches?.('.pedit') && addrEdit) addrEdit.q = e.target.value; });
+    $('#groups').addEventListener('keydown', e => {
+      if (!e.target.matches?.('.pedit') || !addrEdit || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+      if (e.key === 'Enter') { e.preventDefault(); addrGo(at(), e.target.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); addrLeave(at(), true); }
+    });
+    // a press elsewhere on the strips keeps the keys in the box, so what it presses is not drawn away under its click
+    // (the box put back at the blur would redraw the strip): its click lets go of the box itself
+    $('#groups').addEventListener('mousedown', e => { if (addrEdit && e.target.closest?.('.ptabs') && !e.target.closest('.pedit')) e.preventDefault(); });
+    // the box left: put back, unless a redraw of the strip has just given the keys to the box drawn in its place
+    $('#groups').addEventListener('focusout', e => {
+      if (!e.target.matches?.('.pedit')) return;
+      setTimeout(() => { if (addrEdit && !document.activeElement?.matches?.('.pedit')) addrLeave(at()); }, 0);
+    });
   }
   /** A tab chosen — by a click or ⌥⌘←/→: it comes up in its own half, which becomes the one the keys are in.
       A page is shown as it stands, wherever it was followed to, and keeps the keys; the rest, the keyboard follows. */

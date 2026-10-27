@@ -692,8 +692,9 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **A page in the pane behaves like a browser tab**: ⌘R reloads it (2026-10-13: a key monitor in
   `installHotkeyForwarder`, never a menu key equivalent, which takes the key first — VS Code Web's ⌘R is its own,
   and with no page up ⌘R goes on to whatever has the keys; the View menu's *Reload Page* carries none, *Reload Board* is
-  ⌥⌘R, `reloadBoard`), pinch zooms it (`allowsMagnification`), its address sits in the strip (a click or `.pcopy`
-  copies it, `copyPaneUrl`, said in the address, `addrSay` — a `note()` there is under the page, 2026-10-20), each
+  ⌥⌘R, `reloadBoard`), pinch zooms it (`allowsMagnification`), its address sits in the strip — **a page's, clicked, is
+  a box** (2026-10-27, `addrEditAt`: ⏎ nav `go` in that view, esc `keys`) —, `.pcopy` copies it
+  (`copyPaneUrl`, said in the address, `addrSay` — a `note()` there is under the page, 2026-10-20), each
   navigation reported as `peixPaneUrl(key, url)` (KVO, `paneObs`; `paneUrls`).
 * **⌘F finds on that page**: the Edit menu's *Find… · Find Next · Find Previous*, greyed with the pane down; a native
   bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
@@ -772,8 +773,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`.gempty`), and its strip takes a drop (`.pdrop`). **The tab in front closed, the one beside it comes forward**
   (2026-10-13, `closeTab`): its right, else its left — a zsh's at once, before the server says it ended.
 * **A blank tab is a browser's new tab** (2026-10-13, ⌘T on a page; `blanks`, `new:<n>` after the pages, page state
-  only): in front, its address a box with the keys (`.ptab.blank .paddr` — what was typed is kept out of the markup, so
-  typing redraws nothing, and given back with the caret when the strip redraws), and under it, in the half, what ⏎
+  only): in front, its address a box with the keys (`.ptab.blank .paddr`; what was typed is out of the markup, given back
+  with the caret on a redraw — as a page's address edited, `addrEdit`), and under it, in the half, what ⏎
   would open (`.gblank`, `placeBlanks` from `syncTerm`, `blankRows`: typed first — `typedPage`: an address, a bare host,
   else a search —, then `chatPages`). ⏎ or a click puts the page in its place (`fillBlank`); esc empties the box, then
   closes the tab (`blankEscape`, also `hotEscape`'s: with the pane up the app takes esc). `focusTerm` focuses the box

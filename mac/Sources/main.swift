@@ -645,14 +645,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   @objc func openSettings(_ sender: Any?) {
     web.evaluateJavaScript("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil)
   }
-  /// ‹ › ↻ ↗ from the strip, for the page on top.
-  func paneNav(_ what: String) {
-    guard let w = paneTarget.flatMap({ paneViews[$0] }) else { return }
+  /// ‹ › ↻ ↗ from the strip, for the page on top — or for the page `key` names: its address edited in the strip
+  /// (2026-10-27), `go` loads what was typed in that view, its history kept, and `keys` hands the page the keys back.
+  func paneNav(_ what: String, key: String? = nil, url: String? = nil) {
+    guard let w = (key ?? paneTarget).flatMap({ paneViews[$0] }) else { return }
     switch what {
     case "back": w.goBack()
     case "forward": w.goForward()
     case "reload": w.reload()
     case "external": if let u = w.url { NSWorkspace.shared.open(u) }
+    case "go":
+      guard let u = url.flatMap({ URL(string: $0) }), ["http", "https"].contains(u.scheme?.lowercased() ?? "") else { return }
+      w.load(URLRequest(url: u)); if !w.isHidden { window.makeFirstResponder(w) }
+    case "keys": if !w.isHidden { window.makeFirstResponder(w) }
     default: break
     }
   }
@@ -820,7 +825,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column, and T a new tab (2026-10-13 — VS Code Web's
   // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
-  // for the keyboard back ({type: "focus"}) only when it opens a dialog.
+  // for the keyboard back ({type: "focus"}) only when it opens a dialog, or a page's address is edited (2026-10-27).
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
@@ -1461,7 +1466,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       }
       setPane(chat: body["id"] as? String, keys: body["keys"] as? [String] ?? [], places: places, focus: body["focus"] as? String)
     case "nav":
-      paneNav(body["what"] as? String ?? "")
+      paneNav(body["what"] as? String ?? "", key: body["key"] as? String, url: body["url"] as? String)
     case "fullscreen":   // Settings › Look's full screen (2026-10-14): the fill, or the system's in a Space of its own
       setSpaceMode(body["space"] as? Bool ?? false)
     case "key":   // the lock's *Read the key again*, a new key made on the board (2026-10-16)

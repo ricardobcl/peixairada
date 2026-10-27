@@ -5,13 +5,14 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once
+## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once, a page's address edited
 
 Ricardo:
 
 > - the "connected" on the status bar should just be the fish icon with colors mapping to the status
 > - the "1 watching" should also use the same icon as the card and remove the text
 > - the chat when entering a message, it has a delay posting the message. we should be optimist and post it immediately on the UI so it feels snappy. if something goes wrong, we just say that on the chat (only to the user that posted)
+> - the copy url buttong works great, but when clicking on the url, it also copies and sometimes I want to edit the address
 
 * **The connection is the fish alone, in three colours**: the ready green on the stream, amber while the EventSource
   tries again (belly-up and bobbing, as before), red once it has given up — the server turned it away, which is the
@@ -28,9 +29,23 @@ Ricardo:
   where it was said with *Not sent: <why>*, *Try again* (sent as the newest) and *Edit* (its words back in the box):
   on that page alone, since nobody else ever had it. Polls and votes are as they were — a vote was drawn at once
   already, and a poll is a form you asked from.
+* **A page's address clicked is a browser's address bar**, the copy being the button's (2026-10-20): a box with the
+  whole URL selected (`addrEditAt`); ⏎ loads what it says in that same view — `typedPage`, so a bare host is https and
+  words a search — and its history is kept (`{type: 'nav', what: 'go', key, url}`, main.swift's `paneNav` loading
+  `URLRequest` into the key's view, http and https only); esc, or the box left, puts the address back, and esc and ⏎
+  give the page the keys (`keys`). In the app the board's view takes the keys for the box first (`{type: 'focus'}`) —
+  a click on the strip of the other half would otherwise have the shell hand them to that half's page. A press
+  elsewhere on the strips keeps the keys in the box (its blur would redraw the strip under the click), and the click
+  lets go of it; a click into a page does too (`peixPaneFocus`). The editor's tab, whose label is not an address,
+  still copies on a click. What is typed lives in `addrEdit`, not the markup, and a redraw gives it back with the
+  caret, as a blank tab's box does. Not done: ⌘L to reach the box from the page — a key the forwarder would have to
+  take from every page.
 * Checked: `status-bar.mjs` (no word beside the fish; green, amber, red), `watch-chip.mjs` (the card's mark, the count,
   the watch colour), `chat-room.mjs` (a send held: drawn at once, faded, last, the box empty; then GitHub's, once; one
-  refused: said there, not on GitHub, Try again sends it, Edit puts it back), `chat-poll.mjs`; `npm test`.
+  refused: said there, not on GitHub, Try again sends it, Edit puts it back), `pane-tabs.mjs` (the box, selected, the
+  board's view given the keys; kept through a redraw; esc; ⏎ on a host, a URL and words; a blur; the copy button
+  alone copies); `tab-keys`, `pr-tab-again`, `tabs-reload`, `chat-poll`, `split-halves`, `half-zoom`, `links-out`;
+  `npm test`; swiftc. The app needs `mac/build.sh install` for ⏎ to load: an older app ignores `go`.
 
 ## Decisions of 2026-10-25 — the chat list hides, its switch first in the status bar
 
