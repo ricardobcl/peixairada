@@ -899,13 +899,16 @@ function notePrs(s, text, ts, by) {
 // finds a PR there, and is let go when GitHub has none (`forgetRef`: an issue's number, a repo that is not there). A
 // bare `#12` names something current as well: one that comes to a PR merged or closed long before it was said is a
 // review's numbered point, not the chat's PR — its own repo's #3 is years old (REF_AGE_MS) —, and no short reference
-// to such a PR titles the card (`pastRef`). Code is not prose — GitHub links no `#12` in it, and `#333` is a colour
+// to such a PR titles the card (`pastRef`). A young repo's #1 is neither, so a `#1` after a word that counts — a note, a
+// step, an option, a point… (`COUNTED`, 2026-10-27: "deploy note #1" was a repo's first PR) — is none, nor the list
+// after it. Code is not prose — GitHub links no `#12` in it, and `#333` is a colour
 // there — and neither is a link's text, whose URL says which PR.
 const REF_RE = /(?:(?<![\w/.&#-])(?:([A-Za-z0-9][\w-]*)\/)?([A-Za-z0-9][\w.-]*)|(?<![\w&#]))#([1-9]\d{0,5})(?![\w-])/g;
 const NOT_PROSE = /```[\s\S]*?(?:```|$)|`[^`\n]*`|\[[^\]\n]*\]\([^)\s]*\)|https?:\/\/\S+/g;
 const NOT_REPO = /^(?:prs?|pulls?|issues?)$/i;                        // `PR#12` is the chat's own #12
 const NAME_BEFORE = /([A-Za-z0-9][\w.-]*)[*_]*[ \t]+(?:PRs?[ \t]+)?$/i;   // `widgets #12`, `**widgets** PR #12`
 const LIST_GAP = /^(?:[ \t*_,/&]|\band\b|\bor\b)*$/;               // `#12, #14 and #15`, `#12/#14` — on one line
+const COUNTED = /\b(?:note|steps?|options?|points?|items?|phases?|parts?|rounds?|rules?|findings?|questions?|cases?|stages?|tiers?|levels?|tasks?|priority)[*_]*[ \t]+$/i;
 const REF_AGE_MS = 90 * 24 * 60 * 60_000;
 const noPr = new Set();   // where GitHub had no PR: not taken up again from a short reference until a restart
 const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
@@ -946,9 +949,10 @@ function refsIn(s, text) {
       const w = NAME_BEFORE.exec(prose.slice(Math.max(0, m.index - 80), m.index))?.[1];
       if (w && ((own && sameName(own.name, w)) || checkoutNamed(w))) name = w;
       else if (prev && LIST_GAP.test(prose.slice(prev.end, m.index))) ({ owner, name, kind } = prev);
-      else kind = 'bare';
+      else kind = COUNTED.test(prose.slice(Math.max(0, m.index - 24), m.index)) ? 'counted' : 'bare';
     }
     prev = { owner, name, kind, end: m.index + m[0].length };
+    if (kind === 'counted') continue;
     const r = repoOf(owner, name);
     if (r) out.push({ at: m.index, url: `https://github.com/${r.owner}/${r.name}/pull/${m[3]}`, key: prKey(r.owner, r.name, m[3]), ref: kind });
   }

@@ -47,6 +47,10 @@ deep investigation to make sure there's no "contamination" happening" — and, o
   every transcript: of the 217 tailed chats with a PR of their own, the boot now finds the one that titles them in 177
   (85 before), none in 5, and another in 35 — those whose first PR is in the middle of a long file, which only opening
   reads (2.3 GB in all; reading it whole at boot is not on).
+* **A `#1` after a word that counts is no PR** (`COUNTED`: *note*, *step*, *option*, *point*, *item*, *round*…, and
+  the list after it): "deploy note #1" came to a young repo's first PR, merged weeks before — too young for
+  `pastRef`'s ninety days. Of every short reference in every transcript it lets five go, one of them shown — that one.
+  *notes* stays out: a folder of that name is the tests' checkout that is not one.
 
 ## Decisions of 2026-10-27 — the bar's fish alone, the chat's sends at once, a page's address edited
 

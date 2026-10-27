@@ -63,6 +63,11 @@ test('code, a link\'s text, a URL\'s fragment, an entity and a colour are no ref
   assert.deepEqual(said(chat(join(code, 'widgets')), '`widgets` #25'), ['acme/widgets#25 repo'], 'a name in code still names the repo after it');
 });
 
+test('a #n after a word that counts is a numbered point, and so is the list after it (2026-10-27)', () => {
+  assert.deepEqual(said(chat(join(code, 'widgets')), 'It is deploy note #1 on the PR. Steps #2, #3 and #4; **Option** #5. Fixes #6, see gadgets #7'),
+    ['acme/gadgets#7 repo', 'acme/widgets#6 bare']);
+});
+
 test('a repo of your own under the org\'s root: its name is yours, any other the org\'s', () => {
   const s = chat(join(code, 'mine'));
   assert.deepEqual(said(s, '#5, mine#3 and widgets#4'), ['acme/widgets#4 repo', 'me/mine#3 repo', 'me/mine#5 bare']);
