@@ -2,13 +2,15 @@
 // untracked one. What this checks: a line's + opens a box, Add to review (and ⌘⏎) keeps the comment under its line, the
 // file's count and the bar at the tab's foot; a re-read (↻) keeps them where they were; the turn's scope, which lacks a
 // file, shows that one's comment at the top as not in this diff; Edit changes one in place; a reload of the page brings
-// the review back (sessionStorage); Submit types the whole review into the chat's claude as one prompt — its comments
-// by file and line, each with its line, then the review's own words — and the review is gone.
+// the review back (sessionStorage); a range, as GitHub's — a drag from a line's + over others, from the removed lines to
+// an added one, and a ⇧-click with a box open — sits under its last line with every line of it marked, through a
+// re-read; Submit types the whole review into the chat's claude as one prompt — its comments by file and line, each
+// with its line or a range's lines as the diff marks them, then the review's own words — and the review is gone.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture, toolLines } from '../fixture.mjs';
-import { tmpDir } from '../../lib/testserver.mjs';
+import { tmpDir, waitFor } from '../../lib/testserver.mjs';
 
 const repo = join(realpathSync(tmpDir('peix-rev-')), 'shop');
 mkdirSync(join(repo, 'src'), { recursive: true });
@@ -93,17 +95,62 @@ export default async function (ctx) {
   await ctx.waitFor(`!document.querySelector('#chg').hidden && document.querySelectorAll('#chg .lcmt').length === 2`, { what: 'the review after a reload', timeout: 15000 });
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#chg .crev textarea').value`), 'keep the tests green');
 
+  // a range by a drag: from the + of cart.js's first removed line to its first added one — three lines, tinted as it goes
+  const at = (path, side, n) => `#chg .cfile[data-path="${path}"] .dl.${side === 'a' ? 'del' : 'add'}[data-${side}="${n}"]`;
+  const sel = () => ctx.evaluate(`[...document.querySelectorAll('#chg .dl.sel')].map(l => (l.dataset.a || '-') + '/' + (l.dataset.b || '-'))`);
+  out.dragging = await ctx.drag(`${at('src/cart.js', 'a', 1)} .dlp`, at('src/cart.js', 'b', 1), sel);
+  ctx.assert.deepEqual(out.dragging, ['1/-', '2/-', '-/1'], 'the lines picked as the drag goes');
+  await ctx.waitFor(`document.activeElement === document.querySelector('#chg .lnote textarea')`, { what: 'the range’s box, with the keys' });
+  out.dragBox = await ctx.evaluate(`(b => ({ who: b.querySelector('.who').textContent, after: b.previousElementSibling.querySelector('code').textContent, hint: b.querySelector('textarea').placeholder }))(document.querySelector('#chg .lnote'))`);
+  ctx.assert.deepEqual(out.dragBox, { who: 'A comment on src/cart.js:−1 to +1', after: 'export const total = (items, tax = 0) =>', hint: 'What should Claude do about these lines?' });
+  ctx.assert.deepEqual(await sel(), ['1/-', '2/-', '-/1'], 'the box’s lines lit while it is open');
+  await ctx.settle(); await ctx.shot('range-box');
+  await ctx.fill('#chg .lnote textarea', 'one signature, not two');
+  await ctx.evaluate(`document.querySelector('#chg .lnote [data-note="add"]').click()`);
+  await ctx.waitFor(`!document.querySelector('#chg .lnote')`, { what: 'the range saved' });
+
+  // a range by ⇧-click: README's first line's box, stretched down to its third — Shift on another line's +
+  await ctx.evaluate(`document.querySelector('#chg .cfile[data-path="README.md"] .dl.ctx[data-b="1"] .dlp').click()`);
+  await ctx.waitFor(`document.querySelector('#chg .lnote')`, { what: 'README’s box' });
+  await ctx.fill('#chg .lnote textarea', 'a section on the tax');
+  await ctx.evaluate(`document.querySelector('${at('README.md', 'b', 3)} .dlp').dispatchEvent(new MouseEvent('click', { shiftKey: true, bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`document.querySelector('#chg .lnote .who')?.textContent === 'A comment on README.md:1–3'`, { what: 'the box stretched' });
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#chg .lnote textarea').value`), 'a section on the tax', 'the words kept');
+  ctx.assert.deepEqual(await sel(), ['1/1', '-/2', '-/3']);
+  await ctx.evaluate(`document.querySelector('#chg .lnote textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`!document.querySelector('#chg .lnote')`, { what: 'the stretched one saved' });
+  ctx.assert.equal(await bar(), 'Review · 4 comments');
+  // every line of a range is marked, and a re-read finds them all again
+  const marked = () => ctx.evaluate(`[...document.querySelectorAll('#chg .dl.cmted')].map(l => l.closest('.cfile').dataset.path + ' ' + (l.dataset.a || '-') + '/' + (l.dataset.b || '-'))`);
+  out.marked = await marked();
+  ctx.assert.deepEqual(out.marked, ['README.md 1/1', 'README.md -/2', 'README.md -/3', 'src/cart.js 1/-', 'src/cart.js 2/-', 'src/cart.js -/1', 'src/cart.js -/2']);
+  // the pointer on a range's comment lights its lines, and off it lets them go
+  const over = await ctx.evaluate(`(r => ({ x: Math.round(r.left + 60), y: Math.round(r.top + r.height / 2) }))([...document.querySelectorAll('#chg .lcmt')].find(c => c.querySelector('.tx').textContent === 'one signature, not two').getBoundingClientRect())`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: over.x, y: over.y });
+  await ctx.waitFor(`document.querySelectorAll('#chg .dl.lit').length === 3 && document.querySelector('#chg .cfile[data-path="src/cart.js"] .dl.del[data-a="1"]').matches('.lit')`, { what: 'the range lit under the pointer' });
+  await ctx.settle(); await ctx.shot('ranges');
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: over.x, y: 5 });
+  await ctx.waitFor(`!document.querySelector('#chg .dl.lit')`, { what: 'the lines let go' });
+  await ctx.evaluate(`document.querySelector('#chg [data-act="reload"]').click()`);
+  await ctx.sleep(600); await ctx.waitFor(`document.querySelectorAll('#chg .lcmt').length === 4`, { what: 'the diff read again' });
+  ctx.assert.deepEqual(await marked(), out.marked, 'a re-read keeps the ranges');
+
   // Submit: one prompt in the drawer, and the review is gone
   await ctx.waitPrompt(30_000, 0);
   await ctx.evaluate(`document.querySelector('#chg [data-rev="submit"]').click()`);
   await ctx.waitFor(`!document.querySelector('#chg .crev') && !document.querySelector('#chg .lcmt')`, { what: 'the review sent' });
-  // the screen as one string without its spaces: a long line wraps, and the fake indents a prompt's lines after its first
-  const flat = `window.peix.screen(0).join('').replace(/\\s+/g, '')`;
-  await ctx.waitFor(`${flat}.includes('Overall:keepthetestsgreen')`, { what: 'the review in the drawer', timeout: 10000 });
-  const said = await ctx.evaluate(flat);
-  for (const want of ['A review of the changes — 2 comments; address each:', '1. README.md:3', '> Now with tax.', 'say which tax', '2. src/cart.js:2', '> items.reduce((n, i) => n + i.price, 0) * (1 + tax);', 'round the total to cents', 'Overall: keep the tests green'])
-    ctx.assert.ok(said.includes(want.replace(/\s+/g, '')), `the prompt has ${want}`);
+  // the prompt as the fake claude wrote it to the transcript: the drawer's ESC CR are its newlines
+  const typed = () => readFileSync(chat.file, 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(l => l.type === 'user').map(l => [].concat(l.message.content).map(c => c.text ?? c).join('')).pop();
+  await waitFor(() => typed()?.includes('Overall: keep the tests green'), { what: 'the review in the drawer', timeout: 10000 });
+  out.prompt = typed();
+  ctx.assert.equal(out.prompt, [
+    'A review of the changes — 4 comments; address each:',
+    '1. README.md:1–3\n   >  # shop\n   > +\n   > +Now with tax.\n   a section on the tax',
+    '2. README.md:3\n   > Now with tax.\n   say which tax',
+    '3. src/cart.js, old line 1 to new line 1\n   > -export const total = items =>\n   > -  items.reduce((n, i) => n + i.price, 0);\n   > +export const total = (items, tax = 0) =>\n   one signature, not two',
+    '4. src/cart.js:2\n   > items.reduce((n, i) => n + i.price, 0) * (1 + tax);\n   round the total to cents',
+    'Overall: keep the tests green'].join('\n\n'));
   await ctx.sleep(500);   // keepTabs again
   ctx.assert.equal(await ctx.evaluate(`JSON.parse(sessionStorage.getItem('peixairada-tabs') || '{}').reviews?.length ?? 0`), 0, 'nothing kept once sent');
-  return { placed: out.placed, gone: out.gone };
+  return { placed: out.placed, gone: out.gone, dragBox: out.dragBox, prompt: out.prompt };
 }

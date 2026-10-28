@@ -74,7 +74,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
 | `scripts/fakegh.mjs`, `fakejira.mjs`, `fakegithub.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs`, `fakeinstagram.mjs`, `fakereader.mjs`, `fakevim.mjs` | `gh`, Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed`, lunch's Instagram and reader, vim — what every test server runs instead of the real ones; each file's head says its knobs |
-| `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP, `img2webp`) → `docs/shots/` |
+| `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP) → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
 
@@ -787,9 +787,9 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   turn edited, `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`);
   `prefs.changesScope`. Re-read when the chat moved on or by ↻, its place kept; read on a copy of the index
   (`indexCopy`), lists `-z`, a file past `CHANGES_MAX` named in `left`. **Commit…, Push and PR… type the command into the chat's
-  zsh, unrun** (`typeInShell`). **A line's comments are a review** (2026-10-28; `reviews`, `drawComments`, found by the
-  line's words): Submit types it into the drawer's claude as one prompt (`reviewPrompt`; no drawer: copied, kept).
-  → `test/changes.test.mjs`, `changes-tab.mjs`, `changes-review.mjs`.
+  zsh, unrun** (`typeInShell`). **A line's comments are a review** (2026-10-28; `reviews`, `drawComments`, found by its
+  words), **a range's too** (drag, ⇧-click; one hunk, `spanOf`): Submit types it into the drawer's claude, one prompt
+  (`reviewPrompt`; else copied, kept). → `test/changes.test.mjs`, `changes-tab.mjs`, `changes-review.mjs`.
 * **The timeline tab is the chat and its PRs in one order** (2026-10-17; ⌥⌘J, `#tvBtn`): `timeline` in `timelineOpen`,
   `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and ledgers
   (`tvLogOf`, on a `pr.logged` move); `tvModel` ties turns to PRs. Turns one line (`tvTurnSum`), a lane per PR (`tvLanes`, `tvStyle`), the Now bar (`tvGo`), folds (`tvRuns`,
@@ -827,7 +827,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   that tree — its changes, editor and zsh the branch's by construction. → `test/worktrees.test.mjs`, `editor-branch.mjs`,
   `chat-worktree.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
-  the card's live line and the tiles; the raw name is the row's tooltip.
+  the card's live line and the tiles; the raw name its tooltip.
 * **A tool call wears its state** (`toolRes`, `toolMark`): `.tst[data-tu]` — `run` (turning while `#log.working`),
   `ok`, `err` — from the open chat's entries; a result for a row already drawn sets its mark in place, and a folded
   run's summary turns while any call is out.
@@ -986,7 +986,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
   node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
-* `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or the `--test-state` dir on their command line).
+* `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or their `--test-state` dir).
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust in the browser profile. → Findings: *VS Code Web*.
 * Ink redraws only its live region on a resize, earlier lines at the old width: Claude Code's, not ours.
 * xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight

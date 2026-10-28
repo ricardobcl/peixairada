@@ -36,8 +36,17 @@ Ricardo:
   that has them when a re-read moved the numbers, at the diff's top (*not in this diff*, still in the review) when the
   scope or Claude's edits took it away. A comment is drawn into the diff already there, so it costs no
   re-highlighting; a re-read of the same diff keeps its scroll and a box being typed in (the turn's end used to put the
-  diff back at the top). Not done: comments over a range of lines, and a review on GitHub itself — this one is for
-  Claude.
+  diff back at the top). Not done: a review on GitHub itself — this one is for Claude.
+* **A comment may cover a range of lines, as GitHub's** (`spanOf`, `rangeAt`, `stretchComment`). Ricardo, later that
+  day: *"on review diff, can we allow multi-line select line github?"* A press on a line's + dragged over others picks
+  them, tinted as it goes; a ⇧-click on another line's + (or its number) with a box open stretches the box to it — from
+  the range's top down, or its foot up —, the words typed kept. One hunk's lines at most, as GitHub's: between two hunks
+  are lines the diff does not show. The comment sits under the last line and keeps every line, marked as the diff marks
+  them (`quote`): a re-read finds the last line by its words, and prefers the one whose lines before it are still the
+  range's. Its place reads `path:12–18`, or `path:−12 to +18` from a removed line to an added one (the prompt: *old
+  line 12 to new line 18*); the prompt quotes the lines with their marks, the indent they share dropped, twenty at most
+  (`QUOTE_ROWS`). A saved comment under the pointer lights its lines. A comment on one line is as it was, in the
+  prompt too.
 * **⏎ on ＋ *new worktree* with a new branch's name is one more step, the base** (`wtEnter` → `baseStep`, mode
   `base`): the branches this checkout has and origin's as last fetched (`GET /api/worktrees/bases`, `worktreeBases` —
   one `for-each-ref`, no network, newest first), typed to filter as every picker is, ← or ⌫ on the empty box back to

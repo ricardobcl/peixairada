@@ -1780,7 +1780,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chg .dl.hunk { background: color-mix(in srgb, var(--hl-fn) 10%, transparent); } #chg .dl.hunk code { color: var(--hl-meta); }
   #chg .dl.meta code { color: var(--muted); font-style: italic; }
   #chg .dlp { position: absolute; left: -2px; top: 1px; width: 17px; height: 17px; padding: 0; border: 0; border-radius: var(--r-2); background: var(--accent); color: var(--bg); font: 700 var(--fs-sm)/17px -apple-system, sans-serif; cursor: pointer; opacity: 0; }
-  #chg .dl:hover .dlp { opacity: 1; }
+  #chg :is(.dl:hover, .dl.held) .dlp, #chg .dlp:focus-visible { opacity: 1; }
+  /* a range's lines (2026-10-28), as GitHub's: tinted and barred while its box is open, a drag picks them or its comment is under the pointer */
+  #chg .dl:is(.sel, .lit) { background-image: linear-gradient(color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 16%, transparent)); box-shadow: inset 3px 0 var(--accent); }
   #chg .lnote { display: grid; gap: 8px; margin: 4px 14px 8px 98px; padding: 9px 11px; border-radius: var(--r-3); border: 1px solid var(--accent); background: var(--bg); font: var(--fs-md)/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
   #chg .lnote .who { font-size: var(--fs-xs); color: var(--muted); }
   #chg .lnote textarea { font: inherit; resize: vertical; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); color: inherit; outline: none; }
@@ -8838,7 +8840,7 @@ const toolName = n => {
       return `<section class="cfile" data-path="${esc(f.path)}"><div class="fh">${esc(f.path)}<em><span class="a">+${f.add}</span> <span class="d">−${f.del}</span></em></div>${
         d.left?.includes(f.path) ? '<div class="cempty sm">too long to show here</div>' : f.binary ? '<div class="cempty sm">a binary file</div>' : !ls.length ? '<div class="cempty sm">no lines to show</div>'
         : ls.map(x => x.t === 'hunk' ? `<div class="dl hunk"><span class="na"></span><span class="nb"></span><span class="sg"></span><code>${esc(x.text)}</code></div>`
-          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}" data-a="${x.a ?? ''}" data-b="${x.b ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A comment on this line — for the review that goes to Claude, or sent alone">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
+          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}" data-a="${x.a ?? ''}" data-b="${x.b ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A comment on this line — for the review that goes to Claude, or sent alone · drag to more lines, or ⇧-click one with a box open, for a range">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
     }).join('');
     // a PR's: its head → its base, where it was read from, and the PR itself — the folder's Commit… and Push are not its
     const src = !dp ? '' : dp.source === 'gh' ? `from GitHub (gh pr diff) — ${esc(dp.why)}` : `as pushed, at <b>${esc(String(dp.head).slice(0, 7))}</b> · read from origin, nothing checked out`;
@@ -8913,18 +8915,48 @@ const toolName = n => {
     if (act === 'pr') { const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft'); if (pr) showPr(pr.url); return; }
     const f = e.target.closest('.cf');
     if (f) { changes.sel = f.dataset.path; $('#chg').querySelectorAll('.cf').forEach(b => b.classList.toggle('on', b === f)); $('#chg').querySelector(`.cfile[data-path="${CSS.escape(f.dataset.path)}"]`)?.scrollIntoView({ block: 'start', behavior: 'instant' }); return; }
-    const plus = e.target.closest('.dlp');
-    if (plus) {   // a comment on this line: a box under it
-      const line = plus.closest('.dl'), side = line.classList.contains('del') ? 'a' : 'b';
-      // a line of a PR's diff: Claude is told which PR — the folder may have another branch out
-      return openComment(s, { path: line.closest('.cfile').dataset.path, side, line: +line.dataset[side], code: line.querySelector('code').textContent, pr: changes.data?.pr?.n ?? null });
-    }
+    const plus = e.target.closest('.dlp'), num = e.shiftKey && e.target.closest('.dl:not(.hunk, .meta) :is(.na, .nb)');
+    if ((plus || num) && e.shiftKey && stretchComment(s, (plus || num).closest('.dl'))) return;   // ⇧: the open box takes in the lines to here
+    if (plus) return openComment(s, rangeAt([plus.closest('.dl')]));   // a comment on this line: a box under it
     const nb = e.target.closest('[data-note]');
     if (nb) return nb.dataset.note === 'add' ? saveComment(s) : nb.dataset.note === 'send' ? sendComment(s, nb) : closeComment(s);
     const cm = e.target.closest('[data-cmt]');
     if (cm) { const id = +cm.closest('.lcmt').dataset.cid; return cm.dataset.cmt === 'edit' ? editComment(s, id) : dropComment(s, id); }
     const rb = e.target.closest('[data-rev]');
     if (rb) return rb.dataset.rev === 'submit' ? submitReview(s, rb) : discardReview(s, rb);
+  });
+  // a press on a line's + and a drag over others picks a range, as GitHub's (2026-10-28): the lines tinted as it goes,
+  // one hunk's at most; let go over another line, the box opens on them all — over the same one, the click opens it
+  let lineDrag = null;
+  $('#chg').addEventListener('mousedown', e => {
+    const plus = e.button === 0 && e.target.closest('.dlp, .dl:not(.hunk, .meta) :is(.na, .nb)'); if (!plus) return;
+    e.preventDefault();   // no text selected on the way, the keys left where they were
+    if (e.shiftKey || !plus.matches('.dlp')) return;
+    const from = plus.closest('.dl');
+    lineDrag = { from, run: [from] }; from.classList.add('held');
+    window.addEventListener('mouseup', () => {
+      const d = lineDrag, s = state.sessions.get(state.current); lineDrag = null; d.from.classList.remove('held');
+      if (!s || !d.from.isConnected) return;
+      if (d.run.length > 1) openComment(s, rangeAt(d.run)); else if (d.moved) drawComments(s);   // one line: the click that follows opens it
+    }, { once: true });
+  });
+  // a saved comment under the pointer lights the lines it is on
+  let litBox = null;
+  const lightLines = box => {
+    if (box === litBox) return; litBox = box;
+    $('#chg').querySelectorAll('.dl.lit').forEach(n => n.classList.remove('lit'));
+    const c = box && reviewOf(state.current).items.find(x => x.id === +box.dataset.cid);
+    let at = box; while (at && !at.matches('.dl')) at = at.previousElementSibling;
+    if (c && at) for (const l of runOf(at, c.rows)) l.classList.add('lit');
+  };
+  $('#chg').addEventListener('mouseleave', () => lightLines(null));
+  $('#chg').addEventListener('mouseover', e => {
+    lightLines(!lineDrag && e.target.closest('.cdiff .lcmt:not(.gone)') || null);
+    const l = lineDrag && e.target.closest('.dl:not(.hunk, .meta)'); if (!l) return;
+    const run = spanOf(lineDrag.from, l); if (run.length === lineDrag.run.length && run[0] === lineDrag.run[0]) return;
+    lineDrag.run = run; lineDrag.moved = true;
+    $('#chg').querySelectorAll('.dl.sel').forEach(n => n.classList.remove('sel'));
+    for (const n of run) n.classList.add('sel');
   });
   $('#chg').addEventListener('keydown', e => {
     const s = state.sessions.get(state.current); if (!s) return;
@@ -8945,36 +8977,82 @@ const toolName = n => {
   // alone, as the note on a line did before. A comment keeps its line's words: a re-read finds it by them, at the
   // nearest line that has them when the numbers moved; one the diff no longer shows waits at its top, still in the
   // review. Drawn into the diff already there (drawComments), so a comment costs no re-highlighting.
-  const reviews = new Map();   // chat id → { items: [{ id, path, side: 'a' (a removed line, its old number) | 'b', line, code, pr, text }], body }
+  // A comment may cover a range (2026-10-28), as GitHub's: a drag from a + or a ⇧-click with a box open picks the lines
+  // of one hunk; it sits under the last of them, and keeps them all (`quote`) to be found by and quoted to Claude.
+  const reviews = new Map();   // chat id → { items: [{ id, path, side: 'a' (a removed line, its old number) | 'b', line, code, pr, rows, from, quote, text }], body }
   let reviewSeq = 0;
   const reviewOf = id => reviews.get(id) || { items: [], body: '' };
-  const cmtWhere = (c, long) => `${c.pr ? `PR #${c.pr} ` : ''}${c.path}${c.side === 'a' ? (long ? `, old line ${c.line} (removed)` : `:${c.line} (removed)`) : `:${c.line}`}`;
-  /** The line a comment sits on in a file's section: its side's number and its words, the nearest such line. */
+  const QUOTE_ROWS = 20;   // a range's lines quoted to Claude, at most
+  const sideOf = l => l.classList.contains('del') ? 'a' : 'b';
+  const quoteOf = run => run.filter(l => !l.matches('.meta')).map(l => `${l.matches('.add') ? '+' : l.matches('.del') ? '-' : ' '}${l.querySelector('code').textContent}`);
+  /** Where a comment is: `path:12`, a range `path:12–18`, one from a removed line to an added one `path:−12 to +18`;
+   *  `long`, as the prompt says it. */
+  function cmtWhere(c, long) {
+    const at = `${c.pr ? `PR #${c.pr} ` : ''}${c.path}`, f = c.from, old = c.side === 'a';
+    if (f && f.side !== c.side) return long ? `${at}, ${f.side === 'a' ? 'old' : 'new'} line ${f.line} to ${old ? 'old' : 'new'} line ${c.line}` : `${at}:${f.side === 'a' ? '−' : '+'}${f.line} to ${old ? '−' : '+'}${c.line}`;
+    const n = f ? `${f.line}–${c.line}` : c.line;
+    return !old ? `${at}:${n}` : long ? `${at}, old line${f ? 's' : ''} ${n} (removed)` : `${at}:${n} (removed)`;
+  }
+  /** A comment's place from its lines as drawn, in order: the last is where it sits, the first `from`. */
+  function rangeAt(run) {
+    const last = run[run.length - 1], first = run[0], side = sideOf(last), many = run.length > 1;
+    // a line of a PR's diff: Claude is told which PR — the folder may have another branch out
+    return { path: last.closest('.cfile').dataset.path, side, line: +last.dataset[side], code: last.querySelector('code').textContent, pr: changes.data?.pr?.n ?? null,
+      rows: run.length, from: many ? { side: sideOf(first), line: +first.dataset[sideOf(first)] } : null, quote: many ? quoteOf(run) : null };
+  }
+  /** The lines from `a` towards `b` in their order, not past a hunk's head nor out of the file: a range is one hunk's. */
+  function spanOf(a, b) {
+    const sec = a.closest('.cfile'); if (b.closest('.cfile') !== sec) return [a];
+    const all = [...sec.querySelectorAll(':scope > .dl')], i = all.indexOf(a), j = all.indexOf(b), step = j < i ? -1 : 1, run = [a];
+    for (let k = i + step; k !== j + step && !all[k].matches('.hunk'); k += step) run.push(all[k]);
+    while (run.length > 1 && run[run.length - 1].matches('.meta')) run.pop();
+    return step < 0 ? run.reverse() : run;
+  }
+  /** The lines a comment covers, the one it sits on last: `rows` of them back from it, within its hunk. */
+  function runOf(at, rows = 1) {
+    const run = [at];
+    for (let l = at.previousElementSibling; l && run.length < rows && !l.matches('.hunk'); l = l.previousElementSibling) if (l.matches('.dl')) run.unshift(l);
+    return run;
+  }
+  /** The line a comment sits on in a file's section: its side's number and its words, the nearest such line — for a
+   *  range, the nearest whose lines before it are the range's still, before any other. */
   function lineFor(sec, c) {
     let best = null, far = Infinity;
     for (const l of sec.querySelectorAll(':scope > .dl')) {
       const n = l.dataset[c.side]; if (!n || l.querySelector('code').textContent !== c.code) continue;
-      const d = Math.abs(+n - c.line); if (d < far) { far = d; best = l; }
+      const d = Math.abs(+n - c.line) + (c.quote && quoteOf(runOf(l, c.rows)).join('\n') !== c.quote.join('\n') ? 1e9 : 0);
+      if (d < far) { far = d; best = l; }
     }
     return best;
+  }
+  /** ⇧-click on a line with a box open in its hunk: the box takes in the lines to it, from the range's top down or its
+   *  foot up — the words typed kept. False when there is no such box: the click is a plain one. */
+  function stretchComment(s, l) {
+    const box = changes.edit?.chat === s.id && [...$('#chg').querySelectorAll('.cdiff .dl.sel')]; if (!box?.length) return false;
+    const top = box[0], down = top === l || top.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING;
+    const run = spanOf(down ? top : box[box.length - 1], l); if (!run.includes(l)) return false;
+    changes.edit = { ...changes.edit, ...rangeAt(run) };
+    drawComments(s); focusComment();
+    return true;
   }
   /** The review over the diff as drawn: each comment under its line (the box in place of the one being edited, or under
    *  its line for a new one), the rest at the top, the files' counts, and the bar. */
   function drawComments(s) {
     const el = $('#chg'), diff = el.querySelector('.cdiff'), rv = reviewOf(s.id), dp = changes.data?.pr?.n ?? null;
     el.querySelectorAll('.lcmt, .lnote, .cgone, .crev, .cf .rc').forEach(n => n.remove());
-    el.querySelectorAll('.dl.cmted').forEach(n => n.classList.remove('cmted'));
+    el.querySelectorAll('.dl.cmted, .dl.sel, .dl.lit').forEach(n => n.classList.remove('cmted', 'sel', 'lit'));
     const ed = changes.edit?.chat === s.id ? changes.edit : null;
     const items = [...rv.items.map(c => c.id === ed?.id ? ed : c), ...(ed && !ed.id ? [ed] : [])], gone = [];
     const secs = new Map([...(diff?.querySelectorAll('.cfile') || [])].map(x => [x.dataset.path, x]));
     const html = c => c === ed
-      ? `<div class="lnote"><span class="who">${c.id ? 'Editing the comment on' : 'A comment on'} ${esc(cmtWhere(c))}</span><textarea rows="2" placeholder="What should Claude do about this line?">${esc(c.text)}</textarea><span class="row"><button class="cbtn" data-note="send" title="Types this comment alone into the chat's claude as a prompt · ⇧⌘⏎">Send now</button><span class="sp"></span><button class="cbtn" data-note="cancel">Cancel</button><button class="cbtn pri" data-note="add" title="${c.id ? 'Keep the change' : 'Add it to the review — Submit sends them all at once'}">${c.id ? 'Save' : 'Add to review'} ⌘⏎</button></span></div>`
+      ? `<div class="lnote"><span class="who">${c.id ? 'Editing the comment on' : 'A comment on'} ${esc(cmtWhere(c))}</span><textarea rows="2" placeholder="What should Claude do about ${c.from ? 'these lines' : 'this line'}?">${esc(c.text)}</textarea><span class="row"><button class="cbtn" data-note="send" title="Types this comment alone into the chat's claude as a prompt · ⇧⌘⏎">Send now</button><span class="sp"></span><button class="cbtn" data-note="cancel">Cancel</button><button class="cbtn pri" data-note="add" title="${c.id ? 'Keep the change' : 'Add it to the review — Submit sends them all at once'}">${c.id ? 'Save' : 'Add to review'} ⌘⏎</button></span></div>`
       : `<div class="lcmt" data-cid="${c.id}"><span class="who">${esc(cmtWhere(c))}<button class="cbtn" data-cmt="edit">Edit</button><button class="cbtn" data-cmt="del">Delete</button></span><span class="tx">${esc(c.text)}</span></div>`;
     for (const c of items) {
       const sec = (c.pr ?? null) === dp ? secs.get(c.path) : null, at = sec && lineFor(sec, c);
       if (!at) { gone.push(c); continue; }
       let ref = at; while (ref.nextElementSibling?.matches('.lcmt, .lnote')) ref = ref.nextElementSibling;
-      ref.insertAdjacentHTML('afterend', html(c)); at.classList.add('cmted');
+      ref.insertAdjacentHTML('afterend', html(c));
+      for (const l of runOf(at, c.rows)) l.classList.add('cmted', ...c === ed ? ['sel'] : []);
     }
     if (gone.length && diff) diff.insertAdjacentHTML('afterbegin', `<div class="cgone"><div class="ghd">Not in this diff — still in the review</div>${gone.map(c => html(c).replace(/^<div class="(lcmt|lnote)"/, '<div class="$1 gone"')).join('')}</div>`);
     for (const f of el.querySelectorAll('.cf')) {
@@ -9000,8 +9078,9 @@ const toolName = n => {
   function saveComment(s) {
     const ed = changes.edit, text = ed?.text.trim(); if (!ed || ed.chat !== s.id || !text) return focusComment();
     const rv = reviews.get(s.id) || { items: [], body: '' };
-    if (ed.id) { const c = rv.items.find(x => x.id === ed.id); if (c) c.text = text; }
-    else rv.items.push({ id: ++reviewSeq, path: ed.path, side: ed.side, line: ed.line, code: ed.code, pr: ed.pr, text });
+    const { chat, ...c } = ed; c.text = text;   // the place too: ⇧-click may have stretched it
+    if (ed.id) rv.items = rv.items.map(x => x.id === ed.id ? c : x);
+    else rv.items.push({ ...c, id: ++reviewSeq });
     reviews.set(s.id, rv); changes.edit = null; keepTabsSoon(); drawComments(s);
   }
   function closeComment(s) { changes.edit = null; drawComments(s); }
@@ -9014,15 +9093,23 @@ const toolName = n => {
   /** Send now: the box's comment alone, typed as a prompt, as a note on a line was before the review. */
   async function sendComment(s, at) {
     const ed = changes.edit, text = ed?.text.trim(); if (!ed || ed.chat !== s.id || !text) return;
-    if (!await sendToClaude(s, `${ed.pr ? `PR #${ed.pr} ` : ''}${ed.path}:${ed.line} — ${text}`, at)) return;
+    if (!await sendToClaude(s, `${cmtWhere(ed)} — ${text}`, at)) return;
     changes.edit = null; if (ed.id) dropComment(s, ed.id); else drawComments(s);
   }
-  /** The review as one prompt: the comments by file and line, each with the line it is on, then its own words. */
+  /** The review as one prompt: the comments by file and line, each with the line it is on — a range's lines as the
+   *  diff marks them, their indent in common dropped — then its own words. */
   function reviewPrompt(rv) {
-    const l = [...rv.items].sort((a, b) => (a.pr ?? 0) - (b.pr ?? 0) || a.path.localeCompare(b.path) || a.line - b.line), n = l.length;
+    const start = c => c.from?.line ?? c.line;
+    const l = [...rv.items].sort((a, b) => (a.pr ?? 0) - (b.pr ?? 0) || a.path.localeCompare(b.path) || start(a) - start(b) || a.line - b.line), n = l.length;
     const cut = t => t.length > 160 ? `${t.slice(0, 159)}…` : t;
+    const quote = c => {
+      if (!c.quote) return c.code.trim() ? [`   > ${cut(c.code.trim())}`] : [];
+      const pad = Math.min(...c.quote.filter(q => q.slice(1).trim()).map(q => /^\s*/.exec(q.slice(1))[0].length));
+      const q = c.quote.map(t => `   > ${t[0]}${cut(t.slice(1 + (isFinite(pad) ? pad : 0))).trimEnd()}`);
+      return q.length > QUOTE_ROWS ? [...q.slice(0, QUOTE_ROWS - 1), `   > … ${q.length - QUOTE_ROWS + 1} lines more`] : q;
+    };
     return [`A review of the changes — ${n} comment${n === 1 ? '' : 's'}; address each:`,
-      ...l.map((c, i) => [`${i + 1}. ${cmtWhere(c, true)}`, ...c.code.trim() ? [`   > ${cut(c.code.trim())}`] : [], ...c.text.split('\n').map(t => `   ${t}`)].join('\n')),
+      ...l.map((c, i) => [`${i + 1}. ${cmtWhere(c, true)}`, ...quote(c), ...c.text.split('\n').map(t => `   ${t}`)].join('\n')),
       ...rv.body.trim() ? [`Overall: ${rv.body.trim()}`] : []].join('\n\n');
   }
   async function submitReview(s, at) {
