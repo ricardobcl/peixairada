@@ -7,8 +7,9 @@ private API, no cooperation from Claude Code itself.
 one bullet each, under stable headings, what a session must know to change the code without breaking it: the rule,
 the names to find it by, the test that holds it. [docs/DECISIONS.md](docs/DECISIONS.md) is the *why and the history*:
 dated decisions, open items, and *Findings* — the full stories. **A bullet here is not a story**: no "before" or "until", no
-who asked — the date of its decision is the pointer to all of that. **This file stays under 120 000 characters**
-(`npm run check` fails past it): a new finding is a decision entry there and a line or
+who asked — the date of its decision is the pointer to all of that. **The app's shell has its own notes**,
+[mac/CLAUDE.md](mac/CLAUDE.md), loaded once a session reads a file under `mac/` (2026-10-28). **This file stays under
+120 000 characters** (`npm run check` fails past it): a new finding is a decision entry there and a line or
 two here, and a bullet that grows is pared. **A comment in the code carries the date of its decision, never a
 person's words**: the request, quoted, goes in the decision entry (the board is shared). **Nothing names the real
 org, its repos or the people on its PRs** — `acme` and stand-ins, in the code, the tests and both docs; commits carry
@@ -66,6 +67,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `public/index.html` | The frontend, one file, no build step. A section map at the top of its script |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
+| `mac/CLAUDE.md` | The shell's own notes: what only main.swift and build.sh need |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version `lib/version.mjs`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/worktree.sh` | A worktree per piece of parallel work: made from main, removed only with its work on main, never forced |
@@ -175,7 +177,7 @@ npm run map                         # rewrite the section maps at the top of ser
   **First the new page compiles and the new server starts on a spare port** (`preflight`); one that does not is undone
   (`git reset --keep`, only while HEAD is the commit pulled) and held (`updateHeld`) until a newer one. **The app is
   held against the checkout** (2026-10-14; `readApp`, `appWhyNot` → `app`, `appWhy`; `lookApp` every minute): build.sh
-  stamps `PeixSource`, mac/'s tree as built (uncommitted work in), and one not `HEAD:mac` is behind — rebuilt with a
+  stamps `PeixSource`, mac/'s tree as built (uncommitted work in, its notes out), and one not HEAD's (`macSource`) is behind — rebuilt with a
   pull, else by *update now* or the switch once quiet, by the clock never twice for one source (`appBuild`), never over
   work in mac/, one build.sh at a time. → `test/update.test.mjs` (its knobs: `UPDATE_DIR`, `UPDATE_*_BIN`, `NPM_BIN`,
   `BOARD_APP`), `auto-update.mjs`.
@@ -543,6 +545,9 @@ npm run map                         # rewrite the section maps at the top of ser
 
 ## Hotkeys and the pane
 
+* **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill and the menu bar, the menus'
+  ⌘W ⌘R ⌘F, VS Code Web's ⌘W and keyboard layout, the pane's views, the badge, a drop, the server it adopts, Swift's
+  traps. Here: what the page does across the bridge.
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the ? sheet is drawn from it (`keyNotes`: the setup's words), and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
@@ -561,33 +566,15 @@ npm run map                         # rewrite the section maps at the top of ser
   `peixKey(code, mods)` says which map and **returns whether the key was taken**; `cmdKeys` in main.swift is the
   forwarder's copy (a digit as `Digit<n>`; `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
   (`chatZoomKey`, which sees ⌘0 only when nothing is split).
-* **⌘W is the Window menu's item, not the forwarder's**: a key equivalent goes to the key window's views before the
-  menu (2026-10-14), and a web view with the keys hands it to its page — so the menu hears only a ⌘W the page
-  left alone. `closeHalfOrWindow` asks the
-  board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else the board wants off a ⌘ a menu
-  item claims goes the same way (⌘, does).
-* **⌘W in VS Code Web with no editor open closes its tab** (2026-10-14; `editorEmptyScript`, `closeWhenEmpty` in
-  main.swift → `window.peixPaneClose(key)` → `dropTab`): the workbench's close-editor takes it whatever is open. A
-  script in the `ide:` views alone takes it first only when the
-  editor part is `.content.empty` (one group, no editor) and the tab of the view it came from goes, by its key. An
-  editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time. → `tab-keys.mjs`.
 * **⌃⌘F is the full screen Settings › General picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
-  `spaceMode`; on at quit, `peixairada.fill`, on again at launch; `kill -USR1 $(pgrep -x peixAIrada)` too). **Its own
-  Space** is macOS's (`.fullScreenPrimary`), below the housing: the page hears no fill. **Up to the notch is the fill**
-  (`toggleFill`; `BoardWindow`, borderless, the whole screen): the menu bar auto-hidden beside a camera housing, else
-  hidden (`placeFill`, `fillOptions()`), out with the pointer at the top (`menuOut`), tucked after a change of desktop
-  (`tuckMenuBar`); the Dock out at its edge (`dockTick`); `.fullScreenNone`, the green button's plain click the fill
-  (`windowShouldZoom`); ⌘W leaves it first. `NSFullScreenMenuItemEverywhere` and
-  `NSPrefersDisplaySafeAreaCompatibilityMode` are false; *Exit Full Screen* (View's, the fish's) is retitled in
-  `validateMenuItem`. → `full-screen-pick.mjs`. **The lights come down with the menu bar** (2026-10-13; `lightsTick`): a
-  strip under it, over the pane too — the lights (`LightButton`), the title —, the menu bar held out over it
-  (`lightsOut`) until the pointer is below. **The fill gone on while the page heard it off says so once** (`fillHint`):
-  never on a load that finds it on (`state.fillHeard`), `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears
-  `peixFill(on, notch)` — the strip's height and the housing's x range in CSS px, null without one; only when new
-  (`fillSaid`, 2026-10-15) — and **`layoutNotch()` lays the top row round it**: the title left of the housing, its chips
-  right (`.shead.hole`), unless the whole title does not fit (a `Range` measures it, never `scrollWidth`): `.tright`,
-  the title jumps the housing — or, floating, runs under it (`.tunder`); what lacks the room pads down by the strip
-  (`.npad`). → `notch.mjs`.
+  `spaceMode`): its own Space, where the page hears no fill, or **up to the notch, the fill** (the shell's both).
+  → `full-screen-pick.mjs`. **The fill gone on while the page heard it off says so once** (`fillHint`): never on a load
+  that finds it on (`state.fillHeard`), `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears `peixFill(on,
+  notch)` — the strip's height and the housing's x range in CSS px, null without one; only when new (`fillSaid`,
+  2026-10-15) — and **`layoutNotch()` lays the top row round it**: the title left of the housing, its chips right
+  (`.shead.hole`), unless the whole title does not fit (a `Range` measures it, never `scrollWidth`): `.tright`, the title
+  jumps the housing — or, floating, runs under it (`.tunder`); what lacks the room pads down by the strip (`.npad`).
+  → `notch.mjs`.
 * **The pickers match fuzzily, and with something typed the best match leads**: `fuzzy(fields, q)` — each word
   hunted *within one field* (`chatFields(s)`; a chat's PRs and tickets are one, `chatIds` — 2026-10-14 —, and
   ⌥⌘K's row names those a word is in, `idsHit`), letters in order, runs and word starts worth more, gaps costing, a
@@ -661,14 +648,12 @@ npm run map                         # rewrite the section maps at the top of ser
   Dock's badge and the menu bar's count are their number**, the page's title too; the status menu lists them with the
   PRs at your move and what is clauding), each alert with `serverNotify` and `quiet`, the pane's places, and
   `{type: 'chat', project, title, cwd}` from `renderHead` and `leaveChat` (`postChat`: the window's title and
-  `representedURL`). `refreshBadges` redraws only on a change (`badged`); a newly asking chat, the app behind, bounces
-  the Dock once.
+  `representedURL`).
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while it runs here), `shell:<id>` per live zsh or vim
   (`shellsOf`; zsh, zsh 2…), `gh:<url>` per web page the chat opened and `ide:<url>` for its folder's editor —
   `tabKeys()` from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`,
   read through `placeOf()`. `syncTerm()` keeps both bodies right and posts one `{type:'pane', id, keys, panes, focus}`
-  (`postPane`): the shell keeps a web view per page (`paneViews`, up to `paneViewsMax`, the chat's own spared). **The
-  overlay covers the window**, a click on no page let through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`;
+  (`postPane`), the shell a web view per page. `‹ › ↻ ↗` are `{type:'nav'}`;
   × forgets a page (`closeTab`). In a browser the tabs are chat and zsh only (`inApp`). **A page's new window is a tab
   beside it** (2026-10-21, `PaneDelegate.open` → `peixPaneOpen`).
   **Which pages are the board's** (2026-10-21, `inBoard`, `prefs.pagesOut`, `boardSites`): the sites kept (the default), or all; the
@@ -679,19 +664,10 @@ npm run map                         # rewrite the section maps at the top of ser
   (`pageKey`, `isPageTab`; the shell loads a key's URL past its first colon), never a key whose lingering view
   (`paneUrls`) is somewhere else. A tab is named for its address, and clicked is shown as it stands (`openTab`).
   → `pr-tab-again.mjs`.
-* **A page in the pane behaves like a browser tab**: ⌘R reloads it (2026-10-13: a key monitor in
-  `installHotkeyForwarder`, never a menu key equivalent, which takes the key first — VS Code Web's ⌘R is its own,
-  and with no page up ⌘R goes on to whatever has the keys; the View menu's *Reload Page* carries none, *Reload Board* is
-  ⌥⌘R, `reloadBoard`), pinch zooms it (`allowsMagnification`), its address sits in the strip — **a page's, clicked, is
-  a box** (2026-10-27, `addrEditAt`: ⏎ nav `go` in that view, esc `keys`) —, `.pcopy` copies it
-  (`copyPaneUrl`, said in the address, `addrSay` — a `note()` there is under the page, 2026-10-20), each
-  navigation reported as `peixPaneUrl(key, url)` (KVO, `paneObs`; `paneUrls`).
-* **⌘F finds on that page**: the Edit menu's *Find… · Find Next · Find Previous*, greyed with the pane down; a native
-  bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
-  page's selection, dropped on close (`kDropSelection`); typing searches from the top (`runFind(fromTop:)`). A pane change closes it; `findQuery` outlives it.
-* **VS Code Web is told the Mac's keyboard layout** (2026-10-14, `KeyboardMap`, `ide:` views only): WebKit has no
-  `navigator.keyboard`; a user script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()` over the `peixKeyboard`
-  handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's: Spanish ISO, as in Chrome.
+* **A page in the pane behaves like a browser tab** (⌘R, a pinch, ⌘F: the shell's): its address sits in the strip —
+  **a page's, clicked, is a box** (2026-10-27, `addrEditAt`: ⏎ nav `go` in that view, esc `keys`) —, `.pcopy` copies it
+  (`copyPaneUrl`, said in the address, `addrSay` — a `note()` there is under the page, 2026-10-20), each navigation told
+  as `peixPaneUrl(key, url)` (`paneUrls`).
 * **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
   (`SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing a run; in a browser, `haptic:<kind>` in
   `motion()`.
@@ -703,16 +679,6 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
   `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.
-* **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
-  front, a view has the keys (`keysBack`, logged).
-* **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display
-  asleep, the screen saver up or the session switched away hides the window's content (WebKit stops every web view's
-  frames) until all have cleared or the app comes forward; the first responder is put back (logged `away:`).
-* **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
-  answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time, its
-  log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to
-  fail first; the 5 s watchdog probes `/api/projects` and brings the board back once the server answers
-  (`boardShown`). A web process that dies is loaded again. The bridge answers the board's own main frame only.
 
 ## The chat column's two halves
 
@@ -968,13 +934,8 @@ npm run map                         # rewrite the section maps at the top of ser
   /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
   page's `Notification`, the server's osascript) skip it. A new poster reads `quiet` — and `heading`, the server's
   title for an alert that is not Claude's. → `notifications.mjs`.
-* Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
-  navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
-  **The board's web view draws no ground** (`drawsBackground` off): the window's `backgroundColor` and
-  `underPageBackgroundColor` are the page's `--bg` per appearance — a change to `:root`'s `--bg` moves the two hex
-  pairs in `buildWindow` with it.
-* Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
-  node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).
+* **A change to `:root`'s `--bg` moves the two hex pairs in main.swift's `buildWindow` with it**: the board's web view
+  draws no ground, the window's colours are the page's `--bg` per appearance.
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
 * `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or their `--test-state` dir).
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust in the browser profile. → Findings: *VS Code Web*.

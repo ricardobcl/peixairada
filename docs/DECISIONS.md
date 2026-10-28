@@ -5,6 +5,29 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-28. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-28, later — CLAUDE.md pared, and the shell's notes a file of their own
+
+Ricardo, with CLAUDE.md one character under its budget: *"push, then try to trim claude more"*; then, offered the
+split below: *"do the split"*.
+
+* **Pared by 3 000 characters, every rule kept**: a script compared each rewritten bullet's code names and dates with
+  the old ones, and every one lost was looked at. What went: inventories the code already lists (a test server's
+  environment is lib/testserver.mjs's, the holder's protocol is its head, the eleven fakes one row), asides a rule
+  stands without, plans that are open items here (Riso, anonymous people in the chat). What is left is names and
+  rules: paring further would drop rules.
+* **The shell's own notes are mac/CLAUDE.md** (another 4 200 out of the root): Claude Code loads a CLAUDE.md under a
+  folder once a session reads a file there, so what only main.swift and build.sh need — the fill and the menu bar, the
+  menus' ⌘W ⌘R ⌘F, VS Code Web's ⌘W and keyboard layout, the pane's views, the badge, a drop, the server it adopts,
+  Swift's traps, the signing — no longer costs every session its context. What the page does across the bridge stays
+  in the root, split where a bullet was both (the fill: the page's `peixFill` and `layoutNotch` there, the window
+  here); the root's *Hotkeys and the pane* opens with a pointer. Its budget is 20 000 (`npm run check`). Not
+  `.claude/rules/`: the home's gitignore leaves `.claude` out, and nobody else would get them.
+* **A note under mac/ is no rebuild** (`macSource`, build.sh's `SOURCE`): the app's stamp was mac/'s whole tree, so a
+  note there would have marked every installed app behind and had the updater rebuild it, and `updateParts` counted
+  any file under mac/ as the app's. `*.md` is out of the stamp on both sides now — the same tree as before while
+  there is none — and out of `updateParts` and the uncommitted `changes` that hold a build back. build.sh itself
+  changed with it, so each app is rebuilt once. → `test/update-app.test.mjs`, `test/update.test.mjs`.
+
 ## Decisions of 2026-10-28 — the keys after a drop, a review of the diff, a worktree's base
 
 Ricardo:

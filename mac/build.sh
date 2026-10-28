@@ -55,8 +55,10 @@ trap 'rm -rf "$LOCK"' EXIT
 # What it is built from (2026-10-14), stamped into Info.plist as PeixSource: mac/'s tree as it stands, uncommitted changes
 # in, through an index of its own (the checkout's is not touched). The board compares it with HEAD's mac/ (readApp in
 # server.mjs) to tell an app older than its checkout — commits made here as much as pulled ones. Empty outside git.
+# mac/'s notes (*.md, 2026-10-28) are left out on both sides (macSource): a note is no rebuild.
 IDX="${TMPDIR:-/tmp}/peixairada-src.$$"
-SOURCE=$( { cd "$ROOT" && export GIT_INDEX_FILE="$IDX" && git read-tree HEAD && git add -A -- mac && git write-tree --prefix=mac/; } 2>/dev/null ) || SOURCE=
+SOURCE=$( { cd "$ROOT" && export GIT_INDEX_FILE="$IDX" && git read-tree HEAD && git add -A -- mac \
+  && git ls-files -z -- 'mac/*.md' | git update-index --force-remove -z --stdin && git write-tree --prefix=mac/; } 2>/dev/null ) || SOURCE=
 rm -f "$IDX" "$IDX.lock"
 
 echo "› icon"

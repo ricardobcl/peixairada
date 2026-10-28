@@ -17,7 +17,7 @@ test('what a change asks for: packages, the server, the page, the app — and no
   assert.deepEqual(updateParts(['server.mjs', 'mac/Sources/main.swift', 'README.md']), ['server', 'app']);
   assert.deepEqual(updateParts(['lib/termhold.mjs']), ['server']);
   assert.deepEqual(updateParts(['package-lock.json', 'public/vendor/xterm.js']), ['deps', 'server', 'page']);
-  assert.deepEqual(updateParts(['docs/DECISIONS.md', 'test/update.test.mjs', 'scripts/scenarios/x.mjs', 'CLAUDE.md']), []);
+  assert.deepEqual(updateParts(['docs/DECISIONS.md', 'test/update.test.mjs', 'scripts/scenarios/x.mjs', 'CLAUDE.md', 'mac/CLAUDE.md']), []);
 });
 
 test('a pull, asked for: fast-forwarded, what it touched started again, a commit that does not start held back, and over a change here only when asked', { timeout: 60_000 }, async () => {

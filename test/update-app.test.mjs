@@ -43,5 +43,11 @@ test('an app behind its checkout with nothing to pull: said, rebuilt by update n
     await look({ apply: true });
     st = await waitFor(async () => { const b = await now(); return !b.building && b.app?.behind === false && b; }, { what: 'update now tries it again' });
     assert.deepEqual([st.build.ok, p.builds()], [true, 3]);
+
+    // mac/'s notes are no part of the app (2026-10-28): a note committed, or being written, leaves it current
+    p.commit({ 'mac/CLAUDE.md': '# the shell\n', 'mac/Sources/NOTES.md': 'more\n' });
+    p.write(p.co, { 'mac/CLAUDE.md': '# the shell, still being written\n' });
+    st = await look({ apply: true });
+    assert.deepEqual([st.app.behind, st.app.changes, st.appWhy, p.builds()], [false, 0, 'none', 3], 'a note is no rebuild');
   } finally { await srv.stop(); }
 });

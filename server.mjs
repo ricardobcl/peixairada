@@ -4584,7 +4584,7 @@ function updateParts(files) {
     if (/^package(-lock)?\.json$/.test(f)) has.add('deps').add('server');
     else if (f === 'server.mjs' || f.startsWith('lib/')) has.add('server');
     else if (f.startsWith('public/')) has.add('page');
-    else if (f.startsWith('mac/')) has.add('app');
+    else if (f.startsWith('mac/') && !f.endsWith('.md')) has.add('app');   // mac/'s notes are no part of the app (2026-10-28)
   }
   return ['deps', 'server', 'page', 'app'].filter(k => has.has(k));
 }
@@ -4598,10 +4598,10 @@ function updateEnv() {
   return env;
 }
 const errText = e => (String(e?.stderr || '').trim().split('\n').filter(Boolean).pop() || (e?.killed ? 'it took too long' : String(e?.message || e).split('\n')[0])).replace(/^(fatal|error): /, '').slice(0, 300);
-function gitIn(args, timeout = 30_000) {
+function gitIn(args, timeout = 30_000, env = {}) {
   const bin = findBin('git', 'the board does not update itself');
   if (!bin) return Promise.reject(new Error('git is not installed'));
-  return execFileP(bin, ['--no-optional-locks', '-C', UPDATE_DIR, ...args], { env: updateEnv(), timeout, maxBuffer: 8 << 20 }).then(r => r.stdout.trim());
+  return execFileP(bin, ['--no-optional-locks', '-C', UPDATE_DIR, ...args], { env: { ...updateEnv(), ...env }, timeout, maxBuffer: 8 << 20 }).then(r => r.stdout.trim());
 }
 /** Where the checkout stands, read locally: its branch and upstream, how far each is past the other, the tracked files
  *  changed here (`dirty` how many, `changed` the first by name) and, behind, those of them the new commits change too
@@ -4630,17 +4630,31 @@ async function readCheckout() {
   if (changed.length && co.behind && !co.ahead) { const theirs = new Set(await names('HEAD', '@{u}')); co.clash = changed.filter(f => theirs.has(f)); }
   return co;
 }
+/** HEAD's mac/ as the app is built from it: its tree, the notes (`*.md`, mac/CLAUDE.md) left out (2026-10-28) — as
+ *  build.sh leaves them out of its stamp, so a note is no rebuild. The same tree as HEAD:mac while it has none. */
+async function macSource() {
+  const tree = await gitIn(['rev-parse', '--verify', '--quiet', 'HEAD:mac']).catch(() => '');
+  const notes = tree ? (await gitIn(['ls-tree', '-r', '-z', '--name-only', tree])).split('\0').filter(f => f.endsWith('.md')) : [];
+  if (!notes.length) return tree;
+  const idx = join(tmpdir(), `peixairada-mac.${process.pid}`), env = { GIT_INDEX_FILE: idx };   // an index of its own: the checkout's is not touched
+  try {
+    await gitIn(['read-tree', tree], 30_000, env);
+    await gitIn(['update-index', '--force-remove', '--', ...notes], 30_000, env);
+    return await gitIn(['write-tree'], 30_000, env);
+  } finally { rmSync(idx, { force: true }); rmSync(`${idx}.lock`, { force: true }); }
+}
 /** The installed app against the checkout (2026-10-14): build.sh stamps the app with the tree of mac/ it was built from
- *  (`PeixSource` in its Info.plist), and an app whose stamp is not HEAD's mac/ is `behind` — one from before the stamp
- *  too. `changes`: uncommitted work in mac/, which a build would take in. Null: no app installed, or no mac/ here. */
+ *  (`PeixSource` in its Info.plist), and an app whose stamp is not HEAD's mac/ (`macSource`) is `behind` — one from
+ *  before the stamp too. `changes`: uncommitted work in mac/ but its notes, which a build would take in. Null: no app
+ *  installed, or no mac/ here. */
 async function readApp() {
   if (!existsSync(APP_DIR)) return null;
-  const source = await gitIn(['rev-parse', '--verify', '--quiet', 'HEAD:mac']).catch(() => '');
+  const source = await macSource().catch(() => '');
   if (!source) return null;
   let built = null;
   try { built = /<key>PeixSource<\/key>\s*<string>([0-9a-f]{40,64})<\/string>/.exec(readFileSync(join(APP_DIR, 'Contents', 'Info.plist'), 'utf8'))?.[1] || null; } catch {}
   if (built === source) return { built, source, behind: false, changes: 0 };
-  return { built, source, behind: true, changes: (await gitIn(['status', '--porcelain', '--', 'mac'])).split('\n').filter(Boolean).length };
+  return { built, source, behind: true, changes: (await gitIn(['status', '--porcelain', '--', 'mac', ':(exclude)mac/*.md'])).split('\n').filter(Boolean).length };
 }
 const quietLeft = () => UPDATE_QUIET_MS - (Date.now() - lastTouchAt);
 /** Why the checkout is not to be moved now, or null. `asked`: from the page (no waiting for quiet); `apply`: its
