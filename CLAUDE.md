@@ -62,7 +62,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `lib/instagram.mjs` | Lunch's Instagram, in Chrome: a profile, the stories, the login |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup, `waitFor`, `post` |
 | `lib/refit.mjs` | Resizing a terminal so a grow pulls the scrollback back down (the holder's copy; the page keeps its own) |
-| `lib/version.mjs` | The version, counted (2026-10-21): package.json's major.minor, the patch the commits since it was set; the server's per HEAD, build.sh's into the app |
+| `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since; the server's per HEAD, build.sh's into the app |
 | `public/index.html` | The frontend, one file, no build step. A section map at the top of its script |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
@@ -700,8 +700,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
   page's selection, dropped on close (`kDropSelection`); typing searches from the top (`runFind(fromTop:)`). A pane change closes it; `findQuery` outlives it.
 * **VS Code Web is told the Mac's keyboard layout** (2026-10-14, `KeyboardMap`, `ide:` views only): WebKit has no
-  `navigator.keyboard`; a user script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()`, UCKeyTranslate unshifted, over the `peixKeyboard`
-  reply handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's: Spanish ISO, as in Chrome.
+  `navigator.keyboard`; a user script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()` over the `peixKeyboard`
+  handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's: Spanish ISO, as in Chrome.
 * **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
   (`LIST_W`, half the window, even halves — `SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing
   a run. In a browser, a `haptic:<kind>` in `motion()` alone.
@@ -714,10 +714,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.
 * **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
-  front with no view holding the keys, it takes them (`keysBack`, logged `focus:`).
+  front, a view has the keys (`keysBack`, logged).
 * **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display
   asleep, the screen saver up or the session switched away hides the window's content (WebKit stops every web view's
-  frames) until all have cleared or the app comes forward; the first responder is put back. The app log says `away: …`.
+  frames) until all have cleared or the app comes forward; the first responder is put back (logged `away:`).
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time, its
   log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to
@@ -785,10 +785,11 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`placeChanges`, from `syncTerm`). `GET /api/sessions/:id/changes?scope=` — `uncommitted` (untracked as added),
   `branch` (against the merge base with origin's default branch), `turn` (the uncommitted diff of the files the last
   turn edited, `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`);
-  `prefs.changesScope`. Re-read when the chat moved on or by ↻; nothing is polled; read on a copy of the index
+  `prefs.changesScope`. Re-read when the chat moved on or by ↻, its place kept; read on a copy of the index
   (`indexCopy`), lists `-z`, a file past `CHANGES_MAX` named in `left`. **Commit…, Push and PR… type the command into the chat's
-  zsh, unrun** (`typeInShell`); a note on a line is a prompt typed into the drawer's claude (`sendToClaude`), else
-  copied. → `test/changes.test.mjs`, `changes-tab.mjs`.
+  zsh, unrun** (`typeInShell`). **A line's comments are a review** (2026-10-28; `reviews`, `drawComments`, found by the
+  line's words): Submit types it into the drawer's claude as one prompt (`reviewPrompt`; no drawer: copied, kept).
+  → `test/changes.test.mjs`, `changes-tab.mjs`, `changes-review.mjs`.
 * **The timeline tab is the chat and its PRs in one order** (2026-10-17; ⌥⌘J, `#tvBtn`): `timeline` in `timelineOpen`,
   `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and ledgers
   (`tvLogOf`, on a `pr.logged` move); `tvModel` ties turns to PRs. Turns one line (`tvTurnSum`), a lane per PR (`tvLanes`, `tvStyle`), the Now bar (`tvGo`), folds (`tvRuns`,
@@ -951,8 +952,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   new block means placing it too.
 * **A terminal that grows has to pull its scrollback back down** (`lib/refit.mjs`, and the page's copy in
   `refitTerm`): xterm only does it when the cursor is on the buffer's last line. → `test/refit.test.mjs`.
-* Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; `--ring`, which only `.card.black`
-  sets, with white, wins over `--glow`.
+* Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; `--ring` (`.card.black`'s white)
+  wins over `--glow`.
 * **A CSS animation starts over on a rebuilt node, and only `transform` and `opacity` run off the main thread**:
   anything that moves on a card is phased to the document clock after the render (`phaseAnims()`), and nothing
   continuous animates a custom property, a gradient or a colour, nor eases by `steps()` — WebKit composites none: a

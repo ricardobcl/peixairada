@@ -1738,7 +1738,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
 
   /* ---- the changes tab: what this chat changed in its folder (2026-10-10) ---- */
-  #chg { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); }
+  #chg { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--panel); font-size: var(--fs-md); }
   #chg[hidden] { display: none; }
   #chg .cbar { display: grid; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
   #chg .r1, #chg .r2 { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -1786,6 +1786,24 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chg .lnote textarea { font: inherit; resize: vertical; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); color: inherit; outline: none; }
   #chg .lnote textarea:focus { border-color: var(--accent); }
   #chg .lnote .row { display: flex; gap: 6px; justify-content: flex-end; }
+  #chg .lnote .row .sp { flex: 1; }
+  /* a review's comments (2026-10-28): each under its line until the review goes to Claude, the bar at the tab's foot */
+  #chg .lcmt { display: grid; gap: 3px; margin: 4px 14px 8px 98px; padding: 7px 11px; border-radius: var(--r-3); border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--bg); font: var(--fs-md)/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
+  #chg .lcmt .who { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--muted); }
+  #chg .lcmt .who .cbtn { padding: 1px 7px; font-size: var(--fs-xs); font-weight: 500; }
+  #chg .lcmt .who .cbtn:first-of-type { margin-left: auto; }
+  #chg .lcmt .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #chg .cgone { padding: 4px 0 6px; border-bottom: 1px solid var(--line); }
+  #chg .cgone .ghd { padding: 4px 12px 0; font: 600 var(--fs-xs) -apple-system, sans-serif; color: var(--muted); }
+  #chg .cgone .gone { margin: 6px 12px; }
+  #chg .dl.cmted :is(.na, .nb) { color: var(--accent); opacity: 1; font-weight: 700; }
+  #chg .cf .rc { font: 600 var(--fs-2xs) -apple-system, sans-serif; font-style: normal; flex: none; min-width: 15px; padding: 0 4px; border-radius: var(--r-5); background: var(--accent); color: var(--bg); text-align: center; line-height: 15px; }
+  #chg .crev { display: flex; align-items: flex-end; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+  #chg .crev .rh { align-self: center; flex: none; color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
+  #chg .crev .rh b { color: var(--ink); }
+  #chg .crev textarea { flex: 1; min-width: 0; font: var(--fs-md)/1.4 -apple-system, BlinkMacSystemFont, sans-serif; resize: none; field-sizing: content; max-height: 8lh; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); outline: none; }
+  #chg .crev textarea:focus { border-color: var(--accent); }
+  #chg .crev .cbtn { flex: none; }
   #chg .cempty { padding: 40px 20px; color: var(--muted); text-align: center; } #chg .cempty.sm { padding: 10px 16px; text-align: left; }
   /* the header's +n −n (2026-10-10), the drawn black's inks, before the your-move tag and the PR chips */
   .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font: 600 var(--fs-sm) ui-monospace, monospace; cursor: pointer; }
@@ -2355,7 +2373,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -8689,7 +8707,7 @@ const toolName = n => {
   // Commit… and Push type the command into the chat's zsh, unrun; a note on a line is a prompt typed into its claude.
   // One element, moved into the half that shows the tab as the transcript is (placeChanges).
   const changesOpen = new Set();   // chats with the tab, while the page lives
-  const changes = { id: null, scope: prefs.changesScope || 'turn', data: null, at: 0, upto: null, asking: 0, note: null, pr: new Map() };   // pr: chat → the PR its PR scope shows
+  const changes = { id: null, scope: prefs.changesScope || 'turn', data: null, at: 0, upto: null, asking: 0, note: null, pr: new Map(), edit: null, drawn: null };   // pr: chat → the PR its PR scope shows; edit: a review's open box (2026-10-28); drawn: what renderChanges drew last
   // The PR scope (2026-10-13): one of the chat's PRs as GitHub shows it — read from origin's refs into the object store,
   // or GitHub's own diff when the folder is not that repo's checkout — whatever branch the folder has out.
   const scopePrs = s => (s?.prs || []).filter(p => p.number);   // a GitHub PR: a pr-link elsewhere has no number
@@ -8759,9 +8777,14 @@ const toolName = n => {
   const hlLine = (text, lang) => { try { return lang ? hljs.highlight(text, { language: lang, ignoreIllegals: true }).value : esc(text); } catch { return esc(text); } };
   function renderChanges(s) {
     const el = $('#chg'), d = changes.data, sc = scopeOf(s), spr = prOfScope(s);
+    // the same diff read again (a turn's end, ↻): its place and a box being typed in are kept (2026-10-28)
+    const drawn = `${s.id} ${sc} ${spr?.url || ''}`, top = changes.drawn === drawn ? el.querySelector('.cdiff')?.scrollTop : null;
+    const act = el.contains(document.activeElement) && document.activeElement.matches('textarea') ? document.activeElement : null;
+    const typing = act && { box: act.closest('.lnote') ? '.lnote textarea' : '.crev textarea', from: act.selectionStart, to: act.selectionEnd };
+    changes.drawn = drawn;
     const seg = `<span class="cseg">${[['turn', 'this turn'], ['uncommitted', 'uncommitted'], ['branch', 'branch vs base']].map(([k, w]) => `<button data-scope="${k}" class="${sc === k ? 'on' : ''}">${w}</button>`).join('')}${
       spr ? `<button data-scope="pr" class="prsc${sc === 'pr' ? ' on' : ''}" aria-haspopup="${scopePrs(s).length > 1 ? 'menu' : 'false'}" title="A PR's diff as GitHub shows it, read from origin — nothing checked out${scopePrs(s).length > 1 ? ' · click for the chat’s other PRs' : ''}">PR #${spr.number}${scopePrs(s).length > 1 ? ' ▾' : ''}</button>` : ''}</span>`;
-    if (!d || d.error) { el.innerHTML = `<div class="cbar"><div class="r2">${seg}<button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div><div class="cempty">${d ? esc(d.error) : 'reading git…'}</div>`; return; }
+    if (!d || d.error) { el.innerHTML = `<div class="cbar"><div class="r2">${seg}<button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div><div class="cempty">${d ? esc(d.error) : 'reading git…'}</div>`; drawComments(s); return; }
     const up = d.upstream ? `${d.upstream.ahead ? `↑${d.upstream.ahead}` : ''}${d.upstream.behind ? ` ↓${d.upstream.behind}` : ''}${!d.upstream.ahead && !d.upstream.behind ? 'up to date' : ''} · ${esc(d.upstream.name)}` : 'no upstream';
     const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft') || null, dp = d.pr;
     const chunks = new Map(splitDiff(d.patch).map(c => [c.path, c.text]));
@@ -8772,7 +8795,7 @@ const toolName = n => {
       return `<section class="cfile" data-path="${esc(f.path)}"><div class="fh">${esc(f.path)}<em><span class="a">+${f.add}</span> <span class="d">−${f.del}</span></em></div>${
         d.left?.includes(f.path) ? '<div class="cempty sm">too long to show here</div>' : f.binary ? '<div class="cempty sm">a binary file</div>' : !ls.length ? '<div class="cempty sm">no lines to show</div>'
         : ls.map(x => x.t === 'hunk' ? `<div class="dl hunk"><span class="na"></span><span class="nb"></span><span class="sg"></span><code>${esc(x.text)}</code></div>`
-          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A note on this line — typed into its Claude as a prompt">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
+          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}" data-a="${x.a ?? ''}" data-b="${x.b ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A comment on this line — for the review that goes to Claude, or sent alone">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
     }).join('');
     // a PR's: its head → its base, where it was read from, and the PR itself — the folder's Commit… and Push are not its
     const src = !dp ? '' : dp.source === 'gh' ? `from GitHub (gh pr diff) — ${esc(dp.why)}` : `as pushed, at <b>${esc(String(dp.head).slice(0, 7))}</b> · read from origin, nothing checked out`;
@@ -8788,7 +8811,10 @@ const toolName = n => {
       <div class="r2">${seg}<span class="sum"><span class="a">+${d.add}</span> <span class="d">−${d.del}</span> in ${d.files.length} file${d.files.length === 1 ? '' : 's'}</span><button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div>
       ${d.files.length ? `<div class="cbody"><div class="cfiles">${files}</div><div class="cdiff">${body}${d.truncated ? '<div class="cempty sm">…the rest is too long to show here — the zsh has it whole</div>' : ''}</div></div>`
         : `<div class="cempty">${esc(d.note || (sc === 'branch' ? 'nothing different from its base' : 'nothing changed — the tree is clean'))}</div>`}`;
-    if (changes.sel) el.querySelector(`.cfile[data-path="${CSS.escape(changes.sel)}"]`)?.scrollIntoView({ block: 'start' });
+    drawComments(s);
+    if (top != null) { const cd = el.querySelector('.cdiff'); if (cd) cd.scrollTop = top; }
+    else if (changes.sel) el.querySelector(`.cfile[data-path="${CSS.escape(changes.sel)}"]`)?.scrollIntoView({ block: 'start' });
+    const box = typing && el.querySelector(typing.box); if (box) { box.focus({ preventScroll: true }); box.setSelectionRange(typing.from, typing.to); }
   }
   /** git's patch cut at each file: [{path, text}] — the server's splitPatch, diffPath and unquoteGit, kept by hand: a
    *  name git quoted read back, `a/P b/P` by its length (2026-10-14). */
@@ -8815,9 +8841,10 @@ const toolName = n => {
   /** A prompt into the chat's claude, as typed: newlines as Claude Code's own (ESC CR), then ⏎. */
   async function sendToClaude(s, text, at) {
     const tm = claudeTm(s);
-    if (!tm) { const ok = await copyText(text); return note(at, `No claude of this chat in a drawer here${ok ? ' — the note is copied' : ''} · ⌥⌘C starts one`, true); }
+    if (!tm) { const ok = await copyText(text); note(at, `No claude of this chat in a drawer here${ok ? ' — the text is copied' : ''} · ⌥⌘C starts one`, true); return false; }
     termSend(tm, text.replace(/\r?\n/g, '\x1b\r')); setTimeout(() => termSend(tm, '\r'), 60);
     note(at, 'Sent to Claude');
+    return true;
   }
   /** A command typed into the chat's zsh, unrun: the tab opened or shown, then the text once its socket is up. */
   async function typeInShell(s, cmd, at) {
@@ -8844,26 +8871,130 @@ const toolName = n => {
     const f = e.target.closest('.cf');
     if (f) { changes.sel = f.dataset.path; $('#chg').querySelectorAll('.cf').forEach(b => b.classList.toggle('on', b === f)); $('#chg').querySelector(`.cfile[data-path="${CSS.escape(f.dataset.path)}"]`)?.scrollIntoView({ block: 'start', behavior: 'instant' }); return; }
     const plus = e.target.closest('.dlp');
-    if (plus) {   // a note on this line: a box under it, ⌘⏎ sends
-      $('#chg .lnote')?.remove();
-      const line = plus.closest('.dl'), path = line.closest('.cfile').dataset.path, n = line.dataset.line;
-      line.insertAdjacentHTML('afterend', `<div class="lnote" data-path="${esc(path)}" data-line="${esc(n)}"><span class="who">a note on ${esc(path)}:${esc(n)} — typed into its claude as a prompt</span><textarea rows="2" placeholder="Ask or tell Claude about this line…"></textarea><span class="row"><button class="cbtn" data-note="cancel">Cancel</button><button class="cbtn pri" data-note="send">Send to Claude ⌘⏎</button></span></div>`);
-      $('#chg .lnote textarea').focus(); return;
+    if (plus) {   // a comment on this line: a box under it
+      const line = plus.closest('.dl'), side = line.classList.contains('del') ? 'a' : 'b';
+      // a line of a PR's diff: Claude is told which PR — the folder may have another branch out
+      return openComment(s, { path: line.closest('.cfile').dataset.path, side, line: +line.dataset[side], code: line.querySelector('code').textContent, pr: changes.data?.pr?.n ?? null });
     }
     const nb = e.target.closest('[data-note]');
-    if (nb) { const box = nb.closest('.lnote'); if (nb.dataset.note === 'send') sendNote(s, box); else box.remove(); }
+    if (nb) return nb.dataset.note === 'add' ? saveComment(s) : nb.dataset.note === 'send' ? sendComment(s, nb) : closeComment(s);
+    const cm = e.target.closest('[data-cmt]');
+    if (cm) { const id = +cm.closest('.lcmt').dataset.cid; return cm.dataset.cmt === 'edit' ? editComment(s, id) : dropComment(s, id); }
+    const rb = e.target.closest('[data-rev]');
+    if (rb) return rb.dataset.rev === 'submit' ? submitReview(s, rb) : discardReview(s, rb);
   });
-  function sendNote(s, box) {
-    const text = box.querySelector('textarea').value.trim(); if (!text) return;
-    const dp = changes.data?.pr;   // a line of a PR's diff: Claude is told which PR — the folder may have another branch out
-    sendToClaude(s, `${dp ? `PR #${dp.n} ` : ''}${box.dataset.path}:${box.dataset.line} — ${text}`, box.querySelector('[data-note="send"]'));
-    box.remove();
-  }
   $('#chg').addEventListener('keydown', e => {
-    const box = e.target.closest('.lnote'); if (!box) return;
-    if (e.key === 'Enter' && e.metaKey) { e.preventDefault(); const s = state.sessions.get(state.current); if (s) sendNote(s, box); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); box.remove(); }
+    const s = state.sessions.get(state.current); if (!s) return;
+    if (e.target.closest('.lnote')) {   // ⌘⏎ into the review, ⇧⌘⏎ sent alone, esc lets the box go
+      if (e.key === 'Enter' && e.metaKey) { e.preventDefault(); if (e.shiftKey) sendComment(s, e.target); else saveComment(s); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeComment(s); }
+    } else if (e.target.closest('.crev') && e.key === 'Enter' && e.metaKey) { e.preventDefault(); submitReview(s, e.target); }
   });
+  $('#chg').addEventListener('input', e => {
+    const s = state.sessions.get(state.current); if (!s) return;
+    if (e.target.matches('.lnote textarea') && changes.edit?.chat === s.id) changes.edit.text = e.target.value;
+    else if (e.target.matches('.crev textarea') && reviews.has(s.id)) { reviews.get(s.id).body = e.target.value; keepTabsSoon(); }
+  });
+  // ---- a review of the diff (2026-10-28) ----------------------------------------------------------------------------
+  // GitHub's pending review, for Claude: comments on the diff's lines, kept per chat as a draft — under their lines,
+  // through a re-read, a change of scope and a reload (keepTabs) — and typed into the chat's claude as one prompt by
+  // Submit (⌘⏎ in the bar at the tab's foot). A line's + opens a box: ⌘⏎ adds the comment, Send now (⇧⌘⏎) types it
+  // alone, as the note on a line did before. A comment keeps its line's words: a re-read finds it by them, at the
+  // nearest line that has them when the numbers moved; one the diff no longer shows waits at its top, still in the
+  // review. Drawn into the diff already there (drawComments), so a comment costs no re-highlighting.
+  const reviews = new Map();   // chat id → { items: [{ id, path, side: 'a' (a removed line, its old number) | 'b', line, code, pr, text }], body }
+  let reviewSeq = 0;
+  const reviewOf = id => reviews.get(id) || { items: [], body: '' };
+  const cmtWhere = (c, long) => `${c.pr ? `PR #${c.pr} ` : ''}${c.path}${c.side === 'a' ? (long ? `, old line ${c.line} (removed)` : `:${c.line} (removed)`) : `:${c.line}`}`;
+  /** The line a comment sits on in a file's section: its side's number and its words, the nearest such line. */
+  function lineFor(sec, c) {
+    let best = null, far = Infinity;
+    for (const l of sec.querySelectorAll(':scope > .dl')) {
+      const n = l.dataset[c.side]; if (!n || l.querySelector('code').textContent !== c.code) continue;
+      const d = Math.abs(+n - c.line); if (d < far) { far = d; best = l; }
+    }
+    return best;
+  }
+  /** The review over the diff as drawn: each comment under its line (the box in place of the one being edited, or under
+   *  its line for a new one), the rest at the top, the files' counts, and the bar. */
+  function drawComments(s) {
+    const el = $('#chg'), diff = el.querySelector('.cdiff'), rv = reviewOf(s.id), dp = changes.data?.pr?.n ?? null;
+    el.querySelectorAll('.lcmt, .lnote, .cgone, .crev, .cf .rc').forEach(n => n.remove());
+    el.querySelectorAll('.dl.cmted').forEach(n => n.classList.remove('cmted'));
+    const ed = changes.edit?.chat === s.id ? changes.edit : null;
+    const items = [...rv.items.map(c => c.id === ed?.id ? ed : c), ...(ed && !ed.id ? [ed] : [])], gone = [];
+    const secs = new Map([...(diff?.querySelectorAll('.cfile') || [])].map(x => [x.dataset.path, x]));
+    const html = c => c === ed
+      ? `<div class="lnote"><span class="who">${c.id ? 'Editing the comment on' : 'A comment on'} ${esc(cmtWhere(c))}</span><textarea rows="2" placeholder="What should Claude do about this line?">${esc(c.text)}</textarea><span class="row"><button class="cbtn" data-note="send" title="Types this comment alone into the chat's claude as a prompt · ⇧⌘⏎">Send now</button><span class="sp"></span><button class="cbtn" data-note="cancel">Cancel</button><button class="cbtn pri" data-note="add" title="${c.id ? 'Keep the change' : 'Add it to the review — Submit sends them all at once'}">${c.id ? 'Save' : 'Add to review'} ⌘⏎</button></span></div>`
+      : `<div class="lcmt" data-cid="${c.id}"><span class="who">${esc(cmtWhere(c))}<button class="cbtn" data-cmt="edit">Edit</button><button class="cbtn" data-cmt="del">Delete</button></span><span class="tx">${esc(c.text)}</span></div>`;
+    for (const c of items) {
+      const sec = (c.pr ?? null) === dp ? secs.get(c.path) : null, at = sec && lineFor(sec, c);
+      if (!at) { gone.push(c); continue; }
+      let ref = at; while (ref.nextElementSibling?.matches('.lcmt, .lnote')) ref = ref.nextElementSibling;
+      ref.insertAdjacentHTML('afterend', html(c)); at.classList.add('cmted');
+    }
+    if (gone.length && diff) diff.insertAdjacentHTML('afterbegin', `<div class="cgone"><div class="ghd">Not in this diff — still in the review</div>${gone.map(c => html(c).replace(/^<div class="(lcmt|lnote)"/, '<div class="$1 gone"')).join('')}</div>`);
+    for (const f of el.querySelectorAll('.cf')) {
+      const n = rv.items.filter(c => c.path === f.dataset.path && (c.pr ?? null) === dp).length;
+      if (n) f.querySelector('em')?.insertAdjacentHTML('beforebegin', `<i class="rc" title="${n} comment${n === 1 ? '' : 's'} in the review">${n}</i>`);
+    }
+    const n = rv.items.length, away = diff ? gone.filter(c => c !== ed).length : n;
+    if (n) el.insertAdjacentHTML('beforeend', `<div class="crev"><span class="rh"><b>Review</b> · ${n} comment${n === 1 ? '' : 's'}${away ? ` · ${away} not in this diff` : ''}</span><textarea rows="1" placeholder="Anything overall? (optional)" aria-label="The review's own words">${esc(rv.body)}</textarea><button class="cbtn" data-rev="discard" title="Drop every comment of this review">Discard</button><button class="cbtn pri" data-rev="submit" title="Types the review into the chat's claude as one prompt">Submit to Claude ⌘⏎</button></div>`);
+  }
+  const focusComment = () => { const t = $('#chg .lnote textarea'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } };
+  function openComment(s, anchor) {
+    if (changes.edit?.chat === s.id && changes.edit.text.trim()) saveComment(s);   // a box being written joins the review first
+    changes.edit = { chat: s.id, id: null, text: '', ...anchor };
+    drawComments(s); focusComment();
+  }
+  function editComment(s, id) {
+    const c = reviewOf(s.id).items.find(x => x.id === id); if (!c) return;
+    if (changes.edit?.chat === s.id && changes.edit.id !== id && changes.edit.text.trim()) saveComment(s);
+    changes.edit = { ...c, chat: s.id };
+    drawComments(s); focusComment();
+  }
+  /** The box's comment into the review — a new one at the end, an edited one in its place. Empty, it stays open. */
+  function saveComment(s) {
+    const ed = changes.edit, text = ed?.text.trim(); if (!ed || ed.chat !== s.id || !text) return focusComment();
+    const rv = reviews.get(s.id) || { items: [], body: '' };
+    if (ed.id) { const c = rv.items.find(x => x.id === ed.id); if (c) c.text = text; }
+    else rv.items.push({ id: ++reviewSeq, path: ed.path, side: ed.side, line: ed.line, code: ed.code, pr: ed.pr, text });
+    reviews.set(s.id, rv); changes.edit = null; keepTabsSoon(); drawComments(s);
+  }
+  function closeComment(s) { changes.edit = null; drawComments(s); }
+  function dropComment(s, id) {
+    const rv = reviews.get(s.id); if (!rv) return;
+    rv.items = rv.items.filter(x => x.id !== id); if (!rv.items.length) reviews.delete(s.id);
+    if (changes.edit?.id === id) changes.edit = null;
+    keepTabsSoon(); drawComments(s);
+  }
+  /** Send now: the box's comment alone, typed as a prompt, as a note on a line was before the review. */
+  async function sendComment(s, at) {
+    const ed = changes.edit, text = ed?.text.trim(); if (!ed || ed.chat !== s.id || !text) return;
+    if (!await sendToClaude(s, `${ed.pr ? `PR #${ed.pr} ` : ''}${ed.path}:${ed.line} — ${text}`, at)) return;
+    changes.edit = null; if (ed.id) dropComment(s, ed.id); else drawComments(s);
+  }
+  /** The review as one prompt: the comments by file and line, each with the line it is on, then its own words. */
+  function reviewPrompt(rv) {
+    const l = [...rv.items].sort((a, b) => (a.pr ?? 0) - (b.pr ?? 0) || a.path.localeCompare(b.path) || a.line - b.line), n = l.length;
+    const cut = t => t.length > 160 ? `${t.slice(0, 159)}…` : t;
+    return [`A review of the changes — ${n} comment${n === 1 ? '' : 's'}; address each:`,
+      ...l.map((c, i) => [`${i + 1}. ${cmtWhere(c, true)}`, ...c.code.trim() ? [`   > ${cut(c.code.trim())}`] : [], ...c.text.split('\n').map(t => `   ${t}`)].join('\n')),
+      ...rv.body.trim() ? [`Overall: ${rv.body.trim()}`] : []].join('\n\n');
+  }
+  async function submitReview(s, at) {
+    if (changes.edit?.chat === s.id && changes.edit.text.trim()) saveComment(s);   // what was being written goes with it
+    const rv = reviews.get(s.id); if (!rv?.items.length) return;
+    if (!await sendToClaude(s, reviewPrompt(rv), at)) return;   // no drawer: the review stays, its prompt copied
+    reviews.delete(s.id); changes.edit = null; keepTabsSoon(); drawComments(s);
+  }
+  /** Discard asks once more on the button itself: a click arms it, a second within four seconds drops them all. */
+  function discardReview(s, btn) {
+    const n = reviewOf(s.id).items.length;
+    if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = `Discard all ${n}?`; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = 'Discard'; } }, 4000); return; }
+    reviews.delete(s.id); if (changes.edit?.chat === s.id) changes.edit = null;
+    keepTabsSoon(); drawComments(s);
+  }
 
   // ---- the timeline tab: the chat and its PRs in one order (2026-10-17) -----------------------------------------
   // The story of a chat and its PRs was in three places — the transcript, each PR row's round, the card's popover —
@@ -11517,7 +11648,7 @@ const toolName = n => {
     clearTimeout(keepTabs.t); keepTabs.t = null;
     const v = JSON.stringify({ gh: [...state.paneGh], ide: [...state.paneIde], wt: [...state.paneWt], labels: [...ideLabels], urls: [...paneUrls],
       tabs: [...tabs], homes: [...homes].map(([id, m]) => [id, [...m]]), splits: [...splits], auto: [...autoSplit], stacked: [...stacked], zoomed: [...zoomed],
-      changes: [...changesOpen], timeline: [...timelineOpen], narrow: [...tvNarrow], prs: [...changes.pr], blanks: [...blanks], focus: focusG });
+      changes: [...changesOpen], timeline: [...timelineOpen], narrow: [...tvNarrow], prs: [...changes.pr], blanks: [...blanks], reviews: [...reviews], focus: focusG });
     if (v === keepTabs.was) return;
     try { sessionStorage.setItem(TABS_STORE, v); keepTabs.was = v; } catch {}   // storage refused: the tabs last as long as the page, as before
   }
@@ -11525,10 +11656,11 @@ const toolName = n => {
   try {
     const v = sessionStorage.getItem(TABS_STORE), k = v && JSON.parse(v);
     if (k) {
-      for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks], [tvNarrow, k.narrow]]) for (const [a, b] of l || []) m.set(a, b);
+      for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks], [tvNarrow, k.narrow], [reviews, k.reviews]]) for (const [a, b] of l || []) m.set(a, b);
       for (const [id, l] of k.homes || []) homes.set(id, new Map(l));
       for (const [m, l] of [[splits, k.splits], [autoSplit, k.auto], [stacked, k.stacked], [changesOpen, k.changes], [timelineOpen, k.timeline]]) for (const id of l || []) m.add(id);
       blankSeq = Math.max(blankSeq, ...[...blanks.values()].flat().map(b => b.n));
+      reviewSeq = Math.max(reviewSeq, ...[...reviews.values()].flatMap(r => r.items.map(c => c.id)));
       focusG = k.focus === 1 ? 1 : 0;
       keepTabs.was = v;
     }
@@ -11607,7 +11739,7 @@ const toolName = n => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();
@@ -11669,7 +11801,7 @@ const toolName = n => {
     // tab, its /focus — the per-chat page state, keyed by the chat it left, moved to the one it runs now; not onto a
     // chat that has a layout of its own (a /resume into a chat the board has shown), and never its unread count.
     function carryChat(from, to) {
-      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr, tvNarrow], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
+      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr, tvNarrow, reviews], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
       if (![...maps, ...sets].some(m => m.has(from)) || [...maps, ...sets].some(m => m.has(to))) return;
       for (const m of maps) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
       for (const m of sets) if (m.has(from)) { m.add(to); m.delete(from); }

@@ -23,6 +23,19 @@ Ricardo:
   key): no key window at all, or the window itself holding them, which no view hears. ⌘-Tab's misses could not be
   made to happen here, so each fix is logged (`focus: …`): if ⌘-Tab still misses with no such line, the cause is
   elsewhere, and the line's absence says so.
+* **A line's comments are a review, sent to Claude as one prompt** (`reviews`, `drawComments`, `reviewPrompt`): GitHub's
+  pending review in the changes tab. A line's + opens a box; *Add to review* (⌘⏎) keeps the comment under its line,
+  counted on its file and in a bar at the tab's foot — the review's own words, *Discard* (a second click within four
+  seconds), *Submit to Claude* (⌘⏎ there). Submit types one prompt into the chat's claude: the comments by file and
+  line, each with its line quoted (a removed line by its old number), then *Overall:*; with no claude in a drawer here
+  it is copied and the review stays. *Send now* (⇧⌘⏎) is the note on a line as it was, that comment alone. The draft is
+  the page's, per chat, kept across a reload as the tabs are (sessionStorage): a review is minutes of work, and a
+  server restart reloads the page. A comment keeps its line's words and is found again by them — at the nearest line
+  that has them when a re-read moved the numbers, at the diff's top (*not in this diff*, still in the review) when the
+  scope or Claude's edits took it away. A comment is drawn into the diff already there, so it costs no
+  re-highlighting; a re-read of the same diff keeps its scroll and a box being typed in (the turn's end used to put the
+  diff back at the top). Not done: comments over a range of lines, and a review on GitHub itself — this one is for
+  Claude.
 
 ## Decisions of 2026-10-27, later — a chat's PRs are its own
 
