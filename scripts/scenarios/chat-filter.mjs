@@ -4,7 +4,8 @@
 // the best match leads, *against* the board's order; the lines between states and days are left out while a query is
 // on and come back with Esc; the letters that matched are bolded on the card; ↑↓ walk the cards from the box and ⏎
 // opens the one marked, keeping the query; and the cog lists the key. A PR's number finds the chat that has it, in the
-// box and in ⌥⌘K (2026-10-14), though no title or prompt holds it, and ⌥⌘K's row names the PR.
+// box and in ⌥⌘K (2026-10-14), though no title or prompt holds it, and ⌥⌘K's row names the PR; its URL pasted does
+// too, and only it (2026-10-28).
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
@@ -105,7 +106,18 @@ export default async function (ctx) {
   await ctx.shot('pr-number', { x: 0, y: 0, width: 1200, height: 400 });
   await ctx.fill('#pickq', 'bump');
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat .ids').length`), 0, 'a query the PR does not hold names none');
+  // the PR's URL pasted finds it too (2026-10-28) — its files page, in any case — and whole: …/pull/65 is not #650
+  await ctx.fill('#pickq', 'https://github.com/Acme/widgets/pull/650/files');
+  out.url = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#picklist .pkrow.chat')].map(r => ({ title: r.querySelector('.n').firstChild.textContent, ids: r.querySelector('.ids')?.textContent ?? null, bold: [...r.querySelectorAll('.ids b')].map(b => b.textContent) })))`).then(JSON.parse);
+  ctx.assert.deepEqual(out.url, [{ title: 'Bump the ledger', ids: 'widgets#650', bold: ['widgets#650'] }], `a PR's URL finds its chat — ${JSON.stringify(out.url)}`);
+  await ctx.fill('#pickq', 'https://github.com/acme/widgets/pull/65');
+  out.urlShort = await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat').length`);
+  ctx.assert.equal(out.urlShort, 0, 'another PR\'s URL finds none, though its letters are all in order');
   await ctx.evaluate(`document.querySelector('#pick').close()`);
+  await ctx.key('KeyF'); await type(ctx, 'https://github.com/acme/widgets/pull/650');
+  out.urlBox = await titles(ctx);
+  ctx.assert.deepEqual(out.urlBox, ['Bump the ledger'], 'and so does the list\'s box');
+  await keyIn(ctx, 'Escape');
 
   // the keys sheet (?) lists the key, beside K — the settings' Keys pane did too, until 2026-10-16
   await ctx.evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`);

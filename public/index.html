@@ -4238,10 +4238,11 @@ const toolName = n => {
   // however long ago it was mentioned — the last prompt holds it only while it is the last.
   const chatIds = s => [...(s.prs || []).map(p => p.label), ...(s.tickets || []).map(t => t.key)];
   const chatFields = s => [s.title, s.project, s.gitBranch || '', chatIds(s).join(' '), s.aiTitle || '', s.lastPrompt || '', s.live?.name || ''];
-  /** A picker row's word on why it matched: the PRs and tickets that hold a word of the query as typed, its letters
-   *  bolded — the title alone does not say why `650` found it. Two at most, then a count. */
+  /** A picker row's word on why it matched: the PRs and tickets that hold a word of the query as typed (a web address
+   *  as wordIn finds it), its letters bolded — the title alone does not say why `650` found it. Two at most, then a count. */
   function idsHit(s, q) {
-    const words = q.split(/\s+/).filter(Boolean), hit = words.length ? chatIds(s).filter(id => words.some(w => id.toLowerCase().includes(w))) : [];
+    const holds = (id, w) => URL_WORD.test(w) ? !!wordIn(id, w) : id.includes(w);
+    const words = q.split(/\s+/).filter(Boolean), hit = words.length ? chatIds(s).filter(id => words.some(w => holds(id.toLowerCase(), w))) : [];
     return hit.length ? `<span class="cur ids">${hit.slice(0, 2).map(id => markHits(id, q)).join(' · ')}${hit.length > 2 ? ` +${hit.length - 2}` : ''}</span>` : '';
   }
   // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
@@ -5338,6 +5339,14 @@ const toolName = n => {
   // is what makes `res` find *res*olvers rather than a*r*r*es*t. Every place a word's first letter appears is tried
   // as a start and the best of them wins, which is how the run in *res*olvers is found at all. Null = not there.
   const WORD_EDGE = /[^a-z0-9]/;
+  function fuzzScore(text, at) {
+    let score = -at[0] / 8;   // an earlier start beats a later one, gently
+    for (let k = 0; k < at.length; k++) {
+      const c = at[k], gap = k ? c - at[k - 1] - 1 : 0;   // what the matcher had to skip to get here
+      score += 1 + (k && !gap ? 10 : 0) - Math.min(5, gap / 3) + (!c || WORD_EDGE.test(text[c - 1]) ? 8 : 0);
+    }
+    return score;
+  }
   function fuzzWord(text, word) {
     let best = null;
     for (let start = text.indexOf(word[0]); start >= 0 && start <= text.length - word.length; start = text.indexOf(word[0], start + 1)) {
@@ -5345,14 +5354,34 @@ const toolName = n => {
       let i = start;
       for (let k = 1; k < word.length; k++) { i = text.indexOf(word[k], i + 1); if (i < 0) break; at.push(i); }
       if (i < 0) break;   // a later start's letters only land further on: what this one could not find, none can
-      let score = -at[0] / 8;   // an earlier start beats a later one, gently
-      for (let k = 0; k < at.length; k++) {
-        const c = at[k], gap = k ? c - at[k - 1] - 1 : 0;   // what the matcher had to skip to get here
-        score += 1 + (k && !gap ? 10 : 0) - Math.min(5, gap / 3) + (!c || WORD_EDGE.test(text[c - 1]) ? 8 : 0);
-      }
+      const score = fuzzScore(text, at);
       if (!best || score > best.score) best = { score, at };
     }
     return best;
+  }
+  // A web address in the box is found whole, never letter by letter (2026-10-28): pasted, it means that one page — as
+  // itself, or as what the board calls it: GitHub's …/pull/693 (its /files, a comment's #anchor) as the chip's
+  // `repo#693`, Jira's …/browse/KEY-123 as `KEY-123`. So a PR's URL finds the chat that has it, as its number does, and
+  // …/pull/69 does not find #693.
+  const URL_WORD = /^(?:https?:\/\/|(?:www\.)?github\.com\/)/;
+  function urlForms(w) {
+    const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)\b/.exec(w), jira = /^https?:\/\/[^/]+\/browse\/([a-z][a-z0-9_]*-\d+)\b/.exec(w);
+    return gh ? [`${gh[1]}#${gh[2]}`, w] : jira ? [jira[1], w] : [w];
+  }
+  /** The word as it stands, in no longer name (`acme-widgets#6`) or number (`widgets#650`) — scored as fuzzWord
+   *  scores the same letters. */
+  function wholeWord(text, word) {
+    for (let i = text.indexOf(word); i >= 0; i = text.indexOf(word, i + 1)) {
+      if (/[\w.-]/.test(text[i - 1] || '') || /[a-z0-9]/.test(text[i + word.length] || '')) continue;
+      const at = Array.from({ length: word.length }, (_, k) => i + k);
+      return { score: fuzzScore(text, at), at };
+    }
+    return null;
+  }
+  /** One word of the query hunted in one field: a web address whole, its best form; any other fuzzily. */
+  function wordIn(text, w) {
+    if (!URL_WORD.test(w)) return fuzzWord(text, w);
+    return urlForms(w).map(f => wholeWord(text, f)).reduce((a, m) => m && (!a || m.score > a.score) ? m : a, null);
   }
   /**
    * Every word of the query, each hunted in *one* field — not necessarily the same one, so `wapi res` can take its
@@ -5369,7 +5398,7 @@ const toolName = n => {
       if (!w) continue;
       let best = null;
       for (let i = 0; i < fields.length; i++) {
-        const m = fields[i] && fuzzWord(fields[i].toLowerCase(), w);
+        const m = fields[i] && wordIn(fields[i].toLowerCase(), w);
         if (!m) continue;
         const score = Math.max(0, m.score) / (1 + i / 3);
         if (best === null || score > best) best = score;
@@ -5384,7 +5413,7 @@ const toolName = n => {
   function fuzzMarks(text, q) {
     const hay = text.toLowerCase();
     let at = [];
-    for (const w of q.split(/\s+/)) { if (!w) continue; const m = fuzzWord(hay, w); if (m) at = at.concat(m.at); }
+    for (const w of q.split(/\s+/)) { if (!w) continue; const m = wordIn(hay, w); if (m) at = at.concat(m.at); }
     return [...new Set(at)].sort((a, b) => a - b);
   }
   /** The text, escaped, with the letters the query landed on in <b> — runs merged, so a word comes out as one <b> and

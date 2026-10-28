@@ -578,7 +578,8 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The pickers match fuzzily, and with something typed the best match leads**: `fuzzy(fields, q)` — each word
   hunted *within one field* (`chatFields(s)`; a chat's PRs and tickets are one, `chatIds` — 2026-10-14 —, and
   ⌥⌘K's row names those a word is in, `idsHit`), letters in order, runs and word starts worth more, gaps costing, a
-  field's worth falling off down the list; `hunt()` ranks; an empty box keeps each list's order. `markHits()` bolds
+  field's worth falling off down the list — **a web address found whole**, as itself or the chip it names (2026-10-28,
+  `wordIn`, `urlForms`); `hunt()` ranks; an empty box keeps each list's order. `markHits()` bolds
   what landed (`fuzzMarks`). `pickRender` fills `pick.list` and a `row` per mode and clamps the selection once.
 * **The list's magnifier matches the same way** (⌥⌘F): `renderSessionList` scores by `fuzzy(chatFields(s), q)`
   and, with something typed, sorts by score and draws neither lane heads nor day lines; a folded lane does not apply,

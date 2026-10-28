@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-28. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-28, evening — a PR's address finds its chat
+
+Ricardo: *"hotkey K tries to fuzzy find, but we I past a PR url like [a PR's URL] I don't get a match, even when some
+chat has that PR associated with"*.
+
+* **What was wrong**: the matcher hunts each word's letters in order within one field, and a chat's PRs are in its
+  fields as their chips name them (`chatIds`, 2026-10-14: `widgets#650`) — no field held `https://github.com/…`, so a
+  pasted URL found nothing, wherever the chat had the PR from.
+* **A web address in a box is found whole** (`wordIn`, under `fuzzy` and `fuzzMarks`, so ⌥⌘K, the list's box, the
+  chats step, the launcher and a blank tab alike): as itself, or as what the board calls it (`urlForms`) — GitHub's
+  `…/pull/650`, its `/files` or a comment's `#anchor` too, as `widgets#650`; Jira's `…/browse/KEY-123` as `KEY-123`.
+  Whole (`wholeWord`): in no longer name or number, so `…/pull/65` does not find `#650` — letter by letter, a pasted
+  URL would have found every chat whose PRs held its digits in order, and a pasted address means that one page.
+  ⌥⌘K's row names the PR it found (`idsHit`), bolded whole. → `chat-filter.mjs`.
+
 ## Decisions of 2026-10-28, later — CLAUDE.md pared, and the shell's notes a file of their own
 
 Ricardo, with CLAUDE.md one character under its budget: *"push, then try to trim claude more"*; then, offered the
