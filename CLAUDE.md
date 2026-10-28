@@ -620,14 +620,14 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   scope's ready and clauding chats by `byWord` under ＋ *new chat* — **shown even when the scope has none**, so ⏎
   starts one. ⌥⌘N scopes it to the project, ⌥⌘O to one environment (`then: 'chats'` rides `folder` and `env`).
   Typing filters the chats only and moves the selection onto the first match (`pick.typed`), else ＋. **A folder that
-  is a git checkout gives ＋ a switch, *this folder | new worktree*** (2026-10-13; `pick.git`, `pick.wt`, `pickWt`: →
-  past the box's end, ← past its start, a click): on *new worktree* the text is the branch's name, not a query, and ＋
-  says what ⏎ would do (`wtSay` from `brAsk` → `GET /api/worktrees/branch`, `branchWhere`: a new branch from origin's
-  default, one here or on origin, or **one out in a tree already — said in red, and only then `share`d**; the POST
-  refuses it otherwise, `out`); `newChatOnBranch` makes the worktree and starts the chat. A chat's environment is `s.env`
-  (`.chip.env` on its card); the `env` step counts each (`envCounts`). An idle chat's row has the card's ✓
-  (`button.pkdone`, `canTick(s)`); ticked, it leaves on the `session` event (`pickRender(true)` keeps the selection)
-  and the picker stays up. → `new-chat-flow.mjs`.
+  is a git checkout gives ＋ a switch, *this folder | new worktree*** (2026-10-13; `pick.git`, `pick.wt`, `pickWt`: ←→
+  past the box's ends, a click): on *new worktree* the text is the branch's name, not a query, and ＋ says what ⏎
+  would do (`wtSay` from `brAsk` → `branchWhere`: a new branch, one here or on origin, or **one out in a tree already —
+  said in red, and only then `share`d**, else refused, `out`). **A new branch asks its base** (2026-10-28; mode
+  `base`, `worktreeBases`): the default selected, the checkout's if ahead (`prefer`). `newChatOnBranch` makes the
+  worktree and starts the chat. A chat's environment is `s.env` (`.chip.env` on its card); the `env` step counts each
+  (`envCounts`). An idle chat's row has the card's ✓ (`button.pkdone`, `canTick(s)`), the picker staying up
+  (`pickRender(true)` keeps the selection). → `new-chat-flow.mjs`.
 * **The project step holds the folders you have no chat in, and clones one you have not got**: after the board's
   projects come the folders under each root on no project (`freeFolders()`; `GET /api/folders`, cached by each
   root's mtime), and a query naming none is offered as **＋ clone `<org>/<name>`** per root with an org (`cloneRows()`,

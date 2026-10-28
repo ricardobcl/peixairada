@@ -3,8 +3,9 @@
 // the branch and starts a chat there (the fake claude); that chat is the repo's — its card says widgets and wears the
 // branch, the project pickers list widgets once and never the worktree, the header's folder narrows the list to both
 // widgets chats; the launcher's PR row has Chat too; and ⌥⌘N's chats step gives ＋ a switch — this folder or a new
-// worktree (←→, a click) — whose row says what the branch typed would do, in red where it would share a tree, and
-// makes a worktree from origin's main for a new name and starts a chat in it.
+// worktree (←→, a click) — whose row says what the branch typed would do, in red where it would share a tree; a new
+// name asks what it starts from (2026-10-28: origin's main selected, typing filters, ← back to the name) and ⏎ makes a
+// worktree from it and starts a chat there.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -97,7 +98,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.branch').length`), 0, 'no row of its own any more');
   await press('ArrowRight');
   out.empty = await plus();
-  ctx.assert.deepEqual([out.empty.n, out.empty.say, out.empty.on, out.empty.wt], ['＋ new chat in a new worktree', 'type a branch name — a new one starts from origin/main', 'new worktree', true], JSON.stringify(out.empty));
+  ctx.assert.deepEqual([out.empty.n, out.empty.say, out.empty.on, out.empty.wt], ['＋ new chat in a new worktree', 'type a branch name — for a new one, ⏎ asks what it starts from, main first', 'new worktree', true], JSON.stringify(out.empty));
   // the folder's own branch, and one out in the PR's worktree with a chat at work there: ⏎ would share them — in red
   await ctx.fill('#pickq', 'main');
   await ctx.waitFor(`/own branch/.test(document.querySelector('#picklist .pkrow.new .cur').textContent)`, { what: 'main: the folder’s own' });
@@ -119,9 +120,29 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#picklist .pkmode [data-wt="0"]').click()`);
   ctx.assert.equal((await plus()).on, 'this folder', 'a click');
   await ctx.evaluate(`document.querySelector('#picklist .pkmode [data-wt="1"]').click()`);
-  await ctx.waitFor(`document.querySelector('#picklist .pkrow.new .cur').textContent === 'a new branch from origin/main, in a worktree of its own'`, { what: 'a new name: what ⏎ does' });
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.new .cur').textContent === 'a new branch in a worktree of its own — ⏎ asks what it starts from, main first'`, { what: 'a new name: what ⏎ does' });
   ctx.assert.equal(await ctx.evaluate(`document.activeElement.id`), 'pickq', 'the box keeps the keys');
   await ctx.settle(); await ctx.shot('2-new-worktree');
+  // ⏎: what it starts from — the checkout's branches and origin's, origin's main first and selected (main here is at
+  // its commit, and the PR's branch here at origin's: neither adds a row)
+  const bases = () => ctx.evaluate(`({ rows: [...document.querySelectorAll('#picklist .pkrow.base')].map(r => { const n = r.querySelector('.n').cloneNode(true), c = n.querySelector('.cur'); c?.remove(); return [n.textContent, r.querySelector('.num').textContent, c?.textContent || '', r.classList.contains('sel')]; }), q: document.querySelector('#pickq').value, ph: document.querySelector('#pickq').placeholder, foot: document.querySelector('#pickfoot').checkVisibility() ? document.querySelector('#pickfoot').textContent : null })`);
+  await press('Enter');
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.base')`, { what: 'the base step' });
+  out.bases = await bases();
+  ctx.assert.deepEqual(out.bases.rows, [['origin/main', 'origin', 'default', true], ['origin/feat/tax-rounding', 'origin', '', false]], JSON.stringify(out.bases));
+  ctx.assert.match(out.bases.ph, /^feat\/new-thing — what it starts from .* ← back · esc$/);
+  ctx.assert.match(out.bases.foot, /^⏎ a worktree from the branch selected · ← back to its name$/, 'its own foot, not the chats step’s');
+  await ctx.settle(); await ctx.shot('3-base');
+  await ctx.fill('#pickq', 'tax');
+  ctx.assert.deepEqual((await bases()).rows.map(r => [r[0], r[3]]), [['origin/feat/tax-rounding', true]], 'typing filters, the best match selected');
+  await ctx.fill('#pickq', '');
+  // ← on the empty box: back to the name, "new worktree" still on
+  await press('ArrowLeft', 0);
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.new.wt')`, { what: 'back on ＋' });
+  ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#pickq').value, document.querySelector('#picklist .pkrow.new .pkmode [aria-checked="true"]').textContent]`), ['feat/new-thing', 'new worktree']);
+  await press('Enter');
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.base.sel')`, { what: 'the base step again' });
+  ctx.assert.equal((await bases()).rows[0][3], true, 'the default selected: ⏎ ⏎ is the common case');
   await press('Enter');
   for (let i = 0; i < 150 && !(await termIn(wt('feat-new-thing'))); i++) await ctx.sleep(100);
   ctx.assert.ok(await termIn(wt('feat-new-thing')), 'a chat started in .claude/worktrees/feat-new-thing');

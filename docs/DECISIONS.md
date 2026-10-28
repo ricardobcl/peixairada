@@ -5,12 +5,14 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-28. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-28 — the keys after a drop, a review of the diff
+## Decisions of 2026-10-28 — the keys after a drop, a review of the diff, a worktree's base
 
 Ricardo:
 
 > - sometimes this app seems to have an issue with app focus, like alt-tabbing does not work, or taking a screenshot,
 >   dragging to here and trying to write, the focus goes back to the other screen
+> - when a new chat with a worktreee is selected, add another prompt to ask for the branch to be the masis of that
+>   worktree, by default master/main so it's simple "enter" in the common case
 > - on the diff that we have, can we make comments inline and then have a submit to claude button to leave that
 >   "review" for claude to tackle?
 
@@ -36,6 +38,19 @@ Ricardo:
   re-highlighting; a re-read of the same diff keeps its scroll and a box being typed in (the turn's end used to put the
   diff back at the top). Not done: comments over a range of lines, and a review on GitHub itself — this one is for
   Claude.
+* **⏎ on ＋ *new worktree* with a new branch's name is one more step, the base** (`wtEnter` → `baseStep`, mode
+  `base`): the branches this checkout has and origin's as last fetched (`GET /api/worktrees/bases`, `worktreeBases` —
+  one `for-each-ref`, no network, newest first), typed to filter as every picker is, ← or ⌫ on the empty box back to
+  the name as it was. The default branch leads and is selected, so the common case is ⏎ ⏎ — **origin's, unless this
+  checkout's is strictly ahead of it** (`prefer`): this repo's own main is ahead of origin's, and a branch from
+  origin's would have started from code days old. A branch here at origin's commit is left out (it adds nothing), so
+  a checkout in step with origin shows `origin/main` once. A name that is a branch already — here, on origin, out in a
+  tree — skips the step: it has a start of its own.
+* **The POST's `base` is a full ref** (`refs/heads/<x>` or `refs/remotes/origin/<x>`, the board's rule for a branch
+  name on `<x>`, a commit there — `baseOk`; else 400), used only for a new branch; origin's is fetched first, as the
+  default was. No base is the default branch as before.
+* **The picker's foot hides when a step has none** (`#pickfoot[hidden]`): its `display: flex` beat the attribute, so
+  the chats step's words stayed on under the steps after it.
 
 ## Decisions of 2026-10-27, later — a chat's PRs are its own
 

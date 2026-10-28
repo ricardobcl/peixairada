@@ -16,7 +16,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 const tmp = tmpDir('peix-wt-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
 process.env.GIT_CONFIG_GLOBAL = '/dev/null'; process.env.GIT_CONFIG_NOSYSTEM = '1';   // no global ignore file: the board's own exclude is what keeps the trees out of status
-const { branchWhere, ensureWorktree, folderBack, linkModules, newSession, prRefs, projectDir, putBack, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
+const { branchWhere, worktreeBases, ensureWorktree, folderBack, linkModules, newSession, prRefs, projectDir, putBack, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();
@@ -267,4 +267,44 @@ test('a chat\'s worktree gone is made again for its resume, a folder gone in the
   assert.deepEqual(await putBack(join(co, 'gone', 'deeper'), chat('feat/b')), { cwd: co });
   assert.equal(folderBack(join(tmp, 'nowhere', 'x')), null);
   assert.equal(folderBack(co), null, 'a folder that is there');
+});
+
+// ⌥⌘N's base step (2026-10-28): a new chat's new branch starts from the branch picked — the bases offered lead with the
+// default branch, origin's unless this checkout's is ahead of it, and leave out a branch here at origin's commit.
+test('a new branch starts from the base asked for; the bases lead with the default branch, this checkout\'s when it is ahead (2026-10-28)', async () => {
+  const head = r => git(co, 'rev-parse', r);
+  // main here behind origin's (as the test before left it): origin's first, then this checkout's
+  let b = await worktreeBases(co);
+  assert.deepEqual([b.dflt, b.prefer], ['main', 'refs/remotes/origin/main']);
+  assert.deepEqual(b.branches.slice(0, 2).map(x => [x.name, x.where, x.ref]), [['origin/main', 'origin', 'refs/remotes/origin/main'], ['main', 'local', 'refs/heads/main']]);
+  assert.equal(b.branches.some(x => /HEAD$/.test(x.name)), false, 'no origin/HEAD');
+  assert.ok(b.branches.some(x => x.name === 'origin/feat/c') && !b.branches.some(x => x.name === 'feat/c'), 'feat/c here is at origin’s: left out');
+  assert.ok(b.branches.some(x => x.name === 'feat/again' && x.where === 'local'), 'a branch of this checkout’s alone');
+  assert.ok(b.branches.every(x => /^\d{4}-\d\d-\d\dT/.test(x.at) && /^[0-9a-f]{40}$/.test(x.oid)));
+  // main here ahead of origin's: this checkout's first
+  git(co, 'update-ref', 'refs/heads/main', git(co, 'commit-tree', '-p', 'origin/main', '-m', 'ahead here', 'origin/main^{tree}'));
+  b = await worktreeBases(co);
+  assert.equal(b.prefer, 'refs/heads/main');
+  assert.deepEqual(b.branches.slice(0, 2).map(x => x.name), ['main', 'origin/main']);
+  // at origin's: one row, origin's
+  git(co, 'update-ref', 'refs/heads/main', head('origin/main'));
+  b = await worktreeBases(co);
+  assert.equal(b.prefer, 'refs/remotes/origin/main');
+  assert.deepEqual(b.branches.filter(x => /^(origin\/)?main$/.test(x.name)).map(x => x.name), ['origin/main']);
+  assert.equal(b.branches[0].name, 'origin/main');
+  // made from a base: origin's feat/a, this checkout's feat/b — tracking nothing
+  const a = await ensureWorktree({ cwd: co, branch: 'feat/on-a', fresh: true, base: 'refs/remotes/origin/feat/a' });
+  assert.deepEqual([a.path, a.made, a.branch], [wt('feat-on-a'), true, 'feat/on-a']);
+  assert.equal(git(a.path, 'rev-parse', 'HEAD'), head('refs/remotes/origin/feat/a'), 'at origin’s feat/a');
+  assert.throws(() => git(a.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'tracking nothing');
+  const l = await ensureWorktree({ cwd: co, branch: 'feat/on-b', fresh: true, base: 'refs/heads/feat/b' });
+  assert.equal(git(l.path, 'rev-parse', 'HEAD'), head('refs/heads/feat/b'), 'at this checkout’s feat/b');
+  // refused: not a full ref of a branch here or of origin's, or one that is not there
+  for (const base of ['feat/b', 'refs/tags/v1', 'refs/remotes/origin/HEAD', 'refs/remotes/upstream/main', 'refs/heads/no/such', '--force', 'refs/heads/feat/b..x'])
+    assert.equal((await ensureWorktree({ cwd: co, branch: 'feat/never', fresh: true, base })).code, 400, base);
+  assert.equal(git(co, 'for-each-ref', 'refs/heads/feat/never'), '', 'nothing made');
+  // a branch there already: the base does not apply
+  const d = await ensureWorktree({ cwd: co, branch: 'feat/d', fresh: true, base: 'refs/heads/feat/b' });
+  assert.equal(git(d.path, 'rev-parse', 'HEAD'), head('refs/remotes/origin/feat/d'), 'origin’s feat/d');
+  assert.equal(git(d.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/d', 'tracking it');
 });

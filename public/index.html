@@ -2220,6 +2220,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #settings .sseg button { font: inherit; font-size: var(--fs-sm); border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: var(--r-2); cursor: pointer; }
   #settings .sseg button[aria-checked="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
   #pickfoot { margin: 6px 4px 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  #pickfoot[hidden] { display: none; }   /* (2026-10-28) the flex above beat the attribute: the chats step's foot stayed on under every step after it */
   #pickfoot kbd { font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
   .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: var(--r-3); cursor: pointer; min-width: 0; }
   .pkrow .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); }
@@ -5398,8 +5399,9 @@ const toolName = n => {
     return out + esc(text.slice(last));
   }
   // gen: which opening of the picker; typed: the chats step's box just typed in; git: the chats step's folder's working
-  // trees when it is one git checkout (wtOf), wt: its ＋ row on "new worktree", br: the branch typed, as the server found it
-  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null };
+  // trees when it is one git checkout (wtOf), wt: its ＋ row on "new worktree", br: the branch typed, as the server found it,
+  // asking: ⏎ on it waiting for that answer (wtEnter)
+  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null, asking: false };
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc',
     pr: ctx => `Pull request — type to filter · ↑↓ · ⏎ opens${ctx.zoom === 'fill' ? ' · ⌥⌘G fills the column' : ctx.zoom === 'back' ? ' · ⌥⌘G gives the column back' : ''} · esc`,
@@ -5411,11 +5413,12 @@ const toolName = n => {
       : `New chat in ${folderName(ctx.cwd)} — which environment? task <env> from the folder's Taskfile · ↑↓ · ⏎ starts it · esc`,
     chats: ctx => pick.wt && pick.git ? `${ctx.name} — the new chat's branch: type its name · ⏎ · esc`
       : `${ctx.name}${ctx.env ? ` · task ${ctx.env}` : ''} — an open chat, or ＋ a new one · type to filter · ↑↓ · ⏎ · esc`,
+    base: ctx => `${ctx.branch} — what it starts from · type to filter · ↑↓ · ⏎ · esc`,   // a new worktree's new branch (2026-10-28)
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
   };
   const NO_FOLDER = '＋ new chat — no folder';   // ⌥⌘N's first row (2026-10-14)
-  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch' };   // for "no … matches"; the rest are projects
+  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
@@ -5480,6 +5483,7 @@ const toolName = n => {
   const PICK_FOOT = {
     launch: '<kbd>&gt;</kbd> actions and switches <kbd>#</kbd> PRs <kbd>@</kbd> projects <kbd>!</kbd> tickets <s>·</s> <kbd>→</kbd> into a menu',
     chats: () => pick.git ? '<kbd>←</kbd><kbd>→</kbd> ＋ new chat in this folder, or in a new worktree on a branch of its own' : '',
+    base: '<kbd>⏎</kbd> a worktree from the branch selected <s>·</s> <kbd>←</kbd> back to its name',
   };
   const pickHint = () => {
     const h = PICK_HINT[pick.mode], t = typeof h === 'function' ? h(pick.ctx) : h; $('#pickq').placeholder = pick.ctx.back && !/← back/.test(t) ? t.replace(/ · esc$/, ' · ← back · esc') : t;
@@ -5542,11 +5546,15 @@ const toolName = n => {
         const on = pick.git.worktrees?.find(t => t.path === pick.git.here)?.branch;
         const [n, say, tone] = wt ? wtSay(typed) : ['＋ new chat', `${how} as it stands${on ? ` — on ${on}` : ''}`, ''];
         const sw = `<span class="pkmode" role="radiogroup" aria-label="Where the new chat works"><button type="button" role="radio" tabindex="-1" data-wt="0" aria-checked="${!wt}">this folder</button><button type="button" role="radio" tabindex="-1" data-wt="1" aria-checked="${wt}">new worktree</button></span>`;
-        const tip = `${say ? `${say}\n` : ''}This folder, or a new worktree inside the repo (.claude/worktrees/<branch>) on a branch of its own — a new one from origin/${pick.git.dflt || 'main'} — so the chat shares no files with another · ←→ or a click switches`;
+        const tip = `${say ? `${say}\n` : ''}This folder, or a new worktree inside the repo (.claude/worktrees/<branch>) on a branch of its own — a new one from the branch picked next, ${pick.git.dflt || 'main'} first — so the chat shares no files with another · ←→ or a click switches`;
         return `<div class="pkrow chat ticks new sw${wt ? ' wt' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="${esc(tip)}"><span class="sq"></span><span class="n">${n}</span><span class="num">${sw}</span><span class="st"></span><span class="t"></span>${tick(x)}<span class="cur${tone ? ` ${tone}` : ''}">${esc(say)}</span></div>`;
       };
       row = (x, i) => x.isNew ? plus(x, i)
         : `<div class="pkrow chat ticks${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mk(x.title))}${wt ? '' : idsHit(x, q)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t" data-at="${esc(wordAt(x))}"></span>${tick(x)}</div>`;
+    } else if (pick.mode === 'base') {   // what a new worktree's new branch starts from (2026-10-28): the default branch first
+      pick.list = hunt(pick.ctx.bases || [], b => [b.name]);
+      if (!pick.ctx.bases) { $('#picklist').innerHTML = `<div class="none">${esc(pick.ctx.err || 'reading the branches…')}</div>`; return; }
+      row = (b, i) => `<div class="pkrow base${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="${esc(b.ref)}"><span class="sq"></span><span class="n">${mark(b.name)}${b.name.replace(/^origin\//, '') === pick.ctx.dflt ? '<span class="cur">default</span>' : ''}</span><span class="num">${b.where === 'origin' ? 'origin' : 'here'}</span><span class="t" data-at="${esc(b.at || '')}"></span></div>`;
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
       pick.list = hunt(pick.ctx.cwds.map(f => ({ cwd: f })), x => [folderName(x.cwd), x.cwd]);
       row = (x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`;
@@ -5586,6 +5594,10 @@ const toolName = n => {
   function pickChoose(i) {
     const x = pick.list[i], dlg = $('#pick');
     if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
+    if (pick.mode === 'base') {   // nothing matched: the step stays; ⏎ before the branches are read takes the default once they are
+      if (!pick.ctx.bases) pick.ctx.go = !$('#pickq').value.trim(); else if (x) newChatOnBranch(pick.ctx.cwd, pick.ctx.branch, { base: x.ref });
+      return;
+    }
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
@@ -5594,7 +5606,7 @@ const toolName = n => {
       else if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
     }
     else if (pick.mode === 'chats') {
-      if (x.isNew && pick.wt && pick.git) newChatOnBranch(pick.ctx.cwds[0], $('#pickq').value.trim());
+      if (x.isNew && pick.wt && pick.git) wtEnter(pick.ctx.cwds[0], $('#pickq').value.trim());
       else if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id, { locate: true }); }
     }
     else if (pick.mode === 'folder') newChatIn(x.cwd, pick.ctx.then);
@@ -5632,7 +5644,7 @@ const toolName = n => {
     else if (e.key === 'Enter') { e.preventDefault(); pickChoose(pick.sel); }
     // the launcher's menus (2026-10-10): → into a row with ›, ← or ⌫ on an empty box back out to where it came from
     else if (e.key === 'ArrowRight' && pick.mode === 'launch' && !$('#pickq').value && pick.list[pick.sel]?.kind === 'menu' && !pick.list[pick.sel].leaf) { e.preventDefault(); pickChoose(pick.sel); }
-    else if ((e.key === 'ArrowLeft' || e.key === 'Backspace') && !$('#pickq').value && pick.ctx.back) { e.preventDefault(); pickOpen(pick.ctx.back); }
+    else if ((e.key === 'ArrowLeft' || e.key === 'Backspace') && !$('#pickq').value && pick.ctx.back) { e.preventDefault(); typeof pick.ctx.back === 'function' ? pick.ctx.back() : pickOpen(pick.ctx.back); }
   });
   $('#picklist').addEventListener('click', e => {
     const x = e.target.closest('.pkx');   // ✕: the row goes off the board, the picker stays where it is
@@ -7442,10 +7454,11 @@ const toolName = n => {
   }
   // ---- ⌥⌘N's ＋ on "new worktree" (2026-10-13) --------------------------------------------------------------------------
   // The chats step of a git checkout: ＋ in this folder, or in a worktree of its own on the branch typed — made inside
-  // the repo from origin's default branch when the name is new, so the chat shares no files with another. The row says
-  // what ⏎ would do as the name is typed (brAsk → GET /api/worktrees/branch): a new branch; one here or on origin,
-  // checked out in a new worktree; or one out in a tree already, which the chat would share — said in red, and only then
-  // asked for (`share`; the server refuses it otherwise).
+  // the repo, so the chat shares no files with another. The row says what ⏎ would do as the name is typed (brAsk → GET
+  // /api/worktrees/branch): a new branch; one here or on origin, checked out in a new worktree; or one out in a tree
+  // already, which the chat would share — said in red, and only then asked for (`share`; the server refuses it
+  // otherwise). A new branch asks what it starts from first (2026-10-28, baseStep): the default branch selected, so ⏎ ⏎
+  // is the common case.
   const BRANCH_OK = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;   // the server's BRANCH_NAME; git's own rule is the server's answer
   /** ＋'s switch: false when there is none or it is there already. */
   function pickWt(on) {
@@ -7455,8 +7468,8 @@ const toolName = n => {
   }
   /** ＋'s words on "new worktree" for the name typed: [the row's html, what ⏎ would do, a tone]. */
   function wtSay(name) {
-    const from = `origin/${pick.git.dflt || 'main'}`;
-    if (!name) return ['＋ new chat in a new worktree', `type a branch name — a new one starts from ${from}`, ''];
+    const from = pick.git.dflt || 'main';
+    if (!name) return ['＋ new chat in a new worktree', `type a branch name — for a new one, ⏎ asks what it starts from, ${from} first`, ''];
     const n = `＋ new chat on <b>${esc(name)}</b>`, b = pick.br?.name === name ? pick.br.v : null;
     if (!BRANCH_OK.test(name) || b?.ok === false) return [n, 'not a name git takes for a branch', 'bad'];
     if (!b) return [n, '', ''];   // asked: the answer redraws the row
@@ -7465,7 +7478,7 @@ const toolName = n => {
     if (b.tree) return [n, b.main ? `already ${folderName(b.tree)}'s own branch: ⏎ shares that folder${live}` : `already out in ${treeName(pick.git, b.tree)}: ⏎ shares that worktree${live}`, 'warn'];
     if (b.local) return [n, 'a branch here, checked out in a worktree of its own', ''];
     if (b.origin) return [n, `origin's branch, in a worktree of its own tracking it`, ''];
-    return [n, `a new branch from ${from}, in a worktree of its own`, ''];
+    return [n, `a new branch in a worktree of its own — ⏎ asks what it starts from, ${from} first`, ''];
   }
   let brTimer = 0;
   /** The branch typed on "new worktree", asked of the server a beat after the last key: where it is already. */
@@ -7479,15 +7492,45 @@ const toolName = n => {
       pick.br = { name, v }; pickRender(true);
     }, 120);
   }
-  async function newChatOnBranch(cwd, name) {
-    const box = $('#pickq'), b = pick.br?.name === name ? pick.br.v : null;
-    if (!name) return note(box, 'Type the branch’s name first — a new one starts from origin’s default branch', true);
-    if (!BRANCH_OK.test(name) || b?.ok === false) return note(box, `${name} is not a name git takes for a branch`, true);
-    box.disabled = true; pick.cloning = true; box.value = ''; box.placeholder = b?.tree ? `starting a chat on ${name}…` : `making a worktree for ${name}…`;
-    let t; try { t = await api('POST', '/api/worktrees', { cwd, branch: name, fresh: true, share: !!b?.tree }); }
+  /** ⏎ on ＋ "new worktree": a branch that is here, on origin or out in a tree already is checked out (or shared) at once;
+   *  a new one asks what it starts from first (2026-10-28) — where the name is is asked now if the row has no answer yet. */
+  async function wtEnter(cwd, name) {
+    const box = $('#pickq'), gen = pick.gen;
+    if (!name) return note(box, 'Type the branch’s name first', true);
+    if (!BRANCH_OK.test(name)) return note(box, `${name} is not a name git takes for a branch`, true);
+    let b = pick.br?.name === name ? pick.br.v : null;
+    if (!b) {
+      if (pick.asking) return;   // ⏎ again while the first is asked: one answer
+      clearTimeout(brTimer); pick.asking = true;
+      b = await api('GET', `/api/worktrees/branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(name)}`).catch(e => ({ error: e.message })).finally(() => { pick.asking = false; });
+      if (gen !== pick.gen || !$('#pick').open || $('#pickq').value.trim() !== name) return;
+      pick.br = { name, v: b }; pickRender(true);
+    }
+    if (b.ok === false) return note(box, `${name} is not a name git takes for a branch`, true);
+    if (b.error) return note(box, b.error, true);
+    if (b.local || b.origin || b.tree) return newChatOnBranch(cwd, name, { share: !!b.tree });
+    baseStep(cwd, name, pick.ctx, b);
+  }
+  /** The base step: the checkout's branches and origin's (GET /api/worktrees/bases), the one ⏎ takes first — origin's
+   *  default branch, or this checkout's when it is ahead. ← or ⌫ on an empty box goes back to the name, as typed. */
+  async function baseStep(cwd, name, chats, br) {
+    const back = () => { pickOpen('chats', chats); $('#pickq').value = name; pick.br = { name, v: br }; pickWt(true); };
+    pickOpen('base', { cwd, branch: name, bases: null, dflt: br.dflt, back });
+    const gen = pick.gen, v = await api('GET', `/api/worktrees/bases?cwd=${encodeURIComponent(cwd)}`).catch(e => ({ error: e.message }));
+    if (gen !== pick.gen || !$('#pick').open) return;
+    if (v.error) { pick.ctx.err = v.error; return pickRender(); }
+    Object.assign(pick.ctx, { bases: v.branches || [], dflt: v.dflt || br.dflt });
+    pick.sel = Math.max(0, pick.ctx.bases.findIndex(b => b.ref === v.prefer)); pickRender();
+    if (pick.ctx.go && !$('#pickq').value.trim()) pickChoose(pick.sel);
+  }
+  /** The worktree made — from `base` when the branch is new — and the chat started in it; `share`: a tree that has it out. */
+  async function newChatOnBranch(cwd, name, { base = null, share = false } = {}) {
+    const box = $('#pickq'), was = box.value, short = base && base.replace(/^refs\/(heads|remotes)\//, '');
+    box.disabled = true; pick.cloning = true; box.value = ''; box.placeholder = share ? `starting a chat on ${name}…` : `making a worktree for ${name}${short ? ` from ${short}` : ''}…`;
+    let t; try { t = await api('POST', '/api/worktrees', { cwd, branch: name, fresh: true, share, ...base && { base } }); }
     catch (e) {
-      pick.cloning = false; box.disabled = false; box.value = name; pickHint();
-      if (e.body?.out) { pick.br = null; brAsk(); }   // out in a tree since the row last looked: it says so now, and ⏎ again shares it
+      pick.cloning = false; box.disabled = false; box.value = was; pickHint();
+      if (e.body?.out && pick.mode === 'chats') { pick.br = null; brAsk(); }   // out in a tree since the row last looked: it says so now, and ⏎ again shares it
       pickRender(); box.focus(); return note(box, e.message, true);
     }
     wtData.delete(cwd); $('#pick').close(); newChat(t.path);

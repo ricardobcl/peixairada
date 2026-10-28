@@ -41,6 +41,7 @@ const DRIVEN = {
   '/api/worktrees': 'scripts/scenarios/editor-branch.mjs',
   '/api/worktrees/modules': 'scripts/scenarios/editor-branch.mjs',   // Link node_modules
   '/api/worktrees/branch': 'scripts/scenarios/chat-worktree.mjs',   // ⌥⌘N's new worktree
+  '/api/worktrees/bases': 'scripts/scenarios/chat-worktree.mjs',    // …and what its new branch starts from (2026-10-28)
 };
 /** A route's regex literal as a path: each group a `:id`. */
 const asPath = src => { let out = '', depth = 0; for (const c of src.replace(/\\\//g, '/')) { if (c === '(' && !depth++) out += ':id'; else if (c === ')') depth--; else if (!depth) out += c; } return out; };

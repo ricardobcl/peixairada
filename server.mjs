@@ -3320,6 +3320,36 @@ async function branchWhere(cwd, name) {
   const live = t ? [...sessions.values()].filter(s => s.alive && treeOf(s.live?.cwd || s.cwd) === t.path).length : 0;
   return { name, ok: true, local: !!local, origin: !!origin, tree: t?.path ?? null, main: !!t && t.path === w.main, live, dflt: w.dflt };
 }
+/** What a new chat's branch may start from (2026-10-28; ⌥⌘N's base step): the checkout's branches and origin's as last
+ *  fetched (no network), newest first — a branch here at origin's commit adds nothing and is left out. `prefer` is the
+ *  row ⏎ takes: origin's default branch, or this checkout's when it is ahead of origin's (its own commits not pushed
+ *  yet); the default branch's rows lead, that one first. Only names a base may be (baseOk). */
+async function worktreeBases(cwd) {
+  const w = await worktreesFor(cwd); if (w.error) return w;
+  const out = await gitOut(w.main, ['for-each-ref', '--sort=-committerdate', '--count=400', '--format=%(refname)%09%(objectname)%09%(committerdate:iso-strict)', 'refs/heads', 'refs/remotes/origin']);
+  const remotes = (await gitOr(w.main, ['remote'], '')).split('\n').filter(Boolean), all = [];
+  for (const l of out.split('\n')) {
+    const [ref, oid, at] = l.split('\t'), m = /^refs\/(heads|remotes\/origin)\/(.+)$/.exec(ref || '');
+    if (!m || m[2] === 'HEAD' || !baseName(m[2], remotes)) continue;
+    const where = m[1] === 'heads' ? 'local' : 'origin';
+    all.push({ name: where === 'local' ? m[2] : `origin/${m[2]}`, branch: m[2], ref, where, at: at || null, oid });
+  }
+  const theirs = new Map(all.filter(b => b.where === 'origin').map(b => [b.branch, b.oid]));
+  const list = all.filter(b => b.where === 'origin' || theirs.get(b.branch) !== b.oid);
+  const here = list.find(b => b.where === 'local' && b.branch === w.dflt), there = list.find(b => b.where === 'origin' && b.branch === w.dflt);
+  const ahead = here && there && await gitOr(w.main, ['merge-base', '--is-ancestor', there.ref, here.ref], false) !== false;
+  const first = here && (!there || ahead) ? here : there || list[0] || null;
+  const lead = [first, here, there].filter((b, i, a) => b && a.indexOf(b) === i);
+  const branches = [...lead, ...list.filter(b => !lead.includes(b))].slice(0, 200).map(({ branch, ...b }) => b);
+  return { dflt: w.dflt, prefer: first?.ref ?? null, branches };
+}
+/** A branch's name as a base may be one: the board's rule for a branch it makes, without asking git (baseOk does). */
+const baseName = (name, remotes) => BRANCH_NAME.test(name) && !/^(refs|heads|remotes|tags)\//.test(name) && !/^[A-Z_]*HEAD$/.test(name) && !remotes.some(r => name.startsWith(`${r}/`));
+/** A base asked for (2026-10-28): a full ref, this checkout's branch or origin's, that names a commit here. */
+async function baseOk(main, ref) {
+  const m = /^refs\/(heads|remotes\/origin)\/(.+)$/.exec(String(ref));
+  return !!m && m[2] !== 'HEAD' && await branchNameOk(main, m[2]) && !!await gitOr(main, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+}
 /** A name the board may make a branch of (2026-10-14): git's rule, and none that another ref would answer to as well —
  *  `origin/main` made refs/heads/origin/main, after which origin/main named it, not origin's, for every command in the
  *  repo. Never a remote's name and a slash, refs/ heads/ remotes/ tags/, HEAD or one of git's other *HEADs. */
@@ -3338,7 +3368,7 @@ async function branchNameOk(main, name) {
 // when asked and the lockfiles match. The trees made here are the state file's `worktrees`; only they are ever removed.
 const wtSlug = b => String(b).replace(/[^\w.-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 80) || 'wt';
 const wtAsking = new Map();   // one making per repo and branch at a time: a second ask waits for the first's tree
-async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, fresh = false, share = false }) {
+async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, fresh = false, share = false, base = null }) {
   const w = await worktreesFor(cwd); if (w.error) return { code: 409, error: w.error };
   let want = null, refs = null;
   if (pr) {
@@ -3351,6 +3381,7 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
   }
   if (!pr && (!branch || detach)) return { code: 400, error: detach ? 'detached at what? — a PR' : 'which branch?' };
   if (branch && !await branchNameOk(w.main, branch)) return { code: 400, error: `${branch} is not a branch name the board makes` };
+  if (base !== null && !await baseOk(w.main, base)) return { code: 400, error: `${base} is not a branch here to start from` };
   if (!detach) {
     const t = w.worktrees.find(x => x.branch === branch);
     // a new chat's branch (fresh) out in a tree already: that tree is shared only when asked for — the page said so first
@@ -3360,11 +3391,11 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
   }
   const key = `${w.main}\0${detach ? `pr-${want?.n}` : branch}`;
   if (wtAsking.has(key)) return wtAsking.get(key);
-  const p = makeWorktree(w, { want, refs, branch, detach, fresh }).finally(() => wtAsking.delete(key));
+  const p = makeWorktree(w, { want, refs, branch, detach, fresh, base }).finally(() => wtAsking.delete(key));
   wtAsking.set(key, p);
   return p;
 }
-async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
+async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null }) {
   const main = w.main, fail = (e, what) => ({ code: 500, error: `${what}: ${String(e.stderr || e.message).trim().split('\n')[0]}` });
   if (inClaudeDir(join(main, '.claude', 'worktrees'))) return { code: 409, error: `a tree here would be under ${tildePath(CLAUDE_DIR)}, Claude Code's — the board writes nothing there` };   // a repo at ~/.claude or ~ (2026-10-14)
   let oid = null, start = [];
@@ -3385,10 +3416,11 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
     try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], GIT_NET); start = ['--track', '-b', branch, null, `refs/remotes/origin/${branch}`]; }
     catch (e) {
       if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`);
-      // a new branch (a new chat on one): from origin's default branch as origin has it now, tracking nothing yet
-      const dflt = w.dflt;
-      try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${dflt}:refs/remotes/origin/${dflt}`], GIT_NET); } catch {}
-      const from = await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${dflt}`]) ? `refs/remotes/origin/${dflt}` : 'HEAD';   // full refs: never a branch of that name
+      // a new branch (a new chat on one): from the base asked for (2026-10-28; origin's as origin has it now), else from
+      // origin's default branch as origin has it now — tracking nothing yet
+      const theirs = base ? /^refs\/remotes\/origin\/(.+)$/.exec(base)?.[1] : w.dflt;
+      if (theirs) try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${theirs}:refs/remotes/origin/${theirs}`], GIT_NET); } catch {}
+      const from = base || (await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${theirs}`]) ? `refs/remotes/origin/${theirs}` : 'HEAD');   // full refs: never a branch of that name
       start = ['--no-track', '-b', branch, null, from];
     }
   }
@@ -5653,10 +5685,15 @@ const server = createServer(async (req, res) => {
       try { const r = await branchWhere(url.searchParams.get('cwd'), url.searchParams.get('name') || ''); return json(res, r.error ? 409 : 200, r); }
       catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
     }
+    if (req.method === 'GET' && p === '/api/worktrees/bases') {   // what a new chat's new branch may start from (2026-10-28)
+      try { const r = await worktreeBases(url.searchParams.get('cwd')); return json(res, r.error ? 409 : 200, r); }
+      catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
+    }
     if (req.method === 'POST' && p === '/api/worktrees') {
       const b = await jsonBody(req);
       const r = await ensureWorktree({ cwd: typeof b.cwd === 'string' ? b.cwd : null, pr: typeof b.pr === 'string' || typeof b.pr === 'number' ? String(b.pr) : null,
-        branch: typeof b.branch === 'string' ? b.branch : null, detach: b.detach === true, fresh: b.fresh === true, share: b.share === true }).catch(e => ({ code: 500, error: e.message }));
+        branch: typeof b.branch === 'string' ? b.branch : null, detach: b.detach === true, fresh: b.fresh === true, share: b.share === true,
+        base: typeof b.base === 'string' ? b.base : null }).catch(e => ({ code: 500, error: e.message }));
       return json(res, r.error ? r.code || 500 : 200, r);
     }
     if (req.method === 'POST' && p === '/api/worktrees/modules') {
@@ -5970,7 +6007,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();
