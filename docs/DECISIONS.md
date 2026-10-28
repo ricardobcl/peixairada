@@ -2,8 +2,27 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-27. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-28. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-28 — the keys after a drop, a review of the diff
+
+Ricardo:
+
+> - sometimes this app seems to have an issue with app focus, like alt-tabbing does not work, or taking a screenshot,
+>   dragging to here and trying to write, the focus goes back to the other screen
+> - on the diff that we have, can we make comments inline and then have a submit to claude button to leave that
+>   "review" for claude to tackle?
+
+* **A drop brings the board forward with the keys** (`onFiles` in main.swift): macOS activates no app a drop lands on.
+  A screenshot's thumbnail dragged from the other screen into a drawer typed its @-mention there, and the app the
+  screenshot was of kept the keys — what was typed next went to it. The drop now makes the window key, activates the
+  app (`NSApp.activate()` from macOS 14, which may refuse: the log's `drop:` line says whether it came forward) and
+  gives the board's view the keys; the page already put them in the drawer the path went to (`attachPaths`).
+* **In front without the keys, the board takes them** (`keysBack`, on the app's activation and the window's becoming
+  key): no key window at all, or the window itself holding them, which no view hears. ⌘-Tab's misses could not be
+  made to happen here, so each fix is logged (`focus: …`): if ⌘-Tab still misses with no such line, the cause is
+  elsewhere, and the line's absence says so.
 
 ## Decisions of 2026-10-27, later — a chat's PRs are its own
 

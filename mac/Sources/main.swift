@@ -322,6 +322,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                            object: window, queue: .main) { [weak self] _ in
       self?.refreshBadges()
+      self?.keysBack("key")
     }
 
     // `kill -USR1 $(pgrep -x peixAIrada)` is ⌃⌘F from a shell: a session in a drawer has no way to press a key in the
@@ -343,6 +344,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func applicationDidBecomeActive(_ note: Notification) {
     if fillSaved != nil && fillTick == nil && !window.isMiniaturized { startDockTick() }; tuckMenuBarSoon()   // down in the Dock, it waits for the window (windowDidDeminiaturize)
     if !away.isEmpty { away.removeAll(); showAway() }   // in front again: someone is looking, whatever was missed
+    // In front with the keys nowhere (2026-10-28): ⌘-Tab to the board now and then left typing going nowhere, or to the
+    // app on the other screen. The window made key, the keys where they were — the next turn of the run loop, once
+    // AppKit has given them back itself; the log says when it had not, so the cause can be read off it.
+    DispatchQueue.main.async { [weak self] in self?.keysBack("in front") }
+  }
+  /// The board's window key with a view holding the keys, if the app is in front without: no key window at all (a
+  /// panel, the About box or a menu keeps them as they should), or the window itself holding them, which no view hears.
+  func keysBack(_ why: String) {
+    guard NSApp.isActive, window.isVisible, !window.isMiniaturized, content?.isHidden != true else { return }
+    if NSApp.keyWindow == nil { logLine("focus: \(why) with no key window — the board made key"); window.makeKeyAndOrderFront(nil) }
+    guard window.isKeyWindow, window.firstResponder === window else { return }
+    logLine("focus: \(why) with the keys on no view — given to the \(paneFocus != nil ? "page" : "board")")
+    window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)
   }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
   func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -409,10 +423,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // A file dragged in from the Finder: the page gets its path (a browser page never could) and hands
     // it to the chat as an @-mention; while it hovers, the page marks the chat pane.
     web.onDragging = { [weak self] on in self?.web.evaluateJavaScript("window.peixDragging && window.peixDragging(\(on))") }
+    // A drop brings the board forward with the keys in it (2026-10-28): macOS activates no app a drop lands on, so a
+    // screenshot's thumbnail dragged in from another screen left that screen's app with the keys, and what was typed
+    // after the @-mention went there. The page puts the keys in the drawer the path went to (attachPaths).
     web.onFiles = { [weak self] paths in
       guard let self = self, let data = try? JSONSerialization.data(withJSONObject: paths), let json = String(data: data, encoding: .utf8) else { return }
-      logLine("drop: \(paths.count) file(s)")
+      let was = NSApp.isActive
+      self.window.makeKeyAndOrderFront(nil)
+      if #available(macOS 14, *) { NSApp.activate() } else { NSApp.activate(ignoringOtherApps: true) }
+      if self.window.firstResponder !== self.web { self.window.makeFirstResponder(self.web) }
       self.web.evaluateJavaScript("window.peixDrop && window.peixDrop(\(json))")
+      // whether the system let it come forward: cooperative activation may refuse, and the log is where that shows
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        logLine("drop: \(paths.count) file(s)\(was ? "" : NSApp.isActive ? " — the app brought forward" : " — the app NOT brought forward")")
+      }
     }
     if web.responds(to: Selector(("setInspectable:"))) { web.setValue(true, forKey: "inspectable") }
 

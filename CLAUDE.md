@@ -671,8 +671,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   Dock's badge and the menu bar's count are their number**, the page's title too; the status menu lists them with the
   PRs at your move and what is clauding), each alert with `serverNotify` and `quiet`, the pane's places, and
   `{type: 'chat', project, title, cwd}` from `renderHead` and `leaveChat` (`postChat`: the window's title and
-  `representedURL`). `refreshBadges` redraws only on a change (`badged`); a newly asking chat with the app in the back
-  bounces the Dock once.
+  `representedURL`). `refreshBadges` redraws only on a change (`badged`); a newly asking chat, the app behind, bounces
+  the Dock once.
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while it runs here), `shell:<id>` per live zsh or vim
   (`shellsOf`; zsh, zsh 2…), `gh:<url>` per web page the chat opened and `ide:<url>` for its folder's editor —
   `tabKeys()` from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`,
@@ -704,20 +704,20 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   reply handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's: Spanish ISO, as in Chrome.
 * **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
   (`LIST_W`, half the window, even halves — `SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing
-  a run. In a browser it is a `haptic:<kind>` in `motion()` and nothing else.
+  a run. In a browser, a `haptic:<kind>` in `motion()` alone.
 * **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply on a chat
   with a drawer here *Reply… · Done · In 15 minutes*, elsewhere *Done · In 15 minutes*, a question or a PR's turn the
-  snooze alone (a ✓ ends the chat's processes; a question is Claude waiting). Reply… and Done go to the page
+  snooze alone. Reply… and Done go to the page
   (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
   `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
   `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.
-* **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
+* **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
+  front with no view holding the keys, it takes them (`keysBack`, logged `focus:`).
 * **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display
-  asleep, the screen saver up or the session switched away hides the window's content — every web view in it, so WebKit
-  stops their frames and animations —
-  until all have cleared or the app comes forward; the first responder is put back. The app log says `away: …`.
+  asleep, the screen saver up or the session switched away hides the window's content (WebKit stops every web view's
+  frames) until all have cleared or the app comes forward; the first responder is put back. The app log says `away: …`.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time, its
   log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to
