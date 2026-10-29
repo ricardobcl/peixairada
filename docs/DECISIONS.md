@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-29. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-29, later — a drawer's rows hold at 2×
+
+Ricardo, on the open item of the entry below: *"fix and push"*.
+
+* **What it was**: xterm's DOM renderer rounds its screen to whole CSS px and divides back for the cell it reports — a
+  16.5 px row (33 device px at 2×) reads 16.51 at 51 rows (841.5 → 842) and 16.5 at 50 — and the fit addon divides the
+  body by that. Where the body is exactly that rounded screen's height, the division in floating point lands a hair
+  under the count (842 / (842 / 51) is 50.99…): 51 rows propose 50, 50 propose 51, every fit the other. Seven such
+  heights between 20 and 80 rows for this cell. Every attach, focus and refit then resized the PTY by a row — a whole
+  repaint — and half the time the screen sat 17 px short of the bottom.
+* **The fit by the device cell** (`exactFit`, beside `exactGlyphs`): the addon's own measure — the body, the padding,
+  the scrollbar, its minimums — with the cell the device pixels make (`device.cell / dpr`), set on the renderer's
+  dimensions for the call and put back. Width too: a column is now fitted only where it fits whole, so a width the
+  rounded canvas let a column overhang by a hair (158 × 7.418 in 1172 px) has one column fewer, and no count depends
+  on the one before.
+* Checked: `drawer-fit.mjs` finds the heights where the rounded row misleads the fit for the cell it has (⌘+ at 2× in
+  the harness's Chrome makes it 33 device px), sets the body to them and fits three times: before, `50 → 51 → 50` at
+  842 px — WebKit's own numbers —; after, 51 each time. WebKit: 51 rows and a proposal of 51 through four switches and a
+  refit (50/51 alternating before). The full scenario run and `npm test`.
+
 ## Decisions of 2026-10-29 — a drawer switched to comes up at its end
 
 Ricardo: *"heard some reports that changing chats by clicking on cards, sometime pushes the claude conversation to the
@@ -29,10 +49,7 @@ top"*.
   in — and fails without the change (`0 of 4200`), passes with it; the WebKit run, 0 of 40 at the top (3 of 24 and 4 of
   32 before); the drawer scenarios and `npm test`.
 * **Open — a drawer's rows see-saw at 2×**: seen on the way, in WebKit on a Retina scale: each fit flips the grid
-  between 50 and 51 rows in an 842 px body. xterm's DOM renderer rounds its canvas to whole CSS px and divides back, so
-  a cell is 16.51 px at 51 rows and 16.5 at 50, and the fit addon proposes the other one each time. Every attach then
-  resizes the PTY by a row (a whole repaint), and a fullscreen claude sits 17 px short of the bottom half the time. A
-  fit by the device cell's height, as `exactGlyphs` reads the width, would hold it; not done here.
+  between 50 and 51 rows in an 842 px body. Done the same day, above.
 
 ## Decisions of 2026-10-28, evening — a PR's address finds its chat
 

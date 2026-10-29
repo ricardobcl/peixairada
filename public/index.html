@@ -7839,6 +7839,20 @@ const toolName = n => {
     wc._measure = function (c, v) { const el = this._measureElements[v]; el.textContent = c.repeat(32); return parseFloat(getComputedStyle(el).width) / 32 || 0; };
     wc.clear(); r._setDefaultSpacing(); xt.refresh(0, xt.rows - 1);
   }
+  // …and its height likewise (2026-10-29): it rounds the screen to whole CSS px and divides back, so at 2× a 16.5 px row
+  // reads 16.51 at 51 rows and 16.5 at 50, and the fit addon divided the body by that — 842 px held 50 rows at 51 and 51
+  // at 50, each fit the other one: every attach a row's resize and a whole repaint of the PTY. The addon's own measure,
+  // with the cell its device pixels make — set for the call and put back; a column, too, only where it fits whole.
+  function exactFit(tm) {
+    const propose = tm.fit.proposeDimensions.bind(tm.fit);
+    tm.fit.proposeDimensions = () => {
+      const r = tm.xt._core?._renderService?.dimensions, cell = r?.css?.cell, dev = r?.device?.cell, dpr = window.devicePixelRatio || 1;
+      if (!(dev?.width > 0 && dev.height > 0 && cell)) return propose();
+      const was = { width: cell.width, height: cell.height };
+      cell.width = dev.width / dpr; cell.height = dev.height / dpr;
+      try { return propose(); } finally { Object.assign(cell, was); }
+    };
+  }
   function ensureXterm(tm) {
     if (tm.xt) return;
     tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false, screenReaderMode: readerOn() });
@@ -7859,7 +7873,7 @@ const toolName = n => {
       const edit = macEdit(e); if (edit) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, edit); return false; }
       return !(e.type === 'keydown' && chatZoomKey(e));
     });
-    tm.fit = new FitAddon.FitAddon(); tm.xt.loadAddon(tm.fit);
+    tm.fit = new FitAddon.FitAddon(); tm.xt.loadAddon(tm.fit); exactFit(tm);
     tm.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
     tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) });   // the paths on a line (2026-09-26)
     tm.xt.open($(tm.el.tbody)); exactGlyphs(tm.xt);

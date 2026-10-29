@@ -40,6 +40,27 @@ export default async function (ctx) {
   await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '=', metaKey: true, bubbles: true, cancelable: true }))`); await ctx.sleep(1200);
   const c = await fits('after ⌘+');
   ctx.assert.ok(c.zoom > a.zoom, 'the zoom step took');
+  // The rows hold at every height (2026-10-29): xterm rounds its screen to whole CSS px and divides back, so at 2× an
+  // odd device cell (16.5 px) read 16.51 at an odd row count, and a body that screen's height exactly held one row
+  // fewer by the fit addon — and one more at the row fewer: a see-saw, a resize at every fit. The heights where that
+  // happens for this cell, each fitted three times over.
+  const cell = Math.round(c.dpr * c.screen.h / c.rows), tricky = [];
+  for (let n = 30; n < 64; n++) { const H = Math.round(n * cell / c.dpr); if (Math.floor(H / (H / n)) < n) tricky.push({ n, H }); }
+  ctx.assert.ok(tricky.length > 1, `heights where a rounded row misleads the fit, for a ${cell} px cell at ${c.dpr}× (${JSON.stringify(tricky)})`);
+  const bodyH = () => ctx.evaluate(`parseInt(getComputedStyle(document.querySelector('#termBody')).height)`);
+  const tall = h => ctx.send('Emulation.setDeviceMetricsOverride', { width: 1700, height: h, deviceScaleFactor: 2, mobile: false }).then(() => ctx.sleep(500));
+  const seesaw = [];
+  for (const { n, H } of tricky.slice(-2)) {
+    let h = 1000 + H - await bodyH(); await tall(h);
+    h += H - await bodyH(); await tall(h);
+    ctx.assert.equal(await bodyH(), H, `the body at ${H} px`);
+    const rows = [];
+    for (let i = 0; i < 3; i++) { await ctx.evaluate(`window.dispatchEvent(new Event('focus'))`); await ctx.sleep(400); rows.push((await ctx.peix('term()')).rows); }
+    seesaw.push({ H, rows });
+    ctx.assert.deepEqual(rows, [n, n, n], `a ${H} px body holds ${n} rows, fit after fit (${rows.join(' → ')})`);
+    await fits(`at ${H} px`);
+  }
+  await tall(1000);
   await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '0', metaKey: true, bubbles: true, cancelable: true }))`); await ctx.sleep(800);
   const z = await fits('after ⌘0');
   await fills('after ⌘0');
@@ -53,5 +74,5 @@ export default async function (ctx) {
   other.close();
   await ctx.evaluate(`window.dispatchEvent(new Event('focus'))`);
   await waitFor(async () => (await size()) === `${z.cols}×${z.rows}`, { what: `this page's size (${z.cols}×${z.rows}) back on the PTY once it is in front`, timeout: 5000 });
-  return { attach: a, scale2: b, zoomed: c };
+  return { attach: a, scale2: b, zoomed: c, seesaw };
 }

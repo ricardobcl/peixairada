@@ -856,7 +856,8 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The drawer's geometry**: `grid-template-columns: minmax(0, 1fr)` on `#term` and `#chat`, `min-width: 0;
   overflow: hidden` on `.tbody`, and `.tbody { box-sizing: content-box }`. Refits on the body's `ResizeObserver`, a display-scale change (`watchDpr`), focus and
   visibility. → Findings: *run off the right edge*, *round two*. **A glyph's width is read to the fraction**
-  (`exactGlyphs`, 2026-10-20): xterm's `offsetWidth / 32` drifts a column at a time, the last cut. → `drawer-fit.mjs`.
+  (`exactGlyphs`, 2026-10-20): xterm's `offsetWidth / 32` drifts a column at a time, the last cut. **And the fit by
+  the device cell** (`exactFit`, 2026-10-29): the rounded screen's row see-saws a row at 2×. → `drawer-fit.mjs`.
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), which clears the screen *it*
   serializes and echoes the clear back to every page on that drawer. A nudge follows. ⌃L is the shell's own.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is
