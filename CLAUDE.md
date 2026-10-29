@@ -848,6 +848,9 @@ npm run map                         # rewrite the section maps at the top of ser
   repaint over whatever the page holds. **The row-short repaint is never shown**: from the socket's first frame until
   the true size's repaint has come (`NUDGE_QUIET_MS`, `NUDGE_MAX_MS`), output is held through `toXt` (`tm.refits`).
   → `drawer-switch.mjs`.
+* **A drawer attached anew comes up at its end** (2026-10-29, `settleUntil`): until its nudge lets go, a scroll that
+  leaves the end is undone in the same event — WebKit's late one from the reset's clamp, which xterm took for a hand at
+  the top. → `drawer-at-end.mjs`.
 * **`fitTerm` sends a resize only when the size moved, and once it has stopped moving** (120 ms; at once with `now`,
   as a socket opens): `tm.sent` is per attachment (`attachTerm`), forgotten on focus and on coming into view. The prefs' `termSize` is saved only when it changed.
 * **The drawer's geometry**: `grid-template-columns: minmax(0, 1fr)` on `#term` and `#chat`, `min-width: 0;

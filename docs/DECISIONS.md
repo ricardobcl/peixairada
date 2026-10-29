@@ -2,8 +2,37 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-28. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-29. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-29 — a drawer switched to comes up at its end
+
+Ricardo: *"heard some reports that changing chats by clicking on cards, sometime pushes the claude conversation to the
+top"*.
+
+* **WebKit's, so the app's alone**: the harness's Chrome never showed it (0 of 40 switches, drawer to drawer and drawer
+  to transcript, clicks 0 to 400 ms apart); the same clicks in `npm run webkit` left 3 of 24 drawers at the very top of
+  their scrollback, the prompt off screen, and there they stayed.
+* **What happened, from the drawer's own log**: the attach's `reset()` empties the buffer; xterm's next frame shrinks
+  its scroll area to one screen, and WebKit clamps the old drawer's scroll position (≈ 5 000 px) to 0 — and says so with
+  a scroll event a frame later. By then the snapshot (≈ 8 KB, 13–20 ms after the click) had been parsed and the view
+  was at its end (row 328); xterm read the event's 0 as a hand scrolling to the top, went there, and marked it the
+  user's (`isUserScrolling`), so nothing written after brought it back.
+* **Only a drawer with scrollback**: Claude Code's default inline screen. `tui: fullscreen` draws on the alternate
+  screen, which has none — why it was heard of and not seen here.
+* **Put back while it settles** (`settleUntil`: from the attach until its nudge lets go, `SETTLE_MAX_MS` at most): a
+  listener on xterm's viewport, after xterm's own, puts a view that left the end back (`scrollToBottom()`, which clears
+  the user's mark too) in the same event, before a frame is drawn. A scroll once it settled is a hand's, and stays. Not
+  done: keeping the event from xterm (its own scroll events would go with it, and the flag it ignores them by would be
+  left set), or holding the reset until the snapshot (the old chat's screen up meanwhile, and the parse is chunked).
+* Checked: `drawer-at-end.mjs` makes WebKit's event in Chrome — the scroller put at 0 two frames after the snapshot is
+  in — and fails without the change (`0 of 4200`), passes with it; the WebKit run, 0 of 40 at the top (3 of 24 and 4 of
+  32 before); the drawer scenarios and `npm test`.
+* **Open — a drawer's rows see-saw at 2×**: seen on the way, in WebKit on a Retina scale: each fit flips the grid
+  between 50 and 51 rows in an 842 px body. xterm's DOM renderer rounds its canvas to whole CSS px and divides back, so
+  a cell is 16.51 px at 51 rows and 16.5 at 50, and the fit addon proposes the other one each time. Every attach then
+  resizes the PTY by a row (a whole repaint), and a fullscreen claude sits 17 px short of the bottom half the time. A
+  fit by the device cell's height, as `exactGlyphs` reads the width, would hold it; not done here.
 
 ## Decisions of 2026-10-28, evening — a PR's address finds its chat
 

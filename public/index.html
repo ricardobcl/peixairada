@@ -7863,6 +7863,15 @@ const toolName = n => {
     tm.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
     tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) });   // the paths on a line (2026-09-26)
     tm.xt.open($(tm.el.tbody)); exactGlyphs(tm.xt);
+    // A drawer attached anew comes up at its end (2026-10-29): the attach's reset shrinks xterm's scroll area, and WebKit
+    // clamps the old drawer's scroll position to 0 and says so a frame later — once the snapshot is parsed, before xterm
+    // has moved its scrollbar to the end — so xterm took that 0 for a hand scrolling to the top, and stayed there. While
+    // it settles (`settleUntil`, until the nudge lets go), a scroll that leaves the end is put back; xterm's own listener
+    // ran first, this one undoes it in the same event, before a frame is drawn.
+    $(tm.el.tbody).querySelector('.xterm-viewport').addEventListener('scroll', () => {
+      const b = tm.xt.buffer.active;
+      if (performance.now() < tm.settleUntil && b.viewportY < b.baseY) tm.xt.scrollToBottom();
+    });
     tm.xt.onData(d => termSend(tm, d));
     tm.xt.onWriteParsed(() => roomSoon(tm));   // under the floating header or behind it (checkRoom)
     $(tm.el.tbody).addEventListener('mousedown', () => focusGroup(tm.g));   // typing in a half is being in it
@@ -8014,13 +8023,13 @@ const toolName = n => {
   // once the snapshot is on screen (its first frame, attachTerm), and what the socket brings from then until the true
   // size's repaint has come — NUDGE_QUIET_MS with nothing, NUDGE_MAX_MS at most — is held (toXt) and written at once,
   // so the xterm parses both repaints together and paints the second.
-  const NUDGE_QUIET_MS = 60, NUDGE_MAX_MS = 600;
+  const NUDGE_QUIET_MS = 60, NUDGE_MAX_MS = 600, SETTLE_MAX_MS = 2000;
   function nudgeTerm(tm) {
     if (!tm.xt || tm.ws?.readyState !== 1) return;
     const ws = tm.ws, { cols, rows } = tm.xt;
     tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
     let poll = 0, back = 0, done = false;
-    const release = () => { if (done) return; done = true; clearInterval(poll); if (--tm.refits === 0) for (const f of tm.held.splice(0)) f(); };
+    const release = () => { if (done) return; done = true; clearInterval(poll); if (tm.ws === ws) tm.settleUntil = 0; if (--tm.refits === 0) for (const f of tm.held.splice(0)) f(); };
     ws.send(JSON.stringify({ t: 'resize', cols, rows: Math.max(5, rows - 1) }));
     setTimeout(() => {
       if (tm.ws !== ws || ws.readyState !== 1) return release();
@@ -8033,7 +8042,7 @@ const toolName = n => {
   function attachTerm(tm, t) {
     detachTerm(tm);
     ensureXterm(tm); tm.xt.reset(); tm.held = [];   // what the last socket had waiting behind a refit is that drawer's
-    Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, sent: null, lost: false });
+    Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, sent: null, lost: false, settleUntil: performance.now() + SETTLE_MAX_MS });
     setUnder(tm, underOf.get(t.id) ?? !t.resume);   // before the first fit: as it was left, a new one under the header
     drawer.err = null;
     showDrawer(tm, true);
@@ -8068,7 +8077,7 @@ const toolName = n => {
     const ws = tm.ws; tm.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
     clearTimeout(tm.retryTimer);
-    Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null, sent: null, lost: false });
+    Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null, sent: null, lost: false, settleUntil: 0 });
   }
   // The process ended: the drawer goes and the transcript is the pane again (a stale chat now — the resume bar shows,
   // and waits for its button: the claude was ended, here or by itself, not left).
