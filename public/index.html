@@ -11989,7 +11989,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12050,7 +12050,9 @@ const toolName = n => {
     const focus = g.ride.kind === 'focus';   // in a car the key is its horn
     zeSfx(focus ? 'beep' : 'meep'); zeWord(g, focus ? 'BEEP BEEP!' : 'meep…', g.x, g.y - 200 * zeSz(g), '#fff3c4');
   }
-  function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR || g.ride) return; g.vy = -560; zeSfx('jump'); }
+  function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR || g.ride) return; g.vy = -560; zeSquash(g, 'jump', .16); zeSfx('jump'); }
+  /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
+  const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
   function zeMute() {
     prefs.zeSound = !prefs.zeSound; savePrefs(); zeLabels();
     if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }
@@ -12205,7 +12207,7 @@ const toolName = n => {
     g.streak++; g.greens = 0;
     if (it.kind === 'meat') Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + 1), pump: .3 });
     const mult = 1 + Math.min(3, Math.floor(g.streak / 5)), up = mult > g.mult, pts = (it.kind === 'veg' ? 10 : it.pts) * mult;
-    g.mult = mult; g.chomp = .3; if (g.dragon) g.shake = Math.max(g.shake, .08);
+    g.mult = mult; g.chomp = .3; zeSquash(g, 'chew', .14); if (g.dragon) g.shake = Math.max(g.shake, .08);
     if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); } else zeSfx(g.dragon ? 'chompBig' : 'chomp');
     zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : '#fff3c4');
     zeBits(g, mx, my, it.kind === 'veg' ? ['#5cbf4a', '#ff7a2a', '#ffd23f'] : ['#a0522d', '#e07a5f', '#f2cc8f'], g.dragon ? 12 : 6);
@@ -12222,6 +12224,7 @@ const toolName = n => {
     g.flames = g.flames.filter(f => f.t < f.life);
     for (const n of ['shake', 'chomp', 'kick', 'flash', 'red']) g[n] = Math.max(0, g[n] - dt);
     g.pump -= Math.sign(g.pump) * Math.min(Math.abs(g.pump), dt);   // a pump or a sag, easing back
+    if (g.sq && (g.sq.t -= dt) <= 0) g.sq = null;
     if (g.banner && (g.banner.t -= dt) <= 0) g.banner = null;
     if (g.bolt && (g.bolt.t -= dt) <= 0) g.bolt = null;
     const l = g.leaving;
@@ -12241,7 +12244,9 @@ const toolName = n => {
     if (want) g.f = want;
     const half = car ? 100 : 28 * k;
     g.x = Math.max(half, Math.min(ZE_W - half, g.x + g.vx * dt));
-    g.vy += 1500 * dt; g.y = Math.min(ZE_FLOOR, g.y + g.vy * dt); if (g.y >= ZE_FLOOR) g.vy = 0;
+    const aloft = g.y < ZE_FLOOR;
+    g.vy += 1500 * dt; g.y = Math.min(ZE_FLOOR, g.y + g.vy * dt);
+    if (g.y >= ZE_FLOOR) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.vy = 0; }
     g.run += Math.abs(g.vx) * dt * .05; g.cool = Math.max(0, g.cool - dt); g.hurt = Math.max(0, g.hurt - dt);
     if (g.ride) {   // the car: its wheels, its pitch as it pulls away or brakes (the A-Class's the more), its engine, its time
       const r = g.ride, pitch = Math.max(-.3, Math.min(.3, -(g.vx - r.vx) / Math.max(dt, .001) * .00012)) * (r.kind === 'aclass' ? 1.6 : .5);
@@ -12521,7 +12526,9 @@ const toolName = n => {
       }
       return;
     }
-    zeBlit(cx, spr, 0, bob * k, p, flip);
+    const q = g.sq, a = q ? q.t / q.d : 0;   // squashed or stretched about his feet
+    const [sx, sy] = !q ? [1, 1] : q.k === 'land' ? [1 + .2 * a, 1 - .17 * a] : q.k === 'jump' ? [1 - .12 * a, 1 + .15 * a] : [1 + .1 * a, 1 - .08 * a];
+    zeBlit(cx, spr, 0, bob * k, p, flip, sx, sy);
     if (g.dragon) {   // the dragon's aura round his head
       cx.save(); cx.shadowColor = '#ff7a2a'; cx.shadowBlur = 16; cx.lineWidth = 3; cx.strokeStyle = zeBlink(g, 9) ? '#ff7a2a' : '#ffd23f';
       cx.beginPath(); cx.ellipse(0, (bob - 48 * ZE_PX) * k, 12 * p, 13.5 * p, 0, 0, Math.PI * 2); cx.stroke(); cx.restore();
