@@ -11989,7 +11989,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12040,7 +12040,7 @@ const toolName = n => {
     g.words.length = 0; g.flames.length = 0;
     const bests = zeBests(), id = zeDiff().id;
     if (g.score > (bests[id] || 0)) { bests[id] = g.score; g.best = true; savePrefs(); }
-    zeGroove(false); zeSfx('over');
+    zeHold(g, .12); zeGroove(false); zeSfx('over');
     const m = ze.music; if (m) m.rest = setTimeout(() => m.ac.suspend().catch(() => {}), 2600);   // after the trombone
   }
   function zeKick(g) {
@@ -12053,6 +12053,9 @@ const toolName = n => {
   function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR || g.ride) return; g.vy = -560; zeSquash(g, 'jump', .16); zeSfx('jump'); }
   /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
   const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
+  /** A hit-stop (2026-10-30, the next round): the picture holds d — a kick that lands, a bite, a combo, the K.O. —, and a
+   *  combo punches the camera in a little (g.punch, none under reduced motion). */
+  const zeHold = (g, d, punch = false) => { g.freeze = Math.max(g.freeze, d); if (punch) g.punch = .2; };
   function zeMute() {
     prefs.zeSound = !prefs.zeSound; savePrefs(); zeLabels();
     if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }
@@ -12208,21 +12211,24 @@ const toolName = n => {
     if (it.kind === 'meat') Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + 1), pump: .3 });
     const mult = 1 + Math.min(3, Math.floor(g.streak / 5)), up = mult > g.mult, pts = (it.kind === 'veg' ? 10 : it.pts) * mult;
     g.mult = mult; g.chomp = .3; zeSquash(g, 'chew', .14); if (g.dragon) g.shake = Math.max(g.shake, .08);
-    if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); } else zeSfx(g.dragon ? 'chompBig' : 'chomp');
+    if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); zeHold(g, .12, true); }
+    else { zeSfx(g.dragon ? 'chompBig' : 'chomp'); if (!g.dragon) zeHold(g, .05); }   // the dragon's feast does not stop for each bite
     zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : '#fff3c4');
     zeBits(g, mx, my, it.kind === 'veg' ? ['#5cbf4a', '#ff7a2a', '#ffd23f'] : ['#a0522d', '#e07a5f', '#f2cc8f'], g.dragon ? 12 : 6);
     zeScore(g, pts);
     if (it.kind === 'meat' && g.streak % 3 === 0 && g.ride?.kind !== 'focus') zeRide(g, 'focus');
   }
   function zeStep(dt) {
-    const g = ze.g; g.t += dt;
+    const g = ze.g;
+    if (g.freeze > 0) { g.freeze = Math.max(0, g.freeze - dt); return; }   // a hit-stop: everything holds
+    g.t += dt;
     for (const w of g.words) { w.t += dt; w.y -= 36 * dt; }
     g.words = g.words.filter(w => w.t < 1.1);
     for (const b of g.bits) { b.t += dt; b.vy += 900 * dt; b.x += b.vx * dt; b.y += b.vy * dt; }
     g.bits = g.bits.filter(b => b.t < b.life);
     for (const f of g.flames) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; }
     g.flames = g.flames.filter(f => f.t < f.life);
-    for (const n of ['shake', 'chomp', 'kick', 'flash', 'red']) g[n] = Math.max(0, g[n] - dt);
+    for (const n of ['shake', 'chomp', 'kick', 'flash', 'red', 'punch']) g[n] = Math.max(0, g[n] - dt);
     g.pump -= Math.sign(g.pump) * Math.min(Math.abs(g.pump), dt);   // a pump or a sag, easing back
     if (g.sq && (g.sq.t -= dt) <= 0) g.sq = null;
     if (g.banner && (g.banner.t -= dt) <= 0) g.banner = null;
@@ -12276,7 +12282,7 @@ const toolName = n => {
       if (it.x < 20 || it.x > ZE_W - 20) { it.vx *= -1; it.x = Math.max(20, Math.min(ZE_W - 20, it.x)); }
       if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
-        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#2f8f3a'], 10); zeSfx('smash'); zeScore(g, 5);
+        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#2f8f3a'], 10); zeSfx('smash'); zeHold(g, .07); zeScore(g, 5);
         continue;
       }
       const green = it.kind === 'veg' && !g.dragon;   // a green while he still blinks from the last one passes him by
@@ -12296,6 +12302,7 @@ const toolName = n => {
   function zeDraw() {
     const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W, calm = zeCalm(), dark = zeDark(g);
     cx.setTransform(k, 0, 0, k, 0, 0);
+    if (g.punch > 0 && !calm) { const z = 1 + .07 * g.punch / .2, hy = g.y - 100; cx.translate(g.x, hy); cx.scale(z, z); cx.translate(-g.x, -hy); }   // a combo's camera punch
     cx.drawImage(zeBackdrop(c), 0, 0, ZE_W, ZE_H);
     zeBulbs(cx, g);
     if (dark) {   // the dragon's sky, and its lightning
