@@ -12182,7 +12182,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: phase === 'title' ? Infinity : zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], lunch: [], sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
   const ze = { tap: null, typed: '', mossad: false, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12224,7 +12224,7 @@ const toolName = n => {
   new ResizeObserver(zeSize).observe($('#zeCanvas'));
 
   function zeStart() {
-    ze.g = zeRound('play'); ze.keys2 = { l: 0, r: 0 };
+    ze.g = zeRound('play'); ze.keys2 = { l: 0, r: 0 }; ze.g.lunch = zeLunch();
     if (ZE_TWO[prefs.zeTwo]) ze.g.galo = { mode: prefs.zeTwo, x: 200, y: ZE_FLOOR, vx: 0, vy: 0, f: 1, peck: 0, flaps: 0, score: 0, t: 0 };
     if (prefs.zeSound) zeGroove(true); zeGo();
   }
@@ -12418,6 +12418,22 @@ const toolName = n => {
   window.addEventListener('blur', zeAway); document.addEventListener('visibilitychange', () => { if (document.hidden) zeAway(); });
 
   // ---- the round: Zé, what falls, and what they do to each other
+  /** Today's lunch (T2, 2026-10-30, the next round): the dishes the board read from the day's menus (state.lunch) fall now
+   *  and then under their real names, their place beside them — soups and salads as greens, fish as fish, a vegetarian
+   *  dish as a green, the rest as golden specials, thirty points; desserts and bread left out. */
+  function zeLunch() {
+    const l = state.lunch; if (!l?.on) return [];
+    return (l.places || []).filter(p => p.state !== 'closed').flatMap(p => (p.dishes || []).flatMap(d => {
+      const it = { dish: d, place: p.name, say: d, special: true };
+      if (/^(p[aã]o|entrada|sobremesa)|brownie|bolo|mousse|pudim|gelado|fruta|tarte|arroz doce|leite creme/i.test(d)) return [];
+      if (/^(sopa|creme|caldo)|salada/i.test(d)) return [{ ...it, kind: 'veg', e: /salada/i.test(d) ? '🥗' : '🥣', say: `${d.toUpperCase()}!` }];
+      if (/bacalhau|peixe|polvo|lula|salm[aã]o|pescada|dourada|robalo|sardinh|atum|camar|marisco|choco|truta/i.test(d)) return [{ ...it, kind: 'fish', e: '🐟', pts: 5 }];
+      if (/legumes|vegetarian|vegan|tofu|grão|espinafre|cogumelo/i.test(d)) return [{ ...it, kind: 'veg', e: '🥗', say: `${d.toUpperCase()}!` }];
+      const e = /frango|galinha|pato|peru/i.test(d) ? '🍗' : /bife|vitela|novilho|vaca|carne/i.test(d) ? '🥩' : /porco|rojõ|costel|entrecosto|leit[aã]o|febras/i.test(d) ? '🍖'
+        : /massa|esparguete|lasanha|bolonhesa/i.test(d) ? '🍝' : /arroz/i.test(d) ? '🍛' : '🍲';
+      return [{ ...it, kind: 'meat', e, pts: 30 }];
+    }));
+  }
   /** The day's round (2026-10-30, the next round): what falls is the date's — the same for everyone today, a way to play
    *  each —, from a generator seeded by the day (zeSeed); every drop takes ZE_DRAWS numbers of it whatever it uses, so
    *  the round you play does not change what falls next. The demo on the title, and the bits and words, take chance's. */
@@ -12445,6 +12461,7 @@ const toolName = n => {
     let it;
     if (spy) { it = { kind: 'case', e: '💼', pts: 100, say: 'CLASSIFIED' }; g.cased = true; }
     else if (galo) it = { kind: 'galo', e: '🐓', pts: 50, say: 'GALO! +2 muscle' };
+    else if (!g.dragon && g.lunch.length && R[15] < .07) it = { ...at(g.lunch, 3) };   // today's lunch
     else if (veg) { const [e, say] = at(ZE_VEG, 3); it = { kind: 'veg', e, say }; }
     else if (!g.dragon && !g.power && g.t > 12 && !g.items.some(x => x.kind === 'power') && R[4] < .03) it = { kind: 'power', p: at(Object.keys(ZE_POWERS), 3), e: '', pts: 25 };
     else if (!g.dragon && !g.items.some(x => x.kind === 'peixe') && R[5] < .008) it = { kind: 'peixe', e: '', pts: 100, say: 'LET GO!' };   // the board's own fish, now and then
@@ -12612,7 +12629,8 @@ const toolName = n => {
     g.mult = mult; g.chomp = .3; zeSquash(g, 'chew', .14); if (g.dragon) g.shake = Math.max(g.shake, .08);
     if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); zeHold(g, .12, true); if (mult >= 4) zeTrophy(g, 'combo'); }
     else { zeSfx(g.dragon ? 'chompBig' : 'chomp'); if (!g.dragon) zeHold(g, .05); }   // the dragon's feast does not stop for each bite
-    zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : '#fff3c4');
+    zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : it.special ? '#ffd23f' : '#fff3c4');
+    if (it.place) zeWord(g, it.place, it.x, it.y - 2, '#d9c7e8');
     zeChunks(g, mx, my, it.kind === 'veg' ? 'veg' : 'meat', g.dragon ? 12 : 7);
     zeScore(g, pts);
     if (it.kind === 'meat' && g.streak % 3 === 0 && g.ride?.kind !== 'focus') zeRide(g, 'focus');
@@ -12774,7 +12792,8 @@ const toolName = n => {
     for (const it of g.items) {
       cx.save(); cx.translate(it.x, it.y);
       const glow = it.kind === 'gold' || it.stood > 0 ? 48 : 34;
-      if (it.kind === 'galo' || it.kind === 'case' || glow > 34) { const r = cx.createRadialGradient(0, 0, 4, 0, 0, glow); r.addColorStop(0, it.kind === 'case' ? 'rgba(150, 190, 255, .8)' : 'rgba(255, 220, 90, .85)'); r.addColorStop(1, 'rgba(255, 220, 90, 0)'); cx.fillStyle = r; cx.fillRect(-glow, -glow, glow * 2, glow * 2); }
+      if (it.special && !it.out) zeText(cx, it.dish.length > 26 ? it.dish.slice(0, 25) + '…' : it.dish, 0, 32, 11, it.kind === 'veg' ? '#9be15d' : '#ffd23f', 'center', 700);   // under its real name
+      if (it.kind === 'galo' || it.kind === 'case' || glow > 34 || (it.special && it.kind === 'meat')) { const r = cx.createRadialGradient(0, 0, 4, 0, 0, glow); r.addColorStop(0, it.kind === 'case' ? 'rgba(150, 190, 255, .8)' : 'rgba(255, 220, 90, .85)'); r.addColorStop(1, 'rgba(255, 220, 90, 0)'); cx.fillStyle = r; cx.fillRect(-glow, -glow, glow * 2, glow * 2); }
       if (it.stood > 0) { cx.translate(0, -Math.abs(Math.sin(it.stood * 9)) * (calm ? 0 : 6)); cx.rotate(-.9); }   // stood up on its plate, hopping as it crows
       else cx.rotate(it.rot);
       if (it.kind === 'power') {   // a power-up: its dish in pixels in a ring of its colour, beating
