@@ -12133,6 +12133,14 @@ const toolName = n => {
   function zeBits(g, x, y, cs, n) {
     for (let i = 0; i < n; i++) g.bits.push({ x, y, vx: (Math.random() - .5) * 320, vy: -120 - Math.random() * 260, t: 0, life: .5 + Math.random() * .4, c: zePick(cs), r: 2 + Math.random() * 3 });
   }
+  /** What flies off is what was hit (2026-10-30, the next round): bits of meat and a bone from a bite, leaves from a green —
+   *  turning as they fly, where confetti was. */
+  function zeChunks(g, x, y, kind, n) {
+    const cs = kind === 'veg' ? ['#2f7a2c', '#4fa03c', '#9ad26a', '#5cbf4a'] : ['#7a3018', '#b0603a', '#e8a0a0', '#d8843a'];
+    for (let i = 0; i < n; i++) g.bits.push({ x, y, vx: (Math.random() - .5) * 360, vy: -140 - Math.random() * 280, t: 0, life: .55 + Math.random() * .3, c: zePick(cs),
+      w: 3 + Math.random() * 4, h: kind === 'veg' ? 2 + Math.random() * 2 : 3 + Math.random() * 3, rot: Math.random() * 6, spin: (Math.random() - .5) * 18 });
+    if (kind === 'meat') g.bits.push({ x, y, vx: (Math.random() - .5) * 200, vy: -320, t: 0, life: .8, c: '#f2ead8', w: 10, h: 3, rot: 0, spin: 14, bone: true });
+  }
   const zeBanner = (g, s, sub = '', cs = ['#ffd23f', '#a6dc5a'], t = 1.6) => { g.banner = { s, sub, cs, t }; };
   /** The dragon's size: 1, twice it in its time — growing and shrinking in four steps, as a sprite would. */
   function zeK(g) {
@@ -12202,7 +12210,7 @@ const toolName = n => {
     }
     if (it.kind === 'veg' && !g.dragon) {
       Object.assign(g, { mass: g.mass - 1, streak: 0, mult: 1, hurt: 1.4, red: .2, shake: .35, pump: -.3, greens: g.greens + 1 });
-      zeWord(g, it.say, it.x, it.y - 24, '#9be15d', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#e8322f'], 10); zeSfx('bleh');
+      zeWord(g, it.say, it.x, it.y - 24, '#9be15d', true); zeChunks(g, it.x, it.y, 'veg', 10); zeSfx('bleh');
       if (g.mass <= 0) return zeOver(g);
       if (g.greens >= 3) { g.greens = 0; zeRide(g, 'aclass'); }
       return;
@@ -12214,7 +12222,7 @@ const toolName = n => {
     if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); zeHold(g, .12, true); }
     else { zeSfx(g.dragon ? 'chompBig' : 'chomp'); if (!g.dragon) zeHold(g, .05); }   // the dragon's feast does not stop for each bite
     zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : '#fff3c4');
-    zeBits(g, mx, my, it.kind === 'veg' ? ['#5cbf4a', '#ff7a2a', '#ffd23f'] : ['#a0522d', '#e07a5f', '#f2cc8f'], g.dragon ? 12 : 6);
+    zeChunks(g, mx, my, it.kind === 'veg' ? 'veg' : 'meat', g.dragon ? 12 : 7);
     zeScore(g, pts);
     if (it.kind === 'meat' && g.streak % 3 === 0 && g.ride?.kind !== 'focus') zeRide(g, 'focus');
   }
@@ -12224,7 +12232,7 @@ const toolName = n => {
     g.t += dt;
     for (const w of g.words) { w.t += dt; w.y -= 36 * dt; }
     g.words = g.words.filter(w => w.t < 1.1);
-    for (const b of g.bits) { b.t += dt; b.vy += 900 * dt; b.x += b.vx * dt; b.y += b.vy * dt; }
+    for (const b of g.bits) { b.t += dt; b.vy += 900 * dt; b.x += b.vx * dt; b.y += b.vy * dt; if (b.spin) b.rot += b.spin * dt; }
     g.bits = g.bits.filter(b => b.t < b.life);
     for (const f of g.flames) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; }
     g.flames = g.flames.filter(f => f.t < f.life);
@@ -12282,13 +12290,13 @@ const toolName = n => {
       if (it.x < 20 || it.x > ZE_W - 20) { it.vx *= -1; it.x = Math.max(20, Math.min(ZE_W - 20, it.x)); }
       if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
-        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#2f8f3a'], 10); zeSfx('smash'); zeHold(g, .07); zeScore(g, 5);
+        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); zeScore(g, 5);
         continue;
       }
       const green = it.kind === 'veg' && !g.dragon;   // a green while he still blinks from the last one passes him by
       if (!(green && g.hurt > 0) && zeTouch(it, green ? body : mouth)) { it.dead = true; zeEat(g, it); if (g.phase !== 'play') return; continue; }
       if (it.y >= ZE_FLOOR - 8) {
-        it.dead = true; zeBits(g, it.x, ZE_FLOOR - 4, it.kind === 'veg' ? ['#5cbf4a', '#9be15d'] : ['#a0522d', '#e07a5f'], 4);
+        it.dead = true; zeChunks(g, it.x, ZE_FLOOR - 4, it.kind === 'veg' ? 'veg' : 'meat', 3);
         if (it.kind === 'meat' && !g.dragon) { if (g.streak >= 5) zeWord(g, 'wasted!', it.x, ZE_FLOOR - 30, '#d9c7e8'); g.streak = 0; g.mult = 1; }   // a miss lets the combo go
       }
     }
@@ -12326,7 +12334,13 @@ const toolName = n => {
       zeHero(cx, g);
       if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'front');
     }
-    for (const b of g.bits) { cx.globalAlpha = 1 - b.t / b.life; cx.fillStyle = b.c; cx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2); }
+    for (const b of g.bits) {
+      cx.globalAlpha = 1 - b.t / b.life; cx.fillStyle = b.c;
+      if (!b.w) { cx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2); continue; }
+      cx.save(); cx.translate(b.x, b.y); cx.rotate(b.rot); cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+      if (b.bone) { cx.fillRect(-b.w / 2 - 2, -b.h / 2 - 1.5, 3, 3); cx.fillRect(-b.w / 2 - 2, b.h / 2 - 1.5, 3, 3); cx.fillRect(b.w / 2 - 1, -b.h / 2 - 1.5, 3, 3); cx.fillRect(b.w / 2 - 1, b.h / 2 - 1.5, 3, 3); }   // a bone's knobs
+      cx.restore();
+    }
     cx.globalAlpha = 1;
     for (const w of g.words) { cx.globalAlpha = Math.min(1, 2.2 - w.t * 2); zeText(cx, w.s, w.x, w.y, w.big ? 30 : 19, w.c, 'center'); }
     cx.globalAlpha = 1; cx.setTransform(k, 0, 0, k, 0, 0);
