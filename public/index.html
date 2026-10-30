@@ -12012,10 +12012,10 @@ const toolName = n => {
   /** The best of each way to play, by its id; a number is NORMAL's, from before there were four. */
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
-    x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
+    x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
-  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
+  const ze = { tap: null, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
   const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = `♪ ${{ vira: 'vira de Barcelos', malhao: 'malhão', funk: 'funk' }[prefs.zeBand] || 'funk'}`; };
@@ -12107,6 +12107,13 @@ const toolName = n => {
     else return;
     zeSquash(g, 'jump', .16); zeSfx('jump');
   }
+  /** A dash (2026-10-30, the next round): ← or → twice within ZE_TAP s — quick, leaving afterimages, through a green
+   *  unharmed. Not in a car; a little while between two. */
+  const ZE_TAP = .25;
+  function zeDash(g, f) {
+    if (g.phase !== 'play' || g.ride || g.dashCool > 0) return;
+    Object.assign(g, { dash: .2, dashF: f, dashCool: .55, f }); zeSfx('whoosh');
+  }
   function zeFallThrough(g) { if (g.phase === 'play' && g.gy < ZE_FLOOR && g.y >= g.gy - .5) { g.drop = .25; g.vy = 60; } }
   /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
   const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
@@ -12130,8 +12137,11 @@ const toolName = n => {
     const left = k === 'ArrowLeft' || k === 'KeyA', right = k === 'ArrowRight' || k === 'KeyD';
     if (g.phase === 'title' && (left || right || /^Digit[1-4]$/.test(k))) { take(); if (!e.repeat) zeSetDiff(left ? prefs.zeDiff - 1 : right ? prefs.zeDiff + 1 : +k.slice(5) - 1); return; }
     if (g.phase === 'over' && (left || right)) { take(); if (!e.repeat && g.overT > .8) g.sel = 1 - g.sel; return; }
-    if (left) { take(); ze.keys.l = 1; ze.aim = null; return; }
-    if (right) { take(); ze.keys.r = 1; ze.aim = null; return; }
+    if (left || right) {
+      take(); ze.keys[left ? 'l' : 'r'] = 1; ze.aim = null;
+      if (!e.repeat) { const f = left ? -1 : 1, now = performance.now(); if (ze.tap?.f === f && now - ze.tap.at < ZE_TAP * 1000) { zeDash(g, f); ze.tap = null; } else ze.tap = { f, at: now }; }   // twice: a dash
+      return;
+    }
     if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'ArrowDown', 'KeyS', 'KeyP', 'KeyM', 'KeyT'].includes(k)) return;
     take(); if (e.repeat) return;   // a key held down is one kick
     if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {});   // a press may start it
@@ -12251,7 +12261,7 @@ const toolName = n => {
     else zeBanner(g, 'MERCEDES A-CLASS…', 'THE PUNISHMENT — FIVE SLOW SECONDS', ['#c8ccd2', '#ff5a64'], 2.2);
     zeSfx(kind); zeEngine(kind); zeMode(kind);
   }
-  const zeFast = g => g.ride?.kind === 'focus' && Math.abs(g.vx) > 260;   // quick enough to leave afterimages
+  const zeFast = g => g.dash > 0 || (g.ride?.kind === 'focus' && Math.abs(g.vx) > 260);   // quick enough to leave afterimages
   /** …and goes off on its own: the Focus at speed, the A-Class over onto its roof first, as at the moose test. */
   function zeLeave(g) {
     const r = g.ride; if (!r) return;
@@ -12346,6 +12356,8 @@ const toolName = n => {
     const aim = ze.aim == null || Math.abs(ze.aim - g.x) < 10 ? 0 : Math.sign(ze.aim - g.x), want = ze.keys.r - ze.keys.l || aim;
     g.vx += (want * (380 + (g.level - 1) * 12) * (g.dragon ? 1.15 : 1) * (car ? car.speed : 1) - g.vx) * Math.min(1, dt * (car ? 6 : 12));   // a car takes its time
     if (want) g.f = want;
+    g.dashCool = Math.max(0, g.dashCool - dt);
+    if (g.dash > 0) { g.dash = Math.max(0, g.dash - dt); g.vx = g.dashF * 1150; g.f = g.dashF; }
     const half = car ? 100 : 28 * k;
     g.x = Math.max(half, Math.min(ZE_W - half, g.x + g.vx * dt));
     // what he stands on: the floor, or the awning or the sign come down on from above (G4, 2026-10-30, the next round)
@@ -12417,7 +12429,7 @@ const toolName = n => {
         continue;
       }
       const green = it.kind === 'veg' && !g.dragon;   // a green while he still blinks from the last one passes him by
-      if (!(green && g.hurt > 0) && zeTouch(it, green ? body : mouth)) { it.dead = true; zeEat(g, it); if (g.phase !== 'play') return; continue; }
+      if (!(green && (g.hurt > 0 || g.dash > 0)) && zeTouch(it, green ? body : mouth)) { it.dead = true; zeEat(g, it); if (g.phase !== 'play') return; continue; }
       if (it.y >= ZE_FLOOR - 8) {
         it.dead = true; zeChunks(g, it.x, ZE_FLOOR - 4, it.kind === 'veg' || it.kind === 'fish' ? it.kind : 'meat', 3);
         if (it.kind === 'meat' && !g.dragon) { if (g.streak >= 5) zeWord(g, 'wasted!', it.x, ZE_FLOOR - 30, '#d9c7e8'); g.streak = 0; g.mult = 1; }   // a miss lets the combo go
