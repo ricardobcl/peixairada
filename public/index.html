@@ -11991,7 +11991,7 @@ const toolName = n => {
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
-  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, keys: { l: 0, r: 0 }, aim: null, music: null };
+  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
   const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = prefs.zeBand === 'vira' ? '♪ vira de Barcelos' : '♪ funk'; };
@@ -12004,20 +12004,28 @@ const toolName = n => {
     zeSize(); zeGo();
   }
   function zeToggle() { if ($('#zeGame').open) $('#zeGame').close(); else zeOpen(); }   // a declaration: HOTKEYS names it before this line runs
-  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); ze.scene = null; repostPane(); });   // the scene's canvases go with it
+  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); ze.scene = ze.was = null; repostPane(); });   // the scene's canvases go with it
   function zeGo() { if (!ze.raf) { ze.at = 0; ze.raf = requestAnimationFrame(zeTick); } }
   function zeStop() { cancelAnimationFrame(ze.raf); ze.raf = 0; }
+  /** The sky's fade, and its rain: drops falling slant while the sky has rain — held where they are under reduced motion. */
+  function zeWeather(dt) {
+    if (ze.was && (ze.was.a -= dt / 1.4) <= 0) ze.was = null;
+    if (!ZE_SKIES[zeSkyOf(ze.g)].rain) { ze.drops.length = 0; return; }
+    while (ze.drops.length < 170) ze.drops.push({ x: Math.random() * 780, y: Math.random() * ZE_FLOOR, v: 650 + Math.random() * 250 });
+    if (zeCalm() || ze.g.freeze > 0) return;
+    for (const d of ze.drops) { d.y += d.v * dt; d.x -= d.v * .22 * dt; if (d.y > ZE_FLOOR + 10) { d.y = -20; d.x = Math.random() * 800; } }
+  }
   function zeTick(now) {
     ze.raf = 0;
     const dt = ze.at ? Math.min(.05, (now - ze.at) / 1000) : 0; ze.at = now;
-    zeStep(dt); zeDraw(); ze.frames++;
+    zeStep(dt); zeWeather(dt); zeDraw(); ze.frames++;
     if ($('#zeGame').open && ze.g.phase !== 'pause') ze.raf = requestAnimationFrame(zeTick);
   }
   /** The canvas's pixels are its box's at the screen's density; the logic is ZE_W × ZE_H whatever they are. */
   function zeSize() {
     const c = $('#zeCanvas'), w = Math.round(c.clientWidth * (devicePixelRatio || 1)) || ZE_W, h = Math.round(w * ZE_H / ZE_W);
     if (c.width === w && c.height === h) return;
-    c.width = w; c.height = h; ze.scene = null;
+    c.width = w; c.height = h; ze.scene = ze.was = null;
     if ($('#zeGame').open && !ze.raf) zeDraw();
   }
   new ResizeObserver(zeSize).observe($('#zeCanvas'));
@@ -12294,8 +12302,9 @@ const toolName = n => {
       for (let i = 0, n = dt * 110 + Math.random() | 0; i < n; i++)   // the fire round him
         g.flames.push({ x: g.x + (Math.random() * 2 - 1) * (zeTw(g) + 16) * k, y: g.y - Math.random() * 160 * k, vx: (Math.random() - .5) * 30, vy: -(60 + Math.random() * 120), t: 0, life: .35 + Math.random() * .3, s: Math.random() < .5 ? 5 : 7 });
       if (!g.dragon) zeDragon(g, false);
-    } else if (g.spawn <= 0) {
-      zeDrop(g); g.spawn = Math.max(.3, 1.05 - (g.level - 1) * .07) * D.spawn * (.75 + Math.random() * .5);
+    } else {
+      if (g.spawn <= 0) { zeDrop(g); g.spawn = Math.max(.3, 1.05 - (g.level - 1) * .07) * D.spawn * (.75 + Math.random() * .5); }
+      if (ZE_SKIES[zeSkyOf(g)].bolt && (g.lightT -= dt) <= 0) { zeStrike(g); g.lightT = 2.5 + Math.random() * 3; }   // the storm's, round again with no dragon
     }
     // what falls meets his foot, then his mouth (meat) or him (a green) — broader as he is —, then the floor
     const air = g.y < ZE_FLOOR, reach = g.dragon ? 1.4 : D.reach, w = (zeTw(g) + 6) * k, body = { l: g.x - w, r: g.x + w, t: g.y - 164 * k, b: g.y - 4 };
@@ -12328,17 +12337,20 @@ const toolName = n => {
     const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W, calm = zeCalm(), dark = zeDark(g);
     cx.setTransform(k, 0, 0, k, 0, 0);
     if (g.punch > 0 && !calm) { const z = 1 + .07 * g.punch / .2, hy = g.y - 100; cx.translate(g.x, hy); cx.scale(z, z); cx.translate(-g.x, -hy); }   // a combo's camera punch
-    const L = zeScene(c), u = ZE_W / c.width;
-    cx.drawImage(L.sky, 0, 0, ZE_W, L.sky.height * u);
-    zeTown(cx, L.P, (ZE_W / 2 - g.x) * .05);
-    cx.drawImage(L.front, 0, ZE_FRONT, ZE_W, L.front.height * u);
+    const L = zeScene(c, zeSkyOf(g)), u = ZE_W / c.width, was = ze.was?.scene.w === c.width ? ze.was : null, ox = (ZE_W / 2 - g.x) * .05;
+    const layers = (sky, town, front) => {   // the new sky, and the last one fading over it
+      for (const [S, a] of was ? [[L, 1], [was.scene, was.a]] : [[L, 1]]) { cx.globalAlpha = a; if (sky) cx.drawImage(S.sky, 0, 0, ZE_W, S.sky.height * u); if (town) zeTown(cx, S.P, ox); if (front) cx.drawImage(S.front, 0, ZE_FRONT, ZE_W, S.front.height * u); }
+      cx.globalAlpha = 1;
+    };
+    layers(true, false, false);
+    if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {   // lightning, the dragon's or the storm's
+      cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
+    }
+    layers(false, true, true);
     zeBulbs(cx, g);
-    if (dark) {   // the dragon's sky, and its lightning
-      cx.fillStyle = `rgba(70, 0, 24, ${.55 * dark})`; cx.fillRect(0, 0, ZE_W, ZE_FLOOR);
-      cx.fillStyle = `rgba(20, 0, 12, ${.4 * dark})`; cx.fillRect(0, 0, ZE_W, 360); cx.fillRect(0, 0, ZE_W, 150);
-      if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {
-        cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
-      }
+    if (dark) {   // the dragon's sky, darker still
+      cx.fillStyle = `rgba(70, 0, 24, ${.4 * dark})`; cx.fillRect(0, 0, ZE_W, ZE_FLOOR);
+      cx.fillStyle = `rgba(20, 0, 12, ${.3 * dark})`; cx.fillRect(0, 0, ZE_W, 360); cx.fillRect(0, 0, ZE_W, 150);
     }
     if (g.flex > 0) {   // MONSTRO's spotlight: a cone from above onto him, a pool of light at his feet
       const a = Math.min(1, g.flex / .3, (1.4 - g.flex) / .2), w = 70 * zeSz(g), sp = cx.createLinearGradient(0, 0, 0, ZE_FLOOR);
@@ -12375,7 +12387,9 @@ const toolName = n => {
     }
     cx.globalAlpha = 1;
     for (const w of g.words) { cx.globalAlpha = Math.min(1, 2.2 - w.t * 2); zeText(cx, w.s, w.x, w.y, w.big ? 30 : 19, w.c, 'center'); }
-    cx.globalAlpha = 1; cx.setTransform(k, 0, 0, k, 0, 0);
+    cx.globalAlpha = 1;
+    if (L.P.rain && ze.drops.length) { cx.strokeStyle = 'rgba(190, 210, 240, .45)'; cx.lineWidth = 1.4; cx.beginPath(); for (const d of ze.drops) { cx.moveTo(d.x, d.y); cx.lineTo(d.x - 4, d.y + 16); } cx.stroke(); }   // Minho's rain
+    cx.setTransform(k, 0, 0, k, 0, 0);
     if (!calm && g.red > 0) { cx.fillStyle = 'rgba(228, 59, 68, .28)'; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the hit
     if (!calm && g.flash > 0) { cx.fillStyle = `rgba(255, 250, 235, ${Math.min(.65, g.flash * 4)})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the lightning's
     if (g.phase !== 'title') zeHud(cx, g);
@@ -12642,25 +12656,41 @@ const toolName = n => {
   /** The scene behind, in layers (2026-10-30, the next round): the sky — the night coming down over the stars and a moon,
    *  a striped sun going down —, Barcelos on the horizon (zeTown, each frame, shifting a little against his run), then
    *  the Minho's hills, Trota's and the rooster on its plinth, and a floor of azulejos from ZE_FRONT down. The sky and
-   *  the front are drawn once per size (ze.scene), each in a canvas of its own. A sky's look is ZE_SKY's. */
+   *  the front are drawn once per size and sky (ze.scene), each in a canvas of its own; a new sky fades in over the last
+   *  (ze.was). A sky a level (2026-10-30, the next round, ZE_SKIES): 1 the sunset, 2 the blue hour under a full moon, 3
+   *  the dragon's storm, 4 Minho rain, 5 dawn, then round again — the hills', the town's colours, its windows lit after
+   *  dark, a tint over the front. */
   const ZE_FRONT = 636;
-  const ZE_SKY = { stops: ['#120826', '#2a0f4f', '#b8306b', '#ff9a3d'], hills: ['#5a1f63', '#36164a'], town: '#41195a', lit: 0, stars: 90, moon: 'crescent',
-    sun: { x: 400, y: 790, r: 150, a: '#ffe45c', b: '#ff5e5b', bands: true } };
-  function zeScene(c) {
-    if (ze.scene?.w === c.width) return ze.scene;
-    const P = ZE_SKY, layer = (top, h) => {
+  const ZE_SKIES = [
+    { name: 'sunset', stops: ['#120826', '#2a0f4f', '#b8306b', '#ff9a3d'], hills: ['#5a1f63', '#36164a'], town: '#41195a', lit: 0, stars: 90, moon: 'crescent', sun: { x: 400, y: 790, r: 150, a: '#ffe45c', b: '#ff5e5b', bands: true } },
+    { name: 'blue hour', stops: ['#070b24', '#17205a', '#4b3f8e', '#d0708a'], hills: ['#28265e', '#181743'], town: '#1d1b4a', lit: .9, stars: 150, moon: 'full', tint: 'rgba(20, 30, 90, .35)', sun: { x: 400, y: 880, r: 150, a: '#ff9a6a', b: '#c04a6a', bands: true } },
+    { name: 'storm', stops: ['#050208', '#1e0612', '#4a0c18', '#8f1f1a'], hills: ['#2a0b1c', '#16060f'], town: '#1c0812', lit: .55, litc: '#ff8a4a', stars: 0, glow: '#ff3a1a', tint: 'rgba(60, 0, 15, .45)', bolt: true },
+    { name: 'rain', stops: ['#0b1220', '#1b2638', '#334259', '#4d5b70'], hills: ['#26303f', '#18202c'], town: '#1d2633', lit: .8, stars: 0, rain: true, clouds: true, tint: 'rgba(15, 25, 45, .45)' },
+    { name: 'dawn', stops: ['#243a6a', '#5f74ae', '#e7a2a0', '#ffe0a0'], hills: ['#6f5a8c', '#46386a'], town: '#5c4a7c', lit: .2, stars: 20, moon: 'faint', tint: 'rgba(255, 200, 180, .08)', sun: { x: 540, y: 820, r: 110, a: '#fff2b0', b: '#ffb08a' } }];
+  const ZE_CLOUDS = [[120, 90, 160, 40, '#1f2a3c'], [420, 60, 220, 46, '#1a2433'], [650, 120, 150, 36, '#222e41'], [260, 180, 170, 30, '#28344a'], [560, 230, 190, 28, '#2a374d']];
+  const zeSkyOf = g => g.phase === 'title' ? 0 : (g.level - 1) % ZE_SKIES.length;
+  function zeScene(c, i) {
+    if (ze.scene?.w === c.width && ze.scene.i === i) return ze.scene;
+    if (ze.scene?.w === c.width) ze.was = { scene: ze.scene, a: 1 };   // the last sky, fading out over the new
+    const P = ZE_SKIES[i], layer = (top, h) => {
       const b = document.createElement('canvas'), k = c.width / ZE_W; b.width = c.width; b.height = Math.ceil(h * k);
       const x = b.getContext('2d'); x.scale(k, k); x.translate(0, -top); return [b, x];
     };
     const [skyC, x] = layer(0, ZE_FLOOR);
     const sky = x.createLinearGradient(0, 0, 0, ZE_FLOOR); P.stops.forEach((col, i) => sky.addColorStop([0, .32, .7, 1][i], col));
     x.fillStyle = sky; x.fillRect(0, 0, ZE_W, ZE_FLOOR);
+    if (P.glow) { const r = x.createRadialGradient(360, 820, 20, 360, 820, 480); r.addColorStop(0, P.glow + '99'); r.addColorStop(1, P.glow + '00'); x.fillStyle = r; x.fillRect(0, 0, ZE_W, ZE_FLOOR); }   // the storm's fire on the hills
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;   // the same stars every time
     for (let i = 0; i < P.stars; i++) { const sy = rnd() ** 1.6 * 420; x.globalAlpha = .25 + .75 * (1 - sy / 420) * rnd(); x.fillStyle = '#fff6e0'; x.fillRect(rnd() * ZE_W, sy, rnd() < .15 ? 2 : 1.2, rnd() < .15 ? 2 : 1.2); }
     x.globalAlpha = 1;
-    if (P.moon === 'crescent') {   // a new moon's crescent, the sky cut out of it
-      x.fillStyle = '#fff3c4'; x.beginPath(); x.arc(118, 132, 26, 0, Math.PI * 2); x.fill();
-      x.fillStyle = sky; x.beginPath(); x.arc(130, 124, 24, 0, Math.PI * 2); x.fill();
+    if (P.moon === 'crescent' || P.moon === 'faint') {   // a new moon's crescent, the sky cut out of it — faint at dawn
+      x.globalAlpha = P.moon === 'faint' ? .45 : 1; x.fillStyle = '#fff3c4'; x.beginPath(); x.arc(118, 132, 26, 0, Math.PI * 2); x.fill();
+      x.globalAlpha = 1; x.fillStyle = sky; x.beginPath(); x.arc(130, 124, 24, 0, Math.PI * 2); x.fill();
+    }
+    if (P.moon === 'full') {   // the blue hour's full moon, its halo and its seas
+      const r = x.createRadialGradient(590, 150, 10, 590, 150, 90); r.addColorStop(0, 'rgba(220, 230, 255, .35)'); r.addColorStop(1, 'rgba(220, 230, 255, 0)');
+      x.fillStyle = r; x.fillRect(490, 50, 200, 200); x.fillStyle = '#e8eeff'; x.beginPath(); x.arc(590, 150, 24, 0, Math.PI * 2); x.fill();
+      x.fillStyle = '#c9d2ee'; for (const [mx, my, mr] of [[583, 145, 5], [597, 158, 3.5], [594, 141, 2.5]]) { x.beginPath(); x.arc(mx, my, mr, 0, Math.PI * 2); x.fill(); }
     }
     if (P.sun) {
       const S = P.sun, sun = x.createLinearGradient(0, S.y - S.r, 0, S.y + S.r); sun.addColorStop(0, S.a); sun.addColorStop(1, S.b);
@@ -12669,6 +12699,7 @@ const toolName = n => {
       if (S.bands) { x.fillStyle = sky; for (let i = 0; i < 6; i++) x.fillRect(S.x - S.r, S.y - 60 + i * 18, S.r * 2, 2 + i * 2); }
       x.restore();
     }
+    if (P.clouds) for (const [cx2, cy2, rx, ry, col] of ZE_CLOUDS) { x.fillStyle = col; x.beginPath(); x.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2); x.fill(); }
     const [front, y] = layer(ZE_FRONT, ZE_H - ZE_FRONT);
     const hills = (col, base, amp, step, ph) => {
       y.fillStyle = col; y.beginPath(); y.moveTo(0, ZE_FLOOR);
@@ -12688,7 +12719,8 @@ const toolName = n => {
     }
     const dusk = y.createLinearGradient(0, ZE_FLOOR, 0, ZE_H); dusk.addColorStop(0, 'rgba(60, 20, 80, .25)'); dusk.addColorStop(1, 'rgba(30, 8, 45, .6)');
     y.fillStyle = dusk; y.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
-    return ze.scene = { w: c.width, sky: skyC, front, P };
+    if (P.tint) { y.globalCompositeOperation = 'source-atop'; y.fillStyle = P.tint; y.fillRect(0, 0, ZE_W, ZE_H); }
+    return ze.scene = { w: c.width, i, sky: skyC, front, P };
   }
   /** Barcelos across the Cávado, one silhouette between the sun and the hills (2026-10-30, the next round): houses, the
    *  Torre da Porta Nova, the Igreja Matriz and its tower, the Paço dos Condes' ruin and its chimneys, the dome of Bom
