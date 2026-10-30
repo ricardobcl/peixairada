@@ -516,7 +516,8 @@ npm run map                         # rewrite the section maps at the top of ser
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live): a canvas, its frames only while open and
   not paused; its own Web Audio, made by the press that starts a round, suspended by a pause, closed with the dialog or
-  by M. **His face is Settings'** (`#zeFaceRow`): a picture framed to an oval in the page, only the oval's PNG kept
+  by M. Trota's best in it (2026-10-30): four ways (`ZE_DIFFS`, a best each), level 3's dragon (`zeDragon`, `zeFera`),
+  nothing shaking, flashing or blinking under reduced motion (`zeCalm`). **His face is Settings'** (`#zeFaceRow`): a picture framed to an oval in the page, only the oval's PNG kept
   beside the setup file (`PUT`/`DELETE /api/ze`) — **no face in the code**; none, a face of no one drawn. → `ze-game.mjs`,
   `ze-face.mjs`, `test/ze.test.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:

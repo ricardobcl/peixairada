@@ -5,6 +5,44 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, last — the best of Trota's, in Zé's game
+
+Ricardo: *"integrate the best of this game in here: "Trota's — jogo 8-bit_v2.html" - be creative"*. Trota's is an 8-bit
+catcher (320 × 400, Press Start 2P): a photo-sprite of a person with three mouth frames and a facepalm, sweets to eat,
+lettuce and tomato to avoid, outside a restaurant called Trota's in a street of Lisbon houses.
+
+* **Taken, made Zé's**:
+  - **Four ways to play** (`ZE_DIFFS`): EASY · NORMAL · HARD · HARDCORE — how fast and often food falls, how green it
+    gets per level, how far his mouth reaches, the points a level takes, the level food starts drifting at. HARDCORE
+    deals from a shuffled bag, five meats in every fifty (`zeGreen`). Picked on the title (← → or 1–4, or a click on
+    its button), kept (`prefs.zeDiff`), **a best for each** (`prefs.zeBest` by id; the one number before is NORMAL's,
+    `zeBests`).
+  - **MODO FERA as ENTER THE DRAGON**, Bruce Lee's own film: at level 3 Zé grows to twice his size in four steps, on
+    fire, his face ringed in an orange glow, the sky darkening and struck by lightning, food raining, **everything good
+    to eat** (a green is 10), for 16 s with a bar running down; then level 4, *back to normal*, what is left going up in
+    smoke (`zeDragon`, `zeK`, `zeStrike`). The band changes to **the dragon's theme** — Trota's own lead and bass in A
+    minor, straight sixteenths at 120, a kick on the beat (`zeFera`, `zeTrack`) — over a rising roar.
+  - **Lunch with a leaf in it**: 🍔 *HAS LETTUCE!*, 🥪 *HAS TOMATO!*, 🥙 *HAS SALAD!* — Trota's burger and sandwich,
+    green though they look like lunch.
+  - **The combo** grows every five in a row (×2 to ×4, *COMBO ×n!* and an arpeggio) and goes with a meat missed or a
+    green eaten — the ×5-at-once before was too generous.
+  - **The mouth opens as food comes** (`gape`), as Trota's sprite did; and on the title, now and then.
+  - **Food drifts** past a level of each way's, bouncing off the walls; Zé runs a little quicker each level, and the
+    funk plays a little quicker too (to a third more).
+  - **A banner for each level**, the title's menu on a panel (eat, avoid, the rooster, *a leaf inside!*), the K.O.'s
+    **Again · Menu** (← →, not before 0.8 s: a kick held through the K.O. starts nothing).
+  - **Trota's itself**, behind him at the right with the sun going down behind it: cornice, wall lamps, a striped
+    awning, warm windows with tables and plates, a green door, azulejos at its foot, and its sign on the roof whose bulbs
+    chase each other, red and fast while the dragon is out (`zeRestaurant`, `zeBulbs`).
+  - A red flash on a hit, a white one with the lightning — neither, nor any blink or shake, under reduced motion.
+* **Left out**: the photo sprites (a person's face — nothing of one goes in the code; Zé's comes from Settings), the
+  pixel font (a CDN; the board fetches nothing at runtime), the 8-bit look itself (Zé's is the 70s dusk), the Lisbon
+  houses (Barcelos has its rooster), touch controls.
+* Checked: `ze-game.mjs` grown to the lot — the ways to play by key, a combo of five, the dragon (his size, the track, a
+  green eaten for 10 and no life, the fire, back at level 4 with its banner), the K.O.'s best per way, Again not at
+  once, Menu, HARDCORE's bag (49 left after the first, five meats in all). WebKit: the dragon with the real face, 60
+  frames a second, silent. `npm run check`, `npm test`.
+
 ## Decisions of 2026-10-30, later still — Zé's face is set in Settings
 
 Ricardo, on the entry below: *"remove the face from source code and let it be configurable on settings"*.

@@ -151,8 +151,10 @@ than your own: one that watches stories on a schedule can be challenged.
 ## Zé's game
 
 **⌥⌘Z** is a break: Zé, the Bruce Lee of Barcelos, eats the meat that falls and dodges the vegetables — or kicks them
-out of the sky. ← → run, ↑ jumps, space kicks, P pauses, M turns the funk off and on; esc or ⌥⌘Z again closes it. The
-golden rooster is a life. His face is yours to choose: **Settings › General › Zé's game** (or *His face…* under the
+out of the sky. Mind the burger: it has lettuce. ← → run, ↑ jumps, space kicks, P pauses, M turns the funk off and on;
+esc or ⌥⌘Z again closes it. The golden rooster is a life, five in a row is a combo, and level 3 is **ENTER THE
+DRAGON**: Zé twice his size and on fire, eating everything for sixteen seconds. Pick the way to play on the title —
+EASY, NORMAL, HARD or HARDCORE (five meats in every fifty) — each with its own best. His face is yours to choose: **Settings › General › Zé's game** (or *His face…* under the
 game) — pick a picture, drag and zoom it until his head fills the oval, *Use it*. Only the oval is kept, on this Mac;
 without one he has a drawn face.
 
