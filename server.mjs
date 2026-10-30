@@ -14,6 +14,7 @@
 //      · nothing under CLAUDE_DIR: Claude Code's, never the board's to write in
 //      · Peacock's colours, moved into the setup once (2026-10-15)
 //      · attachments: a file dropped on the board from a browser
+//      · Zé's face, for ⌥⌘Z's game (2026-10-30)
 //  Transcript parsing
 //      · PRs mentioned in the chat
 //      · …and the short ways of naming one (2026-10-06)
@@ -705,6 +706,18 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // of a chat with no claude only: one running has its folder
     ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null, back: folderBack(s.cwd) } : {})
   };
+}
+
+// ---- Zé's face, for ⌥⌘Z's game (2026-10-30) ------------------------------------------------------------------------
+// The game's hero wears a real face: ze.png beside the setup file, the user's own picture — never the checkout's, where
+// a face would be a person named in the code and pulled by everyone who runs the board. Handed to the page as a data:
+// URL (GET /api/ze), read on each ask — the game asks once per opening; null when there is none, and the page draws one.
+const ZE_FACE = join(dirname(CONFIG_FILE), 'ze.png'), ZE_FACE_MAX = 2 << 20;
+function zeFace() {
+  try {
+    const st = statSync(ZE_FACE);
+    return st.isFile() && st.size <= ZE_FACE_MAX ? `data:image/png;base64,${readFileSync(ZE_FACE).toString('base64')}` : null;
+  } catch { return null; }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -5911,6 +5924,7 @@ const server = createServer(async (req, res) => {
     if (p === '/api/chat') return chatRoute(req, res, null, url);   // the chat (2026-10-17): its own routes
     if ((m = p.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, m[1], url);
     if (p === '/api/lunch') return lunchRoute(req, res, url);   // lunch (2026-10-18)
+    if (req.method === 'GET' && p === '/api/ze') return json(res, 200, { face: zeFace() });   // ⌥⌘Z's hero (2026-10-30)
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {   // the Setup's token box: into the keychain, or out of it
       const body = req.method === 'PUT' ? await jsonBody(req) : {};
       const token = req.method === 'PUT' ? (typeof body.token === 'string' ? body.token.trim() : '') : '';

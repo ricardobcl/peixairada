@@ -201,7 +201,7 @@ export default async function (ctx) {
   out.groups = await ctx.evaluate(`[...document.querySelectorAll('#ksbody .kh')].map(k => k.textContent)`);
   await ctx.evaluate(`document.querySelector('#keysheet').close()`);
   ctx.assert.deepEqual(out.groups, ['Go to', 'This chat', 'Layout', 'Look', 'In the drawer', 'In a page']);
-  ctx.assert.deepEqual(out.cog.slice(0, 20), ['⌥⌘K', '⌥⌘L', '⌥⌘P', '⌥⌘F', '⌥⌘N', '⌥⌘O', '⌥⌘↑↓', '⌥⌘A', '⌥⌘0', '⌥⌘M', '?', '⌥⌘C', '⌘T', '⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘J', '⌥⌘D', '⌘W']);
+  ctx.assert.deepEqual(out.cog.slice(0, 20), ['⌥⌘K', '⌥⌘L', '⌥⌘P', '⌥⌘F', '⌥⌘N', '⌥⌘O', '⌥⌘↑↓', '⌥⌘A', '⌥⌘0', '⌥⌘M', '⌥⌘Z', '?', '⌥⌘C', '⌘T', '⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘J', '⌥⌘D']);
   ctx.assert.ok(!out.cog.includes('⌘B'), 'hiding the list is ⌥⌘B since 2026-10-02 (folding it, until 2026-10-25), not ⌘B');
   await ctx.shot('cog');
   return out;

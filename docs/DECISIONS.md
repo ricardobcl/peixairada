@@ -5,6 +5,43 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, later — ⌥⌘Z, Zé's game
+
+Ricardo: *"make a simple 2d game on hotkey Z, where "Ze, the bruce lee of barcelos" tries to avoid vegetables and eat
+meat, with some funky music. use his face on "ze.png" in desktop"*.
+
+* **The game**: a modal dialog over the board (`#zeGame`, `zeOpen`, `zeToggle`), a canvas of ZE_W × ZE_H logical px
+  drawn at the screen's density. Meat falls and Zé eats it (points, a combo up to ×5); vegetables fall and cost a life
+  when they touch him, or go out of the sky with a kick (*WATAAA!*, five points); the golden rooster — Barcelos' own
+  — is a life, up to five. Faster every 150 points (`zeDrop`: more, quicker, greener). ← → (or A D, or the pointer
+  over the picture) run, ↑ jumps, space kicks, P pauses, M the sound, esc or ⌥⌘Z again closes; a backdrop click too.
+  Three lives, then K.O. — flat on his back, seeing stars —, the best kept in `prefs.zeBest`. The window losing the
+  keys pauses a round. The launcher has a row for it, the ? sheet its key.
+* **His face is the user's file, never the checkout's**: ze.png beside the setup file (`~/.config/peixairada/ze.png`),
+  handed to the page by `GET /api/ze` as a data: URL, read on each ask, null without one (or past 2 MB). A photo in
+  `public/` would be a person in the repo everyone else pulls — the rule this repo keeps for the people on its PRs. The
+  ellipse inscribed in the picture is his head, drawn a little past its edges so a background stays out; so the file
+  wants cropping to the head. Without one, a face is drawn (a bowl cut, a beard, the brows). The Desktop's picture was
+  cropped to the head with `sips` and copied there for this Mac.
+* **The music is Web Audio of the game's own**: a drum kit (a kick by pitch drop, a noise snare with ghosts and a fill
+  every fourth bar, hats on the sixteenths), a slap bass in E (sawtooth and sine through a resonant low-pass that
+  snaps shut, octave pops), Hendrix's E7#9 as a clav with a wah opening on each stab, a horn line every fourth bar —
+  sixteenths swung at 104 bpm, planned 120 ms ahead on the audio clock from a 25 ms timer (`zePlan`), never a burst of
+  late notes after a throttled timer. Sounds for the chomp, the kick, the smash, the *bleh*, the rooster's crow and a
+  sad trombone at the K.O. **The context is made by the press that starts a round** (a page may not start sound by
+  itself; the alerts' context is another, behind `prefs.sounds`), suspended by a pause and after the K.O.'s trombone,
+  **closed with the dialog or by M** — never left rendering silence (2026-10-15's audio finding).
+* **Nothing runs while it is shut**: the frame loop is `requestAnimationFrame` only while the dialog is open and the
+  round not paused (`zeTick`), the backdrop drawn once per size into a canvas of its own (`zeBackdrop`), each emoji
+  once (`zeGlyph`). The canvas's colours are the picture's, as lunch's chalk is; the frame and the foot read the
+  board's tokens. The screen shake stays still under reduced motion.
+* **⌥⌘Z is forwarded from the pane** (`boardKeys` in main.swift): the app rebuilt for it.
+* Checked: `ze-game.mjs` (the title with the face, a round started by a real space and its music running, meat eaten,
+  a hit, a kick, the pause stopping frames and sound, the K.O. keeping the best, M closing and bringing the sound
+  back, esc closing it all, the drawn face without ze.png, ⌥⌘Z closing it), `test/ze.test.mjs` (the route: none,
+  one put there after the boot, the key, past the size, taken away). WebKit: 60 frames a second, the face, the chomp,
+  `roundRect`, silent (`zeSound` off). Looked at with the real face in Chrome and in WebKit.
+
 ## Decisions of 2026-10-30 — the tabs scroll, the one in front keeps its width
 
 Ricardo: *"when there are many tabs, the one opened is shrunk. it should be expanded when in focus. also, it should be

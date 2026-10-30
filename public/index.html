@@ -2474,6 +2474,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #lunchd .lfoot .serr { color: var(--needs); }
   #lunchd .lfoot .btn.go { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink); }
   #lunchd .lfoot kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
+  /* ⌥⌘Z's game (2026-10-30): the canvas is a picture of its own — a 70s dusk over Barcelos, not a theme's —, its frame
+     and foot the board's, as lunch's chalkboard. As wide as the window lets a 16:9 picture and its foot stand. */
+  #zeGame { width: min(960px, 94vw, calc((90vh - 52px) * 16 / 9)); max-width: none; padding: 0; border: 0; background: transparent; overflow: visible; outline: none; }
+  #zeGame[open] { display: grid; gap: 10px; }
+  #zeGame::backdrop { background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(10px); }
+  #zeCanvas { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--r-4); background: #2a0f4f; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); touch-action: none; }
+  #zeGame .zefoot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
+  #zeGame .zefoot .spacer { flex: 1; }
+  #zeGame .zefoot kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
   .home .hlunch:empty { display: none; }
   .home .hlunch .chalk { padding: 14px 20px 18px; border-width: 8px; box-shadow: inset 0 0 50px rgba(0, 0, 0, .4); overflow: visible; }
   .home .hlunch .chalk h3 { font-size: 26px; }
@@ -2741,6 +2750,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="chalk" id="lunchBoard"></div>
   <div class="lfoot" id="lunchFoot"></div>
 </dialog>
+<dialog id="zeGame" aria-label="Zé, the Bruce Lee of Barcelos — a game" tabindex="-1">
+  <canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat and dodges the vegetables"></canvas>
+  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run</span><span><kbd>↑</kbd> jump</span><span><kbd>space</kbd> kick</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
+</dialog>
 <dialog id="keysheet" aria-label="Every key">
   <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
   <div id="ksbody"></div><p class="none" id="ksnone" hidden>no key matches</p>
@@ -2820,6 +2833,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · the two halves: ⌘1 and ⌘2
 //   js  · a blank tab: ⌘T on a page (2026-10-13)
 //   js  · the changes tab: what this chat changed in its folder (2026-10-10)
+//   js  · a review of the diff (2026-10-28)
 //   js  · the timeline tab: the chat and its PRs in one order (2026-10-17)
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
 //   js  · tiles: the board's panels laid out as Hyprland's (2026-10-10)
@@ -2835,6 +2849,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17)
 //   js  · alerts
 //   js  · lunch: the reminder, and the menus of the places you go (2026-10-18)
+//   js  · Zé: ⌥⌘Z's game (2026-10-30)
 //   js  · the chat column across a reload (2026-10-16)
 //   js  · SSE
 // Map ▴
@@ -2865,7 +2880,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: 0, zeSound: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -5735,6 +5750,7 @@ const toolName = n => {
       { name: 'The overview — every live chat', hint: '⌥⌘A', fn: ovOpen },
       { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
+      { name: 'Zé, the Bruce Lee of Barcelos — a game', hint: '⌥⌘Z', fn: zeOpen },
       ...(state.chat.on ? [{ name: 'The chat', sub: ` — ${state.chat.repo}`, fn: () => chatOpen() }] : []),
       ...(!s ? [] : [
         { name: 'Its Claude, in its drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
@@ -5861,6 +5877,7 @@ const toolName = n => {
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['⌥⌘M', 'Go to', 'lunch — today\'s menus, on a chalkboard', 'the places you go, read each morning · Going and In 15 min at lunch time · again closes it · Settings › Lunch sets it up', ['alt:KeyM']],
+    ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'he eats the meat and dodges the greens, or kicks them out of the sky · ← → run, ↑ jumps, space kicks, P pauses, M the sound · his face is ze.png beside the setup file · again closes it', ['alt:KeyZ']],
     ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
@@ -5933,7 +5950,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5951,7 +5968,7 @@ const toolName = n => {
     if ($('#hmenu').open) { $('#hmenu').close(); if (fn === hotClose) return true; }   // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
     if ($('#room').open) { $('#room').close(); if (fn === hotClose) return true; }   // …nor is the chat's panel (2026-10-17): a key is back to work
     if (fn === hotGhKey && $('#pick').open && pick.mode === 'pr' && pick.ctx.sid) { prPickAgain(); return true; }   // the PRs' picker from one of them: ⌥⌘G again is the column's
-    if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && !(fn === lunchToggle && $('#lunchd').open) && document.querySelector('dialog[open]')) return false;
+    if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && !(fn === lunchToggle && $('#lunchd').open) && !(fn === zeToggle && $('#zeGame').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
   };
   document.addEventListener('keydown', e => {
@@ -8001,6 +8018,7 @@ const toolName = n => {
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
+    ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
     // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
     // counts' roll, the fades, the list's ends and timeline, the rings' phase), which ctx.settle() missed
@@ -11875,6 +11893,480 @@ const toolName = n => {
     const x = e.target.closest('.srow.lplace .sdel'); if (x) { x.closest('.srow').remove(); return lunchPut({ places: lunchPlacesInBox() }, x); }
     const b = e.target.closest('[data-lunch]'); if (b) lunchAct(b.dataset.lunch, b);
   });
+
+  // ---- Zé: ⌥⌘Z's game (2026-10-30) ---------------------------------------------------------------------------------
+  // Zé, the Bruce Lee of Barcelos: meat falls and he eats it; vegetables fall and he dodges them, or kicks them out of
+  // the sky. ← → (A D, or the pointer over the picture) run, ↑ jumps, space kicks, P pauses, M the sound; esc or ⌥⌘Z
+  // again closes. The golden rooster — Barcelos' own, for luck — is a life. Faster as the score climbs; the best is kept
+  // (prefs.zeBest). His face is ze.png beside the setup file (GET /api/ze, asked on each opening), the ellipse inscribed
+  // in it his head; with none, a face drawn here. A canvas in a modal dialog, a world of its own — its colours are the
+  // picture's, not a theme's. Its frames run only while it is open and not paused; its music is Web Audio of its own (a
+  // drum kit, a slap bass, an E7#9 clav and a horn line, swung sixteenths at ZE_BPM, planned ahead on the audio clock),
+  // made on the first start, suspended by a pause or a K.O., closed with the dialog or by M — never left rendering
+  // silence (the alerts' AUDIO_REST_MS story).
+  const ZE_W = 800, ZE_H = 450, ZE_FLOOR = 392, ZE_BPM = 104, ZE_16 = 60 / ZE_BPM / 4;
+  const ZE_MEAT = [['🥩', 15, 'posta'], ['🍗', 10, 'frango'], ['🍖', 10, 'costeleta'], ['🥓', 10, 'toucinho'], ['🌭', 10, 'chouriço']];
+  const ZE_VEG = [['🥦', 'brócolos'], ['🥕', 'cenoura'], ['🥬', 'alface'], ['🌽', 'milho'], ['🍆', 'beringela'], ['🥒', 'pepino'], ['🫑', 'pimento'], ['🧅', 'cebola']];
+  const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once'];
+  // the music, two bars of bass and one of horns: step → [midi note, sixteenths, popped]
+  const ZE_BASS = [{ 0: [40, 2], 2: [52, 1, 1], 3: [40, 1], 6: [43, 2], 8: [45, 1], 10: [52, 1, 1], 11: [50, 1], 14: [47, 2] },
+    { 0: [40, 2], 2: [52, 1, 1], 3: [40, 1], 5: [43, 1], 7: [45, 1], 9: [46, 1], 10: [47, 2], 12: [50, 1], 14: [52, 1, 1], 15: [50, 1] }];
+  const ZE_CLAV = { 2: .7, 6: 1, 9: .5, 11: .8, 14: 1 }, ZE_HORN = { 0: [64, 1], 2: [67, 1], 4: [69, 3], 8: [67, 1], 10: [64, 2] };
+  const zePick = a => a[Math.random() * a.length | 0], zeHz = n => 440 * 2 ** ((n - 69) / 12);
+  const zeRound = phase => ({ phase, t: 0, score: 0, lives: 3, combo: 0, level: 1, x: phase === 'title' ? 680 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1,
+    run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, spawn: .9, shake: 0, items: [], bits: [], words: [], best: false, ko: '' });
+  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, face: null, asked: 0, glyphs: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
+
+  function zeOpen() {
+    const dlg = $('#zeGame'); if (dlg.open) return;
+    if (inApp) post({ type: 'focus' });
+    ze.g = zeRound('title'); ze.keys = { l: 0, r: 0 }; ze.aim = null;
+    const ask = ++ze.asked;   // the face as it is now: one put there since the last game is worn, one taken away goes
+    api('GET', '/api/ze').then(d => {
+      if (ask !== ze.asked) return;
+      if (!d.face) { ze.face = null; return; }
+      const img = new Image(); img.onload = () => { if (ask === ze.asked) ze.face = img; }; img.src = d.face;
+    }, () => {});   // on purpose: no face is the drawn one
+    $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off';
+    dlg.showModal(); repostPane(); dlg.focus();
+    zeSize(); zeGo();
+  }
+  function zeToggle() { if ($('#zeGame').open) $('#zeGame').close(); else zeOpen(); }   // a declaration: HOTKEYS names it before this line runs
+  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); repostPane(); });
+  function zeGo() { if (!ze.raf) { ze.at = 0; ze.raf = requestAnimationFrame(zeTick); } }
+  function zeStop() { cancelAnimationFrame(ze.raf); ze.raf = 0; }
+  function zeTick(now) {
+    ze.raf = 0;
+    const dt = ze.at ? Math.min(.05, (now - ze.at) / 1000) : 0; ze.at = now;
+    zeStep(dt); zeDraw(); ze.frames++;
+    if ($('#zeGame').open && ze.g.phase !== 'pause') ze.raf = requestAnimationFrame(zeTick);
+  }
+  /** The canvas's pixels are its box's at the screen's density; the logic is ZE_W × ZE_H whatever they are. */
+  function zeSize() {
+    const c = $('#zeCanvas'), w = Math.round(c.clientWidth * (devicePixelRatio || 1)) || ZE_W, h = Math.round(w * ZE_H / ZE_W);
+    if (c.width === w && c.height === h) return;
+    c.width = w; c.height = h; ze.bg = null;
+    if ($('#zeGame').open && !ze.raf) zeDraw();
+  }
+  new ResizeObserver(zeSize).observe($('#zeCanvas'));
+
+  function zeStart() { ze.g = zeRound('play'); if (prefs.zeSound) zeGroove(true); zeGo(); }
+  function zePause(on) {
+    ze.g.phase = on ? 'pause' : 'play';
+    const ac = ze.music?.ac; if (ac) (on ? ac.suspend() : ac.resume()).catch(() => {});
+    else if (!on && prefs.zeSound) zeGroove(true);   // the sound turned on while it stood
+    if (on) { zeStop(); zeDraw(); } else zeGo();
+  }
+  function zeOver(g) {
+    g.phase = 'over'; g.ko = zePick(ZE_KO); g.words.length = 0; g.hurt = 0;
+    if (g.score > (prefs.zeBest || 0)) { prefs.zeBest = g.score; g.best = true; savePrefs(); }
+    zeGroove(false); zeSfx('over');
+    const m = ze.music; if (m) m.rest = setTimeout(() => m.ac.suspend().catch(() => {}), 2600);   // after the trombone
+  }
+  function zeKick(g) { if (g.cool > 0) return; g.kick = .34; g.cool = .48; zeSfx('whoosh'); }
+  function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR) return; g.vy = -540; zeSfx('jump'); }
+  function zeMute() {
+    prefs.zeSound = !prefs.zeSound; savePrefs();
+    $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off';
+    if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') zeGroove(true);
+  }
+
+  $('#zeGame').addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;   // ⌥⌘Z, ⌘W and the rest are the board's
+    const g = ze.g, k = e.code, take = () => { e.preventDefault(); e.stopPropagation(); };
+    if (k === 'ArrowLeft' || k === 'KeyA') { take(); ze.keys.l = 1; ze.aim = null; return; }
+    if (k === 'ArrowRight' || k === 'KeyD') { take(); ze.keys.r = 1; ze.aim = null; return; }
+    if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'KeyP', 'KeyM'].includes(k)) return;
+    take(); if (e.repeat) return;   // a key held down is one kick
+    if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {});   // a press may start it
+    if (k === 'Space' || k === 'Enter') { if (g.phase === 'play') zeKick(g); else if (g.phase === 'pause') zePause(false); else zeStart(); }
+    else if (k === 'ArrowUp' || k === 'KeyW') zeJump(g);
+    else if (k === 'KeyP') { if (g.phase === 'play' || g.phase === 'pause') zePause(g.phase === 'play'); }
+    else zeMute();
+  });
+  $('#zeGame').addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0; if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0; });
+  $('#zeCanvas').addEventListener('pointermove', e => { ze.aim = e.offsetX / e.currentTarget.clientWidth * ZE_W; });
+  $('#zeCanvas').addEventListener('pointerleave', () => { ze.aim = null; });
+  $('#zeCanvas').addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const g = ze.g; if (g.phase === 'play') zeKick(g); else if (g.phase === 'pause') zePause(false); else zeStart();
+  });
+  $('#zeGame').addEventListener('click', e => {   // the backdrop — not the gap between the picture and its foot
+    const r = e.currentTarget.getBoundingClientRect();
+    if (e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) e.currentTarget.close();
+  });
+  // the keys let go, and the round paused, when the game is not what you are looking at
+  const zeAway = () => { ze.keys = { l: 0, r: 0 }; if ($('#zeGame').open && ze.g.phase === 'play') zePause(true); };
+  window.addEventListener('blur', zeAway); document.addEventListener('visibilitychange', () => { if (document.hidden) zeAway(); });
+
+  // ---- the round: Zé, what falls, and what they do to each other
+  function zeDrop(g) {
+    const veg = Math.random() < Math.min(.62, .34 + g.level * .035), galo = !veg && g.lives < 5 && Math.random() < .035;
+    let it;
+    if (galo) it = { kind: 'galo', e: '🐓', pts: 50, name: 'galo' };
+    else if (veg) { const [e, name] = zePick(ZE_VEG); it = { kind: 'veg', e, name }; }
+    else { const [e, pts, name] = zePick(ZE_MEAT); it = { kind: 'meat', e, pts, name }; }
+    g.items.push(Object.assign(it, { x: 30 + Math.random() * (ZE_W - 60), y: -24, vx: (Math.random() - .5) * 40, vy: 60 + g.level * 18 + Math.random() * 50,
+      g: 110 + g.level * 16, rot: Math.random() * 6, spin: (Math.random() - .5) * 4 }));
+  }
+  const zeTouch = (it, b, r = 16) => { const x = Math.max(b.l, Math.min(it.x, b.r)), y = Math.max(b.t, Math.min(it.y, b.b)); return (it.x - x) ** 2 + (it.y - y) ** 2 < r * r; };
+  const zeWord = (g, s, x, y, c, big = false) => g.words.push({ s, x: Math.max(70, Math.min(ZE_W - 70, x)), y, c, big, t: 0 });
+  function zeBits(g, x, y, cs, n) {
+    for (let i = 0; i < n; i++) g.bits.push({ x, y, vx: (Math.random() - .5) * 320, vy: -120 - Math.random() * 260, t: 0, life: .5 + Math.random() * .4, c: zePick(cs), r: 2 + Math.random() * 3 });
+  }
+  function zeScore(g, n) {
+    g.score += n;
+    const lv = 1 + Math.floor(g.score / 150);
+    if (lv > g.level) { g.level = lv; zeWord(g, `LEVEL ${lv}`, ZE_W / 2, 150, '#7ef0ff', true); zeSfx('level'); }
+  }
+  function zeStep(dt) {
+    const g = ze.g; g.t += dt;
+    for (const w of g.words) { w.t += dt; w.y -= 36 * dt; }
+    g.words = g.words.filter(w => w.t < 1.1);
+    for (const b of g.bits) { b.t += dt; b.vy += 900 * dt; b.x += b.vx * dt; b.y += b.vy * dt; }
+    g.bits = g.bits.filter(b => b.t < b.life);
+    g.shake = Math.max(0, g.shake - dt); g.chomp = Math.max(0, g.chomp - dt); g.kick = Math.max(0, g.kick - dt);
+    if (g.phase === 'title') { const k = g.t % 2.4; g.kick = k > 1.6 && k < 1.94 ? 1.94 - k : 0; return; }   // a kata while you read
+    if (g.phase !== 'play') return;
+    // Zé: runs where the keys or the pointer say, jumps, kicks
+    const aim = ze.aim == null || Math.abs(ze.aim - g.x) < 10 ? 0 : Math.sign(ze.aim - g.x), want = ze.keys.r - ze.keys.l || aim;
+    g.vx += (want * 380 - g.vx) * Math.min(1, dt * 12);
+    if (want) g.f = want;
+    g.x = Math.max(28, Math.min(ZE_W - 28, g.x + g.vx * dt));
+    g.vy += 1500 * dt; g.y = Math.min(ZE_FLOOR, g.y + g.vy * dt); if (g.y >= ZE_FLOOR) g.vy = 0;
+    g.run += Math.abs(g.vx) * dt * .05; g.cool = Math.max(0, g.cool - dt); g.hurt = Math.max(0, g.hurt - dt);
+    if ((g.spawn -= dt) <= 0) { g.spawn = Math.max(.3, 1.05 - g.level * .07) * (.7 + Math.random() * .6); zeDrop(g); }
+    // what falls meets his foot, then him, then the floor
+    const air = g.y < ZE_FLOOR, body = { l: g.x - 22, r: g.x + 22, t: g.y - 164, b: g.y - 4 };   // his head the top of it
+    const foot = g.kick > .04 ? { l: g.f > 0 ? g.x + 8 : g.x - 94, r: g.f > 0 ? g.x + 94 : g.x - 8, t: g.y - (air ? 84 : 100), b: g.y - (air ? 20 : 36) } : null;
+    for (const it of g.items) {
+      it.vy += it.g * dt; it.x += it.vx * dt; it.y += it.vy * dt; it.rot += it.spin * dt;
+      if (it.out) { it.dead = it.y > ZE_H + 40 || it.x < -40 || it.x > ZE_W + 40; continue; }
+      if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky
+        Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
+        zeScore(g, 5); zeWord(g, 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#2f8f3a'], 10); zeSfx('smash');
+        continue;
+      }
+      if (zeTouch(it, body)) {
+        it.dead = true;
+        if (it.kind === 'meat') {
+          g.combo++; const x = Math.min(g.combo, 5), pts = it.pts * x;
+          g.chomp = .3; zeScore(g, pts); zeWord(g, `+${pts} ${it.name}${x > 1 ? ` ×${x}` : ''}`, it.x, it.y - 24, '#fff3c4');
+          zeBits(g, g.x + g.f * 6, g.y - 100, ['#a0522d', '#e07a5f', '#f2cc8f'], 6); zeSfx('chomp');
+        } else if (it.kind === 'galo') {
+          g.lives = Math.min(5, g.lives + 1); zeScore(g, it.pts);
+          zeWord(g, 'GALO! +1 life', it.x, it.y - 24, '#ffd23f', true); zeBits(g, it.x, it.y, ['#ffd23f', '#e8322f', '#2b5cb8'], 14); zeSfx('galo');
+        } else if (g.hurt <= 0) {
+          g.lives--; g.combo = 0; g.hurt = 1.4; g.shake = .35;
+          zeWord(g, `BLEH! ${it.name}`, it.x, it.y - 24, '#9be15d', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d'], 8); zeSfx('bleh');
+          if (g.lives <= 0) { zeOver(g); return; }
+        }
+        continue;
+      }
+      if (it.y >= ZE_FLOOR - 8) {
+        it.dead = true; zeBits(g, it.x, ZE_FLOOR - 4, it.kind === 'veg' ? ['#5cbf4a', '#9be15d'] : ['#a0522d', '#e07a5f'], 4);
+        if (it.kind === 'meat') { if (g.combo > 1) zeWord(g, 'wasted!', it.x, ZE_FLOOR - 30, '#d9c7e8'); g.combo = 0; }
+      }
+    }
+    g.items = g.items.filter(it => !it.dead);
+  }
+
+  // ---- the picture
+  function zeDraw() {
+    const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W;
+    cx.setTransform(k, 0, 0, k, 0, 0);
+    cx.drawImage(zeBackdrop(c), 0, 0, ZE_W, ZE_H);
+    if (g.shake > 0 && !REDUCED.matches) cx.translate((Math.random() - .5) * 24 * g.shake, (Math.random() - .5) * 24 * g.shake);
+    for (const it of g.items) {
+      cx.save(); cx.translate(it.x, it.y);
+      if (it.kind === 'galo') { const r = cx.createRadialGradient(0, 0, 4, 0, 0, 34); r.addColorStop(0, 'rgba(255, 220, 90, .85)'); r.addColorStop(1, 'rgba(255, 220, 90, 0)'); cx.fillStyle = r; cx.fillRect(-34, -34, 68, 68); }
+      cx.rotate(it.rot); cx.drawImage(zeGlyph(it.e), -21, -21, 42, 42); cx.restore();
+    }
+    if (g.phase !== 'title') zeHero(cx, g);
+    for (const b of g.bits) { cx.globalAlpha = 1 - b.t / b.life; cx.fillStyle = b.c; cx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2); }
+    cx.globalAlpha = 1;
+    for (const w of g.words) { cx.globalAlpha = Math.min(1, 2.2 - w.t * 2); zeText(cx, w.s, w.x, w.y, w.big ? 30 : 19, w.c, 'center'); }
+    cx.globalAlpha = 1; cx.setTransform(k, 0, 0, k, 0, 0);
+    if (g.phase !== 'title') zeHud(cx, g);
+    if (g.phase !== 'play') zeCard(cx, g);
+    if (g.phase === 'title') zeHero(cx, g);
+  }
+  function zeText(cx, s, x, y, size, fill, align = 'left', weight = 800) {
+    cx.font = `italic ${weight} ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`;
+    cx.textAlign = align; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
+    cx.lineWidth = Math.max(3, size / 5); cx.strokeStyle = '#1b0b2e'; cx.strokeText(s, x, y);
+    cx.fillStyle = fill; cx.fillText(s, x, y);
+  }
+  /** An emoji drawn once into a canvas of its own: fillText of a colour glyph every frame is the slow way. */
+  function zeGlyph(e) {
+    let c = ze.glyphs.get(e); if (c) return c;
+    c = document.createElement('canvas'); c.width = c.height = 96;
+    const x = c.getContext('2d');
+    x.font = '76px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 48, 54);
+    ze.glyphs.set(e, c); return c;
+  }
+  function zeHeart(cx, x, y, on) {
+    cx.save(); cx.translate(x, y); cx.scale(1.25, 1.25);
+    cx.beginPath(); cx.moveTo(0, 7); cx.bezierCurveTo(-13, -1, -8, -12, 0, -5); cx.bezierCurveTo(8, -12, 13, -1, 0, 7); cx.closePath();
+    cx.fillStyle = on ? '#ff3b5c' : 'rgba(255, 255, 255, .15)'; cx.fill(); cx.lineWidth = 2; cx.strokeStyle = '#1b0b2e'; cx.stroke(); cx.restore();
+  }
+  function zeHud(cx, g) {
+    zeText(cx, `SCORE ${g.score}`, 20, 26, 24, '#fff3c4');
+    if (g.combo > 1) zeText(cx, `×${Math.min(g.combo, 5)} COMBO`, 22, 54, 17, '#ffd23f');
+    zeText(cx, `BEST ${Math.max(prefs.zeBest || 0, g.score)}`, ZE_W / 2, 26, 16, '#d9c7e8', 'center');
+    for (let i = 0; i < Math.max(3, g.lives); i++) zeHeart(cx, ZE_W - 30 - i * 30, 26, i < g.lives);
+    zeText(cx, `LEVEL ${g.level}`, ZE_W - 20, 56, 15, '#7ef0ff', 'right');
+  }
+  function zeCard(cx, g) {
+    cx.fillStyle = 'rgba(20, 6, 34, .58)'; cx.fillRect(0, 0, ZE_W, ZE_H);
+    const mid = g.phase === 'title' ? 330 : ZE_W / 2, blink = .55 + .45 * Math.sin(g.t * 5);
+    const big = (s, y, size) => {   // the 70s way: the word twice behind itself, in pink and teal
+      cx.font = `italic 900 ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      for (const [d, c] of [[size / 11, '#ff4f9a'], [size / 22, '#00c2c7']]) { cx.fillStyle = c; cx.fillText(s, mid + d, y + d); }
+      zeText(cx, s, mid, y, size, '#ffd23f', 'center', 900);
+    };
+    if (g.phase === 'title') {
+      big('ZÉ', 104, 120);
+      zeText(cx, 'THE BRUCE LEE OF BARCELOS', mid, 188, 28, '#fff3c4', 'center');
+      zeText(cx, 'eat the meat · dodge the greens — or kick them out of the sky', mid, 234, 16, '#d9c7e8', 'center', 600);
+      zeText(cx, 'the golden rooster of Barcelos is a life', mid, 258, 16, '#d9c7e8', 'center', 600);
+      cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', mid, 312, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
+      if (prefs.zeBest) zeText(cx, `BEST ${prefs.zeBest}`, mid, 350, 16, '#d9c7e8', 'center');
+    } else if (g.phase === 'pause') {
+      big('PAUSE', 190, 80);
+      zeText(cx, 'P or space to go on', mid, 262, 18, '#fff3c4', 'center', 600);
+    } else {
+      big('K.O.', 136, 104);
+      zeText(cx, g.ko, mid, 210, 22, '#fff3c4', 'center');
+      zeText(cx, `SCORE ${g.score}`, mid, 254, 30, '#fff3c4', 'center');
+      zeText(cx, g.best ? 'A NEW BEST!' : `BEST ${prefs.zeBest || 0}`, mid, 288, 18, g.best ? '#ffd23f' : '#d9c7e8', 'center');
+      cx.globalAlpha = blink; zeText(cx, 'SPACE FOR ANOTHER ROUND', mid, 326, 22, '#7ef0ff', 'center'); cx.globalAlpha = 1;
+    }
+  }
+  /** Zé, his feet at (g.x, g.y): a yellow suit with black stripes, the guard up, the face on top — unmirrored. */
+  function zeHero(cx, g) {
+    const air = g.y < ZE_FLOOR - .5, kick = g.kick > .04, moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play';
+    const ko = g.phase === 'over', sw = moving ? Math.sin(g.run) : 0, bob = ko ? -16 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2;
+    const Y = '#ffcf1f', S = '#16121c', SKIN = '#e9b48a';
+    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 3, Math.max(10, 26 - (ZE_FLOOR - g.y) * .05), 5, 0, 0, Math.PI * 2); cx.fill();
+    cx.save(); cx.translate(g.x, g.y + bob);
+    if (g.hurt > 0 && Math.floor(g.hurt * 12) % 2) cx.globalAlpha = .4;
+    cx.scale(g.f, 1);
+    if (ko) cx.rotate(-Math.PI / 2);   // K.O.: flat on his back, his feet where they stood
+    const line = (pts, w, c) => { cx.strokeStyle = c; cx.lineWidth = w; cx.lineCap = cx.lineJoin = 'round'; cx.beginPath(); cx.moveTo(...pts[0]); for (const p of pts.slice(1)) cx.lineTo(...p); cx.stroke(); };
+    const leg = (...pts) => { line(pts, 12, Y); line(pts, 3, S); const [fx, fy] = pts[2]; cx.fillStyle = S; cx.beginPath(); cx.ellipse(fx + 4, fy - 2, 8, 4.5, 0, 0, Math.PI * 2); cx.fill(); };
+    const arm = (...pts) => { line(pts, 9, Y); cx.fillStyle = SKIN; cx.strokeStyle = S; cx.lineWidth = 1.5; cx.beginPath(); cx.arc(...pts[2], 5.5, 0, Math.PI * 2); cx.fill(); cx.stroke(); };
+    if (kick) { leg([-6, -50], [-12, -26], [-16, air ? -8 : 0]); leg([6, -50], [40, -60], [80, -64]); }
+    else if (air) { leg([-6, -50], [-2, -30], [-14, -14]); leg([6, -50], [18, -34], [10, -12]); }
+    else { leg([-6, -50], [-9 - sw * 10, -25], [-10 - sw * 16, 0]); leg([6, -50], [9 + sw * 10, -25], [10 + sw * 16, 0]); }
+    cx.translate(0, -50); cx.rotate(kick ? -.3 : moving ? .08 : 0);   // the hips; the rest leans from there
+    cx.fillStyle = SKIN; cx.fillRect(-4, -52, 8, 8);
+    cx.fillStyle = Y; cx.beginPath(); cx.roundRect(-15, -46, 30, 48, 7); cx.fill();
+    line([[-12, -42], [-12, 0]], 3, S); line([[12, -42], [12, 0]], 3, S);
+    if (kick) { arm([9, -40], [24, -34], [36, -46]); arm([-8, -40], [-24, -30], [-36, -38]); }
+    else { arm([-8, -40], [2 - sw * 6, -22], [12 - sw * 6, -36]); arm([9, -40], [22 + sw * 6, -24], [26 + sw * 6, -46]); }
+    cx.translate(2, -84); cx.scale(g.f, 1);   // the face is never mirrored
+    zeHead(cx, g);
+    cx.restore();
+    if (ko) for (let i = 0; i < 3; i++) {   // …and seeing stars
+      const a = g.t * 3 + i * Math.PI * 2 / 3, sx = g.x - g.f * 134 + Math.cos(a) * 30, sy = g.y - 58 + Math.sin(a) * 8;
+      cx.fillStyle = '#ffd23f'; cx.beginPath();
+      for (let j = 0; j < 10; j++) { const r = j % 2 ? 2.5 : 6, b = j * Math.PI / 5 - Math.PI / 2; cx.lineTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r); }
+      cx.fill();
+    }
+  }
+  function zeHead(cx, g) {
+    const s = 1 + Math.min(.3, g.chomp) * .5, rx = 25 * s, ry = 33 * s;
+    cx.save(); cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    cx.save(); cx.clip();
+    const im = ze.face;
+    if (im) {   // a little past the picture's edges: the sky round his head left out
+      const r = Math.max(2 * rx / im.width, 2 * ry / im.height) * 1.18;
+      cx.drawImage(im, -im.width * r / 2, -im.height * r / 2, im.width * r, im.height * r);
+    } else zeDrawnFace(cx, rx, ry);
+    if (g.chomp > 0) { cx.fillStyle = '#5a1020'; cx.beginPath(); cx.ellipse(0, ry * .45, 7 * s, 2 + 7 * Math.abs(Math.sin(g.chomp * 30)), 0, 0, Math.PI * 2); cx.fill(); }   // nham
+    if (g.hurt > .9) { cx.fillStyle = 'rgba(110, 200, 70, .45)'; cx.fillRect(-rx, -ry, 2 * rx, 2 * ry); }
+    cx.restore();
+    cx.lineWidth = 2.5; cx.strokeStyle = '#16121c'; cx.stroke();   // the path outlives the clip's restore
+    cx.restore();
+  }
+  /** No ze.png: a bowl cut, a beard and the brows of a man who means it. */
+  function zeDrawnFace(cx, rx, ry) {
+    cx.fillStyle = '#e9b48a'; cx.fillRect(-rx, -ry, 2 * rx, 2 * ry);
+    cx.fillStyle = '#1d1418'; cx.fillRect(-rx, -ry, 2 * rx, ry * .62);
+    cx.beginPath(); cx.moveTo(-rx, ry * .05); cx.quadraticCurveTo(-rx * .2, ry * .3, 0, ry * .28); cx.quadraticCurveTo(rx * .2, ry * .3, rx, ry * .05); cx.lineTo(rx, ry); cx.lineTo(-rx, ry); cx.fill();
+    cx.strokeStyle = '#1d1418'; cx.lineWidth = 3; cx.lineCap = 'round';
+    cx.beginPath(); cx.moveTo(-13, -8); cx.lineTo(-4, -4); cx.moveTo(13, -8); cx.lineTo(4, -4); cx.stroke();
+    cx.fillStyle = '#1d1418'; cx.beginPath(); cx.arc(-8, 0, 2.2, 0, Math.PI * 2); cx.arc(8, 0, 2.2, 0, Math.PI * 2); cx.fill();
+  }
+  /** The scene behind, drawn once per size: a striped sun going down over the Minho's hills, the rooster on its
+   *  plinth, and a floor of azulejos. */
+  function zeBackdrop(c) {
+    if (ze.bg?.width === c.width && ze.bg.height === c.height) return ze.bg;
+    const b = ze.bg = document.createElement('canvas'); b.width = c.width; b.height = c.height;
+    const x = b.getContext('2d'); x.scale(c.width / ZE_W, c.width / ZE_W);
+    const sky = x.createLinearGradient(0, 0, 0, ZE_FLOOR);
+    sky.addColorStop(0, '#2a0f4f'); sky.addColorStop(.55, '#b8306b'); sky.addColorStop(1, '#ff9a3d');
+    x.fillStyle = sky; x.fillRect(0, 0, ZE_W, ZE_FLOOR);
+    const sun = x.createLinearGradient(0, 180, 0, 400);
+    sun.addColorStop(0, '#ffe45c'); sun.addColorStop(1, '#ff5e5b');
+    x.save(); x.beginPath(); x.arc(560, 330, 130, 0, Math.PI * 2); x.clip();
+    x.fillStyle = sun; x.fillRect(420, 190, 280, 280);
+    x.fillStyle = sky; for (let i = 0; i < 6; i++) x.fillRect(420, 286 + i * 17, 280, 2 + i * 1.8);
+    x.restore();
+    const hills = (c, base, amp, step, ph) => {
+      x.fillStyle = c; x.beginPath(); x.moveTo(0, ZE_FLOOR);
+      for (let i = 0; i <= ZE_W; i += 10) x.lineTo(i, base - amp * (Math.sin(i / step + ph) * .6 + Math.sin(i / (step * .37) + ph * 2) * .4));
+      x.lineTo(ZE_W, ZE_FLOOR); x.fill();
+    };
+    hills('#5a1f63', 330, 26, 90, 1); hills('#36164a', 362, 18, 60, 4);
+    zeGaloArt(x, 120, ZE_FLOOR, 1.25);
+    x.fillStyle = '#1b0b2e'; x.fillRect(0, ZE_FLOOR, ZE_W, 3);
+    for (let row = 0; row < 2; row++) for (let col = 0; col * 29 < ZE_W; col++) {   // azulejos: a blue rosette at every corner
+      const tx = col * 29, ty = ZE_FLOOR + 3 + row * 29;
+      x.fillStyle = row ? '#d9d2e6' : '#ece6f4'; x.fillRect(tx, ty, 29, 29);
+      x.fillStyle = '#2b4fa8';
+      for (const [cx2, cy2] of [[0, 0], [29, 0], [0, 29], [29, 29]]) { x.beginPath(); x.arc(tx + cx2, ty + cy2, 8, 0, Math.PI * 2); x.fill(); }
+      x.beginPath(); x.moveTo(tx + 14.5, ty + 8); x.lineTo(tx + 21, ty + 14.5); x.lineTo(tx + 14.5, ty + 21); x.lineTo(tx + 8, ty + 14.5); x.fill();
+    }
+    const dusk = x.createLinearGradient(0, ZE_FLOOR, 0, ZE_H); dusk.addColorStop(0, 'rgba(60, 20, 80, .25)'); dusk.addColorStop(1, 'rgba(30, 8, 45, .6)');
+    x.fillStyle = dusk; x.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
+    return b;
+  }
+  /** The rooster of Barcelos: black, his comb red, his body painted with hearts and dots — standing on a plinth. */
+  function zeGaloArt(x, at, floor, s) {
+    x.save(); x.translate(at, floor); x.scale(s, s);
+    x.fillStyle = '#241433'; x.fillRect(-36, -22, 72, 22); x.fillRect(-30, -28, 60, 6);
+    x.strokeStyle = '#151018'; x.lineWidth = 5; x.lineCap = 'round';
+    x.beginPath(); x.moveTo(-6, -28); x.lineTo(-6, -52); x.moveTo(8, -28); x.lineTo(8, -52); x.stroke();
+    x.fillStyle = '#151018';
+    x.beginPath(); x.moveTo(-24, -86); x.bezierCurveTo(-40, -150, -88, -132, -72, -92); x.bezierCurveTo(-62, -72, -46, -62, -24, -58); x.fill();
+    x.beginPath(); x.moveTo(-22, -78); x.bezierCurveTo(-60, -118, -96, -90, -64, -62); x.lineTo(-24, -58); x.fill();
+    x.beginPath(); x.ellipse(0, -72, 36, 24, -.15, 0, Math.PI * 2); x.fill();
+    x.beginPath(); x.moveTo(14, -90); x.lineTo(28, -128); x.lineTo(44, -122); x.lineTo(32, -78); x.fill();
+    x.beginPath(); x.arc(36, -124, 12, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#e8322f';
+    for (const [cx2, cy2] of [[28, -137], [35, -140], [42, -137]]) { x.beginPath(); x.arc(cx2, cy2, 5.5, 0, Math.PI * 2); x.fill(); }
+    x.beginPath(); x.ellipse(45, -110, 4, 6, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#ffcc33'; x.beginPath(); x.moveTo(46, -128); x.lineTo(58, -122); x.lineTo(46, -117); x.fill();
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(39, -126, 2.4, 0, Math.PI * 2); x.fill();
+    const heart = (hx, hy, r, c) => { x.fillStyle = c; x.beginPath(); x.moveTo(hx, hy + r); x.bezierCurveTo(hx - r * 1.8, hy - r * .2, hx - r, hy - r * 1.6, hx, hy - r * .7); x.bezierCurveTo(hx + r, hy - r * 1.6, hx + r * 1.8, hy - r * .2, hx, hy + r); x.fill(); };
+    heart(0, -74, 9, '#e8322f'); heart(-22, -70, 5, '#ffcc33'); heart(18, -66, 5, '#3f8fe0');
+    for (const [dx, dy, c] of [[-52, -112, '#ffcc33'], [-60, -96, '#e8322f'], [-44, -94, '#3f8fe0'], [-70, -82, '#5cbf4a'], [26, -96, '#ffcc33'], [-10, -58, '#5cbf4a'], [8, -86, '#ffcc33']]) {
+      x.fillStyle = c; x.beginPath(); x.arc(dx, dy, 2.6, 0, Math.PI * 2); x.fill();
+    }
+    x.restore();
+  }
+
+  // ---- the sound: a funk band of oscillators, and what the round does to it
+  /** The context, made by a press that starts a round (a page may not start sound by itself). */
+  function zeAudio() {
+    if (ze.music) return ze.music;
+    let ac; try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+    const out = ac.createGain(), noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = noise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    out.gain.value = .7; out.connect(ac.createDynamicsCompressor()).connect(ac.destination);
+    return ze.music = { ac, out, noise, step: 0, at: 0, timer: 0, rest: 0 };
+  }
+  function zeGroove(on) {
+    const m = on ? zeAudio() : ze.music; if (!m) return;
+    clearInterval(m.timer); clearTimeout(m.rest); m.timer = 0;
+    if (!on) return;
+    m.ac.resume().catch(() => {});
+    m.step = 0; m.at = m.ac.currentTime + .08;
+    m.timer = setInterval(() => zePlan(m), 25); zePlan(m);
+  }
+  function zeHush() {
+    const m = ze.music; if (!m) return;
+    clearInterval(m.timer); clearTimeout(m.rest); m.ac.close().catch(() => {}); ze.music = null;
+  }
+  /** What falls within the next 120 ms of the audio clock, each sixteenth swung; a timer late by more starts from now. */
+  function zePlan(m) {
+    const now = m.ac.currentTime; if (m.at < now) m.at = now + .02;
+    while (m.at < now + .12) {
+      const s = m.step % 16, bar = (m.step >> 4) % 4;
+      zeBar(m, s, bar, m.at + (s % 2 ? ZE_16 * .18 : 0));
+      m.at += ZE_16; m.step++;
+    }
+  }
+  function zeBar(m, s, bar, t) {
+    const fill = bar === 3 && s >= 12;
+    if (s === 0 || s === 7 || s === 10 || (bar % 2 && s === 13)) zeDrum(m, 'kick', t);
+    if (fill) zeDrum(m, 'snare', t, .45 + (s - 12) * .18);
+    else if (s === 4 || s === 12) zeDrum(m, 'snare', t);
+    else if (s === 9 || s === 15) zeDrum(m, 'snare', t, .16);   // ghosts
+    if (!fill) zeDrum(m, s === 14 && bar % 2 ? 'open' : 'hat', t, s % 4 === 2 ? .9 : s % 2 ? .35 : .6);
+    const b = ZE_BASS[bar % 2][s]; if (b) zeBass(m, t, ...b);
+    if (ZE_CLAV[s] && !fill) zeClav(m, t, ZE_CLAV[s]);
+    if (bar === 2 && ZE_HORN[s]) zeHorn(m, t, ...ZE_HORN[s]);
+  }
+  function zeDrum(m, kind, t, v = 1) {
+    const ac = m.ac, g = ac.createGain(); g.connect(m.out);
+    if (kind === 'kick') {
+      const o = ac.createOscillator(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + .12);
+      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + .3);
+      o.connect(g); o.start(t); o.stop(t + .32); return;
+    }
+    const n = ac.createBufferSource(), f = ac.createBiquadFilter(), len = kind === 'snare' ? .16 : kind === 'open' ? .24 : .04;
+    n.buffer = m.noise; f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = kind === 'snare' ? 2200 : 7500; f.Q.value = kind === 'snare' ? .8 : .7;
+    g.gain.setValueAtTime((kind === 'snare' ? .55 : .16) * v, t); g.gain.exponentialRampToValueAtTime(.001, t + len);
+    n.connect(f).connect(g); n.start(t, Math.random() * .7); n.stop(t + len + .02);
+    if (kind === 'snare' && v > .3) zeTone(m, t, 'triangle', 220, 140, .09, .3 * v);   // the drum's body under the rattle
+  }
+  function zeTone(m, t, type, f0, f1, d, v) {
+    const o = m.ac.createOscillator(), g = m.ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + d);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(m.out); o.start(t); o.stop(t + d + .02);
+  }
+  function zeBass(m, t, n, len, pop) {
+    const ac = m.ac, d = len * ZE_16 * .9, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'lowpass'; f.Q.value = 7; f.frequency.setValueAtTime(pop ? 3200 : 1700, t); f.frequency.exponentialRampToValueAtTime(pop ? 600 : 260, t + .12);   // the slap, then the thumb's thud
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(pop ? .3 : .4, t + .005); g.gain.exponentialRampToValueAtTime(.15, t + d * .7); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    f.connect(g).connect(m.out);
+    for (const type of ['sawtooth', 'sine']) { const o = ac.createOscillator(); o.type = type; o.frequency.value = zeHz(n); o.connect(f); o.start(t); o.stop(t + d + .02); }
+  }
+  function zeClav(m, t, v) {   // E7#9, Hendrix's chord, the wah opening on each stab
+    const ac = m.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'bandpass'; f.Q.value = 3; f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(2400, t + .08);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.06 * v, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + .11);
+    f.connect(g).connect(m.out);
+    for (const n of [52, 56, 62, 67]) { const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = zeHz(n); o.connect(f); o.start(t); o.stop(t + .13); }
+  }
+  function zeHorn(m, t, n, len) {
+    const ac = m.ac, d = len * ZE_16, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'lowpass'; f.frequency.value = 2200;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.07, t + .025); g.gain.setValueAtTime(.07, t + d * .7); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    f.connect(g).connect(m.out);
+    for (const det of [-8, 8]) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = zeHz(n); o.detune.value = det; o.connect(f); o.start(t); o.stop(t + d + .02); }
+  }
+  function zeSfx(kind) {
+    const m = ze.music; if (!m || m.ac.state === 'closed') return;
+    const ac = m.ac, t = ac.currentTime + .005;
+    if (kind === 'chomp') { zeTone(m, t, 'square', 520, 180, .07, .12); zeTone(m, t + .09, 'square', 480, 160, .07, .1); }
+    else if (kind === 'jump') zeTone(m, t, 'square', 300, 620, .1, .06);
+    else if (kind === 'smash') { zeTone(m, t, 'sine', 320, 70, .16, .5); zeDrum(m, 'snare', t, .7); }
+    else if (kind === 'bleh') zeTone(m, t, 'sawtooth', 260, 90, .38, .16);
+    else if (kind === 'level') { zeTone(m, t, 'triangle', 784, 790, .1, .14); zeTone(m, t + .1, 'triangle', 1175, 1180, .16, .14); }
+    else if (kind === 'whoosh') {
+      const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      n.buffer = m.noise; f.type = 'bandpass'; f.Q.value = 1.5; f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(3500, t + .16);
+      g.gain.setValueAtTime(.25, t); g.gain.exponentialRampToValueAtTime(.001, t + .18);
+      n.connect(f).connect(g).connect(m.out); n.start(t, Math.random() * .7); n.stop(t + .2);
+    } else if (kind === 'galo') {   // a crow: cocorocó
+      const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = 'sawtooth'; f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 2;
+      for (const [dt, hz] of [[0, 700], [.08, 1250], [.18, 1050], [.3, 1350], [.62, 800]]) o.frequency.linearRampToValueAtTime(hz, t + dt);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.2, t + .03); g.gain.setValueAtTime(.2, t + .5); g.gain.exponentialRampToValueAtTime(.0001, t + .66);
+      o.connect(f).connect(g).connect(m.out); o.start(t); o.stop(t + .7);
+    } else if (kind === 'over') {   // the trombone that says it
+      [392, 370, 349].forEach((hz, i) => zeHorn(m, t + i * .36, 12 * Math.log2(hz / 440) + 69 - 12, .34 / ZE_16));
+      const o = ac.createOscillator(), lfo = ac.createOscillator(), depth = ac.createGain(), g = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 165; lfo.frequency.value = 6; depth.gain.value = 5; lfo.connect(depth).connect(o.frequency);
+      g.gain.setValueAtTime(.0001, t + 1.08); g.gain.exponentialRampToValueAtTime(.12, t + 1.12); g.gain.exponentialRampToValueAtTime(.0001, t + 2.2);
+      o.connect(g).connect(m.out); for (const x of [o, lfo]) { x.start(t + 1.08); x.stop(t + 2.25); }
+    }
+  }
 
   // ---- the chat column across a reload (2026-10-16) ---------------------------------------------------------------
   // Every chat's tabs were the page's memory alone: the pages it opened, its folder's editor, its split, which half each

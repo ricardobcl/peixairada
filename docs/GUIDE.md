@@ -148,6 +148,13 @@ turns it on. Give it a time (the reminder's), the days, and each place with its 
 The stories need a login because Instagram shows a story to no one logged out. A second account just for this is wiser
 than your own: one that watches stories on a schedule can be challenged.
 
+## Zé's game
+
+**⌥⌘Z** is a break: Zé, the Bruce Lee of Barcelos, eats the meat that falls and dodges the vegetables — or kicks them
+out of the sky. ← → run, ↑ jumps, space kicks, P pauses, M turns the funk off and on; esc or ⌥⌘Z again closes it. The
+golden rooster is a life. His face is `ze.png` beside your setup file (`~/.config/peixairada/ze.png`), cropped to the
+head — the ellipse inside the picture is what shows; without one he has a drawn face.
+
 ## Keys
 
 | Key | Does |
@@ -165,6 +172,7 @@ than your own: one that watches stories on a schedule can be challenged.
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |
 | ⌥⌘M | lunch: today's menus, on a chalkboard |
+| ⌥⌘Z | Zé's game |
 | ⌥⌘Y | the theme |
 | ⌥⌘R · ⌘R | reload the board · reload the page in the pane (VS Code Web keeps its own ⌘R) |
 
