@@ -12237,7 +12237,7 @@ const toolName = n => {
     if (g.score > (bests[id] || 0)) { bests[id] = g.score; g.best = true; }
     if (g.score > (today[id] || 0)) { today[id] = g.score; g.todays = true; }
     savePrefs();
-    zeHold(g, .12); zeGroove(false); zeSfx('over');
+    zeHold(g, .12); zeBump(g, 'generic'); zeGroove(false); zeSfx('over');
     const m = ze.music; if (m) m.rest = setTimeout(() => m.ac.suspend().catch(() => {}), 2600);   // after the trombone
   }
   function zeKick(g) {
@@ -12306,6 +12306,9 @@ const toolName = n => {
   function zeFallThrough(g) { if (g.phase === 'play' && g.gy < ZE_FLOOR && g.y >= g.gy - .5) { g.drop = .25; g.vy = 60; } }
   /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
   const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
+  /** The trackpad feels it (2026-10-30, the next round): the board's haptic bump on a kick that lands, a car arriving and
+   *  the K.O. — the app's, never the demo's. */
+  const zeBump = (g, kind) => { if (!g.demo) haptic(kind); };
   /** A hit-stop (2026-10-30, the next round): the picture holds d — a kick that lands, a bite, a combo, the K.O. —, and a
    *  combo punches the camera in a little (g.punch, none under reduced motion). */
   const zeHold = (g, d, punch = false) => { g.freeze = Math.max(g.freeze, d); if (punch) g.punch = .2; };
@@ -12536,7 +12539,7 @@ const toolName = n => {
     zeBits(g, g.x, ZE_FLOOR - 20, ['#d9c7e8', '#ffffff', '#9aa0a8'], 14);
     if (kind === 'focus') zeBanner(g, 'FORD FOCUS!', 'YALLA — FIVE SECONDS OF SPEED', ['#5b8ff0', '#ffd23f'], 2.2);
     else zeBanner(g, 'MERCEDES A-CLASS…', 'THE PUNISHMENT — FIVE SLOW SECONDS', ['#c8ccd2', '#ff5a64'], 2.2);
-    zeSfx(kind); zeEngine(kind); zeMode(kind);
+    zeSfx(kind); zeEngine(kind); zeMode(kind); zeBump(g, 'levelChange');
   }
   const zeFast = g => g.dash > 0 || (g.ride?.kind === 'focus' && Math.abs(g.vx) > 260);   // quick enough to leave afterimages
   /** …and goes off on its own: the Focus at speed, the A-Class over onto its roof first, as at the moose test. */
@@ -12705,7 +12708,7 @@ const toolName = n => {
       if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
         if (it.from === 'avo' && g.avo && !g.avo.leaving) zeAvoBack(it);   // hers go back to her
-        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); g.nun = Math.min(ZE_NUN, g.nun + 1); zeCount(g, 'kicked', 100, 'cem'); zeScore(g, 5);
+        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); zeBump(g, 'alignment'); g.nun = Math.min(ZE_NUN, g.nun + 1); zeCount(g, 'kicked', 100, 'cem'); zeScore(g, 5);
         continue;
       }
       if (it.kind === 'peixe' && (zeTouch(it, mouth, 30) || it.y >= ZE_FLOOR - 30)) {   // the board's fish is let go, not eaten: it swims off
