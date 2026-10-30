@@ -985,7 +985,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
   change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
   on that commit beside it (a worktree, the runs interleaved; `--runs n`, medians), `--sample` the top of macOS
-  `sample`'s stacks. **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
+  `sample`'s stacks, `--prefs '<json>'` another look (2026-10-30: `'{"layout":"sidebar"}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every

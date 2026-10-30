@@ -14,6 +14,8 @@
 //                                      stacks, idle waits left out (the CPU numbers read high while it is attached)
 //   npm run perf -- --app [s]          the app as it runs instead: its board's web process, CPU over s seconds (10), its
 //                                      memory, and where its time went — the real board, your chats and settings
+//   npm run perf -- --prefs '<json>'   the page's prefs over the board's own — another look's cost, as
+//                                      '{"layout":"sidebar"}' (2026-10-30)
 //   npm run perf -- --json             the results as JSON on the last line too
 //   CEIL_REST=15 CEIL_POINTER=25 CEIL_SCROLL=45 CEIL_HOME=30 CEIL_OPEN=400 CEIL_LAYERS=600   the ceilings, in % of a
 //   core, ms and layers — about twice what the board measured on 2026-10-13
@@ -31,10 +33,10 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
 const flag = name => { const i = argv.indexOf(name); if (i < 0) return false; argv.splice(i, 1); return true; };
 const value = name => { const i = argv.indexOf(name); if (i < 0) return null; const v = argv[i + 1]; argv.splice(i, 2); return v; };
-const JSON_OUT = flag('--json'), SAMPLE = flag('--sample'), RUNS = Math.max(1, Number(value('--runs') || 1)), AGAINST = value('--against');
+const JSON_OUT = flag('--json'), SAMPLE = flag('--sample'), RUNS = Math.max(1, Number(value('--runs') || 1)), AGAINST = value('--against'), PREFS = value('--prefs');
 let APP = null;
 { const i = argv.indexOf('--app'); if (i >= 0) { const s = Number(argv[i + 1]); APP = s > 0 ? s : 10; argv.splice(i, s > 0 ? 2 : 1); } }
-if (argv.length) { console.error('usage: npm run perf -- [--runs n] [--against <ref>] [--sample] [--json] | --app [seconds]'); process.exit(2); }
+if (argv.length) { console.error('usage: npm run perf -- [--runs n] [--against <ref>] [--prefs <json>] [--sample] [--json] | --app [seconds]'); process.exit(2); }
 const env = process.env;
 const CEIL = { rest: +(env.CEIL_REST || 15), pointer: +(env.CEIL_POINTER || 25), scroll: +(env.CEIL_SCROLL || 45), home: +(env.CEIL_HOME || 30),
   open: +(env.CEIL_OPEN || 400), layers: +(env.CEIL_LAYERS || 600) };
@@ -163,6 +165,7 @@ for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e =
 
 // ---- one run: the page in WebKit, its phases, and the web process's CPU time sampled beside it ----
 const prefs = { barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skin: 'own-dark', look: 'dark' };
+if (PREFS) { try { Object.assign(prefs, JSON.parse(PREFS)); } catch { console.error('--prefs is not JSON'); process.exit(2); } }
 const body = `await sleep(3000);
   const rules = ${ANIM_RULES}, list = document.querySelector('#slist'), out = { phases: [], opens: [] };
   // a phase with nothing to do each frame sleeps (2026-10-15): a frame asked for every frame is a style pass and a walk of
