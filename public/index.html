@@ -2476,26 +2476,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #lunchd .lfoot kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
   /* ⌥⌘Z's game (2026-10-30): the canvas is a picture of its own — a 70s dusk over Barcelos, not a theme's —, its frame
      and foot the board's, as lunch's chalkboard. As wide as the window lets a 16:9 picture and its foot stand. */
-  #zeGame { width: min(960px, 94vw, calc((90vh - 52px) * 16 / 9)); max-width: none; padding: 0; border: 0; background: transparent; overflow: visible; outline: none; }
+  #zeGame { width: min(94vw, calc((96vh - 58px) * .8)); max-width: none; max-height: none; padding: 0; border: 0; background: transparent; overflow: visible; outline: none; }
   #zeGame[open] { display: grid; gap: 10px; }
   #zeGame::backdrop { background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(10px); }
-  #zeCanvas { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--r-4); background: #2a0f4f; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); touch-action: none; }
+  #zeCanvas { display: block; width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-4); background: #2a0f4f; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); touch-action: none; }
   #zeGame .zefoot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
   #zeGame .zefoot .spacer { flex: 1; }
   #zeGame .zefoot .btn { font-size: var(--fs-xs); }
-  /* Settings › General › Zé's game (2026-10-30, later): his face as the game wears it, and the frame that picks it */
-  .pop .zefbtns { display: flex; align-items: center; gap: 6px; }
-  .pop #zeThumb { width: 26px; height: 34px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 25%, transparent); }
-  .pop #zeThumb[hidden] { display: none; }
-  .pop .zeframe { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 10px; border-radius: var(--r-3); background: var(--ctl); }
-  .pop .zeframe[hidden] { display: none; }
-  .pop #zeFrameView { width: 260px; height: 260px; border-radius: var(--r-3); background: var(--crust); cursor: grab; touch-action: none; }
-  .pop #zeFrameView:active { cursor: grabbing; }
-  .pop .zefside { flex: 1 1 180px; display: grid; gap: 10px; align-content: center; min-width: 0; font-size: var(--fs-sm); color: var(--muted); }
-  .pop .zefside small { font-size: var(--fs-xs); line-height: 1.4; }
-  .pop .zezoom { display: flex; align-items: center; gap: 8px; color: var(--ink); }
-  .pop .zezoom input { flex: 1; min-width: 0; accent-color: var(--accent); }
-  .pop .zefgo { display: flex; gap: 6px; }
   #zeGame .zefoot kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
   .home .hlunch:empty { display: none; }
   .home .hlunch .chalk { padding: 14px 20px 18px; border-width: 8px; box-shadow: inset 0 0 50px rgba(0, 0, 0, .4); overflow: visible; }
@@ -2648,10 +2635,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         <section class="sgrp" id="fsRow" hidden><h6 class="sgh" id="sgWindow">Window</h6><div class="slist" role="group" aria-labelledby="sgWindow">
           <div class="srow set" data-kw="full screen notch space fill green button window"><label class="sl" for="fsPick"><b>Full screen</b><small>What ⌃⌘F and the green button do</small></label><span class="ssel"><select id="fsPick"><option value="fill">Up to the notch</option><option value="space">Its own Space</option></select></span></div>
         </div></section>
-        <section class="sgrp"><h6 class="sgh" id="sgGame">Zé's game</h6><div class="slist" role="group" aria-labelledby="sgGame">
-          <div class="srow set" id="zeFaceRow" data-kw="game ze face picture photo head hero bruce lee barcelos"><span class="sl"><b>His face</b><small id="zeFaceSay">⌥⌘Z's hero wears a picture you choose, framed to his head</small></span><span class="zefbtns"><img id="zeThumb" alt="His face, as the game wears it" hidden><button type="button" class="btn" id="zeFaceChoose">Choose…</button><button type="button" class="btn danger" id="zeFaceDrop" hidden>Remove</button></span><input type="file" id="zeFaceFile" accept="image/*" hidden>
-            <div class="zeframe" id="zeFrame" hidden><canvas id="zeFrameView" width="260" height="260" tabindex="0" aria-label="The picture, his head in the oval — drag it or the arrows move it, + and − zoom"></canvas><div class="zefside"><small>Drag the picture until his head fills the oval; the slider or a scroll zooms. Only the oval is kept, here on this Mac.</small><label class="zezoom">Zoom <input type="range" id="zeZoom" min="1" max="6" step="0.01" value="1"></label><span class="zefgo"><button type="button" class="btn" id="zeFrameNo">Cancel</button><button type="button" class="btn" id="zeFrameUse">Use it</button></span></div></div></div>
-        </div></section>
       </div>
       <div class="spane" data-tab="look" hidden role="tabpanel" id="spLook" aria-labelledby="stLook">
         <h5 class="sph">Appearance</h5>
@@ -2769,8 +2752,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="lfoot" id="lunchFoot"></div>
 </dialog>
 <dialog id="zeGame" aria-label="Zé, the Bruce Lee of Barcelos — a game" tabindex="-1">
-  <canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat and dodges the vegetables"></canvas>
-  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run</span><span><kbd>↑</kbd> jump</span><span><kbd>space</kbd> kick</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeFaceGo" title="Settings › General › Zé's game">His face…</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
+  <canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat, grows, and dodges the vegetables"></canvas>
+  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run</span><span><kbd>↑</kbd> jump</span><span><kbd>space</kbd> kick</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeTune" title="The music — T">♪ funk</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
   <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
@@ -2898,7 +2881,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDiff: 1, zeSound: true };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDiff: 1, zeSound: true, zeMusic: 'funk' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3027,13 +3010,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     sset.opener = document.activeElement !== document.body ? document.activeElement : null;
     settingsTab(sset.tab);   // the pane last shown, its tab lit, no search
     dlg.showModal(); $('#sq').focus(); repostPane();
-    loadJira(); loadEditors(); zeFaceLoad();
+    loadJira(); loadEditors();
   };
   const settingsToggle = () => settingsOpen(!$('#settings').open);
   $('#settings').addEventListener('close', () => {
     if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); }
     setupUi.open = null; for (const r of document.querySelectorAll('#setup .srow.proj.open')) { r.classList.remove('open'); r.querySelector('.stile').setAttribute('aria-expanded', 'false'); }
-    window.CSS?.highlights?.delete('sfind'); keySure(false); zeFrameShut(); if (chatUi.setSure) { chatUi.setSure = false; renderChatSet(true); }
+    window.CSS?.highlights?.delete('sfind'); keySure(false); if (chatUi.setSure) { chatUi.setSure = false; renderChatSet(true); }
     const o = sset.opener; sset.opener = null;
     if (o?.isConnected && !document.querySelector('dialog[open]') && (document.activeElement === document.body || !document.activeElement)) o.focus({ preventScroll: true });
     repostPane();
@@ -5895,7 +5878,7 @@ const toolName = n => {
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['⌥⌘M', 'Go to', 'lunch — today\'s menus, on a chalkboard', 'the places you go, read each morning · Going and In 15 min at lunch time · again closes it · Settings › Lunch sets it up', ['alt:KeyM']],
-    ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'he eats the meat and dodges the greens, or kicks them out of the sky · four ways to play, ← → on the title · level 3 is ENTER THE DRAGON · ← → run, ↑ jumps, space kicks, P pauses, M the sound · his face is Settings › General\'s · again closes it', ['alt:KeyZ']],
+    ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'meat makes him buff, greens thin — down to his bones · three meats in a row bring a Ford Focus, three greens a Mercedes A-Class · four ways to play, ← → on the title · level 3 is ENTER THE DRAGON · ← → run, ↑ jumps, space kicks, P pauses, M the sound, T the funk or the vira · again closes it', ['alt:KeyZ']],
     ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
@@ -11913,26 +11896,30 @@ const toolName = n => {
   });
 
   // ---- Zé: ⌥⌘Z's game (2026-10-30) ---------------------------------------------------------------------------------
-  // Zé, the Bruce Lee of Barcelos: meat falls and he eats it; vegetables fall and he dodges them, or kicks them out of
-  // the sky — and some lunch that looks safe has a leaf in it. ← → (A D, or the pointer over the picture) run, ↑ jumps,
-  // space kicks, P pauses, M the sound; esc or ⌥⌘Z again closes. The golden rooster — Barcelos' own, for luck — is a
-  // life. His face is the picture Settings › General framed for him (GET /api/ze, asked on each opening — see zeFrame),
-  // the ellipse inscribed in it his head; with none, a face of no one in particular, drawn here.
-  // From Trota's, the 8-bit game it learnt from (2026-10-30, later): four ways to play, picked on the title (ZE_DIFFS,
-  // prefs.zeDiff; a best for each, prefs.zeBest), a combo that grows every five in a row and goes with a miss, the mouth
-  // opening as food comes, food that drifts at the higher levels, a banner for each level, the K.O.'s Again · Menu, the
-  // restaurant behind him, its sign's bulbs chasing — and, at level ZE_DRAGON_LEVEL, its MODO FERA as ENTER THE DRAGON:
-  // Zé twice his size, on fire, the sky dark and struck, the band in A minor and faster, everything good to eat, for
-  // ZE_DRAGON s. A canvas in a modal dialog, a world of its own — its colours are the picture's, not a theme's. Its
-  // frames run only while it is open and not paused; its music is Web Audio of its own (a drum kit, a slap bass, an E7#9
-  // clav and a horn line, swung sixteenths at ZE_BPM, quicker each level, planned ahead on the audio clock), made on the
+  // Zé, the Bruce Lee of Barcelos, his face in pixels (ZE_FACE: the hair, the round gold glasses, the beard): meat falls
+  // and he eats it and grows — broader, his arms thicker, pecs and biceps —; vegetables make him thinner, down to his
+  // ribs and then his bones, the K.O. — unless he dodges them or kicks them out of the sky; some lunch that looks safe
+  // has a leaf in it. Three meats in a row bring a Ford Focus, ZE_RIDE seconds of speed; three greens a Mercedes A-Class,
+  // ZE_RIDE slow ones. ← → (A D, or the pointer over the picture) run, ↑ jumps, space kicks (honks, in a car), P pauses,
+  // M the sound, T the music — the funk, or Barcelos' own vira; esc or ⌥⌘Z again closes. The golden rooster, Barcelos'
+  // for luck, is muscle. Taller than wide, the window's height (2026-10-30, last).
+  // From Trota's, the 8-bit game it learnt from (2026-10-30, later): four ways to play (ZE_DIFFS, prefs.zeDiff; a best
+  // each, prefs.zeBest), a combo every five in a row, the mouth opening as food comes, food that drifts at the higher
+  // levels, a banner each level, the K.O.'s Again · Menu, the restaurant behind him, its sign's bulbs chasing — and at
+  // level ZE_DRAGON_LEVEL its MODO FERA as ENTER THE DRAGON: twice his size, on fire, the sky dark and struck, the band
+  // in A minor, everything good to eat, for ZE_DRAGON s. For those who know (the Mossad's): a briefcase that falls once a
+  // round makes him AGENT ZÉ (sunglasses, an earpiece, a TOP SECRET stamp), one kick in six is KRAV MAGA, a falafel is
+  // a green, the Focus says YALLA.
+  // A canvas in a modal dialog, a world of its own — its colours are the picture's, not a theme's. Its frames run only
+  // while it is open and not paused; its music is Web Audio of its own, planned ahead on the audio clock, made on the
   // first start, suspended by a pause or a K.O., closed with the dialog or by M — never left rendering silence (the
   // alerts' AUDIO_REST_MS story). Under reduced motion nothing shakes, flashes or blinks.
-  const ZE_W = 800, ZE_H = 450, ZE_FLOOR = 392, ZE_BPM = 104, ZE_16 = 60 / ZE_BPM / 4, ZE_16D = .125;
+  const ZE_W = 720, ZE_H = 900, ZE_FLOOR = 842, ZE_FALL = 1.5;   // the picture, the floor, how much quicker food falls the longer way
+  const ZE_BPM = 104, ZE_16 = 60 / ZE_BPM / 4, ZE_16D = .125, ZE_8V = 60 / 184 / 2;   // the funk's sixteenth, the dragon's, the vira's quaver
   const ZE_MEAT = [['🥩', 15, 'posta'], ['🍗', 10, 'frango'], ['🍖', 10, 'costeleta'], ['🥓', 10, 'toucinho'], ['🌭', 10, 'chouriço']];
   // the greens, and lunch with a leaf in it (Trota's TEM ALFACE!) — each with what a hit says
   const ZE_VEG = [['🥦', 'BLEH! brócolos'], ['🥕', 'BLEH! cenoura'], ['🥬', 'BLEH! alface'], ['🌽', 'BLEH! milho'], ['🍆', 'BLEH! beringela'],
-    ['🥒', 'BLEH! pepino'], ['🫑', 'BLEH! pimento'], ['🧅', 'BLEH! cebola'], ['🍔', 'HAS LETTUCE!'], ['🥪', 'HAS TOMATO!'], ['🥙', 'HAS SALAD!']];
+    ['🥒', 'BLEH! pepino'], ['🫑', 'BLEH! pimento'], ['🧅', 'BLEH! cebola'], ['🍔', 'HAS LETTUCE!'], ['🥪', 'HAS TOMATO!'], ['🥙', 'HAS SALAD!'], ['🧆', 'FALAFEL? CHICKPEAS!']];
   const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once', 'the burger had lettuce'];
   // the four ways to play: how fast and how often it falls, how green it gets (at level 1, more a level, at most), how
   // far past him his mouth reaches, the points a level takes, the level food starts drifting at; HARDCORE deals from a
@@ -11943,34 +11930,56 @@ const toolName = n => {
     { id: 'hard', name: 'HARD', c: '#ff5a64', say: 'faster, and greener', speed: 1.3, spawn: .78, veg: [.42, .03, .62], reach: .85, step: 120, drift: 2 },
     { id: 'hardcore', name: 'HARDCORE', c: '#c77dff', say: 'five meats in every fifty', speed: 1.25, spawn: .7, bag: [5, 50], reach: .85, step: 60, drift: 3 }];
   const ZE_DRAGON_LEVEL = 3, ZE_DRAGON = 16, ZE_DRAGON_IN = 1.2, ZE_DRAGON_OUT = .8;
+  // his bulk: a meat adds one (to ZE_MASS_MAX), a green takes one; none left is his bones, and the K.O.
+  const ZE_MASS0 = 6, ZE_MASS_MAX = 12;
+  // the cars, ZE_RIDE s each: three meats in a row bring the Focus, three greens the A-Class
+  const ZE_RIDE = 10, ZE_CARS = { focus: { name: 'FORD FOCUS', speed: 1.8, c: '#5b8ff0' }, aclass: { name: 'MERCEDES A-CLASS', speed: .5, c: '#c8ccd2' } };
   // the music, two bars of bass and one of horns: step → [midi note, sixteenths, popped]
   const ZE_BASS = [{ 0: [40, 2], 2: [52, 1, 1], 3: [40, 1], 6: [43, 2], 8: [45, 1], 10: [52, 1, 1], 11: [50, 1], 14: [47, 2] },
     { 0: [40, 2], 2: [52, 1, 1], 3: [40, 1], 5: [43, 1], 7: [45, 1], 9: [46, 1], 10: [47, 2], 12: [50, 1], 14: [52, 1, 1], 15: [50, 1] }];
   const ZE_CLAV = { 2: .7, 6: 1, 9: .5, 11: .8, 14: 1 }, ZE_HORN = { 0: [64, 1], 2: [67, 1], 4: [69, 3], 8: [67, 1], 10: [64, 2] };
   // the dragon's theme, Trota's MODO FERA: A minor, a square lead, a sawtooth bass a bar a note (ZE_FBASS)
   const ZE_FLEAD = [69, 0, 72, 0, 76, 0, 81, 79, 77, 0, 76, 0, 74, 0, 72, 71, 69, 0, 72, 0, 76, 0, 82, 81, 79, 0, 77, 76, 74, 72, 71, 68], ZE_FBASS = [45, 41, 43, 40];
+  // the vira (T), Minho's dance at Barcelos' fair: sixteen bars of three-four in G, six quavers a bar — a note, -1 held,
+  // 0 a rest —, its chords a bar each, the cavaquinho's voicings and the viola's roots
+  const ZE_VIRA = [[74, -1, 71, 74, 79, 78], [76, -1, 74, -1, 71, -1], [72, -1, 69, 72, 78, 76], [74, -1, 72, -1, 69, -1],
+    [66, 69, 72, 69, 66, 69], [74, -1, 72, 71, 69, 72], [71, -1, 67, 71, 74, 71], [79, -1, -1, 0, 0, 0],
+    [76, -1, 72, 76, 79, 76], [76, 74, 72, -1, 76, -1], [74, -1, 71, 74, 79, -1], [78, 76, 74, -1, 71, -1],
+    [69, -1, 72, 76, 74, 72], [71, -1, 69, -1, 66, -1], [67, 71, 74, 79, 78, 76], [79, -1, -1, 0, 0, 0]];
+  const ZE_VIRA_CH = 'GGDDDDGGCCGGDDGG', ZE_CHORD = { G: [55, 59, 62, 67], D: [57, 62, 66, 72], C: [55, 60, 64, 67] }, ZE_ROOT = { G: 43, D: 50, C: 48 };
+  // his face in pixels: dark hair, round gold glasses, a full beard — a drawing, no picture; the mouth open for a bite
+  // (ZE_OPEN's rows), sunglasses and an earpiece as AGENT ZÉ (ZE_SPY's), and what is left at the end (ZE_SKULL, his
+  // glasses still on). Each a canvas once (zeSprite), outlined, drawn unsmoothed.
+  const ZE_PAL = { h: '#2a1f1c', s: '#eab995', S: '#c98f6d', b: '#33261f', B: '#17110f', g: '#c9a46a', e: '#2a1f1c', w: '#ffffff', m: '#8a3b3b',
+    o: '#4a1020', K: '#0e0c12', L: '#f2ead8', l: '#c9bfa8', n: '#e8e8e8' };
+  const ZE_FACE = ['......hhhhhhhh......', '....hhhhhhhhhhhh....', '...hhhhhhhhhhhhhh...', '..hhhhhhhhhhhhhhhh..', '..hhhhhhhhhhhhhhhh..',
+    '.hhhsssssssssssshhh.', '.hssssssssssssssssh.', '.hssssssssssssssssh.', '.hsBBBBssssssBBBBsh.', 'ShggggggssssgggggghS',
+    'SbgseesggggggseesgbS', 'SbgwsssgssssgwsssgbS', '.bggggggsSSsggggggb.', '.bbsssssSSSSsssssbb.', '.bbbssssSSSSssssbbb.',
+    '.bbbbbBBBBBBBBbbbbb.', '.bbbbbbmmmmmmbbbbbb.', '.bbbbbbbbbbbbbbbbbb.', '..bbbbBbbbbbbBbbbb..', '..bbbbbbbbbbbbbbbb..',
+    '...bbbBbbbbbbBbbb...', '....bbbbbbbbbbbb....', '.....bbbbbbbbbb.....', '.......bbbbbb.......'];
+  const ZE_OPEN = { 16: '.bbbbbmoooooombbbbb.', 17: '.bbbbbmoooooombbbbb.', 18: '..bbbbBmmmmmmBbbbb..' };
+  const ZE_SPY = { 10: 'SbgKKKKggggggKKKKgbS', 11: 'SbgwKKKgssssgwKKKgbS', 12: 'nbggggggsSSsggggggb.', 13: 'nbbsssssSSSSsssssbb.', 14: 'nbbbssssSSSSssssbbb.' };
+  const ZE_SKULL = ['......LLLLLLLL......', '....LLLLLLLLLLLL....', '...LLLLLLLLLLLLLL...', '..LLLLLLLLLLLLLLLL..', '..LLLLLLLLLLLLLLLL..',
+    '.LLLLLLLLLLLLLLLLLL.', '.LLLLLLLLLLLLLLLLLL.', '.LLLLLLLLLLLLLLLLLL.', '.LlLLLLLLLLLLLLLLlL.', '.LggggggLLLLggggggL.',
+    '.LgKKKKggggggKKKKgL.', '.LgKKKKgLLLLgKKKKgL.', '.LggggggLKKLggggggL.', '.lLLLLLLLKKLLLLLLLl.', '..lLLLLLLLLLLLLLLl..',
+    '...lLLLLLLLLLLLLl...', '....LKLKLKLKLKLK....', '....LLLLLLLLLLLL....', '.....lLLLLLLLLLl.....'];
   const zePick = a => a[Math.random() * a.length | 0], zeHz = n => 440 * 2 ** ((n - 69) / 12);
   const zeDiff = () => ZE_DIFFS[prefs.zeDiff] || ZE_DIFFS[1];
   /** The best of each way to play, by its id; a number is NORMAL's, from before there were four. */
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
-  const zeRound = phase => ({ phase, t: 0, score: 0, lives: 3, streak: 0, mult: 1, level: 1, next: zeDiff().step, x: phase === 'title' ? 680 : ZE_W / 2, y: ZE_FLOOR,
-    vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, gape: false, spawn: .9, shake: 0, flash: 0, red: 0,
-    items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null, lightT: 0, sel: 0, overT: 0, best: false, ko: '' });
-  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, face: null, asked: 0, glyphs: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
+  const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
+    x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
+  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
+  const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = prefs.zeMusic === 'vira' ? '♪ vira de Barcelos' : '♪ funk'; };
 
   function zeOpen() {
     const dlg = $('#zeGame'); if (dlg.open) return;
     if (inApp) post({ type: 'focus' });
-    ze.g = zeRound('title'); ze.keys = { l: 0, r: 0 }; ze.aim = null;
-    const ask = ++ze.asked;   // the face as it is now: one put there since the last game is worn, one taken away goes
-    api('GET', '/api/ze').then(d => {
-      if (ask !== ze.asked) return;
-      if (!d.face) { ze.face = null; return; }
-      const img = new Image(); img.onload = () => { if (ask === ze.asked) ze.face = img; }; img.src = d.face;
-    }, () => {});   // on purpose: no face is the drawn one
-    $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off';
+    ze.g = zeRound('title'); ze.keys = { l: 0, r: 0 }; ze.aim = null; zeLabels();
     dlg.showModal(); repostPane(); dlg.focus();
     zeSize(); zeGo();
   }
@@ -12002,23 +12011,36 @@ const toolName = n => {
   function zePause(on) {
     ze.g.phase = on ? 'pause' : 'play';
     const ac = ze.music?.ac; if (ac) (on ? ac.suspend() : ac.resume()).catch(() => {});
-    else if (!on && prefs.zeSound) zeGroove(true);   // the sound turned on while it stood
+    else if (!on && prefs.zeSound) { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }   // the sound turned on while it stood
     if (on) { zeStop(); zeDraw(); } else zeGo();
   }
   function zeOver(g) {
-    Object.assign(g, { phase: 'over', ko: zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null }); g.words.length = 0; g.flames.length = 0;
+    if (g.ride) zeLeave(g);
+    Object.assign(g, { phase: 'over', mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null });
+    g.words.length = 0; g.flames.length = 0;
     const bests = zeBests(), id = zeDiff().id;
     if (g.score > (bests[id] || 0)) { bests[id] = g.score; g.best = true; savePrefs(); }
     zeGroove(false); zeSfx('over');
     const m = ze.music; if (m) m.rest = setTimeout(() => m.ac.suspend().catch(() => {}), 2600);   // after the trombone
   }
-  function zeKick(g) { if (g.cool > 0) return; g.kick = .34; g.cool = .48; zeSfx('whoosh'); }
-  function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR) return; g.vy = -540; zeSfx('jump'); }
-  function zeMute() {
-    prefs.zeSound = !prefs.zeSound; savePrefs();
-    $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off';
-    if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') zeGroove(true);
+  function zeKick(g) {
+    if (g.cool > 0) return;
+    g.cool = .48;
+    if (!g.ride) { g.kick = .34; zeSfx('whoosh'); return; }
+    const focus = g.ride.kind === 'focus';   // in a car the key is its horn
+    zeSfx(focus ? 'beep' : 'meep'); zeWord(g, focus ? 'BEEP BEEP!' : 'meep…', g.x, g.y - 200 * zeSz(g), '#fff3c4');
   }
+  function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR || g.ride) return; g.vy = -560; zeSfx('jump'); }
+  function zeMute() {
+    prefs.zeSound = !prefs.zeSound; savePrefs(); zeLabels();
+    if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }
+  }
+  /** T: the funk or the vira, from the next beat. */
+  function zeTune() {
+    prefs.zeMusic = prefs.zeMusic === 'vira' ? 'funk' : 'vira'; savePrefs(); zeLabels();
+    const m = ze.music; if (m?.track === 'band') { m.step = 0; m.at = m.ac.currentTime + .05; }
+  }
+  $('#zeTune').addEventListener('click', () => { zeTune(); $('#zeGame').focus(); });
 
   $('#zeGame').addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;   // ⌥⌘Z, ⌘W and the rest are the board's
@@ -12028,7 +12050,7 @@ const toolName = n => {
     if (g.phase === 'over' && (left || right)) { take(); if (!e.repeat && g.overT > .8) g.sel = 1 - g.sel; return; }
     if (left) { take(); ze.keys.l = 1; ze.aim = null; return; }
     if (right) { take(); ze.keys.r = 1; ze.aim = null; return; }
-    if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'KeyP', 'KeyM'].includes(k)) return;
+    if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'KeyP', 'KeyM', 'KeyT'].includes(k)) return;
     take(); if (e.repeat) return;   // a key held down is one kick
     if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {});   // a press may start it
     if (k === 'Space' || k === 'Enter') {
@@ -12037,6 +12059,7 @@ const toolName = n => {
     }
     else if (k === 'ArrowUp' || k === 'KeyW') zeJump(g);
     else if (k === 'KeyP') { if (g.phase === 'play' || g.phase === 'pause') zePause(g.phase === 'play'); }
+    else if (k === 'KeyT') zeTune();
     else zeMute();
   });
   $('#zeGame').addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0; if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0; });
@@ -12069,27 +12092,31 @@ const toolName = n => {
     return g.bag.pop();
   }
   function zeDrop(g) {
-    const D = zeDiff(), veg = g.dragon ? Math.random() < .5 : zeGreen(g), galo = !veg && !g.dragon && g.lives < 5 && Math.random() < .035;
+    const D = zeDiff(), veg = g.dragon ? Math.random() < .5 : zeGreen(g), galo = !veg && !g.dragon && g.mass < ZE_MASS_MAX - 1 && Math.random() < .035;
+    const spy = !veg && !galo && !g.dragon && !g.cased && g.level >= 2 && Math.random() < .03;   // the briefcase: once a round, from level 2
     let it;
-    if (galo) it = { kind: 'galo', e: '🐓', pts: 50, say: 'GALO! +1 life' };
+    if (spy) { it = { kind: 'case', e: '💼', pts: 100, say: 'CLASSIFIED' }; g.cased = true; }
+    else if (galo) it = { kind: 'galo', e: '🐓', pts: 50, say: 'GALO! +2 muscle' };
     else if (veg) { const [e, say] = zePick(ZE_VEG); it = { kind: 'veg', e, say }; }
     else { const [e, pts, say] = zePick(ZE_MEAT); it = { kind: 'meat', e, pts, say }; }
-    const drift = g.level >= D.drift ? Math.min(110, (g.level - D.drift + 1) * 22) : 20, fall = g.dragon ? 1 : D.speed;   // past its level, food drifts — off the walls
+    const drift = g.level >= D.drift ? Math.min(110, (g.level - D.drift + 1) * 22) : 20, fall = (g.dragon ? 1 : D.speed) * ZE_FALL;   // past its level, food drifts — off the walls
     g.items.push(Object.assign(it, { x: 30 + Math.random() * (ZE_W - 60), y: -24, vx: (Math.random() * 2 - 1) * drift, vy: (60 + g.level * 18 + Math.random() * 50) * fall,
       g: (110 + g.level * 16) * fall, rot: Math.random() * 6, spin: (Math.random() - .5) * 4 }));
   }
   const zeTouch = (it, b, r = 16) => { const x = Math.max(b.l, Math.min(it.x, b.r)), y = Math.max(b.t, Math.min(it.y, b.b)); return (it.x - x) ** 2 + (it.y - y) ** 2 < r * r; };
-  const zeWord = (g, s, x, y, c, big = false) => g.words.push({ s, x: Math.max(90, Math.min(ZE_W - 90, x)), y, c, big, t: 0 });
+  const zeWord = (g, s, x, y, c, big = false) => g.words.push({ s, x: Math.max(110, Math.min(ZE_W - 110, x)), y, c, big, t: 0 });
   function zeBits(g, x, y, cs, n) {
     for (let i = 0; i < n; i++) g.bits.push({ x, y, vx: (Math.random() - .5) * 320, vy: -120 - Math.random() * 260, t: 0, life: .5 + Math.random() * .4, c: zePick(cs), r: 2 + Math.random() * 3 });
   }
   const zeBanner = (g, s, sub = '', cs = ['#ffd23f', '#a6dc5a'], t = 1.6) => { g.banner = { s, sub, cs, t }; };
-  /** His size: 1, twice it in the dragon's time — growing and shrinking in four steps, as a sprite would. */
+  /** The dragon's size: 1, twice it in its time — growing and shrinking in four steps, as a sprite would. */
   function zeK(g) {
     if (!g.dragon) return 1;
     const el = ZE_DRAGON - g.dragon;
     return el < ZE_DRAGON_IN ? 1 + Math.floor(el / ZE_DRAGON_IN * 4) / 4 : g.dragon < ZE_DRAGON_OUT ? 1 + Math.ceil(g.dragon / ZE_DRAGON_OUT * 4) / 4 : 2;
   }
+  const zeSz = g => (.84 + Math.max(0, g.mass) * .03) * zeK(g);   // his size: his bulk's, and the dragon's
+  const zeTw = g => 9 + Math.max(0, g.mass) * 1.6;   // his half-width at the shoulders
   const zeDark = g => g.dragon ? Math.min(1, (ZE_DRAGON - g.dragon) / ZE_DRAGON_IN, g.dragon / ZE_DRAGON_OUT) : 0;   // the sky's turn, 0 to 1
   function zeScore(g, n) {
     g.score += n;
@@ -12101,6 +12128,7 @@ const toolName = n => {
   function zeDragon(g, on) {
     g.streak = 0; g.mult = 1;
     if (on) {
+      if (g.ride) zeLeave(g);
       Object.assign(g, { dragon: ZE_DRAGON, hurt: 0, shake: .9, flash: .3, lightT: 1.4 });
       zeBanner(g, 'ENTER THE DRAGON!', 'MODO FERA — EAT EVERYTHING', ['#ff7a2a', '#ffd23f'], 2.4); zeSfx('transform'); zeTrack('dragon');
       return;
@@ -12108,34 +12136,61 @@ const toolName = n => {
     Object.assign(g, { dragon: 0, bolt: null, spawn: 1.2, level: ZE_DRAGON_LEVEL + 1, next: g.score + zeDiff().step }); g.flames.length = 0;
     for (const it of g.items) if (!it.out) zeBits(g, it.x, it.y, ['#ffd23f', '#ff7a2a', '#e43b44'], 5);   // what is left of the feast goes up in smoke
     g.items = g.items.filter(it => it.out);
-    zeBanner(g, `LEVEL ${g.level}!`, 'BACK TO NORMAL', ['#ffd23f', '#a6dc5a'], 2.2); zeSfx('detransform'); zeTrack('funk');
+    zeBanner(g, `LEVEL ${g.level}!`, 'BACK TO NORMAL', ['#ffd23f', '#a6dc5a'], 2.2); zeSfx('detransform'); zeTrack('band');
   }
   function zeStrike(g) {   // lightning, while the dragon is out
     let x = 60 + Math.random() * (ZE_W - 120), y = 20; const pts = [[x, y]];
-    while (y < 300) { y += 18 + Math.random() * 30; x += (Math.random() - .5) * 70; pts.push([x, y]); }
+    while (y < 560) { y += 20 + Math.random() * 34; x += (Math.random() - .5) * 70; pts.push([x, y]); }
     g.bolt = { pts, t: .28 }; g.flash = .14; g.shake = Math.max(g.shake, .2); zeSfx('thunder');
   }
-  /** What meets him: meat (or anything at all, the dragon's) is eaten, the combo growing every five in a row; a green
-   *  costs a life; the rooster is one. */
+  /** A car comes for him: the Focus (YALLA — quick) or the A-Class (the punishment — slow), ZE_RIDE s; one there goes. */
+  function zeRide(g, kind) {
+    if (g.dragon || g.phase !== 'play') return;
+    if (g.ride) zeLeave(g);
+    Object.assign(g, { ride: { kind, t: ZE_RIDE, tilt: 0, vx: g.vx, wheel: 0 }, kick: 0, vy: 0, y: ZE_FLOOR });
+    zeBits(g, g.x, ZE_FLOOR - 20, ['#d9c7e8', '#ffffff', '#9aa0a8'], 14);
+    if (kind === 'focus') zeBanner(g, 'FORD FOCUS!', 'YALLA — TEN SECONDS OF SPEED', ['#5b8ff0', '#ffd23f'], 2.2);
+    else zeBanner(g, 'MERCEDES A-CLASS…', 'THE PUNISHMENT — TEN SLOW SECONDS', ['#c8ccd2', '#ff5a64'], 2.2);
+    zeSfx(kind); zeEngine(kind);
+  }
+  /** …and goes off on its own: the Focus at speed, the A-Class over onto its roof first, as at the moose test. */
+  function zeLeave(g) {
+    const r = g.ride; if (!r) return;
+    g.leaving = { kind: r.kind, x: g.x, f: g.f, t: 0, wheel: r.wheel, flip: 0 };
+    if (r.kind === 'aclass') zeWord(g, 'FAILED THE MOOSE TEST!', g.x, ZE_FLOOR - 150, '#c8ccd2', true);
+    g.ride = null; zeEngine(null);
+  }
+  /** What meets him: meat (or anything at all, the dragon's) is eaten and makes him bigger, the combo growing every five
+   *  in a row and a Focus coming every three; a green takes some of him — three in a row, the A-Class; none left, the
+   *  K.O.; the rooster is muscle; the briefcase, AGENT ZÉ. */
   function zeEat(g, it) {
-    const k = zeK(g), mx = g.x + g.f * 4 * k, my = g.y - 110 * k;
+    const k = zeSz(g), mx = g.x + g.f * 4 * k, my = g.y - 110 * k;
+    if (it.kind === 'case') {
+      g.agent = true; zeBanner(g, 'AGENT ZÉ', 'ON LOAN TO THE MOSSAD · סודי ביותר', ['#e8e8e8', '#5b8ff0'], 2.6);
+      zeBits(g, mx, my, ['#e8e8e8', '#5b8ff0', '#0e0c12'], 12); zeSfx('spy');
+      return zeScore(g, it.pts);
+    }
     if (it.kind === 'galo') {
-      g.lives = Math.min(5, g.lives + 1); zeWord(g, it.say, it.x, it.y - 24, '#ffd23f', true); zeBits(g, it.x, it.y, ['#ffd23f', '#e8322f', '#2b5cb8'], 14); zeSfx('galo');
+      Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + 2), pump: .3 });
+      zeWord(g, it.say, it.x, it.y - 24, '#ffd23f', true); zeBits(g, it.x, it.y, ['#ffd23f', '#e8322f', '#2b5cb8'], 14); zeSfx('galo');
       return zeScore(g, it.pts);
     }
     if (it.kind === 'veg' && !g.dragon) {
-      Object.assign(g, { lives: g.lives - 1, streak: 0, mult: 1, hurt: 1.4, red: .2, shake: .35 });
+      Object.assign(g, { mass: g.mass - 1, streak: 0, mult: 1, hurt: 1.4, red: .2, shake: .35, pump: -.3, greens: g.greens + 1 });
       zeWord(g, it.say, it.x, it.y - 24, '#9be15d', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#e8322f'], 10); zeSfx('bleh');
-      if (g.lives <= 0) zeOver(g);
+      if (g.mass <= 0) return zeOver(g);
+      if (g.greens >= 3) { g.greens = 0; zeRide(g, 'aclass'); }
       return;
     }
-    g.streak++;
+    g.streak++; g.greens = 0;
+    if (it.kind === 'meat') Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + 1), pump: .3 });
     const mult = 1 + Math.min(3, Math.floor(g.streak / 5)), up = mult > g.mult, pts = (it.kind === 'veg' ? 10 : it.pts) * mult;
     g.mult = mult; g.chomp = .3; if (g.dragon) g.shake = Math.max(g.shake, .08);
     if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); } else zeSfx(g.dragon ? 'chompBig' : 'chomp');
     zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : '#fff3c4');
     zeBits(g, mx, my, it.kind === 'veg' ? ['#5cbf4a', '#ff7a2a', '#ffd23f'] : ['#a0522d', '#e07a5f', '#f2cc8f'], g.dragon ? 12 : 6);
     zeScore(g, pts);
+    if (it.kind === 'meat' && g.streak % 3 === 0 && g.ride?.kind !== 'focus') zeRide(g, 'focus');
   }
   function zeStep(dt) {
     const g = ze.g; g.t += dt;
@@ -12146,19 +12201,34 @@ const toolName = n => {
     for (const f of g.flames) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; }
     g.flames = g.flames.filter(f => f.t < f.life);
     for (const n of ['shake', 'chomp', 'kick', 'flash', 'red']) g[n] = Math.max(0, g[n] - dt);
+    g.pump -= Math.sign(g.pump) * Math.min(Math.abs(g.pump), dt);   // a pump or a sag, easing back
     if (g.banner && (g.banner.t -= dt) <= 0) g.banner = null;
     if (g.bolt && (g.bolt.t -= dt) <= 0) g.bolt = null;
+    const l = g.leaving;
+    if (l) {
+      l.t += dt;
+      if (l.kind === 'aclass' && l.t < .6) l.flip = Math.PI * l.t / .6;   // over it goes, then slides off on its roof
+      else { l.x += l.f * (l.kind === 'focus' ? 640 : 320) * dt; l.wheel += l.f * (l.kind === 'focus' ? 640 : 0) * dt / 17; }
+      if (l.x < -220 || l.x > ZE_W + 220) g.leaving = null;
+    }
     if (g.phase === 'over') g.overT += dt;
     if (g.phase === 'title') { const t = g.t % 2.4; g.kick = t > 1.6 && t < 1.94 ? 1.94 - t : 0; g.gape = t < .45; return; }   // a kata while you read
     if (g.phase !== 'play') return;
-    const D = zeDiff(), k = zeK(g);
-    // Zé: runs where the keys or the pointer say, jumps, kicks — a little quicker each level, and as the dragon
+    const D = zeDiff(), k = zeSz(g), car = g.ride && ZE_CARS[g.ride.kind];
+    // Zé: runs where the keys or the pointer say — quicker each level, as the dragon, in the Focus; slower in the A-Class
     const aim = ze.aim == null || Math.abs(ze.aim - g.x) < 10 ? 0 : Math.sign(ze.aim - g.x), want = ze.keys.r - ze.keys.l || aim;
-    g.vx += (want * (380 + (g.level - 1) * 12) * (g.dragon ? 1.15 : 1) - g.vx) * Math.min(1, dt * 12);
+    g.vx += (want * (380 + (g.level - 1) * 12) * (g.dragon ? 1.15 : 1) * (car ? car.speed : 1) - g.vx) * Math.min(1, dt * (car ? 6 : 12));   // a car takes its time
     if (want) g.f = want;
-    g.x = Math.max(28 * k, Math.min(ZE_W - 28 * k, g.x + g.vx * dt));
+    const half = car ? 100 : 28 * k;
+    g.x = Math.max(half, Math.min(ZE_W - half, g.x + g.vx * dt));
     g.vy += 1500 * dt; g.y = Math.min(ZE_FLOOR, g.y + g.vy * dt); if (g.y >= ZE_FLOOR) g.vy = 0;
     g.run += Math.abs(g.vx) * dt * .05; g.cool = Math.max(0, g.cool - dt); g.hurt = Math.max(0, g.hurt - dt);
+    if (g.ride) {   // the car: its wheels, its pitch as it pulls away or brakes (the A-Class's the more), its engine, its time
+      const r = g.ride, pitch = Math.max(-.3, Math.min(.3, -(g.vx - r.vx) / Math.max(dt, .001) * .00012)) * (r.kind === 'aclass' ? 1.6 : .5);
+      r.tilt += (pitch * g.f - r.tilt) * Math.min(1, dt * 8); r.vx = g.vx; r.wheel += g.vx * dt / 17;
+      zeRev(Math.abs(g.vx));
+      if ((r.t -= dt) <= 0) zeLeave(g);
+    }
     g.spawn -= dt;
     if (g.dragon) {
       g.dragon = Math.max(0, g.dragon - dt);
@@ -12166,22 +12236,22 @@ const toolName = n => {
       if (g.spawn <= 0 && el > ZE_DRAGON_IN && g.dragon > ZE_DRAGON_OUT + .8) { zeDrop(g); g.spawn = .16 + Math.random() * .12; }   // a feast, while he is big
       if ((g.lightT -= dt) <= 0) { zeStrike(g); g.lightT = 1.3 + Math.random() * 2; }
       for (let i = 0, n = dt * 110 + Math.random() | 0; i < n; i++)   // the fire round him
-        g.flames.push({ x: g.x + (Math.random() * 2 - 1) * 34 * k, y: g.y - Math.random() * 160 * k, vx: (Math.random() - .5) * 30, vy: -(60 + Math.random() * 120), t: 0, life: .35 + Math.random() * .3, s: Math.random() < .5 ? 5 : 7 });
+        g.flames.push({ x: g.x + (Math.random() * 2 - 1) * (zeTw(g) + 16) * k, y: g.y - Math.random() * 160 * k, vx: (Math.random() - .5) * 30, vy: -(60 + Math.random() * 120), t: 0, life: .35 + Math.random() * .3, s: Math.random() < .5 ? 5 : 7 });
       if (!g.dragon) zeDragon(g, false);
     } else if (g.spawn <= 0) {
       zeDrop(g); g.spawn = Math.max(.3, 1.05 - (g.level - 1) * .07) * D.spawn * (.75 + Math.random() * .5);
     }
-    // what falls meets his foot, then his mouth (meat) or him (a green), then the floor
-    const air = g.y < ZE_FLOOR, reach = g.dragon ? 1.4 : D.reach, body = { l: g.x - 22 * k, r: g.x + 22 * k, t: g.y - 164 * k, b: g.y - 4 };
-    const mouth = { ...body, l: g.x - 22 * k * reach, r: g.x + 22 * k * reach };
+    // what falls meets his foot, then his mouth (meat) or him (a green) — broader as he is —, then the floor
+    const air = g.y < ZE_FLOOR, reach = g.dragon ? 1.4 : D.reach, w = (zeTw(g) + 6) * k, body = { l: g.x - w, r: g.x + w, t: g.y - 164 * k, b: g.y - 4 };
+    const mouth = { ...body, l: g.x - w * reach, r: g.x + w * reach };
     const foot = g.kick > .04 ? { l: g.x + Math.min(g.f * 8, g.f * 94) * k, r: g.x + Math.max(g.f * 8, g.f * 94) * k, t: g.y - (air ? 84 : 100) * k, b: g.y - (air ? 20 : 36) * k } : null;
     for (const it of g.items) {
       it.vy += it.g * dt; it.x += it.vx * dt; it.y += it.vy * dt; it.rot += it.spin * dt;
       if (it.out) { it.dead = it.y > ZE_H + 40 || it.x < -40 || it.x > ZE_W + 40; continue; }
       if (it.x < 20 || it.x > ZE_W - 20) { it.vx *= -1; it.x = Math.max(20, Math.min(ZE_W - 20, it.x)); }
-      if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky
+      if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
-        zeWord(g, 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#2f8f3a'], 10); zeSfx('smash'); zeScore(g, 5);
+        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeBits(g, it.x, it.y, ['#5cbf4a', '#9be15d', '#2f8f3a'], 10); zeSfx('smash'); zeScore(g, 5);
         continue;
       }
       const green = it.kind === 'veg' && !g.dragon;   // a green while he still blinks from the last one passes him by
@@ -12205,7 +12275,7 @@ const toolName = n => {
     zeBulbs(cx, g);
     if (dark) {   // the dragon's sky, and its lightning
       cx.fillStyle = `rgba(70, 0, 24, ${.55 * dark})`; cx.fillRect(0, 0, ZE_W, ZE_FLOOR);
-      cx.fillStyle = `rgba(20, 0, 12, ${.4 * dark})`; cx.fillRect(0, 0, ZE_W, 170); cx.fillRect(0, 0, ZE_W, 70);
+      cx.fillStyle = `rgba(20, 0, 12, ${.4 * dark})`; cx.fillRect(0, 0, ZE_W, 360); cx.fillRect(0, 0, ZE_W, 150);
       if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {
         cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
       }
@@ -12213,11 +12283,12 @@ const toolName = n => {
     if (g.shake > 0 && !calm) cx.translate((Math.random() - .5) * 24 * g.shake, (Math.random() - .5) * 24 * g.shake);
     for (const it of g.items) {
       cx.save(); cx.translate(it.x, it.y);
-      if (it.kind === 'galo') { const r = cx.createRadialGradient(0, 0, 4, 0, 0, 34); r.addColorStop(0, 'rgba(255, 220, 90, .85)'); r.addColorStop(1, 'rgba(255, 220, 90, 0)'); cx.fillStyle = r; cx.fillRect(-34, -34, 68, 68); }
+      if (it.kind === 'galo' || it.kind === 'case') { const r = cx.createRadialGradient(0, 0, 4, 0, 0, 34); r.addColorStop(0, it.kind === 'galo' ? 'rgba(255, 220, 90, .85)' : 'rgba(150, 190, 255, .8)'); r.addColorStop(1, 'rgba(255, 220, 90, 0)'); cx.fillStyle = r; cx.fillRect(-34, -34, 68, 68); }
       cx.rotate(it.rot); cx.drawImage(zeGlyph(it.e), -21, -21, 42, 42); cx.restore();
     }
     for (const f of g.flames) { const t = 1 - f.t / f.life; cx.fillStyle = t > .7 ? '#fee761' : t > .45 ? '#feae34' : t > .25 ? '#f77622' : '#e43b44'; cx.fillRect(f.x, f.y, f.s, f.s); }
-    if (g.phase !== 'title') zeHero(cx, g);
+    if (g.leaving) zeCar(cx, g.leaving.kind, g.leaving.x, ZE_FLOOR, g.leaving.f, g.leaving.wheel, 0, g.leaving.flip);
+    if (g.phase !== 'title') { zeHero(cx, g); if (g.ride) zeCar(cx, g.ride.kind, g.x, ZE_FLOOR, g.f, g.ride.wheel, g.ride.tilt, 0); }   // the car over his legs: his head out of its roof
     for (const b of g.bits) { cx.globalAlpha = 1 - b.t / b.life; cx.fillStyle = b.c; cx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2); }
     cx.globalAlpha = 1;
     for (const w of g.words) { cx.globalAlpha = Math.min(1, 2.2 - w.t * 2); zeText(cx, w.s, w.x, w.y, w.big ? 30 : 19, w.c, 'center'); }
@@ -12226,8 +12297,8 @@ const toolName = n => {
     if (!calm && g.flash > 0) { cx.fillStyle = `rgba(255, 250, 235, ${Math.min(.65, g.flash * 4)})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the lightning's
     if (g.phase !== 'title') zeHud(cx, g);
     if (g.banner && g.phase === 'play') {
-      const b = g.banner; zeText(cx, b.s, ZE_W / 2, 160, 46, b.cs[zeBlink(g, 8) ? 0 : 1], 'center', 900);
-      if (b.sub) zeText(cx, b.sub, ZE_W / 2, 206, 18, '#fff3c4', 'center');
+      const b = g.banner; zeText(cx, b.s, ZE_W / 2, 300, 46, b.cs[zeBlink(g, 8) ? 0 : 1], 'center', 900);
+      if (b.sub) zeText(cx, b.sub, ZE_W / 2, 348, 17, '#fff3c4', 'center');
     }
     if (g.phase !== 'play') zeCard(cx, g);
     if (g.phase === 'title') zeHero(cx, g);
@@ -12246,156 +12317,249 @@ const toolName = n => {
     x.font = '76px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 48, 54);
     ze.glyphs.set(e, c); return c;
   }
-  function zeHeart(cx, x, y, on) {
-    cx.save(); cx.translate(x, y); cx.scale(1.25, 1.25);
-    cx.beginPath(); cx.moveTo(0, 7); cx.bezierCurveTo(-13, -1, -8, -12, 0, -5); cx.bezierCurveTo(8, -12, 13, -1, 0, 7); cx.closePath();
-    cx.fillStyle = on ? '#ff3b5c' : 'rgba(255, 255, 255, .15)'; cx.fill(); cx.lineWidth = 2; cx.strokeStyle = '#1b0b2e'; cx.stroke(); cx.restore();
+  /** A pixel drawing from its rows (ZE_PAL's letters, '.' nothing), outlined, into a canvas of its own; tinted, if asked. */
+  function zeSprite(rows, tint) {
+    const h = rows.length, w = rows[0].length, c = document.createElement('canvas'), x = c.getContext('2d');
+    c.width = w + 2; c.height = h + 2;
+    const on = (i, j) => j >= 0 && j < h && i >= 0 && i < w && rows[j][i] !== '.';
+    for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) {
+      if (on(i, j)) x.fillStyle = ZE_PAL[rows[j][i]];
+      else if (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1)) x.fillStyle = '#1b0b2e';
+      else continue;
+      x.fillRect(i + 1, j + 1, 1, 1);
+    }
+    if (tint) { x.globalCompositeOperation = 'source-atop'; x.fillStyle = tint; x.fillRect(0, 0, c.width, c.height); }
+    return c;
+  }
+  /** His face as it is now: chewing (open and shut), open as food comes, green from a green, an agent's — or his skull. */
+  function zeFaceOf(g, dead) {
+    const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape, sick = g.hurt > .9;
+    const key = dead ? 'skull' : `${+g.agent}${+open}${+sick}`;
+    let c = ze.sprites.get(key);
+    if (!c) {
+      c = dead ? zeSprite(ZE_SKULL) : zeSprite(ZE_FACE.map((r, j) => (g.agent && ZE_SPY[j]) || (open && ZE_OPEN[j]) || r), sick ? 'rgba(110, 200, 70, .45)' : null);
+      ze.sprites.set(key, c);
+    }
+    return c;
   }
   function zeHud(cx, g) {
     const D = zeDiff();
-    zeText(cx, `SCORE ${g.score}`, 20, 26, 24, '#fff3c4');
-    if (g.mult > 1 && g.phase === 'play') zeText(cx, `COMBO ×${g.mult}`, 22, 54, 17, zeBlink(g, 6) ? '#feae34' : '#f77622');
-    zeText(cx, `BEST ${Math.max(zeBests()[D.id] || 0, g.score)}`, ZE_W / 2, 26, 16, '#d9c7e8', 'center');
-    for (let i = 0; i < Math.max(3, g.lives); i++) zeHeart(cx, ZE_W - 30 - i * 30, 26, i < g.lives);
-    zeText(cx, `${D.name} · LEVEL ${g.level}`, ZE_W - 20, 56, 15, D.c, 'right');
-    if (g.dragon) {   // the dragon's time, running out
-      cx.fillStyle = '#1b0b2e'; cx.fillRect(20, 74, ZE_W - 40, 10);
-      cx.fillStyle = zeBlink(g, 12) ? '#ff7a2a' : '#ffd23f'; cx.fillRect(22, 76, (ZE_W - 44) * g.dragon / ZE_DRAGON, 6);
-      zeText(cx, 'MODO FERA', ZE_W - 20, 98, 14, '#ff7a2a', 'right');
+    zeText(cx, `SCORE ${g.score}`, 20, 30, 26, '#fff3c4');
+    if (g.mult > 1 && g.phase === 'play') zeText(cx, `COMBO ×${g.mult}`, 22, 62, 17, zeBlink(g, 6) ? '#feae34' : '#f77622');
+    zeText(cx, `BEST ${Math.max(zeBests()[D.id] || 0, g.score)}`, ZE_W / 2, 30, 16, '#d9c7e8', 'center');
+    // his bulk, a bar of ZE_MASS_MAX from bone to meat — the left end blinking when it is nearly all that is left
+    const bw = 12, gap = 3, x0 = ZE_W - 20 - ZE_MASS_MAX * (bw + gap) + gap, thin = g.mass <= 2 && g.phase === 'play';
+    zeText(cx, 'BUFF', x0 - 12, 30, 15, thin && !zeBlink(g, 4) ? '#ff5a64' : '#fff3c4', 'right');
+    for (let i = 0; i < ZE_MASS_MAX; i++) {
+      cx.fillStyle = '#1b0b2e'; cx.fillRect(x0 + i * (bw + gap) - 1.5, 19, bw + 3, 23);
+      cx.fillStyle = i >= g.mass ? 'rgba(255, 255, 255, .1)' : i < 2 ? '#f2ead8' : i < 5 ? '#e8a07a' : i < 9 ? '#e05a4a' : '#b8203a';
+      cx.fillRect(x0 + i * (bw + gap), 20.5, bw, 20);
     }
+    zeText(cx, `${D.name} · LEVEL ${g.level}`, ZE_W - 20, 62, 15, D.c, 'right');
+    if (thin) zeText(cx, 'SKIN AND BONES!', ZE_W - 20, 86, 14, '#ff5a64', 'right');
+    if (g.agent) {   // AGENT ZÉ's stamp
+      cx.save(); cx.translate(ZE_W / 2, 66); cx.rotate(-.08);
+      cx.strokeStyle = '#e43b44'; cx.lineWidth = 3; cx.strokeRect(-74, -15, 148, 30);
+      cx.font = '900 16px Futura, "Avenir Next Condensed", system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#e43b44'; cx.fillText('TOP SECRET', 0, 1);
+      cx.restore();
+    }
+    const bar = (frac, c, label) => {   // the dragon's time, or the car's, running out
+      cx.fillStyle = '#1b0b2e'; cx.fillRect(20, 104, ZE_W - 40, 10);
+      cx.fillStyle = c; cx.fillRect(22, 106, (ZE_W - 44) * frac, 6);
+      zeText(cx, label, ZE_W - 20, 128, 14, c, 'right');
+    };
+    if (g.dragon) bar(g.dragon / ZE_DRAGON, zeBlink(g, 12) ? '#ff7a2a' : '#ffd23f', 'MODO FERA');
+    else if (g.ride) bar(g.ride.t / ZE_RIDE, ZE_CARS[g.ride.kind].c, ZE_CARS[g.ride.kind].name);
   }
   /** The title's four ways to play, and the K.O.'s two ways on — where a click lands. */
   function zeDiffButtons() {
     const ws = ZE_DIFFS.map(d => d.name.length * 11 + 28), gap = 8;
-    let x = 330 - (ws.reduce((a, b) => a + b) + gap * (ws.length - 1)) / 2;
-    return ZE_DIFFS.map((d, i) => { const b = { x, y: 288, w: ws[i], h: 26, i }; x += ws[i] + gap; return b; });
+    let x = ZE_W / 2 - (ws.reduce((a, b) => a + b) + gap * (ws.length - 1)) / 2;
+    return ZE_DIFFS.map((d, i) => { const b = { x, y: 562, w: ws[i], h: 28, i }; x += ws[i] + gap; return b; });
   }
-  const zeOverButtons = () => [{ x: ZE_W / 2 - 132, y: 318, w: 122, h: 30, id: 'again', s: 'AGAIN' }, { x: ZE_W / 2 + 10, y: 318, w: 122, h: 30, id: 'menu', s: 'MENU' }];
+  const zeOverButtons = () => [{ x: ZE_W / 2 - 132, y: 568, w: 122, h: 32, id: 'again', s: 'AGAIN' }, { x: ZE_W / 2 + 10, y: 568, w: 122, h: 32, id: 'menu', s: 'MENU' }];
   const zeIn = (b, x, y) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h;
   function zeButton(cx, b, s, on, c) {
     cx.fillStyle = '#1b0b2e'; cx.beginPath(); cx.roundRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4, 8); cx.fill();
     cx.fillStyle = on ? c : '#3a2a52'; cx.beginPath(); cx.roundRect(b.x, b.y, b.w, b.h, 6); cx.fill();
-    cx.font = 'italic 800 14px Futura, "Avenir Next Condensed", system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.font = 'italic 800 15px Futura, "Avenir Next Condensed", system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillStyle = on ? '#1b0b2e' : '#d9c7e8'; cx.fillText(s, b.x + b.w / 2, b.y + b.h / 2 + 1);
   }
   function zeCard(cx, g) {
     cx.fillStyle = 'rgba(20, 6, 34, .58)'; cx.fillRect(0, 0, ZE_W, ZE_H);
-    const D = zeDiff(), mid = g.phase === 'title' ? 330 : ZE_W / 2, blink = zeCalm() ? 1 : .55 + .45 * Math.sin(g.t * 5);
+    const D = zeDiff(), mid = ZE_W / 2, blink = zeCalm() ? 1 : .55 + .45 * Math.sin(g.t * 5);
     const big = (s, y, size) => {   // the 70s way: the word twice behind itself, in pink and teal
       cx.font = `italic 900 ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       for (const [d, c] of [[size / 11, '#ff4f9a'], [size / 22, '#00c2c7']]) { cx.fillStyle = c; cx.fillText(s, mid + d, y + d); }
       zeText(cx, s, mid, y, size, '#ffd23f', 'center', 900);
     };
     if (g.phase === 'title') {
-      big('ZÉ', 58, 86);
-      zeText(cx, 'THE BRUCE LEE OF BARCELOS', mid, 112, 24, '#fff3c4', 'center');
+      big('ZÉ', 104, 124);
+      zeText(cx, 'THE BRUCE LEE OF BARCELOS', mid, 186, 30, '#fff3c4', 'center');
       // the menu, as Trota's had it, on a panel of its own: what to eat, what to avoid — the greens, and lunch with a leaf in it
       cx.fillStyle = 'rgba(20, 6, 34, .78)'; cx.strokeStyle = 'rgba(255, 243, 196, .18)'; cx.lineWidth = 2;
-      cx.beginPath(); cx.roundRect(64, 130, 560, 120, 10); cx.fill(); cx.stroke();
-      zeText(cx, 'EAT', 104, 158, 18, '#a6dc5a', 'center');
-      ZE_MEAT.forEach(([e, pts], i) => { cx.drawImage(zeGlyph(e), 140 + i * 46, 138, 32, 32); zeText(cx, String(pts), 156 + i * 46, 180, 11, '#ffd23f', 'center'); });
-      zeText(cx, '+ the golden rooster: a life', 380, 158, 13, '#ffd23f', 'left', 600);
-      zeText(cx, 'AVOID', 104, 214, 18, '#ff5a64', 'center');
-      ZE_VEG.slice(0, 5).concat(ZE_VEG.slice(-3)).forEach(([e], i) => cx.drawImage(zeGlyph(e), 140 + i * 40 + (i > 4 ? 14 : 0), 196, 30, 30));
-      zeText(cx, 'a leaf inside!', 410, 238, 11, '#ff5a64', 'center', 600);
-      zeText(cx, 'or kick it — space', 486, 214, 12, '#d9c7e8', 'left', 600);
-      zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL} = ENTER THE DRAGON`, mid, 262, 16, zeBlink(g, 4) ? '#ff7a2a' : '#feae34', 'center');
+      cx.beginPath(); cx.roundRect(50, 218, ZE_W - 100, 226, 10); cx.fill(); cx.stroke();
+      zeText(cx, 'EAT', 96, 256, 18, '#a6dc5a', 'center');
+      ZE_MEAT.forEach(([e, pts], i) => { cx.drawImage(zeGlyph(e), 142 + i * 50, 238, 34, 34); zeText(cx, String(pts), 159 + i * 50, 282, 11, '#ffd23f', 'center'); });
+      zeText(cx, '+ the rooster: muscle', 412, 256, 13, '#ffd23f', 'left', 600);
+      zeText(cx, 'AVOID', 96, 324, 18, '#ff5a64', 'center');
+      ZE_VEG.slice(0, 5).concat(ZE_VEG.slice(-4)).forEach(([e], i) => cx.drawImage(zeGlyph(e), 142 + i * 44 + (i > 4 ? 16 : 0), 306, 32, 32));
+      zeText(cx, 'not what they seem!', 460, 352, 11, '#ff5a64', 'center', 600);
+      zeText(cx, 'meat makes him buff · greens, thin · only bones: K.O.', mid, 392, 14, '#fff3c4', 'center', 600);
+      zeText(cx, 'kick the greens away — space · jump — ↑', mid, 420, 13, '#d9c7e8', 'center', 600);
+      zeText(cx, '3 MEATS IN A ROW: A FORD FOCUS — FASTER', mid, 474, 15, ZE_CARS.focus.c, 'center');
+      zeText(cx, '3 GREENS IN A ROW: A MERCEDES A-CLASS — SLOWER', mid, 500, 15, ZE_CARS.aclass.c, 'center');
+      zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL} = ENTER THE DRAGON`, mid, 534, 16, zeBlink(g, 4) ? '#ff7a2a' : '#feae34', 'center');
       zeDiffButtons().forEach(b => zeButton(cx, b, ZE_DIFFS[b.i].name, b.i === prefs.zeDiff, ZE_DIFFS[b.i].c));
-      zeText(cx, `${D.say} · ← → or 1–4`, mid, 330, 13, D.c, 'center', 600);
-      cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', mid, 360, 22, '#7ef0ff', 'center'); cx.globalAlpha = 1;
-      const best = zeBests()[D.id]; if (best) zeText(cx, `BEST ${best}`, mid, 388, 15, '#d9c7e8', 'center');
-      if (!ze.face) zeText(cx, 'his face: Settings › General', mid, 412, 13, '#d9c7e8', 'center', 600);
+      zeText(cx, `${D.say} · ← → or 1–4`, mid, 614, 13, D.c, 'center', 600);
+      zeText(cx, `T · music: ${prefs.zeMusic === 'vira' ? 'VIRA DE BARCELOS' : 'FUNK'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
+      cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', 300, 690, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
+      const best = zeBests()[D.id]; if (best) zeText(cx, `BEST ${best}`, 300, 724, 15, '#d9c7e8', 'center');
     } else if (g.phase === 'pause') {
-      big('PAUSE', 190, 80);
-      zeText(cx, 'P or space to go on', mid, 262, 18, '#fff3c4', 'center', 600);
+      big('PAUSE', 400, 84);
+      zeText(cx, 'P or space to go on', mid, 470, 18, '#fff3c4', 'center', 600);
     } else {
-      big('K.O.', 110, 96);
-      zeText(cx, g.ko, mid, 172, 22, '#fff3c4', 'center');
-      zeText(cx, `${D.name} · LEVEL ${g.level}`, mid, 204, 15, D.c, 'center');
-      zeText(cx, `SCORE ${g.score}`, mid, 238, 30, '#fff3c4', 'center');
-      zeText(cx, g.best ? 'A NEW BEST!' : `BEST ${zeBests()[D.id] || 0}`, mid, 274, 18, g.best ? (zeBlink(g, 4) ? '#ffd23f' : '#feae34') : '#d9c7e8', 'center');
+      big('K.O.', 290, 110);
+      zeText(cx, 'ONLY BONES LEFT', mid, 372, 26, '#f2ead8', 'center');
+      zeText(cx, g.ko, mid, 410, 20, '#fff3c4', 'center', 600);
+      zeText(cx, `${D.name} · LEVEL ${g.level}`, mid, 444, 15, D.c, 'center');
+      zeText(cx, `SCORE ${g.score}`, mid, 488, 32, '#fff3c4', 'center');
+      zeText(cx, g.best ? 'A NEW BEST!' : `BEST ${zeBests()[D.id] || 0}`, mid, 528, 18, g.best ? (zeBlink(g, 4) ? '#ffd23f' : '#feae34') : '#d9c7e8', 'center');
       if (g.overT > .8) zeOverButtons().forEach((b, i) => zeButton(cx, b, b.s, i === g.sel, '#ffd23f'));
     }
   }
-  /** Zé, his feet at (g.x, g.y): a yellow suit with black stripes, the guard up, the face on top — unmirrored. */
+  /** Zé, his feet at (g.x, g.y): the yellow suit, as big and as broad as his bulk — shoulders, arms and legs thicker with
+   *  each meat, pecs and biceps from five, abs from nine, ribs at two —, the guard up, his face on top, unmirrored; at
+   *  the K.O. his bones, flat on his back, seeing stars. */
   function zeHero(cx, g) {
-    const air = g.y < ZE_FLOOR - .5, kick = g.kick > .04, moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play';
-    const ko = g.phase === 'over', sw = moving ? Math.sin(g.run) : 0, bob = ko ? -16 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2;
-    const Y = '#ffcf1f', S = '#16121c', SKIN = '#e9b48a';
-    const k = zeK(g);
-    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 3, Math.max(10, 26 - (ZE_FLOOR - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
-    cx.save(); cx.translate(g.x, g.y + bob * k); cx.scale(k, k);   // the dragon grows from his feet
-    if (g.hurt > 0 && Math.floor(g.hurt * 12) % 2) cx.globalAlpha = .4;
+    const air = g.y < ZE_FLOOR - .5, kick = g.kick > .04 && !g.ride, moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
+    const over = g.phase === 'over', m = Math.max(0, g.mass), k = zeSz(g) * (1 + g.pump * .25);
+    const sw = moving ? Math.sin(g.run) : 0, bob = over ? -10 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2;
+    const Y = '#ffcf1f', S = '#16121c', SKIN = '#e9b48a', BONE = '#f2ead8', FOLD = 'rgba(150, 95, 0, .5)';
+    const tw = zeTw(g), aw = 4 + m * .8, lw = 7 + m * .8, sh = tw - 2, hip = 3 + m * .35;
+    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 3, Math.max(10, tw + 10 - (ZE_FLOOR - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
+    cx.save(); cx.translate(g.x, g.y + bob * k); cx.scale(k, k);   // the dragon grows from his feet, and so does a meal
+    if (g.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? .65 : Math.floor(g.hurt * 12) % 2 ? .4 : 1;
     cx.scale(g.f, 1);
-    if (ko) cx.rotate(-Math.PI / 2);   // K.O.: flat on his back, his feet where they stood
+    if (over) cx.rotate(-Math.PI / 2);   // K.O.: flat on his back, his feet where they stood
     const line = (pts, w, c) => { cx.strokeStyle = c; cx.lineWidth = w; cx.lineCap = cx.lineJoin = 'round'; cx.beginPath(); cx.moveTo(...pts[0]); for (const p of pts.slice(1)) cx.lineTo(...p); cx.stroke(); };
-    const leg = (...pts) => { line(pts, 12, Y); line(pts, 3, S); const [fx, fy] = pts[2]; cx.fillStyle = S; cx.beginPath(); cx.ellipse(fx + 4, fy - 2, 8, 4.5, 0, 0, Math.PI * 2); cx.fill(); };
-    const arm = (...pts) => { line(pts, 9, Y); cx.fillStyle = SKIN; cx.strokeStyle = S; cx.lineWidth = 1.5; cx.beginPath(); cx.arc(...pts[2], 5.5, 0, Math.PI * 2); cx.fill(); cx.stroke(); };
-    if (kick) { leg([-6, -50], [-12, -26], [-16, air ? -8 : 0]); leg([6, -50], [40, -60], [80, -64]); }
-    else if (air) { leg([-6, -50], [-2, -30], [-14, -14]); leg([6, -50], [18, -34], [10, -12]); }
-    else { leg([-6, -50], [-9 - sw * 10, -25], [-10 - sw * 16, 0]); leg([6, -50], [9 + sw * 10, -25], [10 + sw * 16, 0]); }
+    if (over) {   // only bones
+      const bone = (...pts) => { line(pts, 7, S); line(pts, 4, BONE); cx.fillStyle = BONE; for (const p of [pts[0], pts.at(-1)]) { cx.beginPath(); cx.arc(...p, 3.4, 0, Math.PI * 2); cx.fill(); } };
+      bone([-6, -50], [-8, -25], [-9, -2]); bone([6, -50], [8, -25], [9, -2]);
+      cx.translate(0, -50);
+      line([[0, 0], [0, -50]], 7, S); line([[0, 0], [0, -50]], 4, BONE);   // the spine
+      cx.strokeStyle = BONE; cx.lineWidth = 3; for (let i = 0; i < 4; i++) { cx.beginPath(); cx.ellipse(0, -42 + i * 8, 13 - i * 1.5, 4, 0, 0, Math.PI); cx.stroke(); }   // the ribs
+      cx.fillStyle = BONE; cx.beginPath(); cx.ellipse(0, 0, 11, 5, 0, 0, Math.PI * 2); cx.fill();   // the pelvis
+      bone([-10, -46], [-16, -26], [-14, -8]); bone([10, -46], [16, -26], [14, -8]);
+      cx.translate(2, -74); cx.scale(g.f, 1); zeHead(cx, g, true);
+      cx.restore();
+      for (let i = 0; i < 3; i++) {   // …and seeing stars
+        const a = g.t * 3 + i * Math.PI * 2 / 3, sx = g.x - g.f * 124 * k + Math.cos(a) * 30, sy = g.y - 52 + Math.sin(a) * 8;
+        cx.fillStyle = '#ffd23f'; cx.beginPath();
+        for (let j = 0; j < 10; j++) { const r = j % 2 ? 2.5 : 6, b = j * Math.PI / 5 - Math.PI / 2; cx.lineTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r); }
+        cx.fill();
+      }
+      return;
+    }
+    const leg = (...pts) => { line(pts, lw, Y); line(pts, 3, S); const [fx, fy] = pts[2]; cx.fillStyle = S; cx.beginPath(); cx.ellipse(fx + 4, fy - 2, 6 + lw * .2, 4.5, 0, 0, Math.PI * 2); cx.fill(); };
+    if (g.ride) { /* in the car: no legs to show */ }
+    else if (kick) { leg([-hip, -50], [-hip - 6, -26], [-hip - 10, air ? -8 : 0]); leg([hip, -50], [40, -60], [80, -64]); }
+    else if (air) { leg([-hip, -50], [-hip + 4, -30], [-hip - 8, -14]); leg([hip, -50], [hip + 12, -34], [hip + 4, -12]); }
+    else { leg([-hip, -50], [-hip - 3 - sw * 10, -25], [-hip - 4 - sw * 16, 0]); leg([hip, -50], [hip + 3 + sw * 10, -25], [hip + 4 + sw * 16, 0]); }
     cx.translate(0, -50); cx.rotate(kick ? -.3 : moving ? .08 : 0);   // the hips; the rest leans from there
-    cx.fillStyle = SKIN; cx.fillRect(-4, -52, 8, 8);
-    cx.fillStyle = Y; cx.beginPath(); cx.roundRect(-15, -46, 30, 48, 7); cx.fill();
-    line([[-12, -42], [-12, 0]], 3, S); line([[12, -42], [12, 0]], 3, S);
-    if (kick) { arm([9, -40], [24, -34], [36, -46]); arm([-8, -40], [-24, -30], [-36, -38]); }
-    else { arm([-8, -40], [2 - sw * 6, -22], [12 - sw * 6, -36]); arm([9, -40], [22 + sw * 6, -24], [26 + sw * 6, -46]); }
-    cx.translate(2, -84); cx.scale(g.f, 1);   // the face is never mirrored
-    zeHead(cx, g);
+    cx.fillStyle = SKIN; cx.fillRect(-4 - m * .3, -56, 8 + m * .6, 12);   // the neck, thick as he is
+    cx.beginPath(); cx.moveTo(-tw, -46); cx.lineTo(tw, -46); cx.lineTo(tw * .7, 2); cx.lineTo(-tw * .7, 2); cx.closePath();   // the torso, tapering to the waist
+    cx.fillStyle = cx.strokeStyle = Y; cx.lineWidth = 8; cx.lineJoin = 'round'; cx.fill(); cx.stroke();
+    line([[-tw + 2, -44], [-tw * .7 + 2, 0]], 3, S); line([[tw - 2, -44], [tw * .7 - 2, 0]], 3, S);   // the stripes
+    if (m >= 5) { cx.strokeStyle = FOLD; cx.lineWidth = 2; for (const s of [-1, 1]) { cx.beginPath(); cx.arc(s * tw * .42, -38, tw * .36, .15 * Math.PI, .85 * Math.PI); cx.stroke(); } }   // pecs
+    if (m >= 9) { for (const y of [-18, -9]) line([[-tw * .25, y], [tw * .25, y]], 1.5, FOLD); line([[0, -24], [0, -4]], 1.5, FOLD); }   // abs
+    if (m <= 2) for (const y of [-34, -26, -18]) line([[-tw * .6, y], [tw * .6, y]], 1.5, 'rgba(22, 18, 28, .55)');   // ribs
+    const arm = (...pts) => {
+      line(pts, aw * 1.1, Y);
+      if (m >= 5) { const [[x0, y0], [x1, y1]] = pts; cx.fillStyle = Y; cx.beginPath(); cx.arc((x0 + x1) / 2, (y0 + y1) / 2, aw * .85, 0, Math.PI * 2); cx.fill(); }   // a biceps
+      cx.fillStyle = SKIN; cx.strokeStyle = S; cx.lineWidth = 1.5; cx.beginPath(); cx.arc(...pts[2], 4 + m * .3, 0, Math.PI * 2); cx.fill(); cx.stroke();
+    };
+    if (kick) { arm([sh, -40], [sh + 13, -34], [sh + 25, -46]); arm([-sh, -40], [-sh - 14, -30], [-sh - 26, -38]); }
+    else { arm([-sh, -40], [-sh + 10 - sw * 6, -22], [-sh + 20 - sw * 6, -36]); arm([sh, -40], [sh + 11 + sw * 6, -24], [sh + 15 + sw * 6, -46]); }
+    cx.translate(2, -86); cx.scale(g.f, 1);   // the face is never mirrored
+    zeHead(cx, g, false);
     cx.restore();
-    if (ko) for (let i = 0; i < 3; i++) {   // …and seeing stars
-      const a = g.t * 3 + i * Math.PI * 2 / 3, sx = g.x - g.f * 134 + Math.cos(a) * 30, sy = g.y - 58 + Math.sin(a) * 8;
-      cx.fillStyle = '#ffd23f'; cx.beginPath();
-      for (let j = 0; j < 10; j++) { const r = j % 2 ? 2.5 : 6, b = j * Math.PI / 5 - Math.PI / 2; cx.lineTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r); }
-      cx.fill();
+  }
+  function zeHead(cx, g, dead) {
+    const im = zeFaceOf(g, dead), p = 2.6 * (1 + Math.min(.3, g.chomp) * .3), w = im.width * p, h = im.height * p;
+    cx.imageSmoothingEnabled = false; cx.drawImage(im, -w / 2, -h / 2, w, h); cx.imageSmoothingEnabled = true;
+    if (g.dragon && !dead) {   // the dragon's aura
+      cx.save(); cx.shadowColor = '#ff7a2a'; cx.shadowBlur = 16; cx.lineWidth = 3; cx.strokeStyle = zeBlink(g, 9) ? '#ff7a2a' : '#ffd23f';
+      cx.beginPath(); cx.ellipse(0, 0, w / 2 + 2, h / 2 + 2, 0, 0, Math.PI * 2); cx.stroke(); cx.restore();
     }
   }
-  function zeHead(cx, g) {
-    const s = 1 + Math.min(.3, g.chomp) * .5, rx = 25 * s, ry = 33 * s;
-    cx.save(); cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-    cx.save(); cx.clip();
-    const im = ze.face;
-    if (im) { const r = Math.max(2 * rx / im.width, 2 * ry / im.height); cx.drawImage(im, -im.width * r / 2, -im.height * r / 2, im.width * r, im.height * r); }   // the oval as framed
-    else zeDrawnFace(cx, rx, ry);
-    const open = g.chomp > 0 ? Math.abs(Math.sin(g.chomp * 30)) : g.gape ? .8 : 0;   // nham — or open, as food comes
-    if (open) { cx.fillStyle = '#5a1020'; cx.beginPath(); cx.ellipse(0, ry * .45, 7 * s, 2 + 7 * open, 0, 0, Math.PI * 2); cx.fill(); }
-    if (g.hurt > .9) { cx.fillStyle = 'rgba(110, 200, 70, .45)'; cx.fillRect(-rx, -ry, 2 * rx, 2 * ry); }
-    cx.restore();
-    cx.lineWidth = 2.5; cx.strokeStyle = '#16121c'; cx.stroke();   // the path outlives the clip's restore
-    if (g.dragon) { cx.shadowColor = '#ff7a2a'; cx.shadowBlur = 16; cx.lineWidth = 3; cx.strokeStyle = zeBlink(g, 9) ? '#ff7a2a' : '#ffd23f'; cx.stroke(); }   // the dragon's aura
+  /** The cars, side on, their wheels on the floor at x, their front towards f: the Focus — Ford blue, the tall tail light
+   *  up its back pillar, the oval on its nose —, the A-Class — silver, short and tall, the star on its nose. Their glass
+   *  is clear, and he sits in it, his head out of the roof. tilt pitches it on its rear wheel; flip turns it over its
+   *  middle onto its roof, with a hop. */
+  function zeCar(cx, kind, x, y, f, wheel, tilt, flip) {
+    const K = '#1b0b2e', focus = kind === 'focus', shape = pts => { cx.beginPath(); cx.moveTo(...pts[0]); for (const p of pts.slice(1)) cx.lineTo(...p); cx.closePath(); };
+    cx.save(); cx.translate(x, y); cx.scale(f, 1);
+    if (flip) { cx.translate(0, -50 - Math.sin(flip) * 60); cx.rotate(flip); cx.translate(0, 50); }
+    else if (tilt) { cx.translate(focus ? -58 : -46, 0); cx.rotate(tilt); cx.translate(focus ? 58 : 46, 0); }
+    const body = focus ? [[-96, -16], [-97, -50], [-86, -88], [-14, -92], [28, -88], [54, -60], [92, -52], [99, -32], [97, -16]]
+      : [[-72, -16], [-74, -84], [-62, -100], [8, -100], [52, -60], [74, -46], [77, -26], [73, -16]];
+    const glass = focus ? [[-80, -82], [-14, -86], [24, -83], [46, -60], [-86, -56]] : [[-64, -94], [4, -94], [42, -62], [-68, -58]];
+    cx.lineJoin = 'round'; cx.lineWidth = 5; cx.strokeStyle = K; shape(body); cx.stroke();
+    cx.fillStyle = focus ? '#2457b8' : '#c8ccd2'; cx.fill();
+    cx.save(); shape(body); cx.clip(); cx.fillStyle = focus ? '#183e86' : '#9aa0a8'; cx.fillRect(-110, -38, 220, 30); cx.restore();   // the sills, darker
+    cx.fillStyle = 'rgba(159, 211, 255, .45)'; shape(glass); cx.fill(); cx.lineWidth = 2.5; cx.stroke();
+    cx.strokeStyle = K; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(-24, focus ? -86 : -94); cx.lineTo(-24, -18); cx.stroke();   // the door's edge
+    if (focus) {
+      cx.fillStyle = '#e43b44'; shape([[-97, -50], [-92, -80], [-86, -80], [-90, -48]]); cx.fill();   // the tall tail light, the Focus's own
+      cx.fillStyle = '#fff6c8'; shape([[86, -54], [98, -48], [98, -40], [88, -42]]); cx.fill();
+      cx.fillStyle = '#1c3f94'; cx.strokeStyle = '#dfe9f2'; cx.lineWidth = 1.5; cx.beginPath(); cx.ellipse(80, -34, 8, 4.5, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
+      cx.save(); cx.scale(f, 1); cx.font = 'italic 800 10px Futura, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#dfe9f2'; cx.fillText('FOCUS', -60 * f, -26); cx.restore();
+    } else {
+      cx.fillStyle = '#e43b44'; cx.fillRect(-75, -68, 5, 18);
+      cx.fillStyle = '#fff6c8'; shape([[60, -54], [74, -48], [74, -42], [62, -44]]); cx.fill();
+      cx.strokeStyle = '#4a4f58'; cx.lineWidth = 1.6; cx.beginPath(); cx.arc(70, -31, 7, 0, Math.PI * 2); cx.stroke();   // the star
+      for (const a of [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6]) { cx.beginPath(); cx.moveTo(70, -31); cx.lineTo(70 + Math.cos(a) * 7, -31 + Math.sin(a) * 7); cx.stroke(); }
+      cx.save(); cx.scale(f, 1); cx.font = '800 9px Futura, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#4a4f58'; cx.fillText('A 140', -48 * f, -26); cx.restore();
+    }
+    for (const wx of focus ? [-58, 62] : [-46, 46]) {
+      const r = focus ? 17 : 15;
+      cx.fillStyle = K; cx.beginPath(); cx.arc(wx, -r, r + 3, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = '#2a2a33'; cx.beginPath(); cx.arc(wx, -r, r, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = '#b8bcc4'; cx.beginPath(); cx.arc(wx, -r, r * .55, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = '#6b6f78'; cx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) { const a = wheel + i * Math.PI * 2 / 5; cx.beginPath(); cx.moveTo(wx, -r); cx.lineTo(wx + Math.cos(a) * r * .5, -r + Math.sin(a) * r * .5); cx.stroke(); }
+    }
     cx.restore();
   }
-  /** No face set: a face of no one in particular — a bowl cut and the brows of a man who means it. */
-  function zeDrawnFace(cx, rx, ry) {
-    cx.fillStyle = '#e9b48a'; cx.fillRect(-rx, -ry, 2 * rx, 2 * ry);
-    cx.fillStyle = '#1d1418'; cx.fillRect(-rx, -ry, 2 * rx, ry * .62);
-    cx.strokeStyle = '#1d1418'; cx.lineWidth = 3; cx.lineCap = 'round';
-    cx.beginPath(); cx.moveTo(-13, -8); cx.lineTo(-4, -4); cx.moveTo(13, -8); cx.lineTo(4, -4); cx.moveTo(-6, 16); cx.lineTo(6, 16); cx.stroke();
-    cx.fillStyle = '#1d1418'; cx.beginPath(); cx.arc(-8, 0, 2.2, 0, Math.PI * 2); cx.arc(8, 0, 2.2, 0, Math.PI * 2); cx.fill();
-  }
-  /** The scene behind, drawn once per size: a striped sun going down over the Minho's hills, the rooster on its
-   *  plinth, and a floor of azulejos. */
+  /** The scene behind, drawn once per size: the night coming down over the stars and a moon, a striped sun going down
+   *  over the Minho's hills, Trota's and the rooster on its plinth, and a floor of azulejos. */
   function zeBackdrop(c) {
     if (ze.bg?.width === c.width && ze.bg.height === c.height) return ze.bg;
     const b = ze.bg = document.createElement('canvas'); b.width = c.width; b.height = c.height;
     const x = b.getContext('2d'); x.scale(c.width / ZE_W, c.width / ZE_W);
     const sky = x.createLinearGradient(0, 0, 0, ZE_FLOOR);
-    sky.addColorStop(0, '#2a0f4f'); sky.addColorStop(.55, '#b8306b'); sky.addColorStop(1, '#ff9a3d');
+    sky.addColorStop(0, '#120826'); sky.addColorStop(.32, '#2a0f4f'); sky.addColorStop(.7, '#b8306b'); sky.addColorStop(1, '#ff9a3d');
     x.fillStyle = sky; x.fillRect(0, 0, ZE_W, ZE_FLOOR);
-    const sun = x.createLinearGradient(0, 180, 0, 400);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;   // the same stars every time
+    for (let i = 0; i < 90; i++) { const sy = rnd() ** 1.6 * 420; x.globalAlpha = .25 + .75 * (1 - sy / 420) * rnd(); x.fillStyle = '#fff6e0'; x.fillRect(rnd() * ZE_W, sy, rnd() < .15 ? 2 : 1.2, rnd() < .15 ? 2 : 1.2); }
+    x.globalAlpha = 1;
+    x.fillStyle = '#fff3c4'; x.beginPath(); x.arc(118, 132, 26, 0, Math.PI * 2); x.fill();   // a new moon's crescent, the sky cut out of it
+    x.fillStyle = sky; x.beginPath(); x.arc(130, 124, 24, 0, Math.PI * 2); x.fill();
+    const sun = x.createLinearGradient(0, 640, 0, 900);
     sun.addColorStop(0, '#ffe45c'); sun.addColorStop(1, '#ff5e5b');
-    x.save(); x.beginPath(); x.arc(560, 330, 130, 0, Math.PI * 2); x.clip();
-    x.fillStyle = sun; x.fillRect(420, 190, 280, 280);
-    x.fillStyle = sky; for (let i = 0; i < 6; i++) x.fillRect(420, 286 + i * 17, 280, 2 + i * 1.8);
+    x.save(); x.beginPath(); x.arc(400, 790, 150, 0, Math.PI * 2); x.clip();
+    x.fillStyle = sun; x.fillRect(250, 640, 300, 300);
+    x.fillStyle = sky; for (let i = 0; i < 6; i++) x.fillRect(250, 730 + i * 18, 300, 2 + i * 2);
     x.restore();
-    const hills = (c, base, amp, step, ph) => {
-      x.fillStyle = c; x.beginPath(); x.moveTo(0, ZE_FLOOR);
+    const hills = (col, base, amp, step, ph) => {
+      x.fillStyle = col; x.beginPath(); x.moveTo(0, ZE_FLOOR);
       for (let i = 0; i <= ZE_W; i += 10) x.lineTo(i, base - amp * (Math.sin(i / step + ph) * .6 + Math.sin(i / (step * .37) + ph * 2) * .4));
       x.lineTo(ZE_W, ZE_FLOOR); x.fill();
     };
-    hills('#5a1f63', 330, 26, 90, 1); hills('#36164a', 362, 18, 60, 4);
+    hills('#5a1f63', 776, 30, 90, 1); hills('#36164a', 810, 20, 60, 4);
     zeRestaurant(x);
-    zeGaloArt(x, 120, ZE_FLOOR, 1.25);
+    zeGaloArt(x, 110, ZE_FLOOR, 1.35);
     x.fillStyle = '#1b0b2e'; x.fillRect(0, ZE_FLOOR, ZE_W, 3);
     for (let row = 0; row < 2; row++) for (let col = 0; col * 29 < ZE_W; col++) {   // azulejos: a blue rosette at every corner
       const tx = col * 29, ty = ZE_FLOOR + 3 + row * 29;
@@ -12408,10 +12572,10 @@ const toolName = n => {
     x.fillStyle = dusk; x.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
     return b;
   }
-  /** Trota's (2026-10-30, later): the restaurant of the 8-bit game this one learnt from, behind him — a cornice, wall
-   *  lamps, a striped awning, warm windows with their tables, a green door, azulejos at its foot, its sign on the roof.
-   *  The sign's bulbs chase each other per frame (zeBulbs), faster and red while the dragon is out. */
-  const ZE_REST = { x: 572, w: 200, top: 262 }, ZE_SIGN = { x: 592, y: 198, w: 160, h: 42 };   // at the right, the sun going down behind it
+  /** Trota's (2026-10-30, later): the restaurant of the 8-bit game this one learnt from, behind him at the right — a
+   *  cornice, wall lamps, a striped awning, warm windows with their tables, a green door, azulejos at its foot, its sign
+   *  on the roof. The sign's bulbs chase each other per frame (zeBulbs), faster and red while the dragon is out. */
+  const ZE_REST = { x: 470, w: 200, top: ZE_FLOOR - 130 }, ZE_SIGN = { x: 490, y: ZE_FLOOR - 194, w: 160, h: 42 };
   const ZE_BULBS = (() => {
     const b = [], { x, y, w, h } = ZE_SIGN;
     for (let bx = x + 4; bx <= x + w - 4; bx += 8) b.push([bx, y], [bx, y + h]);
@@ -12493,21 +12657,24 @@ const toolName = n => {
     clearInterval(m.timer); clearTimeout(m.rest); m.timer = 0;
     if (!on) return;
     m.ac.resume().catch(() => {});
-    m.step = 0; m.at = m.ac.currentTime + .08; m.track = 'funk';
+    m.step = 0; m.at = m.ac.currentTime + .08; m.track = 'band';
     m.timer = setInterval(() => zePlan(m), 25); zePlan(m);
   }
   function zeHush() {
     const m = ze.music; if (!m) return;
     clearInterval(m.timer); clearTimeout(m.rest); m.ac.close().catch(() => {}); ze.music = null;
   }
-  /** What falls within the next 120 ms of the audio clock, the funk's sixteenths swung and a little quicker each level
-   *  (to a third more), the dragon's straight at ZE_16D; a timer late by more starts from now. */
+  /** What falls within the next 120 ms of the audio clock: the band's — the funk's sixteenths swung, or the vira's
+   *  quavers (T) —, a little quicker each level (to a third more), or the dragon's straight at ZE_16D; a timer late by
+   *  more starts from now. */
   function zePlan(m) {
-    const now = m.ac.currentTime, fera = m.track === 'dragon', len = fera ? ZE_16D : ZE_16 / (1 + Math.min(10, ze.g.level - 1) * .03);
+    const now = m.ac.currentTime, fera = m.track === 'dragon', vira = !fera && prefs.zeMusic === 'vira', quick = 1 + Math.min(10, ze.g.level - 1) * .03;
+    const len = fera ? ZE_16D : (vira ? ZE_8V : ZE_16) / quick;
     if (m.at < now) m.at = now + .02;
     while (m.at < now + .12) {
-      const s = m.step % (fera ? 32 : 16), bar = (m.step >> 4) % 4;
-      if (fera) zeFera(m, s, m.at); else zeBar(m, s, bar, m.at + (s % 2 ? len * .18 : 0));
+      if (fera) zeFera(m, m.step % 32, m.at);
+      else if (vira) zeVira(m, m.step % 96, m.at, len);
+      else { const s = m.step % 16; zeBar(m, s, (m.step >> 4) % 4, m.at + (s % 2 ? len * .18 : 0)); }
       m.at += len; m.step++;
     }
   }
@@ -12519,6 +12686,40 @@ const toolName = n => {
     if (s % 8 === 4) zeDrum(m, 'snare', t, .8);
     zeDrum(m, 'hat', t, s % 2 ? .3 : .6);
   }
+  // the vira's players: the concertina's tune, the viola braguesa's root and the bombo on one, the cavaquinho strummed
+  // on two and three, the ferrinhos ringing every quaver
+  function zeVira(m, s, t, q) {
+    const bar = Math.floor(s / 6), e = s % 6, notes = ZE_VIRA[bar], ch = ZE_VIRA_CH[bar];
+    if (notes[e] > 0) { let n = 1; while (e + n < 6 && notes[e + n] === -1) n++; zeConcertina(m, t, notes[e], n * q * .95); }
+    if (e === 0) { zeDrum(m, 'kick', t, .6); zePluck(m, t, ZE_ROOT[ch], .4, .16); }
+    if (e === 2 || e === 4) ZE_CHORD[ch].forEach((n, i) => zePluck(m, t + i * .012, n + 12, .14, .035));
+    for (const hz of [4200, 6150]) zeTone(m, t, 'sine', hz, hz, .07, (e === 2 || e === 4 ? .02 : e % 2 ? .007 : .012));
+  }
+  function zeConcertina(m, t, n, d) {   // three reeds a little apart, as a concertina's
+    const ac = m.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'lowpass'; f.frequency.value = 2800;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .02); g.gain.setValueAtTime(.05, t + Math.max(.03, d - .04)); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    f.connect(g).connect(m.out);
+    for (const [type, det] of [['sawtooth', -7], ['square', 0], ['sawtooth', 7]]) { const o = ac.createOscillator(); o.type = type; o.frequency.value = zeHz(n); o.detune.value = det; o.connect(f); o.start(t); o.stop(t + d + .02); }
+  }
+  function zePluck(m, t, n, d, v) {   // a string plucked: the cavaquinho's, the viola's
+    const o = m.ac.createOscillator(), g = m.ac.createGain();
+    o.type = 'triangle'; o.frequency.value = zeHz(n);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(m.out); o.start(t); o.stop(t + d + .02);
+  }
+  /** The car's engine while he rides — a low saw through a low-pass, the A-Class's sputtering — or none; zeRev its pitch. */
+  function zeEngine(kind) {
+    const m = ze.music; if (!m) return;
+    if (m.engine) { for (const o of m.engine.os) try { o.stop(); } catch {} m.engine = null; }
+    if (!kind) return;
+    const ac = m.ac, o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain(), os = [o];
+    o.type = 'sawtooth'; o.frequency.value = kind === 'focus' ? 70 : 45; f.type = 'lowpass'; f.frequency.value = kind === 'focus' ? 520 : 320; g.gain.value = .05;
+    if (kind === 'aclass') { const lfo = ac.createOscillator(), d = ac.createGain(); lfo.frequency.value = 7; d.gain.value = .035; lfo.connect(d).connect(g.gain); lfo.start(); os.push(lfo); }
+    o.connect(f).connect(g).connect(m.out); o.start();
+    m.engine = { o, os, base: o.frequency.value };
+  }
+  const zeRev = v => { const e = ze.music?.engine; if (e) e.o.frequency.setTargetAtTime(e.base + v * .12, ze.music.ac.currentTime, .08); };
   function zeBar(m, s, bar, t) {
     const fill = bar === 3 && s >= 12;
     if (s === 0 || s === 7 || s === 10 || (bar % 2 && s === 13)) zeDrum(m, 'kick', t);
@@ -12602,7 +12803,14 @@ const toolName = n => {
       for (const [dt, hz] of [[0, 700], [.08, 1250], [.18, 1050], [.3, 1350], [.62, 800]]) o.frequency.linearRampToValueAtTime(hz, t + dt);
       g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.2, t + .03); g.gain.setValueAtTime(.2, t + .5); g.gain.exponentialRampToValueAtTime(.0001, t + .66);
       o.connect(f).connect(g).connect(m.out); o.start(t); o.stop(t + .7);
-    } else if (kind === 'over') {   // the trombone that says it
+    } else if (kind === 'focus') {   // beep beep, and a rev
+      for (const d of [0, .18]) for (const hz of [440, 554]) zeTone(m, t + d, 'square', hz, hz, .12, .05);
+      zeTone(m, t + .36, 'sawtooth', 60, 220, .5, .12);
+    } else if (kind === 'aclass') { zeTone(m, t, 'square', 392, 330, .6, .07); zeNoise(m, t + .1, .3, .08); zeNoise(m, t + .5, .2, .06); }   // a sad meep, a cough
+    else if (kind === 'beep') for (const hz of [440, 554]) zeTone(m, t, 'square', hz, hz, .14, .05);
+    else if (kind === 'meep') zeTone(m, t, 'square', 330, 300, .28, .05);
+    else if (kind === 'spy') [64, 67, 71, 75, 76].forEach((n, i) => zeTone(m, t + i * .09, 'sawtooth', zeHz(n), zeHz(n), i === 4 ? .7 : .1, .07));   // E minor, its major seventh: a spy's chord
+    else if (kind === 'over') {   // the trombone that says it
       [392, 370, 349].forEach((hz, i) => zeHorn(m, t + i * .36, 12 * Math.log2(hz / 440) + 69 - 12, .34 / ZE_16));
       const o = ac.createOscillator(), lfo = ac.createOscillator(), depth = ac.createGain(), g = ac.createGain();
       o.type = 'sawtooth'; o.frequency.value = 165; lfo.frequency.value = 6; depth.gain.value = 5; lfo.connect(depth).connect(o.frequency);
@@ -12611,78 +12819,6 @@ const toolName = n => {
     }
   }
 
-  // ---- …and his face, chosen in Settings (2026-10-30, later)
-  // Settings › General › Zé's game: a picture chosen (an <input type=file> — in the app the board's view opens the
-  // system's panel for it, BoardUI in main.swift), framed to his head in an oval of the game's own proportions, dragged
-  // (or the arrows) and zoomed (the slider, a scroll, + −). Only the oval's box is kept: a PNG of ZE_FACE_W × ZE_FACE_H
-  // sent to the server (PUT /api/ze), the picture itself never leaving the page. Remove lets it go (DELETE /api/ze). The
-  // row shows the face as the game wears it; the game's foot has a way here.
-  const ZE_FACE_W = 200, ZE_FACE_H = 264, ZE_OVAL_W = 150, ZE_OVAL_H = 198, ZE_VIEW = 260;   // the head's rx 25 : ry 33
-  const zf = { img: null, zoom: 1, x: 0, y: 0, drag: null };
-  function zeFaceShow(face) {
-    const t = $('#zeThumb');
-    t.hidden = !face; if (face) t.src = face; else t.removeAttribute('src');
-    $('#zeFaceDrop').hidden = !face; $('#zeFaceChoose').textContent = face ? 'Change…' : 'Choose…';
-    $('#zeFaceSay').textContent = face ? 'Worn in ⌥⌘Z — framed to his head, kept on this Mac' : '⌥⌘Z\'s hero wears a picture you choose, framed to his head';
-  }
-  function zeFaceLoad() { api('GET', '/api/ze').then(d => zeFaceShow(d.face), () => {}); }   // on purpose: the row stays as it stood
-  function zeFrameShut() { zf.img?.close?.(); zf.img = null; zf.drag = null; $('#zeFrame').hidden = true; }
-  const zfScale = () => Math.max(ZE_OVAL_W / zf.img.width, ZE_OVAL_H / zf.img.height) * zf.zoom;
-  /** The oval's box stays inside the picture: its centre no nearer an edge than half the box. */
-  function zfClamp() {
-    const s = zfScale(), hw = ZE_OVAL_W / 2 / s, hh = ZE_OVAL_H / 2 / s;
-    zf.x = Math.max(hw, Math.min(zf.img.width - hw, zf.x)); zf.y = Math.max(hh, Math.min(zf.img.height - hh, zf.y));
-  }
-  function zeFrameDraw() {
-    const c = $('#zeFrameView'), d = devicePixelRatio || 1, V = ZE_VIEW, s = zfScale();
-    if (c.width !== V * d) c.width = c.height = V * d;
-    const x = c.getContext('2d');
-    x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, V, V);
-    x.drawImage(zf.img, V / 2 - zf.x * s, V / 2 - zf.y * s, zf.img.width * s, zf.img.height * s);
-    const oval = () => { x.beginPath(); x.ellipse(V / 2, V / 2, ZE_OVAL_W / 2, ZE_OVAL_H / 2, 0, 0, Math.PI * 2); };
-    x.fillStyle = 'rgba(0, 0, 0, .55)'; x.beginPath(); x.rect(0, 0, V, V); x.ellipse(V / 2, V / 2, ZE_OVAL_W / 2, ZE_OVAL_H / 2, 0, 0, Math.PI * 2); x.fill('evenodd');
-    x.strokeStyle = 'rgba(255, 255, 255, .9)'; x.lineWidth = 2; oval(); x.stroke();
-  }
-  const zfZoom = z => { zf.zoom = Math.max(1, Math.min(6, z)); $('#zeZoom').value = zf.zoom; zfClamp(); zeFrameDraw(); };
-  const zfMove = (dx, dy) => { const s = zfScale(); zf.x -= dx / s; zf.y -= dy / s; zfClamp(); zeFrameDraw(); };   // the picture moves, the oval stays
-  $('#zeFaceChoose').addEventListener('click', () => { $('#zeFaceFile').value = ''; $('#zeFaceFile').click(); });
-  $('#zeFaceFile').addEventListener('change', async e => {
-    const f = e.target.files?.[0]; if (!f) return;
-    zeFrameShut();
-    try { zf.img = await createImageBitmap(f); } catch { return note($('#zeFaceChoose'), `Not a picture this browser can read: ${f.name}`, true); }
-    zf.zoom = 1; zf.x = zf.img.width / 2; zf.y = zf.img.height / 2; $('#zeZoom').value = 1;
-    $('#zeFrame').hidden = false; zeFrameDraw(); $('#zeFrameView').focus();
-  });
-  $('#zeZoom').addEventListener('input', e => { if (zf.img) zfZoom(Number(e.target.value)); });
-  const zfView = $('#zeFrameView');
-  zfView.addEventListener('wheel', e => { if (!zf.img) return; e.preventDefault(); zfZoom(zf.zoom * Math.exp(-e.deltaY * .002)); }, { passive: false });
-  zfView.addEventListener('pointerdown', e => { if (!zf.img || e.button !== 0) return; zf.drag = { px: e.clientX, py: e.clientY }; zfView.setPointerCapture(e.pointerId); });
-  zfView.addEventListener('pointermove', e => { const g = zf.drag; if (!g) return; zfMove(e.clientX - g.px, e.clientY - g.py); g.px = e.clientX; g.py = e.clientY; });
-  for (const ev of ['pointerup', 'pointercancel']) zfView.addEventListener(ev, () => { zf.drag = null; });
-  zfView.addEventListener('keydown', e => {
-    if (!zf.img) return;
-    const d = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -8], ArrowDown: [0, 8] }[e.key];
-    if (d) zfMove(...d); else if (e.key === '+' || e.key === '=') zfZoom(zf.zoom * 1.1); else if (e.key === '-') zfZoom(zf.zoom / 1.1); else return;
-    e.preventDefault();
-  });
-  $('#zeFrameNo').addEventListener('click', zeFrameShut);
-  $('#zeFrameUse').addEventListener('click', async e => {
-    if (!zf.img) return;
-    const b = e.currentTarget, c = document.createElement('canvas'), s = zfScale() * ZE_FACE_W / ZE_OVAL_W;
-    c.width = ZE_FACE_W; c.height = ZE_FACE_H;
-    c.getContext('2d').drawImage(zf.img, ZE_FACE_W / 2 - zf.x * s, ZE_FACE_H / 2 - zf.y * s, zf.img.width * s, zf.img.height * s);
-    b.disabled = true;
-    try {   // a raw fetch, as the attach upload's: its body is a picture
-      const png = await new Promise(r => c.toBlob(r, 'image/png'));
-      const r = await fetch('/api/ze', { method: 'PUT', body: png, headers: { ...keyHeaders(), 'content-type': 'image/png' } });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(r.status === 405 || r.status === 404 ? 'the running server predates this page — scripts/launchd.sh restart' : d.error || `HTTP ${r.status}`);
-      zeFaceShow(d.face); zeFrameShut();
-    } catch (err) { note(b, `Not kept: ${err.message}`, true); }
-    finally { b.disabled = false; }
-  });
-  $('#zeFaceDrop').addEventListener('click', e => api('DELETE', '/api/ze').then(d => zeFaceShow(d.face), err => note(e.target, err.message, true)));
-  $('#zeFaceGo').addEventListener('click', () => { $('#zeGame').close(); settingsAt('general', '#zeFaceRow'); });
 
   // ---- the chat column across a reload (2026-10-16) ---------------------------------------------------------------
   // Every chat's tabs were the page's memory alone: the pages it opened, its folder's editor, its split, which half each

@@ -5,6 +5,45 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, the very last — Zé gets buff, gets a car, and gets the vira
+
+Ricardo: *"we can remove the customization face, just use a pixelized/cartoonish version of his face · make the game
+more vertical (use more vertical space) · should be buff, and increase in size when eative meat, skinier when eating
+vegatables, then dies when there only bones · when eating 3 meat in a row, a ford focus should arrive and ze rides it
+faster to eat for 10 seconds · when eating 3 vegetables in a row, do the "punishment" of riding a mercedes class A and
+be slower · add an option for tradicional barcelos music · don't forget to put some mossad/israel easter eggs"*.
+
+* **His face is a drawing**: 20 × 24 pixels (`ZE_FACE`) — dark hair, round gold glasses, eyebrows, a full beard —, the
+  mouth open for a bite or as food comes (`ZE_OPEN`), green from a green, sunglasses and an earpiece as AGENT ZÉ
+  (`ZE_SPY`), a skull with the glasses still on at the end (`ZE_SKULL`); each a canvas once, outlined (`zeSprite`,
+  `zeFaceOf`), drawn unsmoothed. **The face setting is gone**: the Settings row, `GET/PUT/DELETE /api/ze`, its test and
+  scenario, and the board view's file panel (`BoardUI`, there for it alone). This Mac's `~/.config/peixairada/ze.png`
+  was removed with it; the Desktop's picture is untouched.
+* **Taller than wide**: 720 × 900, the dialog the window's height (`96vh`), the foot under it. The sky has the room:
+  night at the top, stars, a crescent moon; food falls ZE_FALL (1.5×) quicker the longer way.
+* **Bulk instead of lives** (`g.mass`, 0 … ZE_MASS_MAX 12, from 6): a meat adds one, a green takes one, the rooster
+  two. His size follows it (`zeSz`, 0.87 to 1.2), and his build — shoulders, arms, legs, the neck thicker with each
+  meat; pecs and biceps from 5, abs from 9; ribs at 2 (`zeHero`). None left is the K.O.: his bones, flat on his back
+  (ONLY BONES LEFT). The HUD's BUFF bar runs bone to meat, *SKIN AND BONES!* at 2. A bigger Zé catches more, and is hit
+  by more: his box is his breadth (`zeTw`).
+* **The cars** (`zeRide`, `zeLeave`, `zeCar`, ZE_RIDE 10 s): three meats in a row bring a **Ford Focus** — Ford blue,
+  the Mk1's tall tail light up the back pillar, the oval — at 1.8× his speed; three greens in a row (`g.greens`, the
+  hits) a **Mercedes A-Class** — silver, short and tall, the star — at half. He sits in it, his head out of the roof, no
+  legs, no kick: space is its horn (BEEP BEEP / meep). Its engine hums with his speed (`zeEngine`, `zeRev`; the A-Class
+  sputters); the A-Class pitches as it brakes and pulls away, and leaves by flipping onto its roof — FAILED THE MOOSE
+  TEST. A car ends with the dragon.
+* **The music is the funk or the vira** (T, the foot's ♪ button, `prefs.zeMusic`): an original vira in G, sixteen bars
+  of three-four — the concertina (three reeds a little apart), the viola braguesa's root and the bombo on one, the
+  cavaquinho strummed on two and three, the ferrinhos ringing (`zeVira`). The dragon keeps its own theme.
+* **For those who know** (the Mossad and Israel, light — spy tropes and food, nothing of a conflict): a briefcase
+  falls once a round at most, from level 2 — caught, he is **AGENT ZÉ** (sunglasses, an earpiece, a TOP SECRET stamp,
+  *on loan to the Mossad · סודי ביותר*, a spy's chord), and his K.O. reads *the Mossad has never heard of him*; one kick
+  in six is **KRAV MAGA!**; a **falafel** is a green (*FALAFEL? CHICKPEAS!*); the Focus says **YALLA**.
+* Checked: `ze-game.mjs` rewritten for the lot — taller than wide; the vira planned and T back; a meat one bigger, a
+  green one smaller; the Focus at three (its speed past 600, the horn, its engine gone with it), COMBO ×2 at five, the
+  A-Class at three greens (slow, the moose test), the briefcase, the dragon (a green no smaller), the K.O. at nothing
+  left with the agent's line, Again, Menu, HARDCORE's bag. WebKit: the Focus with the vira on, silent.
+
 ## Decisions of 2026-10-30, last — the best of Trota's, in Zé's game
 
 Ricardo: *"integrate the best of this game in here: "Trota's — jogo 8-bit_v2.html" - be creative"*. Trota's is an 8-bit

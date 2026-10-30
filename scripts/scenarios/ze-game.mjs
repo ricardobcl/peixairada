@@ -1,89 +1,129 @@
-// ⌥⌘Z, Zé's game (2026-10-30): the title with the face from beside the setup file and its four ways to play (← → and
-// 1–4, Trota's), a round started by a real space (the music's context made by that press), meat eaten (score, streak), a
-// vegetable that hits (a life), one kicked out of the sky (WATAAA), five in a row (COMBO ×2), level 3 as ENTER THE DRAGON
-// (twice his size, the dragon's track, a green eaten for points, back at level 4), the pause (frames and music stopped),
-// the K.O. keeping that way's best, Again, M closing the sound and bringing it back, the K.O.'s Menu, HARDCORE's bag of
-// five meats in fifty, esc closing it all (no frame, no context), the face drawn when ze.png is gone, ⌥⌘Z closing it.
-import { rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-
+// ⌥⌘Z, Zé's game (2026-10-30): the title — his face in pixels, the four ways to play (← → and 1–4), the music (T: the
+// funk or the vira) —, a round started by a real space (the music's context made by that press), meat eaten (score, his
+// bulk up), a green that hits (his bulk down, BLEH), one kicked out of the sky, three meats in a row (the Ford Focus:
+// faster, its horn on space, gone after its time), three greens in a row (the Mercedes A-Class: slower, over onto its
+// roof as it leaves), five in a row (COMBO ×2), the briefcase (AGENT ZÉ), level 3 as ENTER THE DRAGON (twice his size,
+// the dragon's track, a green eaten for points, back at level 4), the pause (frames and music stopped), his bulk run out
+// (only bones: the K.O., that way's best kept), Again, M closing the sound and bringing it back, the K.O.'s Menu,
+// HARDCORE's bag, esc closing it all (no frame, no context), ⌥⌘Z opening and closing it.
 export const meta = { server: true };
 
-// a 1×1 picture, warm: what the test server's setup folder holds instead of anyone's face
-const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGO4OSvnPwAHDgLfOXSIZgAAAABJRU5ErkJggg==', 'base64');
-
 export default async function (ctx) {
-  const out = {}, face = join(ctx.server.dir, 'ze.png');
-  writeFileSync(face, PNG);
+  const out = {};
   await ctx.waitFor(`window.peix.state().snapshots > 0`, { what: 'the board' });
   const press = async (code, key, vk) => {   // through the browser's input: a press the page may start sound on
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key, windowsVirtualKeyCode: vk });
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key, windowsVirtualKeyCode: vk });
   };
-  const game = () => ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.g; return JSON.stringify({ open: document.querySelector('#zeGame').open, raf: !!z.raf, frames: z.frames, face: !!z.face,
-    music: z.music ? z.music.ac.state : null, track: z.music ? z.music.track : null, phase: g.phase, score: g.score, lives: g.lives, streak: g.streak, mult: g.mult, level: g.level,
-    dragon: g.dragon, items: g.items.length, words: g.words.map(w => w.s), diff: window.peix.prefs().zeDiff }); })()`).then(JSON.parse);
+  const game = () => ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.g; return JSON.stringify({ open: document.querySelector('#zeGame').open, raf: !!z.raf, frames: z.frames,
+    music: z.music ? z.music.ac.state : null, track: z.music ? z.music.track : null, engine: !!z.music?.engine, phase: g.phase, score: g.score, mass: g.mass, streak: g.streak,
+    mult: g.mult, level: g.level, dragon: g.dragon, ride: g.ride && g.ride.kind, leaving: g.leaving && g.leaving.kind, agent: g.agent, items: g.items.length,
+    words: g.words.map(w => w.s), banner: g.banner && g.banner.s, diff: window.peix.prefs().zeDiff, tune: window.peix.prefs().zeMusic }); })()`).then(JSON.parse);
   // drops what it is given into the round, nothing falling on its own meanwhile; at: [dx, dy] from Zé's feet
   const drop = (kind, e, at, more = {}) => ctx.evaluate(`(() => { const g = window.peix.ze().g; g.spawn = 1e9; g.hurt = 0;
     g.items.push({ kind: ${JSON.stringify(kind)}, e: ${JSON.stringify(e)}, pts: 15, say: ${JSON.stringify(kind === 'veg' ? 'BLEH! test' : 'test')}, x: g.x + g.f * ${at[0]}, y: g.y + ${at[1]}, vx: 0, vy: 0, g: 0, rot: 0, spin: 0, ...${JSON.stringify(more)} }); })()`);
+  const eat = async (kind, e, n = 1) => {   // n onto his head, one by one, each met before the next
+    for (let i = 0; i < n; i++) {
+      const before = await ctx.evaluate(`window.peix.ze().g.items.length`);
+      await drop(kind, e, [0, -150]);
+      await ctx.waitFor(`window.peix.ze().g.items.length <= ${before}`, { what: `${kind} ${i + 1} met` });
+    }
+  };
 
-  // ⌥⌘Z: the title, a frame loop, the face from ze.png, no sound yet
+  // ⌥⌘Z: the title, a frame loop, no sound yet; the ways to play and the music by key
   await ctx.key('KeyZ');
-  await ctx.waitFor(`document.querySelector('#zeGame').open && window.peix.ze().raf && window.peix.ze().face`, { what: 'the game, its face' });
+  await ctx.waitFor(`document.querySelector('#zeGame').open && window.peix.ze().raf && window.peix.ze().frames > 2`, { what: 'the game' });
   out.title = await game();
   ctx.assert.equal(out.title.phase, 'title'); ctx.assert.equal(out.title.music, null, 'no sound before a round');
   ctx.assert.equal(await ctx.evaluate(`document.activeElement === document.querySelector('#zeGame')`), true, 'the keys are the game\'s');
-  // the ways to play: → is the next, 1–4 one of them, kept
+  const box = await ctx.evaluate(`(r => [r.width, r.height])(document.querySelector('#zeCanvas').getBoundingClientRect())`);
+  ctx.assert.ok(box[1] > box[0], `taller than wide: ${box}`);
   await press('ArrowRight', 'ArrowRight', 39);
   ctx.assert.equal((await game()).diff, 2, '→ from NORMAL: HARD');
   await press('Digit1', '1', 49);
   ctx.assert.equal((await game()).diff, 0, '1: EASY');
-  await ctx.settle(); await ctx.shot('1-title');
   await press('Digit2', '2', 50);
-  ctx.assert.equal((await game()).diff, 1, '2: NORMAL');
+  await press('KeyT', 't', 84);
+  ctx.assert.equal((await game()).tune, 'vira', 'T: the vira');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#zeTune').textContent`), '♪ vira de Barcelos');
+  await ctx.settle(); await ctx.shot('1-title');
 
-  // space: a round, and the band made by that press
+  // space: a round, the vira playing
   await press('Space', ' ', 32);
-  await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().music?.ac.state === 'running' && window.peix.ze().music.track === 'funk'`, { what: 'the round and its music' });
-  // meat on his head: eaten, counted
-  await drop('meat', '🥩', [0, -140]);
-  await ctx.waitFor(`window.peix.ze().g.score === 15`, { what: 'the meat eaten' });
-  ctx.assert.equal((await game()).streak, 1);
-  // a vegetable on him: a life, and BLEH
-  await drop('veg', '🥦', [0, -100]);
-  await ctx.waitFor(`window.peix.ze().g.lives === 2`, { what: 'the broccoli hitting' });
+  await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().music?.ac.state === 'running' && window.peix.ze().music.track === 'band'`, { what: 'the round and its music' });
+  const s0 = await ctx.evaluate(`window.peix.ze().music.step`); await ctx.sleep(600);
+  ctx.assert.ok(await ctx.evaluate(`window.peix.ze().music.step`) > s0, 'the vira\'s quavers planned');
+  await press('KeyT', 't', 84);
+  ctx.assert.equal((await game()).tune, 'funk', 'T again: the funk');
+  // meat: eaten, counted, bigger; a green: smaller, BLEH
+  await eat('meat', '🥩');
+  out.meat = await game();
+  ctx.assert.equal(out.meat.score, 15); ctx.assert.equal(out.meat.mass, 7, 'a meat: one bigger');
+  await eat('veg', '🥦');
   out.hit = await game();
-  ctx.assert.equal(out.hit.streak, 0); ctx.assert.ok(out.hit.words.some(w => /^BLEH!/.test(w)), 'BLEH said');
+  ctx.assert.equal(out.hit.mass, 6, 'a green: one smaller'); ctx.assert.equal(out.hit.streak, 0); ctx.assert.ok(out.hit.words.some(w => /^BLEH!/.test(w)), 'BLEH said');
   // one in front of his foot: a kick sends it out of the sky
   await drop('veg', '🥕', [50, -70]);
-  await ctx.sleep(100); ctx.assert.equal((await game()).lives, 2, 'not touching him');
+  await ctx.sleep(100); ctx.assert.equal((await game()).mass, 6, 'not touching him');
   await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.score === 20`, { what: 'the carrot kicked' });
-  out.kick = await game();
-  ctx.assert.ok(out.kick.words.includes('WATAAA!')); ctx.assert.equal(out.kick.lives, 2);
-  // five in a row: COMBO ×2, the fifth counted twice — 4 × 15 + 30
-  for (let i = 1; i <= 5; i++) { await drop('meat', '🍗', [0, -140]); await ctx.waitFor(`window.peix.ze().g.streak === ${i}`, { what: `meat ${i} in a row` }); }
+  ctx.assert.ok((await game()).words.some(w => w === 'WATAAA!' || w === 'KRAV MAGA!'));
+
+  // three meats in a row: the Ford Focus — faster, space its horn; its time up, it drives off
+  await eat('meat', '🍗', 3);
+  out.focus = await game();
+  ctx.assert.equal(out.focus.ride, 'focus'); ctx.assert.equal(out.focus.banner, 'FORD FOCUS!'); ctx.assert.ok(out.focus.engine, 'its engine');
+  ctx.assert.equal(out.focus.mass, 9);
+  await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'ArrowRight', key: 'ArrowRight', windowsVirtualKeyCode: 39 });
+  await ctx.sleep(700);
+  out.fast = await ctx.evaluate(`window.peix.ze().g.vx`);
+  await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'ArrowRight', key: 'ArrowRight', windowsVirtualKeyCode: 39 });
+  ctx.assert.ok(out.fast > 600, `the Focus is quick: ${out.fast}`);
+  await ctx.sleep(400);
+  await press('Space', ' ', 32);
+  ctx.assert.ok((await game()).words.includes('BEEP BEEP!'), 'space: its horn');
+  await ctx.shot('2-focus');
+  await ctx.evaluate(`window.peix.ze().g.ride.t = .05`);
+  await ctx.waitFor(`!window.peix.ze().g.ride && window.peix.ze().g.leaving?.kind === 'focus' && !window.peix.ze().music.engine`, { what: 'the Focus driving off' });
+
+  // two more in a row: COMBO ×2 (five)
+  await eat('meat', '🥓', 2);
   out.combo = await game();
-  ctx.assert.equal(out.combo.mult, 2); ctx.assert.equal(out.combo.score, 20 + 60 + 30); ctx.assert.ok(out.combo.words.includes('COMBO ×2!'));
-  // a picture of a round in play: things in the air, the HUD
-  for (const [k, e, at] of [['meat', '🍗', [-200, -260]], ['veg', '🍔', [120, -300]], ['galo', '🐓', [260, -200]], ['meat', '🌭', [-60, -330]]]) await drop(k, e, at);
-  await ctx.sleep(150); await ctx.shot('2-play');
+  ctx.assert.equal(out.combo.mult, 2); ctx.assert.ok(out.combo.words.includes('COMBO ×2!'));
+
+  // three greens in a row: the Mercedes A-Class — slower; its time up, over onto its roof
+  await eat('veg', '🥬', 3);
+  out.aclass = await game();
+  ctx.assert.equal(out.aclass.ride, 'aclass'); ctx.assert.equal(out.aclass.mass, 8);
+  await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'ArrowLeft', key: 'ArrowLeft', windowsVirtualKeyCode: 37 });
+  await ctx.sleep(900);
+  out.slow = await ctx.evaluate(`window.peix.ze().g.vx`);
+  await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'ArrowLeft', key: 'ArrowLeft', windowsVirtualKeyCode: 37 });
+  ctx.assert.ok(out.slow > -250 && out.slow < -100, `the A-Class is slow: ${out.slow}`);
+  await ctx.shot('3-aclass');
+  await ctx.evaluate(`window.peix.ze().g.ride.t = .05`);
+  await ctx.waitFor(`!window.peix.ze().g.ride && window.peix.ze().g.leaving?.kind === 'aclass'`, { what: 'the A-Class leaving' });
+  ctx.assert.ok((await game()).words.includes('FAILED THE MOOSE TEST!'));
+  await ctx.sleep(400); await ctx.shot('4-moose');
+
+  // the briefcase: AGENT ZÉ
+  await eat('case', '💼');
+  out.agent = await game();
+  ctx.assert.equal(out.agent.agent, true); ctx.assert.equal(out.agent.banner, 'AGENT ZÉ');
 
   // level 3: ENTER THE DRAGON — twice his size, the dragon's track, a green is food; its time up, level 4
   await ctx.evaluate(`(() => { const g = window.peix.ze().g; g.items.length = 0; g.level = 2; g.next = g.score + 1; })()`);
-  await drop('meat', '🥩', [0, -140]);
+  await eat('meat', '🥩');
   await ctx.waitFor(`window.peix.ze().g.dragon > 0 && window.peix.ze().g.level === 3 && window.peix.ze().music.track === 'dragon'`, { what: 'the dragon' });
   await ctx.sleep(1400);   // grown
   const before = await game();
-  await drop('veg', '🥦', [0, -280]);
+  await drop('veg', '🥦', [0, -300]);
   await ctx.waitFor(`window.peix.ze().g.score > ${before.score}`, { what: 'a green eaten as the dragon' });
   out.dragon = await game();
-  ctx.assert.equal(out.dragon.lives, before.lives, 'a green costs no life'); ctx.assert.ok(out.dragon.words.some(w => /^\+10$/.test(w)), 'ten for it');
-  ctx.assert.ok(await ctx.evaluate(`window.peix.ze().g.flames.length > 0`), 'on fire');
-  await ctx.shot('3-dragon');
+  ctx.assert.equal(out.dragon.mass, before.mass, 'a green takes nothing off the dragon'); ctx.assert.ok(out.dragon.words.some(w => /^\+10$/.test(w)), 'ten for it');
+  await ctx.shot('5-dragon');
   await ctx.evaluate(`window.peix.ze().g.dragon = .05`);
-  await ctx.waitFor(`!window.peix.ze().g.dragon && window.peix.ze().g.level === 4 && window.peix.ze().music.track === 'funk'`, { what: 'back to normal, level 4' });
-  ctx.assert.equal(await ctx.evaluate(`window.peix.ze().g.banner?.s`), 'LEVEL 4!');
+  await ctx.waitFor(`!window.peix.ze().g.dragon && window.peix.ze().g.level === 4 && window.peix.ze().music.track === 'band'`, { what: 'back to normal, level 4' });
 
   // P: the frames and the music stop; P again goes on
   await press('KeyP', 'p', 80);
@@ -93,20 +133,25 @@ export default async function (ctx) {
   await press('KeyP', 'p', 80);
   await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().raf && window.peix.ze().music.ac.state === 'running'`, { what: 'the round again' });
 
-  // the last life: K.O., NORMAL's best kept
+  // his bulk run out: only bones, the K.O., NORMAL's best kept — and the agent's line
   const ko = async () => {
-    await ctx.evaluate(`(() => { const g = window.peix.ze().g; g.items.length = 0; g.lives = 1; })()`);
+    await ctx.evaluate(`(() => { const g = window.peix.ze().g; g.items.length = 0; g.mass = 1; })()`);
+    await ctx.evaluate(`window.peix.ze().g.mass = 2`);   // thin first: his ribs
+    await ctx.sleep(150); await ctx.shot('6-thin');
+    await ctx.evaluate(`window.peix.ze().g.mass = 1`);
     await drop('veg', '🍆', [0, -100]);
     await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O.' });
   };
   await ko();
   out.ko = await game();
+  ctx.assert.equal(out.ko.mass, 0);
+  ctx.assert.equal(await ctx.evaluate(`window.peix.ze().g.ko`), 'the Mossad has never heard of him', 'the agent\'s K.O.');
   ctx.assert.equal((await ctx.peix('prefs().zeBest')).normal, out.ko.score, 'the best is NORMAL\'s');
   await press('Space', ' ', 32);
   ctx.assert.equal((await game()).phase, 'over', 'a press at once is no new round');
-  await ctx.sleep(900); await ctx.shot('4-ko');
+  await ctx.sleep(900); await ctx.shot('7-ko');
   await press('Space', ' ', 32);   // Again
-  await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.score === 0 && window.peix.ze().g.lives === 3`, { what: 'another round' });
+  await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.score === 0 && window.peix.ze().g.mass === 6 && !window.peix.ze().g.agent`, { what: 'another round' });
 
   // M: the sound closed, and back
   await press('KeyM', 'm', 77);
@@ -132,15 +177,9 @@ export default async function (ctx) {
   ctx.assert.equal(out.closed.music, null, 'the context closed with it');
   await ctx.sleep(300); ctx.assert.equal((await game()).frames, out.closed.frames, 'no frame after it closed');
 
-  // ze.png gone: the drawn face; ⌥⌘Z again closes it
-  rmSync(face);
+  // ⌥⌘Z opens it on its title, and closes it
   await ctx.key('KeyZ');
   await ctx.waitFor(`document.querySelector('#zeGame').open && window.peix.ze().g.phase === 'title'`, { what: 'the game again' });
-  await ctx.waitFor(`!window.peix.ze().face`, { what: 'no face: the drawn one' });
-  await press('Digit2', '2', 50); await press('Space', ' ', 32);
-  await ctx.waitFor(`window.peix.ze().g.phase === 'play'`, { what: 'a round' });
-  await ctx.evaluate(`window.peix.ze().g.spawn = 1e9`);
-  await ctx.sleep(200); await ctx.shot('5-drawn-face');
   await ctx.key('KeyZ');
   await ctx.waitFor(`!document.querySelector('#zeGame').open && !window.peix.ze().music`, { what: '⌥⌘Z again closing it' });
   return out;

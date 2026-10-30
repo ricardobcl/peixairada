@@ -49,9 +49,6 @@ server.mjs, build.sh's `SOURCE`).
   page's `{type:'pane'}`; **the overlay covers the window**, a click on no page let through (`PaneOverlay.hitTest`). A
   page's new window is a tab beside it (`PaneDelegate.open` → `peixPaneOpen`), a link to another host the page's to
   judge (`PaneDelegate.linkOut` → `peixLinkOut`).
-* **The board's own view has a UI delegate for one thing** (2026-10-30, `BoardUI`): the file panel for an
-  `<input type=file>` (Settings' face for Zé's game), the pane's (`PaneDelegate.openPanel`); alerts and new windows stay
-  as they were. → `ze-face.mjs` (the page's side).
 * **The badge and the Dock**: the page's `{type: 'state'}` is their number; `refreshBadges` redraws only on a change
   (`badged`); a newly asking chat, the app behind, bounces the Dock once.
 * **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in

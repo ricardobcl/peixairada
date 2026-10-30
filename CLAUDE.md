@@ -514,12 +514,11 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
-* **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live): a canvas, its frames only while open and
-  not paused; its own Web Audio, made by the press that starts a round, suspended by a pause, closed with the dialog or
-  by M. Trota's best in it (2026-10-30): four ways (`ZE_DIFFS`, a best each), level 3's dragon (`zeDragon`, `zeFera`),
-  nothing shaking, flashing or blinking under reduced motion (`zeCalm`). **His face is Settings'** (`#zeFaceRow`): a picture framed to an oval in the page, only the oval's PNG kept
-  beside the setup file (`PUT`/`DELETE /api/ze`) — **no face in the code**; none, a face of no one drawn. → `ze-game.mjs`,
-  `ze-face.mjs`, `test/ze.test.mjs`.
+* **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live): a 720 × 900 canvas, its frames only while
+  open and not paused; its own Web Audio (the funk or the vira, `prefs.zeMusic`), made by the press that starts a round,
+  suspended by a pause, closed with the dialog or by M. His face is pixels in the code (`ZE_FACE`, `zeSprite`), no
+  picture and no setting; bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon
+  (`ZE_DIFFS`, `zeDragon`); nothing shaking, flashing or blinking under reduced motion (`zeCalm`). → `ze-game.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   ticks, titles, pins, PR turns… — whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are

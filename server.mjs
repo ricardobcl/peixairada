@@ -14,7 +14,6 @@
 //      · nothing under CLAUDE_DIR: Claude Code's, never the board's to write in
 //      · Peacock's colours, moved into the setup once (2026-10-15)
 //      · attachments: a file dropped on the board from a browser
-//      · Zé's face, for ⌥⌘Z's game (2026-10-30)
 //  Transcript parsing
 //      · PRs mentioned in the chat
 //      · …and the short ways of naming one (2026-10-06)
@@ -706,31 +705,6 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // of a chat with no claude only: one running has its folder
     ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null, back: folderBack(s.cwd) } : {})
   };
-}
-
-// ---- Zé's face, for ⌥⌘Z's game (2026-10-30) ------------------------------------------------------------------------
-// The game's hero wears a face of the user's choosing, set in Settings (2026-10-30, later): the page frames a picture to
-// his head and sends only that box, a PNG (PUT /api/ze), kept beside the setup file — never in the checkout, where a face
-// would be a person in the code, pulled by everyone who runs the board. Handed back as a data: URL (GET /api/ze), read on
-// each ask — the game asks once per opening, Settings as it opens; DELETE /api/ze lets it go. None: the page draws one.
-const ZE_FACE = join(dirname(CONFIG_FILE), 'ze.png'), ZE_FACE_MAX = 2 << 20, PNG_SIG = Buffer.from('89504e470d0a1a0a', 'hex');
-function zeFace() {
-  try {
-    const st = statSync(ZE_FACE);
-    return st.isFile() && st.size <= ZE_FACE_MAX ? `data:image/png;base64,${readFileSync(ZE_FACE).toString('base64')}` : null;
-  } catch { return null; }
-}
-async function zeRoute(req, res) {
-  if (req.method === 'GET') return json(res, 200, { face: zeFace() });
-  if (req.method === 'DELETE') { rmSync(ZE_FACE, { force: true }); return json(res, 200, { face: null }); }
-  if (req.method !== 'PUT') return json(res, 405, { error: 'GET, PUT or DELETE' });
-  let buf; try { buf = await readRaw(req, ZE_FACE_MAX); } catch { res.setHeader('connection', 'close'); return json(res, 413, { error: `larger than ${ZE_FACE_MAX >> 20} MB` }); }
-  if (!buf.subarray(0, 8).equals(PNG_SIG)) return json(res, 400, { error: 'not a PNG' });
-  try {   // beside itself, then renamed over: a game opening meanwhile reads the old face or the new, never half of one
-    mkdirSync(dirname(ZE_FACE), { recursive: true });
-    const tmp = `${ZE_FACE}.${process.pid}.tmp`; writeFileSync(tmp, buf, { mode: 0o600 }); renameSync(tmp, ZE_FACE);
-  } catch (e) { return json(res, 500, { error: `could not keep it: ${e.message || e}` }); }
-  return json(res, 200, { face: zeFace() });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -5937,7 +5911,6 @@ const server = createServer(async (req, res) => {
     if (p === '/api/chat') return chatRoute(req, res, null, url);   // the chat (2026-10-17): its own routes
     if ((m = p.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, m[1], url);
     if (p === '/api/lunch') return lunchRoute(req, res, url);   // lunch (2026-10-18)
-    if (p === '/api/ze') return zeRoute(req, res);   // ⌥⌘Z's hero's face (2026-10-30)
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {   // the Setup's token box: into the keychain, or out of it
       const body = req.method === 'PUT' ? await jsonBody(req) : {};
       const token = req.method === 'PUT' ? (typeof body.token === 'string' ? body.token.trim() : '') : '';
