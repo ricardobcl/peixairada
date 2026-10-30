@@ -12560,7 +12560,7 @@ const toolName = n => {
   }
   /** A car comes for him: the Focus (YALLA — quick) or the A-Class (the punishment — slow), ZE_RIDE s; one there goes. */
   function zeRide(g, kind) {
-    if (g.dragon || (g.phase !== 'play' && !g.demo)) return;
+    if (g.dragon || g.avo || (g.phase !== 'play' && !g.demo)) return;   // no car while the dragon or the avó is out: space kicks
     if (g.ride) zeLeave(g);
     Object.assign(g, { ride: { kind, t: ZE_RIDE, tilt: 0, vx: g.vx, wheel: 0 }, kick: 0, vy: 0, y: ZE_FLOOR, gy: ZE_FLOOR });
     zeBits(g, g.x, ZE_FLOOR - 20, ['#d9c7e8', '#ffffff', '#9aa0a8'], 14);
@@ -12845,7 +12845,7 @@ const toolName = n => {
       const b = g.banner; zeText(cx, b.s, ZE_W / 2, 300, 46, b.cs[zeBlink(g, 8) ? 0 : 1], 'center', 900);
       if (b.sub) zeText(cx, b.sub, ZE_W / 2, 348, 17, '#fff3c4', 'center');
     }
-    if (g.trophy) {   // a trophy won: a plaque dropping in under the HUD
+    if (g.trophy && g.phase === 'play') {   // a trophy won: a plaque dropping in under the HUD
       const T = g.trophy, y = 170 - Math.max(0, T.t - 2.3) * 200, w = 360;
       cx.fillStyle = '#1b0b2e'; cx.beginPath(); cx.roundRect(ZE_W / 2 - w / 2 - 3, y - 25, w + 6, 56, 12); cx.fill();
       cx.fillStyle = '#3a2a52'; cx.strokeStyle = '#ffd23f'; cx.lineWidth = 2; cx.beginPath(); cx.roundRect(ZE_W / 2 - w / 2, y - 22, w, 50, 10); cx.fill(); cx.stroke();
