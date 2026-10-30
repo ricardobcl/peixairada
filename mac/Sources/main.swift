@@ -266,6 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var findField: NSSearchField!
   var findQuery = ""                           // what was last searched for — ⌘G carries on with it after the bar closes
   let paneDelegate = PaneDelegate()
+  let boardUI = BoardUI()   // the board's own view's file panel (2026-10-30, later); a web view holds its delegate weakly
   let keyboardMap = KeyboardMap()                // the Mac's layout for VS Code Web's pages (2026-10-14)
   let server = ServerController()
   var statusItem: NSStatusItem!
@@ -411,6 +412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     cfg.userContentController = ucc
     web = BoardWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: cfg)
     web.navigationDelegate = self
+    web.uiDelegate = boardUI
     // No flash before the page paints (2026-09-27, night): a WKWebView draws white until the document's CSS lands —
     // in dark mode a flash of the wrong colour at every launch and reload. The view draws no ground of its own and
     // the window's is the page's --bg for the appearance in force, so what shows first is what the page will show;
@@ -1778,6 +1780,9 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   // without them alert() was silent and confirm() always said no, so a GitHub button that asks first never went on.
   func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo,
                completionHandler: @escaping @MainActor @Sendable ([URL]?) -> Void) {
+    PaneDelegate.openPanel(webView, parameters, completionHandler)
+  }
+  static func openPanel(_ webView: WKWebView, _ parameters: WKOpenPanelParameters, _ completionHandler: @escaping @MainActor @Sendable ([URL]?) -> Void) {
     let panel = NSOpenPanel()
     panel.allowsMultipleSelection = parameters.allowsMultipleSelection
     panel.canChooseDirectories = parameters.allowsDirectories
@@ -1814,6 +1819,15 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
 
 /// What an editor's view says when ⌘W finds it empty (2026-10-14, AppDelegate.closeWhenEmpty): a page in the pane is not
 /// the board, so it is heard apart from the board's bridge.
+// The board's own view opens the system's panel for an <input type=file> too (2026-10-30, later): Settings › General ›
+// Zé's game chooses his face with one, and without a UI delegate WebKit opens nothing. Only that: the rest a UI delegate
+// may do — new windows, alerts — stays as the board has always had it.
+final class BoardUI: NSObject, WKUIDelegate {
+  func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo,
+               completionHandler: @escaping @MainActor @Sendable ([URL]?) -> Void) {
+    PaneDelegate.openPanel(webView, parameters, completionHandler)
+  }
+}
 final class EditorEmpty: NSObject, WKScriptMessageHandler {
   private let heard: (WKScriptMessage) -> Void
   init(_ heard: @escaping (WKScriptMessage) -> Void) { self.heard = heard }

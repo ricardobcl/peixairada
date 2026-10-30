@@ -2482,6 +2482,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #zeCanvas { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--r-4); background: #2a0f4f; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); touch-action: none; }
   #zeGame .zefoot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
   #zeGame .zefoot .spacer { flex: 1; }
+  #zeGame .zefoot .btn { font-size: var(--fs-xs); }
+  /* Settings › General › Zé's game (2026-10-30, later): his face as the game wears it, and the frame that picks it */
+  .pop .zefbtns { display: flex; align-items: center; gap: 6px; }
+  .pop #zeThumb { width: 26px; height: 34px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 25%, transparent); }
+  .pop #zeThumb[hidden] { display: none; }
+  .pop .zeframe { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 10px; border-radius: var(--r-3); background: var(--ctl); }
+  .pop .zeframe[hidden] { display: none; }
+  .pop #zeFrameView { width: 260px; height: 260px; border-radius: var(--r-3); background: var(--crust); cursor: grab; touch-action: none; }
+  .pop #zeFrameView:active { cursor: grabbing; }
+  .pop .zefside { flex: 1 1 180px; display: grid; gap: 10px; align-content: center; min-width: 0; font-size: var(--fs-sm); color: var(--muted); }
+  .pop .zefside small { font-size: var(--fs-xs); line-height: 1.4; }
+  .pop .zezoom { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+  .pop .zezoom input { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .pop .zefgo { display: flex; gap: 6px; }
   #zeGame .zefoot kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
   .home .hlunch:empty { display: none; }
   .home .hlunch .chalk { padding: 14px 20px 18px; border-width: 8px; box-shadow: inset 0 0 50px rgba(0, 0, 0, .4); overflow: visible; }
@@ -2634,6 +2648,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         <section class="sgrp" id="fsRow" hidden><h6 class="sgh" id="sgWindow">Window</h6><div class="slist" role="group" aria-labelledby="sgWindow">
           <div class="srow set" data-kw="full screen notch space fill green button window"><label class="sl" for="fsPick"><b>Full screen</b><small>What ⌃⌘F and the green button do</small></label><span class="ssel"><select id="fsPick"><option value="fill">Up to the notch</option><option value="space">Its own Space</option></select></span></div>
         </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgGame">Zé's game</h6><div class="slist" role="group" aria-labelledby="sgGame">
+          <div class="srow set" id="zeFaceRow" data-kw="game ze face picture photo head hero bruce lee barcelos"><span class="sl"><b>His face</b><small id="zeFaceSay">⌥⌘Z's hero wears a picture you choose, framed to his head</small></span><span class="zefbtns"><img id="zeThumb" alt="His face, as the game wears it" hidden><button type="button" class="btn" id="zeFaceChoose">Choose…</button><button type="button" class="btn danger" id="zeFaceDrop" hidden>Remove</button></span><input type="file" id="zeFaceFile" accept="image/*" hidden>
+            <div class="zeframe" id="zeFrame" hidden><canvas id="zeFrameView" width="260" height="260" tabindex="0" aria-label="The picture, his head in the oval — drag it or the arrows move it, + and − zoom"></canvas><div class="zefside"><small>Drag the picture until his head fills the oval; the slider or a scroll zooms. Only the oval is kept, here on this Mac.</small><label class="zezoom">Zoom <input type="range" id="zeZoom" min="1" max="6" step="0.01" value="1"></label><span class="zefgo"><button type="button" class="btn" id="zeFrameNo">Cancel</button><button type="button" class="btn" id="zeFrameUse">Use it</button></span></div></div></div>
+        </div></section>
       </div>
       <div class="spane" data-tab="look" hidden role="tabpanel" id="spLook" aria-labelledby="stLook">
         <h5 class="sph">Appearance</h5>
@@ -2752,7 +2770,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </dialog>
 <dialog id="zeGame" aria-label="Zé, the Bruce Lee of Barcelos — a game" tabindex="-1">
   <canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat and dodges the vegetables"></canvas>
-  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run</span><span><kbd>↑</kbd> jump</span><span><kbd>space</kbd> kick</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
+  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run</span><span><kbd>↑</kbd> jump</span><span><kbd>space</kbd> kick</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeFaceGo" title="Settings › General › Zé's game">His face…</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
   <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
@@ -3009,13 +3027,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     sset.opener = document.activeElement !== document.body ? document.activeElement : null;
     settingsTab(sset.tab);   // the pane last shown, its tab lit, no search
     dlg.showModal(); $('#sq').focus(); repostPane();
-    loadJira(); loadEditors();
+    loadJira(); loadEditors(); zeFaceLoad();
   };
   const settingsToggle = () => settingsOpen(!$('#settings').open);
   $('#settings').addEventListener('close', () => {
     if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); }
     setupUi.open = null; for (const r of document.querySelectorAll('#setup .srow.proj.open')) { r.classList.remove('open'); r.querySelector('.stile').setAttribute('aria-expanded', 'false'); }
-    window.CSS?.highlights?.delete('sfind'); keySure(false); if (chatUi.setSure) { chatUi.setSure = false; renderChatSet(true); }
+    window.CSS?.highlights?.delete('sfind'); keySure(false); zeFrameShut(); if (chatUi.setSure) { chatUi.setSure = false; renderChatSet(true); }
     const o = sset.opener; sset.opener = null;
     if (o?.isConnected && !document.querySelector('dialog[open]') && (document.activeElement === document.body || !document.activeElement)) o.focus({ preventScroll: true });
     repostPane();
@@ -11898,8 +11916,9 @@ const toolName = n => {
   // Zé, the Bruce Lee of Barcelos: meat falls and he eats it; vegetables fall and he dodges them, or kicks them out of
   // the sky. ← → (A D, or the pointer over the picture) run, ↑ jumps, space kicks, P pauses, M the sound; esc or ⌥⌘Z
   // again closes. The golden rooster — Barcelos' own, for luck — is a life. Faster as the score climbs; the best is kept
-  // (prefs.zeBest). His face is ze.png beside the setup file (GET /api/ze, asked on each opening), the ellipse inscribed
-  // in it his head; with none, a face drawn here. A canvas in a modal dialog, a world of its own — its colours are the
+  // (prefs.zeBest). His face is the picture Settings › General framed for him (GET /api/ze, asked on each opening — see
+  // zeFrame), the ellipse inscribed in it his head; with none, a face of no one in particular, drawn here. A canvas in a
+  // modal dialog, a world of its own — its colours are the
   // picture's, not a theme's. Its frames run only while it is open and not paused; its music is Web Audio of its own (a
   // drum kit, a slap bass, an E7#9 clav and a horn line, swung sixteenths at ZE_BPM, planned ahead on the audio clock),
   // made on the first start, suspended by a pause or a K.O., closed with the dialog or by M — never left rendering
@@ -12132,6 +12151,7 @@ const toolName = n => {
       zeText(cx, 'the golden rooster of Barcelos is a life', mid, 258, 16, '#d9c7e8', 'center', 600);
       cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', mid, 312, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
       if (prefs.zeBest) zeText(cx, `BEST ${prefs.zeBest}`, mid, 350, 16, '#d9c7e8', 'center');
+      if (!ze.face) zeText(cx, 'his face: Settings › General', mid, 378, 14, '#d9c7e8', 'center', 600);
     } else if (g.phase === 'pause') {
       big('PAUSE', 190, 80);
       zeText(cx, 'P or space to go on', mid, 262, 18, '#fff3c4', 'center', 600);
@@ -12180,23 +12200,20 @@ const toolName = n => {
     cx.save(); cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
     cx.save(); cx.clip();
     const im = ze.face;
-    if (im) {   // a little past the picture's edges: the sky round his head left out
-      const r = Math.max(2 * rx / im.width, 2 * ry / im.height) * 1.18;
-      cx.drawImage(im, -im.width * r / 2, -im.height * r / 2, im.width * r, im.height * r);
-    } else zeDrawnFace(cx, rx, ry);
+    if (im) { const r = Math.max(2 * rx / im.width, 2 * ry / im.height); cx.drawImage(im, -im.width * r / 2, -im.height * r / 2, im.width * r, im.height * r); }   // the oval as framed
+    else zeDrawnFace(cx, rx, ry);
     if (g.chomp > 0) { cx.fillStyle = '#5a1020'; cx.beginPath(); cx.ellipse(0, ry * .45, 7 * s, 2 + 7 * Math.abs(Math.sin(g.chomp * 30)), 0, 0, Math.PI * 2); cx.fill(); }   // nham
     if (g.hurt > .9) { cx.fillStyle = 'rgba(110, 200, 70, .45)'; cx.fillRect(-rx, -ry, 2 * rx, 2 * ry); }
     cx.restore();
     cx.lineWidth = 2.5; cx.strokeStyle = '#16121c'; cx.stroke();   // the path outlives the clip's restore
     cx.restore();
   }
-  /** No ze.png: a bowl cut, a beard and the brows of a man who means it. */
+  /** No face set: a face of no one in particular — a bowl cut and the brows of a man who means it. */
   function zeDrawnFace(cx, rx, ry) {
     cx.fillStyle = '#e9b48a'; cx.fillRect(-rx, -ry, 2 * rx, 2 * ry);
     cx.fillStyle = '#1d1418'; cx.fillRect(-rx, -ry, 2 * rx, ry * .62);
-    cx.beginPath(); cx.moveTo(-rx, ry * .05); cx.quadraticCurveTo(-rx * .2, ry * .3, 0, ry * .28); cx.quadraticCurveTo(rx * .2, ry * .3, rx, ry * .05); cx.lineTo(rx, ry); cx.lineTo(-rx, ry); cx.fill();
     cx.strokeStyle = '#1d1418'; cx.lineWidth = 3; cx.lineCap = 'round';
-    cx.beginPath(); cx.moveTo(-13, -8); cx.lineTo(-4, -4); cx.moveTo(13, -8); cx.lineTo(4, -4); cx.stroke();
+    cx.beginPath(); cx.moveTo(-13, -8); cx.lineTo(-4, -4); cx.moveTo(13, -8); cx.lineTo(4, -4); cx.moveTo(-6, 16); cx.lineTo(6, 16); cx.stroke();
     cx.fillStyle = '#1d1418'; cx.beginPath(); cx.arc(-8, 0, 2.2, 0, Math.PI * 2); cx.arc(8, 0, 2.2, 0, Math.PI * 2); cx.fill();
   }
   /** The scene behind, drawn once per size: a striped sun going down over the Minho's hills, the rooster on its
@@ -12367,6 +12384,79 @@ const toolName = n => {
       o.connect(g).connect(m.out); for (const x of [o, lfo]) { x.start(t + 1.08); x.stop(t + 2.25); }
     }
   }
+
+  // ---- …and his face, chosen in Settings (2026-10-30, later)
+  // Settings › General › Zé's game: a picture chosen (an <input type=file> — in the app the board's view opens the
+  // system's panel for it, BoardUI in main.swift), framed to his head in an oval of the game's own proportions, dragged
+  // (or the arrows) and zoomed (the slider, a scroll, + −). Only the oval's box is kept: a PNG of ZE_FACE_W × ZE_FACE_H
+  // sent to the server (PUT /api/ze), the picture itself never leaving the page. Remove lets it go (DELETE /api/ze). The
+  // row shows the face as the game wears it; the game's foot has a way here.
+  const ZE_FACE_W = 200, ZE_FACE_H = 264, ZE_OVAL_W = 150, ZE_OVAL_H = 198, ZE_VIEW = 260;   // the head's rx 25 : ry 33
+  const zf = { img: null, zoom: 1, x: 0, y: 0, drag: null };
+  function zeFaceShow(face) {
+    const t = $('#zeThumb');
+    t.hidden = !face; if (face) t.src = face; else t.removeAttribute('src');
+    $('#zeFaceDrop').hidden = !face; $('#zeFaceChoose').textContent = face ? 'Change…' : 'Choose…';
+    $('#zeFaceSay').textContent = face ? 'Worn in ⌥⌘Z — framed to his head, kept on this Mac' : '⌥⌘Z\'s hero wears a picture you choose, framed to his head';
+  }
+  function zeFaceLoad() { api('GET', '/api/ze').then(d => zeFaceShow(d.face), () => {}); }   // on purpose: the row stays as it stood
+  function zeFrameShut() { zf.img?.close?.(); zf.img = null; zf.drag = null; $('#zeFrame').hidden = true; }
+  const zfScale = () => Math.max(ZE_OVAL_W / zf.img.width, ZE_OVAL_H / zf.img.height) * zf.zoom;
+  /** The oval's box stays inside the picture: its centre no nearer an edge than half the box. */
+  function zfClamp() {
+    const s = zfScale(), hw = ZE_OVAL_W / 2 / s, hh = ZE_OVAL_H / 2 / s;
+    zf.x = Math.max(hw, Math.min(zf.img.width - hw, zf.x)); zf.y = Math.max(hh, Math.min(zf.img.height - hh, zf.y));
+  }
+  function zeFrameDraw() {
+    const c = $('#zeFrameView'), d = devicePixelRatio || 1, V = ZE_VIEW, s = zfScale();
+    if (c.width !== V * d) c.width = c.height = V * d;
+    const x = c.getContext('2d');
+    x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, V, V);
+    x.drawImage(zf.img, V / 2 - zf.x * s, V / 2 - zf.y * s, zf.img.width * s, zf.img.height * s);
+    const oval = () => { x.beginPath(); x.ellipse(V / 2, V / 2, ZE_OVAL_W / 2, ZE_OVAL_H / 2, 0, 0, Math.PI * 2); };
+    x.fillStyle = 'rgba(0, 0, 0, .55)'; x.beginPath(); x.rect(0, 0, V, V); x.ellipse(V / 2, V / 2, ZE_OVAL_W / 2, ZE_OVAL_H / 2, 0, 0, Math.PI * 2); x.fill('evenodd');
+    x.strokeStyle = 'rgba(255, 255, 255, .9)'; x.lineWidth = 2; oval(); x.stroke();
+  }
+  const zfZoom = z => { zf.zoom = Math.max(1, Math.min(6, z)); $('#zeZoom').value = zf.zoom; zfClamp(); zeFrameDraw(); };
+  const zfMove = (dx, dy) => { const s = zfScale(); zf.x -= dx / s; zf.y -= dy / s; zfClamp(); zeFrameDraw(); };   // the picture moves, the oval stays
+  $('#zeFaceChoose').addEventListener('click', () => { $('#zeFaceFile').value = ''; $('#zeFaceFile').click(); });
+  $('#zeFaceFile').addEventListener('change', async e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    zeFrameShut();
+    try { zf.img = await createImageBitmap(f); } catch { return note($('#zeFaceChoose'), `Not a picture this browser can read: ${f.name}`, true); }
+    zf.zoom = 1; zf.x = zf.img.width / 2; zf.y = zf.img.height / 2; $('#zeZoom').value = 1;
+    $('#zeFrame').hidden = false; zeFrameDraw(); $('#zeFrameView').focus();
+  });
+  $('#zeZoom').addEventListener('input', e => { if (zf.img) zfZoom(Number(e.target.value)); });
+  const zfView = $('#zeFrameView');
+  zfView.addEventListener('wheel', e => { if (!zf.img) return; e.preventDefault(); zfZoom(zf.zoom * Math.exp(-e.deltaY * .002)); }, { passive: false });
+  zfView.addEventListener('pointerdown', e => { if (!zf.img || e.button !== 0) return; zf.drag = { px: e.clientX, py: e.clientY }; zfView.setPointerCapture(e.pointerId); });
+  zfView.addEventListener('pointermove', e => { const g = zf.drag; if (!g) return; zfMove(e.clientX - g.px, e.clientY - g.py); g.px = e.clientX; g.py = e.clientY; });
+  for (const ev of ['pointerup', 'pointercancel']) zfView.addEventListener(ev, () => { zf.drag = null; });
+  zfView.addEventListener('keydown', e => {
+    if (!zf.img) return;
+    const d = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -8], ArrowDown: [0, 8] }[e.key];
+    if (d) zfMove(...d); else if (e.key === '+' || e.key === '=') zfZoom(zf.zoom * 1.1); else if (e.key === '-') zfZoom(zf.zoom / 1.1); else return;
+    e.preventDefault();
+  });
+  $('#zeFrameNo').addEventListener('click', zeFrameShut);
+  $('#zeFrameUse').addEventListener('click', async e => {
+    if (!zf.img) return;
+    const b = e.currentTarget, c = document.createElement('canvas'), s = zfScale() * ZE_FACE_W / ZE_OVAL_W;
+    c.width = ZE_FACE_W; c.height = ZE_FACE_H;
+    c.getContext('2d').drawImage(zf.img, ZE_FACE_W / 2 - zf.x * s, ZE_FACE_H / 2 - zf.y * s, zf.img.width * s, zf.img.height * s);
+    b.disabled = true;
+    try {   // a raw fetch, as the attach upload's: its body is a picture
+      const png = await new Promise(r => c.toBlob(r, 'image/png'));
+      const r = await fetch('/api/ze', { method: 'PUT', body: png, headers: { ...keyHeaders(), 'content-type': 'image/png' } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(r.status === 405 || r.status === 404 ? 'the running server predates this page — scripts/launchd.sh restart' : d.error || `HTTP ${r.status}`);
+      zeFaceShow(d.face); zeFrameShut();
+    } catch (err) { note(b, `Not kept: ${err.message}`, true); }
+    finally { b.disabled = false; }
+  });
+  $('#zeFaceDrop').addEventListener('click', e => api('DELETE', '/api/ze').then(d => zeFaceShow(d.face), err => note(e.target, err.message, true)));
+  $('#zeFaceGo').addEventListener('click', () => { $('#zeGame').close(); settingsAt('general', '#zeFaceRow'); });
 
   // ---- the chat column across a reload (2026-10-16) ---------------------------------------------------------------
   // Every chat's tabs were the page's memory alone: the pages it opened, its folder's editor, its split, which half each

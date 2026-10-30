@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, later still — Zé's face is set in Settings
+
+Ricardo, on the entry below: *"remove the face from source code and let it be configurable on settings"*.
+
+* **Nothing of anyone's face is in the code**: the face drawn when none is set had Zé's beard — it is now a face of no
+  one in particular, a bowl cut and the brows (`zeDrawnFace`). The picture was never in the checkout; it was a file
+  put by hand beside the setup file. Now it is chosen.
+* **Settings › General › Zé's game › His face** (`#zeFaceRow`): *Choose…* (an `<input type=file>`), and the picture comes
+  up in a frame, an oval over it of the head's own proportions (rx 25 : ry 33) — dragged, or the arrows, to put his head
+  in it; zoomed by the slider, a scroll, + and −; the oval's box never leaves the picture (`zfClamp`). *Use it* keeps
+  only that box, drawn into a 200 × 264 PNG in the page (`zeFrameUse`) — the picture itself never leaves the page —
+  and PUTs it to `/api/ze`, kept beside the setup file, 0600 (written beside itself and renamed over). The row then
+  shows it as the game wears it, *Change…* and *Remove* (DELETE). The game's foot has *His face…*, which opens Settings
+  on the row; its title says where, while there is none. A file put there by hand is still worn.
+* **The game draws the face as framed**: the PNG is the oval's box, so the head is drawn to fit it exactly — the 1.18
+  zoom that cut a photo's sky out is gone; the framing does that now.
+* **In the app the board's own view opens the file panel** (`BoardUI` in main.swift, the board's first UI delegate,
+  with nothing else of one): WebKit opens nothing for an `<input type=file>` without it. The panel is the pane's
+  (`PaneDelegate.openPanel`).
+* This Mac's face was framed again from the Desktop's picture to the oval's proportions.
+* Checked: `ze-face.mjs` (Choose… opens the chooser; a picture banded green over red | blue: a drag puts the red under
+  the oval, the green band at its top; zoomed and walked with the arrows, the blue and no band; Cancel keeps nothing;
+  the game wears it; its foot opens Settings on the row; Remove: gone from the row, the disk and the game, the drawn
+  face back), `test/ze.test.mjs` (PUT, read back, 0600, not a PNG 400, too large 413 leaving the face as it was, the
+  key for each method, DELETE, one put by hand), `ze-game.mjs` again. WebKit: a picture through the input, zoomed, kept
+  — 200 × 264. Not checked: the app's own file panel opening (a native sheet the harness cannot drive).
+
 ## Decisions of 2026-10-30, later — ⌥⌘Z, Zé's game
 
 Ricardo: *"make a simple 2d game on hotkey Z, where "Ze, the bruce lee of barcelos" tries to avoid vegetables and eat

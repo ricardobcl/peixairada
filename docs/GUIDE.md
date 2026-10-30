@@ -152,8 +152,9 @@ than your own: one that watches stories on a schedule can be challenged.
 
 **⌥⌘Z** is a break: Zé, the Bruce Lee of Barcelos, eats the meat that falls and dodges the vegetables — or kicks them
 out of the sky. ← → run, ↑ jumps, space kicks, P pauses, M turns the funk off and on; esc or ⌥⌘Z again closes it. The
-golden rooster is a life. His face is `ze.png` beside your setup file (`~/.config/peixairada/ze.png`), cropped to the
-head — the ellipse inside the picture is what shows; without one he has a drawn face.
+golden rooster is a life. His face is yours to choose: **Settings › General › Zé's game** (or *His face…* under the
+game) — pick a picture, drag and zoom it until his head fills the oval, *Use it*. Only the oval is kept, on this Mac;
+without one he has a drawn face.
 
 ## Keys
 
