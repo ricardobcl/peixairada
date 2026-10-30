@@ -5,6 +5,24 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, near midnight — Black, a theme
+
+Ricardo: *"I'm missing a real black theme"*. The darkest there was, Matte Black, is #121212 under #181818 panels, and
+the board's own dark #141413.
+
+* **Black**: the board's own dark on true black — the ground, the header's black, the status bar, code and the
+  terminal #000, the cards a hair lifted (#0a0a0a) so a card is still a card, the lines #1f1f1d; its own colours (the
+  accent, the states, the highlighting), its sixteen terminal colours bright on black with a grey for black. Next to the
+  board's own in both pickers.
+* **The projects keep their colours** (`asSet`): a theme moves each project to its nearest hue; this one is the board's
+  own, so it moves none.
+* **Its grounds black, not only its tokens**: on its tokens alone the tiles' wallpaper still glowed in the open chat's
+  colour, with its grain, and the transcript wore the chat's wash — navy, not black. Under Black both go (and the glow
+  is not sent after the pointer); the colours stay on what they mark — the cards' edges and glows, the header's
+  project, the chips. The sidebar's Glass keeps its pools: that style is the colour behind glass.
+* Checked: `themes.mjs` (→ from the board's own is Black: the ground and the terminal black, the blue project its own
+  blue, the wallpaper and the transcript black) and on the made-up board, tiles and sidebar.
+
 ## Decisions of 2026-10-30, at night, later — the sidebar in four styles
 
 Ricardo, after Sidebar landed as round X's D4: *"I would like the option of having D1, D2 and D3 styles in settings."*

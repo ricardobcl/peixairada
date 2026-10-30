@@ -1980,6 +1980,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.tiles.notch > #chat { border-top-right-radius: var(--screen-r); overflow: hidden; }
   main.tiles.notch.lhide > #chat { border-top-left-radius: var(--screen-r); }   /* the list hidden: the chat's tile has that corner too */
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
+  /* Black, the theme (2026-10-30): its grounds black — the wallpaper without its glow or its grain, the transcript
+     without the chat's wash (the glow not sent after the pointer, wallOn) —, the colours on what they mark. The
+     sidebar's Glass keeps its pools: the style asked for them. */
+  :root[data-skin="black"] #wall { background: #000; }
+  :root[data-skin="black"] #wall i { display: none; }
+  :root[data-skin="black"] #wall::after { display: none; }
+  :root[data-skin="black"] #log, :root[data-skin="black"] #chat #groups .gbody.haslog { background: none; }
 
   /* ---- the sidebar layout (2026-10-30, round X; Settings › Appearance › Layout: Tiles · Sidebar, Tiles by default, and
      its style under it): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a toolbar —
@@ -3510,7 +3517,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
   // ---- themes: one keystroke re-skins the board (2026-10-10) ----------------------------------------------
   // Omarchy's way: a theme is every surface at once — the cards, the transcript, the code, the drawer's sixteen colours,
-  // the header's black and the status bar — picked from a grid that the board behind follows (⌥⌘Y). Omarchy's twelve.
+  // the header's black and the status bar — picked from a grid that the board behind follows (⌥⌘Y). Omarchy's twelve,
+  // and Black (2026-10-30): the board's own dark on true black — every ground #000, a hair lifted for the cards, its own
+  // colours, the projects' kept as set (asSet: skinColor leaves them), the terminal black too.
   // A theme is light or dark, and the board wears its appearance whatever macOS shows (2026-10-12; the dark rules read
   // the root's data-theme): the theme picked is worn (prefs.skin — a theme, or the board's own 'own-dark' / 'own-light').
   // Following macOS is Settings › Appearance › Auto (prefs.skinFollow; a switch, off by default, until 2026-10-16 — Auto
@@ -3520,6 +3529,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // colour moves to the theme's nearest (skinColor; worn as set until 2026-10-14 was a switch). `crust` is the
   // theme's darkest (lightest, in a light one): the header's black, the splitter's, the status bar's ground.
   const SKINS = {
+    black: { name: 'Black', dark: true, asSet: true, bg: '#000000', panel: '#0a0a0a', raise: '#161616', crust: '#000000', ink: '#ececea', muted: '#8f8f8a', line: '#1f1f1d', accent: '#e08a68',
+      working: '#d9a82a', idle: '#2f9e5b', needs: '#ef6060', watch: '#45c8c8', spend: '#f28a3c', code: '#000000',
+      hl: ['#7c7c74', '#c678dd', '#98c379', '#d19a66', '#61afef', '#e5c07b', '#e06c75', '#8fa6c4'], proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
+      ansi: ['#1c1c1c', '#ef6060', '#5fb86a', '#d9a82a', '#5b8def', '#b07ce8', '#45c8c8', '#d0d0cc', '#5a5a57', '#ff7b7b', '#7fd18a', '#f0c24a', '#7fa8ff', '#c99bf5', '#6fe0e0', '#f4f4f0'] },
     'tokyo-night': { name: 'Tokyo Night', dark: true, bg: '#1a1b26', panel: '#1f2335', raise: '#24283b', crust: '#16161e', ink: '#c0caf5', muted: '#8790bd', line: '#292e42', accent: '#7aa2f7',
       working: '#e0af68', idle: '#9ece6a', needs: '#f7768e', watch: '#7dcfff', spend: '#ff9e64', code: '#16161e',
       hl: ['#565f89', '#bb9af7', '#9ece6a', '#ff9e64', '#7aa2f7', '#e0af68', '#f7768e', '#7dcfff'], proj: ['#7aa2f7', '#bb9af7', '#9ece6a', '#ff9e64', '#f7768e', '#7dcfff', '#e0af68', '#73daca'],
@@ -3615,7 +3628,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const lookMode = () => prefs.skinFollow ? 'auto' : skinDarkOf(prefs.skin) ? 'dark' : 'light';
   const skinLabel = k => SKINS[k]?.name || `the board’s own ${skinDarkOf(k) ? 'dark' : 'light'}`;
   // A project's colour under a theme: the nearest of the theme's own hues, by the hue's angle; a grey, a black, a white
-  // and a colour the theme has no match for stay as set.
+  // and a colour the theme has no match for stay as set — as every colour does under a theme of the board's own (asSet).
   const hueOf = hex => {
     const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null;
     const n = parseInt(m[1], 16), [r, g, b] = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
@@ -3624,7 +3637,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return (x * 60 + 360) % 360;
   };
   function skinColor(c) {
-    const k = skinOn(), h = hueOf(c); if (!k || h === null) return c;
+    const k = skinOn(), h = hueOf(c); if (!k || h === null || SKINS[k].asSet) return c;
     let best = c, bd = 1e9;
     for (const p of SKINS[k].proj) { const q = hueOf(p); if (q === null) continue; const d = Math.min(Math.abs(h - q), 360 - Math.abs(h - q)); if (d < bd) { bd = d; best = p; } }
     return best;
@@ -10048,7 +10061,7 @@ const toolName = n => {
   // where the glow is, so eight a second still glide.
   let wallAt = null, wallRaf = 0, wallLast = -Infinity;
   const WALL_MS = 125;
-  const wallOn = () => !REDUCED.matches && !sidebarOn();   // the sidebar's wallpaper has no glow (2026-10-30)
+  const wallOn = () => !REDUCED.matches && !sidebarOn() && document.documentElement.dataset.skin !== 'black';   // the sidebar's wallpaper has no glow, nor Black's (2026-10-30)
   function wallGo() { clearTimeout(wallRaf); wallRaf = 0; wallLast = performance.now(); $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
   document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= setTimeout(() => requestAnimationFrame(wallGo), Math.max(0, wallLast + WALL_MS - performance.now())); }, { passive: true });
   // the panel the keys are in wears the border: the list or the chat (a pointer press or a focus inside it)

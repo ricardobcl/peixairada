@@ -341,7 +341,9 @@ npm run map                         # rewrite the section maps at the top of ser
   every pick fills). The app's window wears the appearance kept (`appearance` → `window.appearance`, remembered as
   `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read `--crust`, `--bar`,
   `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
-  `repoColor`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).  **A colour that reads no token is one no theme
+  `repoColor`; none under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
+  **Black** (2026-10-30) is the board's own dark on true black: its grounds black by rules of its own
+  (`:root[data-skin="black"]` — the wallpaper without glow or grain, `wallOn`; no wash on the transcript).  **A colour that reads no token is one no theme
   reaches.** → `themes.mjs`.
 * **The header floats** (2026-10-09; `<html data-head="float">` in the markup, never toggled): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of

@@ -84,8 +84,8 @@ the PR list under the header is as tall as you drag its foot.
 ## Make it yours
 
 Every look is in Settings › Appearance and Chat list (⌘,), or a key: the chat list hidden and the chat the whole width
-(⌥⌘B, or the first button in the status bar, whose mark says which), Omarchy's twelve themes (⌥⌘Y — Tokyo Night,
-Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one of each following it; your projects
+(⌥⌘B, or the first button in the status bar, whose mark says which), Black — the board's own colours on true black —
+and Omarchy's twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one of each following it; your projects
 keep their hue in the theme's shades. The layout is tiles — panels over a wallpaper, each edged in its project's
 colour — or a Mac sidebar, the chats as rows, in one of four styles (Settings › Appearance › Layout): *Glass*, frosted
 over the open chat's colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same

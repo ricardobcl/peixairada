@@ -47,10 +47,18 @@ export default async function (ctx) {
   ctx.assert.equal(await skin(), null, 'no theme to begin with');
   out.ownBg = await root('--bg');
 
-  // ⌥⌘Y: the grid, on the board's own; → previews Tokyo Night, the board behind wears it
+  // ⌥⌘Y: the grid, on the board's own; → previews Black (2026-10-30), the board's own on true black, its projects'
+  // colours as set; → again Tokyo Night, the board behind wearing it
   await ctx.key('KeyY');
-  await ctx.waitFor(`document.querySelector('#themes').open && document.querySelectorAll('#themegrid .tt').length === 14`, { what: 'the grid of themes' });
+  await ctx.waitFor(`document.querySelector('#themes').open && document.querySelectorAll('#themegrid .tt').length === 15`, { what: 'the grid of themes' });
   ctx.assert.match(await ctx.evaluate(`document.querySelector('#themegrid .tt.sel .nm').textContent`), /peixAIrada.*worn.*dark/, 'the board’s own dark, worn, is selected');
+  await keyIn('ArrowRight');
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'black'`, { what: 'Black previewed' });
+  ctx.assert.deepEqual([await root('--bg'), await root('--term-bg'), await repo()], ['#000000', '#000000', BLUE], 'Black: the ground and the terminal black, the blue project its own blue');
+  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).backgroundColor`), 'rgb(0, 0, 0)', 'the chat’s panel black');
+  ctx.assert.deepEqual(await ctx.evaluate(`[getComputedStyle(document.querySelector('#wall')).backgroundImage, getComputedStyle(document.querySelector('#wall i')).display, getComputedStyle(document.querySelector('#log')).backgroundImage]`),
+    ['none', 'none', 'none'], 'the wallpaper black, no glow, no wash over the transcript');
+  await ctx.settle(); await ctx.shot('black');
   await keyIn('ArrowRight');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'tokyo-night'`, { what: 'the preview' });
   ctx.assert.equal(await root('--bg'), '#1a1b26', "Tokyo Night's ground");
