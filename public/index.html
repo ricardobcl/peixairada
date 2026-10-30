@@ -12012,7 +12012,7 @@ const toolName = n => {
   /** The best of each way to play, by its id; a number is NORMAL's, from before there were four. */
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
-    x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
+    x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
@@ -12098,7 +12098,16 @@ const toolName = n => {
     zeSfx('whoosh'); zeSfx('smash'); zeScore(g, greens.length * 5);
     return greens.length;
   }
-  function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR || g.ride) return; g.vy = -560; zeSquash(g, 'jump', .16); zeSfx('jump'); }
+  /** ↑: a jump from what he stands on, high enough for Trota's awning (2026-10-30, the next round) — and at his full
+   *  bulk, a second one in the air. ↓ drops him through the awning or the sign. */
+  function zeJump(g) {
+    if (g.phase !== 'play' || g.ride) return;
+    if (g.y >= g.gy - .5) { g.vy = -640; g.jumps = 1; }
+    else if (g.mass >= ZE_MASS_MAX && g.jumps < 2) { g.vy = -580; g.jumps = 2; zeWord(g, 'DOUBLE!', g.x, g.y - 190 * zeSz(g), '#fff3c4'); }
+    else return;
+    zeSquash(g, 'jump', .16); zeSfx('jump');
+  }
+  function zeFallThrough(g) { if (g.phase === 'play' && g.gy < ZE_FLOOR && g.y >= g.gy - .5) { g.drop = .25; g.vy = 60; } }
   /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
   const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
   /** A hit-stop (2026-10-30, the next round): the picture holds d — a kick that lands, a bite, a combo, the K.O. —, and a
@@ -12123,7 +12132,7 @@ const toolName = n => {
     if (g.phase === 'over' && (left || right)) { take(); if (!e.repeat && g.overT > .8) g.sel = 1 - g.sel; return; }
     if (left) { take(); ze.keys.l = 1; ze.aim = null; return; }
     if (right) { take(); ze.keys.r = 1; ze.aim = null; return; }
-    if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'KeyP', 'KeyM', 'KeyT'].includes(k)) return;
+    if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'ArrowDown', 'KeyS', 'KeyP', 'KeyM', 'KeyT'].includes(k)) return;
     take(); if (e.repeat) return;   // a key held down is one kick
     if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {});   // a press may start it
     if (k === 'Space' || k === 'Enter') {
@@ -12131,6 +12140,7 @@ const toolName = n => {
       else if (g.overT > .8) { if (g.sel) zeMenu(); else zeStart(); }   // not at once: a kick held at the K.O. is no new round
     }
     else if (k === 'ArrowUp' || k === 'KeyW') zeJump(g);
+    else if (k === 'ArrowDown' || k === 'KeyS') zeFallThrough(g);
     else if (k === 'KeyP') { if (g.phase === 'play' || g.phase === 'pause') zePause(g.phase === 'play'); }
     else if (k === 'KeyT') zeTune();
     else zeMute();
@@ -12235,7 +12245,7 @@ const toolName = n => {
   function zeRide(g, kind) {
     if (g.dragon || g.phase !== 'play') return;
     if (g.ride) zeLeave(g);
-    Object.assign(g, { ride: { kind, t: ZE_RIDE, tilt: 0, vx: g.vx, wheel: 0 }, kick: 0, vy: 0, y: ZE_FLOOR });
+    Object.assign(g, { ride: { kind, t: ZE_RIDE, tilt: 0, vx: g.vx, wheel: 0 }, kick: 0, vy: 0, y: ZE_FLOOR, gy: ZE_FLOOR });
     zeBits(g, g.x, ZE_FLOOR - 20, ['#d9c7e8', '#ffffff', '#9aa0a8'], 14);
     if (kind === 'focus') zeBanner(g, 'FORD FOCUS!', 'YALLA — FIVE SECONDS OF SPEED', ['#5b8ff0', '#ffd23f'], 2.2);
     else zeBanner(g, 'MERCEDES A-CLASS…', 'THE PUNISHMENT — FIVE SLOW SECONDS', ['#c8ccd2', '#ff5a64'], 2.2);
@@ -12338,9 +12348,11 @@ const toolName = n => {
     if (want) g.f = want;
     const half = car ? 100 : 28 * k;
     g.x = Math.max(half, Math.min(ZE_W - half, g.x + g.vx * dt));
-    const aloft = g.y < ZE_FLOOR;
-    g.vy += 1500 * dt; g.y = Math.min(ZE_FLOOR, g.y + g.vy * dt);
-    if (g.y >= ZE_FLOOR) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.vy = 0; }
+    // what he stands on: the floor, or the awning or the sign come down on from above (G4, 2026-10-30, the next round)
+    const wasY = g.y, gy = g.drop > 0 || g.ride || g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, wasY), aloft = wasY < gy - .5;
+    g.drop = Math.max(0, g.drop - dt); g.vy += 1500 * dt; g.y += g.vy * dt;
+    if (g.y >= gy) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.y = gy; g.vy = 0; g.jumps = 0; }
+    g.gy = g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, g.y);
     g.run += Math.abs(g.vx) * dt * .05; g.cool = Math.max(0, g.cool - dt); g.hurt = Math.max(0, g.hurt - dt);
     if (g.ride) {   // the car: its wheels, its pitch as it pulls away or brakes (the A-Class's the more), its engine, its time
       const r = g.ride, pitch = Math.max(-.3, Math.min(.3, -(g.vx - r.vx) / Math.max(dt, .001) * .00012)) * (r.kind === 'aclass' ? 1.6 : .5);
@@ -12372,7 +12384,7 @@ const toolName = n => {
     }
     // what falls meets his foot, then his mouth (meat) or him (a green) — broader as he is —, then the floor
     const pw = g.power?.kind, idt = pw === 'vinho' ? dt * .45 : dt;   // the vinho verde's slow motion: what falls, not him
-    const air = g.y < ZE_FLOOR, reach = g.dragon ? 1.4 : D.reach * (pw === 'francesinha' ? 1.9 : 1), w = (zeTw(g) + 6) * k, body = { l: g.x - w, r: g.x + w, t: g.y - 164 * k, b: g.y - 4 };
+    const air = g.y < g.gy - .5, reach = g.dragon ? 1.4 : D.reach * (pw === 'francesinha' ? 1.9 : 1), w = (zeTw(g) + 6) * k, body = { l: g.x - w, r: g.x + w, t: g.y - 164 * k, b: g.y - 4 };
     const mouth = { ...body, l: g.x - w * reach, r: g.x + w * reach };
     const foot = g.kick > .04 ? { l: g.x + Math.min(g.f * 8, g.f * 94) * k, r: g.x + Math.max(g.f * 8, g.f * 94) * k, t: g.y - (air ? 84 : 100) * k, b: g.y - (air ? 20 : 36) * k } : null;
     for (const it of g.items) {
@@ -12380,8 +12392,11 @@ const toolName = n => {
         const dx = g.x - it.x, dy = g.y - 110 * k - it.y, d = Math.hypot(dx, dy);
         if (d < 340) { it.vx += dx / d * 900 * dt; it.vx *= 1 - Math.min(1, dt * 2); if (dy > 0) it.vy += dy / d * 300 * dt; }
       }
-      const sdt = it.out ? dt : idt;
+      const sdt = it.out ? dt : idt, iy = it.y;
       it.vy += it.g * sdt; it.x += it.vx * sdt; it.y += it.vy * sdt; it.rot += it.spin * sdt;
+      if (!it.out && it.vy > 0 && (it.bounces || 0) < 4) for (const p of ZE_PLATS) if (it.x >= p.l && it.x <= p.r && iy < p.y - 14 && it.y >= p.y - 14) {   // off the sign, off the awning, and off it
+        Object.assign(it, { y: p.y - 14, vy: -Math.max(160, it.vy * .55), vx: it.vx + Math.sign(it.x - (p.l + p.r) / 2 || 1) * 150, bounces: (it.bounces || 0) + 1 }); zeSfx('boing'); break;
+      }
       if (it.out) { it.dead = it.y > ZE_H + 40 || it.y < -80 || it.x < -80 || it.x > ZE_W + 80; continue; }
       if (it.x < 20 || it.x > ZE_W - 20) { it.vx *= -1; it.x = Math.max(20, Math.min(ZE_W - 20, it.x)); }
       if (it.miracle && it.kind === 'meat' && it.y >= it.miracle && !it.stood) {   // the miracle: it stops, stands up and crows…
@@ -12704,13 +12719,14 @@ const toolName = n => {
    *  and pitching with it —, as big as his bulk and the dragon make him; blinking while a green's hit lasts; at the K.O.
    *  his bones, flat on his back, seeing stars. */
   function zeHero(cx, g) {
-    const air = g.y < ZE_FLOOR - .5, over = g.phase === 'over', moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
+    const air = g.y < g.gy - .5, over = g.phase === 'over', moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
     const k = zeSz(g) * (1 + g.pump * .25), p = ZE_PX * k, flip = g.f < 0 && !over;
     const pose = over ? 'bones' : g.ride ? 'sit' : g.kick > .04 ? 'kick' : air ? 'jump' : g.flex > 0 ? 'flex' : moving ? (Math.floor(g.run) % 2 ? 'run1' : 'run2') : 'stand';
     const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape;
     const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, sick: g.hurt > .9, flip });
     const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2, tw = zeTw(g);
-    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 3, Math.max(10, tw + 10 - (ZE_FLOOR - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
+    const under = zePlatform(g.x, g.y);   // his shadow, on whatever is under him
+    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, under + 3, Math.max(10, tw + 10 - (under - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
     cx.save(); cx.translate(g.x + (g.mass === 1 && g.phase === 'play' && !zeCalm() ? Math.sin(g.t * 70) * 1.6 : 0), g.y);   // on his last bit of bulk he shivers
     if (g.ride) { const pv = g.ride.kind === 'focus' ? -58 : -46; cx.scale(g.f, 1); cx.translate(pv, 0); cx.rotate(g.ride.tilt); cx.translate(-pv, 0); cx.scale(g.f, 1); cx.translate(-14 * g.f, 16); }   // in the driver's seat, pitching with his car
     if (g.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? .65 : Math.floor(g.hurt * 12) % 2 ? .4 : 1;
@@ -12882,6 +12898,11 @@ const toolName = n => {
     for (let by = y + 8; by <= y + h - 8; by += 8) b.push([x, by], [x + w, by]);
     return b;
   })();
+  // what stands up to be stood on (G4, 2026-10-30, the next round): the awning's top and the sign's, and what falls
+  // bounces off them
+  const ZE_PLATS = [{ l: ZE_REST.x - 5, r: ZE_REST.x + ZE_REST.w + 5, y: ZE_REST.top + 16, name: 'awning' }, { l: ZE_SIGN.x - 3, r: ZE_SIGN.x + ZE_SIGN.w + 3, y: ZE_SIGN.y - 3, name: 'sign' }];
+  /** The ground under a point at x whose feet are at y: the highest of the awning, the sign or the floor at or below it. */
+  const zePlatform = (x, y) => ZE_PLATS.reduce((gy, p) => x >= p.l && x <= p.r && y <= p.y + .5 && p.y < gy ? p.y : gy, ZE_FLOOR);
   function zeRestaurant(x) {
     const { x: RX, w: RW, top: RT } = ZE_REST, K = '#1b0b2e', F = ZE_FLOOR, AY = RT + 18;
     x.fillStyle = K; x.fillRect(RX - 5, RT - 8, RW + 10, F - RT + 8);
@@ -13108,6 +13129,7 @@ const toolName = n => {
     const ac = m.ac, t = ac.currentTime + .005;
     if (kind === 'chomp') { zeTone(m, t, 'square', 520, 180, .07, .12); zeTone(m, t + .09, 'square', 480, 160, .07, .1); }
     else if (kind === 'jump') zeTone(m, t, 'square', 300, 620, .1, .06);
+    else if (kind === 'boing') zeTone(m, t, 'triangle', 180, 520, .12, .07);
     else if (kind === 'smash') { zeTone(m, t, 'sine', 320, 70, .16, .5); zeDrum(m, 'snare', t, .7); }
     else if (kind === 'bleh') zeTone(m, t, 'sawtooth', 260, 90, .38, .16);
     else if (kind === 'level') [523, 659, 784, 1047].forEach((hz, i) => zeTone(m, t + i * .08, 'square', hz, hz, .11, .08));
