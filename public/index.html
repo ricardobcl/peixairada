@@ -11923,6 +11923,21 @@ const toolName = n => {
     ['🥒', 'BLEH! pepino'], ['🫑', 'BLEH! pimento'], ['🧅', 'BLEH! cebola'], ['🍔', 'HAS LETTUCE!'], ['🥪', 'HAS TOMATO!'], ['🥙', 'HAS SALAD!'], ['🧆', 'FALAFEL? CHICKPEAS!']];
   // neither meat nor green (2026-10-30, the next round): fish, +5 and no bulk — a sardine, a salt cod (paler, salted)
   const ZE_FISH = [['🐟', 'sardinha', null], ['🐟', 'bacalhau', 'rgba(240, 230, 205, .55)']];
+  // the power-ups (2026-10-30, the next round), ZE_POWER_T s each, one at a time: a francesinha — full bulk and a wide
+  // mouth —, a vinho verde — slow motion, the picture wobbling —, a bifana — a magnet, the meat curving to him; each a
+  // dish in pixels (zeDish), 16 square
+  const ZE_POWER_T = 6, ZE_POWERS = {
+    francesinha: { name: 'FRANCESINHA!', say: 'FULL BULK AND A WIDE MOUTH', c: '#e0612b', draw(P, E) {
+      E(8, 13, 7.6, 2.6, '#b8401c'); E(8, 12.8, 6.2, 1.7, '#e0612b');
+      P(3, 7, 10, 5, '#d9a05b'); P(3, 9, 10, 1, '#8a3a22'); P(3, 11, 10, 1, '#a8703a');
+      P(2, 5, 12, 2, '#ffe08a'); P(3, 7, 1, 2, '#ffe08a'); P(7, 7, 1, 3, '#ffe08a'); P(11, 7, 1, 2, '#ffe08a'); P(13, 7, 1, 1, '#ffe08a');
+      E(8, 3.6, 3.4, 2.3, '#fffaf0'); E(8.4, 3.4, 1.4, 1.2, '#ffb700'); } },
+    vinho: { name: 'VINHO VERDE!', say: 'SLOW MOTION', c: '#9be15d', draw(P) {
+      P(7, 0, 2, 2, '#c9a46a'); P(7, 2, 2, 3, '#2f6f2a'); P(6, 5, 4, 1, '#2f6f2a'); P(5, 6, 6, 10, '#3f8f3a'); P(6, 7, 1, 8, '#9ad26a');
+      P(5, 9, 6, 4, '#f2ead8'); P(5, 10, 6, 1, '#c8322f'); P(7, 12, 2, 1, '#2f6f2a'); } },
+    bifana: { name: 'BIFANA!', say: 'A MAGNET FOR MEAT', c: '#c9843f', draw(P, E) {
+      E(8, 11.5, 7, 2.4, '#e3a865'); P(1, 9, 14, 2, '#8a4a2a'); P(0, 10, 1, 1, '#8a4a2a'); P(15, 9, 1, 1, '#8a4a2a');
+      E(8, 7.2, 6.6, 2.8, '#c9843f'); P(5, 5, 3, 1, '#f4cf8f'); P(4, 11, 7, 1, '#e8c32a'); } } };
   const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once', 'the burger had lettuce'];
   // the four ways to play: how fast and how often it falls, how green it gets (at level 1, more a level, at most), how
   // far past him his mouth reaches, the points a level takes, the level food starts drifting at; HARDCORE deals from a
@@ -11997,7 +12012,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12139,6 +12154,7 @@ const toolName = n => {
     if (spy) { it = { kind: 'case', e: '💼', pts: 100, say: 'CLASSIFIED' }; g.cased = true; }
     else if (galo) it = { kind: 'galo', e: '🐓', pts: 50, say: 'GALO! +2 muscle' };
     else if (veg) { const [e, say] = zePick(ZE_VEG); it = { kind: 'veg', e, say }; }
+    else if (!g.dragon && !g.power && g.t > 12 && !g.items.some(x => x.kind === 'power') && Math.random() < .03) it = { kind: 'power', p: zePick(Object.keys(ZE_POWERS)), e: '', pts: 25 };
     else if (!g.dragon && !g.items.some(x => x.kind === 'peixe') && Math.random() < .008) it = { kind: 'peixe', e: '', pts: 100, say: 'LET GO!' };   // the board's own fish, now and then
     else if (!g.dragon && !D.bag && Math.random() < .09) { const [e, say, tint] = zePick(ZE_FISH); it = { kind: 'fish', e, say, tint, pts: 5 }; }
     else { const [e, pts, say] = zePick(ZE_MEAT); it = { kind: 'meat', e, pts, say }; }
@@ -12239,6 +12255,12 @@ const toolName = n => {
       zeBits(g, it.x, it.y, ['#ffd23f', '#fff3c4', '#feae34'], 22); zeSfx('galo'); zeSfx('level');
       return zeScore(g, it.pts);
     }
+    if (it.kind === 'power') {   // a power-up, ZE_POWER_T s: the francesinha fills him at once
+      const P = ZE_POWERS[it.p]; g.power = { kind: it.p, t: ZE_POWER_T };
+      if (it.p === 'francesinha') zeGrow(g, ZE_MASS_MAX);
+      zeBanner(g, P.name, P.say, [P.c, '#fff3c4'], 1.8); zeBits(g, it.x, it.y, [P.c, '#fff3c4', '#ffd23f'], 14); zeSfx('level'); zeHold(g, .08);
+      return zeScore(g, it.pts);
+    }
     if (it.kind === 'fish') {   // neither meat nor green: five, no bulk, the streak as it was
       zeWord(g, `+5 ${it.say}`, it.x, it.y - 24, '#c9e4ff'); zeChunks(g, mx, my, 'fish', 7); zeSfx('chomp'); zeHold(g, .05);
       return zeScore(g, 5);
@@ -12316,7 +12338,8 @@ const toolName = n => {
     }
     for (const p of g.smoke) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += 16 * dt; }
     g.smoke = g.smoke.filter(p => p.t < p.life);
-    g.spawn -= dt;
+    g.spawn -= g.power?.kind === 'vinho' ? dt * .45 : dt;
+    if (g.power && (g.power.t -= dt) <= 0) g.power = null;
     if (g.dragon) {
       g.dragon = Math.max(0, g.dragon - dt);
       const el = ZE_DRAGON - g.dragon;
@@ -12330,11 +12353,17 @@ const toolName = n => {
       if (ZE_SKIES[zeSkyOf(g)].bolt && (g.lightT -= dt) <= 0) { zeStrike(g); g.lightT = 2.5 + Math.random() * 3; }   // the storm's, round again with no dragon
     }
     // what falls meets his foot, then his mouth (meat) or him (a green) — broader as he is —, then the floor
-    const air = g.y < ZE_FLOOR, reach = g.dragon ? 1.4 : D.reach, w = (zeTw(g) + 6) * k, body = { l: g.x - w, r: g.x + w, t: g.y - 164 * k, b: g.y - 4 };
+    const pw = g.power?.kind, idt = pw === 'vinho' ? dt * .45 : dt;   // the vinho verde's slow motion: what falls, not him
+    const air = g.y < ZE_FLOOR, reach = g.dragon ? 1.4 : D.reach * (pw === 'francesinha' ? 1.9 : 1), w = (zeTw(g) + 6) * k, body = { l: g.x - w, r: g.x + w, t: g.y - 164 * k, b: g.y - 4 };
     const mouth = { ...body, l: g.x - w * reach, r: g.x + w * reach };
     const foot = g.kick > .04 ? { l: g.x + Math.min(g.f * 8, g.f * 94) * k, r: g.x + Math.max(g.f * 8, g.f * 94) * k, t: g.y - (air ? 84 : 100) * k, b: g.y - (air ? 20 : 36) * k } : null;
     for (const it of g.items) {
-      it.vy += it.g * dt; it.x += it.vx * dt; it.y += it.vy * dt; it.rot += it.spin * dt;
+      if (pw === 'bifana' && !it.out && ['meat', 'gold', 'galo', 'fish'].includes(it.kind)) {   // the bifana's magnet: meat curves to his mouth
+        const dx = g.x - it.x, dy = g.y - 110 * k - it.y, d = Math.hypot(dx, dy);
+        if (d < 340) { it.vx += dx / d * 900 * dt; it.vx *= 1 - Math.min(1, dt * 2); if (dy > 0) it.vy += dy / d * 300 * dt; }
+      }
+      const sdt = it.out ? dt : idt;
+      it.vy += it.g * sdt; it.x += it.vx * sdt; it.y += it.vy * sdt; it.rot += it.spin * sdt;
       if (it.out) { it.dead = it.y > ZE_H + 40 || it.y < -80 || it.x < -80 || it.x > ZE_W + 80; continue; }
       if (it.x < 20 || it.x > ZE_W - 20) { it.vx *= -1; it.x = Math.max(20, Math.min(ZE_W - 20, it.x)); }
       if (it.miracle && it.kind === 'meat' && it.y >= it.miracle && !it.stood) {   // the miracle: it stops, stands up and crows…
@@ -12364,13 +12393,14 @@ const toolName = n => {
     g.items = g.items.filter(it => !it.dead);
     // the mouth opens as food comes: something falling close above his head
     const hx = g.x + g.f * 2 * k, hy = g.y - 134 * k;
-    g.gape = g.items.some(it => !it.out && Math.abs(it.x - hx) < 50 * k && hy - it.y < 110 * k && hy - it.y > -10);
+    g.gape = g.power?.kind === 'francesinha' || g.items.some(it => !it.out && Math.abs(it.x - hx) < 50 * k && hy - it.y < 110 * k && hy - it.y > -10);
   }
 
   // ---- the picture
   function zeDraw() {
     const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W, calm = zeCalm(), dark = zeDark(g);
     cx.setTransform(k, 0, 0, k, 0, 0);
+    if (g.power?.kind === 'vinho' && !calm) { const a = Math.sin(g.t * 1.9) * .018; cx.translate(ZE_W / 2, ZE_H / 2); cx.rotate(a); cx.scale(1.03, 1.03 + Math.sin(g.t * 2.7) * .012); cx.translate(-ZE_W / 2, -ZE_H / 2); }   // the vinho verde: the picture wobbles
     if (g.punch > 0 && !calm) { const z = 1 + .07 * g.punch / .2, hy = g.y - 100; cx.translate(g.x, hy); cx.scale(z, z); cx.translate(-g.x, -hy); }   // a combo's camera punch
     const L = zeScene(c, zeSkyOf(g)), u = ZE_W / c.width, was = ze.was?.scene.w === c.width ? ze.was : null, ox = (ZE_W / 2 - g.x) * .05;
     const layers = (sky, town, front) => {   // the new sky, and the last one fading over it
@@ -12400,6 +12430,11 @@ const toolName = n => {
       if (it.kind === 'galo' || it.kind === 'case' || glow > 34) { const r = cx.createRadialGradient(0, 0, 4, 0, 0, glow); r.addColorStop(0, it.kind === 'case' ? 'rgba(150, 190, 255, .8)' : 'rgba(255, 220, 90, .85)'); r.addColorStop(1, 'rgba(255, 220, 90, 0)'); cx.fillStyle = r; cx.fillRect(-glow, -glow, glow * 2, glow * 2); }
       if (it.stood > 0) { cx.translate(0, -Math.abs(Math.sin(it.stood * 9)) * (calm ? 0 : 6)); cx.rotate(-.9); }   // stood up on its plate, hopping as it crows
       else cx.rotate(it.rot);
+      if (it.kind === 'power') {   // a power-up: its dish in pixels in a ring of its colour, beating
+        const P = ZE_POWERS[it.p], r = 30 + (calm ? 0 : Math.sin(g.t * 8) * 3), d = zeDish(it.p);
+        cx.fillStyle = P.c + '55'; cx.strokeStyle = P.c; cx.lineWidth = 3; cx.beginPath(); cx.arc(0, 0, r, 0, Math.PI * 2); cx.fill(); cx.stroke();
+        cx.imageSmoothingEnabled = false; cx.drawImage(d, -d.width * 1.5, -d.height * 1.5, d.width * 3, d.height * 3); cx.imageSmoothingEnabled = true; cx.restore(); continue;
+      }
       if (it.kind === 'peixe') { const f = zePeixe(); cx.rotate(-it.rot); cx.scale(it.vx > 0 ? -1 : 1, 1); cx.rotate(Math.sin(g.t * 8) * (calm ? 0 : .12)); cx.imageSmoothingEnabled = false; cx.drawImage(f, -f.width * 1.5, -f.height * 1.5, f.width * 3, f.height * 3); cx.imageSmoothingEnabled = true; cx.restore(); continue; }
       const z = it.kind === 'gold' ? 54 : 42; cx.drawImage(zeGlyph(it.e, it.kind === 'gold' ? 'rgba(255, 196, 40, .55)' : it.tint), -z / 2, -z / 2, z, z); cx.restore();
     }
@@ -12455,6 +12490,15 @@ const toolName = n => {
     x.font = '76px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 48, 54);
     if (tint) { x.globalCompositeOperation = 'source-atop'; x.fillStyle = tint; x.fillRect(0, 0, 96, 96); }
     ze.glyphs.set(key, c); return c;
+  }
+  /** A dish in pixels, 16 square, outlined: its rects (P) and its ellipses (E) — a power-up's. */
+  function zeDish(k) {
+    let c = ze.sprites.get('dish:' + k); if (c) return c;
+    const src = document.createElement('canvas'), x = src.getContext('2d'); src.width = src.height = 16;
+    const P = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+    const E = (ex, ey, rx, ry, col) => { x.fillStyle = col; for (let py = 0; py < 16; py++) for (let px = 0; px < 16; px++) { const dx = (px + .5 - ex) / rx, dy = (py + .5 - ey) / ry; if (dx * dx + dy * dy <= 1) x.fillRect(px, py, 1, 1); } };
+    ZE_POWERS[k].draw(P, E);
+    c = zeSprite(src); ze.sprites.set('dish:' + k, c); return c;
   }
   /** The board's own fish (FISH, the home's and the status bar's), in the theme's accent, outlined — head to the left. */
   function zePeixe() {
@@ -12554,13 +12598,15 @@ const toolName = n => {
       cx.font = '900 16px Futura, "Avenir Next Condensed", system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#e43b44'; cx.fillText('TOP SECRET', 0, 1);
       cx.restore();
     }
-    const bar = (frac, c, label) => {   // the dragon's time, or the car's, running out
-      cx.fillStyle = '#1b0b2e'; cx.fillRect(20, 104, ZE_W - 40, 10);
-      cx.fillStyle = c; cx.fillRect(22, 106, (ZE_W - 44) * frac, 6);
-      zeText(cx, label, ZE_W - 20, 128, 14, c, 'right');
+    let by = 104;
+    const bar = (frac, c, label) => {   // the dragon's time, the car's, a power-up's, running out — one under the other
+      cx.fillStyle = '#1b0b2e'; cx.fillRect(20, by, ZE_W - 40, 10);
+      cx.fillStyle = c; cx.fillRect(22, by + 2, (ZE_W - 44) * frac, 6);
+      zeText(cx, label, ZE_W - 20, by + 24, 14, c, 'right'); by += 40;
     };
     if (g.dragon) bar(g.dragon / ZE_DRAGON, zeBlink(g, 12) ? '#ff7a2a' : '#ffd23f', 'MODO FERA');
     else if (g.ride) bar(g.ride.t / ZE_RIDE, ZE_CARS[g.ride.kind].c, ZE_CARS[g.ride.kind].name);
+    if (g.power) bar(g.power.t / ZE_POWER_T, ZE_POWERS[g.power.kind].c, ZE_POWERS[g.power.kind].name.slice(0, -1));
   }
   /** The title's four ways to play, and the K.O.'s two ways on — where a click lands. */
   function zeDiffButtons() {
