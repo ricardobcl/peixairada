@@ -12374,7 +12374,7 @@ const toolName = n => {
     if (g.phase === 'title' && k === 'KeyG') { take(); if (!e.repeat) { prefs.zeTwo = { null: 'coop', coop: 'versus' }[prefs.zeTwo] || null; savePrefs(); } return; }
     const left = k === 'ArrowLeft' || k === 'KeyA', right = k === 'ArrowRight' || k === 'KeyD';
     if (g.phase === 'title' && (left || right || /^Digit[1-4]$/.test(k))) { take(); if (!e.repeat) zeSetDiff(left ? prefs.zeDiff - 1 : right ? prefs.zeDiff + 1 : +k.slice(5) - 1); return; }
-    if (g.phase === 'over' && (left || right)) { take(); if (!e.repeat && g.overT > .8) g.sel = 1 - g.sel; return; }
+    if (g.phase === 'over' && (left || right)) { take(); const n = zeOverButtons().length; if (!e.repeat && g.overT > .8) g.sel = (g.sel + (right ? 1 : n - 1)) % n; return; }
     if (left || right) {
       take(); ze.keys[left ? 'l' : 'r'] = 1; ze.aim = null;
       if (!e.repeat) { const f = left ? -1 : 1, now = performance.now(); if (ze.tap?.f === f && now - ze.tap.at < ZE_TAP * 1000) { zeDash(g, f); ze.tap = null; } else ze.tap = { f, at: now }; }   // twice: a dash
@@ -12385,7 +12385,7 @@ const toolName = n => {
     if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {});   // a press may start it
     if (k === 'Space' || k === 'Enter') {
       if (g.phase === 'play') { zeKick(g); g.holdAt = g.t; } else if (g.phase === 'pause') zePause(false); else if (g.phase === 'title') zeStart();
-      else if (g.overT > .8) { if (g.sel) zeMenu(); else zeStart(); }   // not at once: a kick held at the K.O. is no new round
+      else if (g.overT > .8) zeOverAct(zeOverButtons()[g.sel]?.id);   // not at once: a kick held at the K.O. is no new round
     }
     else if (k === 'ArrowUp' || k === 'KeyW') zeJump(g);
     else if (k === 'ArrowDown' || k === 'KeyS') zeFallThrough(g);
@@ -12404,7 +12404,7 @@ const toolName = n => {
     if (e.button !== 0) return;
     const g = ze.g, x = e.offsetX / e.currentTarget.clientWidth * ZE_W, y = e.offsetY / e.currentTarget.clientHeight * ZE_H;
     if (g.phase === 'title') { const b = zeDiffButtons().find(b => zeIn(b, x, y)); if (b) zeSetDiff(b.i); else if (zeIn(ZE_PANEL, x, y)) { g.card++; g.cardT = 0; } else zeStart(); }
-    else if (g.phase === 'over') { if (g.overT > .8) { if (zeOverButtons().find(b => zeIn(b, x, y))?.id === 'menu') zeMenu(); else zeStart(); } }
+    else if (g.phase === 'over') { if (g.overT > .8) { const b = zeOverButtons().find(b => zeIn(b, x, y)); if (b) zeOverAct(b.id); } }
     else if (g.phase === 'call') { const b = zeCallButtons().find(b => zeIn(b, x, y)); if (b) zeCallEnd(b.id === 'go'); }
     else if (g.phase === 'play') { zeKick(g); g.holdAt = g.t; } else zePause(false);
   });
@@ -13058,7 +13058,44 @@ const toolName = n => {
     let x = ZE_W / 2 - (ws.reduce((a, b) => a + b) + gap * (ws.length - 1)) / 2;
     return ZE_DIFFS.map((d, i) => { const b = { x, y: 424, w: ws[i], h: 28, i }; x += ws[i] + gap; return b; });
   }
-  const zeOverButtons = () => [{ x: ZE_W / 2 - 132, y: 568, w: 122, h: 32, id: 'again', s: 'AGAIN' }, { x: ZE_W / 2 + 10, y: 568, w: 122, h: 32, id: 'menu', s: 'MENU' }];
+  /** The K.O.'s ways on: again, the menu — and, with the board's chat on, a new best posted to its room, and on a Friday
+   *  the week's poll (T3, 2026-10-30, the next round). Each is a click or ← → and space; nothing goes to the room
+   *  but on one. */
+  function zeOverButtons() {
+    const g = ze.g, c = state.chat, room = !!c?.on && !c.missing && c.room != null, say = (v, idle, done) => v === 'sending' ? 'SENDING…' : v === 'sent' ? done : v ? 'NOT SENT' : idle;
+    const bs = [{ id: 'again', s: 'AGAIN', w: 122 }, { id: 'menu', s: 'MENU', w: 122 }];
+    if (room && (g.best || g.todays)) bs.push({ id: 'post', s: say(g.posted, 'POST TO THE CHAT', 'POSTED ✓'), w: 176 });
+    if (room && new Date().getDay() === 5) bs.push({ id: 'poll', s: say(g.polled, 'FRIDAY POLL', 'POLL ASKED ✓'), w: 150 });
+    let x = ZE_W / 2 - (bs.reduce((a, b) => a + b.w, 0) + 10 * (bs.length - 1)) / 2;
+    return bs.map(b => { const o = { ...b, x, y: 568, h: 32 }; x += b.w + 10; return o; });
+  }
+  function zeOverAct(id) {
+    if (id === 'menu') zeMenu(); else if (id === 'post') zePost(ze.g); else if (id === 'poll') zePoll(ze.g); else zeStart();
+  }
+  // what a score posted says, and how the poll finds it again in the room's week
+  const ZE_POST = 'Zé\'s game:', ZE_POST_RE = /^Zé's game: (\d+) on ([A-Z]+)/;
+  async function zePost(g) {
+    if (g.posted === 'sending' || g.posted === 'sent') return;
+    const D = zeDiff(); g.posted = 'sending'; g.roomSay = '';
+    try { await api('POST', '/api/chat/send', { body: `${ZE_POST} ${g.score} on ${D.name}, level ${g.level} — ${g.best ? 'a new best' : 'today\'s best'} 🥋 (the day's round, ${zeToday()})` }); g.posted = 'sent'; g.roomSay = 'in the chat — ⌥⌘Z for yours'; }
+    catch (e) { g.posted = 'failed'; g.roomSay = e.message; }
+  }
+  /** Friday's poll: the week's scores posted in the room, each one's best, the top eight asked about. */
+  async function zePoll(g) {
+    if (g.polled === 'sending' || g.polled === 'sent') return;
+    g.polled = 'sending'; g.roomSay = '';
+    try {
+      const d = await api('GET', '/api/chat/messages'), since = Date.now() - 7 * 86_400_000, best = new Map();
+      for (const m of d.msgs || []) {
+        const k = String(m.body || '').match(ZE_POST_RE); if (!k || new Date(m.at) < since) continue;
+        if (+k[1] > (best.get(m.who)?.n || 0)) best.set(m.who, { n: +k[1], way: k[2] });
+      }
+      const top = [...best].sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+      if (top.length < 2) { g.polled = 'failed'; g.roomSay = top.length ? 'one score posted this week — a poll wants two' : 'no score posted this week'; return; }
+      await api('POST', '/api/chat/poll', { q: 'Who is the Bruce Lee of Barcelos this week? 🥋', answers: top.map(([who, b]) => `${who} — ${b.n} on ${b.way}`), many: false });
+      g.polled = 'sent'; g.roomSay = 'the poll is in the chat';
+    } catch (e) { g.polled = 'failed'; g.roomSay = e.message; }
+  }
   const zeIn = (b, x, y) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h;
   function zeButton(cx, b, s, on, c) {
     cx.fillStyle = '#1b0b2e'; cx.beginPath(); cx.roundRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4, 8); cx.fill();
@@ -13204,6 +13241,7 @@ const toolName = n => {
       zeText(cx, news || `TODAY ${zeDayBests()[D.id] || 0} · BEST EVER ${zeBests()[D.id] || 0}`, mid, 528, 18, news ? (zeBlink(g, 4) ? '#ffd23f' : '#feae34') : '#d9c7e8', 'center');
       if (news) zeText(cx, `TODAY ${zeDayBests()[D.id] || 0} · BEST EVER ${zeBests()[D.id] || 0}`, mid, 552, 13, '#d9c7e8', 'center', 600);
       if (g.overT > .8) zeOverButtons().forEach((b, i) => zeButton(cx, b, b.s, i === g.sel, '#ffd23f'));
+      if (g.roomSay) zeText(cx, g.roomSay, mid, 620, 13, g.posted === 'failed' || g.polled === 'failed' ? '#ff5a64' : '#a6dc5a', 'center', 600);
     }
   }
   /** Zé, his feet at (g.x, g.y), in pixels (zeBuild): his pose — standing, running, kicking, in the air, seated in a car

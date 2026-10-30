@@ -19,9 +19,9 @@ const face = login => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http
 const ROLE = { pull: 1, push: 2, admin: 3 }, ROLE_NAME = { pull: 'read', push: 'write', admin: 'admin' };
 const REACTIONS = ['+1', '-1', 'laugh', 'confused', 'heart', 'hooray', 'rocket', 'eyes'];
 
-export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {}, repos = {} } = {}) {
+export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {}, repos = {}, since = Date.parse('2026-10-17T09:00:00Z') } = {}) {
   const people = new Map(), all = new Map(), calls = [];
-  let nextId = 5000, inviteId = 700, reactionId = 90_000, clock = Date.parse('2026-10-17T09:00:00Z');
+  let nextId = 5000, inviteId = 700, reactionId = 90_000, clock = since;   // what it writes is a second apart from `since`
   const at = () => new Date(clock += 1000).toISOString();
   const user = login => { if (!people.has(login)) people.set(login, { login, id: people.size + 1, type: /\[bot\]$/.test(login) ? 'Bot' : 'User', avatar_url: face(login) }); return people.get(login); };
   for (const u of users) user(u);
