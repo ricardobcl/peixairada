@@ -181,19 +181,19 @@ export default async function (ctx) {
   ctx.assert.ok(out.ko.quote, 'a line of Bruce Lee\'s');
   out.day = await ctx.evaluate(`window.peix.prefs().zeDay`);
   ctx.assert.equal(out.day.best.normal, out.ko.score, 'today\'s best kept');
-  await ctx.sleep(900); await ctx.shot('5-ko', await canvas());
+  await ctx.waitFor(`window.peix.ze().g.overT > .8`, { what: 'the K.O.\'s buttons' }); await ctx.shot('5-ko', await canvas());
 
   // ---- the day's round: the same numbers again
   await press('Space', ' ', 32); await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.score === 0`, { what: 'another round' });
   const a = await g(`return [g.rnd(), g.rnd()]`);
   await g(`g.mass = 1; g.items.length = 0; g.spawn = 1e9;`); await push({ kind: 'veg', e: '🍆', say: 'BLEH!' }, [0, -100]);
-  await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O. again' }); await ctx.sleep(900);
+  await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O. again' }); await ctx.waitFor(`window.peix.ze().g.overT > .8`, { what: 'the K.O.\'s buttons' });
   await press('Space', ' ', 32); await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.score === 0`, { what: 'a third round' });
   ctx.assert.deepEqual(await g(`return [g.rnd(), g.rnd()]`), a, 'the same falls, round after round, today');
 
   // ---- player two: the galo on A D, Zé on the arrows; VERSUS, his meat stolen
   await g(`g.mass = 1; g.items.length = 0; g.spawn = 1e9;`); await push({ kind: 'veg', e: '🍆', say: 'BLEH!' }, [0, -100]);
-  await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O., for the menu' }); await ctx.sleep(900);
+  await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O., for the menu' }); await ctx.waitFor(`window.peix.ze().g.overT > .8`, { what: 'the K.O.\'s buttons' });
   await press('ArrowRight', 'ArrowRight', 39); await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.phase === 'title'`, { what: 'the title' });
   await press('KeyG', 'g', 71); await press('KeyG', 'g', 71);

@@ -160,7 +160,7 @@ export default async function (ctx) {
   ctx.assert.equal((await ctx.peix('prefs().zeBest')).normal, out.ko.score, 'the best is NORMAL\'s');
   await press('Space', ' ', 32);
   ctx.assert.equal((await game()).phase, 'over', 'a press at once is no new round');
-  await ctx.sleep(900); await ctx.shot('7-ko');
+  await ctx.waitFor(`window.peix.ze().g.overT > .8`, { what: 'the K.O.\'s buttons' }); await ctx.shot('7-ko');
   await press('Space', ' ', 32);   // Again
   await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.score === 0 && window.peix.ze().g.mass === 6 && !window.peix.ze().g.agent`, { what: 'another round' });
 
@@ -172,7 +172,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.ze().music?.ac.state === 'running' && window.peix.prefs().zeSound === true`, { what: 'the sound on again' });
 
   // the K.O.'s Menu: → then space, the title again
-  await ko(); await ctx.sleep(900);
+  await ko(); await ctx.waitFor(`window.peix.ze().g.overT > .8`, { what: 'the K.O.\'s buttons' });
   await press('ArrowRight', 'ArrowRight', 39); await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.phase === 'title'`, { what: 'the menu' });
 
