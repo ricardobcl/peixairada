@@ -11989,7 +11989,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12194,6 +12194,14 @@ const toolName = n => {
     if (r.kind === 'aclass') zeWord(g, 'FAILED THE MOOSE TEST!', g.x, ZE_FLOOR - 150, '#c8ccd2', true);
     g.ride = null; zeEngine(null);
   }
+  /** Bigger by n, to his full bulk — reached from below, MONSTRO! (2026-10-30, the next round): the gym's word for it, a
+   *  flex under a spotlight (g.flex), once in a while at most. */
+  function zeGrow(g, n) {
+    const was = g.mass; Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + n), pump: .3 });
+    if (was >= ZE_MASS_MAX || g.mass < ZE_MASS_MAX || g.dragon || g.t - g.monAt < 8) return;
+    g.monAt = g.t; g.flex = 1.4; zeHold(g, .1);
+    zeBanner(g, 'MONSTRO!', 'FULL BULK — THE GYM\'S WORD FOR IT', ['#ffd23f', '#ff7a2a'], 1.6); zeSfx('monstro');
+  }
   /** What meets him: meat (or anything at all, the dragon's) is eaten and makes him bigger, the combo growing every five
    *  in a row and a Focus coming every three; a green takes some of him — three in a row, the A-Class; none left, the
    *  K.O.; the rooster is muscle; the briefcase, AGENT ZÉ. */
@@ -12205,7 +12213,7 @@ const toolName = n => {
       return zeScore(g, it.pts);
     }
     if (it.kind === 'galo') {
-      Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + 2), pump: .3 });
+      zeGrow(g, 2);
       zeWord(g, it.say, it.x, it.y - 24, '#ffd23f', true); zeBits(g, it.x, it.y, ['#ffd23f', '#e8322f', '#2b5cb8'], 14); zeSfx('galo');
       return zeScore(g, it.pts);
     }
@@ -12217,7 +12225,7 @@ const toolName = n => {
       return;
     }
     g.streak++; g.greens = 0;
-    if (it.kind === 'meat') Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + 1), pump: .3 });
+    if (it.kind === 'meat') zeGrow(g, 1);
     const mult = 1 + Math.min(3, Math.floor(g.streak / 5)), up = mult > g.mult, pts = (it.kind === 'veg' ? 10 : it.pts) * mult;
     g.mult = mult; g.chomp = .3; zeSquash(g, 'chew', .14); if (g.dragon) g.shake = Math.max(g.shake, .08);
     if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); zeHold(g, .12, true); }
@@ -12237,7 +12245,7 @@ const toolName = n => {
     g.bits = g.bits.filter(b => b.t < b.life);
     for (const f of g.flames) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; }
     g.flames = g.flames.filter(f => f.t < f.life);
-    for (const n of ['shake', 'chomp', 'kick', 'flash', 'red', 'punch']) g[n] = Math.max(0, g[n] - dt);
+    for (const n of ['shake', 'chomp', 'kick', 'flash', 'red', 'punch', 'flex']) g[n] = Math.max(0, g[n] - dt);
     g.pump -= Math.sign(g.pump) * Math.min(Math.abs(g.pump), dt);   // a pump or a sag, easing back
     if (g.sq && (g.sq.t -= dt) <= 0) g.sq = null;
     if (g.banner && (g.banner.t -= dt) <= 0) g.banner = null;
@@ -12328,6 +12336,12 @@ const toolName = n => {
       if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {
         cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
       }
+    }
+    if (g.flex > 0) {   // MONSTRO's spotlight: a cone from above onto him, a pool of light at his feet
+      const a = Math.min(1, g.flex / .3, (1.4 - g.flex) / .2), w = 70 * zeSz(g), sp = cx.createLinearGradient(0, 0, 0, ZE_FLOOR);
+      sp.addColorStop(0, `rgba(255, 246, 210, ${.05 * a})`); sp.addColorStop(1, `rgba(255, 246, 210, ${.3 * a})`);
+      cx.fillStyle = sp; cx.beginPath(); cx.moveTo(g.x - 18, 0); cx.lineTo(g.x + 18, 0); cx.lineTo(g.x + w * 1.4, ZE_FLOOR); cx.lineTo(g.x - w * 1.4, ZE_FLOOR); cx.fill();
+      cx.fillStyle = `rgba(255, 246, 210, ${.35 * a})`; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 2, w * 1.4, 10, 0, 0, Math.PI * 2); cx.fill();
     }
     if (g.shake > 0 && !calm) cx.translate((Math.random() - .5) * 24 * g.shake, (Math.random() - .5) * 24 * g.shake);
     for (const it of g.items) {
@@ -12544,12 +12558,12 @@ const toolName = n => {
   function zeHero(cx, g) {
     const air = g.y < ZE_FLOOR - .5, over = g.phase === 'over', moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
     const k = zeSz(g) * (1 + g.pump * .25), p = ZE_PX * k, flip = g.f < 0 && !over;
-    const pose = over ? 'bones' : g.ride ? 'sit' : g.kick > .04 ? 'kick' : air ? 'jump' : moving ? (Math.floor(g.run) % 2 ? 'run1' : 'run2') : 'stand';
+    const pose = over ? 'bones' : g.ride ? 'sit' : g.kick > .04 ? 'kick' : air ? 'jump' : g.flex > 0 ? 'flex' : moving ? (Math.floor(g.run) % 2 ? 'run1' : 'run2') : 'stand';
     const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape;
     const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, sick: g.hurt > .9, flip });
     const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2, tw = zeTw(g);
     cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 3, Math.max(10, tw + 10 - (ZE_FLOOR - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
-    cx.save(); cx.translate(g.x, g.y);
+    cx.save(); cx.translate(g.x + (g.mass === 1 && g.phase === 'play' && !zeCalm() ? Math.sin(g.t * 70) * 1.6 : 0), g.y);   // on his last bit of bulk he shivers
     if (g.ride) { const pv = g.ride.kind === 'focus' ? -58 : -46; cx.scale(g.f, 1); cx.translate(pv, 0); cx.rotate(g.ride.tilt); cx.translate(-pv, 0); cx.scale(g.f, 1); cx.translate(-14 * g.f, 16); }   // in the driver's seat, pitching with his car
     if (g.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? .65 : Math.floor(g.hurt * 12) % 2 ? .4 : 1;
     if (over) {   // K.O.: flat on his back, his feet where they stood — and seeing stars
@@ -12899,6 +12913,7 @@ const toolName = n => {
     } else if (kind === 'aclass') { zeTone(m, t, 'square', 392, 330, .6, .07); zeNoise(m, t + .1, .3, .08); zeNoise(m, t + .5, .2, .06); }   // a sad meep, a cough
     else if (kind === 'beep') for (const hz of [440, 554]) zeTone(m, t, 'square', hz, hz, .14, .05);
     else if (kind === 'meep') zeTone(m, t, 'square', 330, 300, .28, .05);
+    else if (kind === 'monstro') [40, 47, 52].forEach((n, i) => { zeTone(m, t + i * .02, 'sawtooth', zeHz(n), zeHz(n), .9, .09); zeTone(m, t + .45, 'square', zeHz(n + 12), zeHz(n + 12), .5, .04); });   // a power chord, twice
     else if (kind === 'spy') [64, 67, 71, 75, 76].forEach((n, i) => zeTone(m, t + i * .09, 'sawtooth', zeHz(n), zeHz(n), i === 4 ? .7 : .1, .07));   // E minor, its major seventh: a spy's chord
     else if (kind === 'over') {   // the trombone that says it
       [392, 370, 349].forEach((hz, i) => zeHorn(m, t + i * .36, 12 * Math.log2(hz / 440) + 69 - 12, .34 / ZE_16));
