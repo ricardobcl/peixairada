@@ -2881,7 +2881,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -11947,6 +11947,13 @@ const toolName = n => {
   const ZE_AVO_FACE = ['......kkkkkkkk......', '....kkkkkkkkkkkk....', '...kkkkkkkkkkkkkk...', '..kkkkkkkkkkkkkkkk..', '..kkggggggggggggkk..',
     '..kkgssssssssssgkk..', '..kksoeossssoeoskk..', '..kkssssSSSSsssskk..', '..kksSssssssssSskk..', '..kksssmoooomssskk..', '...kkssssssssssk...', '....kkssssssssk.....',
     '.....kkkkkkkkkk.....', '...aaaakkkkkkaaaa...', '..aaaaaaarraaaaaaa..', '.aaaraaaaaaaaaraaaa.', '.aaaaaaaaaaaaaaaaaa.', 'aaaaraaaaaaaaaaraaaa'];
+  // the galo, player two (2026-10-30, the next round): G on the title — CO-OP, it pecks the greens out of the sky; VERSUS,
+  // it steals his meat — on A D and W (Zé on the arrows alone then); Barcelos' black rooster in pixels, facing right
+  const ZE_TWO = { coop: 'CO-OP — IT PECKS THE GREENS', versus: 'VERSUS — IT STEALS HIS MEAT' };
+  const ZE_GALO = ['..............rr....', '.............rrrr...', '............kkkkk...', '...........kkwkkkyy.', '...........kkkkkkyyy', '..kk.......kkkkkr...',
+    '.kkkk......kkkkr....', 'kkbkk.....kkkk......', 'kkkkyk...kkkkk......', '.kkkkkkkkkkkkk......', '..kkkhkkkkdkkk......', '..kkkkkkkhkkkk......', '...kkdkkkkkkk.......',
+    '....kkkkkkkk........', '......y...y.........', '......y...y.........', '.....yy..yy.........'];
+  const ZE_GALO_PAL = { k: '#151018', r: '#e8322f', w: '#ffffff', y: '#ffcc33', b: '#3f8fe0', h: '#e8322f', d: '#5cbf4a' };
   const ZE_AVO_PAL = { k: '#1b1b22', g: '#c8c8cc', s: '#e8b48e', S: '#c98f6d', o: '#8a7a5a', e: '#2a1f1c', m: '#8a3b3b', a: '#3a2f4a', r: '#c8322f' };   // kicks that land to fill the nunchaku (2026-10-30, the next round)
   const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once', 'the burger had lettuce'];
   // the four ways to play: how fast and how often it falls, how green it gets (at level 1, more a level, at most), how
@@ -12026,7 +12033,7 @@ const toolName = n => {
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
-  const ze = { tap: null, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
+  const ze = { tap: null, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
   const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = `♪ ${{ vira: 'vira de Barcelos', malhao: 'malhão', funk: 'funk' }[prefs.zeBand] || 'funk'}`; };
@@ -12065,7 +12072,11 @@ const toolName = n => {
   }
   new ResizeObserver(zeSize).observe($('#zeCanvas'));
 
-  function zeStart() { ze.g = zeRound('play'); if (prefs.zeSound) zeGroove(true); zeGo(); }
+  function zeStart() {
+    ze.g = zeRound('play'); ze.keys2 = { l: 0, r: 0 };
+    if (ZE_TWO[prefs.zeTwo]) ze.g.galo = { mode: prefs.zeTwo, x: 200, y: ZE_FLOOR, vx: 0, vy: 0, f: 1, peck: 0, flaps: 0, score: 0, t: 0 };
+    if (prefs.zeSound) zeGroove(true); zeGo();
+  }
   function zeMenu() { ze.g = zeRound('title'); zeGo(); }
   function zeSetDiff(i) {
     i = (i + ZE_DIFFS.length) % ZE_DIFFS.length; if (i === prefs.zeDiff) return;
@@ -12127,6 +12138,30 @@ const toolName = n => {
     if (g.phase !== 'play' || g.ride || g.dashCool > 0) return;
     Object.assign(g, { dash: .2, dashF: f, dashCool: .55, f }); zeSfx('whoosh');
   }
+  /** W: the galo flaps — off the floor, or again in the air, three times before it lands. */
+  function zeFlap(b) { if (b.flaps >= 3) return; b.vy = -430; b.flaps++; zeSfx('flap'); }
+  /** The galo's turn: A D run it, it falls slower than him, and what its beak meets — a green pecked out of the sky (five,
+   *  the team's in CO-OP, its own in VERSUS), or in VERSUS meat stolen from under his nose (its points, his streak gone). */
+  function zeGaloStep(g, dt) {
+    const b = g.galo, want = ze.keys2.r - ze.keys2.l;
+    b.t += dt; b.peck = Math.max(0, b.peck - dt);
+    b.vx += (want * 330 - b.vx) * Math.min(1, dt * 12); if (want) b.f = want;
+    b.x = Math.max(24, Math.min(ZE_W - 24, b.x + b.vx * dt));
+    b.vy += 1100 * dt; b.y = Math.min(ZE_FLOOR, b.y + b.vy * dt); if (b.y >= ZE_FLOOR) { b.vy = 0; b.flaps = 0; }
+    const beak = { l: b.x + Math.min(b.f * 6, b.f * 30), r: b.x + Math.max(b.f * 6, b.f * 30), t: b.y - 46, b: b.y - 14 };
+    for (const it of g.items) {
+      if (it.out || it.dead || !zeTouch(it, beak, 18)) continue;
+      const vs = b.mode === 'versus';
+      if (it.kind === 'veg') {
+        Object.assign(it, { out: true, vx: b.f * 300, vy: -300, spin: b.f * 10, g: 900 }); b.peck = .2;
+        zeWord(g, 'PIC!', it.x, it.y - 20, '#ffcc33'); zeChunks(g, it.x, it.y, 'veg', 6); zeSfx('peck');
+        if (vs) b.score += 5; else zeScore(g, 5);
+      } else if (vs && ['meat', 'fish', 'gold', 'galo'].includes(it.kind)) {
+        it.dead = true; b.peck = .2; b.score += it.pts || 10; g.streak = 0; g.mult = 1;
+        zeWord(g, 'ROUBADO!', it.x, it.y - 20, '#ff5a64', true); zeChunks(g, it.x, it.y, it.kind === 'fish' ? 'fish' : 'meat', 6); zeSfx('peck');
+      }
+    }
+  }
   function zeFallThrough(g) { if (g.phase === 'play' && g.gy < ZE_FLOOR && g.y >= g.gy - .5) { g.drop = .25; g.vy = 60; } }
   /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
   const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
@@ -12147,6 +12182,9 @@ const toolName = n => {
   $('#zeGame').addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;   // ⌥⌘Z, ⌘W and the rest are the board's
     const g = ze.g, k = e.code, take = () => { e.preventDefault(); e.stopPropagation(); };
+    const two = !!g.galo && g.phase === 'play', bird = two && ['KeyA', 'KeyD', 'KeyW'].includes(k);   // A D W: the galo's, when it plays
+    if (bird) { take(); if (k === 'KeyW') { if (!e.repeat) zeFlap(g.galo); } else ze.keys2[k === 'KeyA' ? 'l' : 'r'] = 1; return; }
+    if (g.phase === 'title' && k === 'KeyG') { take(); if (!e.repeat) { prefs.zeTwo = { null: 'coop', coop: 'versus' }[prefs.zeTwo] || null; savePrefs(); } return; }
     const left = k === 'ArrowLeft' || k === 'KeyA', right = k === 'ArrowRight' || k === 'KeyD';
     if (g.phase === 'title' && (left || right || /^Digit[1-4]$/.test(k))) { take(); if (!e.repeat) zeSetDiff(left ? prefs.zeDiff - 1 : right ? prefs.zeDiff + 1 : +k.slice(5) - 1); return; }
     if (g.phase === 'over' && (left || right)) { take(); if (!e.repeat && g.overT > .8) g.sel = 1 - g.sel; return; }
@@ -12168,7 +12206,11 @@ const toolName = n => {
     else if (k === 'KeyT') zeTune();
     else zeMute();
   });
-  $('#zeGame').addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0; if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0; if (e.code === 'Space' || e.code === 'Enter') zeLetGo(ze.g); });
+  $('#zeGame').addEventListener('keyup', e => {
+    const two = !!ze.g.galo;
+    if (two && (e.code === 'KeyA' || e.code === 'KeyD')) { ze.keys2[e.code === 'KeyA' ? 'l' : 'r'] = 0; return; }
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0; if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0; if (e.code === 'Space' || e.code === 'Enter') zeLetGo(ze.g);
+  });
   $('#zeCanvas').addEventListener('pointermove', e => { ze.aim = e.offsetX / e.currentTarget.clientWidth * ZE_W; });
   $('#zeCanvas').addEventListener('pointerleave', () => { ze.aim = null; });
   $('#zeCanvas').addEventListener('pointerdown', e => {
@@ -12184,7 +12226,7 @@ const toolName = n => {
     if (e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) e.currentTarget.close();
   });
   // the keys let go, and the round paused, when the game is not what you are looking at
-  const zeAway = () => { ze.keys = { l: 0, r: 0 }; if ($('#zeGame').open && ze.g.phase === 'play') zePause(true); };
+  const zeAway = () => { ze.keys = { l: 0, r: 0 }; ze.keys2 = { l: 0, r: 0 }; if ($('#zeGame').open && ze.g.phase === 'play') zePause(true); };
   window.addEventListener('blur', zeAway); document.addEventListener('visibilitychange', () => { if (document.hidden) zeAway(); });
 
   // ---- the round: Zé, what falls, and what they do to each other
@@ -12441,6 +12483,7 @@ const toolName = n => {
     g.smoke = g.smoke.filter(p => p.t < p.life);
     g.spawn -= g.power?.kind === 'vinho' ? dt * .45 : dt;
     if (g.power && (g.power.t -= dt) <= 0) g.power = null;
+    if (g.galo) zeGaloStep(g, dt);
     if (g.avo) zeAvoStep(g, dt);
     else if (g.dragon) {
       g.dragon = Math.max(0, g.dragon - dt);
@@ -12562,6 +12605,7 @@ const toolName = n => {
         g.trail.slice(1, 5).forEach((p, i) => { cx.save(); cx.globalAlpha = .26 - i * .06; cx.translate(p.x - g.x, p.y - g.y); him(); cx.restore(); });
       }
       him();
+      if (g.galo) zeGaloDraw(cx, g, calm);
       if (g.holdAt != null && g.nun >= ZE_NUN && !g.ride && g.t - g.holdAt > .12) zeNunchaku(cx, g, calm);
       if (g.sweep > 0) {   // the sweep: an arc round him, fading
         cx.strokeStyle = `rgba(255, 243, 196, ${g.sweep * 2})`; cx.lineWidth = 10; cx.beginPath(); cx.arc(g.x, g.y - 90 * zeSz(g), 150 + (.35 - g.sweep) * 500, 0, Math.PI * 2); cx.stroke();
@@ -12615,6 +12659,23 @@ const toolName = n => {
       cx.beginPath(); cx.moveTo(bx + w - 6, by + 10); cx.lineTo(bx + w + 14, by + 22); cx.lineTo(bx + w - 6, by + 22); cx.fill();
       cx.fillStyle = K; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(a.say, bx + 12, by + 16);
     }
+  }
+  /** Player two's galo: its shadow, itself turned its way, pecking — and its score over it in VERSUS. */
+  function zeGaloDraw(cx, g, calm) {
+    const b = g.galo; let spr = ze.sprites.get('galo2');
+    if (!spr) {
+      const src = document.createElement('canvas'), x = src.getContext('2d'); src.width = ZE_GALO[0].length; src.height = ZE_GALO.length;
+      ZE_GALO.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.') { x.fillStyle = ZE_GALO_PAL[ch]; x.fillRect(i, j, 1, 1); } }));
+      spr = zeSprite(src); ze.sprites.set('galo2', spr);
+    }
+    const p = 3.2, bob = b.y >= ZE_FLOOR && Math.abs(b.vx) > 30 && !calm ? -Math.abs(Math.sin(b.t * 14)) * 3 : 0;
+    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(b.x, ZE_FLOOR + 3, 24, 5, 0, 0, Math.PI * 2); cx.fill();
+    const halo = cx.createRadialGradient(b.x, b.y - 26, 4, b.x, b.y - 26, 46); halo.addColorStop(0, 'rgba(255, 236, 170, .45)'); halo.addColorStop(1, 'rgba(255, 236, 170, 0)');   // a pale glow: a black bird on the dusk
+    cx.fillStyle = halo; cx.fillRect(b.x - 46, b.y - 72, 92, 92);
+    cx.save(); cx.translate(b.x, b.y + bob); cx.scale(b.f, 1); if (b.peck > 0) cx.rotate(.45);
+    cx.imageSmoothingEnabled = false; cx.drawImage(spr, -11 * p, -(spr.height - 1) * p, spr.width * p, spr.height * p); cx.imageSmoothingEnabled = true;
+    cx.restore();
+    zeText(cx, b.mode === 'versus' ? `P2 · ${b.score}` : 'P2', b.x, b.y - 70, 14, '#ffcc33', 'center');
   }
   /** The nunchaku in his front fist, spinning while space is held: a stick held, its chain, the other stick round it. */
   function zeNunchaku(cx, g, calm) {
@@ -12732,6 +12793,7 @@ const toolName = n => {
     const D = zeDiff();
     zeText(cx, `SCORE ${g.score}`, 20, 30, 26, '#fff3c4');
     if (g.mult > 1 && g.phase === 'play') zeText(cx, `COMBO ×${g.mult}`, 22, 62, 17, zeBlink(g, 6) ? '#feae34' : '#f77622');
+    if (g.galo?.mode === 'versus') zeText(cx, `GALO ${g.galo.score}`, 220, 30, 16, '#ffcc33');
     zeText(cx, `BEST ${Math.max(zeBests()[D.id] || 0, g.score)}`, ZE_W / 2, 30, 16, '#d9c7e8', 'center');
     // his bulk, a bar of ZE_MASS_MAX from bone to meat — the left end blinking when it is nearly all that is left
     const bw = 12, gap = 3, x0 = ZE_W - 20 - ZE_MASS_MAX * (bw + gap) + gap, thin = g.mass <= 2 && g.phase === 'play';
@@ -12803,7 +12865,7 @@ const toolName = n => {
       zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL} = ENTER THE DRAGON`, mid, 534, 16, zeBlink(g, 4) ? '#ff7a2a' : '#feae34', 'center');
       zeDiffButtons().forEach(b => zeButton(cx, b, ZE_DIFFS[b.i].name, b.i === prefs.zeDiff, ZE_DIFFS[b.i].c));
       zeText(cx, `${D.say} · ← → or 1–4`, mid, 614, 13, D.c, 'center', 600);
-      zeText(cx, `T · music: ${ZE_BANDS[prefs.zeBand] || 'FUNK'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
+      zeText(cx, `T · music: ${ZE_BANDS[prefs.zeBand] || 'FUNK'} · G · player two: ${prefs.zeTwo ? prefs.zeTwo.toUpperCase() : 'OFF'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
       cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', 300, 690, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
       const best = zeBests()[D.id], today = zeDayBests()[D.id];
       zeText(cx, `THE DAY'S ROUND · ${zeToday()}${best ? ` · TODAY ${today || 0} · BEST ${best}` : ''}`, 300, 724, 13, '#d9c7e8', 'center', 600);
@@ -12815,7 +12877,8 @@ const toolName = n => {
       zeText(cx, 'ONLY BONES LEFT', mid, 372, 26, '#f2ead8', 'center');
       zeText(cx, g.ko, mid, 410, 20, '#fff3c4', 'center', 600);
       zeText(cx, `${D.name} · LEVEL ${g.level}`, mid, 444, 15, D.c, 'center');
-      zeText(cx, `SCORE ${g.score}`, mid, 488, 32, '#fff3c4', 'center');
+      if (g.galo?.mode === 'versus') zeText(cx, `ZÉ ${g.score} · GALO ${g.galo.score} — ${g.score > g.galo.score ? 'ZÉ WINS' : g.score < g.galo.score ? 'THE GALO WINS' : 'A DRAW'}`, mid, 488, 26, '#fff3c4', 'center');
+      else zeText(cx, `SCORE ${g.score}`, mid, 488, 32, '#fff3c4', 'center');
       const news = g.best ? 'A NEW BEST!' : g.todays ? 'TODAY\'S BEST!' : null;
       zeText(cx, news || `TODAY ${zeDayBests()[D.id] || 0} · BEST EVER ${zeBests()[D.id] || 0}`, mid, 528, 18, news ? (zeBlink(g, 4) ? '#ffd23f' : '#feae34') : '#d9c7e8', 'center');
       if (news) zeText(cx, `TODAY ${zeDayBests()[D.id] || 0} · BEST EVER ${zeBests()[D.id] || 0}`, mid, 552, 13, '#d9c7e8', 'center', 600);
@@ -13236,6 +13299,8 @@ const toolName = n => {
     const ac = m.ac, t = ac.currentTime + .005;
     if (kind === 'chomp') { zeTone(m, t, 'square', 520, 180, .07, .12); zeTone(m, t + .09, 'square', 480, 160, .07, .1); }
     else if (kind === 'jump') zeTone(m, t, 'square', 300, 620, .1, .06);
+    else if (kind === 'flap') zeNoise(m, t, .08, .08);
+    else if (kind === 'peck') zeTone(m, t, 'square', 900, 1400, .04, .06);
     else if (kind === 'boing') zeTone(m, t, 'triangle', 180, 520, .12, .07);
     else if (kind === 'smash') { zeTone(m, t, 'sine', 320, 70, .16, .5); zeDrum(m, 'snare', t, .7); }
     else if (kind === 'bleh') zeTone(m, t, 'sawtooth', 260, 90, .38, .16);
