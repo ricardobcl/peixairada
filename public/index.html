@@ -8,11 +8,12 @@
 <script>
   // The board's appearance before its first paint (2026-10-12): the one it wore last (prefs.look, kept by applySkin),
   // unless its theme follows macOS — then, as with no prefs at all, the system's — and its layout (2026-10-30,
-  // prefs.layout, kept by applyLayout). The page's script below takes over.
+  // prefs.layout and prefs.sidebarStyle, kept by applyLayout). The page's script below takes over.
   (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
     const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = look;
-    document.documentElement.dataset.layout = p.layout === 'sidebar' ? 'sidebar' : 'tiles'; })();
+    document.documentElement.dataset.layout = p.layout === 'sidebar' ? 'sidebar' : 'tiles';
+    document.documentElement.dataset.sidebar = ['edge', 'ring', 'tinted', 'glass'].includes(p.sidebarStyle) ? p.sidebarStyle : 'glass'; })();
 </script>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <style>
@@ -1980,11 +1981,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.tiles.notch.lhide > #chat { border-top-left-radius: var(--screen-r); }   /* the list hidden: the chat's tile has that corner too */
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
 
-  /* ---- the sidebar layout (2026-10-30, round X's D4; Settings › Appearance › Layout: Tiles · Sidebar, Tiles by default):
-     the Mac's own window — no gaps and no edges; the list a sidebar of rows, frosted glass over a wallpaper in the open
-     chat's colour; the header a toolbar of glass, lightly tinted with it — and the board's signals kept on the rows: the
-     ring round a chat at work, a light per sub-agent; sonar round a question; the project a tag dot. The lanes plain.
-     <html data-layout>, set before the first paint by the head's script and kept by applyLayout. ---- */
+  /* ---- the sidebar layout (2026-10-30, round X; Settings › Appearance › Layout: Tiles · Sidebar, Tiles by default, and
+     its style under it): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a toolbar —
+     with the board's signals kept on the rows, in one of four styles, round X's D1–D4 (<html data-sidebar>):
+     Edge — the project's colour an edge on each row, a light running down it while a chat works, a red ping off it for a
+     question; Ring — the board's ring round a row at work and its sonar round a question, the open row in the system's
+     blue, the lanes as the tiles' are; Tinted — Safari's: the toolbar tinted with the chat's colour, the open row solid
+     in its project's, a spinner, a dot that pings; Glass (the default) — the list frosted over a wallpaper in the open
+     chat's colour, the ring and the sonar. The lanes are plain but Ring's. <html data-layout> and data-sidebar, set
+     before the first paint by the head's script and kept by applyLayout. ---- */
   :root[data-layout="sidebar"] { --side: color-mix(in srgb, var(--ink) 5%, var(--bg)); --side-glass: color-mix(in srgb, var(--side) 60%, transparent); }
   :root[data-layout="sidebar"][data-theme="dark"] { --side: color-mix(in srgb, var(--ink) 6%, var(--bg)); }
   /* the panels meet, square at the screen's corners too; the cut round the housing stays, with no border round it */
@@ -1992,15 +1997,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles :is(#sessions, #chat) { border: 0; }
   :root[data-layout="sidebar"] main.tiles.notch { --screen-r: 0px; }
   :root[data-layout="sidebar"] :is(.ncut, .ncap) { display: none; }
-  /* the wallpaper shows under the sidebar alone: two pools of the open chat's colour (--wallc, eased as the tiles' is),
-     the deeper from the bottom left; the pointer's glow off (wallOn) */
-  :root[data-layout="sidebar"] #wall { background: radial-gradient(80% 70% at 4% 96%, color-mix(in srgb, var(--wallc) 42%, var(--bg)), transparent 72%),
-    radial-gradient(60% 55% at 18% 8%, color-mix(in srgb, var(--wallc) 24%, var(--bg)), transparent 70%), var(--bg); }
+  /* the list and the status bar under it in the sidebar's grey, the wallpaper unseen and not drawn; the pointer's glow off
+     (wallOn) */
+  :root[data-layout="sidebar"] #sessions { background: var(--side); }
+  :root[data-layout="sidebar"] main.tiles ~ #sbar { margin: 0; border: 0; border-top: 1px solid var(--line); background: var(--side); }
+  :root[data-layout="sidebar"]:not([data-sidebar="glass"]) #wall { display: none; }
   :root[data-layout="sidebar"] #wall i { display: none; }
-  /* the sidebar and the status bar under it are glass over it, half: their own grey at 60 %, the wallpaper blurred and
-     saturated through the rest */
-  :root[data-layout="sidebar"] #sessions { background: var(--side-glass); -webkit-backdrop-filter: blur(44px) saturate(1.9); backdrop-filter: blur(44px) saturate(1.9); }
-  :root[data-layout="sidebar"] main.tiles ~ #sbar { margin: 0; border: 0; border-top: 1px solid var(--line); background: var(--side-glass); -webkit-backdrop-filter: blur(30px) saturate(1.7); backdrop-filter: blur(30px) saturate(1.7); }
+  /* Glass: the wallpaper shows under the list alone, two pools of the open chat's colour (--wallc, eased as the tiles'
+     is), the deeper from the bottom left; the list and the status bar glass over it, half — their own grey at 60 %, the
+     wallpaper blurred and saturated through the rest */
+  :root[data-layout="sidebar"][data-sidebar="glass"] #wall { background: radial-gradient(80% 70% at 4% 96%, color-mix(in srgb, var(--wallc) 42%, var(--bg)), transparent 72%),
+    radial-gradient(60% 55% at 18% 8%, color-mix(in srgb, var(--wallc) 24%, var(--bg)), transparent 70%), var(--bg); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] #sessions { background: var(--side-glass); -webkit-backdrop-filter: blur(44px) saturate(1.9); backdrop-filter: blur(44px) saturate(1.9); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] main.tiles ~ #sbar { background: var(--side-glass); -webkit-backdrop-filter: blur(30px) saturate(1.7); backdrop-filter: blur(30px) saturate(1.7); }
   :root[data-layout="sidebar"] .sedge.up { background: linear-gradient(color-mix(in srgb, var(--side) 85%, transparent) 25%, transparent); }
   :root[data-layout="sidebar"] .sedge.down { background: linear-gradient(transparent, color-mix(in srgb, var(--side) 85%, transparent) 80%); }
   :root[data-layout="sidebar"] #stitle { background: color-mix(in srgb, var(--repo, var(--nocolor)) 20%, transparent); border-top-color: color-mix(in srgb, var(--ink) 10%, transparent); }
@@ -2017,14 +2026,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles.split #gsplit:is(:hover, .drag) { background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent); }
   :root[data-layout="sidebar"] main.tiles.split .grp:not([hidden]) { border: 1px solid transparent; }
   :root[data-layout="sidebar"] main.tiles.split .grp.on { border-color: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 55%, transparent); }
-  /* the transcript on the chat's plain ground: the colour is the wallpaper's and the toolbar's */
+  /* the transcript on the chat's plain ground */
   :root[data-layout="sidebar"] #log, :root[data-layout="sidebar"] #chat #groups .gbody.haslog { background: none; }
-  /* the header a toolbar: the window's width, an edge at its foot alone, glass tinted with the chat's colour at 14 %; the
-     project's colour a dot before its name, no black beside it, the theme's own inks. Lowered at the notch by padding,
-     not a margin — the toolbar reaches the top whatever it holds. */
+  /* the header a toolbar: the window's width, an edge at its foot alone, glass of the panel; the project's colour a dot
+     before its name, no black beside it, the theme's own inks. Lowered at the notch by padding, not a margin — the
+     toolbar reaches the top whatever it holds. Tinted's is the chat's colour at 20 %, solid, its foot in it; Glass's that
+     colour at 14 %, still glass. */
   :root[data-layout="sidebar"] #chat > #shead { margin: 0; padding-top: calc(7px + var(--hdrop, 0px)); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink);
-    background: color-mix(in srgb, color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) 72%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+    background: color-mix(in srgb, var(--panel) 76%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
     --hfade-w: 24px; --rink: var(--ink); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #chat > #shead { background: color-mix(in srgb, var(--hbg-eased) 20%, var(--panel)); border-bottom-color: color-mix(in srgb, var(--hbg-eased) 40%, var(--line)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-layout="sidebar"][data-sidebar="glass"] #chat > #shead { background: color-mix(in srgb, color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) 72%, transparent); }
   :root[data-layout="sidebar"] #chat > #prlist { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
   :root[data-layout="sidebar"] #chat .shead::after { display: none; }
   :root[data-layout="sidebar"] #chat .shead h2 .repo::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 8px; border-radius: 50%; vertical-align: 1px; background: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
@@ -2035,37 +2047,86 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     background: color-mix(in srgb, var(--prc) 12%, var(--side)); border-color: color-mix(in srgb, var(--prc) 34%, var(--side)); color: var(--prc); }
   :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"], .tk[data-cat]) { background: color-mix(in srgb, var(--prc) 12%, var(--panel)); border-color: color-mix(in srgb, var(--prc) 34%, var(--panel)); }
   :root[data-layout="sidebar"] #chat .shead .hpr .ck { background: transparent; }
-  /* the lanes plain: the name in sentence case and the list's grey, the count bare, no marks and no shimmer — but all
-     caught up keeps its still mark, where its sparks start */
+  /* the lanes: the name in sentence case and the list's grey, the count bare — and plain, no marks and no shimmer, but
+     in Ring, whose lanes are the board's (the asking and clauding names in their colours too); all caught up keeps its
+     still mark, where its sparks start */
   :root[data-layout="sidebar"] .gsep.lane { margin: 10px 4px 2px 8px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; color: var(--muted); }
   :root[data-layout="sidebar"] .gsep.lane:first-child { margin-top: 6px; }
   :root[data-layout="sidebar"] .gsep.lane b { background: none; color: var(--muted); font-weight: 500; }
-  :root[data-layout="sidebar"] :is(.gsep.lane > i, .gsep.lane:not(.zero) .pix, .gsep.lane .shim > .sw) { display: none; }
+  :root[data-layout="sidebar"]:not([data-sidebar="ring"]) :is(.gsep.lane > i, .gsep.lane:not(.zero) .pix, .gsep.lane .shim > .sw) { display: none; }
   :root[data-layout="sidebar"] .gsep.lane.zero { color: var(--idle); }
-  /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer (spotSoon rests); a grey under
-     the pointer, the open one a tint of its project's colour with a hairline of it */
+  :root[data-layout="sidebar"][data-sidebar="ring"] .gsep.lane.working { color: color-mix(in srgb, var(--working) 60%, var(--ink)); }
+  :root[data-layout="sidebar"][data-sidebar="ring"] .gsep.lane.asking { color: var(--needs); }
+  /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer (spotSoon rests), a grey
+     under the pointer; the project a tag dot before its name — but in Edge, where the edge is */
   :root[data-layout="sidebar"] #slist { gap: 2px; }
   :root[data-layout="sidebar"] #slist .card { background: none; border: 0; outline: 0; box-shadow: none; border-radius: 7px; padding: 8px 12px; }
   :root[data-layout="sidebar"] #slist .card:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
   :root[data-layout="sidebar"] #slist .card.qsel { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent); }
-  :root[data-layout="sidebar"] #slist .card.active { background: color-mix(in srgb, var(--lift) 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent); }
   :root[data-layout="sidebar"] #slist .card .top .repo { color: var(--muted); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; }
-  :root[data-layout="sidebar"] #slist .card .top .repo::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--lift); }
-  /* A chat at work: the board's ring, on glass. Its cover was the card's own ground, which a row on glass has none of,
-     so the turning square is .rg's (cardHtml, a box of its own: a card's two pseudo-elements are the sonar's), masked to
-     a 1.5 px band round the row — the mask still, the square turned by a transform, the compositor's as the card's is. */
+  :root[data-layout="sidebar"]:not([data-sidebar="edge"]) #slist .card .top .repo::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--lift); }
+  /* The open row: Edge's a tint of its project's colour, Glass's a deeper one with a hairline of it; Ring's the system's
+     blue and Tinted's its project's colour, solid — darkened till white reads on it —, all on it white, a question on it
+     too (its red line and pings say it) */
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.active { background: color-mix(in srgb, var(--lift) 24%, transparent); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.active { background: color-mix(in srgb, var(--lift) 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent); }
+  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card { --selc: #007aff; }
+  :root[data-layout="sidebar"][data-sidebar="ring"][data-theme="dark"] #slist .card { --selc: #0a84ff; }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active { background: var(--selc); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(*, .top .repo) { color: #fff; }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live, .top .repo) { color: rgb(255 255 255 / .84); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo::before { background: #fff; }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
+  /* At work, watching and asking, the card's own ring and sonar give way to each style's (the board's ring is a square
+     under a cover in the card's ground, which a row has none of): .rg, a box of the card's own (cardHtml), carries
+     Edge's edge and the ring of Ring and Glass. */
   .card > .rg { display: none; }
   :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking)::before, :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking)::after { content: none; animation: none; }
-  :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg { display: block; position: absolute; z-index: -1; inset: 0; padding: 1.5px; border-radius: inherit; overflow: hidden; pointer-events: none;
+  /* Ring and Glass: the board's ring, masked — .rg cut to a 1.5 px band round the row by a still mask, its ::before the
+     board's square turned by a transform, the compositor's as the card's is; and a glow */
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card:is(.working, .watching):not(.asking) > .rg { display: block; position: absolute; z-index: -1; inset: 0; padding: 1.5px; border-radius: inherit; overflow: hidden; pointer-events: none;
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-  :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before { content: ''; position: absolute; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%;
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card:is(.working, .watching):not(.asking) > .rg::before { content: ''; position: absolute; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%;
     background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg)); animation: ring var(--spins, 1.4s) linear infinite; }
-  :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
-  :root[data-layout="sidebar"] #slist .card.working { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
-  :root[data-layout="sidebar"] #slist .card.working.active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent), 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
-  /* a question: a red hairline, a red wash and the sonar's two pings leaving the row's own outline */
-  :root[data-layout="sidebar"] #slist .card.asking { background: color-mix(in srgb, var(--needs) 9%, transparent); box-shadow: inset 0 0 0 1.5px var(--needs); }
-  :root[data-layout="sidebar"] #slist .card.asking::before, :root[data-layout="sidebar"] #slist .card.asking::after { inset: 0; border-width: 1.5px; border-radius: inherit; }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card.working { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.working.active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent), 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
+  /* …and a question: a red hairline, a red wash (not under Ring's solid row) and the sonar's two pings leaving the
+     row's own outline */
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.asking, :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, transparent); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card.asking::before, :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="glass"]) #slist .card.asking::after { inset: 0; border-width: 1.5px; border-radius: inherit; }
+  /* Edge: .rg the project's colour as a 3 px edge down every row; at work a track of it, a light — the chat's light, one
+     per sub-agent, or the monitor's — running down it: a strip twice its height of lights a period apart (--seg / 2 of
+     the strip, the edge over the lights there are), moved one edge's height by a transform; a question, the edge red
+     and a red copy of it pinging out (the card's ::after: a transform and an opacity) over a faint red ground */
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card { padding-left: 18px; }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card > .rg { display: block; position: absolute; z-index: -1; left: 6px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; overflow: hidden; pointer-events: none; background: var(--lift); }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card:is(.working, .watching):not(.asking) > .rg { background: color-mix(in srgb, var(--lift) 40%, transparent); }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.working:not(.asking) > .rg { box-shadow: 0 0 9px color-mix(in srgb, var(--glow) 65%, transparent); }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card:is(.working, .watching):not(.asking) > .rg::before { content: ''; position: absolute; left: 0; right: 0; top: -100%; height: 200%;
+    background: repeating-linear-gradient(transparent 0, transparent calc(var(--seg) * .15), var(--lit) calc(var(--seg) * .25), transparent calc(var(--seg) * .35), transparent calc(var(--seg) / 2));
+    animation: edgerun var(--spins, 1.4s) linear infinite; }
+  @keyframes edgerun { to { transform: translateY(50%); } }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.asking { background: color-mix(in srgb, var(--needs) 7%, transparent); }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.asking > .rg { background: var(--needs); }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.asking::before { content: none; animation: none; }
+  :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.asking::after { inset: 8px auto 8px 6px; width: 3px; border: 0; border-radius: 2px; background: var(--needs); animation: edgeping 1.8s ease-out infinite; }
+  @keyframes edgeping { from { transform: scale(1); opacity: .8; } to { transform: scale(4, 1.2); opacity: 0; } }
+  /* Tinted: no ring, no sonar; a spinner in the project's colour at the title's end while a chat works (white on the
+     open row), a hollow dot in the monitor's colour before a watching one, a red dot before a question, pinging */
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card { padding-left: 22px; }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card .trow { position: relative; }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.asking::before, :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.asking::after { content: none; animation: none; }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card:is(.asking, .watching) .trow::before { content: ''; position: absolute; left: -15px; top: 6px; width: 8px; height: 8px; box-sizing: border-box; border-radius: 50%; }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.watching:not(.asking) .trow::before { border: 1.5px solid var(--watch); }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.asking .trow::before { background: var(--needs); }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.asking .trow::after { content: ''; position: absolute; left: -15px; top: 6px; width: 8px; height: 8px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--needs); pointer-events: none; animation: dotping 1.8s ease-out infinite; }
+  @keyframes dotping { from { transform: scale(1); opacity: .85; } to { transform: scale(2.8); opacity: 0; } }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.working:not(.asking) .trow::after { content: ''; flex: none; order: 9; width: 13px; height: 13px; margin-top: 3px; box-sizing: border-box; border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--lift) 26%, transparent); border-top-color: var(--lift); border-right-color: var(--lift); animation: ring .9s linear infinite; }
+  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.working.active:not(.asking) .trow::after { border-color: rgb(255 255 255 / .3); border-top-color: #fff; border-right-color: #fff; }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
   #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
@@ -2515,7 +2576,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #ov { background: var(--bg); }
     :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar, #chat > #shead) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }   /* the sidebar layout's glass */
     :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar) { background: var(--side) !important; }
-    :root[data-layout="sidebar"] #chat > #shead { background: color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) !important; }
+    :root[data-layout="sidebar"]:is([data-sidebar="edge"], [data-sidebar="ring"]) #chat > #shead { background: var(--panel) !important; }
+    :root[data-layout="sidebar"][data-sidebar="glass"] #chat > #shead { background: color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) !important; }
   }
   /* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
   @media (forced-colors: active) {
@@ -2606,7 +2668,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
-    :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring: its light, still, all round */
+    :root[data-layout="sidebar"][data-sidebar] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"][data-sidebar] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
+    :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.asking::after, :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.asking .trow::after { animation: none; opacity: 0; }   /* no pings: the red edge, the red dot */
+    :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.working:not(.asking) .trow::after { animation: none; }   /* the spinner, still */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
@@ -2749,6 +2813,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         </div><p class="sgf">Every theme, the board wearing each as you move through them: <button type="button" class="slink" id="themeBtn">⌥⌘Y</button></p></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Layout">
           <div class="srow set" id="layoutRow" data-kw="layout tiles sidebar rows glass frosted native mac window panels gaps wallpaper"><span class="sl" id="slLayout"><b>Layout</b><small id="layoutSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slLayout" id="layoutPick"><button type="button" role="radio" data-lay="tiles">Tiles</button><button type="button" role="radio" data-lay="sidebar">Sidebar</button></span></div>
+          <div class="srow set sub" id="sideStyleRow" data-kw="sidebar style edge ring tinted glass lights spinner frosted"><span class="sl" id="slSideStyle"><b>Sidebar style</b><small id="sideStyleSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slSideStyle" id="sideStylePick"><button type="button" role="radio" data-sbs="edge">Edge</button><button type="button" role="radio" data-sbs="ring">Ring</button><button type="button" role="radio" data-sbs="tinted">Tinted</button><button type="button" role="radio" data-sbs="glass">Glass</button></span></div>
         </div></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Text size">
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
@@ -2988,7 +3053,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3603,27 +3668,38 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     revealFrom(from, () => { prefs.skinFollow = mode === 'auto'; if (mode !== 'auto') prefs.skin = slotOf(mode === 'dark'); savePrefs(); reskin(); });
   }
   $('#lookPick').addEventListener('click', e => { const b = e.target.closest('[data-look]'); if (b) setLook(b.dataset.look, centreOf(b)); });
-  // ---- the layout (2026-10-30, round X's D4): Tiles — panels over a wallpaper, each edged in its project's colour — or
-  // Sidebar — the Mac's own window: the list a sidebar of rows on glass over the open chat's colour, the header a
-  // toolbar (the CSS's sidebar block). Settings › Appearance › Layout and the launcher's switch, spread from where it was
-  // asked for as a look is; <html data-layout>, which the head's script set before the first paint.
-  const LAYOUT_SAY = { tiles: 'Panels over a wallpaper, each edged in its project’s colour', sidebar: 'A sidebar of rows on glass, over the open chat’s colour' };
+  // ---- the layout (2026-10-30, round X): Tiles — panels over a wallpaper, each edged in its project's colour — or
+  // Sidebar — the Mac's own window: the list a sidebar of rows, the header a toolbar (the CSS's sidebar block) — in one of
+  // four styles, round X's D1–D4: Edge, Ring, Tinted, Glass (the one picked, the default). Settings › Appearance › Layout
+  // and the style under it, the launcher's switch; each spreads from where it was asked for, as a look does. <html
+  // data-layout> and data-sidebar, which the head's script set before the first paint.
+  const LAYOUT_SAY = { tiles: 'Panels over a wallpaper, each edged in its project’s colour', sidebar: 'A sidebar of rows, the header a toolbar' };
+  const SIDEBAR_SAY = { edge: 'The project’s colour an edge down each row, a light running down it while a chat works',
+    ring: 'A ring of light round a chat at work, sonar round a question; the open chat in the system’s blue',
+    tinted: 'The open chat solid in its project’s colour, the toolbar tinted with it; a spinner, a dot that pings',
+    glass: 'Frosted over the open chat’s colour; a ring of light round a chat at work, sonar round a question' };
   function layoutOf() { return prefs.layout === 'sidebar' ? 'sidebar' : 'tiles'; }
+  function sidebarOf() { return ['edge', 'ring', 'tinted', 'glass'].includes(prefs.sidebarStyle) ? prefs.sidebarStyle : 'glass'; }
   function sidebarOn() { return document.documentElement.dataset.layout === 'sidebar'; }   // declarations: the list and the wallpaper ask before this line has run
   function applyLayout() {
-    const k = layoutOf();
-    document.documentElement.dataset.layout = k;
+    const k = layoutOf(), st = sidebarOf(), off = k !== 'sidebar';
+    Object.assign(document.documentElement.dataset, { layout: k, sidebar: st });
     for (const b of document.querySelectorAll('#layoutPick [data-lay]')) b.setAttribute('aria-checked', String(b.dataset.lay === k));
     $('#layoutSay').textContent = LAYOUT_SAY[k];
+    // the style under it: off, with why, under Tiles
+    for (const b of document.querySelectorAll('#sideStylePick [data-sbs]')) { b.setAttribute('aria-checked', String(b.dataset.sbs === st)); b.disabled = off; }
+    $('#sideStyleRow').classList.toggle('off', off);
+    $('#sideStyleSay').textContent = off ? 'Only with the sidebar layout' : SIDEBAR_SAY[st];
   }
   // what reads the layout on its own: the wallpaper's glow (wallOn), the cards' light under the pointer (spotSoon), the
   // list's frame and the rings, which the change starts anew (phaseAnims)
-  function setLayout(k, from = null) {
-    if (k === layoutOf()) return;
-    revealFrom(from, () => { prefs.layout = k; savePrefs(); applyLayout(); wallGo(); listChanged(); phaseAnims(); });
+  function setLayout(k, from = null, style = sidebarOf()) {
+    if (k === layoutOf() && style === sidebarOf()) return;
+    revealFrom(from, () => { prefs.layout = k; prefs.sidebarStyle = style; savePrefs(); applyLayout(); wallGo(); listChanged(); phaseAnims(); });
   }
   applyLayout();
   $('#layoutPick').addEventListener('click', e => { const b = e.target.closest('[data-lay]'); if (b) setLayout(b.dataset.lay, centreOf(b)); });
+  $('#sideStylePick').addEventListener('click', e => { const b = e.target.closest('[data-sbs]'); if (b && !b.disabled) setLayout('sidebar', centreOf(b), b.dataset.sbs); });
   // a tile: its appearance's slot, worn now where that appearance is
   for (const id of ['#darkPick', '#lightPick']) $(id).addEventListener('click', e => {
     const b = e.target.closest('[data-skin]'); if (!b || b.disabled) return;
@@ -4857,7 +4933,7 @@ const toolName = n => {
   // animationName, so it is left alone. getAnimations() is the document's running animations, a few dozen at most, and
   // the style flush it forces is the one the frame was about to do. (Each card at a start of its own, hashed from the
   // chat's id, was a switch from 2026-09-27 to 2026-10-14.)
-  const PHASED = new Set(['ring', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi']);
+  const PHASED = new Set(['ring', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi', 'edgerun', 'edgeping', 'dotping']);   // the last three the sidebar's (2026-10-30)
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
   // each time. `now`: at once, and read at once.
   // The phase is set as the current time that start would mean first, and the start after it (2026-10-11): WebKit — the
@@ -5431,7 +5507,7 @@ const toolName = n => {
       ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
-      ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}${s.status === 'working' || watching(s) ? '<i class="rg" aria-hidden="true"></i>' : ''}
+      ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
     </div>`;
   }
   // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,

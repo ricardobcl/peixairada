@@ -1,11 +1,14 @@
-// The sidebar layout (2026-10-30, round X's D4): Settings › Appearance › Layout, Tiles by default. Two live chats —
-// one asking, one clauding, open — and a ready one. What this checks: the board starts as tiles; Sidebar from the
-// settings turns it into the Mac's window — no gaps, no edges, the list glass over the wallpaper in the chat's colour,
-// the header a toolbar of glass, no black beside the project — and keeps the signals on the rows: the clauding row's
-// ring is .rg's square turned by a transform under a still mask, in step with the rest (phaseAnims), the card's own
-// pseudo-elements left alone; the asking row's sonar round its rounded outline; the lanes plain. The layout is there
-// at once after a reload (the head's script); at the notch nothing borders the cut; reduced motion holds the ring
-// still; Tiles brings every edge back.
+// The sidebar layout (2026-10-30, round X): Settings › Appearance › Layout, Tiles by default, and the sidebar's style
+// under it — Edge, Ring, Tinted, Glass (the default; round X's D1–D4). Two live chats — one asking, one clauding, open —
+// and a ready one. What this checks: the board starts as tiles, the style off with why; Sidebar from the settings turns
+// it into the Mac's window — no gaps, no edges, the list glass over the wallpaper in the chat's colour, the header a
+// toolbar of glass, no black beside the project — and keeps the signals on the rows: the clauding row's ring is .rg's
+// square turned by a transform under a still mask, in step with the rest (phaseAnims), the card's own pseudo-elements
+// left alone; the asking row's sonar round its rounded outline; the lanes plain. The layout is there at once after a
+// reload (the head's script); at the notch nothing borders the cut; reduced motion holds the ring still. Each other
+// style says its signals its own way: Edge an edge on every row with a light run down it by a transform and a red ping;
+// Ring the open row in the system's blue, the lanes' marks; Tinted a spinner and a pinging dot, the open row solid in
+// its project's colour, the toolbar solid. Tiles brings every edge back.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { makeFixture, toolLines } from '../fixture.mjs';
@@ -56,6 +59,8 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="look"]').click()`);
     ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#layoutPick [data-lay]')].map(b => b.dataset.lay + ':' + b.getAttribute('aria-checked'))`), ['tiles:true', 'sidebar:false'], 'Tiles picked');
+    ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#sideStyleRow').classList.contains('off'), document.querySelector('#sideStylePick [data-sbs="edge"]').disabled, document.querySelector('#sideStyleSay').textContent]`),
+      [true, true, 'Only with the sidebar layout'], 'the sidebar’s style off under Tiles, and why');
     await ctx.evaluate(`document.querySelector('#layoutPick [data-lay="sidebar"]').click()`);
     await ctx.waitFor(`document.documentElement.dataset.layout === 'sidebar'`, { what: 'the sidebar layout' });
     ctx.assert.equal(await ctx.evaluate(`JSON.parse(localStorage.getItem('peixairada-prefs')).layout`), 'sidebar', 'kept in the prefs');
@@ -105,6 +110,56 @@ export default async function (ctx) {
     out.still = await ctx.evaluate(`(s => [s.animationName, s.backgroundImage])(getComputedStyle(document.querySelector('#slist > .card.working > .rg'), '::before'))`);
     ctx.assert.deepEqual(out.still, ['none', 'none'], 'reduced: the ring stands still, a steady band');
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] });
+
+    // the other styles, from the row under Layout
+    const W = '#slist > .card.working', A = '#slist > .card.asking', R = '#slist > .card:not(.working, .asking)';
+    const look = `(() => { const cs = (sel, pseudo) => getComputedStyle(document.querySelector(sel), pseudo);
+      const anim = (sel, name) => document.getAnimations().find(x => x.animationName === name && x.effect.target === document.querySelector(sel) && x.effect.pseudoElement === '::before');
+      const run = anim('${W} > .rg', 'edgerun');
+      return { sidebar: document.documentElement.dataset.sidebar, readyEdge: [cs('${R} > .rg').display, cs('${R} > .rg').width].join(' '),
+        workRg: cs('${W} > .rg').display, workRun: cs('${W} > .rg', '::before').animationName, runTurn: run ? run.effect.getKeyframes().map(k => k.transform).join() : null, runStart: run ? run.startTime : null,
+        askBefore: cs('${A}', '::before').content, askAfter: cs('${A}', '::after').animationName,
+        dot: cs('${R} .top .repo', '::before').content, spinner: cs('${W} .trow', '::after').animationName, askDot: cs('${A} .trow', '::after').animationName,
+        sel: cs('${W}').backgroundColor, selInk: cs('${W} .title').color, pix: cs('.gsep.lane.working .pix').display,
+        list: [cs('#sessions').backdropFilter, cs('#wall').display].join(' '), head: cs('#shead').backdropFilter }; })()`;
+    await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
+    await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings for the styles' });
+    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="look"]').click()`);
+    const reduced = async on => { await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: on ? 'reduce' : '' }] }); await ctx.waitFor(`matchMedia('(prefers-reduced-motion: reduce)').matches === ${on}`, { what: 'reduced motion ' + on }); return ctx.evaluate(look); };
+    const style = async st => {
+      await ctx.evaluate(`document.querySelector('#sideStylePick [data-sbs="${st}"]').click()`);
+      await ctx.waitFor(`document.documentElement.dataset.sidebar === '${st}'`, { what: `the ${st} style` });
+      await ctx.settle();
+      return ctx.evaluate(look);
+    };
+    out.edge = await style('edge');
+    ctx.assert.equal(await ctx.evaluate(`JSON.parse(localStorage.getItem('peixairada-prefs')).sidebarStyle`), 'edge', 'the style kept in the prefs');
+    ctx.assert.equal(out.edge.readyEdge, 'block 3px', 'Edge: every row its project’s edge');
+    ctx.assert.deepEqual([out.edge.workRun, out.edge.runStart], ['edgerun', 0], 'a light run down the clauding row’s, in step');
+    ctx.assert.match(out.edge.runTurn, /translateY\(50%\)/, 'by a transform');
+    ctx.assert.deepEqual([out.edge.askBefore, out.edge.askAfter, out.edge.dot], ['none', 'edgeping', 'none'], 'a question pings off its red edge; no dot for the project');
+    ctx.assert.deepEqual([out.edge.list, out.edge.head], ['none none', 'blur(18px) saturate(1.6)'], 'the list flat, the wallpaper not drawn, the toolbar plain glass');
+    out.edgeStill = await reduced(true); await reduced(false);
+    ctx.assert.deepEqual([out.edgeStill.workRun, out.edgeStill.askAfter], ['none', 'none'], 'reduced: the light still, no ping');
+    await ctx.evaluate(`document.querySelector('#settings').close()`); await ctx.settle(); await ctx.shot('sidebar-edge');
+    await ctx.evaluate(`document.querySelector('#settingsBtn').click(); document.querySelector('#settings .stabs [data-tab="look"]').click()`);
+    out.ring = await style('ring');
+    ctx.assert.equal(out.ring.workRun, 'ring', 'Ring: the ring');
+    ctx.assert.match(out.ring.sel, /^rgb\((0, 122|10, 132), 255\)$/, 'the open row in the system’s blue');
+    ctx.assert.equal(out.ring.selInk, 'rgb(255, 255, 255)', 'white on it');
+    ctx.assert.deepEqual([out.ring.pix, out.ring.dot], ['block', '""'], 'the lanes’ marks, the project’s dot');
+    out.tinted = await style('tinted');
+    ctx.assert.deepEqual([out.tinted.workRg, out.tinted.spinner, out.tinted.askDot, out.tinted.askBefore], ['none', 'ring', 'dotping', 'none'], 'Tinted: a spinner, a pinging dot, no ring, no sonar');
+    ctx.assert.notEqual(out.tinted.sel, 'rgba(0, 0, 0, 0)', 'the open row solid in its project’s colour');
+    ctx.assert.equal(out.tinted.selInk, 'rgb(255, 255, 255)', 'white on it');
+    ctx.assert.equal(out.tinted.head, 'none', 'the toolbar solid');
+    out.tintedStill = await reduced(true); await reduced(false);
+    ctx.assert.deepEqual([out.tintedStill.spinner, out.tintedStill.askDot], ['none', 'none'], 'reduced: the spinner still, no ping');
+    await ctx.evaluate(`document.querySelector('#settings').close()`); await ctx.settle(); await ctx.shot('sidebar-tinted');
+    await ctx.evaluate(`document.querySelector('#settingsBtn').click(); document.querySelector('#settings .stabs [data-tab="look"]').click()`);
+    out.glass = await style('glass');
+    ctx.assert.deepEqual([out.glass.workRun, out.glass.readyEdge.split(' ')[0]], ['ring', 'none'], 'Glass: the ring again, no edge');
+    await ctx.evaluate(`document.querySelector('#settings').close()`);
 
     // Tiles again: every edge back, the card's own ring, the glow
     await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);

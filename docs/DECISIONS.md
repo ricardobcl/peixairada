@@ -5,6 +5,30 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, at night, later — the sidebar in four styles
+
+Ricardo, after Sidebar landed as round X's D4: *"I would like the option of having D1, D2 and D3 styles in settings."*
+
+* **A style under the layout, not three more layouts**: Settings › Appearance › Layout, then *Sidebar style* under it
+  (`prefs.sidebarStyle`, `<html data-sidebar>`), off with its reason under Tiles: Edge (D1), Ring (D2), Tinted (D3),
+  Glass (D4, the default — the one he picked). Each is round X's preset as it was shown: Edge — the project's colour an
+  edge down every row, a light running down it, one per sub-agent, a red edge that pings, the open row a tint; Ring — the
+  board's ring and sonar on a flat sidebar, the open row in the system's blue (#007aff, #0a84ff dark; white on it), the
+  lanes as the tiles' are (marks, sparkle, shimmer, the asking and clauding names in their colours); Tinted — the
+  toolbar in the chat's colour at 20 %, the open row solid in its project's colour darkened till white reads on it, a
+  spinner at a working row's title, a red dot that pings before a question, a hollow one before a monitor. Edge, Ring
+  and Tinted are flat: the wallpaper is not drawn.
+* **Every signal the compositor's, again**: the study's Edge ran its light by `background-position` and pinged by a
+  `box-shadow` — both painted each frame on WebKit's main thread. Built instead on `.rg`, now on every card: Edge's
+  edge, its `::before` a strip twice its height of lights a period apart (the edge's height over the number of lights),
+  moved one edge's height by a transform, so the loop is seamless; the ping a red copy of the edge scaled out and faded
+  (the card's `::after`). Tinted's spinner turns by `ring`; its ping scales. The three new animations are phased with the
+  rest (`PHASED`) and still under reduced motion. Checked in WebKit's frame (Edge's light clipped to the edge, moved
+  between two frames) and by `npm run perf` once each: rest 2.7 / 2.9 / 2.4 % of a core for Edge / Ring / Tinted (tiles
+  4.1), the pointer 7.4 / 6.9 / 4.3 (8.4), a scroll 17.1 / 17.6 / 13.9 (17.2), no rule broken.
+* Checked: `sidebar-layout.mjs` grew a step per style (each one's signals, reduced motion for Edge and Tinted, the style
+  off under Tiles).
+
 ## Decisions of 2026-10-30, late at night — Zé's next round
 
 Ricardo, from the ideas sheet (38 ideas, live sketches, on a claude.ai page): *"Zé: build V1, V2, V3, V6, J1, J2, J3, J4,
