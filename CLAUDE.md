@@ -720,6 +720,11 @@ npm run map                         # rewrite the section maps at the top of ser
   address**: `div.ptab.addr` with `.purl` (`urlHtml`, `addrHtml`) and `.navs`; the tab drag ignores it. The half's ◫/⊟
   and ⨯ are behind ⋯ (`.gmore` → `.gopen`; `.click()` on `.gturn` / `.gclose` works folded). Split, each half is a
   tile (`#gsplit` the gap); under the floating header `#groups` pads by `--float-h`, not the halves. → `pane-tabs.mjs`, `split-halves.mjs`.
+* **The tabs scroll; the one in front never gives way** (2026-10-30): the tabs are in `.ptrack`, the strip's own box
+  past which they run (⋯ outside it) — a swipe, or a wheel down it (`tabsWheel`); an end with more faded (`trackEdges`,
+  `.ofl` `.ofr`). The address is `min(420px, 100%)` whatever is beside it; a tab come in front is scrolled to
+  (`revealTab`, keyed `el._on`, a new one once grown in), a redraw keeps the scroll. Stand-ins and the pill go in the
+  box. → `tab-scroll.mjs`.
 * **A half whose one tab is not a web page has no strip** (`.lone`, of no height: the tile's border says where the keys
   are, so moving them resizes no terminal). A web page alone keeps its strip, an empty half keeps
   its (the drop, ⋯). The lone tab's × is ⌘W's, ⌥⌘W's and the header menu's (`dropTab()`); ⌘0 closes the other half; a

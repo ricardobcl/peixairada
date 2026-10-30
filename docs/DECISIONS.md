@@ -2,8 +2,35 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-29. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-30 — the tabs scroll, the one in front keeps its width
+
+Ricardo: *"when there are many tabs, the one opened is shrunk. it should be expanded when in focus. also, it should be
+always to "scroll" horizontally the tabs with trackpad geture, like tabs on safari for example"*.
+
+* **What it was**: every tab is `flex: none` but the page in front, its address, which was `flex: 1 1 auto;
+  min-width: 0` — the one tab that could give way, so it gave all of it: fifteen pages in a 630 px half left it 178 px,
+  20 of them its address, the rest its buttons. And the strip did not scroll: what did not fit ran off its end.
+* **The address keeps its width**: `flex: 1 0 min(420px, 100%)`, up to 560 with room — 420 shows a PR's address whole
+  beside ‹ › ↻ ⧉ ↗; a strip narrower than that is all address. A fixed basis rather than its content's, or the box a
+  click puts there (an input's own width) would narrow it under the pointer.
+* **The tabs scroll, as Safari's do**: in `.ptrack`, a box of the strip's drawn with it, the half's ⋯ outside — a
+  sideways swipe is the browser's own, and a wheel turned (or a swipe down) over the strip scrolls it too, down further
+  along (`tabsWheel`, the strip's own non-passive listener, as `fanWheel`). An end with tabs past it fades over 24 px
+  (`trackEdges`: a mask, only while there is more). Not done: the tabs behind shrinking before the strip scrolls, as
+  Safari's — under 640 px they are already their marks.
+* **Whichever tab comes in front is scrolled to** (`revealTab`): a new one at the end, one clicked, one walked to with
+  ⌥⌘←→, a chat opened — the least scroll that shows it whole, clear of the fades, gliding when the strip slides. Keyed
+  by chat and tab (`el._on`), not every draw: a swipe away from it is not undone by the next update, and a redraw puts
+  the new box back where the old one was scrolled. A new tab is scrolled to once it has grown in: a box still growing
+  clamps the scroll short of it.
+* Checked: `tab-scroll.mjs` (fifteen pages: the newest, the first clicked and the last walked to each in sight at 420
+  px; a swipe and a wheel scroll; the fades follow; a redraw keeps the scroll) — on the commit before, the same tabs
+  left the address 178 px and nothing scrolled. WebKit: the box, the 420 px address, the fades and the hidden scrollbar
+  as in Chrome. `npm run check`, `npm test`, the full run: 105 of 106, `head-float` failing on the commit before too
+  (*the words move up with it*, `logTop` 0) — open, not this change's.
 
 ## Decisions of 2026-10-29, later — a drawer's rows hold at 2×
 

@@ -1531,11 +1531,23 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .ptab:hover:has(> .x) > .ic { opacity: 0; }
   .ptab > .x:hover { color: var(--needs); }
   @container (max-width: 640px) { .ptab:not(.on) { font-size: 0; gap: 0; padding-inline: 6px; } .ptab:not(.on) > .x { display: none; } .ptab:not(.on):hover > .ic { opacity: .75; } }   /* a tab that is its mark alone is chosen by it, never closed: ⌥⌘W */
+  /* The tabs scroll (2026-10-30, Safari's strip): more than it holds, they run on past its ends in a box of their own
+     (.ptrack, the half's ⋯ outside it) — a sideways swipe moves it, a wheel turned over it too (tabsWheel) —, an end
+     with more past it fading out (trackEdges, .ofl .ofr). The tab in front is never what gives way: a page's address
+     keeps its width (below) and the strip scrolls to whichever tab comes in front (revealTab). The box reaches 4 px
+     into the strip's padding, so a focus ring at its ends is not cut. */
+  .ptrack { flex: 1 1 auto; min-width: 0; align-self: stretch; display: flex; gap: 4px; align-items: center; margin: 0 -4px; padding: 0 4px; position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; --fl: 0px; --fr: 0px; }
+  .ptrack::-webkit-scrollbar { display: none; }
+  .ptrack:is(.ofl, .ofr) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+  .ptrack.ofl { --fl: 24px; }
+  .ptrack.ofr { --fr: 24px; }
   .ptabs .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .ptab > .x .ic.st { width: 11px; height: 11px; stroke-width: 1.8; }
   /* The page in front is its own address (2026-10-11, the studies' Q5): its tab grows into a field — the mark, where it
-     is (the host quieter than the path), and ‹ › ↻ ↗ inside it at its end. */
-  .ptab.addr { flex: 1 1 auto; min-width: 0; max-width: 560px; padding: 0 3px 0 10px; background: var(--ctl-hi); cursor: default; }
+     is (the host quieter than the path), and ‹ › ↻ ↗ inside it at its end. 420 px wide however many tabs are beside it
+     (2026-10-30: it shrank to make room for them, down to its buttons), the strip's whole width where that is less;
+     560 with room to spare. */
+  .ptab.addr { flex: 1 0 min(420px, 100%); min-width: 0; max-width: 560px; padding: 0 3px 0 10px; background: var(--ctl-hi); cursor: default; }
   .ptab.addr .purl { flex: 1 1 auto; min-width: 0; margin: 0; color: var(--ink); text-align: left; }
   .ptab.addr .purl .h { color: var(--muted); }
   .ptab.addr .navs { margin: 0; flex: none; }
@@ -2381,7 +2393,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
   #slist, #log, #picklist, #pfolders, #prScroll, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
-  .card .top .tprs { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
+  .card .top .tprs, .ptrack { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
   /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
@@ -8283,7 +8295,7 @@ const toolName = n => {
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
       $(tm.el.grp).classList.toggle('nostrip', el.hidden);   // the floating header's rules read it — a class, not :has() (2026-10-13)
       el.classList.toggle('lone', lone);
-      if (el.hidden || lone || (g === 1 && !two)) { setHtml(el, ''); continue; }   // nothing drawn, nothing left over to be found
+      if (el.hidden || lone || (g === 1 && !two)) { setHtml(el, ''); el._on = null; continue; }   // nothing drawn, nothing left over to be found
       const tip = two ? ' · drag it to the other half to move it there' : '';
       // each tab with its mark before its name (2026-10-08, as the agent apps' strips have them): Claude's burst, the
       // shell's prompt, a PR's or a page's, VS Code's; its × drawn over the mark, under the pointer (2026-10-11, Q1); the
@@ -8303,7 +8315,7 @@ const toolName = n => {
       const half = two ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">`
         + `<button class="nav gturn" data-to="${stackNow() ? 'side' : 'over'}" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? ICON.side : ICON.over}</button>`
         + `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘0 from that one">${ICON.close}</button></span>` : '';
-      const html = keys.map(k =>
+      const html = '<div class="ptrack">' + keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
         : isVimTab(s, k) ? tab(k, shLabel(s, k), `Vim in ${shellOfTab(s, k).cwd || s.cwd || 'its folder'} · ⌥⌘E`, 'Quit vim — it stays, saying so, over unsaved work', ICON.vim)
         : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
@@ -8314,12 +8326,23 @@ const toolName = n => {
         : ideLabel(k) ? tab(k, ideLabel(k), `${ideName(pageUrl(k))} — a worktree — in VS Code Web`, 'Close the editor', ICON.vscode)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
-        + half;
+        + '</div>' + half;
       // the strip moves (2026-10-11): what it held is read before it is drawn anew, for tabMotion — only when it will be
       const prev = el._drawn !== html && el._sid === s?.id && !REDUCED.matches ? [...el.querySelectorAll('.ptab[data-tab]')].map(b => ({ k: b.dataset.tab, l: b.offsetLeft, w: b.offsetWidth, on: b.classList.contains('on'), html: b.innerHTML })) : null;
       const box = el.querySelector('.ptab.blank .paddr, .ptab.editing .pedit'), typing = box && document.activeElement === box && [box.selectionStart, box.selectionEnd];
-      const drew = setHtml(el, html);
-      if (drew && prev?.length) tabMotion(el, prev);   // a strip coming out of hiding just appears
+      const sl = el._drawn !== html ? el.querySelector('.ptrack')?.scrollLeft || 0 : 0;   // the tabs' box is drawn anew: where it was scrolled to goes with it
+      const drew = setHtml(el, html), track = el.querySelector('.ptrack');
+      if (drew && track) track.scrollLeft = sl;
+      const grow = drew && prev?.length ? tabMotion(el, prev) : null;   // a strip coming out of hiding just appears
+      // the tab in front scrolled to when it is another (2026-10-30) — not on every draw, which would undo a swipe —,
+      // once it has grown in if it is new: a box still growing is scrolled short of it (and may be drawn anew meanwhile)
+      const on = track?.querySelector('.ptab.on[data-tab]'), at = `${s?.id} ${cur}`, smooth = !!prev;
+      if (on && el._on !== at) {
+        el._on = at;
+        const go = () => { const t = el.querySelector('.ptrack'), b = t?.querySelector('.ptab.on[data-tab]'); if (b && el._on === at) revealTab(t, b, smooth); };
+        if (grow) grow.finished.then(go, go); else go();
+      }
+      else if (drew && track) trackEdges(track);
       // a blank tab's box keeps what was typed out of the markup, so typing redraws nothing — and is given it back when
       // something else redraws the strip, the keys and the caret too
       const nb = drew && el.querySelector('.ptab.blank .paddr, .ptab.editing .pedit');   // not a closed one's stand-in, folding
@@ -8333,28 +8356,48 @@ const toolName = n => {
   // highlight slides from the tab that had it to the one that has it (a pill over the strip, the new tab plain until it
   // lands), a new tab grows in from nothing, and a closed one folds where it stood (a stand-in, .ptabgone, not a .ptab:
   // whatever counts the tabs counts the real ones). A key's switch of tab slides too: it is one move, not a walk.
+  // The tabs' box (.ptrack) is where all of it happens: the stand-ins and the pill go in it, to scroll with the tabs.
+  // Returns the tab in front's growing in, when it is new.
   function tabMotion(el, prev) {
+    const track = el.querySelector('.ptrack');
     const now = [...el.querySelectorAll('.ptab[data-tab]')], had = new Set(prev.map(p => p.k)), has = new Set(now.map(b => b.dataset.tab));
+    let grow = null;
     for (const b of now) if (!had.has(b.dataset.tab)) {
       const cs = getComputedStyle(b), w = b.offsetWidth;
-      b.animate([{ width: '0px', paddingLeft: '0px', paddingRight: '0px', opacity: 0 }, { width: w + 'px', paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, opacity: 1 }], { duration: 200, easing: EASE_OUT, id: 'tabgrow' });
+      const a = b.animate([{ width: '0px', paddingLeft: '0px', paddingRight: '0px', opacity: 0 }, { width: w + 'px', paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, opacity: 1 }], { duration: 200, easing: EASE_OUT, id: 'tabgrow' });
+      if (b.classList.contains('on')) grow = a;
       noteMotion(b.dataset.tab, 'tabgrow');
     }
     prev.forEach((p, i) => {
       if (has.has(p.k)) return;
       const after = prev.slice(i + 1).map(q => now.find(b => b.dataset.tab === q.k)).find(Boolean);
       const g = html2el(`<span class="ptabgone" aria-hidden="true">${p.html}</span>`); g.querySelector('.x')?.remove();
-      el.insertBefore(g, after || el.querySelector('.pdrop, .gmore'));
+      track.insertBefore(g, after || track.querySelector('.pdrop'));
       g.animate([{ width: p.w + 'px', opacity: 1 }, { width: '0px', paddingLeft: '0px', paddingRight: '0px', marginLeft: '-4px', opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards', id: 'tabfold' }).onfinish = () => g.remove();
       noteMotion(p.k, 'tabfold');
     });
     const was = prev.find(p => p.on), on = el.querySelector('.ptab.on[data-tab]');
-    if (!was || !on || was.k === on.dataset.tab) return;
+    if (!was || !on || was.k === on.dataset.tab) return grow;
     const from = now.find(b => b.dataset.tab === was.k), fl = from ? from.offsetLeft : was.l, fw = from ? from.offsetWidth : was.w;
-    const pill = html2el('<i class="ptabpill" aria-hidden="true"></i>'); el.append(pill); on.classList.add('slid');
+    const pill = html2el('<i class="ptabpill" aria-hidden="true"></i>'); track.append(pill); on.classList.add('slid');
     noteMotion(on.dataset.tab, 'tabslide');
     pill.animate([{ transform: `translateX(${fl}px)`, width: fw + 'px' }, { transform: `translateX(${on.offsetLeft}px)`, width: on.offsetWidth + 'px' }], { duration: 200, easing: EASE_OUT, fill: 'forwards', id: 'tabslide' })
       .finished.catch(() => {}).then(() => { pill.remove(); on.classList.remove('slid'); });
+    return grow;
+  }
+  /** The tab in front in sight (2026-10-30), clear of the box's fades (TRACK_FADE, the CSS's .ofl): scrolled the least that shows it
+   *  whole — its start where it is wider than the box —, gliding when the strip moves (`smooth`), else at once. */
+  const TRACK_FADE = 24;
+  function revealTab(track, b, smooth) {
+    const l =b.offsetLeft - TRACK_FADE, r = b.offsetLeft + b.offsetWidth + TRACK_FADE, x = track.scrollLeft, w = track.clientWidth;
+    const to = l < x ? l : r > x + w ? Math.min(l, r - w) : null;
+    if (to !== null) track.scrollTo({ left: Math.max(0, to), behavior: smooth && !REDUCED.matches ? 'smooth' : 'auto' });
+    trackEdges(track);
+  }
+  /** Which ends of the tabs' box have tabs past them, faded out: on a draw, a scroll and a resize of the strip. */
+  function trackEdges(t) {
+    const x = t.scrollLeft, l = x > 1, r = x + t.clientWidth < t.scrollWidth - 1;
+    t.classList.toggle('ofl', l); t.classList.toggle('ofr', r);
   }
   // The shell's word: the chat's pages, the ones to show and where each one goes — a half's body, in CSS px
   // (points in the app). The overlay covers the whole window and each web view is placed inside it, so the two
@@ -8405,6 +8448,21 @@ const toolName = n => {
     openTab(s, k);
   });
   for (const id of ['#ptabs', '#ptabsB']) $(id).addEventListener('pointerleave', e => e.currentTarget.classList.remove('gopen'));   // ⋯'s ◫ ⨯ fold again
+  // The tabs past the strip's ends (2026-10-30): a sideways swipe scrolls their box by itself; a wheel turned over the
+  // strip, or a swipe down it, scrolls it too — down is further along — rather than nothing. Each strip's own listener,
+  // non-passive: nothing else scrolls under it. The box is drawn anew with the strip, so its scroll is heard in capture.
+  const tabsWheel = e => {
+    const t = e.currentTarget.querySelector('.ptrack');
+    if (!t || t.scrollWidth <= t.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    t.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
+  };
+  const stripRo = new ResizeObserver(es => { for (const e of es) { const t = e.target.querySelector('.ptrack'); if (t) trackEdges(t); } });
+  for (const id of ['#ptabs', '#ptabsB']) {
+    $(id).addEventListener('wheel', tabsWheel, { passive: false });
+    $(id).addEventListener('scroll', e => { if (e.target.classList?.contains('ptrack')) trackEdges(e.target); }, { capture: true, passive: true });
+    stripRo.observe($(id));
+  }
   // A click anywhere in a half is being in it — the keys follow the pointer, as they do between editor groups.
   // Not the strips: their own click already says which half, and re-rendering them under a mousedown would take
   // the button out from under the click that followed it.
