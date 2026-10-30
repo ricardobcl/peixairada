@@ -555,6 +555,15 @@
   .gsep.lane.zero .pix, .gsep.lane.zero .pix svg { animation: none; }
   .gsep.lane.zero .pix svg { fill: var(--idle); }
   .gsep.lane.zero .spark { position: absolute; width: 3px; height: 3px; pointer-events: none; }
+  /* Zé when you are caught up (2026-10-30, the next round): his game's pixels walking right to left along the head, his
+     two running frames (--ze1, --ze2, drawn by the game) swapped by opacity on held keyframes; a click on him is ⌥⌘Z. */
+  .gsep.lane.zero { min-height: 34px; }
+  .gsep.lane.zero .zewalk { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .zewalk .zw { position: absolute; inset: auto 0 0 0; height: 33px; animation: zewalk 18s linear infinite; }
+  .zewalk .zw i { position: absolute; left: 0; bottom: 0; width: 27px; height: 33px; background: var(--ze1) 0 0 / 27px 33px no-repeat; image-rendering: pixelated; pointer-events: auto; cursor: pointer; animation: zestep .36s linear infinite reverse; }
+  .zewalk .zw i + i { background-image: var(--ze2); animation-direction: normal; }
+  @keyframes zewalk { from { transform: translateX(100%); } to { transform: translateX(-30px); } }
+  @keyframes zestep { 0%, 49.99% { opacity: 0; } 50%, 100% { opacity: 1; } }
   .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s linear infinite; }
   .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s linear infinite; }
   @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
@@ -2591,6 +2600,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .pop .setup input[type=time] { height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--ink); font: inherit; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
   #settings .sseg.ldays button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
   @media (prefers-reduced-motion: reduce) {
+    .zewalk .zw, .zewalk .zw i { animation: none; } .zewalk .zw i { left: auto; right: 8px; } .zewalk .zw i + i { opacity: 0; }   /* Zé stands at the end of All caught up */
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
@@ -4518,7 +4528,7 @@ const toolName = n => {
   const laneHtml = (g, n, shut = false, still = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
-  const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no question, no chat ready">${PIX}<span class="ln">All caught up</span></div>`;
+  const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no question, no chat ready">${PIX}<span class="ln">All caught up</span><span class="zewalk"><span class="zw"><i title="Zé — his game, ⌥⌘Z"></i><i title="Zé — his game, ⌥⌘Z"></i></span></span></div>`;
   let lastTickAt = 0, wasCaughtUp = null;
   function caughtUp(now) {
     const was = wasCaughtUp; wasCaughtUp = now;
@@ -13641,6 +13651,11 @@ const toolName = n => {
       o.connect(g).connect(m.out); for (const x of [o, lfo]) { x.start(t + 1.08); x.stop(t + 2.25); }
     }
   }
+
+
+  // his two running frames for All caught up (T4, ZERO_HTML), drawn once as CSS images, and a click on him there opens his game
+  for (const [n, pose] of [['--ze1', 'run1'], ['--ze2', 'run2']]) document.documentElement.style.setProperty(n, `url(${zeBuild(6, pose, { flip: true }).toDataURL()})`);
+  $('#slist').addEventListener('click', e => { if (e.target.closest('.zewalk i')) zeOpen(); });
 
 
   // ---- the chat column across a reload (2026-10-16) ---------------------------------------------------------------
