@@ -12127,6 +12127,7 @@ const toolName = n => {
     '...bbbBbbbbbbBbbb...', '....bbbbbbbbbbbb....', '.....bbbbbbbbbb.....', '.......bbbbbb.......'];
   const ZE_OPEN = { 16: '.bbbbbmoooooombbbbb.', 17: '.bbbbbmoooooombbbbb.', 18: '..bbbbBmmmmmmBbbbb..' };
   const ZE_SPY = { 10: 'SbgKKKKggggggKKKKgbS', 11: 'SbgwKKKgssssgwKKKgbS', 12: 'nbggggggsSSsggggggb.', 13: 'nbbsssssSSSSsssssbb.', 14: 'nbbbssssSSSSssssbbb.' };
+  const ZE_SHADES = { 10: ZE_SPY[10], 11: ZE_SPY[11] };   // MOSSAD typed on the title: everyone's sunglasses, his without the earpiece
   const ZE_SKULL = ['......LLLLLLLL......', '....LLLLLLLLLLLL....', '...LLLLLLLLLLLLLL...', '..LLLLLLLLLLLLLLLL..', '..LLLLLLLLLLLLLLLL..',
     '.LLLLLLLLLLLLLLLLLL.', '.LLLLLLLLLLLLLLLLLL.', '.LLLLLLLLLLLLLLLLLL.', '.LlLLLLLLLLLLLLLLlL.', '.LggggggLLLLggggggL.',
     '.LgKKKKggggggKKKKgL.', '.LgKKKKgLLLLgKKKKgL.', '.LggggggLKKLggggggL.', '.lLLLLLLLKKLLLLLLLl.', '..lLLLLLLLLLLLLLLl..',
@@ -12169,7 +12170,7 @@ const toolName = n => {
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
-  const ze = { tap: null, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
+  const ze = { tap: null, typed: '', mossad: false, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
   const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = `♪ ${{ vira: 'vira de Barcelos', malhao: 'malhão', funk: 'funk' }[prefs.zeBand] || 'funk'}`; };
@@ -12308,6 +12309,12 @@ const toolName = n => {
     prefs.zeSound = !prefs.zeSound; savePrefs(); zeLabels();
     if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }
   }
+  /** MOSSAD (2026-10-30, the next round): everyone in sunglasses — him, the galos, the avó — and the band through a
+   *  walkie-talkie (zeRadio); typed again, off. Its M turned the sound over on the way: turned back. */
+  function zeMossad() {
+    ze.mossad = !ze.mossad; zeMute(); zeRadio();
+    ze.g.stamp = 1.2;
+  }
   /** T: the vira, the malhão, the funk, round again — from the next beat. */
   function zeTune() {
     prefs.zeBand = { vira: 'malhao', malhao: 'funk' }[prefs.zeBand] || 'vira'; savePrefs(); zeLabels();
@@ -12320,6 +12327,7 @@ const toolName = n => {
     const g = ze.g, k = e.code, take = () => { e.preventDefault(); e.stopPropagation(); };
     const two = !!g.galo && g.phase === 'play', bird = two && ['KeyA', 'KeyD', 'KeyW'].includes(k);   // A D W: the galo's, when it plays
     if (bird) { take(); if (k === 'KeyW') { if (!e.repeat) zeFlap(g.galo); } else ze.keys2[k === 'KeyA' ? 'l' : 'r'] = 1; return; }
+    if (g.phase === 'title' && /^Key[A-Z]$/.test(k) && !e.repeat && (ze.typed = (ze.typed + k.slice(3)).slice(-6)) === 'MOSSAD') { ze.typed = ''; zeMossad(); }   // typed on the title, for those who know — its D still moves the way to play back
     if (g.phase === 'title' && k === 'KeyG') { take(); if (!e.repeat) { prefs.zeTwo = { null: 'coop', coop: 'versus' }[prefs.zeTwo] || null; savePrefs(); } return; }
     const left = k === 'ArrowLeft' || k === 'KeyA', right = k === 'ArrowRight' || k === 'KeyD';
     if (g.phase === 'title' && (left || right || /^Digit[1-4]$/.test(k))) { take(); if (!e.repeat) zeSetDiff(left ? prefs.zeDiff - 1 : right ? prefs.zeDiff + 1 : +k.slice(5) - 1); return; }
@@ -12590,6 +12598,7 @@ const toolName = n => {
     }
     if (g.phase === 'over') g.overT += dt;
     if (g.phase === 'title' && (g.cardT += dt) >= ZE_CARD_T) { g.card++; g.cardT = 0; }   // the rules turn while the demo plays
+    if (g.stamp) g.stamp = Math.max(0, g.stamp - dt * 6);
     if (g.phase !== 'play' && !g.demo) return;
     const D = zeDiff(), k = zeSz(g), car = g.ride && ZE_CARS[g.ride.kind];
     // Zé: runs where the keys or the pointer say — quicker each level, as the dragon, in the Focus; slower in the A-Class
@@ -12710,6 +12719,7 @@ const toolName = n => {
       cx.fillStyle = `rgba(70, 0, 24, ${.4 * dark})`; cx.fillRect(0, 0, ZE_W, ZE_FLOOR);
       cx.fillStyle = `rgba(20, 0, 12, ${.3 * dark})`; cx.fillRect(0, 0, ZE_W, 360); cx.fillRect(0, 0, ZE_W, 150);
     }
+    if (ze.mossad) zeShades(cx, 110 + 39 * 1.35, ZE_FLOOR - 126 * 1.35, 1.35, '#c8ccd2');   // the rooster on its plinth too
     if (g.flex > 0) {   // MONSTRO's spotlight: a cone from above onto him, a pool of light at his feet
       const a = Math.min(1, g.flex / .3, (1.4 - g.flex) / .2), w = 70 * zeSz(g), sp = cx.createLinearGradient(0, 0, 0, ZE_FLOOR);
       sp.addColorStop(0, `rgba(255, 246, 210, ${.05 * a})`); sp.addColorStop(1, `rgba(255, 246, 210, ${.3 * a})`);
@@ -12729,7 +12739,9 @@ const toolName = n => {
         cx.imageSmoothingEnabled = false; cx.drawImage(d, -d.width * 1.5, -d.height * 1.5, d.width * 3, d.height * 3); cx.imageSmoothingEnabled = true; cx.restore(); continue;
       }
       if (it.kind === 'peixe') { const f = zePeixe(); cx.rotate(-it.rot); cx.scale(it.vx > 0 ? -1 : 1, 1); cx.rotate(Math.sin(g.t * 8) * (calm ? 0 : .12)); cx.imageSmoothingEnabled = false; cx.drawImage(f, -f.width * 1.5, -f.height * 1.5, f.width * 3, f.height * 3); cx.imageSmoothingEnabled = true; cx.restore(); continue; }
-      const z = it.kind === 'gold' ? 54 : 42; cx.drawImage(zeGlyph(it.e, it.kind === 'gold' ? 'rgba(255, 196, 40, .55)' : it.tint), -z / 2, -z / 2, z, z); cx.restore();
+      const z = it.kind === 'gold' ? 54 : 42; cx.drawImage(zeGlyph(it.e, it.kind === 'gold' ? 'rgba(255, 196, 40, .55)' : it.tint), -z / 2, -z / 2, z, z);
+      if (ze.mossad && it.e === '🐓') zeShades(cx, -z * .2, -z * .26, z / 42, '#e8e8e8');
+      cx.restore();
     }
     for (const f of g.flames) { const t = 1 - f.t / f.life; cx.fillStyle = t > .7 ? '#fee761' : t > .45 ? '#feae34' : t > .25 ? '#f77622' : '#e43b44'; cx.fillRect(f.x, f.y, f.s, f.s); }
     if (g.leaving) zeCar(cx, g.leaving.kind, g.leaving.x, ZE_FLOOR, g.leaving.f, g.leaving.wheel, 0, g.leaving.flip);
@@ -12791,7 +12803,8 @@ const toolName = n => {
     // her, from her waist up — leaning out, flinching when hit
     const p = 2.6, hx = ZE_AVO.x - 10 * p + (a.hit > 0 && !calm ? Math.sin(a.hit * 60) * 4 : 0), hy = wy + 8;
     ZE_AVO_FACE.forEach((row, r) => { for (let i = 0; i < row.length; i++) {
-      const ch = row[i]; if (ch === '.') continue;
+      let ch = row[i]; if (ch === '.') continue;
+      if (ze.mossad && r === 6 && 'oe'.includes(ch)) ch = 'k';   // sunglasses, she too
       cx.fillStyle = a.hit > 0 && ch === 's' ? '#9be15d' : ZE_AVO_PAL[ch]; cx.fillRect(hx + i * p, hy + r * p, p + .2, p + .2);
     } });
     if (a.arm > 0) { cx.fillStyle = ZE_AVO_PAL.a; cx.fillRect(hx + 17 * p, hy + 3 * p, 3 * p, 12 * p); cx.fillStyle = ZE_AVO_PAL.s; cx.fillRect(hx + 17 * p, hy, 3 * p, 3 * p); }   // her arm up, throwing
@@ -12819,8 +12832,15 @@ const toolName = n => {
     cx.fillStyle = halo; cx.fillRect(b.x - 46, b.y - 72, 92, 92);
     cx.save(); cx.translate(b.x, b.y + bob); cx.scale(b.f, 1); if (b.peck > 0) cx.rotate(.45);
     cx.imageSmoothingEnabled = false; cx.drawImage(spr, -11 * p, -(spr.height - 1) * p, spr.width * p, spr.height * p); cx.imageSmoothingEnabled = true;
+    if (ze.mossad) zeShades(cx, 3 * p, -13.5 * p, .55, '#c8ccd2');
     cx.restore();
     zeText(cx, b.mode === 'versus' ? `P2 · ${b.score}` : 'P2', b.x, b.y - 70, 14, '#ffcc33', 'center');
+  }
+  /** Sunglasses at (x, y), s big: two black lenses on a bridge, rimmed so they read on a black head. */
+  function zeShades(cx, x, y, s, rim) {
+    cx.fillStyle = rim; cx.fillRect(x - 11 * s, y - 4 * s, 22 * s, 8 * s);
+    cx.fillStyle = '#0e0c12'; cx.fillRect(x - 10 * s, y - 3 * s, 9 * s, 6 * s); cx.fillRect(x + 1 * s, y - 3 * s, 9 * s, 6 * s);
+    cx.fillStyle = 'rgba(160, 200, 255, .8)'; cx.fillRect(x - 8 * s, y - 2 * s, 3 * s, 1.5 * s); cx.fillRect(x + 3 * s, y - 2 * s, 3 * s, 1.5 * s);
   }
   /** The nunchaku in his front fist, spinning while space is held: a stick held, its chain, the other stick round it. */
   function zeNunchaku(cx, g, calm) {
@@ -12881,7 +12901,7 @@ const toolName = n => {
    *  open as food comes, an agent's, green from a green —, outlined; turned to face left with his face unturned; or
    *  his bones and his skull. Cached by all of that. */
   function zeBuild(m, pose, o = {}) {
-    const key = `${m}|${pose}|${+!!o.open}|${+!!o.agent}|${+!!o.sick}|${+!!o.flip}`;
+    const key = `${m}|${pose}|${+!!o.open}|${+!!o.agent}|${+!!o.sick}|${+!!o.flip}|${+!!o.shades}`;
     let spr = ze.sprites.get(key); if (spr) return spr;
     if (ze.sprites.size > 400) ze.sprites.clear();
     const W = ZE_BW, cx = 25, top = 23, B = zeBulkPx(m), bones = pose === 'bones', c = document.createElement('canvas'); c.width = W; c.height = ZE_BH;
@@ -12923,7 +12943,7 @@ const toolName = n => {
     }
     const fx0 = o.flip ? W - cx - 10 : cx - 10;   // the face, last and never turned: over the neck, whichever way he faces
     (bones ? ZE_SKULL : ZE_FACE).forEach((row, r) => {
-      const line = !bones && ((o.agent && ZE_SPY[r]) || (o.open && ZE_OPEN[r])) || row;
+      const line = !bones && ((o.agent && ZE_SPY[r]) || (o.shades && ZE_SHADES[r]) || (o.open && ZE_OPEN[r])) || row;
       for (let i = 0; i < line.length; i++) if (line[i] !== '.') { x.fillStyle = ZE_PAL[line[i]]; x.fillRect(fx0 + i, r, 1, 1); }
     });
     spr = zeSprite(c, o.sick ? 'rgba(110, 200, 70, .45)' : null);
@@ -13047,6 +13067,11 @@ const toolName = n => {
     if (g.phase === 'title') {   // a title that plays (2026-10-30, the next round): the demo round behind it, the logo on the band's beat, the rules on cards that turn
       const beat = { vira: 60 / 184, malhao: 60 / 132, funk: 60 / ZE_BPM }[prefs.zeBand] || 60 / 184, hop = zeCalm() ? 0 : Math.abs(Math.sin(Math.PI * g.t / beat)) ** 3 * 12;
       big('ZÉ', 96 - hop, 116);
+      if (ze.mossad) {   // MOSSAD, stamped
+        cx.save(); cx.translate(mid + 150, 92); cx.rotate(-.18); cx.scale(1 + (g.stamp || 0) * .8, 1 + (g.stamp || 0) * .8);
+        cx.strokeStyle = '#e43b44'; cx.lineWidth = 4; cx.strokeRect(-70, -20, 140, 40);
+        cx.font = '900 24px Futura, "Avenir Next Condensed", system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#e43b44'; cx.fillText('MOSSAD', 0, 1); cx.restore();
+      }
       zeText(cx, 'THE BRUCE LEE OF BARCELOS', mid, 166, 26, '#fff3c4', 'center');
       zeRuleCard(cx, g);
       zeDiffButtons().forEach(b => zeButton(cx, b, ZE_DIFFS[b.i].name, b.i === prefs.zeDiff, ZE_DIFFS[b.i].c));
@@ -13082,7 +13107,7 @@ const toolName = n => {
     const k = zeSz(g) * (1 + g.pump * .25), p = ZE_PX * k, flip = g.f < 0 && !over;
     const pose = over ? 'bones' : g.ride ? 'sit' : g.kick > .04 ? 'kick' : air ? 'jump' : g.flex > 0 ? 'flex' : moving ? (Math.floor(g.run) % 2 ? 'run1' : 'run2') : 'stand';
     const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape;
-    const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, sick: g.hurt > .9, flip });
+    const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, shades: ze.mossad, sick: g.hurt > .9, flip });
     const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2, tw = zeTw(g);
     const under = zePlatform(g.x, g.y);   // his shadow, on whatever is under him
     cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, under + 3, Math.max(10, tw + 10 - (under - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
@@ -13327,12 +13352,13 @@ const toolName = n => {
   function zeAudio() {
     if (ze.music) return ze.music;
     let ac; try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
-    const out = ac.createGain(), lp = ac.createBiquadFilter(), noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = noise.getChannelData(0);
+    const out = ac.createGain(), lp = ac.createBiquadFilter(), hp = ac.createBiquadFilter(), crush = ac.createWaveShaper(), noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    lp.type = 'lowpass'; lp.frequency.value = 18000; lp.Q.value = .9;   // the A-Class's glass (zeMode)
-    out.gain.value = .7; out.connect(lp).connect(ac.createDynamicsCompressor()).connect(ac.destination);
-    const m = ze.music = { ac, out, lp, noise, step: 0, at: 0, timer: 0, rest: 0, mode: 'walk' };
-    zeMode(ze.g.ride?.kind); return m;
+    lp.type = 'lowpass'; lp.frequency.value = 18000; lp.Q.value = .9;   // the A-Class's glass (zeMode), the walkie-talkie's top
+    hp.type = 'highpass'; hp.frequency.value = 20;   // …and its bottom (zeRadio)
+    out.gain.value = .7; out.connect(lp).connect(hp).connect(crush).connect(ac.createDynamicsCompressor()).connect(ac.destination);
+    const m = ze.music = { ac, out, lp, hp, crush, noise, step: 0, at: 0, timer: 0, rest: 0, mode: 'walk' };
+    zeMode(ze.g.ride?.kind); zeRadio(); return m;
   }
   function zeGroove(on) {
     const m = on ? zeAudio() : ze.music; if (!m) return;
@@ -13354,6 +13380,7 @@ const toolName = n => {
     const len = fera ? ZE_16D : ({ vira: ZE_8V, malhao: ZE_8M }[band] || ZE_16) / quick * zeMod(m).q;
     if (m.at < now) m.at = now + .02;
     while (m.at < now + .12) {
+      if (ze.mossad && m.step % 24 === 0) { zeNoise(m, m.at, .09, .05); zeTone(m, m.at + .09, 'sine', 1800, 1800, .05, .03); }   // the walkie-talkie's squelch, and its beep
       if (fera) zeFera(m, m.step % 32, m.at);
       else if (band === 'vira') zeVira(m, m.step % 96, m.at, len);
       else if (band === 'malhao') zeMalhao(m, m.step % 64, m.at, len);
@@ -13368,7 +13395,14 @@ const toolName = n => {
     aclass: { q: 1.28, tr: -3, lp: 700, hats: 1, wob: 22, kick2: false } };
   function zeMode(kind) {
     const m = ze.music; if (!m || (kind && ze.g.demo)) return;
-    m.mode = ZE_MODES[kind] ? kind : 'walk'; m.lp.frequency.setTargetAtTime(ZE_MODES[m.mode].lp, m.ac.currentTime, .08);
+    m.mode = ZE_MODES[kind] ? kind : 'walk'; zeRadio();
+  }
+  /** The filters as the round has them: the A-Class's glass, and MOSSAD's walkie-talkie — a narrow band, clipped. */
+  function zeRadio() {
+    const m = ze.music; if (!m) return;
+    const t = m.ac.currentTime, on = ze.mossad;
+    m.lp.frequency.setTargetAtTime(Math.min(ZE_MODES[m.mode].lp, on ? 2600 : 18000), t, .08); m.hp.frequency.setTargetAtTime(on ? 480 : 20, t, .08);
+    m.crush.curve = on ? Float32Array.from({ length: 1024 }, (_, i) => Math.tanh((i / 511.5 - 1) * 4)) : null;
   }
   const zeMod = m => ZE_MODES[m.track === 'dragon' ? 'walk' : m.mode] || ZE_MODES.walk;
   /** A tape's wobble on an oscillator, by the A-Class (cents, slow). */
