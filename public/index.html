@@ -12192,7 +12192,7 @@ const toolName = n => {
     zeBits(g, g.x, ZE_FLOOR - 20, ['#d9c7e8', '#ffffff', '#9aa0a8'], 14);
     if (kind === 'focus') zeBanner(g, 'FORD FOCUS!', 'YALLA — FIVE SECONDS OF SPEED', ['#5b8ff0', '#ffd23f'], 2.2);
     else zeBanner(g, 'MERCEDES A-CLASS…', 'THE PUNISHMENT — FIVE SLOW SECONDS', ['#c8ccd2', '#ff5a64'], 2.2);
-    zeSfx(kind); zeEngine(kind);
+    zeSfx(kind); zeEngine(kind); zeMode(kind);
   }
   const zeFast = g => g.ride?.kind === 'focus' && Math.abs(g.vx) > 260;   // quick enough to leave afterimages
   /** …and goes off on its own: the Focus at speed, the A-Class over onto its roof first, as at the moose test. */
@@ -12200,7 +12200,7 @@ const toolName = n => {
     const r = g.ride; if (!r) return;
     g.leaving = { kind: r.kind, x: g.x, f: g.f, t: 0, wheel: r.wheel, flip: 0 };
     if (r.kind === 'aclass') zeWord(g, 'FAILED THE MOOSE TEST!', g.x, ZE_FLOOR - 150, '#c8ccd2', true);
-    g.ride = null; zeEngine(null);
+    g.ride = null; zeEngine(null); zeMode(null);
   }
   /** Bigger by n, to his full bulk — reached from below, MONSTRO! (2026-10-30, the next round): the gym's word for it, a
    *  flex under a spotlight (g.flex), once in a while at most. */
@@ -12816,10 +12816,12 @@ const toolName = n => {
   function zeAudio() {
     if (ze.music) return ze.music;
     let ac; try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
-    const out = ac.createGain(), noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = noise.getChannelData(0);
+    const out = ac.createGain(), lp = ac.createBiquadFilter(), noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    out.gain.value = .7; out.connect(ac.createDynamicsCompressor()).connect(ac.destination);
-    return ze.music = { ac, out, noise, step: 0, at: 0, timer: 0, rest: 0 };
+    lp.type = 'lowpass'; lp.frequency.value = 18000; lp.Q.value = .9;   // the A-Class's glass (zeMode)
+    out.gain.value = .7; out.connect(lp).connect(ac.createDynamicsCompressor()).connect(ac.destination);
+    const m = ze.music = { ac, out, lp, noise, step: 0, at: 0, timer: 0, rest: 0, mode: 'walk' };
+    zeMode(ze.g.ride?.kind); return m;
   }
   function zeGroove(on) {
     const m = on ? zeAudio() : ze.music; if (!m) return;
@@ -12838,7 +12840,7 @@ const toolName = n => {
    *  more starts from now. */
   function zePlan(m) {
     const now = m.ac.currentTime, fera = m.track === 'dragon', vira = !fera && prefs.zeBand === 'vira', quick = 1 + Math.min(10, ze.g.level - 1) * .03;
-    const len = fera ? ZE_16D : (vira ? ZE_8V : ZE_16) / quick;
+    const len = fera ? ZE_16D : (vira ? ZE_8V : ZE_16) / quick * zeMod(m).q;
     if (m.at < now) m.at = now + .02;
     while (m.at < now + .12) {
       if (fera) zeFera(m, m.step % 32, m.at);
@@ -12847,6 +12849,18 @@ const toolName = n => {
       m.at += len; m.step++;
     }
   }
+  /** The music hears the round (2026-10-30, the next round): in the Focus the band goes up a tone and quicker, its
+   *  ferrinhos doubled and a kick on four; in the A-Class it is a car radio behind glass, three semitones down, slowed
+   *  and wobbling like a tape. ZE_MODES' by the car (zeMode), from the next note. */
+  const ZE_MODES = { walk: { q: 1, tr: 0, lp: 18000, hats: 1, wob: 0, kick2: false }, focus: { q: 1 / 1.12, tr: 2, lp: 18000, hats: 2, wob: 0, kick2: true },
+    aclass: { q: 1.28, tr: -3, lp: 700, hats: 1, wob: 22, kick2: false } };
+  function zeMode(kind) {
+    const m = ze.music; if (!m) return;
+    m.mode = ZE_MODES[kind] ? kind : 'walk'; m.lp.frequency.setTargetAtTime(ZE_MODES[m.mode].lp, m.ac.currentTime, .08);
+  }
+  const zeMod = m => ZE_MODES[m.track === 'dragon' ? 'walk' : m.mode] || ZE_MODES.walk;
+  /** A tape's wobble on an oscillator, by the A-Class (cents, slow). */
+  const zeWob = (m, o, t) => { const w = zeMod(m).wob; if (w) o.detune.setValueAtTime(o.detune.value + Math.sin(t * Math.PI * 1.4) * w, t); };
   function zeTrack(t) { const m = ze.music; if (!m || m.track === t) return; m.track = t; m.step = 0; m.at = m.ac.currentTime + .05; }
   function zeFera(m, s, t) {   // the dragon's: the lead, the bass jumping octaves, a kick on the beat, a snare on two and four
     if (ZE_FLEAD[s]) zeTone(m, t, 'square', zeHz(ZE_FLEAD[s]), zeHz(ZE_FLEAD[s]), ZE_16D * .95, .05);
@@ -12856,24 +12870,26 @@ const toolName = n => {
     zeDrum(m, 'hat', t, s % 2 ? .3 : .6);
   }
   // the vira's players: the concertina's tune, the viola braguesa's root and the bombo on one, the cavaquinho strummed
-  // on two and three, the ferrinhos ringing every quaver
+  // on two and three, the ferrinhos ringing every quaver — as many as his bulk: thin, no cavaquinho; buff, a second
+  // concertina an octave down and the bombo on the last beat too (2026-10-30, the next round)
   function zeVira(m, s, t, q) {
-    const bar = Math.floor(s / 6), e = s % 6, notes = ZE_VIRA[bar], ch = ZE_VIRA_CH[bar];
-    if (notes[e] > 0) { let n = 1; while (e + n < 6 && notes[e + n] === -1) n++; zeConcertina(m, t, notes[e], n * q * .95); }
-    if (e === 0) { zeDrum(m, 'kick', t, .6); zePluck(m, t, ZE_ROOT[ch], .4, .16); }
-    if (e === 2 || e === 4) ZE_CHORD[ch].forEach((n, i) => zePluck(m, t + i * .012, n + 12, .14, .035));
-    for (const hz of [4200, 6150]) zeTone(m, t, 'sine', hz, hz, .07, (e === 2 || e === 4 ? .02 : e % 2 ? .007 : .012));
+    const bar = Math.floor(s / 6), e = s % 6, notes = ZE_VIRA[bar], ch = ZE_VIRA_CH[bar], M = zeMod(m), tr = M.tr, mass = ze.g.mass;
+    if (notes[e] > 0) { let n = 1; while (e + n < 6 && notes[e + n] === -1) n++; zeConcertina(m, t, notes[e] + tr, n * q * .95); if (mass >= 9) zeConcertina(m, t, notes[e] + tr - 12, n * q * .95, .03); }
+    if (e === 0) { zeDrum(m, 'kick', t, .6); zePluck(m, t, ZE_ROOT[ch] + tr, .4, .16); }
+    if (e === 3 && (M.kick2 || mass >= 9)) zeDrum(m, 'kick', t, .4);
+    if ((e === 2 || e === 4) && mass > 3) ZE_CHORD[ch].forEach((n, i) => zePluck(m, t + i * .012, n + 12 + tr, .14, .035));
+    for (let h = 0; h < M.hats; h++) for (const hz of [4200, 6150]) zeTone(m, t + h * q / 2, 'sine', hz, hz, .07, (e === 2 || e === 4) && !h ? .02 : e % 2 ? .007 : .012);
   }
-  function zeConcertina(m, t, n, d) {   // three reeds a little apart, as a concertina's
+  function zeConcertina(m, t, n, d, v = .05) {   // three reeds a little apart, as a concertina's
     const ac = m.ac, f = ac.createBiquadFilter(), g = ac.createGain();
     f.type = 'lowpass'; f.frequency.value = 2800;
-    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .02); g.gain.setValueAtTime(.05, t + Math.max(.03, d - .04)); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .02); g.gain.setValueAtTime(v, t + Math.max(.03, d - .04)); g.gain.exponentialRampToValueAtTime(.0001, t + d);
     f.connect(g).connect(m.out);
-    for (const [type, det] of [['sawtooth', -7], ['square', 0], ['sawtooth', 7]]) { const o = ac.createOscillator(); o.type = type; o.frequency.value = zeHz(n); o.detune.value = det; o.connect(f); o.start(t); o.stop(t + d + .02); }
+    for (const [type, det] of [['sawtooth', -7], ['square', 0], ['sawtooth', 7]]) { const o = ac.createOscillator(); o.type = type; o.frequency.value = zeHz(n); o.detune.value = det; zeWob(m, o, t); o.connect(f); o.start(t); o.stop(t + d + .02); }
   }
   function zePluck(m, t, n, d, v) {   // a string plucked: the cavaquinho's, the viola's
     const o = m.ac.createOscillator(), g = m.ac.createGain();
-    o.type = 'triangle'; o.frequency.value = zeHz(n);
+    o.type = 'triangle'; o.frequency.value = zeHz(n); zeWob(m, o, t);
     g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + d);
     o.connect(g).connect(m.out); o.start(t); o.stop(t + d + .02);
   }
@@ -12889,16 +12905,16 @@ const toolName = n => {
     m.engine = { o, os, base: o.frequency.value };
   }
   const zeRev = v => { const e = ze.music?.engine; if (e) e.o.frequency.setTargetAtTime(e.base + v * .12, ze.music.ac.currentTime, .08); };
-  function zeBar(m, s, bar, t) {
-    const fill = bar === 3 && s >= 12;
+  function zeBar(m, s, bar, t) {   // the funk: a tone up in the Focus, down in the A-Class; thin, no clav; buff, the horns twice
+    const fill = bar === 3 && s >= 12, tr = zeMod(m).tr, mass = ze.g.mass;
     if (s === 0 || s === 7 || s === 10 || (bar % 2 && s === 13)) zeDrum(m, 'kick', t);
     if (fill) zeDrum(m, 'snare', t, .45 + (s - 12) * .18);
     else if (s === 4 || s === 12) zeDrum(m, 'snare', t);
     else if (s === 9 || s === 15) zeDrum(m, 'snare', t, .16);   // ghosts
     if (!fill) zeDrum(m, s === 14 && bar % 2 ? 'open' : 'hat', t, s % 4 === 2 ? .9 : s % 2 ? .35 : .6);
-    const b = ZE_BASS[bar % 2][s]; if (b) zeBass(m, t, ...b);
-    if (ZE_CLAV[s] && !fill) zeClav(m, t, ZE_CLAV[s]);
-    if (bar === 2 && ZE_HORN[s]) zeHorn(m, t, ...ZE_HORN[s]);
+    const b = ZE_BASS[bar % 2][s]; if (b) zeBass(m, t, b[0] + tr, b[1], b[2]);
+    if (ZE_CLAV[s] && !fill && mass > 3) zeClav(m, t, ZE_CLAV[s], tr);
+    if ((bar === 2 || (bar === 0 && mass >= 9)) && ZE_HORN[s]) zeHorn(m, t, ZE_HORN[s][0] + tr, ZE_HORN[s][1]);
   }
   function zeDrum(m, kind, t, v = 1) {
     const ac = m.ac, g = ac.createGain(); g.connect(m.out);
@@ -12926,12 +12942,12 @@ const toolName = n => {
     f.connect(g).connect(m.out);
     for (const type of ['sawtooth', 'sine']) { const o = ac.createOscillator(); o.type = type; o.frequency.value = zeHz(n); o.connect(f); o.start(t); o.stop(t + d + .02); }
   }
-  function zeClav(m, t, v) {   // E7#9, Hendrix's chord, the wah opening on each stab
+  function zeClav(m, t, v, tr = 0) {   // E7#9, Hendrix's chord, the wah opening on each stab
     const ac = m.ac, f = ac.createBiquadFilter(), g = ac.createGain();
     f.type = 'bandpass'; f.Q.value = 3; f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(2400, t + .08);
     g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.06 * v, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + .11);
     f.connect(g).connect(m.out);
-    for (const n of [52, 56, 62, 67]) { const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = zeHz(n); o.connect(f); o.start(t); o.stop(t + .13); }
+    for (const n of [52, 56, 62, 67]) { const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = zeHz(n + tr); o.connect(f); o.start(t); o.stop(t + .13); }
   }
   function zeHorn(m, t, n, len) {
     const ac = m.ac, d = len * ZE_16, f = ac.createBiquadFilter(), g = ac.createGain();
