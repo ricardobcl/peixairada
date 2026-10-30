@@ -11896,7 +11896,7 @@ const toolName = n => {
   });
 
   // ---- Zé: ⌥⌘Z's game (2026-10-30) ---------------------------------------------------------------------------------
-  // Zé, the Bruce Lee of Barcelos, his face in pixels (ZE_FACE: the hair, the round gold glasses, the beard): meat falls
+  // Zé, the Bruce Lee of Barcelos, in pixels (ZE_FACE: the hair, the round gold glasses, the beard; his body, zeBuild): meat falls
   // and he eats it and grows — broader, his arms thicker, pecs and biceps —; vegetables make him thinner, down to his
   // ribs and then his bones, the K.O. — unless he dodges them or kicks them out of the sky; some lunch that looks safe
   // has a leaf in it. Three meats in a row bring a Ford Focus, ZE_RIDE seconds of speed; three greens a Mercedes A-Class,
@@ -11950,7 +11950,7 @@ const toolName = n => {
   const ZE_VIRA_CH = 'GGDDDDGGCCGGDDGG', ZE_CHORD = { G: [55, 59, 62, 67], D: [57, 62, 66, 72], C: [55, 60, 64, 67] }, ZE_ROOT = { G: 43, D: 50, C: 48 };
   // his face in pixels: dark hair, round gold glasses, a full beard — a drawing, no picture; the mouth open for a bite
   // (ZE_OPEN's rows), sunglasses and an earpiece as AGENT ZÉ (ZE_SPY's), and what is left at the end (ZE_SKULL, his
-  // glasses still on). Each a canvas once (zeSprite), outlined, drawn unsmoothed.
+  // glasses still on) — on his pixel body since 2026-10-30, the next round (zeBuild), outlined, drawn unsmoothed.
   const ZE_PAL = { h: '#2a1f1c', s: '#eab995', S: '#c98f6d', b: '#33261f', B: '#17110f', g: '#c9a46a', e: '#2a1f1c', w: '#ffffff', m: '#8a3b3b',
     o: '#4a1020', K: '#0e0c12', L: '#f2ead8', l: '#c9bfa8', n: '#e8e8e8' };
   const ZE_FACE = ['......hhhhhhhh......', '....hhhhhhhhhhhh....', '...hhhhhhhhhhhhhh...', '..hhhhhhhhhhhhhhhh..', '..hhhhhhhhhhhhhhhh..',
@@ -11964,6 +11964,25 @@ const toolName = n => {
     '.LLLLLLLLLLLLLLLLLL.', '.LLLLLLLLLLLLLLLLLL.', '.LLLLLLLLLLLLLLLLLL.', '.LlLLLLLLLLLLLLLLlL.', '.LggggggLLLLggggggL.',
     '.LgKKKKggggggKKKKgL.', '.LgKKKKgLLLLgKKKKgL.', '.LggggggLKKLggggggL.', '.lLLLLLLLKKLLLLLLLl.', '..lLLLLLLLLLLLLLLl..',
     '...lLLLLLLLLLLLLl...', '....LKLKLKLKLKLK....', '....LLLLLLLLLLLL....', '.....lLLLLLLLLLl.....'];
+  // his body in the same pixels (2026-10-30, the next round): the suit, its shade, its shine, the stripes and shoes, his
+  // fists — as broad as his bulk, a pixel at a time (zeBuild); each pose its joints from the neck and the torso's top
+  const ZE_SUIT = { Y: '#ffd23f', y: '#d29a14', l: '#fff3a8', K: '#151018', s: '#eab995', S: '#c98f6d', bone: '#f2ead8', bone2: '#c9bfa8' };
+  const ZE_POSES = {
+    stand: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw - 3, t + 8], [c - B.hw + 2, t + 11]], [[c + B.hw - 1, t + 2], [c + B.hw + 4, t + 7], [c + B.hw + 4, t]]],
+      legs: [[[c - 3, t + 15], [c - 5, t + 25], [c - 6, t + 34]], [[c + 3, t + 15], [c + 5, t + 25], [c + 6, t + 34]]] }),
+    run1: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw - 4, t + 7], [c - B.hw - 7, t + 11]], [[c + B.hw - 1, t + 2], [c + B.hw + 5, t + 6], [c + B.hw + 6, t + 1]]],
+      legs: [[[c - 2, t + 15], [c - 6, t + 23], [c - 11, t + 29]], [[c + 2, t + 15], [c + 6, t + 24], [c + 7, t + 34]]] }),
+    run2: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw - 2, t + 9], [c - B.hw + 2, t + 13]], [[c + B.hw - 1, t + 2], [c + B.hw + 3, t + 9], [c + B.hw + 1, t + 13]]],
+      legs: [[[c - 2, t + 15], [c - 1, t + 25], [c - 2, t + 34]], [[c + 2, t + 15], [c + 3, t + 24], [c - 1, t + 30]]] }),
+    kick: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw - 6, t + 4], [c - B.hw - 11, t + 2]], [[c + B.hw - 1, t + 2], [c + B.hw + 3, t + 6], [c + B.hw + 2, t - 1]]],
+      legs: [[[c - 2, t + 15], [c - 3, t + 25], [c - 4, t + 34]], [[c + 2, t + 14], [c + 12, t + 12], [c + 23, t + 10]]], kick: true }),
+    jump: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw - 4, t - 2], [c - B.hw - 3, t - 7]], [[c + B.hw - 1, t + 2], [c + B.hw + 4, t - 2], [c + B.hw + 3, t - 7]]],
+      legs: [[[c - 3, t + 15], [c - 1, t + 21], [c - 7, t + 26]], [[c + 3, t + 15], [c + 8, t + 20], [c + 3, t + 27]]] }),
+    sit: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw + 3, t + 9], [c + B.hw + 6, t + 8]], [[c + B.hw - 1, t + 2], [c + B.hw + 4, t + 9], [c + B.hw + 9, t + 7]]],
+      legs: [[[c - 2, t + 15], [c + 8, t + 15], [c + 9, t + 24]], [[c + 2, t + 15], [c + 11, t + 14], [c + 12, t + 23]]] }),
+    flex: (c, t, B) => ({ arms: [[[c - B.hw + 1, t + 2], [c - B.hw - 6, t + 2], [c - B.hw - 5, t - 7]], [[c + B.hw - 1, t + 2], [c + B.hw + 6, t + 2], [c + B.hw + 5, t - 7]]],
+      legs: [[[c - 3, t + 15], [c - 7, t + 25], [c - 9, t + 34]], [[c + 3, t + 15], [c + 7, t + 25], [c + 9, t + 34]]] }),
+  };
   const zePick = a => a[Math.random() * a.length | 0], zeHz = n => 440 * 2 ** ((n - 69) / 12);
   const zeDiff = () => ZE_DIFFS[prefs.zeDiff] || ZE_DIFFS[1];
   /** The best of each way to play, by its id; a number is NORMAL's, from before there were four. */
@@ -12323,30 +12342,74 @@ const toolName = n => {
     x.font = '76px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 48, 54);
     ze.glyphs.set(e, c); return c;
   }
-  /** A pixel drawing from its rows (ZE_PAL's letters, '.' nothing), outlined, into a canvas of its own; tinted, if asked. */
-  function zeSprite(rows, tint) {
-    const h = rows.length, w = rows[0].length, c = document.createElement('canvas'), x = c.getContext('2d');
-    c.width = w + 2; c.height = h + 2;
-    const on = (i, j) => j >= 0 && j < h && i >= 0 && i < w && rows[j][i] !== '.';
-    for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) {
-      if (on(i, j)) x.fillStyle = ZE_PAL[rows[j][i]];
-      else if (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1)) x.fillStyle = '#1b0b2e';
-      else continue;
-      x.fillRect(i + 1, j + 1, 1, 1);
-    }
+  /** A pixel drawing, outlined a pixel round whatever is drawn, into a canvas a pixel bigger each way; tinted, if asked. */
+  function zeSprite(src, tint) {
+    const w = src.width, h = src.height, a = src.getContext('2d').getImageData(0, 0, w, h).data, c = document.createElement('canvas'), x = c.getContext('2d');
+    c.width = w + 2; c.height = h + 2; x.fillStyle = '#1b0b2e';
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (a[(j * w + i) * 4 + 3]) x.fillRect(i, j, 3, 3);
+    x.drawImage(src, 1, 1);
     if (tint) { x.globalCompositeOperation = 'source-atop'; x.fillStyle = tint; x.fillRect(0, 0, c.width, c.height); }
     return c;
   }
-  /** His face as it is now: chewing (open and shut), open as food comes, green from a green, an agent's — or his skull. */
-  function zeFaceOf(g, dead) {
-    const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape, sick = g.hurt > .9;
-    const key = dead ? 'skull' : `${+g.agent}${+open}${+sick}`;
-    let c = ze.sprites.get(key);
-    if (!c) {
-      c = dead ? zeSprite(ZE_SKULL) : zeSprite(ZE_FACE.map((r, j) => (g.agent && ZE_SPY[j]) || (open && ZE_OPEN[j]) || r), sick ? 'rgba(110, 200, 70, .45)' : null);
-      ze.sprites.set(key, c);
+  /** His bulk in pixels: half his shoulders, half his waist, his arms' and legs' thickness — skinny at none, MONSTRO at ZE_MASS_MAX. */
+  const zeBulkPx = m => ({ hw: Math.round(5 + m * 7 / ZE_MASS_MAX), ww: Math.round(4 + m / 3), at: 2 + (m >= 5) + (m >= 10), lw: 3 + (m >= 5) + (m >= 10) });
+  const ZE_PX = 2.6, ZE_BW = 52, ZE_BH = 64, ZE_FEET = 61;   // the picture's units to a pixel of his; the sprite; his feet's row in it
+  /** Zé whole, in pixels (2026-10-30, the next round): his body in a pose (ZE_POSES) at his bulk, then his face — chewing,
+   *  open as food comes, an agent's, green from a green —, outlined; turned to face left with his face unturned; or
+   *  his bones and his skull. Cached by all of that. */
+  function zeBuild(m, pose, o = {}) {
+    const key = `${m}|${pose}|${+!!o.open}|${+!!o.agent}|${+!!o.sick}|${+!!o.flip}`;
+    let spr = ze.sprites.get(key); if (spr) return spr;
+    if (ze.sprites.size > 400) ze.sprites.clear();
+    const W = ZE_BW, cx = 25, top = 23, B = zeBulkPx(m), bones = pose === 'bones', c = document.createElement('canvas'); c.width = W; c.height = ZE_BH;
+    const x = c.getContext('2d'), Y = ZE_SUIT;
+    const P = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(o.flip ? W - a - w : a, b, w, h); };
+    const seg = ([x0, y0], [x1, y1], th, col) => {
+      const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+      for (let i = 0; i <= n; i++) P(Math.floor(x0 + (x1 - x0) * i / n - th / 2 + .5), Math.floor(y0 + (y1 - y0) * i / n - th / 2 + .5), th, th, col);
+    };
+    const L = ZE_POSES[bones ? 'stand' : pose](cx, top, B);
+    if (bones) {   // only bones: the neck, the spine, four ribs, the pelvis, the long bones and their joints
+      P(cx - 1, 19, 2, 4, Y.bone); seg([cx, top], [cx, top + 14], 2, Y.bone);
+      for (let r = 0; r < 4; r++) { P(cx - 6 + r, top + 3 + r * 3, 12 - r * 2, 1, Y.bone); P(cx - 6 + r, top + 4 + r * 3, 1, 1, Y.bone2); P(cx + 5 - r, top + 4 + r * 3, 1, 1, Y.bone2); }
+      P(cx - 4, top + 14, 8, 2, Y.bone);
+      for (const [s, e, w] of [...L.arms, ...L.legs]) { seg(s, e, 1, Y.bone); seg(e, w, 1, Y.bone); P(e[0] - 1, e[1] - 1, 2, 2, Y.bone2); P(w[0] - 1, w[1] - 1, 2, 2, Y.bone); }
+    } else {
+      L.legs.forEach(([h, k, a], i) => {   // the legs, their outer stripe, the shoes
+        const out = i ? B.lw / 2 - .5 : -B.lw / 2 + .5, up = -B.lw / 2 + .5;
+        seg(h, k, B.lw, Y.Y); seg(k, a, B.lw, Y.Y);
+        if (L.kick && i === 1) { seg([h[0], h[1] + up], [k[0], k[1] + up], 1, Y.K); seg([k[0], k[1] + up], [a[0], a[1] + up], 1, Y.K); P(a[0] + 1, a[1] - Math.ceil(B.lw / 2) - 1, 3, B.lw + 2, Y.K); }
+        else if (pose === 'sit') P(a[0] - 1, a[1] + 1, B.lw + 3, 2, Y.K);
+        else { seg([h[0] + out, h[1]], [k[0] + out, k[1]], 1, Y.K); seg([k[0] + out, k[1]], [a[0] + out, a[1]], 1, Y.K); P(Math.floor(a[0] - B.lw / 2 + .5), a[1] + 1, B.lw + 2, 2, Y.K); }
+      });
+      for (let r = 0; r < 15; r++) {   // the torso: his shoulders, a taper to the waist, the suit's stripes
+        const half = r <= 3 ? B.hw : r >= 11 ? B.ww : Math.round(B.hw + (B.ww - B.hw) * (r - 3) / 8), inset = r === 0 ? 1 + (m >= 10) : r === 1 && m >= 10 ? 1 : 0;
+        P(cx - half + inset, top + r, half * 2 - inset * 2, 1, Y.Y);
+        if (r) { P(cx - half + 1, top + r, 1, 1, Y.K); P(cx + half - 2, top + r, 1, 1, Y.K); }
+      }
+      P(cx - 1, top + 1, 1, 14, Y.y);   // the zip
+      if (m >= 5) { const pr = m >= 10 ? 6 : 5; P(cx - B.hw + 3, top + pr, B.hw - 4, 1, Y.y); P(cx + 1, top + pr, B.hw - 4, 1, Y.y); P(cx - B.hw + 3, top + 2, 3, 1, Y.l); P(cx + 2, top + 2, 3, 1, Y.l); }   // pecs
+      if (m >= 9) for (const r of [8, 10, 12]) { P(cx - 4, top + r, 2, 1, Y.y); P(cx + 1, top + r, 2, 1, Y.y); }   // abs
+      if (m <= 2) for (const r of [5, 7, 9]) P(cx - B.hw + 3, top + r, B.hw * 2 - 6, 1, Y.y);   // his ribs, through the suit
+      for (const [s, e, w] of L.arms) {   // a sleeve to the wrist (a biceps when he is buff), a fist
+        seg(s, e, B.at + (m >= 10), Y.Y); seg(e, w, B.at, Y.Y);
+        if (m >= 10) P(Math.round((s[0] + e[0]) / 2) - 1, Math.round((s[1] + e[1]) / 2) - 2, 2, 1, Y.l);
+        const f = B.at + 1, fx = Math.floor(w[0] - f / 2 + .5), fy = Math.floor(w[1] - f / 2 + .5);
+        P(fx, fy, f, f, Y.s); P(fx, fy + f - 1, f, 1, Y.S);
+      }
     }
-    return c;
+    const fx0 = o.flip ? W - cx - 10 : cx - 10;   // the face, last and never turned: over the neck, whichever way he faces
+    (bones ? ZE_SKULL : ZE_FACE).forEach((row, r) => {
+      const line = !bones && ((o.agent && ZE_SPY[r]) || (o.open && ZE_OPEN[r])) || row;
+      for (let i = 0; i < line.length; i++) if (line[i] !== '.') { x.fillStyle = ZE_PAL[line[i]]; x.fillRect(fx0 + i, r, 1, 1); }
+    });
+    spr = zeSprite(c, o.sick ? 'rgba(110, 200, 70, .45)' : null);
+    ze.sprites.set(key, spr); return spr;
+  }
+  /** A sprite of his at (x, y) — his feet —, p units a pixel, squashed (sx, sy) about his feet; unsmoothed. */
+  function zeBlit(cx, spr, x, y, p, flip, sx = 1, sy = 1) {
+    const ax = flip ? ZE_BW + 2 - 26 : 26;   // the torso's middle, the face's, in the outlined sprite
+    cx.imageSmoothingEnabled = false; cx.drawImage(spr, x - ax * p * sx, y - ZE_FEET * p * sy, spr.width * p * sx, spr.height * p * sy); cx.imageSmoothingEnabled = true;
   }
   function zeHud(cx, g) {
     const D = zeDiff();
@@ -12434,72 +12497,36 @@ const toolName = n => {
       if (g.overT > .8) zeOverButtons().forEach((b, i) => zeButton(cx, b, b.s, i === g.sel, '#ffd23f'));
     }
   }
-  /** Zé, his feet at (g.x, g.y): the yellow suit, as big and as broad as his bulk — shoulders, arms and legs thicker with
-   *  each meat, pecs and biceps from five, abs from nine, ribs at two —, the guard up, his face on top, unmirrored; at
-   *  the K.O. his bones, flat on his back, seeing stars. */
+  /** Zé, his feet at (g.x, g.y), in pixels (zeBuild): his pose — standing, running, kicking, in the air, seated in a car
+   *  and pitching with it —, as big as his bulk and the dragon make him; blinking while a green's hit lasts; at the K.O.
+   *  his bones, flat on his back, seeing stars. */
   function zeHero(cx, g) {
-    const air = g.y < ZE_FLOOR - .5, kick = g.kick > .04 && !g.ride, moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
-    const over = g.phase === 'over', m = Math.max(0, g.mass), k = zeSz(g) * (1 + g.pump * .25);
-    const sw = moving ? Math.sin(g.run) : 0, bob = over ? -10 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2;
-    const Y = '#ffcf1f', S = '#16121c', SKIN = '#e9b48a', BONE = '#f2ead8', FOLD = 'rgba(150, 95, 0, .5)';
-    const tw = zeTw(g), aw = 4 + m * .8, lw = 7 + m * .8, sh = tw - 2, hip = 3 + m * .35;
+    const air = g.y < ZE_FLOOR - .5, over = g.phase === 'over', moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
+    const k = zeSz(g) * (1 + g.pump * .25), p = ZE_PX * k, flip = g.f < 0 && !over;
+    const pose = over ? 'bones' : g.ride ? 'sit' : g.kick > .04 ? 'kick' : air ? 'jump' : moving ? (Math.floor(g.run) % 2 ? 'run1' : 'run2') : 'stand';
+    const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape;
+    const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, sick: g.hurt > .9, flip });
+    const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2, tw = zeTw(g);
     cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 3, Math.max(10, tw + 10 - (ZE_FLOOR - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
     cx.save(); cx.translate(g.x, g.y);
-    if (g.ride) { const pv = g.ride.kind === 'focus' ? -58 : -46; cx.scale(g.f, 1); cx.translate(pv, 0); cx.rotate(g.ride.tilt); cx.translate(-pv, 0); cx.scale(g.f, 1); }   // he pitches with his car
-    cx.translate(0, (g.ride ? 10 : 0) + bob * k); cx.scale(k, k);   // seated in a car; the dragon grows from his feet, and so does a meal
+    if (g.ride) { const pv = g.ride.kind === 'focus' ? -58 : -46; cx.scale(g.f, 1); cx.translate(pv, 0); cx.rotate(g.ride.tilt); cx.translate(-pv, 0); cx.scale(g.f, 1); cx.translate(-14 * g.f, 16); }   // in the driver's seat, pitching with his car
     if (g.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? .65 : Math.floor(g.hurt * 12) % 2 ? .4 : 1;
-    cx.scale(g.f, 1);
-    if (over) cx.rotate(-Math.PI / 2);   // K.O.: flat on his back, his feet where they stood
-    const line = (pts, w, c) => { cx.strokeStyle = c; cx.lineWidth = w; cx.lineCap = cx.lineJoin = 'round'; cx.beginPath(); cx.moveTo(...pts[0]); for (const p of pts.slice(1)) cx.lineTo(...p); cx.stroke(); };
-    if (over) {   // only bones
-      const bone = (...pts) => { line(pts, 7, S); line(pts, 4, BONE); cx.fillStyle = BONE; for (const p of [pts[0], pts.at(-1)]) { cx.beginPath(); cx.arc(...p, 3.4, 0, Math.PI * 2); cx.fill(); } };
-      bone([-6, -50], [-8, -25], [-9, -2]); bone([6, -50], [8, -25], [9, -2]);
-      cx.translate(0, -50);
-      line([[0, 0], [0, -50]], 7, S); line([[0, 0], [0, -50]], 4, BONE);   // the spine
-      cx.strokeStyle = BONE; cx.lineWidth = 3; for (let i = 0; i < 4; i++) { cx.beginPath(); cx.ellipse(0, -42 + i * 8, 13 - i * 1.5, 4, 0, 0, Math.PI); cx.stroke(); }   // the ribs
-      cx.fillStyle = BONE; cx.beginPath(); cx.ellipse(0, 0, 11, 5, 0, 0, Math.PI * 2); cx.fill();   // the pelvis
-      bone([-10, -46], [-16, -26], [-14, -8]); bone([10, -46], [16, -26], [14, -8]);
-      cx.translate(2, -74); cx.scale(g.f, 1); zeHead(cx, g, true);
-      cx.restore();
-      for (let i = 0; i < 3; i++) {   // …and seeing stars
-        const a = g.t * 3 + i * Math.PI * 2 / 3, sx = g.x - g.f * 124 * k + Math.cos(a) * 30, sy = g.y - 52 + Math.sin(a) * 8;
+    if (over) {   // K.O.: flat on his back, his feet where they stood — and seeing stars
+      cx.translate(0, -14 * p); cx.scale(g.f, 1); cx.rotate(-Math.PI / 2); zeBlit(cx, spr, 0, 0, p, false); cx.restore();
+      for (let i = 0; i < 3; i++) {
+        const a = g.t * 3 + i * Math.PI * 2 / 3, sx = g.x - g.f * 50 * p + Math.cos(a) * 30, sy = g.y - 30 * p + Math.sin(a) * 8;
         cx.fillStyle = '#ffd23f'; cx.beginPath();
         for (let j = 0; j < 10; j++) { const r = j % 2 ? 2.5 : 6, b = j * Math.PI / 5 - Math.PI / 2; cx.lineTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r); }
         cx.fill();
       }
       return;
     }
-    const leg = (...pts) => { line(pts, lw, Y); line(pts, 3, S); const [fx, fy] = pts[2]; cx.fillStyle = S; cx.beginPath(); cx.ellipse(fx + 4, fy - 2, 6 + lw * .2, 4.5, 0, 0, Math.PI * 2); cx.fill(); };
-    if (g.ride) { /* in the car: no legs to show */ }
-    else if (kick) { leg([-hip, -50], [-hip - 6, -26], [-hip - 10, air ? -8 : 0]); leg([hip, -50], [40, -60], [80, -64]); }
-    else if (air) { leg([-hip, -50], [-hip + 4, -30], [-hip - 8, -14]); leg([hip, -50], [hip + 12, -34], [hip + 4, -12]); }
-    else { leg([-hip, -50], [-hip - 3 - sw * 10, -25], [-hip - 4 - sw * 16, 0]); leg([hip, -50], [hip + 3 + sw * 10, -25], [hip + 4 + sw * 16, 0]); }
-    cx.translate(0, -50); cx.rotate(kick ? -.3 : moving ? .08 : 0);   // the hips; the rest leans from there
-    cx.fillStyle = SKIN; cx.fillRect(-4 - m * .3, -56, 8 + m * .6, 12);   // the neck, thick as he is
-    cx.beginPath(); cx.moveTo(-tw, -46); cx.lineTo(tw, -46); cx.lineTo(tw * .7, 2); cx.lineTo(-tw * .7, 2); cx.closePath();   // the torso, tapering to the waist
-    cx.fillStyle = cx.strokeStyle = Y; cx.lineWidth = 8; cx.lineJoin = 'round'; cx.fill(); cx.stroke();
-    line([[-tw + 2, -44], [-tw * .7 + 2, 0]], 3, S); line([[tw - 2, -44], [tw * .7 - 2, 0]], 3, S);   // the stripes
-    if (m >= 5) { cx.strokeStyle = FOLD; cx.lineWidth = 2; for (const s of [-1, 1]) { cx.beginPath(); cx.arc(s * tw * .42, -38, tw * .36, .15 * Math.PI, .85 * Math.PI); cx.stroke(); } }   // pecs
-    if (m >= 9) { for (const y of [-18, -9]) line([[-tw * .25, y], [tw * .25, y]], 1.5, FOLD); line([[0, -24], [0, -4]], 1.5, FOLD); }   // abs
-    if (m <= 2) for (const y of [-34, -26, -18]) line([[-tw * .6, y], [tw * .6, y]], 1.5, 'rgba(22, 18, 28, .55)');   // ribs
-    const arm = (...pts) => {
-      line(pts, aw * 1.1, Y);
-      if (m >= 5) { const [[x0, y0], [x1, y1]] = pts; cx.fillStyle = Y; cx.beginPath(); cx.arc((x0 + x1) / 2, (y0 + y1) / 2, aw * .85, 0, Math.PI * 2); cx.fill(); }   // a biceps
-      cx.fillStyle = SKIN; cx.strokeStyle = S; cx.lineWidth = 1.5; cx.beginPath(); cx.arc(...pts[2], 4 + m * .3, 0, Math.PI * 2); cx.fill(); cx.stroke();
-    };
-    if (kick) { arm([sh, -40], [sh + 13, -34], [sh + 25, -46]); arm([-sh, -40], [-sh - 14, -30], [-sh - 26, -38]); }
-    else { arm([-sh, -40], [-sh + 10 - sw * 6, -22], [-sh + 20 - sw * 6, -36]); arm([sh, -40], [sh + 11 + sw * 6, -24], [sh + 15 + sw * 6, -46]); }
-    cx.translate(2, -86); cx.scale(g.f, 1);   // the face is never mirrored
-    zeHead(cx, g, false);
-    cx.restore();
-  }
-  function zeHead(cx, g, dead) {
-    const im = zeFaceOf(g, dead), p = 2.6 * (1 + Math.min(.3, g.chomp) * .3), w = im.width * p, h = im.height * p;
-    cx.imageSmoothingEnabled = false; cx.drawImage(im, -w / 2, -h / 2, w, h); cx.imageSmoothingEnabled = true;
-    if (g.dragon && !dead) {   // the dragon's aura
+    zeBlit(cx, spr, 0, bob * k, p, flip);
+    if (g.dragon) {   // the dragon's aura round his head
       cx.save(); cx.shadowColor = '#ff7a2a'; cx.shadowBlur = 16; cx.lineWidth = 3; cx.strokeStyle = zeBlink(g, 9) ? '#ff7a2a' : '#ffd23f';
-      cx.beginPath(); cx.ellipse(0, 0, w / 2 + 2, h / 2 + 2, 0, 0, Math.PI * 2); cx.stroke(); cx.restore();
+      cx.beginPath(); cx.ellipse(0, (bob - 48 * ZE_PX) * k, 12 * p, 13.5 * p, 0, 0, Math.PI * 2); cx.stroke(); cx.restore();
     }
+    cx.restore();
   }
   /** The cars, side on, their wheels on the floor at x, their front towards f: the Focus — Ford blue, the tall tail light
    *  up its back pillar, the oval on its nose —, the A-Class — silver, short and tall, the star on its nose —, each its
