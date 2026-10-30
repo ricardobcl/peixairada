@@ -12165,10 +12165,10 @@ const toolName = n => {
   const zeDayBests = () => { const day = zeToday(); if (prefs.zeDay?.day !== day) prefs.zeDay = { day, best: {} }; return prefs.zeDay.best; };
   /** The best of each way to play, by its id; a number is NORMAL's, from before there were four. */
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
-  const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
+  const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: phase === 'title' ? Infinity : zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
-    lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
+    lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
   const ze = { tap: null, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
@@ -12216,7 +12216,7 @@ const toolName = n => {
   function zeMenu() { ze.g = zeRound('title'); zeGo(); }
   function zeSetDiff(i) {
     i = (i + ZE_DIFFS.length) % ZE_DIFFS.length; if (i === prefs.zeDiff) return;
-    prefs.zeDiff = i; savePrefs(); ze.g.next = zeDiff().step;
+    prefs.zeDiff = i; savePrefs();
   }
   function zePause(on) {
     ze.g.phase = on ? 'pause' : 'play';
@@ -12261,7 +12261,7 @@ const toolName = n => {
   /** ↑: a jump from what he stands on, high enough for Trota's awning (2026-10-30, the next round) — and at his full
    *  bulk, a second one in the air. ↓ drops him through the awning or the sign. */
   function zeJump(g) {
-    if (g.phase !== 'play' || g.ride) return;
+    if ((g.phase !== 'play' && !g.demo) || g.ride) return;
     if (g.y >= g.gy - .5) { g.vy = -640; g.jumps = 1; }
     else if (g.mass >= ZE_MASS_MAX && g.jumps < 2) { g.vy = -580; g.jumps = 2; zeWord(g, 'DOUBLE!', g.x, g.y - 190 * zeSz(g), '#fff3c4'); }
     else return;
@@ -12352,7 +12352,7 @@ const toolName = n => {
   $('#zeCanvas').addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     const g = ze.g, x = e.offsetX / e.currentTarget.clientWidth * ZE_W, y = e.offsetY / e.currentTarget.clientHeight * ZE_H;
-    if (g.phase === 'title') { const b = zeDiffButtons().find(b => zeIn(b, x, y)); if (b) zeSetDiff(b.i); else zeStart(); }
+    if (g.phase === 'title') { const b = zeDiffButtons().find(b => zeIn(b, x, y)); if (b) zeSetDiff(b.i); else if (zeIn(ZE_PANEL, x, y)) { g.card++; g.cardT = 0; } else zeStart(); }
     else if (g.phase === 'over') { if (g.overT > .8) { if (zeOverButtons().find(b => zeIn(b, x, y))?.id === 'menu') zeMenu(); else zeStart(); } }
     else if (g.phase === 'play') { zeKick(g); g.holdAt = g.t; } else zePause(false);
   });
@@ -12407,7 +12407,7 @@ const toolName = n => {
     return R[14];
   }
   const zeTouch = (it, b, r = 16) => { const x = Math.max(b.l, Math.min(it.x, b.r)), y = Math.max(b.t, Math.min(it.y, b.b)); return (it.x - x) ** 2 + (it.y - y) ** 2 < r * r; };
-  const zeWord = (g, s, x, y, c, big = false) => g.words.push({ s, x: Math.max(110, Math.min(ZE_W - 110, x)), y, c, big, t: 0 });
+  const zeWord = (g, s, x, y, c, big = false) => !g.demo && g.words.push({ s, x: Math.max(110, Math.min(ZE_W - 110, x)), y, c, big, t: 0 });
   function zeBits(g, x, y, cs, n) {
     for (let i = 0; i < n; i++) g.bits.push({ x, y, vx: (Math.random() - .5) * 320, vy: -120 - Math.random() * 260, t: 0, life: .5 + Math.random() * .4, c: zePick(cs), r: 2 + Math.random() * 3 });
   }
@@ -12491,7 +12491,7 @@ const toolName = n => {
   }
   /** A car comes for him: the Focus (YALLA — quick) or the A-Class (the punishment — slow), ZE_RIDE s; one there goes. */
   function zeRide(g, kind) {
-    if (g.dragon || g.phase !== 'play') return;
+    if (g.dragon || (g.phase !== 'play' && !g.demo)) return;
     if (g.ride) zeLeave(g);
     Object.assign(g, { ride: { kind, t: ZE_RIDE, tilt: 0, vx: g.vx, wheel: 0 }, kick: 0, vy: 0, y: ZE_FLOOR, gy: ZE_FLOOR });
     zeBits(g, g.x, ZE_FLOOR - 20, ['#d9c7e8', '#ffffff', '#9aa0a8'], 14);
@@ -12549,7 +12549,8 @@ const toolName = n => {
     if (it.kind === 'veg' && !g.dragon) {
       Object.assign(g, { mass: g.mass - 1, streak: 0, mult: 1, hurt: 1.4, red: .2, shake: .35, pump: -.3, greens: g.greens + 1 });
       zeWord(g, it.say, it.x, it.y - 24, '#9be15d', true); zeChunks(g, it.x, it.y, 'veg', 10); zeSfx('bleh');
-      if (g.mass <= 0) return zeOver(g);
+      if (g.demo) g.mass = Math.max(g.mass, 3);   // the demo never ends
+      else if (g.mass <= 0) return zeOver(g);
       if (g.greens >= 3) { g.greens = 0; zeRide(g, 'aclass'); }
       return;
     }
@@ -12588,11 +12589,11 @@ const toolName = n => {
       if (l.x < -220 || l.x > ZE_W + 220) g.leaving = null;
     }
     if (g.phase === 'over') g.overT += dt;
-    if (g.phase === 'title') { const t = g.t % 2.4; g.kick = t > 1.6 && t < 1.94 ? 1.94 - t : 0; g.gape = t < .45; return; }   // a kata while you read
-    if (g.phase !== 'play') return;
+    if (g.phase === 'title' && (g.cardT += dt) >= ZE_CARD_T) { g.card++; g.cardT = 0; }   // the rules turn while the demo plays
+    if (g.phase !== 'play' && !g.demo) return;
     const D = zeDiff(), k = zeSz(g), car = g.ride && ZE_CARS[g.ride.kind];
     // Zé: runs where the keys or the pointer say — quicker each level, as the dragon, in the Focus; slower in the A-Class
-    const aim = ze.aim == null || Math.abs(ze.aim - g.x) < 10 ? 0 : Math.sign(ze.aim - g.x), want = ze.keys.r - ze.keys.l || aim;
+    const aim = ze.aim == null || Math.abs(ze.aim - g.x) < 10 ? 0 : Math.sign(ze.aim - g.x), want = g.demo ? zeBot(g) : ze.keys.r - ze.keys.l || aim;
     g.vx += (want * (380 + (g.level - 1) * 12) * (g.dragon ? 1.15 : 1) * (car ? car.speed : 1) - g.vx) * Math.min(1, dt * (car ? 6 : 12));   // a car takes its time
     if (want) g.f = want;
     g.dashCool = Math.max(0, g.dashCool - dt);
@@ -12734,7 +12735,7 @@ const toolName = n => {
     if (g.leaving) zeCar(cx, g.leaving.kind, g.leaving.x, ZE_FLOOR, g.leaving.f, g.leaving.wheel, 0, g.leaving.flip);
     for (const p of g.smoke) { cx.globalAlpha = .55 * (1 - p.t / p.life); cx.fillStyle = p.t < .25 ? '#2a2630' : '#45404d'; cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI * 2); cx.fill(); }
     cx.globalAlpha = 1;
-    if (g.phase !== 'title') {   // in a car: the car, him sitting in it, its doors over his lap — and, quick, his afterimages and speed lines
+    {   // in a car: the car, him sitting in it, its doors over his lap — and, quick, his afterimages and speed lines
       const r = g.ride, him = () => { if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'back'); zeHero(cx, g); if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'front'); };
       if (zeFast(g)) {
         cx.strokeStyle = 'rgba(255, 243, 196, .5)'; cx.lineWidth = 2.5; cx.beginPath();
@@ -12777,7 +12778,6 @@ const toolName = n => {
       zeText(cx, 'TROPHY', ZE_W / 2 - w / 2 + 62, y - 6, 12, '#ffd23f', 'left', 700); zeText(cx, T.name, ZE_W / 2 - w / 2 + 62, y + 13, 20, '#fff3c4');
     }
     if (g.phase !== 'play') zeCard(cx, g);
-    if (g.phase === 'title') zeHero(cx, g);
   }
   /** The house above Trota's, risen behind it while the Avó da Horta is out: a granite front, a window with its green
    *  shutters open, geraniums on the sill, and her in it — throwing, hit, and what she says. */
@@ -12973,7 +12973,7 @@ const toolName = n => {
   function zeDiffButtons() {
     const ws = ZE_DIFFS.map(d => d.name.length * 11 + 28), gap = 8;
     let x = ZE_W / 2 - (ws.reduce((a, b) => a + b) + gap * (ws.length - 1)) / 2;
-    return ZE_DIFFS.map((d, i) => { const b = { x, y: 562, w: ws[i], h: 28, i }; x += ws[i] + gap; return b; });
+    return ZE_DIFFS.map((d, i) => { const b = { x, y: 424, w: ws[i], h: 28, i }; x += ws[i] + gap; return b; });
   }
   const zeOverButtons = () => [{ x: ZE_W / 2 - 132, y: 568, w: 122, h: 32, id: 'again', s: 'AGAIN' }, { x: ZE_W / 2 + 10, y: 568, w: 122, h: 32, id: 'menu', s: 'MENU' }];
   const zeIn = (b, x, y) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h;
@@ -12983,41 +12983,81 @@ const toolName = n => {
     cx.font = 'italic 800 15px Futura, "Avenir Next Condensed", system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillStyle = on ? '#1b0b2e' : '#d9c7e8'; cx.fillText(s, b.x + b.w / 2, b.y + b.h / 2 + 1);
   }
+  /** The title's rules, a card at a time (ZE_RULES), turning every ZE_CARD_T s — or on a click; flat under reduced motion. */
+  const ZE_CARD_T = 4.5, ZE_PANEL = { x: 50, y: 190, w: ZE_W - 100, h: 222 };
+  const ZE_RULES = ['EAT', 'AVOID', 'THE ROUND', 'TROPHIES'];
+  function zeRuleCard(cx, g) {
+    const P = ZE_PANEL, mid = ZE_W / 2, i = g.card % ZE_RULES.length, flat = zeCalm() || g.cardT >= .5, out = !flat && g.cardT < .25;   // the last card turning away, then this one turning in
+    cx.save(); cx.translate(mid, P.y + P.h / 2); cx.scale(flat ? 1 : Math.max(.02, out ? 1 - g.cardT / .25 : (g.cardT - .25) / .25), 1); cx.translate(-mid, -(P.y + P.h / 2));
+    cx.fillStyle = 'rgba(20, 6, 34, .82)'; cx.strokeStyle = 'rgba(255, 243, 196, .2)'; cx.lineWidth = 2;
+    cx.beginPath(); cx.roundRect(P.x, P.y, P.w, P.h, 10); cx.fill(); cx.stroke();
+    const shown = out ? (i + ZE_RULES.length - 1) % ZE_RULES.length : i, y0 = P.y;
+    zeText(cx, ZE_RULES[shown], mid, y0 + 26, 17, '#ffd23f', 'center');
+    ZE_RULES.forEach((_, j) => { cx.fillStyle = j === shown ? '#ffd23f' : 'rgba(255, 243, 196, .25)'; cx.beginPath(); cx.arc(mid - 27 + j * 18, y0 + P.h - 14, 4, 0, Math.PI * 2); cx.fill(); });
+    if (shown === 0) {
+      ZE_MEAT.forEach(([e, pts], j) => { cx.drawImage(zeGlyph(e), 160 + j * 64, y0 + 50, 44, 44); zeText(cx, String(pts), 182 + j * 64, y0 + 104, 12, '#ffd23f', 'center'); });
+      zeText(cx, 'meat makes him buff — greens thin — only bones: K.O.', mid, y0 + 134, 14, '#fff3c4', 'center', 600);
+      zeText(cx, '🐓 the rooster: muscle · 🐟 fish: five, no bulk · a francesinha, a vinho verde, a bifana: power', mid, y0 + 162, 12, '#d9c7e8', 'center', 600);
+      zeText(cx, '← → run · ↑ jumps (twice, buff) · ← ← dashes', mid, y0 + 184, 12, '#d9c7e8', 'center', 600);
+    } else if (shown === 1) {
+      ZE_VEG.slice(0, 5).concat(ZE_VEG.slice(-4)).forEach(([e], j) => cx.drawImage(zeGlyph(e), 104 + j * 56 + (j > 4 ? 14 : 0), y0 + 50, 40, 40));
+      zeText(cx, 'not what they seem!', 534, y0 + 102, 12, '#ff5a64', 'center', 600);
+      zeText(cx, 'kick the greens out of the sky — space', mid, y0 + 134, 14, '#fff3c4', 'center', 600);
+      zeText(cx, `${ZE_NUN} kicks fill the nunchaku: hold space, let go — every green swept`, mid, y0 + 162, 12, '#d9c7e8', 'center', 600);
+      zeText(cx, 'the awning and the sign hold him — ↓ drops through', mid, y0 + 184, 12, '#d9c7e8', 'center', 600);
+    } else if (shown === 2) {
+      zeText(cx, '3 MEATS IN A ROW: A FORD FOCUS — FASTER', mid, y0 + 64, 15, ZE_CARS.focus.c, 'center');
+      zeText(cx, '3 GREENS IN A ROW: A MERCEDES A-CLASS — SLOWER', mid, y0 + 92, 15, ZE_CARS.aclass.c, 'center');
+      zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL}: ENTER THE DRAGON`, mid, y0 + 124, 16, '#ff7a2a', 'center');
+      zeText(cx, `EVERY ${ZE_AVO_EVERY}TH LEVEL: THE AVÓ DA HORTA — KICK HER COUVES BACK`, mid, y0 + 152, 14, '#9be15d', 'center');
+      zeText(cx, 'a sky a level · the same falls for everyone today', mid, y0 + 182, 12, '#d9c7e8', 'center', 600);
+    } else {
+      const won = zeTrophies().won;
+      ZE_TROPHIES.forEach(([id, e, name, how], j) => {
+        const x = j % 2 ? mid + 12 : P.x + 22, y = y0 + 50 + (j >> 1) * 23;
+        cx.globalAlpha = won[id] ? 1 : .35; cx.drawImage(zeGlyph(e), x, y - 10, 20, 20);
+        zeText(cx, name, x + 26, y, 12, won[id] ? '#ffd23f' : '#d9c7e8', 'left', 700); cx.globalAlpha = 1;
+        zeText(cx, how, x + 34 + cx.measureText(name).width, y, 10, '#d9c7e8', 'left', 500);   // after the name, in the font it was drawn in
+      });
+    }
+    cx.restore();
+  }
+  /** The title's demo: Zé on his own (g.demo) — after the lowest meat, kicking a green that comes near, out from under
+   *  one that falls on him; now and then a jump. -1, 0, 1. */
+  function zeBot(g) {
+    const k = zeSz(g), live = g.items.filter(it => !it.out);
+    const green = live.find(it => it.kind === 'veg' && Math.abs(it.x - g.x) < 110 * k && it.y > g.y - 150 * k && it.y < g.y - 30);
+    if (green) { g.f = Math.sign(green.x - g.x) || g.f; if (Math.abs(green.x - g.x) > 30 * k) zeKick(g); else return green.x > g.x ? -1 : 1; }
+    const meat = live.filter(it => it.kind !== 'veg').sort((a, b) => b.y - a.y)[0];
+    if (meat && meat.y < g.y - 260 && Math.abs(meat.x - g.x) < 40 && Math.random() < .01) zeJump(g);
+    const to = meat ? meat.x : ZE_W / 2;
+    return Math.abs(to - g.x) < 12 ? 0 : Math.sign(to - g.x);
+  }
   function zeCard(cx, g) {
-    cx.fillStyle = 'rgba(20, 6, 34, .58)'; cx.fillRect(0, 0, ZE_W, ZE_H);
+    if (g.phase === 'title') {   // the demo shows through below the menu
+      const sh = cx.createLinearGradient(0, 0, 0, ZE_FLOOR); sh.addColorStop(0, 'rgba(20, 6, 34, .7)'); sh.addColorStop(.7, 'rgba(20, 6, 34, .55)'); sh.addColorStop(.78, 'rgba(20, 6, 34, .1)'); sh.addColorStop(1, 'rgba(20, 6, 34, 0)');
+      cx.fillStyle = sh; cx.fillRect(0, 0, ZE_W, ZE_H);
+    } else { cx.fillStyle = 'rgba(20, 6, 34, .58)'; cx.fillRect(0, 0, ZE_W, ZE_H); }
     const D = zeDiff(), mid = ZE_W / 2, blink = zeCalm() ? 1 : .55 + .45 * Math.sin(g.t * 5);
     const big = (s, y, size) => {   // the 70s way: the word twice behind itself, in pink and teal
       cx.font = `italic 900 ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       for (const [d, c] of [[size / 11, '#ff4f9a'], [size / 22, '#00c2c7']]) { cx.fillStyle = c; cx.fillText(s, mid + d, y + d); }
       zeText(cx, s, mid, y, size, '#ffd23f', 'center', 900);
     };
-    if (g.phase === 'title') {
-      big('ZÉ', 104, 124);
-      zeText(cx, 'THE BRUCE LEE OF BARCELOS', mid, 186, 30, '#fff3c4', 'center');
-      // the menu, as Trota's had it, on a panel of its own: what to eat, what to avoid — the greens, and lunch with a leaf in it
-      cx.fillStyle = 'rgba(20, 6, 34, .78)'; cx.strokeStyle = 'rgba(255, 243, 196, .18)'; cx.lineWidth = 2;
-      cx.beginPath(); cx.roundRect(50, 218, ZE_W - 100, 226, 10); cx.fill(); cx.stroke();
-      zeText(cx, 'EAT', 96, 256, 18, '#a6dc5a', 'center');
-      ZE_MEAT.forEach(([e, pts], i) => { cx.drawImage(zeGlyph(e), 142 + i * 50, 238, 34, 34); zeText(cx, String(pts), 159 + i * 50, 282, 11, '#ffd23f', 'center'); });
-      zeText(cx, '+ the rooster: muscle', 412, 256, 13, '#ffd23f', 'left', 600);
-      zeText(cx, 'AVOID', 96, 324, 18, '#ff5a64', 'center');
-      ZE_VEG.slice(0, 5).concat(ZE_VEG.slice(-4)).forEach(([e], i) => cx.drawImage(zeGlyph(e), 142 + i * 44 + (i > 4 ? 16 : 0), 306, 32, 32));
-      zeText(cx, 'not what they seem!', 460, 352, 11, '#ff5a64', 'center', 600);
-      zeText(cx, 'meat makes him buff · greens, thin · only bones: K.O.', mid, 392, 14, '#fff3c4', 'center', 600);
-      zeText(cx, 'kick the greens away — space · jump — ↑', mid, 420, 13, '#d9c7e8', 'center', 600);
-      zeText(cx, '3 MEATS IN A ROW: A FORD FOCUS — FASTER', mid, 474, 15, ZE_CARS.focus.c, 'center');
-      zeText(cx, '3 GREENS IN A ROW: A MERCEDES A-CLASS — SLOWER', mid, 500, 15, ZE_CARS.aclass.c, 'center');
-      zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL} = ENTER THE DRAGON`, mid, 534, 16, zeBlink(g, 4) ? '#ff7a2a' : '#feae34', 'center');
+    if (g.phase === 'title') {   // a title that plays (2026-10-30, the next round): the demo round behind it, the logo on the band's beat, the rules on cards that turn
+      const beat = { vira: 60 / 184, malhao: 60 / 132, funk: 60 / ZE_BPM }[prefs.zeBand] || 60 / 184, hop = zeCalm() ? 0 : Math.abs(Math.sin(Math.PI * g.t / beat)) ** 3 * 12;
+      big('ZÉ', 96 - hop, 116);
+      zeText(cx, 'THE BRUCE LEE OF BARCELOS', mid, 166, 26, '#fff3c4', 'center');
+      zeRuleCard(cx, g);
       zeDiffButtons().forEach(b => zeButton(cx, b, ZE_DIFFS[b.i].name, b.i === prefs.zeDiff, ZE_DIFFS[b.i].c));
-      zeText(cx, `${D.say} · ← → or 1–4`, mid, 614, 13, D.c, 'center', 600);
-      zeText(cx, `T · music: ${ZE_BANDS[prefs.zeBand] || 'FUNK'} · G · player two: ${prefs.zeTwo ? prefs.zeTwo.toUpperCase() : 'OFF'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
-      cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', 300, 690, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
-      const won = zeTrophies().won, nw = ZE_TROPHIES.filter(t => won[t[0]]).length;   // the trophies, lit or dim
-      zeText(cx, `TROPHIES ${nw}/${ZE_TROPHIES.length}`, mid, 760, 13, '#ffd23f', 'center', 700);
-      ZE_TROPHIES.forEach(([id, e], i) => { cx.globalAlpha = won[id] ? 1 : .22; cx.drawImage(zeGlyph(e), mid - 6 * 36 + i * 36 + 4, 776, 28, 28); });
-      cx.globalAlpha = 1;
+      zeText(cx, `${D.say} · ← → or 1–4`, mid, 472, 13, D.c, 'center', 600);
+      zeText(cx, `T · music: ${ZE_BANDS[prefs.zeBand] || 'FUNK'} · G · player two: ${prefs.zeTwo ? prefs.zeTwo.toUpperCase() : 'OFF'}`, mid, 496, 13, '#d9c7e8', 'center', 600);
+      cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', mid, 534, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
       const best = zeBests()[D.id], today = zeDayBests()[D.id];
-      zeText(cx, `THE DAY'S ROUND · ${zeToday()}${best ? ` · TODAY ${today || 0} · BEST ${best}` : ''}`, 300, 724, 13, '#d9c7e8', 'center', 600);
+      zeText(cx, `THE DAY'S ROUND · ${zeToday()}${best ? ` · TODAY ${today || 0} · BEST ${best}` : ''}`, mid, 566, 13, '#d9c7e8', 'center', 600);
+      const won = zeTrophies().won;   // the trophies, lit or dim
+      ZE_TROPHIES.forEach(([id, e], i) => { cx.globalAlpha = won[id] ? 1 : .22; cx.drawImage(zeGlyph(e), mid - 6 * 34 + i * 34 + 4, 584, 26, 26); });
+      cx.globalAlpha = 1;
     } else if (g.phase === 'pause') {
       big('PAUSE', 400, 84);
       zeText(cx, 'P or space to go on', mid, 470, 18, '#fff3c4', 'center', 600);
@@ -13327,7 +13367,7 @@ const toolName = n => {
   const ZE_MODES = { walk: { q: 1, tr: 0, lp: 18000, hats: 1, wob: 0, kick2: false }, focus: { q: 1 / 1.12, tr: 2, lp: 18000, hats: 2, wob: 0, kick2: true },
     aclass: { q: 1.28, tr: -3, lp: 700, hats: 1, wob: 22, kick2: false } };
   function zeMode(kind) {
-    const m = ze.music; if (!m) return;
+    const m = ze.music; if (!m || (kind && ze.g.demo)) return;
     m.mode = ZE_MODES[kind] ? kind : 'walk'; m.lp.frequency.setTargetAtTime(ZE_MODES[m.mode].lp, m.ac.currentTime, .08);
   }
   const zeMod = m => ZE_MODES[m.track === 'dragon' ? 'walk' : m.mode] || ZE_MODES.walk;
@@ -13377,7 +13417,7 @@ const toolName = n => {
   }
   /** The car's engine while he rides — a low saw through a low-pass, the A-Class's sputtering — or none; zeRev its pitch. */
   function zeEngine(kind) {
-    const m = ze.music; if (!m) return;
+    const m = ze.music; if (!m || (kind && ze.g.demo)) return;
     if (m.engine) { for (const o of m.engine.os) try { o.stop(); } catch {} m.engine = null; }
     if (!kind) return;
     const ac = m.ac, o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain(), os = [o];
@@ -13444,7 +13484,7 @@ const toolName = n => {
     n.connect(g).connect(m.out); n.start(t); n.stop(t + d + .02);
   }
   function zeSfx(kind) {
-    const m = ze.music; if (!m || m.ac.state === 'closed') return;
+    const m = ze.music; if (!m || m.ac.state === 'closed' || ze.g.demo) return;   // the title's demo plays in silence
     const ac = m.ac, t = ac.currentTime + .005;
     if (kind === 'chomp') { zeTone(m, t, 'square', 520, 180, .07, .12); zeTone(m, t + .09, 'square', 480, 160, .07, .1); }
     else if (kind === 'jump') zeTone(m, t, 'square', 300, 620, .1, .06);
