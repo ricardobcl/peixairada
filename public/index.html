@@ -12494,7 +12494,8 @@ const toolName = n => {
     }
   }
   /** The cars, side on, their wheels on the floor at x, their front towards f: the Focus — Ford blue, the tall tail light
-   *  up its back pillar, the oval on its nose —, the A-Class — silver, short and tall, the star on its nose. Their glass
+   *  up its back pillar, the oval on its nose —, the A-Class — silver, short and tall, the star on its nose —, each its
+   *  name along its doors (zeCarName), read the right way whichever way it faces. Their glass
    *  is clear, and he sits in it, his head out of the roof. tilt pitches it on its rear wheel; flip turns it over its
    *  middle onto its roof, with a hop. */
   function zeCar(cx, kind, x, y, f, wheel, tilt, flip) {
@@ -12514,13 +12515,13 @@ const toolName = n => {
       cx.fillStyle = '#e43b44'; shape([[-97, -50], [-92, -80], [-86, -80], [-90, -48]]); cx.fill();   // the tall tail light, the Focus's own
       cx.fillStyle = '#fff6c8'; shape([[86, -54], [98, -48], [98, -40], [88, -42]]); cx.fill();
       cx.fillStyle = '#1c3f94'; cx.strokeStyle = '#dfe9f2'; cx.lineWidth = 1.5; cx.beginPath(); cx.ellipse(80, -34, 8, 4.5, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
-      cx.save(); cx.scale(f, 1); cx.font = 'italic 800 10px Futura, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#dfe9f2'; cx.fillText('FOCUS', -60 * f, -26); cx.restore();
+      zeCarName(cx, 'FORD FOCUS', -8, f, 13, '#ffffff', '#0f2a66');
     } else {
       cx.fillStyle = '#e43b44'; cx.fillRect(-75, -68, 5, 18);
       cx.fillStyle = '#fff6c8'; shape([[60, -54], [74, -48], [74, -42], [62, -44]]); cx.fill();
       cx.strokeStyle = '#4a4f58'; cx.lineWidth = 1.6; cx.beginPath(); cx.arc(70, -31, 7, 0, Math.PI * 2); cx.stroke();   // the star
       for (const a of [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6]) { cx.beginPath(); cx.moveTo(70, -31); cx.lineTo(70 + Math.cos(a) * 7, -31 + Math.sin(a) * 7); cx.stroke(); }
-      cx.save(); cx.scale(f, 1); cx.font = '800 9px Futura, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = '#4a4f58'; cx.fillText('A 140', -48 * f, -26); cx.restore();
+      zeCarName(cx, 'MERCEDES CLASS A', -2, f, 10.5, '#1b0b2e', '#eef0f3');
     }
     for (const wx of focus ? [-58, 62] : [-46, 46]) {
       const r = focus ? 17 : 15;
@@ -12530,6 +12531,14 @@ const toolName = n => {
       cx.strokeStyle = '#6b6f78'; cx.lineWidth = 2;
       for (let i = 0; i < 5; i++) { const a = wheel + i * Math.PI * 2 / 5; cx.beginPath(); cx.moveTo(wx, -r); cx.lineTo(wx + Math.cos(a) * r * .5, -r + Math.sin(a) * r * .5); cx.stroke(); }
     }
+    cx.restore();
+  }
+  /** A car's name along its doors, between the glass and the sills, at x along it: unmirrored (the car is drawn mirrored
+   *  for f), outlined in the body's own dark or light so it reads on the paint. */
+  function zeCarName(cx, s, x, f, size, ink, edge) {
+    cx.save(); cx.scale(f, 1);
+    cx.font = `italic 900 ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
+    cx.lineWidth = 3; cx.strokeStyle = edge; cx.strokeText(s, x * f, -46); cx.fillStyle = ink; cx.fillText(s, x * f, -46);
     cx.restore();
   }
   /** The scene behind, drawn once per size: the night coming down over the stars and a moon, a striped sun going down
