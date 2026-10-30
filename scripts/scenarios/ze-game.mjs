@@ -1,5 +1,5 @@
 // ⌥⌘Z, Zé's game (2026-10-30): the title — his face in pixels, the four ways to play (← → and 1–4), the music (the
-// vira first, T the funk) —, a round started by a real space (the music's context made by that press), meat eaten (score, his
+// vira first, T the malhão, then the funk) —, a round started by a real space (the music's context made by that press), meat eaten (score, his
 // bulk up), a green that hits (his bulk down, BLEH), one kicked out of the sky, three meats in a row (the Ford Focus:
 // faster, him seen sitting in it, its horn on space, gone after its five seconds), three greens in a row (the Mercedes A-Class: slower, over onto its
 // roof as it leaves), five in a row (COMBO ×2), the briefcase (AGENT ZÉ), level 3 as ENTER THE DRAGON (twice his size,
@@ -46,9 +46,12 @@ export default async function (ctx) {
   ctx.assert.equal((await game()).tune, 'vira', 'the vira, before anything is pressed');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#zeTune').textContent`), '♪ vira de Barcelos');
   await press('KeyT', 't', 84);
-  ctx.assert.equal((await game()).tune, 'funk', 'T: the funk');
+  ctx.assert.equal((await game()).tune, 'malhao', 'T: the malhão');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#zeTune').textContent`), '♪ malhão');
   await press('KeyT', 't', 84);
-  ctx.assert.equal((await game()).tune, 'vira', 'T again: the vira');
+  ctx.assert.equal((await game()).tune, 'funk', 'T again: the funk');
+  await press('KeyT', 't', 84);
+  ctx.assert.equal((await game()).tune, 'vira', 'and again: the vira');
   await ctx.settle(); await ctx.shot('1-title');
 
   // space: a round, the vira playing
@@ -57,7 +60,11 @@ export default async function (ctx) {
   const s0 = await ctx.evaluate(`window.peix.ze().music.step`); await ctx.sleep(600);
   ctx.assert.ok(await ctx.evaluate(`window.peix.ze().music.step`) > s0, 'the vira\'s quavers planned');
   await press('KeyT', 't', 84);
-  ctx.assert.equal((await game()).tune, 'funk', 'T in a round: the funk');
+  ctx.assert.equal((await game()).tune, 'malhao', 'T in a round: the malhão');
+  const m0 = await ctx.evaluate(`window.peix.ze().music.step`); await ctx.sleep(500);
+  ctx.assert.ok(await ctx.evaluate(`window.peix.ze().music.step`) > m0, 'the malhão\'s quavers planned');
+  await press('KeyT', 't', 84);
+  ctx.assert.equal((await game()).tune, 'funk', 'T again in a round: the funk');
   // meat: eaten, counted, bigger; a green: smaller, BLEH
   await eat('meat', '🥩');
   out.meat = await game();

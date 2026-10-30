@@ -11901,7 +11901,7 @@ const toolName = n => {
   // ribs and then his bones, the K.O. — unless he dodges them or kicks them out of the sky; some lunch that looks safe
   // has a leaf in it. Three meats in a row bring a Ford Focus, ZE_RIDE seconds of speed; three greens a Mercedes A-Class,
   // ZE_RIDE slow ones. ← → (A D, or the pointer over the picture) run, ↑ jumps, space kicks (honks, in a car), P pauses,
-  // M the sound, T the music — Barcelos' own vira (the default since 2026-10-30, prefs.zeBand), or the funk; esc or ⌥⌘Z
+  // M the sound, T the music — Barcelos' own vira (the default since 2026-10-30, prefs.zeBand), the malhão or the funk; esc or ⌥⌘Z
   // again closes. The golden rooster, Barcelos'
   // for luck, is muscle. Taller than wide, the window's height (2026-10-30, last).
   // From Trota's, the 8-bit game it learnt from (2026-10-30, later): four ways to play (ZE_DIFFS, prefs.zeDiff; a best
@@ -11948,6 +11948,12 @@ const toolName = n => {
     [76, -1, 72, 76, 79, 76], [76, 74, 72, -1, 76, -1], [74, -1, 71, 74, 79, -1], [78, 76, 74, -1, 71, -1],
     [69, -1, 72, 76, 74, 72], [71, -1, 69, -1, 66, -1], [67, 71, 74, 79, 78, 76], [79, -1, -1, 0, 0, 0]];
   const ZE_VIRA_CH = 'GGDDDDGGCCGGDDGG', ZE_CHORD = { G: [55, 59, 62, 67], D: [57, 62, 66, 72], C: [55, 60, 64, 67] }, ZE_ROOT = { G: 43, D: 50, C: 48 };
+  // the malhão (T, 2026-10-30, the next round), a third tune: another dance of the north, in two-four — sixteen bars in D
+  // in its manner, four quavers a bar, written for the game, the same players on an oom-pah
+  const ZE_MALHAO = [[69, 74, 74, 73], [71, 69, 69, -1], [67, 71, 71, 69], [67, 66, 66, -1], [64, 67, 67, 66], [64, 62, 64, 66], [67, 69, 71, 73], [74, -1, 0, 0],
+    [78, -1, 76, 74], [73, 74, 76, -1], [76, -1, 74, 73], [71, 73, 74, -1], [74, 73, 71, 69], [67, 69, 71, 67], [66, 64, 69, 61], [62, -1, 0, 0]];
+  const ZE_MALHAO_CH = 'DDGDADADDAAGDGAD', ZE_MCHORD = { D: [57, 62, 66, 69], A: [57, 61, 64, 67], G: [55, 59, 62, 67] }, ZE_MROOT = { D: 50, A: 45, G: 43 }, ZE_8M = 60 / 132 / 2;
+  const ZE_BANDS = { vira: 'VIRA DE BARCELOS', malhao: 'MALHÃO', funk: 'FUNK' };
   // his face in pixels: dark hair, round gold glasses, a full beard — a drawing, no picture; the mouth open for a bite
   // (ZE_OPEN's rows), sunglasses and an earpiece as AGENT ZÉ (ZE_SPY's), and what is left at the end (ZE_SKULL, his
   // glasses still on) — on his pixel body since 2026-10-30, the next round (zeBuild), outlined, drawn unsmoothed.
@@ -11994,7 +12000,7 @@ const toolName = n => {
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
-  const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = prefs.zeBand === 'vira' ? '♪ vira de Barcelos' : '♪ funk'; };
+  const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = `♪ ${{ vira: 'vira de Barcelos', malhao: 'malhão', funk: 'funk' }[prefs.zeBand] || 'funk'}`; };
 
   function zeOpen() {
     const dlg = $('#zeGame'); if (dlg.open) return;
@@ -12068,9 +12074,9 @@ const toolName = n => {
     prefs.zeSound = !prefs.zeSound; savePrefs(); zeLabels();
     if (!prefs.zeSound) zeHush(); else if (ze.g.phase === 'play') { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }
   }
-  /** T: the funk or the vira, from the next beat. */
+  /** T: the vira, the malhão, the funk, round again — from the next beat. */
   function zeTune() {
-    prefs.zeBand = prefs.zeBand === 'vira' ? 'funk' : 'vira'; savePrefs(); zeLabels();
+    prefs.zeBand = { vira: 'malhao', malhao: 'funk' }[prefs.zeBand] || 'vira'; savePrefs(); zeLabels();
     const m = ze.music; if (m?.track === 'band') { m.step = 0; m.at = m.ac.currentTime + .05; }
   }
   $('#zeTune').addEventListener('click', () => { zeTune(); $('#zeGame').focus(); });
@@ -12553,7 +12559,7 @@ const toolName = n => {
       zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL} = ENTER THE DRAGON`, mid, 534, 16, zeBlink(g, 4) ? '#ff7a2a' : '#feae34', 'center');
       zeDiffButtons().forEach(b => zeButton(cx, b, ZE_DIFFS[b.i].name, b.i === prefs.zeDiff, ZE_DIFFS[b.i].c));
       zeText(cx, `${D.say} · ← → or 1–4`, mid, 614, 13, D.c, 'center', 600);
-      zeText(cx, `T · music: ${prefs.zeBand === 'vira' ? 'VIRA DE BARCELOS' : 'FUNK'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
+      zeText(cx, `T · music: ${ZE_BANDS[prefs.zeBand] || 'FUNK'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
       cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', 300, 690, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
       const best = zeBests()[D.id]; if (best) zeText(cx, `BEST ${best}`, 300, 724, 15, '#d9c7e8', 'center');
     } else if (g.phase === 'pause') {
@@ -12839,12 +12845,13 @@ const toolName = n => {
    *  quavers (T) —, a little quicker each level (to a third more), or the dragon's straight at ZE_16D; a timer late by
    *  more starts from now. */
   function zePlan(m) {
-    const now = m.ac.currentTime, fera = m.track === 'dragon', vira = !fera && prefs.zeBand === 'vira', quick = 1 + Math.min(10, ze.g.level - 1) * .03;
-    const len = fera ? ZE_16D : (vira ? ZE_8V : ZE_16) / quick * zeMod(m).q;
+    const now = m.ac.currentTime, fera = m.track === 'dragon', band = fera ? 'dragon' : prefs.zeBand, quick = 1 + Math.min(10, ze.g.level - 1) * .03;
+    const len = fera ? ZE_16D : ({ vira: ZE_8V, malhao: ZE_8M }[band] || ZE_16) / quick * zeMod(m).q;
     if (m.at < now) m.at = now + .02;
     while (m.at < now + .12) {
       if (fera) zeFera(m, m.step % 32, m.at);
-      else if (vira) zeVira(m, m.step % 96, m.at, len);
+      else if (band === 'vira') zeVira(m, m.step % 96, m.at, len);
+      else if (band === 'malhao') zeMalhao(m, m.step % 64, m.at, len);
       else { const s = m.step % 16; zeBar(m, s, (m.step >> 4) % 4, m.at + (s % 2 ? len * .18 : 0)); }
       m.at += len; m.step++;
     }
@@ -12879,6 +12886,16 @@ const toolName = n => {
     if (e === 3 && (M.kick2 || mass >= 9)) zeDrum(m, 'kick', t, .4);
     if ((e === 2 || e === 4) && mass > 3) ZE_CHORD[ch].forEach((n, i) => zePluck(m, t + i * .012, n + 12 + tr, .14, .035));
     for (let h = 0; h < M.hats; h++) for (const hz of [4200, 6150]) zeTone(m, t + h * q / 2, 'sine', hz, hz, .07, (e === 2 || e === 4) && !h ? .02 : e % 2 ? .007 : .012);
+  }
+  // the malhão's: the concertina's tune, the viola's root and the bombo on one, its fifth on two, the cavaquinho on the
+  // off-beats, the ferrinhos on every quaver, louder off the beat
+  function zeMalhao(m, s, t, q) {
+    const bar = s >> 2, e = s % 4, notes = ZE_MALHAO[bar], ch = ZE_MALHAO_CH[bar], M = zeMod(m), tr = M.tr, mass = ze.g.mass;
+    if (notes[e] > 0) { let n = 1; while (e + n < 4 && notes[e + n] === -1) n++; zeConcertina(m, t, notes[e] + tr, n * q * .92); if (mass >= 9) zeConcertina(m, t, notes[e] + tr - 12, n * q * .92, .03); }
+    if (e === 0) { zeDrum(m, 'kick', t, .6); zePluck(m, t, ZE_MROOT[ch] + tr, .3, .16); }
+    if (e === 2) { zeDrum(m, 'kick', t, mass >= 9 || M.kick2 ? .45 : .3); zePluck(m, t, ZE_MROOT[ch] + 7 + tr, .3, .13); }
+    if ((e === 1 || e === 3) && mass > 3) ZE_MCHORD[ch].forEach((n, i) => zePluck(m, t + i * .01, n + 12 + tr, .12, .035));
+    for (let h = 0; h < M.hats; h++) for (const hz of [4200, 6150]) zeTone(m, t + h * q / 2, 'sine', hz, hz, .06, e % 2 && !h ? .018 : .008);
   }
   function zeConcertina(m, t, n, d, v = .05) {   // three reeds a little apart, as a concertina's
     const ac = m.ac, f = ac.createBiquadFilter(), g = ac.createGain();
