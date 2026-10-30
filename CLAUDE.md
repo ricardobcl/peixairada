@@ -699,7 +699,7 @@ npm run map                         # rewrite the section maps at the top of ser
   the split** (`unsplit` leaves it); the divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`). Stacked is
   `#groups.stack`; the second strip's `.gturn` turns it too. The app forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
-* **Tiles are the layout** (2026-10-10; `main.tiles` in the markup, never toggled): gaps, square panels, **each
+* **Tiles are the default layout** (2026-10-10; `main.tiles` in the markup, never toggled): gaps, square panels, **each
   panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat` and `tileTints`;
   a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
   list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
@@ -707,6 +707,16 @@ npm run map                         # rewrite the section maps at the top of ser
   nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
   `HOUSING_R` by eye) and the row keeps `notchPad()` clear; the top corners round as the screen's
   (`main.tiles.notch`, `--screen-r`; the list hidden, both the chat's) only where a housing says the screen is a MacBook's. → `tiles.mjs`.
+* **Sidebar is the other** (2026-10-30, round X's D4; Settings › Appearance › Layout, `prefs.layout`, `applyLayout`,
+  `setLayout`, the launcher's `tg:layout`): `<html data-layout="tiles|sidebar">`, set before the first paint by the
+  head's script; **its every rule is `:root[data-layout="sidebar"] …`** over the tiles' (`main.tiles` stays). No gaps
+  or edges (no `.ncut`); the list and the status bar glass (`--side`, `--side-glass`, a `backdrop-filter`) over `#wall`
+  in `--wallc`, no glow (`wallOn`); the header a flush toolbar of glass tinted by `--hbg-eased`, no black, the theme's
+  inks (`--hd-*`), lowered at the notch by padding; cards are rows — no ground, edge or spot (`spotSoon` rests), a tint
+  of `--lift` open, a tag dot —; PR and ticket chips a tint; lanes plain (the caught-up mark kept). **A row's ring is
+  `.card > .rg`** (cardHtml, while working or watching; `display: none` in tiles): a still mask to a 1.5 px band, its
+  `::before` the turning square (`ring`, phased) — the card's own two pseudo-elements `content: none`, the sonar's on a
+  question. A new card rule is checked in both. → `sidebar-layout.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).

@@ -5,6 +5,48 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, at night — a second layout: Sidebar
+
+Ricardo, on the vibrancy: *"some people are off-putted by the vibrancy of the UI, it's colors etc. I know we have
+themes, that we should investigate actually UI alternatives"*, then of round IX's D, Native: *"iterate a bit more on
+the D Native version, but with a bit more spice? I would like to have still some visual cues or working chats"*. Round
+X (four iterations, each measured) came back with his pick: *"build from D4 (half glass), changed as Settings ›
+Appearance › Layout: Tiles · Sidebar, default Tiles — selection: a tint of the project; a chat at work: the ring, a
+light per sub-agent; a question: sonar round the row; the project: a tag dot; toolbar: glass, lightly tinted; sidebar:
+glass over the chat's colour, half; the clauding lane: plain."*
+
+* **A second layout, not a theme**: themes measured as loud as the board (round IX: Matte Black 27.6 against the
+  board's 26.3 — colourfulness, Hasler and Süsstrunk's M), because the loudness is the layout's — the wallpaper's glow,
+  the coloured panel edges, the header in the project's colour, the cards' glows, the solid chips. So it is
+  `<html data-layout>`, beside `data-theme`, and every theme wears either. Tiles stay the default (a look he cannot
+  judge from a still ships as a switch); D4 at half glass measured 20.3 on the made-up board (tiles 26.3) with every
+  signal kept — the ring, a light per sub-agent, the sonar.
+* **What Sidebar is**: the Mac's window — panels meeting at hairlines; the list and the status bar frosted glass (the
+  sidebar's grey at 60 %, blur and saturation) over a wallpaper of two pools of the open chat's colour, the glow after
+  the pointer off; the header a flush toolbar of glass tinted 14 % by the chat's colour, no black beside the project,
+  whose colour is a dot before its name; cards are rows — nothing at rest, a grey under the pointer, the open one a tint
+  of its project's colour with a hairline of it, the project a tag dot; PR and ticket chips a tint of their state's
+  colour (opaque: a card's chips overlap); lanes plain — sentence case, grey, no marks, no shimmer (the round's other
+  option kept the sparkle; the caught-up mark stays, its sparks start there).
+* **The ring on glass**: the board's ring is a turning square under a cover in the card's own ground; a row on glass has
+  no ground to cover with. The study drew it with a registered angle animated in a conic gradient — a custom property
+  animated, which WebKit repaints on the main thread every frame (the board left that on 2026-09-27). Built instead as
+  a box of the card's own, `.rg`: a still mask cuts it to a 1.5 px band round the row, and its `::before` is the board's
+  square turned by `ring`, a transform — phased with every other light. Checked in WebKit's compositor frame: a band
+  only, the light moved between two frames.
+* **At the notch**: the panels are still cut round the housing, with nothing bordering the cut, and square at the
+  screen's corners; the toolbar is lowered by padding, so it still meets the top.
+* **Reduced motion** holds the ring still (its light all round, as the tiles' card); **Reduce Transparency** makes the
+  three glasses solid; forced colours border the rows.
+* Checked: `sidebar-layout.mjs` (tiles first, Sidebar from Settings, the ring `.rg`'s and in step, the sonar, the lanes,
+  the toolbar, a reload, the notch, reduced motion, Tiles again). **The cost**, `npm run perf -- --prefs
+  '{"layout":"sidebar"}'` (the flag is new, for another look's) against the tiles, three runs each, interleaved, the
+  medians: rest 2.5 % of a core (tiles 4.1), the pointer 7.3 (8.4), a scroll 15.5 (17.2), home 13.0 (13.8), a chat
+  opened 132 ms (139), 283 layers (278), 491 MB (505), no animation rule broken — the glow after the pointer and the
+  lanes' pixel mark are gone, the three glasses are the compositor's. That is the web process; the blurs' own cost is
+  the GPU's, which the harness does not read.
+* **Not built**: round IX's colour steps (Calm, Mono) — their picks are still Ricardo's to make.
+
 ## Decisions of 2026-10-30, at the end — no sound outlives the game
 
 Ricardo: *"confirm there's no music leak if the game is not on"*.

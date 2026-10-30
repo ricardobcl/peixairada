@@ -86,7 +86,9 @@ the PR list under the header is as tall as you drag its foot.
 Every look is in Settings › Appearance and Chat list (⌘,), or a key: the chat list hidden and the chat the whole width
 (⌥⌘B, or the first button in the status bar, whose mark says which), Omarchy's twelve themes (⌥⌘Y — Tokyo Night,
 Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one of each following it; your projects
-keep their hue in the theme's shades.
+keep their hue in the theme's shades. The layout is tiles — panels over a wallpaper, each edged in its project's
+colour — or a Mac sidebar: the chats as rows on frosted glass over the open chat's colour, with the same lights round a
+chat at work and the same sonar round a question (Settings › Appearance › Layout).
 
 <table>
   <tr>
@@ -228,7 +230,8 @@ or *key* to find a setting wherever it is):
 
 - **General** — notifications and sounds, which editor a file path opens in, and (in the app) which full screen ⌃⌘F is.
 - **Appearance** — Auto, Dark or Light (Auto follows macOS), a theme for each as tiles (⌥⌘Y shows them all on the
-  board), the text size, and what else the status bar shows (a right-click on the bar picks that too).
+  board), the layout (tiles or a sidebar), the text size, and what else the status bar shows (a right-click on the bar
+  picks that too).
 - **Chat list** — card size (compact, or larger only where a chat needs you).
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
