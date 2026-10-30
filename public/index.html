@@ -2881,7 +2881,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {} };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -11949,6 +11949,13 @@ const toolName = n => {
     '.....kkkkkkkkkk.....', '...aaaakkkkkkaaaa...', '..aaaaaaarraaaaaaa..', '.aaaraaaaaaaaaraaaa.', '.aaaaaaaaaaaaaaaaaa.', 'aaaaraaaaaaaaaaraaaa'];
   // the galo, player two (2026-10-30, the next round): G on the title — CO-OP, it pecks the greens out of the sky; VERSUS,
   // it steals his meat — on A D and W (Zé on the arrows alone then); Barcelos' black rooster in pixels, facing right
+  // twelve trophies (2026-10-30, the next round), kept with the day each was won (prefs.zeTrophies.won), and the counts
+  // that take more than a round (kicked, agents)
+  const ZE_TROPHIES = [
+    ['chourico', '🌭', 'DEZ CHOURIÇOS', 'ten chouriços in a round'], ['moose', '🦌', 'MOOSE TEST', 'an A-Class out at full bulk'], ['cem', '🥦', 'CEM VERDES', 'a hundred greens kicked'],
+    ['agent', '🕶️', 'AGENTE ZÉ ×3', 'Agent Zé three times'], ['fera', '🐉', 'FERA', 'the dragon on HARDCORE'], ['monstro', '💪', 'MONSTRO', 'his full bulk'],
+    ['milagre', '🐓', 'O MILAGRE', 'the golden galo eaten'], ['nunchaku', '🥋', 'NUNCHAKU', 'five greens in one sweep'], ['avo', '👵', 'A AVÓ DESISTE', 'the Avó da Horta beaten'],
+    ['telhado', '🏠', 'NO TELHADO', 'on top of Trota\'s sign'], ['combo', '🔥', 'COMBO ×4', 'the top combo'], ['peixe', '🐟', 'PESCADOR', 'the board\'s fish let go']];
   const ZE_TWO = { coop: 'CO-OP — IT PECKS THE GREENS', versus: 'VERSUS — IT STEALS HIS MEAT' };
   const ZE_GALO = ['..............rr....', '.............rrrr...', '............kkkkk...', '...........kkwkkkyy.', '...........kkkkkkyyy', '..kk.......kkkkkr...',
     '.kkkk......kkkkr....', 'kkbkk.....kkkk......', 'kkkkyk...kkkkk......', '.kkkkkkkkkkkkk......', '..kkkhkkkkdkkk......', '..kkkkkkkhkkkk......', '...kkdkkkkkkk.......',
@@ -12026,12 +12033,21 @@ const toolName = n => {
   const zePick = a => a[Math.random() * a.length | 0], zeHz = n => 440 * 2 ** ((n - 69) / 12);
   const zeDiff = () => ZE_DIFFS[prefs.zeDiff] || ZE_DIFFS[1];
   /** Today's best of each way to play (the day's round, prefs.zeDay), a new day's empty. */
+  const zeTrophies = () => { const t = prefs.zeTrophies && typeof prefs.zeTrophies === 'object' ? prefs.zeTrophies : (prefs.zeTrophies = {}); t.won ||= {}; return t; };
+  /** A trophy won, once ever: said at the top of the picture for a while (g.trophy) — never in the title's demo. */
+  function zeTrophy(g, id) {
+    const T = zeTrophies(); if (g.demo || T.won[id]) return;
+    T.won[id] = zeToday(); savePrefs();
+    const [, e, name] = ZE_TROPHIES.find(t => t[0] === id); g.trophy = { e, name, t: 2.6 }; zeSfx('level');
+  }
+  /** One more of a count that outlives a round — kicked, agents —, and the trophy at n. */
+  const zeCount = (g, k, n, id) => { if (g.demo) return; const T = zeTrophies(); T[k] = (T[k] || 0) + 1; if (T[k] >= n) zeTrophy(g, id); };
   const zeDayBests = () => { const day = zeToday(); if (prefs.zeDay?.day !== day) prefs.zeDay = { day, best: {} }; return prefs.zeDay.best; };
   /** The best of each way to play, by its id; a number is NORMAL's, from before there were four. */
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { tap: null, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12046,7 +12062,7 @@ const toolName = n => {
     zeSize(); zeGo();
   }
   function zeToggle() { if ($('#zeGame').open) $('#zeGame').close(); else zeOpen(); }   // a declaration: HOTKEYS names it before this line runs
-  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); ze.scene = ze.was = null; repostPane(); });   // the scene's canvases go with it
+  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); ze.scene = ze.was = null; savePrefs(); repostPane(); });   // the scene's canvases go with it, the counts are kept
   function zeGo() { if (!ze.raf) { ze.at = 0; ze.raf = requestAnimationFrame(zeTick); } }
   function zeStop() { cancelAnimationFrame(ze.raf); ze.raf = 0; }
   /** The sky's fade, and its rain: drops falling slant while the sky has rain — held where they are under reduced motion. */
@@ -12119,7 +12135,7 @@ const toolName = n => {
     }
     Object.assign(g, { nun: 0, sweep: .35, shake: Math.max(g.shake, .25) }); zeHold(g, .14, true);
     zeBanner(g, 'NUNCHAKU!', greens.length ? `${greens.length} GREEN${greens.length === 1 ? '' : 'S'} SWEPT OFF THE SCREEN` : 'NOT A GREEN IN SIGHT', ['#ffd23f', '#ff5a64'], 1.6);
-    zeSfx('whoosh'); zeSfx('smash'); zeScore(g, greens.length * 5);
+    zeSfx('whoosh'); zeSfx('smash'); zeScore(g, greens.length * 5); if (greens.length >= 5) zeTrophy(g, 'nunchaku');
     return greens.length;
   }
   /** ↑: a jump from what he stands on, high enough for Trota's awning (2026-10-30, the next round) — and at his full
@@ -12307,6 +12323,7 @@ const toolName = n => {
       if (g.ride) zeLeave(g);
       Object.assign(g, { dragon: ZE_DRAGON, hurt: 0, shake: .9, flash: .3, lightT: 1.4 });
       zeBanner(g, 'ENTER THE DRAGON!', 'MODO FERA — EAT EVERYTHING', ['#ff7a2a', '#ffd23f'], 2.4); zeSfx('transform'); zeTrack('dragon');
+      if (zeDiff().id === 'hardcore') zeTrophy(g, 'fera');
       return;
     }
     Object.assign(g, { dragon: 0, bolt: null, spawn: 1.2, level: ZE_DRAGON_LEVEL + 1, next: g.score + zeDiff().step }); g.flames.length = 0;
@@ -12345,7 +12362,7 @@ const toolName = n => {
     zeChunks(g, ZE_AVO.x, ZE_AVO.y, 'veg', 14); zeWord(g, a.hp ? 'AI!' : 'AI, ESTE MENINO!', ZE_AVO.x - 60, ZE_AVO.y - 60, '#9be15d', true); zeSfx('smash'); zeHold(g, .1, !a.hp);
     if (a.hp) return;
     Object.assign(a, { leaving: true, won: true, say: 'Pronto, come o que quiseres!', sayT: 2.2 });
-    zeBanner(g, 'A AVÓ DESISTE!', '+300 · EAT WHAT YOU LIKE', ['#ffd23f', '#9be15d'], 2.4); zeSfx('level'); zeScore(g, 300);
+    zeBanner(g, 'A AVÓ DESISTE!', '+300 · EAT WHAT YOU LIKE', ['#ffd23f', '#9be15d'], 2.4); zeSfx('level'); zeScore(g, 300); zeTrophy(g, 'avo');
   }
   function zeStrike(g) {   // lightning, while the dragon is out
     let x = 60 + Math.random() * (ZE_W - 120), y = 20; const pts = [[x, y]];
@@ -12367,7 +12384,7 @@ const toolName = n => {
   function zeLeave(g) {
     const r = g.ride; if (!r) return;
     g.leaving = { kind: r.kind, x: g.x, f: g.f, t: 0, wheel: r.wheel, flip: 0 };
-    if (r.kind === 'aclass') zeWord(g, 'FAILED THE MOOSE TEST!', g.x, ZE_FLOOR - 150, '#c8ccd2', true);
+    if (r.kind === 'aclass') { zeWord(g, 'FAILED THE MOOSE TEST!', g.x, ZE_FLOOR - 150, '#c8ccd2', true); if (g.mass >= ZE_MASS_MAX && g.phase === 'play') zeTrophy(g, 'moose'); }
     g.ride = null; zeEngine(null); zeMode(null);
   }
   /** Bigger by n, to his full bulk — reached from below, MONSTRO! (2026-10-30, the next round): the gym's word for it, a
@@ -12376,7 +12393,7 @@ const toolName = n => {
     const was = g.mass; Object.assign(g, { mass: Math.min(ZE_MASS_MAX, g.mass + n), pump: .3 });
     if (was >= ZE_MASS_MAX || g.mass < ZE_MASS_MAX || g.dragon || g.t - g.monAt < 8) return;
     g.monAt = g.t; g.flex = 1.4; zeHold(g, .1);
-    zeBanner(g, 'MONSTRO!', 'FULL BULK — THE GYM\'S WORD FOR IT', ['#ffd23f', '#ff7a2a'], 1.6); zeSfx('monstro');
+    zeBanner(g, 'MONSTRO!', 'FULL BULK — THE GYM\'S WORD FOR IT', ['#ffd23f', '#ff7a2a'], 1.6); zeSfx('monstro'); zeTrophy(g, 'monstro');
   }
   /** What meets him: meat (or anything at all, the dragon's) is eaten and makes him bigger, the combo growing every five
    *  in a row and a Focus coming every three; a green takes some of him — three in a row, the A-Class; none left, the
@@ -12385,13 +12402,13 @@ const toolName = n => {
     const k = zeSz(g), mx = g.x + g.f * 4 * k, my = g.y - 110 * k;
     if (it.kind === 'case') {
       g.agent = true; zeBanner(g, 'AGENT ZÉ', 'ON LOAN TO THE MOSSAD · סודי ביותר', ['#e8e8e8', '#5b8ff0'], 2.6);
-      zeBits(g, mx, my, ['#e8e8e8', '#5b8ff0', '#0e0c12'], 12); zeSfx('spy');
+      zeBits(g, mx, my, ['#e8e8e8', '#5b8ff0', '#0e0c12'], 12); zeSfx('spy'); zeCount(g, 'agents', 3, 'agent');
       return zeScore(g, it.pts);
     }
     if (it.kind === 'gold') {
       zeGrow(g, 2); g.gold = .5;
       zeBanner(g, 'O MILAGRE DO GALO!', '+100 · THE ROAST COCK STOOD UP AND CROWED', ['#ffd23f', '#fff3c4'], 2.2);
-      zeBits(g, it.x, it.y, ['#ffd23f', '#fff3c4', '#feae34'], 22); zeSfx('galo'); zeSfx('level');
+      zeBits(g, it.x, it.y, ['#ffd23f', '#fff3c4', '#feae34'], 22); zeSfx('galo'); zeSfx('level'); zeTrophy(g, 'milagre');
       return zeScore(g, it.pts);
     }
     if (it.kind === 'power') {   // a power-up, ZE_POWER_T s: the francesinha fills him at once
@@ -12417,10 +12434,10 @@ const toolName = n => {
       return;
     }
     g.streak++; g.greens = 0;
-    if (it.kind === 'meat') zeGrow(g, 1);
+    if (it.kind === 'meat') { zeGrow(g, 1); if (it.e === '🌭' && ++g.chouricos >= 10) zeTrophy(g, 'chourico'); }
     const mult = 1 + Math.min(3, Math.floor(g.streak / 5)), up = mult > g.mult, pts = (it.kind === 'veg' ? 10 : it.pts) * mult;
     g.mult = mult; g.chomp = .3; zeSquash(g, 'chew', .14); if (g.dragon) g.shake = Math.max(g.shake, .08);
-    if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); zeHold(g, .12, true); }
+    if (up) { zeWord(g, `COMBO ×${mult}!`, mx, my - 70 * k, '#feae34', true); zeSfx('combo'); zeHold(g, .12, true); if (mult >= 4) zeTrophy(g, 'combo'); }
     else { zeSfx(g.dragon ? 'chompBig' : 'chomp'); if (!g.dragon) zeHold(g, .05); }   // the dragon's feast does not stop for each bite
     zeWord(g, `+${pts}${it.kind === 'meat' ? ` ${it.say}` : ''}`, it.x, it.y - 24, it.kind === 'veg' ? '#ff7a2a' : '#fff3c4');
     zeChunks(g, mx, my, it.kind === 'veg' ? 'veg' : 'meat', g.dragon ? 12 : 7);
@@ -12441,6 +12458,7 @@ const toolName = n => {
     g.pump -= Math.sign(g.pump) * Math.min(Math.abs(g.pump), dt);   // a pump or a sag, easing back
     if (g.sq && (g.sq.t -= dt) <= 0) g.sq = null;
     if (g.banner && (g.banner.t -= dt) <= 0) g.banner = null;
+    if (g.trophy && (g.trophy.t -= dt) <= 0) g.trophy = null;
     if (g.bolt && (g.bolt.t -= dt) <= 0) g.bolt = null;
     const l = g.leaving;
     if (l) {
@@ -12464,7 +12482,7 @@ const toolName = n => {
     // what he stands on: the floor, or the awning or the sign come down on from above (G4, 2026-10-30, the next round)
     const wasY = g.y, gy = g.drop > 0 || g.ride || g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, wasY), aloft = wasY < gy - .5;
     g.drop = Math.max(0, g.drop - dt); g.vy += 1500 * dt; g.y += g.vy * dt;
-    if (g.y >= gy) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.y = gy; g.vy = 0; g.jumps = 0; }
+    if (g.y >= gy) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.y = gy; g.vy = 0; g.jumps = 0; if (gy === ZE_PLATS[1].y) zeTrophy(g, 'telhado'); }
     g.gy = g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, g.y);
     g.run += Math.abs(g.vx) * dt * .05; g.cool = Math.max(0, g.cool - dt); g.hurt = Math.max(0, g.hurt - dt);
     if (g.ride) {   // the car: its wheels, its pitch as it pulls away or brakes (the A-Class's the more), its engine, its time
@@ -12526,13 +12544,13 @@ const toolName = n => {
       if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
         if (it.from === 'avo' && g.avo && !g.avo.leaving) zeAvoBack(it);   // hers go back to her
-        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); g.nun = Math.min(ZE_NUN, g.nun + 1); zeScore(g, 5);
+        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); g.nun = Math.min(ZE_NUN, g.nun + 1); zeCount(g, 'kicked', 100, 'cem'); zeScore(g, 5);
         continue;
       }
       if (it.kind === 'peixe' && (zeTouch(it, mouth, 30) || it.y >= ZE_FLOOR - 30)) {   // the board's fish is let go, not eaten: it swims off
         const caught = it.y < ZE_FLOOR - 30;
         Object.assign(it, { out: true, vx: (it.x < ZE_W / 2 ? 1 : -1) * 260, vy: -160, g: -60, spin: 0, rot: 0 });
-        if (caught) { zeWord(g, 'LET GO! +100', it.x, it.y - 30, '#7ef0ff', true); zeBits(g, it.x, it.y, ['#7ef0ff', '#fff3c4', '#5b8ff0'], 12); zeSfx('combo'); zeScore(g, 100); }
+        if (caught) { zeWord(g, 'LET GO! +100', it.x, it.y - 30, '#7ef0ff', true); zeBits(g, it.x, it.y, ['#7ef0ff', '#fff3c4', '#5b8ff0'], 12); zeSfx('combo'); zeScore(g, 100); zeTrophy(g, 'peixe'); }
         continue;
       }
       const green = it.kind === 'veg' && !g.dragon;   // a green while he still blinks from the last one passes him by
@@ -12630,6 +12648,13 @@ const toolName = n => {
     if (g.banner && g.phase === 'play') {
       const b = g.banner; zeText(cx, b.s, ZE_W / 2, 300, 46, b.cs[zeBlink(g, 8) ? 0 : 1], 'center', 900);
       if (b.sub) zeText(cx, b.sub, ZE_W / 2, 348, 17, '#fff3c4', 'center');
+    }
+    if (g.trophy) {   // a trophy won: a plaque dropping in under the HUD
+      const T = g.trophy, y = 170 - Math.max(0, T.t - 2.3) * 200, w = 360;
+      cx.fillStyle = '#1b0b2e'; cx.beginPath(); cx.roundRect(ZE_W / 2 - w / 2 - 3, y - 25, w + 6, 56, 12); cx.fill();
+      cx.fillStyle = '#3a2a52'; cx.strokeStyle = '#ffd23f'; cx.lineWidth = 2; cx.beginPath(); cx.roundRect(ZE_W / 2 - w / 2, y - 22, w, 50, 10); cx.fill(); cx.stroke();
+      cx.drawImage(zeGlyph(T.e), ZE_W / 2 - w / 2 + 10, y - 17, 40, 40);
+      zeText(cx, 'TROPHY', ZE_W / 2 - w / 2 + 62, y - 6, 12, '#ffd23f', 'left', 700); zeText(cx, T.name, ZE_W / 2 - w / 2 + 62, y + 13, 20, '#fff3c4');
     }
     if (g.phase !== 'play') zeCard(cx, g);
     if (g.phase === 'title') zeHero(cx, g);
@@ -12867,6 +12892,10 @@ const toolName = n => {
       zeText(cx, `${D.say} · ← → or 1–4`, mid, 614, 13, D.c, 'center', 600);
       zeText(cx, `T · music: ${ZE_BANDS[prefs.zeBand] || 'FUNK'} · G · player two: ${prefs.zeTwo ? prefs.zeTwo.toUpperCase() : 'OFF'}`, mid, 642, 13, '#d9c7e8', 'center', 600);
       cx.globalAlpha = blink; zeText(cx, 'SPACE TO START', 300, 690, 24, '#7ef0ff', 'center'); cx.globalAlpha = 1;
+      const won = zeTrophies().won, nw = ZE_TROPHIES.filter(t => won[t[0]]).length;   // the trophies, lit or dim
+      zeText(cx, `TROPHIES ${nw}/${ZE_TROPHIES.length}`, mid, 760, 13, '#ffd23f', 'center', 700);
+      ZE_TROPHIES.forEach(([id, e], i) => { cx.globalAlpha = won[id] ? 1 : .22; cx.drawImage(zeGlyph(e), mid - 6 * 36 + i * 36 + 4, 776, 28, 28); });
+      cx.globalAlpha = 1;
       const best = zeBests()[D.id], today = zeDayBests()[D.id];
       zeText(cx, `THE DAY'S ROUND · ${zeToday()}${best ? ` · TODAY ${today || 0} · BEST ${best}` : ''}`, 300, 724, 13, '#d9c7e8', 'center', 600);
     } else if (g.phase === 'pause') {
