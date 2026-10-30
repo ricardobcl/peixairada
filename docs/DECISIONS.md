@@ -5,6 +5,22 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, at the end — no sound outlives the game
+
+Ricardo: *"confirm there's no music leak if the game is not on"*.
+
+* **By the code**: the one context is made only by a press that starts a round inside the open dialog (`zeStart`, or
+  `zePause`/`zeMute` from its keys); the dialog's `close` — however it closes: esc, ⌥⌘Z, the backdrop, ⌘W — runs
+  `zeHush`: the band's timer cleared, the K.O.'s rest timer cleared, the context closed (its engine, its notes, all of
+  it), `ze.music` dropped; nothing after makes another, and a frame drawn between the close and its event has nothing
+  left to play on. While it stands open and not playing — the title, a pause, the window away, the K.O. after its
+  trombone — the context is none or suspended.
+* **By the page** (`ze-sound-off.mjs`): every AudioContext and node counted from before the page loads — none from the
+  board or the title; closed after esc in the Focus (its engine humming), ⌥⌘Z as the dragon, the backdrop at the K.O.
+  (past its rest timer), esc while paused, M mid-round; no node made and no frame drawn after any of them.
+* **By macOS**, in WebKit, the output muted at the destination: coreaudiod held *PreventUserIdleSystemSleep* (an
+  audio-out context) while it played, none before, none four seconds after the close.
+
 ## Decisions of 2026-10-30, after the very last — the vira first, his body in the car, five seconds
 
 Ricardo: *"make the barcelos music the default. also, the body should be visible when in a car. also, make the car

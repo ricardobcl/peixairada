@@ -518,7 +518,8 @@ npm run map                         # rewrite the section maps at the top of ser
   open and not paused; its own Web Audio (the vira, or the funk — `prefs.zeBand`), made by the press that starts a round,
   suspended by a pause, closed with the dialog or by M. His face is pixels in the code (`ZE_FACE`, `zeSprite`), no
   picture and no setting; bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon
-  (`ZE_DIFFS`, `zeDragon`); nothing shaking, flashing or blinking under reduced motion (`zeCalm`). → `ze-game.mjs`.
+  (`ZE_DIFFS`, `zeDragon`); nothing shaking, flashing or blinking under reduced motion (`zeCalm`). **No sound outlives it**:
+  every way out closes its context (`zeHush` on `close`). → `ze-game.mjs`, `ze-sound-off.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   ticks, titles, pins, PR turns… — whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
