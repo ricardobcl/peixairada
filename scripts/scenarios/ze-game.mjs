@@ -1,7 +1,7 @@
-// ⌥⌘Z, Zé's game (2026-10-30): the title — his face in pixels, the four ways to play (← → and 1–4), the music (T: the
-// funk or the vira) —, a round started by a real space (the music's context made by that press), meat eaten (score, his
+// ⌥⌘Z, Zé's game (2026-10-30): the title — his face in pixels, the four ways to play (← → and 1–4), the music (the
+// vira first, T the funk) —, a round started by a real space (the music's context made by that press), meat eaten (score, his
 // bulk up), a green that hits (his bulk down, BLEH), one kicked out of the sky, three meats in a row (the Ford Focus:
-// faster, its horn on space, gone after its time), three greens in a row (the Mercedes A-Class: slower, over onto its
+// faster, him seen sitting in it, its horn on space, gone after its five seconds), three greens in a row (the Mercedes A-Class: slower, over onto its
 // roof as it leaves), five in a row (COMBO ×2), the briefcase (AGENT ZÉ), level 3 as ENTER THE DRAGON (twice his size,
 // the dragon's track, a green eaten for points, back at level 4), the pause (frames and music stopped), his bulk run out
 // (only bones: the K.O., that way's best kept), Again, M closing the sound and bringing it back, the K.O.'s Menu,
@@ -18,7 +18,7 @@ export default async function (ctx) {
   const game = () => ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.g; return JSON.stringify({ open: document.querySelector('#zeGame').open, raf: !!z.raf, frames: z.frames,
     music: z.music ? z.music.ac.state : null, track: z.music ? z.music.track : null, engine: !!z.music?.engine, phase: g.phase, score: g.score, mass: g.mass, streak: g.streak,
     mult: g.mult, level: g.level, dragon: g.dragon, ride: g.ride && g.ride.kind, leaving: g.leaving && g.leaving.kind, agent: g.agent, items: g.items.length,
-    words: g.words.map(w => w.s), banner: g.banner && g.banner.s, diff: window.peix.prefs().zeDiff, tune: window.peix.prefs().zeMusic }); })()`).then(JSON.parse);
+    words: g.words.map(w => w.s), banner: g.banner && g.banner.s, diff: window.peix.prefs().zeDiff, tune: window.peix.prefs().zeBand }); })()`).then(JSON.parse);
   // drops what it is given into the round, nothing falling on its own meanwhile; at: [dx, dy] from Zé's feet
   const drop = (kind, e, at, more = {}) => ctx.evaluate(`(() => { const g = window.peix.ze().g; g.spawn = 1e9; g.hurt = 0;
     g.items.push({ kind: ${JSON.stringify(kind)}, e: ${JSON.stringify(e)}, pts: 15, say: ${JSON.stringify(kind === 'veg' ? 'BLEH! test' : 'test')}, x: g.x + g.f * ${at[0]}, y: g.y + ${at[1]}, vx: 0, vy: 0, g: 0, rot: 0, spin: 0, ...${JSON.stringify(more)} }); })()`);
@@ -43,9 +43,12 @@ export default async function (ctx) {
   await press('Digit1', '1', 49);
   ctx.assert.equal((await game()).diff, 0, '1: EASY');
   await press('Digit2', '2', 50);
-  await press('KeyT', 't', 84);
-  ctx.assert.equal((await game()).tune, 'vira', 'T: the vira');
+  ctx.assert.equal((await game()).tune, 'vira', 'the vira, before anything is pressed');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#zeTune').textContent`), '♪ vira de Barcelos');
+  await press('KeyT', 't', 84);
+  ctx.assert.equal((await game()).tune, 'funk', 'T: the funk');
+  await press('KeyT', 't', 84);
+  ctx.assert.equal((await game()).tune, 'vira', 'T again: the vira');
   await ctx.settle(); await ctx.shot('1-title');
 
   // space: a round, the vira playing
@@ -54,7 +57,7 @@ export default async function (ctx) {
   const s0 = await ctx.evaluate(`window.peix.ze().music.step`); await ctx.sleep(600);
   ctx.assert.ok(await ctx.evaluate(`window.peix.ze().music.step`) > s0, 'the vira\'s quavers planned');
   await press('KeyT', 't', 84);
-  ctx.assert.equal((await game()).tune, 'funk', 'T again: the funk');
+  ctx.assert.equal((await game()).tune, 'funk', 'T in a round: the funk');
   // meat: eaten, counted, bigger; a green: smaller, BLEH
   await eat('meat', '🥩');
   out.meat = await game();
@@ -74,6 +77,7 @@ export default async function (ctx) {
   out.focus = await game();
   ctx.assert.equal(out.focus.ride, 'focus'); ctx.assert.equal(out.focus.banner, 'FORD FOCUS!'); ctx.assert.ok(out.focus.engine, 'its engine');
   ctx.assert.equal(out.focus.mass, 9);
+  ctx.assert.ok(await ctx.evaluate(`window.peix.ze().g.ride.t`) <= 5, 'five seconds a car');
   await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'ArrowRight', key: 'ArrowRight', windowsVirtualKeyCode: 39 });
   await ctx.sleep(700);
   out.fast = await ctx.evaluate(`window.peix.ze().g.vx`);

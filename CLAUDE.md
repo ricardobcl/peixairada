@@ -515,7 +515,7 @@ npm run map                         # rewrite the section maps at the top of ser
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live): a 720 × 900 canvas, its frames only while
-  open and not paused; its own Web Audio (the funk or the vira, `prefs.zeMusic`), made by the press that starts a round,
+  open and not paused; its own Web Audio (the vira, or the funk — `prefs.zeBand`), made by the press that starts a round,
   suspended by a pause, closed with the dialog or by M. His face is pixels in the code (`ZE_FACE`, `zeSprite`), no
   picture and no setting; bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon
   (`ZE_DIFFS`, `zeDragon`); nothing shaking, flashing or blinking under reduced motion (`zeCalm`). → `ze-game.mjs`.

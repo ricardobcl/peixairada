@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, after the very last — the vira first, his body in the car, five seconds
+
+Ricardo: *"make the barcelos music the default. also, the body should be visible when in a car. also, make the car
+last only 5sec"*.
+
+* **The vira is the default**: under a new key, `prefs.zeBand` (`'vira'`), so a `zeMusic: 'funk'` saved by every page
+  that had ever loaded the game gives way instead of keeping the funk (the prefs loader drops keys the literal lacks).
+  T still switches, and is kept.
+* **He sits in the car, seen**: the car is drawn twice round him (`zeCar`'s `part`) — whole first ('back'), then its
+  doors and wheels again over his lap ('front', clipped below the beltline, the doors' top edge drawn along it). He
+  sits 10 px lower, legs out of sight, his torso, arms and head above the doors, and pitches with the car.
+* **A car lasts five seconds** (`ZE_RIDE`), its banners saying so.
+* Checked: `ze-game.mjs` (the vira before any key, T to the funk and back, a ride's time at most five) and its shots —
+  the Focus with his body over its doors, the A-Class likewise.
+
 ## Decisions of 2026-10-30, the very last — Zé gets buff, gets a car, and gets the vira
 
 Ricardo: *"we can remove the customization face, just use a pixelized/cartoonish version of his face · make the game
