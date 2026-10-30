@@ -11989,7 +11989,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12186,6 +12186,7 @@ const toolName = n => {
     else zeBanner(g, 'MERCEDES A-CLASS…', 'THE PUNISHMENT — FIVE SLOW SECONDS', ['#c8ccd2', '#ff5a64'], 2.2);
     zeSfx(kind); zeEngine(kind);
   }
+  const zeFast = g => g.ride?.kind === 'focus' && Math.abs(g.vx) > 260;   // quick enough to leave afterimages
   /** …and goes off on its own: the Focus at speed, the A-Class over onto its roof first, as at the moose test. */
   function zeLeave(g) {
     const r = g.ride; if (!r) return;
@@ -12268,6 +12269,14 @@ const toolName = n => {
       zeRev(Math.abs(g.vx));
       if ((r.t -= dt) <= 0) zeLeave(g);
     }
+    // the Focus leaves afterimages of him and itself behind, the A-Class black smoke (2026-10-30, the next round)
+    if ((g.trailT -= dt) <= 0) { g.trailT = .035; if (zeFast(g)) { g.trail.unshift({ x: g.x, y: g.y }); g.trail.length = Math.min(g.trail.length, 6); } else g.trail.length = 0; }
+    if (g.ride?.kind === 'aclass' && (g.smokeT -= dt) <= 0) {
+      g.smokeT = .07 + Math.random() * .05;
+      g.smoke.push({ x: g.x - g.f * 74, y: ZE_FLOOR - 24, vx: -g.f * (30 + Math.random() * 40) + g.vx * .3, vy: -18 - Math.random() * 30, r: 5 + Math.random() * 3, t: 0, life: 1 + Math.random() * .4 });
+    }
+    for (const p of g.smoke) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += 16 * dt; }
+    g.smoke = g.smoke.filter(p => p.t < p.life);
     g.spawn -= dt;
     if (g.dragon) {
       g.dragon = Math.max(0, g.dragon - dt);
@@ -12328,11 +12337,17 @@ const toolName = n => {
     }
     for (const f of g.flames) { const t = 1 - f.t / f.life; cx.fillStyle = t > .7 ? '#fee761' : t > .45 ? '#feae34' : t > .25 ? '#f77622' : '#e43b44'; cx.fillRect(f.x, f.y, f.s, f.s); }
     if (g.leaving) zeCar(cx, g.leaving.kind, g.leaving.x, ZE_FLOOR, g.leaving.f, g.leaving.wheel, 0, g.leaving.flip);
-    if (g.phase !== 'title') {   // in a car: the car, him sitting in it, its doors over his lap
-      const r = g.ride;
-      if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'back');
-      zeHero(cx, g);
-      if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'front');
+    for (const p of g.smoke) { cx.globalAlpha = .55 * (1 - p.t / p.life); cx.fillStyle = p.t < .25 ? '#2a2630' : '#45404d'; cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI * 2); cx.fill(); }
+    cx.globalAlpha = 1;
+    if (g.phase !== 'title') {   // in a car: the car, him sitting in it, its doors over his lap — and, quick, his afterimages and speed lines
+      const r = g.ride, him = () => { if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'back'); zeHero(cx, g); if (r) zeCar(cx, r.kind, g.x, ZE_FLOOR, g.f, r.wheel, r.tilt, 0, 'front'); };
+      if (zeFast(g)) {
+        cx.strokeStyle = 'rgba(255, 243, 196, .5)'; cx.lineWidth = 2.5; cx.beginPath();
+        for (let i = 0; i < 7; i++) { const ly = ZE_FLOOR - 24 - i * 24, len = 40 + ((i * 37 + (calm ? 0 : Math.floor(g.t * 30))) % 60), lx = g.x - g.f * (112 + (i % 3) * 16); cx.moveTo(lx, ly); cx.lineTo(lx - g.f * len, ly); }
+        cx.stroke();
+        g.trail.slice(1, 5).forEach((p, i) => { cx.save(); cx.globalAlpha = .26 - i * .06; cx.translate(p.x - g.x, p.y - g.y); him(); cx.restore(); });
+      }
+      him();
     }
     for (const b of g.bits) {
       cx.globalAlpha = 1 - b.t / b.life; cx.fillStyle = b.c;
