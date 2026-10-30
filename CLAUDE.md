@@ -515,11 +515,17 @@ npm run map                         # rewrite the section maps at the top of ser
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live): a 720 × 900 canvas, its frames only while
-  open and not paused; its own Web Audio (the vira, or the funk — `prefs.zeBand`), made by the press that starts a round,
-  suspended by a pause, closed with the dialog or by M. His face is pixels in the code (`ZE_FACE`, `zeSprite`), no
-  picture and no setting; bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon
-  (`ZE_DIFFS`, `zeDragon`); nothing shaking, flashing or blinking under reduced motion (`zeCalm`). **No sound outlives it**:
-  every way out closes its context (`zeHush` on `close`). → `ze-game.mjs`, `ze-sound-off.mjs`.
+  open and not paused or called; its own Web Audio (the vira, the malhão or the funk — `prefs.zeBand`; the cars' and his
+  bulk's band, `zeMode`; MOSSAD's radio, `zeRadio`), made by the press that starts a round, suspended by a pause, closed
+  with the dialog or by M. He is pixels in the code, face and body (`ZE_FACE`, `zeBuild`), no picture and no setting;
+  bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon (`ZE_DIFFS`, `zeDragon`); a sky
+  a level (`ZE_SKIES`, `ze.scene`, let go on close). **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it
+  uses); the title's demo (`g.demo`) takes chance's, makes no sound and wins nothing. **It hears the board**: a chat
+  that starts asking stops it on a card (`zeHeard` from the session event; the page's Esc asks `zeCallEnd` first),
+  today's lunch falls (`zeLunch`), the room gets a score only by a K.O. button (`zePost`, `zePoll`), Zé walks across All
+  caught up (`ZERO_HTML`'s `.zewalk`). Nothing shaking, flashing or blinking under reduced motion (`zeCalm`). **No sound
+  outlives it**: every way out closes its context (`zeHush` on `close`). → `ze-game.mjs`, `ze-play.mjs`, `ze-board.mjs`,
+  `ze-sound-off.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   ticks, titles, pins, PR turns… — whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are

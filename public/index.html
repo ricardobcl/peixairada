@@ -2860,7 +2860,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </dialog>
 <dialog id="zeGame" aria-label="Zé, the Bruce Lee of Barcelos — a game" tabindex="-1">
   <canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat, grows, and dodges the vegetables"></canvas>
-  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run</span><span><kbd>↑</kbd> jump</span><span><kbd>space</kbd> kick</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeTune" title="The music — T">♪ funk</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
+  <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run, twice a dash</span><span><kbd>↑</kbd> jump</span><span><kbd>↓</kbd> drop</span><span><kbd>space</kbd> kick, held the nunchaku</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeTune" title="The music — T">♪ funk</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
   <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
@@ -6009,7 +6009,7 @@ const toolName = n => {
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['⌥⌘M', 'Go to', 'lunch — today\'s menus, on a chalkboard', 'the places you go, read each morning · Going and In 15 min at lunch time · again closes it · Settings › Lunch sets it up', ['alt:KeyM']],
-    ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'meat makes him buff, greens thin — down to his bones · three meats in a row bring a Ford Focus, three greens a Mercedes A-Class · four ways to play, ← → on the title · level 3 is ENTER THE DRAGON · ← → run, ↑ jumps, space kicks, P pauses, M the sound, T the funk or the vira · again closes it', ['alt:KeyZ']],
+    ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'meat makes him buff, greens thin — down to his bones · three meats in a row bring a Ford Focus, three greens a Mercedes A-Class · four ways to play, ← → on the title, G a second player (the galo, on A D W) · level 3 is ENTER THE DRAGON, every fifth the Avó da Horta · ← → run (twice: a dash), ↑ jumps, ↓ drops, space kicks (held: the nunchaku), P pauses, M the sound, T the music · a chat asking you stops it: ⏎ goes to it · again closes it', ['alt:KeyZ']],
     ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
@@ -12042,6 +12042,13 @@ const toolName = n => {
   // in A minor, everything good to eat, for ZE_DRAGON s. For those who know (the Mossad's): a briefcase that falls once a
   // round makes him AGENT ZÉ (sunglasses, an earpiece, a TOP SECRET stamp), one kick in six is KRAV MAGA, a falafel is
   // a green, the Focus says YALLA.
+  // The next round (2026-10-30, late at night, the ideas sheet's picks): his body in pixels too (zeBuild), Barcelos on the
+  // horizon and a sky a level (zeTown, ZE_SKIES), a title that plays (g.demo), squash, hit-stop, chunks, afterimages
+  // and smoke, MONSTRO; the band hearing the cars and his bulk (zeMode), the malhão; the galo's miracle; power-ups, the
+  // nunchaku, the Avó da Horta every fifth level, the awning and the sign, a dash, the day's round (zeSeed), twelve
+  // trophies, fish, the galo as player two; the board in it — a chat asking stops it (zeHeard), today's lunch falls,
+  // a best posted to the room, Zé on All caught up, the trackpad's bumps; MOSSAD typed on the title, the dossier, Bruce
+  // Lee at the K.O.
   // A canvas in a modal dialog, a world of its own — its colours are the picture's, not a theme's. Its frames run only
   // while it is open and not paused; its music is Web Audio of its own, planned ahead on the audio clock, made on the
   // first start, suspended by a pause or a K.O., closed with the dialog or by M — never left rendering silence (the

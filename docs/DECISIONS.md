@@ -5,6 +5,52 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-30, late at night — Zé's next round
+
+Ricardo, from the ideas sheet (38 ideas, live sketches, on a claude.ai page): *"Zé: build V1, V2, V3, V6, J1, J2, J3, J4,
+J5, S1, S2, B1, G1, G2, G3, G4, G5, G6, G7, G8, G9, T1, T2, T3, T4, T5, E1, E2, E4."* Built as asked, not as switches:
+one commit each, in that order of need (V1 first, the scenarios last).
+
+* **The look**: his body in pixels like his face (`zeBuild`, `ZE_POSES`: stand, two runs, kick, jump, seated, flex; his
+  bulk a pixel at a time, `zeBulkPx`; his face never turned; his bones at the K.O.). Barcelos on the horizon (`zeTown`:
+  the Torre da Porta Nova, the Igreja Matriz, the Paço dos Condes, Bom Jesus), drawn each frame against his run; a sky a
+  level (`ZE_SKIES`: sunset, blue hour, the dragon's storm, Minho rain, dawn, round again), fading in, the backdrop two
+  cached layers now (`zeScene`, let go with the dialog: two canvases the window's size at the screen's density). The
+  title plays: a demo round behind it (`g.demo`, `zeBot`) — silent, wordless, endless, no trophy or best —, the logo on
+  the band's beat, the rules on four turning cards (`ZE_RULES`).
+* **The feel**: squash and stretch, a hit-stop (`zeHold`; the dragon's feast does not stop for each bite) and a combo's
+  camera punch, chunks and a bone instead of confetti, the Focus's afterimages and the A-Class's smoke, MONSTRO at full
+  bulk (a flex under a spotlight, once in eight seconds) and a shiver on his last bit.
+* **The sound**: the band hears the cars (`zeMode`: the Focus a tone up and quicker, the A-Class behind glass, slowed,
+  wobbling) and his bulk (thin, fewer players; buff, more). **The malhão is a third tune whose notes are mine**: sixteen
+  bars in D in its manner, two-four, on the vira's players — no transcription of it was found to work from; T cycles.
+* **Barcelos**: the galo's miracle — a chicken that stops in the air, stands, crows and is the golden galo, +100.
+* **The play**: power-ups (a francesinha, a vinho verde, a bifana — pixel dishes, the emoji has none), the nunchaku
+  (eight kicks, space held and let go), the avó da Horta every fifth level (her house rises behind Trota's; three of
+  her couves kicked back; **no car comes while she or the dragon is out**, space must kick), the awning and the sign to
+  stand on (a higher jump, a double one at full bulk, ↓ drops, food bounces), a dash (← ← or → →, through a green),
+  **the day's round** (`zeSeed`, `ZE_DRAWS` numbers a drop whatever it uses; today's best beside the best ever), twelve
+  trophies (`ZE_TROPHIES`, `prefs.zeTrophies`), fish (+5 and nothing else; none in HARDCORE, whose bag counts meats; the
+  board's own fish let go, +100), and the galo as player two on A D W (G on the title: CO-OP pecks greens, VERSUS steals
+  his meat; Zé keeps the arrows then).
+* **The board in it**: a chat that starts asking stops the game on a card (`zeHeard`, from the session event; ⏎ to the
+  chat, esc or space plays on — the page's capture-phase Esc asks `zeCallEnd` first), the K.O. says what landed and
+  asked meanwhile (its HUD left off: the card says the score); today's lunch falls (`zeLunch`: soups and salads greens,
+  fish fish, the rest golden specials under their names); **the room gets a score only by the K.O.'s button** (a new
+  best, ever or today's), and on a Friday the poll, from the week's scores read back (`ZE_POST_RE`); Zé walks across
+  All caught up (two frames as CSS images, a transform and held opacity keyframes — the compositor's); the trackpad
+  bumps on a kick, a car, the K.O.
+* **For those who know**: MOSSAD typed on the title — sunglasses on everyone, the band through a walkie-talkie
+  (`zeRadio`); its M and its A D pass through the title's keys and are undone. The dossier as Agent Zé's pause. Bruce
+  Lee at the K.O., bent to food (`ZE_LEE`).
+* **Not built** (not picked): pixel food (V4), the arcade cabinet (V5), the WATAAA voice (S3), the fair on Thursdays,
+  the Festa das Cruzes' fireworks, the Consoada, the Zés Pereiras (B2–B5), more greens in disguise (E3), the figurado
+  (E5). The sheet's source is in a session scratchpad, not the repo.
+* Checked: `ze-play.mjs` (the title, the round's new parts, the K.O., the day's round, player two), `ze-board.mjs` (the
+  T picks against the fakes: lunch from Slack's channel, the room a fake GitHub — `startFakeGitHub`'s new `since`, so
+  the week's scores are this week's), `ze-game.mjs` (three tunes; waiting on the K.O.'s own clock now that it holds a
+  moment), `ze-sound-off.mjs` unchanged and passing.
+
 ## Decisions of 2026-10-30, at night — a second layout: Sidebar
 
 Ricardo, on the vibrancy: *"some people are off-putted by the vibrancy of the UI, it's colors etc. I know we have
