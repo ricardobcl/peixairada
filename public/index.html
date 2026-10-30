@@ -12082,6 +12082,9 @@ const toolName = n => {
     '....kkkkkkkk........', '......y...y.........', '......y...y.........', '.....yy..yy.........'];
   const ZE_GALO_PAL = { k: '#151018', r: '#e8322f', w: '#ffffff', y: '#ffcc33', b: '#3f8fe0', h: '#e8322f', d: '#5cbf4a' };
   const ZE_AVO_PAL = { k: '#1b1b22', g: '#c8c8cc', s: '#e8b48e', S: '#c98f6d', o: '#8a7a5a', e: '#2a1f1c', m: '#8a3b3b', a: '#3a2f4a', r: '#c8322f' };   // kicks that land to fill the nunchaku (2026-10-30, the next round)
+  // Bruce Lee at the K.O. (2026-10-30, the next round), bent to food
+  const ZE_LEE = ['Be water, my friend. Not caldo verde.', 'Don\'t think. Eat.', 'Empty your mind. Fill your plate.', 'Absorb what is useful. Discard what is green.',
+    'I fear not the man who has eaten ten thousand bifanas once…', 'The best kick is the one that sends the broccoli home.', 'Adapt what is useful, reject what is lettuce.'];
   const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once', 'the burger had lettuce'];
   // the four ways to play: how fast and how often it falls, how green it gets (at level 1, more a level, at most), how
   // far past him his mouth reaches, the points a level takes, the level food starts drifting at; HARDCORE deals from a
@@ -12227,7 +12230,7 @@ const toolName = n => {
   }
   function zeOver(g) {
     if (g.ride) zeLeave(g);
-    Object.assign(g, { phase: 'over', mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : g.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null, avo: null });
+    Object.assign(g, { phase: 'over', quote: zePick(ZE_LEE), mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : g.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null, avo: null });
     g.words.length = 0; g.flames.length = 0;
     const bests = zeBests(), id = zeDiff().id, today = zeDayBests();
     if (g.score > (bests[id] || 0)) { bests[id] = g.score; g.best = true; }
@@ -13116,6 +13119,8 @@ const toolName = n => {
       big('PAUSE', 400, 84);
       zeText(cx, 'P or space to go on', mid, 470, 18, '#fff3c4', 'center', 600);
     } else {
+      zeText(cx, `“${g.quote}”`, mid, 164, 18, '#fff3c4', 'center', 600);
+      zeText(cx, '— BRUCE LEE, MORE OR LESS', mid, 192, 12, '#d9c7e8', 'center', 700);
       big('K.O.', 290, 110);
       zeText(cx, 'ONLY BONES LEFT', mid, 372, 26, '#f2ead8', 'center');
       zeText(cx, g.ko, mid, 410, 20, '#fff3c4', 'center', 600);
