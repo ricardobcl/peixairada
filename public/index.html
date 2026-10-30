@@ -11938,7 +11938,16 @@ const toolName = n => {
     bifana: { name: 'BIFANA!', say: 'A MAGNET FOR MEAT', c: '#c9843f', draw(P, E) {
       E(8, 11.5, 7, 2.4, '#e3a865'); P(1, 9, 14, 2, '#8a4a2a'); P(0, 10, 1, 1, '#8a4a2a'); P(15, 9, 1, 1, '#8a4a2a');
       E(8, 7.2, 6.6, 2.8, '#c9843f'); P(5, 5, 3, 1, '#f4cf8f'); P(4, 11, 7, 1, '#e8c32a'); } } };
-  const ZE_NUN = 8;   // kicks that land to fill the nunchaku (2026-10-30, the next round)
+  const ZE_NUN = 8;
+  // the Avó da Horta (2026-10-30, the next round): every ZE_AVO_EVERY-th level a Minho grandmother leans out of a window
+  // above Trota's and throws couves at him — kick three back at her; ZE_AVO_T s at most. Her words, and her face in
+  // pixels (k her black scarf, g her grey hair, o her glasses' rims, a her shawl, r its flowers)
+  const ZE_AVO_EVERY = 5, ZE_AVO_T = 30, ZE_AVO = { x: 570, y: 588 };
+  const ZE_AVO_SAYS = ['Come a sopa, menino!', 'Uma folhinha não mata!', 'Olha que eu digo à tua mãe!', 'Verdinho faz bem!', 'Não há sobremesa sem sopa!'];
+  const ZE_AVO_FACE = ['......kkkkkkkk......', '....kkkkkkkkkkkk....', '...kkkkkkkkkkkkkk...', '..kkkkkkkkkkkkkkkk..', '..kkggggggggggggkk..',
+    '..kkgssssssssssgkk..', '..kksoeossssoeoskk..', '..kkssssSSSSsssskk..', '..kksSssssssssSskk..', '..kksssmoooomssskk..', '...kkssssssssssk...', '....kkssssssssk.....',
+    '.....kkkkkkkkkk.....', '...aaaakkkkkkaaaa...', '..aaaaaaarraaaaaaa..', '.aaaraaaaaaaaaraaaa.', '.aaaaaaaaaaaaaaaaaa.', 'aaaaraaaaaaaaaaraaaa'];
+  const ZE_AVO_PAL = { k: '#1b1b22', g: '#c8c8cc', s: '#e8b48e', S: '#c98f6d', o: '#8a7a5a', e: '#2a1f1c', m: '#8a3b3b', a: '#3a2f4a', r: '#c8322f' };   // kicks that land to fill the nunchaku (2026-10-30, the next round)
   const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once', 'the burger had lettuce'];
   // the four ways to play: how fast and how often it falls, how green it gets (at level 1, more a level, at most), how
   // far past him his mouth reaches, the points a level takes, the level food starts drifting at; HARDCORE deals from a
@@ -12015,7 +12024,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { tap: null, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12070,7 +12079,7 @@ const toolName = n => {
   }
   function zeOver(g) {
     if (g.ride) zeLeave(g);
-    Object.assign(g, { phase: 'over', mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null });
+    Object.assign(g, { phase: 'over', mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : g.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null, avo: null });
     g.words.length = 0; g.flames.length = 0;
     const bests = zeBests(), id = zeDiff().id, today = zeDayBests();
     if (g.score > (bests[id] || 0)) { bests[id] = g.score; g.best = true; }
@@ -12244,9 +12253,10 @@ const toolName = n => {
   const zeDark = g => g.dragon ? Math.min(1, (ZE_DRAGON - g.dragon) / ZE_DRAGON_IN, g.dragon / ZE_DRAGON_OUT) : 0;   // the sky's turn, 0 to 1
   function zeScore(g, n) {
     g.score += n;
-    if (g.dragon || g.score < g.next) return;
+    if (g.dragon || g.avo || g.score < g.next) return;
     g.level++; g.next += zeDiff().step;
     if (g.level === ZE_DRAGON_LEVEL) zeDragon(g, true);
+    else if (g.level % ZE_AVO_EVERY === 0) zeAvo(g);
     else { zeBanner(g, `LEVEL ${g.level}!`); zeSfx('level'); }
   }
   function zeDragon(g, on) {
@@ -12261,6 +12271,39 @@ const toolName = n => {
     for (const it of g.items) if (!it.out) zeBits(g, it.x, it.y, ['#ffd23f', '#ff7a2a', '#e43b44'], 5);   // what is left of the feast goes up in smoke
     g.items = g.items.filter(it => it.out);
     zeBanner(g, `LEVEL ${g.level}!`, 'BACK TO NORMAL', ['#ffd23f', '#a6dc5a'], 2.2); zeSfx('detransform'); zeTrack('band');
+  }
+  /** The Avó da Horta comes to her window: the house rises behind Trota's, the food stops, and she throws couves —
+   *  three in a fan, five rained from above, one straight at him —, saying so. */
+  function zeAvo(g) {
+    if (g.ride) zeLeave(g);
+    g.avo = { t: 0, hp: 3, rise: 0, next: 1.8, n: 0, say: ZE_AVO_SAYS[0], sayT: 2.4, arm: 0, hit: 0, leaving: false, won: false };
+    g.items = g.items.filter(it => it.out);
+    zeBanner(g, 'AVÓ DA HORTA!', 'KICK THREE OF HER COUVES BACK AT HER', ['#9be15d', '#ffd23f'], 2.4); zeSfx('transform');
+  }
+  function zeAvoStep(g, dt) {
+    const a = g.avo; a.t += dt; a.arm = Math.max(0, a.arm - dt); a.hit = Math.max(0, a.hit - dt); a.sayT = Math.max(0, a.sayT - dt);
+    a.rise = a.leaving ? Math.max(0, a.rise - dt / .9) : Math.min(1, a.rise + dt / .9);
+    if (a.leaving) { if (!a.rise) g.avo = null; return; }
+    if (a.t > ZE_AVO_T) { a.leaving = true; a.say = 'Amanhã há mais!'; a.sayT = 2; return; }   // she gives up for today
+    if (a.rise < 1 || (a.next -= dt) > 0) return;
+    const pattern = a.n++ % 3, from = { x: ZE_AVO.x - 18, y: ZE_AVO.y + 20 }, couve = (x, y, vx, vy, gr = 260) => g.items.push({ kind: 'veg', e: '🥬', say: 'COME A SOPA!', from: 'avo', x, y, vx, vy, g: gr, rot: 0, spin: (Math.random() - .5) * 6 });
+    if (pattern === 0) for (const d of [-1, 0, 1]) couve(from.x, from.y, (g.x - from.x) * .9 + d * 170, -260);   // a fan
+    else if (pattern === 1) for (let i = 0; i < 5; i++) couve(70 + i * 145, -30 - i * 40, 0, 60, 200);   // rained from above
+    else { const T = .9; couve(from.x, from.y, (g.x - from.x) / T, (g.y - 100 - from.y) / T - 150 * T, 300); }   // straight at him
+    a.arm = .35; a.next = 2.2 - Math.min(.8, g.level * .05);
+    if (Math.random() < .5) { a.say = zePick(ZE_AVO_SAYS); a.sayT = 1.8; }
+    zeSfx('whoosh');
+  }
+  /** One of her couves kicked back: aimed at her window, on a high arc. */
+  function zeAvoBack(it) {
+    const T = .6, gr = 900; Object.assign(it, { back: true, vx: (ZE_AVO.x - it.x) / T, vy: (ZE_AVO.y - it.y) / T - gr * T / 2, g: gr, spin: 14 });
+  }
+  function zeAvoHit(g, it) {
+    const a = g.avo; it.dead = true; a.hp--; a.hit = .4; g.shake = Math.max(g.shake, .2);
+    zeChunks(g, ZE_AVO.x, ZE_AVO.y, 'veg', 14); zeWord(g, a.hp ? 'AI!' : 'AI, ESTE MENINO!', ZE_AVO.x - 60, ZE_AVO.y - 60, '#9be15d', true); zeSfx('smash'); zeHold(g, .1, !a.hp);
+    if (a.hp) return;
+    Object.assign(a, { leaving: true, won: true, say: 'Pronto, come o que quiseres!', sayT: 2.2 });
+    zeBanner(g, 'A AVÓ DESISTE!', '+300 · EAT WHAT YOU LIKE', ['#ffd23f', '#9be15d'], 2.4); zeSfx('level'); zeScore(g, 300);
   }
   function zeStrike(g) {   // lightning, while the dragon is out
     let x = 60 + Math.random() * (ZE_W - 120), y = 20; const pts = [[x, y]];
@@ -12398,7 +12441,8 @@ const toolName = n => {
     g.smoke = g.smoke.filter(p => p.t < p.life);
     g.spawn -= g.power?.kind === 'vinho' ? dt * .45 : dt;
     if (g.power && (g.power.t -= dt) <= 0) g.power = null;
-    if (g.dragon) {
+    if (g.avo) zeAvoStep(g, dt);
+    else if (g.dragon) {
       g.dragon = Math.max(0, g.dragon - dt);
       const el = ZE_DRAGON - g.dragon;
       if (g.spawn <= 0 && el > ZE_DRAGON_IN && g.dragon > ZE_DRAGON_OUT + .8) g.spawn = .16 + zeDrop(g) * .12;   // a feast, while he is big
@@ -12425,7 +12469,10 @@ const toolName = n => {
       if (!it.out && it.vy > 0 && (it.bounces || 0) < 4) for (const p of ZE_PLATS) if (it.x >= p.l && it.x <= p.r && iy < p.y - 14 && it.y >= p.y - 14) {   // off the sign, off the awning, and off it
         Object.assign(it, { y: p.y - 14, vy: -Math.max(160, it.vy * .55), vx: it.vx + Math.sign(it.x - (p.l + p.r) / 2 || 1) * 150, bounces: (it.bounces || 0) + 1 }); zeSfx('boing'); break;
       }
-      if (it.out) { it.dead = it.y > ZE_H + 40 || it.y < -80 || it.x < -80 || it.x > ZE_W + 80; continue; }
+      if (it.out) {
+        if (it.back && g.avo && !g.avo.leaving && Math.hypot(it.x - ZE_AVO.x, it.y - ZE_AVO.y) < 46) zeAvoHit(g, it);
+        it.dead = it.dead || it.y > ZE_H + 40 || it.y < -80 || it.x < -80 || it.x > ZE_W + 80; continue;
+      }
       if (it.x < 20 || it.x > ZE_W - 20) { it.vx *= -1; it.x = Math.max(20, Math.min(ZE_W - 20, it.x)); }
       if (it.miracle && it.kind === 'meat' && it.y >= it.miracle && !it.stood) {   // the miracle: it stops, stands up and crows…
         Object.assign(it, { stood: .9, vx: 0, vy: 0, g: 0, spin: 0 }); zeWord(g, 'CÓCÓRÓCÓCÓ!', it.x, it.y - 40, '#ffd23f', true); zeSfx('galo');
@@ -12435,6 +12482,7 @@ const toolName = n => {
       }
       if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
+        if (it.from === 'avo' && g.avo && !g.avo.leaving) zeAvoBack(it);   // hers go back to her
         zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); g.nun = Math.min(ZE_NUN, g.nun + 1); zeScore(g, 5);
         continue;
       }
@@ -12472,7 +12520,9 @@ const toolName = n => {
     if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {   // lightning, the dragon's or the storm's
       cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
     }
-    layers(false, true, true);
+    layers(false, true, false);
+    if (g.avo) zeAvoHouse(cx, g, calm);
+    layers(false, false, true);
     zeBulbs(cx, g);
     if (dark) {   // the dragon's sky, darker still
       cx.fillStyle = `rgba(70, 0, 24, ${.4 * dark})`; cx.fillRect(0, 0, ZE_W, ZE_FLOOR);
@@ -12539,6 +12589,32 @@ const toolName = n => {
     }
     if (g.phase !== 'play') zeCard(cx, g);
     if (g.phase === 'title') zeHero(cx, g);
+  }
+  /** The house above Trota's, risen behind it while the Avó da Horta is out: a granite front, a window with its green
+   *  shutters open, geraniums on the sill, and her in it — throwing, hit, and what she says. */
+  function zeAvoHouse(cx, g, calm) {
+    const a = g.avo, top = 704 - 162 * (1 - (1 - a.rise) ** 2), K = '#1b0b2e', wx = ZE_AVO.x - 38, wy = top + 14;
+    cx.fillStyle = K; cx.fillRect(468, top - 4, 204, 712 - top); cx.fillStyle = '#d8cdb8'; cx.fillRect(472, top, 196, 712 - top);
+    cx.fillStyle = '#7a4630'; cx.fillRect(464, top - 10, 212, 8);   // the eaves
+    for (let y = top + 12; y < 700; y += 14) { cx.fillStyle = 'rgba(120, 100, 80, .18)'; cx.fillRect(472, y, 196, 1.5); }   // granite courses
+    cx.fillStyle = K; cx.fillRect(wx - 4, wy - 4, 84, 82); cx.fillStyle = '#2a1d24'; cx.fillRect(wx, wy, 76, 74);   // the window, dark inside
+    for (const sx of [wx - 34, wx + 78]) { cx.fillStyle = K; cx.fillRect(sx - 2, wy - 4, 36, 82); cx.fillStyle = '#2f8f4e'; cx.fillRect(sx, wy - 2, 32, 78); cx.fillStyle = '#24643a'; for (let y = wy + 4; y < wy + 74; y += 8) cx.fillRect(sx + 3, y, 26, 3); }
+    // her, from her waist up — leaning out, flinching when hit
+    const p = 2.6, hx = ZE_AVO.x - 10 * p + (a.hit > 0 && !calm ? Math.sin(a.hit * 60) * 4 : 0), hy = wy + 8;
+    ZE_AVO_FACE.forEach((row, r) => { for (let i = 0; i < row.length; i++) {
+      const ch = row[i]; if (ch === '.') continue;
+      cx.fillStyle = a.hit > 0 && ch === 's' ? '#9be15d' : ZE_AVO_PAL[ch]; cx.fillRect(hx + i * p, hy + r * p, p + .2, p + .2);
+    } });
+    if (a.arm > 0) { cx.fillStyle = ZE_AVO_PAL.a; cx.fillRect(hx + 17 * p, hy + 3 * p, 3 * p, 12 * p); cx.fillStyle = ZE_AVO_PAL.s; cx.fillRect(hx + 17 * p, hy, 3 * p, 3 * p); }   // her arm up, throwing
+    cx.fillStyle = '#7a4630'; cx.fillRect(wx - 8, wy + 70, 92, 8);   // the sill, its geraniums
+    for (let i = 0; i < 5; i++) { cx.fillStyle = '#2f8f3a'; cx.fillRect(wx - 2 + i * 18, wy + 60, 12, 10); cx.fillStyle = '#e8322f'; cx.fillRect(wx + 1 + i * 18, wy + 56, 6, 6); }
+    for (let i = 0; i < 3; i++) { cx.fillStyle = i < a.hp ? '#e8322f' : 'rgba(255, 255, 255, .25)'; cx.fillRect(ZE_AVO.x - 26 + i * 20, top - 30, 14, 10); }   // her patience
+    if (a.sayT > 0) {   // what she says
+      cx.font = 'italic 800 15px Futura, "Avenir Next Condensed", system-ui, sans-serif'; const w = cx.measureText(a.say).width + 24, bx = Math.max(12, ZE_AVO.x - 60 - w), by = top + 4;
+      cx.fillStyle = K; cx.beginPath(); cx.roundRect(bx - 2, by - 2, w + 4, 34, 10); cx.fill(); cx.fillStyle = '#fff6e0'; cx.beginPath(); cx.roundRect(bx, by, w, 30, 9); cx.fill();
+      cx.beginPath(); cx.moveTo(bx + w - 6, by + 10); cx.lineTo(bx + w + 14, by + 22); cx.lineTo(bx + w - 6, by + 22); cx.fill();
+      cx.fillStyle = K; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(a.say, bx + 12, by + 16);
+    }
   }
   /** The nunchaku in his front fist, spinning while space is held: a stick held, its chain, the other stick round it. */
   function zeNunchaku(cx, g, calm) {
