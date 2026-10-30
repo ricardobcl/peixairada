@@ -11938,6 +11938,7 @@ const toolName = n => {
     bifana: { name: 'BIFANA!', say: 'A MAGNET FOR MEAT', c: '#c9843f', draw(P, E) {
       E(8, 11.5, 7, 2.4, '#e3a865'); P(1, 9, 14, 2, '#8a4a2a'); P(0, 10, 1, 1, '#8a4a2a'); P(15, 9, 1, 1, '#8a4a2a');
       E(8, 7.2, 6.6, 2.8, '#c9843f'); P(5, 5, 3, 1, '#f4cf8f'); P(4, 11, 7, 1, '#e8c32a'); } } };
+  const ZE_NUN = 8;   // kicks that land to fill the nunchaku (2026-10-30, the next round)
   const ZE_KO = ['too many greens', 'a salad got him', 'vegan for a day', 'the broccoli won', 'five a day, all at once', 'the burger had lettuce'];
   // the four ways to play: how fast and how often it falls, how green it gets (at level 1, more a level, at most), how
   // far past him his mouth reaches, the points a level takes, the level food starts drifting at; HARDCORE deals from a
@@ -12012,7 +12013,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = phase => ({ phase, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
   const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -12081,6 +12082,22 @@ const toolName = n => {
     const focus = g.ride.kind === 'focus';   // in a car the key is its horn
     zeSfx(focus ? 'beep' : 'meep'); zeWord(g, focus ? 'BEEP BEEP!' : 'meep…', g.x, g.y - 200 * zeSz(g), '#fff3c4');
   }
+  /** The nunchaku (2026-10-30, the next round): kicks that land fill it (g.nun); full, space held and let go — the
+   *  pointer too — and it sweeps every green off the screen, five each. Not from a car. */
+  function zeLetGo(g) {
+    const held = g.holdAt == null ? 0 : g.t - g.holdAt; g.holdAt = null;
+    if (g.phase !== 'play' || g.nun < ZE_NUN || held < .3 || g.ride) return;
+    const greens = g.items.filter(it => it.kind === 'veg' && !it.out);
+    for (const it of greens) {
+      const f = Math.sign(it.x - g.x) || 1;
+      Object.assign(it, { out: true, vx: f * (500 + Math.random() * 300), vy: -420 - Math.random() * 200, spin: f * 16, g: 900 });
+      zeChunks(g, it.x, it.y, 'veg', 8);
+    }
+    Object.assign(g, { nun: 0, sweep: .35, shake: Math.max(g.shake, .25) }); zeHold(g, .14, true);
+    zeBanner(g, 'NUNCHAKU!', greens.length ? `${greens.length} GREEN${greens.length === 1 ? '' : 'S'} SWEPT OFF THE SCREEN` : 'NOT A GREEN IN SIGHT', ['#ffd23f', '#ff5a64'], 1.6);
+    zeSfx('whoosh'); zeSfx('smash'); zeScore(g, greens.length * 5);
+    return greens.length;
+  }
   function zeJump(g) { if (g.phase !== 'play' || g.y < ZE_FLOOR || g.ride) return; g.vy = -560; zeSquash(g, 'jump', .16); zeSfx('jump'); }
   /** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
   const zeSquash = (g, k, d) => { g.sq = { k, t: d, d }; };
@@ -12110,7 +12127,7 @@ const toolName = n => {
     take(); if (e.repeat) return;   // a key held down is one kick
     if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {});   // a press may start it
     if (k === 'Space' || k === 'Enter') {
-      if (g.phase === 'play') zeKick(g); else if (g.phase === 'pause') zePause(false); else if (g.phase === 'title') zeStart();
+      if (g.phase === 'play') { zeKick(g); g.holdAt = g.t; } else if (g.phase === 'pause') zePause(false); else if (g.phase === 'title') zeStart();
       else if (g.overT > .8) { if (g.sel) zeMenu(); else zeStart(); }   // not at once: a kick held at the K.O. is no new round
     }
     else if (k === 'ArrowUp' || k === 'KeyW') zeJump(g);
@@ -12118,7 +12135,7 @@ const toolName = n => {
     else if (k === 'KeyT') zeTune();
     else zeMute();
   });
-  $('#zeGame').addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0; if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0; });
+  $('#zeGame').addEventListener('keyup', e => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0; if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0; if (e.code === 'Space' || e.code === 'Enter') zeLetGo(ze.g); });
   $('#zeCanvas').addEventListener('pointermove', e => { ze.aim = e.offsetX / e.currentTarget.clientWidth * ZE_W; });
   $('#zeCanvas').addEventListener('pointerleave', () => { ze.aim = null; });
   $('#zeCanvas').addEventListener('pointerdown', e => {
@@ -12126,8 +12143,9 @@ const toolName = n => {
     const g = ze.g, x = e.offsetX / e.currentTarget.clientWidth * ZE_W, y = e.offsetY / e.currentTarget.clientHeight * ZE_H;
     if (g.phase === 'title') { const b = zeDiffButtons().find(b => zeIn(b, x, y)); if (b) zeSetDiff(b.i); else zeStart(); }
     else if (g.phase === 'over') { if (g.overT > .8) { if (zeOverButtons().find(b => zeIn(b, x, y))?.id === 'menu') zeMenu(); else zeStart(); } }
-    else if (g.phase === 'play') zeKick(g); else zePause(false);
+    else if (g.phase === 'play') { zeKick(g); g.holdAt = g.t; } else zePause(false);
   });
+  $('#zeCanvas').addEventListener('pointerup', e => { if (e.button === 0) zeLetGo(ze.g); });
   $('#zeGame').addEventListener('click', e => {   // the backdrop — not the gap between the picture and its foot
     const r = e.currentTarget.getBoundingClientRect();
     if (e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) e.currentTarget.close();
@@ -12298,7 +12316,7 @@ const toolName = n => {
     g.bits = g.bits.filter(b => b.t < b.life);
     for (const f of g.flames) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; }
     g.flames = g.flames.filter(f => f.t < f.life);
-    for (const n of ['shake', 'chomp', 'kick', 'flash', 'red', 'punch', 'flex', 'gold']) g[n] = Math.max(0, g[n] - dt);
+    for (const n of ['shake', 'chomp', 'kick', 'flash', 'red', 'punch', 'flex', 'gold', 'sweep']) g[n] = Math.max(0, g[n] - dt);
     g.pump -= Math.sign(g.pump) * Math.min(Math.abs(g.pump), dt);   // a pump or a sag, easing back
     if (g.sq && (g.sq.t -= dt) <= 0) g.sq = null;
     if (g.banner && (g.banner.t -= dt) <= 0) g.banner = null;
@@ -12374,7 +12392,7 @@ const toolName = n => {
       }
       if (it.kind === 'veg' && foot && zeTouch(it, foot, 22)) {   // WATAAA: out of the sky — or, one kick in six, its other name
         Object.assign(it, { out: true, vx: g.f * (420 + Math.random() * 220), vy: -360 - Math.random() * 120, spin: g.f * 14, g: 900 });
-        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); zeScore(g, 5);
+        zeWord(g, Math.random() < 1 / 6 ? 'KRAV MAGA!' : 'WATAAA!', it.x, it.y - 20, '#ffd23f', true); zeChunks(g, it.x, it.y, 'veg', 12); zeSfx('smash'); zeHold(g, .07); g.nun = Math.min(ZE_NUN, g.nun + 1); zeScore(g, 5);
         continue;
       }
       if (it.kind === 'peixe' && (zeTouch(it, mouth, 30) || it.y >= ZE_FLOOR - 30)) {   // the board's fish is let go, not eaten: it swims off
@@ -12451,6 +12469,10 @@ const toolName = n => {
         g.trail.slice(1, 5).forEach((p, i) => { cx.save(); cx.globalAlpha = .26 - i * .06; cx.translate(p.x - g.x, p.y - g.y); him(); cx.restore(); });
       }
       him();
+      if (g.holdAt != null && g.nun >= ZE_NUN && !g.ride && g.t - g.holdAt > .12) zeNunchaku(cx, g, calm);
+      if (g.sweep > 0) {   // the sweep: an arc round him, fading
+        cx.strokeStyle = `rgba(255, 243, 196, ${g.sweep * 2})`; cx.lineWidth = 10; cx.beginPath(); cx.arc(g.x, g.y - 90 * zeSz(g), 150 + (.35 - g.sweep) * 500, 0, Math.PI * 2); cx.stroke();
+      }
     }
     for (const b of g.bits) {
       cx.globalAlpha = 1 - b.t / b.life; cx.fillStyle = b.c;
@@ -12474,6 +12496,16 @@ const toolName = n => {
     }
     if (g.phase !== 'play') zeCard(cx, g);
     if (g.phase === 'title') zeHero(cx, g);
+  }
+  /** The nunchaku in his front fist, spinning while space is held: a stick held, its chain, the other stick round it. */
+  function zeNunchaku(cx, g, calm) {
+    const k = zeSz(g), hx = g.x + g.f * 34 * k, hy = g.y - 100 * k, a = calm ? -.6 : g.t * 24, L = 34 * k;
+    const stick = (x0, y0, x1, y1) => { for (const [w, c] of [[9, '#1b0b2e'], [5, '#a0522d']]) { cx.strokeStyle = c; cx.lineWidth = w; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x1, y1); cx.stroke(); } };
+    const ex = hx + g.f * 10 * k, ey = hy - 18 * k, cx2 = ex + Math.cos(a) * 12 * k, cy2 = ey + Math.sin(a) * 12 * k;
+    stick(hx, hy, ex, ey);
+    cx.strokeStyle = '#c8ccd2'; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(ex, ey); cx.lineTo(cx2, cy2); cx.stroke();
+    stick(cx2, cy2, cx2 + Math.cos(a) * L, cy2 + Math.sin(a) * L);
+    if (!calm) { cx.strokeStyle = 'rgba(255, 243, 196, .35)'; cx.lineWidth = 3; cx.beginPath(); cx.arc(ex, ey, L + 12 * k, a - 1.2, a); cx.stroke(); }   // its blur
   }
   function zeText(cx, s, x, y, size, fill, align = 'left', weight = 800) {
     cx.font = `italic ${weight} ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`;
@@ -12592,6 +12624,9 @@ const toolName = n => {
     }
     zeText(cx, `${D.name} · LEVEL ${g.level}`, ZE_W - 20, 62, 15, D.c, 'right');
     if (thin) zeText(cx, 'SKIN AND BONES!', ZE_W - 20, 86, 14, '#ff5a64', 'right');
+    const full = g.nun >= ZE_NUN;   // the nunchaku's meter, under his score
+    zeText(cx, full ? 'NUNCHAKU! HOLD SPACE' : 'NUNCHAKU', 20, 92, 13, full ? (zeBlink(g, 4) ? '#ffd23f' : '#ff5a64') : '#d9c7e8');
+    if (!full) for (let i = 0; i < ZE_NUN; i++) { cx.fillStyle = '#1b0b2e'; cx.fillRect(108 + i * 11, 85, 9, 14); cx.fillStyle = i < g.nun ? '#ffd23f' : 'rgba(255, 255, 255, .12)'; cx.fillRect(109.5 + i * 11, 86.5, 6, 11); }
     if (g.agent) {   // AGENT ZÉ's stamp
       cx.save(); cx.translate(ZE_W / 2, 66); cx.rotate(-.08);
       cx.strokeStyle = '#e43b44'; cx.lineWidth = 3; cx.strokeRect(-74, -15, 148, 30);
