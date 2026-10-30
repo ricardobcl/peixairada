@@ -11991,7 +11991,7 @@ const toolName = n => {
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '' });
-  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), bg: null, keys: { l: 0, r: 0 }, aim: null, music: null };
+  const ze = { g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
   const zeLabels = () => { $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off'; $('#zeTune').textContent = prefs.zeBand === 'vira' ? '♪ vira de Barcelos' : '♪ funk'; };
@@ -12004,7 +12004,7 @@ const toolName = n => {
     zeSize(); zeGo();
   }
   function zeToggle() { if ($('#zeGame').open) $('#zeGame').close(); else zeOpen(); }   // a declaration: HOTKEYS names it before this line runs
-  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); repostPane(); });
+  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); ze.scene = null; repostPane(); });   // the scene's canvases go with it
   function zeGo() { if (!ze.raf) { ze.at = 0; ze.raf = requestAnimationFrame(zeTick); } }
   function zeStop() { cancelAnimationFrame(ze.raf); ze.raf = 0; }
   function zeTick(now) {
@@ -12017,7 +12017,7 @@ const toolName = n => {
   function zeSize() {
     const c = $('#zeCanvas'), w = Math.round(c.clientWidth * (devicePixelRatio || 1)) || ZE_W, h = Math.round(w * ZE_H / ZE_W);
     if (c.width === w && c.height === h) return;
-    c.width = w; c.height = h; ze.bg = null;
+    c.width = w; c.height = h; ze.scene = null;
     if ($('#zeGame').open && !ze.raf) zeDraw();
   }
   new ResizeObserver(zeSize).observe($('#zeCanvas'));
@@ -12328,7 +12328,10 @@ const toolName = n => {
     const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W, calm = zeCalm(), dark = zeDark(g);
     cx.setTransform(k, 0, 0, k, 0, 0);
     if (g.punch > 0 && !calm) { const z = 1 + .07 * g.punch / .2, hy = g.y - 100; cx.translate(g.x, hy); cx.scale(z, z); cx.translate(-g.x, -hy); }   // a combo's camera punch
-    cx.drawImage(zeBackdrop(c), 0, 0, ZE_W, ZE_H);
+    const L = zeScene(c), u = ZE_W / c.width;
+    cx.drawImage(L.sky, 0, 0, ZE_W, L.sky.height * u);
+    zeTown(cx, L.P, (ZE_W / 2 - g.x) * .05);
+    cx.drawImage(L.front, 0, ZE_FRONT, ZE_W, L.front.height * u);
     zeBulbs(cx, g);
     if (dark) {   // the dragon's sky, and its lightning
       cx.fillStyle = `rgba(70, 0, 24, ${.55 * dark})`; cx.fillRect(0, 0, ZE_W, ZE_FLOOR);
@@ -12636,45 +12639,75 @@ const toolName = n => {
     cx.lineWidth = 3; cx.strokeStyle = edge; cx.strokeText(s, x * f, -46); cx.fillStyle = ink; cx.fillText(s, x * f, -46);
     cx.restore();
   }
-  /** The scene behind, drawn once per size: the night coming down over the stars and a moon, a striped sun going down
-   *  over the Minho's hills, Trota's and the rooster on its plinth, and a floor of azulejos. */
-  function zeBackdrop(c) {
-    if (ze.bg?.width === c.width && ze.bg.height === c.height) return ze.bg;
-    const b = ze.bg = document.createElement('canvas'); b.width = c.width; b.height = c.height;
-    const x = b.getContext('2d'); x.scale(c.width / ZE_W, c.width / ZE_W);
-    const sky = x.createLinearGradient(0, 0, 0, ZE_FLOOR);
-    sky.addColorStop(0, '#120826'); sky.addColorStop(.32, '#2a0f4f'); sky.addColorStop(.7, '#b8306b'); sky.addColorStop(1, '#ff9a3d');
+  /** The scene behind, in layers (2026-10-30, the next round): the sky — the night coming down over the stars and a moon,
+   *  a striped sun going down —, Barcelos on the horizon (zeTown, each frame, shifting a little against his run), then
+   *  the Minho's hills, Trota's and the rooster on its plinth, and a floor of azulejos from ZE_FRONT down. The sky and
+   *  the front are drawn once per size (ze.scene), each in a canvas of its own. A sky's look is ZE_SKY's. */
+  const ZE_FRONT = 636;
+  const ZE_SKY = { stops: ['#120826', '#2a0f4f', '#b8306b', '#ff9a3d'], hills: ['#5a1f63', '#36164a'], town: '#41195a', lit: 0, stars: 90, moon: 'crescent',
+    sun: { x: 400, y: 790, r: 150, a: '#ffe45c', b: '#ff5e5b', bands: true } };
+  function zeScene(c) {
+    if (ze.scene?.w === c.width) return ze.scene;
+    const P = ZE_SKY, layer = (top, h) => {
+      const b = document.createElement('canvas'), k = c.width / ZE_W; b.width = c.width; b.height = Math.ceil(h * k);
+      const x = b.getContext('2d'); x.scale(k, k); x.translate(0, -top); return [b, x];
+    };
+    const [skyC, x] = layer(0, ZE_FLOOR);
+    const sky = x.createLinearGradient(0, 0, 0, ZE_FLOOR); P.stops.forEach((col, i) => sky.addColorStop([0, .32, .7, 1][i], col));
     x.fillStyle = sky; x.fillRect(0, 0, ZE_W, ZE_FLOOR);
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;   // the same stars every time
-    for (let i = 0; i < 90; i++) { const sy = rnd() ** 1.6 * 420; x.globalAlpha = .25 + .75 * (1 - sy / 420) * rnd(); x.fillStyle = '#fff6e0'; x.fillRect(rnd() * ZE_W, sy, rnd() < .15 ? 2 : 1.2, rnd() < .15 ? 2 : 1.2); }
+    for (let i = 0; i < P.stars; i++) { const sy = rnd() ** 1.6 * 420; x.globalAlpha = .25 + .75 * (1 - sy / 420) * rnd(); x.fillStyle = '#fff6e0'; x.fillRect(rnd() * ZE_W, sy, rnd() < .15 ? 2 : 1.2, rnd() < .15 ? 2 : 1.2); }
     x.globalAlpha = 1;
-    x.fillStyle = '#fff3c4'; x.beginPath(); x.arc(118, 132, 26, 0, Math.PI * 2); x.fill();   // a new moon's crescent, the sky cut out of it
-    x.fillStyle = sky; x.beginPath(); x.arc(130, 124, 24, 0, Math.PI * 2); x.fill();
-    const sun = x.createLinearGradient(0, 640, 0, 900);
-    sun.addColorStop(0, '#ffe45c'); sun.addColorStop(1, '#ff5e5b');
-    x.save(); x.beginPath(); x.arc(400, 790, 150, 0, Math.PI * 2); x.clip();
-    x.fillStyle = sun; x.fillRect(250, 640, 300, 300);
-    x.fillStyle = sky; for (let i = 0; i < 6; i++) x.fillRect(250, 730 + i * 18, 300, 2 + i * 2);
-    x.restore();
+    if (P.moon === 'crescent') {   // a new moon's crescent, the sky cut out of it
+      x.fillStyle = '#fff3c4'; x.beginPath(); x.arc(118, 132, 26, 0, Math.PI * 2); x.fill();
+      x.fillStyle = sky; x.beginPath(); x.arc(130, 124, 24, 0, Math.PI * 2); x.fill();
+    }
+    if (P.sun) {
+      const S = P.sun, sun = x.createLinearGradient(0, S.y - S.r, 0, S.y + S.r); sun.addColorStop(0, S.a); sun.addColorStop(1, S.b);
+      x.save(); x.beginPath(); x.arc(S.x, S.y, S.r, 0, Math.PI * 2); x.clip();
+      x.fillStyle = sun; x.fillRect(S.x - S.r, S.y - S.r, S.r * 2, S.r * 2);
+      if (S.bands) { x.fillStyle = sky; for (let i = 0; i < 6; i++) x.fillRect(S.x - S.r, S.y - 60 + i * 18, S.r * 2, 2 + i * 2); }
+      x.restore();
+    }
+    const [front, y] = layer(ZE_FRONT, ZE_H - ZE_FRONT);
     const hills = (col, base, amp, step, ph) => {
-      x.fillStyle = col; x.beginPath(); x.moveTo(0, ZE_FLOOR);
-      for (let i = 0; i <= ZE_W; i += 10) x.lineTo(i, base - amp * (Math.sin(i / step + ph) * .6 + Math.sin(i / (step * .37) + ph * 2) * .4));
-      x.lineTo(ZE_W, ZE_FLOOR); x.fill();
+      y.fillStyle = col; y.beginPath(); y.moveTo(0, ZE_FLOOR);
+      for (let i = 0; i <= ZE_W; i += 10) y.lineTo(i, base - amp * (Math.sin(i / step + ph) * .6 + Math.sin(i / (step * .37) + ph * 2) * .4));
+      y.lineTo(ZE_W, ZE_FLOOR); y.fill();
     };
-    hills('#5a1f63', 776, 30, 90, 1); hills('#36164a', 810, 20, 60, 4);
-    zeRestaurant(x);
-    zeGaloArt(x, 110, ZE_FLOOR, 1.35);
-    x.fillStyle = '#1b0b2e'; x.fillRect(0, ZE_FLOOR, ZE_W, 3);
+    hills(P.hills[0], 776, 30, 90, 1); hills(P.hills[1], 810, 20, 60, 4);
+    zeRestaurant(y);
+    zeGaloArt(y, 110, ZE_FLOOR, 1.35);
+    y.fillStyle = '#1b0b2e'; y.fillRect(0, ZE_FLOOR, ZE_W, 3);
     for (let row = 0; row < 2; row++) for (let col = 0; col * 29 < ZE_W; col++) {   // azulejos: a blue rosette at every corner
       const tx = col * 29, ty = ZE_FLOOR + 3 + row * 29;
-      x.fillStyle = row ? '#d9d2e6' : '#ece6f4'; x.fillRect(tx, ty, 29, 29);
-      x.fillStyle = '#2b4fa8';
-      for (const [cx2, cy2] of [[0, 0], [29, 0], [0, 29], [29, 29]]) { x.beginPath(); x.arc(tx + cx2, ty + cy2, 8, 0, Math.PI * 2); x.fill(); }
-      x.beginPath(); x.moveTo(tx + 14.5, ty + 8); x.lineTo(tx + 21, ty + 14.5); x.lineTo(tx + 14.5, ty + 21); x.lineTo(tx + 8, ty + 14.5); x.fill();
+      y.fillStyle = row ? '#d9d2e6' : '#ece6f4'; y.fillRect(tx, ty, 29, 29);
+      y.fillStyle = '#2b4fa8';
+      for (const [cx2, cy2] of [[0, 0], [29, 0], [0, 29], [29, 29]]) { y.beginPath(); y.arc(tx + cx2, ty + cy2, 8, 0, Math.PI * 2); y.fill(); }
+      y.beginPath(); y.moveTo(tx + 14.5, ty + 8); y.lineTo(tx + 21, ty + 14.5); y.lineTo(tx + 14.5, ty + 21); y.lineTo(tx + 8, ty + 14.5); y.fill();
     }
-    const dusk = x.createLinearGradient(0, ZE_FLOOR, 0, ZE_H); dusk.addColorStop(0, 'rgba(60, 20, 80, .25)'); dusk.addColorStop(1, 'rgba(30, 8, 45, .6)');
-    x.fillStyle = dusk; x.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
-    return b;
+    const dusk = y.createLinearGradient(0, ZE_FLOOR, 0, ZE_H); dusk.addColorStop(0, 'rgba(60, 20, 80, .25)'); dusk.addColorStop(1, 'rgba(30, 8, 45, .6)');
+    y.fillStyle = dusk; y.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
+    return ze.scene = { w: c.width, sky: skyC, front, P };
+  }
+  /** Barcelos across the Cávado, one silhouette between the sun and the hills (2026-10-30, the next round): houses, the
+   *  Torre da Porta Nova, the Igreja Matriz and its tower, the Paço dos Condes' ruin and its chimneys, the dome of Bom
+   *  Jesus da Cruz — its windows lit after dark. ox: how far it has shifted. */
+  const ZE_HOUSES = [[146, 26, 40, 11], [174, 30, 52, 12], [244, 18, 62, 8], [344, 8, 56, 5], [410, 13, 58, 7], [478, 22, 50, 9], [540, 16, 60, 8]];
+  const ZE_LIT = [[220, 662, 4, 7], [229, 704, 4, 7], [330, 678, 3, 6], [336, 678, 3, 6], [160, 760, 4, 4], [186, 750, 4, 4], [196, 750, 4, 4], [252, 744, 4, 4], [432, 732, 3, 6], [456, 732, 3, 6], [414, 756, 3, 4], [492, 756, 4, 4], [560, 760, 4, 4]];
+  function zeTown(x, P, ox) {
+    x.save(); x.translate(ox, 0); x.fillStyle = P.town;
+    const base = 792;
+    for (const [hx, w, h, r] of ZE_HOUSES) { x.fillRect(hx, base - h, w, h); x.beginPath(); x.moveTo(hx - 2, base - h); x.lineTo(hx + w / 2, base - h - r); x.lineTo(hx + w + 2, base - h); x.fill(); }
+    x.fillRect(206, 642, 36, 150); x.fillRect(202, 636, 44, 7); for (let i = 0; i < 4; i++) x.fillRect(202 + i * 12.3, 626, 7, 11);   // the Torre da Porta Nova
+    x.fillRect(262, 712, 58, 80); x.beginPath(); x.moveTo(258, 713); x.lineTo(291, 688); x.lineTo(324, 713); x.fill();   // the Igreja Matriz…
+    x.fillRect(322, 662, 22, 130); x.beginPath(); x.moveTo(319, 663); x.lineTo(333, 644); x.lineTo(347, 663); x.fill();   // …and its tower
+    x.beginPath(); for (const [a, b] of [[352, 792], [352, 718], [361, 718], [361, 708], [373, 708], [373, 724], [386, 724], [386, 704], [398, 704], [398, 720], [410, 720], [410, 792]]) x.lineTo(a, b); x.fill();   // the Paço dos Condes
+    x.fillRect(364, 674, 7, 36); x.fillRect(362, 670, 11, 5); x.fillRect(391, 668, 7, 38); x.fillRect(389, 664, 11, 5);   // its chimneys
+    x.fillRect(422, 702, 46, 90); x.beginPath(); x.arc(445, 703, 23, Math.PI, 0); x.fill();   // Bom Jesus da Cruz
+    x.fillRect(441, 670, 8, 14); x.beginPath(); x.arc(445, 671, 5, Math.PI, 0); x.fill(); x.fillRect(444, 654, 2, 12); x.fillRect(441, 658, 8, 2);
+    if (P.lit) { x.fillStyle = P.litc || '#ffd77a'; x.globalAlpha = P.lit; for (const [wx, wy, w, h] of ZE_LIT) x.fillRect(wx, wy, w, h); x.beginPath(); x.arc(291, 728, 4, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; }
+    x.restore();
   }
   /** Trota's (2026-10-30, later): the restaurant of the 8-bit game this one learnt from, behind him at the right — a
    *  cornice, wall lamps, a striped awning, warm windows with their tables, a green door, azulejos at its foot, its sign
