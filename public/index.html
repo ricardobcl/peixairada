@@ -1127,6 +1127,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-alt] .act:hover:has(.fx) .tk:not(.fx), .act.fg .tk:not(.fx) { display: none; }
   :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
   .act.tk.fg { color: #fff; background: var(--needs); }
+  /* A watching chat's ✓ armed by a first click (tickGate, 2026-10-31): it says what Done ends, in the attention colour,
+     and a second click ticks — or it lets go after ARM_MS */
+  .act.armed, .act.armed:hover { opacity: 1; display: inline-flex; align-items: center; width: auto; min-width: 0; max-width: 62%; gap: 4px; padding: 0 7px 0 5px; color: var(--needs); background: color-mix(in srgb, var(--needs) 14%, transparent); }
+  .act.armed .tk { flex: none; }
+  .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
   :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
@@ -2511,6 +2516,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .pkrow .pkdone { width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-lg); line-height: 1; cursor: pointer; opacity: 0; display: inline-grid; place-items: center; }
   .pkrow:hover button.pkdone, .pkrow.sel button.pkdone, .pkrow button.pkdone:focus-visible { opacity: .7; }
   .pkrow button.pkdone:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .pkrow button.pkdone.armed { opacity: 1; color: var(--needs); background: color-mix(in srgb, var(--needs) 14%, transparent); }   /* asks once more (tickGate) */
   #picklist .none { padding: 12px; color: var(--muted); font-size: var(--fs-sm); text-align: center; }
   dialog h3 { margin: 0 0 10px; font-size: var(--fs-lg); }
   dialog p.help { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--muted); }
@@ -4544,13 +4550,22 @@ const toolName = n => {
   // begin with (2026-10-12: the board had 106 ready chats, 77 of them untouched for a week). A PR at your move and a
   // reply the board has not shown you were lanes of their own above Clauding that morning, and are a filter of the
   // list since (FILTERS): the main view is the clauding chats first and the rest by their last word.
-  const RANK = { asking: 0, working: 1, ready: 2, idle: 3, done: 4 };
+  // Watching after Clauding (2026-10-31, round XIII): a chat with work out behind the turn — a monitor, a command left
+  // running — is a rank of its own, the counts still `bucket()`'s.
+  const RANK = { asking: 0, working: 1, watching: 2, ready: 3, idle: 4, done: 5 };
   const IDLE_DAYS = 3;   // the days before today a chat stays Ready
   const yourMove = s => !s.forGood && (s.prs || []).some(p => p.turn?.you && (p.state === 'open' || p.state === 'draft' || !p.state));
   // a reply after the board last showed the chat (`seenAt`, the server's, kept in its state file)
   const replied = s => !!s.seenAt && !!s.lastReplyAt && s.lastReplyAt >= (s.lastUserAt || '') && s.lastReplyAt > s.seenAt;
   const idleSince = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - IDLE_DAYS); return d.toISOString(); };
-  const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : b !== 'ready' ? b : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
+  // Watching, whatever its age: a live claude with work out behind the turn, nothing more pressing — a question beats a
+  // watch, work beats it too, as the ring ranks them; but a turn the chat's own task notice woke (the server's `woken`)
+  // stays, so a chatty monitor does not bounce the card a lane on every event. Your word or the last task ending moves it.
+  const inWatch = s => !s.done && s.alive && (s.tasks?.length || 0) > 0 && (s.status !== 'working' || (s.woken && !s.agents));
+  const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : inWatch(s) ? 'watching' : b !== 'ready' ? b : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
+  // What Done would end on a watching chat — the ✓ names it and asks once more (tickGate) —, or ''.
+  const watchEnds = s => !inWatch(s) ? '' : (s.tasks || []).map(t => `${t.kind === 'monitor' ? 'monitor' : 'running'}${t.what ? ` · ${t.what}` : ''}`).join(' and ');
+  const tickArmed = new Map(), armedOn = id => (tickArmed.get(id) || 0) > performance.now();   // chat id → until when its ✓ is armed
   // The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the chats with a PR at your
   // move — clauding ones too, the PR waits on you all the same — or the ready ones with a new reply. Done chats never.
   const FILTERS = {
@@ -4686,7 +4701,7 @@ const toolName = n => {
   // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Idle · Done — with its mark and
   // how many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match,
   // none; under a filter, which shows every match, a head that does not fold (`still`).
-  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
+  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
   // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
@@ -5619,8 +5634,11 @@ const toolName = n => {
     const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     // ⌥-click is done for good (2026-10-11): the chat's PRs are forgotten — a move on one no longer brings it back
+    // …a watching chat's says what Done would end, once armed by a first click (tickGate, 2026-10-31)
+    const ends = !s.done && canTick(s) ? watchEnds(s) : '', armed = ends && armedOn(s.id);
     const act = s.done ? `<button class="act" data-act="reopen" title="${s.forGood ? 'Done for good — its PRs no longer bring it back. Untick to bring it back' : 'Untick — bring it back'}">↩</button>`
-      : canTick(s) ? `<button class="act" data-act="done" title="${s.prs?.length ? 'Tick as done — it comes back on new activity, or when one of its PRs comes round to you. ⌥-click: done for good, its PRs forgotten' : 'Tick as done (persisted; comes back on new activity)'}">${ICON.tick}${s.prs?.length ? ICON.forget : ''}</button>` : '';
+      : armed ? `<button class="act armed" data-act="done" title="${esc(`Done ends its watch — ${ends}. Click ✓ again to tick it done`)}">${ICON.tick}${s.prs?.length ? ICON.forget : ''}<span class="aw">ends ${esc(ends)}</span></button>`
+      : canTick(s) ? `<button class="act" data-act="done" title="${ends ? esc(`Tick as done — it ends its watch: ${ends}, so it asks once more`) : s.prs?.length ? 'Tick as done — it comes back on new activity, or when one of its PRs comes round to you. ⌥-click: done for good, its PRs forgotten' : 'Tick as done (persisted; comes back on new activity)'}">${ICON.tick}${s.prs?.length ? ICON.forget : ''}</button>` : '';
     // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
     // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
@@ -5634,7 +5652,7 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${teamSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -5948,7 +5966,7 @@ const toolName = n => {
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
       // ✓ ticks the chat done from here (2026-09-28): the card's rule and route, and the row goes when the server says
       // so. Every row keeps the column.
-      const tick = x => x.isNew || !canTick(x) ? '<span class="pkdone"></span>' : `<button class="pkdone" data-id="${esc(x.id)}" title="Tick as done — it leaves this list and the board's (persisted; comes back on new activity)">✓</button>`;
+      const tick = x => x.isNew || !canTick(x) ? '<span class="pkdone"></span>' : (e => `<button class="pkdone${e && armedOn(x.id) ? ' armed' : ''}" data-id="${esc(x.id)}" title="${e ? esc(`Tick as done — it ends its watch: ${e}, so it asks once more`) : 'Tick as done — it leaves this list and the board\'s (persisted; comes back on new activity)'}">✓</button>`)(watchEnds(x));
       const plus = (x, i) => {
         if (!pick.git) return `<div class="pkrow chat ticks new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span>${tick(x)}</div>`;
         const on = pick.git.worktrees?.find(t => t.path === pick.git.here)?.branch;
@@ -6111,7 +6129,7 @@ const toolName = n => {
         { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
         ...(inApp || onVim() ? [{ name: `Its folder in ${inEdName()}`, sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
         ...(s.cwd ? [{ name: `Its folder in ${editor().name} — its own window`, sub: of, hint: '⌥⌘V', fn: hotEditorApp }] : []),
-        ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
+        ...(canTick(s) ? [{ name: watchEnds(s) ? `Tick it done — ends its watch: ${watchEnds(s)}` : 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
@@ -6467,7 +6485,23 @@ const toolName = n => {
   // server is told once it has (TICK_MS) — its answer redraws the card, as done or gone, which would take the mark with it.
   const TICK_MS = 230;
   // Done for good (2026-10-11; ⌥-click on the ✓, ··· and the launcher): the server forgets the chat's PRs while the tick stands.
+  // A watching chat's ✓ asks once more (2026-10-31, round XIII): Done ends the chat's processes, its monitor or command
+  // with them, so a first tick of one arms it — the card's ✓ says what it ends, elsewhere a note — and only a second
+  // within ARM_MS ticks. Every way to tick comes through here: the card's ✓, the chats step's, the menus', the
+  // notification's Done. It ends nothing itself.
+  const ARM_MS = 5000;
+  function tickGate(id, anchor) {
+    const s = state.sessions.get(id), ends = s && watchEnds(s); if (!ends) return true;
+    if (armedOn(id)) { tickArmed.delete(id); return true; }
+    tickArmed.set(id, performance.now() + ARM_MS); noteMotion(id, 'arm');
+    if (!anchor?.closest?.('#slist .card')) note(anchor?.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`) || $('#shead'), `Done ends its watch — ${ends}. Tick it again to end it`);
+    const redraw = () => { renderBoard(); if ($('#pick').open) pickRender(true); };
+    setTimeout(() => { if (tickArmed.has(id) && !armedOn(id)) { tickArmed.delete(id); redraw(); } }, ARM_MS + 30);
+    redraw();
+    return false;
+  }
   function tickDone(id, done, anchor, mark = null, forGood = false) {
+    if (done && !tickGate(id, mark || anchor)) return;
     const go = () => {
       if (done && id === state.current) moveOn(id);
       api('POST', `/api/sessions/${id}/done`, forGood && done ? { done, forGood } : { done })   // the card the click was on is redrawn by the move
@@ -7686,7 +7720,7 @@ const toolName = n => {
       ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
-        : canTick(s) ? [{ t: 'Done', fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
+        : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
       ...((s.prs || []).length ? [{ hr: true }, ...(s.prs || []).slice(0, 6).map(pr => ({ t: `Take ${pr.label.replace(/^.*?#/, '#')} off this chat`, fn: () => unlinkUrl(s, pr.url) }))] : []),
       { hr: true }, { t: 'Copy its link', fn: () => copyText(`${location.origin}/#${s.id}`).then(ok => note(card, ok ? 'Link copied' : 'Could not copy it', !ok)) },
@@ -10260,8 +10294,8 @@ const toolName = n => {
     const take = f => live.filter(s => !used.has(s.id) && f(s)).map(s => (used.add(s.id), s));
     return [
       ['ask', 'Asking you', take(s => asking(s))],
-      ['work', 'Clauding', take(s => bucket(s) === 'working')],
-      ['watch', 'Watching', take(s => s.alive && watching(s))],
+      ['work', 'Clauding', take(s => rankOf(s) === 'working')],   // by the list's rank (2026-10-31): a turn its own monitor woke stays Watching
+      ['watch', 'Watching', take(s => rankOf(s) === 'watching' || (s.alive && watching(s)))],
       ['ready', 'New replies', take(s => replied(s) || (state.unread.get(s.id) || 0) > 0)],
     ];
   }
@@ -11257,7 +11291,7 @@ const toolName = n => {
   // A notification answered where it shows (the app's, 2026-10-12): Done is the card's ✓ (offered only where the card
   // offers it), a reply is typed into the chat's Claude in its drawer here — over the page's own socket to it when the
   // chat is open, else one opened for the reply and closed after it, which sends no size, so the drawer is not resized.
-  window.peixDone = id => { const s = state.sessions.get(id); if (s && !s.done && canTick(s)) tickDone(id, true, $('#shead')); };
+  window.peixDone = id => { const s = state.sessions.get(id); if (!s || s.done || !canTick(s)) return; if (watchEnds(s) && !armedOn(id)) openSession(id, { locate: true }); tickDone(id, true, $('#shead')); };   // a watching chat's: shown, and asked once more
   window.peixReply = async (id, text) => {
     const s = state.sessions.get(id), d = s && drawerOf(s), body = String(text || '').replace(/\r?\n/g, '\x1b\r'); if (!d || !body) return false;
     const tm = claudeTm(s); if (tm) { termSend(tm, body); setTimeout(() => termSend(tm, '\r'), 60); return true; }
