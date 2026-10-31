@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-31, at night — a card's PRs as one (round XII)
+
+Ricardo asked for alternatives to *"PR stack and github icons on cards"* after a deep-research pass (four researchers on
+how tools draw PRs, stacks and people on a row; a report). Round XII drew eleven over the made-up board; the pick:
+*"Card PRs: P11, as a setting."*
+
+* **One PR on a card, the one that wants you** (`cardLead`): the newest at your move, else the first open one in the
+  chat's order, else its first — in GitHub's octicon for its state (open, draft, merged, closed; Primer, MIT), tinted
+  with its state's colour, never solid, so its CI dot (passed, failed, running) reads on it. The solid chips made a passed
+  check vanish on green and a failed one read as closed. The rest is a count; the pointer brings every PR up in the
+  rounds' popover, and the chip opens its PR, as the stack's did.
+* **A stack only where GitHub has one.** Stacked PRs went GA on 2026-10-06 (a layer number, a stack map, trunk at the
+  bottom); the stack of chips read as a chain where a chat's PRs were unrelated. The pill — the stack's octicon, the
+  lead's layer of the depth, a bar a layer base first — shows only when the chat's PRs chain base to head in one repo,
+  no fork's (`prChain` on `pr.refs`, which `PR_FIELDS` already fetched). GitHub's own stack fields were not established.
+* **No faces with it**: tools put one person on a row, and the pile said who had a hand more than whose move it is.
+  They stay with *All*, the faces' box off beside *One*.
+* **As a setting** (Settings › Chat list › A card's PRs, under what a card shows; `prefs.prChips`, *One* the default):
+  *All* is the stack, unchanged. The two are other markup — both written, every chip would count twice — so a change
+  redraws the cards. The harness starts on *All* (its scenarios read the stack's chips and the faces);
+  `card-pr-lead.mjs` asks for *One*.
+
 ## Decisions of 2026-10-31, later — the project's mark in the sidebar (round XI)
 
 Ricardo, on the sidebar's dot before each row's project and before the toolbar's: *"I'm not sure I love the color dot

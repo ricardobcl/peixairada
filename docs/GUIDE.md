@@ -18,7 +18,9 @@ setup file, and how the pictures are made.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you, answered where it shows in the app: *Reply…*
   (straight into the chat's Claude, when it runs here), *Done*, or *In 15 minutes*. The Dock badge and the menu bar
   count the chats asking you and those with a new reply; the menu lists them, your PRs' moves and what is clauding.
-- 🐙 **PRs** — chips stacked on a card, fanned out under the pointer (scroll them when they're more than fit). ⌥-click
+- 🐙 **PRs** — on a card, the one that wants you: GitHub's glyph for its state, its number, a dot for its CI, and how
+  many more; PRs stacked on each other on GitHub show as a stack, the layer it is of how many. Settings › Chat list ›
+  *A card's PRs: All* puts every chip back, stacked and fanned out under the pointer, with the faces of the people on them. ⌥-click
   the ✓ to tick a chat done for good: its PRs won't bring it back. Take a PR off a chat from its chip's right-click
   menu (or ⌥-click) — until you name it there yourself.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the

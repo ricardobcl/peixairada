@@ -367,6 +367,7 @@ export function kit(ctx) {
   const rect = sel => ctx.evaluate(`(r => ({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect())`);
   const grid = chat('Dark mode for the product grid');
   const board = async (prefs = {}, open = grid.id) => {
+    prefs = { prChips: 'one', ...prefs };   // the board's own (2026-10-31): the harness starts its scenarios on every PR
     await ctx.evaluate(`(p => { const k = 'peixairada-prefs'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), ...p })); })(${JSON.stringify(prefs)})`);
     await ctx.reload();
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length >= ${chats.length - 2}`, { what: 'the cards', timeout: 15000 });
