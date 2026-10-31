@@ -7,14 +7,22 @@
 // left alone; the asking row's sonar round its rounded outline; the lanes plain. The layout is there at once after a
 // reload (the head's script); at the notch nothing borders the cut; reduced motion holds the ring still. Each other
 // style says its signals its own way: Edge an edge on every row with a light run down it by a transform and a red ping;
-// Ring the open row in the system's blue, the lanes' marks; Tinted a spinner and a pinging dot, the open row solid in
-// its project's colour, the toolbar solid. Tiles brings every edge back.
+// Ring the lanes' marks; Tinted a spinner and a pinging dot, the toolbar solid; both the open row solid in its project's
+// colour (green here), never the system's blue. Tiles brings every edge back.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
+import { basename } from 'node:path';
 import { makeFixture, toolLines } from '../fixture.mjs';
 import { tmpDir } from '../../lib/testserver.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
+
+const GREEN = '#2e9e6a';
+// an open row's colour, by its hue: oklch() as Chrome computes a relative colour, else rgb()
+const hueOf = c => { const n = c.match(/[\d.]+/g).map(Number);
+  if (c.startsWith('oklch')) return n[2];
+  const [r, g, b] = n.map(v => v / 255), M = Math.max(r, g, b), d = M - Math.min(r, g, b);
+  return d ? (60 * (M === r ? (g - b) / d % 6 : M === g ? (b - r) / d + 2 : (r - g) / d + 4) + 360) % 360 : 0; };
 
 const read = ctx => ctx.evaluate(`(() => {
   const cs = (sel, pseudo) => { const el = document.querySelector(sel); return el ? getComputedStyle(el, pseudo) : null; };
@@ -39,6 +47,7 @@ export default async function (ctx) {
   const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
   const ago = s => new Date(now - s * 1000);
   try {
+    await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projects: { [basename(cwd)]: { color: GREEN } } }) });
     const { chats } = makeFixture(ctx.fixture.dir, [
       { cwd, title: 'Retry declined payments', prompt: 'retry declined cards', reply: 'Reading the client.', at: ago(200), live: live(0),
         lines: id => toolLines({ id, cwd, name: 'Bash', input: { command: 'npm test -- payments', description: 'Run the payment tests' }, at: ago(20) }) },
@@ -145,12 +154,12 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#settingsBtn').click(); document.querySelector('#settings .stabs [data-tab="look"]').click()`);
     out.ring = await style('ring');
     ctx.assert.equal(out.ring.workRun, 'ring', 'Ring: the ring');
-    ctx.assert.match(out.ring.sel, /^rgb\((0, 122|10, 132), 255\)$/, 'the open row in the system’s blue');
+    ctx.assert.ok(hueOf(out.ring.sel) > 120 && hueOf(out.ring.sel) < 200, `the open row in its project’s green, not the system’s blue: ${out.ring.sel}`);
     ctx.assert.equal(out.ring.selInk, 'rgb(255, 255, 255)', 'white on it');
     ctx.assert.deepEqual([out.ring.pix, out.ring.dot], ['block', '""'], 'the lanes’ marks, the project’s dot');
     out.tinted = await style('tinted');
     ctx.assert.deepEqual([out.tinted.workRg, out.tinted.spinner, out.tinted.askDot, out.tinted.askBefore], ['none', 'ring', 'dotping', 'none'], 'Tinted: a spinner, a pinging dot, no ring, no sonar');
-    ctx.assert.notEqual(out.tinted.sel, 'rgba(0, 0, 0, 0)', 'the open row solid in its project’s colour');
+    ctx.assert.equal(out.tinted.sel, out.ring.sel, 'the open row solid in its project’s colour, as Ring’s');
     ctx.assert.equal(out.tinted.selInk, 'rgb(255, 255, 255)', 'white on it');
     ctx.assert.equal(out.tinted.head, 'none', 'the toolbar solid');
     out.tintedStill = await reduced(true); await reduced(false);

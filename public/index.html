@@ -2072,14 +2072,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card.qsel { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent); }
   :root[data-layout="sidebar"] #slist .card .top .repo { color: var(--muted); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; }
   :root[data-layout="sidebar"]:not([data-sidebar="edge"]) #slist .card .top .repo::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--lift); }
-  /* The open row: Edge's a tint of its project's colour, Glass's a deeper one with a hairline of it; Ring's the system's
-     blue and Tinted's its project's colour, solid — darkened till white reads on it —, all on it white, a question on it
-     too (its red line and pings say it) */
+  /* The open row: Edge's a tint of its project's colour, Glass's a deeper one with a hairline of it; Ring's and Tinted's
+     its project's colour, solid — darkened till white reads on it (2026-10-31: Ring's was the system's blue) —, all on it
+     white, a question on it too (its red line and pings say it) */
   :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.active { background: color-mix(in srgb, var(--lift) 24%, transparent); }
   :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.active { background: color-mix(in srgb, var(--lift) 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card { --selc: #007aff; }
-  :root[data-layout="sidebar"][data-sidebar="ring"][data-theme="dark"] #slist .card { --selc: #0a84ff; }
-  :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active { background: var(--selc); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(*, .top .repo) { color: #fff; }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live, .top .repo) { color: rgb(255 255 255 / .84); }
@@ -3688,7 +3686,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // data-layout> and data-sidebar, which the head's script set before the first paint.
   const LAYOUT_SAY = { tiles: 'Panels over a wallpaper, each edged in its project’s colour', sidebar: 'A sidebar of rows, the header a toolbar' };
   const SIDEBAR_SAY = { edge: 'The project’s colour an edge down each row, a light running down it while a chat works',
-    ring: 'A ring of light round a chat at work, sonar round a question; the open chat in the system’s blue',
+    ring: 'A ring of light round a chat at work, sonar round a question; the open chat in its project’s colour',
     tinted: 'The open chat solid in its project’s colour, the toolbar tinted with it; a spinner, a dot that pings',
     glass: 'Frosted over the open chat’s colour; a ring of light round a chat at work, sonar round a question' };
   function layoutOf() { return prefs.layout === 'sidebar' ? 'sidebar' : 'tiles'; }

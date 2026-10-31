@@ -2,8 +2,18 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-30. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-31 — Ring's open row in its project's colour
+
+Ricardo, on the Ring sidebar: *"why is my highlighted card always blue an not the project color?"*
+
+* **Ring's open row is its project's colour, solid, as Tinted's** — darkened till white reads on it (`--selc`, one rule
+  for both). The system's blue (#007aff, #0a84ff dark) was round X's D2 as shown; on a board whose projects each wear a
+  colour it said nothing of the chat and read as the same row for every project. Ring and Tinted now differ in what
+  they say of work — the ring and sonar against the spinner and the pinging dot — and in the toolbar. `sidebar-layout.mjs`
+  paints its project green and holds both rows to that hue.
 
 ## Decisions of 2026-10-30, near midnight — Black, a theme
 

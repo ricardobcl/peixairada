@@ -89,7 +89,7 @@ and Omarchy's twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord,
 keep their hue in the theme's shades. The layout is tiles — panels over a wallpaper, each edged in its project's
 colour — or a Mac sidebar, the chats as rows, in one of four styles (Settings › Appearance › Layout): *Glass*, frosted
 over the open chat's colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same
-lights on a plain sidebar, the open chat in the system's blue; *Edge*, the project's colour an edge down each row with a
+lights on a plain sidebar, the open chat solid in its project's colour; *Edge*, the project's colour an edge down each row with a
 light running down it while a chat works; *Tinted*, Safari's — the open chat and the toolbar in its project's colour, a
 spinner and a pinging dot.
 
