@@ -45,6 +45,9 @@ setup file, and how the pictures are made.
 - 📊 **A status bar** — along the window's foot: the search, the connection, what asks you, the board's own update,
   the faces on your PRs, your plan's limits (or its monthly spend cap) as small pies, keeping the Mac awake (with the
   lid closed too, by Touch ID where sudo takes it), CPU and memory, and the time.
+- 🤝 **One chat to another** — right-click a card: *Send to this chat…* writes your words into its Claude (a chat
+  with no Claude running resumes in a drawer with them); ⌥⌘L's *Send to a chat…* picks one. A chat running in iTerm or
+  VS Code is out of reach, and says so.
 
 <table>
   <tr>

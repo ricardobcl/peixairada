@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-31, at the very end — chats that drive chats: send, merge, fold, branch (round XIV)
+
+Ricardo asked whether the board could merge chats, or let them talk. Round XIV laid what Claude Code has now — no merge
+("a message is … never the sender's conversation history"), cross-session messaging since v2.1.224, `/branch` and
+`--fork-session`, the `away_summary` recap — beside ten proposals; the pick: *"Integrations: I1, I2, I4, I5, I6, I8,
+I9."* This entry is the four that drive a chat (I1, I4, I5, I6); the reading ones have their own. Under all four, the
+round's lines: nothing written under `~/.claude` (Claude Code writes its own files when the board launches `claude`), no
+`.key` read, nothing posted to `/tmp/cc-socks/`, no chat live elsewhere written to, and only words you typed or a
+handoff you saw and started go into a chat.
+
+* **Send to…** (I1; a card's right-click menu, the launcher's *Send to a chat…* and its picker): a box of its own, ⏎
+  sends. A chat whose Claude runs in a drawer here gets the words typed in and sent, as a notification's Reply… does
+  (`drawerType`, which Reply… now goes through). One with no process is resumed with them as `claude --resume <id> --
+  <words>`'s own argument (`spawnTerm`'s `prompt`, the route's `prompted`): typed into a claude still starting, keys
+  are lost or answer a folder's trust question, and a prompt on the command line is Claude Code's own way of starting
+  with one. The words are never logged. The row is there but off, saying why, for a chat live in iTerm or VS Code — the
+  study's way to it, a drawer chat's Claude sending with SendMessage, is I3, not picked — and for one asking you, which
+  would take the words for its answer. The column stays where it was: sending is not going there.
+
 ## Decisions of 2026-10-31, near midnight — Watching, wake-ups, stopped, and the heads L1 (round XIII)
 
 Round XIII drew the lane heads seven ways over the made-up board, a status set, an order and a name, with the research

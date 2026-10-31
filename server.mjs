@@ -5554,8 +5554,12 @@ const VIM_BIN = process.env.VIM_BIN || 'vim';
  * call — git, gh, node — are on the PATH that .zshrc builds (mise activates there); `exec` makes claude take over the
  * shell's pid, which is the pid the registry will report — with a launcher, task takes the pid and claude is a
  * descendant, which linkTermToRegistry knows.
+ * `prompt` (2026-10-31): the chat's first prompt, given as claude's own argument after `--` — Claude Code sends it once it
+ * is up, past a folder's trust question, where keys typed into a claude still starting are lost or answer that question.
+ * Only the words you wrote in the board's Send box; never logged.
  */
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null }) {
+const PROMPT_MAX = 100_000;
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = editor ? VIM_BIN : shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
@@ -5578,6 +5582,8 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
       : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Projects)` };
   }
   const args = editor ? ['.'] : task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
+  const said = args.join(' ');   // the log's: the prompt is yours, and not the log's to keep
+  if (prompt && !editor && !task && !shell) args.push('--', String(prompt).slice(0, PROMPT_MAX));
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
   const sock = join(TERMS_DIR, `${id}.sock`);
@@ -5610,7 +5616,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
     }
   }
   terms.set(id, t);
-  console.log(`[peixairada] terminal ${id}: ${editor || (shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : ''))} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
+  console.log(`[peixairada] terminal ${id}: ${editor || (shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (said ? ' ' + said : '') + (args.includes('--') ? ' -- <a prompt of yours>' : ''))} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t), ...back && { back } };
@@ -6257,12 +6263,16 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {   // attach to, or resume, this chat
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
+      // `prompt` (2026-10-31, Send to…): the words go in as the resumed claude's first prompt — `prompted` says they did;
+      // a drawer already there, or a resume another ask started, has not had them, and the page types them in instead
+      const body = await jsonBody(req), prompt = typeof body.prompt === 'string' && body.prompt.trim() ? body.prompt : null;
       const have = termOf(s);
-      if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
+      if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have), prompted: false });
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
-      const r = await spawnOnce(`${s.id}:claude`, async () => { const body = await jsonBody(req); return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows }); });
-      return json(res, r.code, r);
+      let mine = false;
+      const r = await spawnOnce(`${s.id}:claude`, async () => { mine = true; return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, prompt }); });
+      return json(res, r.code, { ...r, prompted: !!prompt && mine && r.code === 201 });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end every claude it is live in elsewhere, resume it here
       const s = sessions.get(m[1]);

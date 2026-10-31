@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A stand-in for `claude` in tests: the shapes of the real thing that the board depends on, none of the cost.
-//   fakeclaude.mjs [--resume <id>]      (what the server passes)
+//   fakeclaude.mjs [--resume <id>] [-- <prompt>]      (what the server passes)
 // It registers in $CLAUDE_DIR/sessions/<pid>.json like the CLI, appends user/assistant lines to the chat's
 // transcript under $CLAUDE_DIR/projects/<slug>/<id>.jsonl, and draws a TUI the way Claude Code does: the
 // transcript scrolls above, a live region sits at the bottom (rule · prompt · rule · three status lines), the
@@ -22,7 +22,10 @@ const inode = p => { try { const s = statSync(p); return `${s.dev}:${s.ino}`; } 
 const realClaude = new Set([homedir(), userInfo().homedir].map(h => inode(join(h, '.claude'))).filter(Boolean));
 const underReal = d => { for (let p = resolve(d); ; p = dirname(p)) { if (realClaude.has(inode(p))) return true; if (dirname(p) === p) return false; } };
 if (!CLAUDE_DIR || underReal(CLAUDE_DIR)) { console.error('fakeclaude: CLAUDE_DIR must point at a fixture, never the real ~/.claude'); process.exit(2); }
-const args = process.argv.slice(2);
+// `--` and a prompt after it (2026-10-31, the board's Send to…): the first prompt, sent once the screen is up, as
+// Claude Code does with its positional one
+const all = process.argv.slice(2), dd = all.indexOf('--');
+const args = dd >= 0 ? all.slice(0, dd) : all, firstPrompt = dd >= 0 ? all.slice(dd + 1).join(' ') : null;
 const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 let sessionId = arg('--resume') || randomUUID();
 const cwd = process.cwd();
@@ -226,6 +229,7 @@ async function submit() {
   if (text === '/focus') { focusView = !focusView; say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']); commit(); return; }
   if (text && !busy) { busy = true; await turn(text); busy = false; } else drawLive();
 }
+if (firstPrompt?.trim()) setTimeout(async () => { busy = true; await turn(firstPrompt.trim()); busy = false; }, 150);
 process.stdin.on('data', async d => {
   const was = input, wasAt = cur;
   for (let i = 0; i < d.length;) {

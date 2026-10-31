@@ -2548,6 +2548,28 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .dfoot .spacer { flex: 1; }
   .dfoot .err { color: var(--needs); font-size: var(--fs-sm); }
   .dfoot .danger { color: var(--needs); }
+  /* Chats that talk (2026-10-31): the box a message to a chat is written in — and a handoff, merged or folded — over the
+     chats it goes to or from, each its project's square, name and title; what ⏎ will do under it, in words. */
+  #handoff { width: min(640px, 92vw); }
+  #handoff .hochats { display: grid; gap: 4px; margin: 0 0 10px; }
+  #handoff .hochat { display: flex; gap: 8px; align-items: center; min-width: 0; font-size: var(--fs-md); }
+  #handoff .hochat .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); flex: none; }
+  #handoff .hochat b { flex: none; font-weight: 700; }
+  #handoff .hochat .ht { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #handoff .hochat .hx { margin-left: auto; flex: none; font-size: var(--fs-xs); color: var(--muted); }
+  #handoff .howhere { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: var(--fs-sm); color: var(--muted); }
+  #handoff .howhere[hidden] { display: none; }
+  #handoff select { font: inherit; font-size: var(--fs-sm); min-width: 0; flex: 1; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); }
+  #handoff .hosay { margin: 8px 0 0; font-size: var(--fs-sm); color: var(--muted); line-height: 1.45; }
+  #handoff .hosay.err { color: var(--needs); }
+  #handoff .hokeys { font-size: var(--fs-xs); color: var(--muted); }
+  #handoff .hokeys kbd { font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 2px 5px; margin: 0 3px 0 6px; }
+  #handoff .hokeys kbd:first-child { margin-left: 0; }
+  #handoff .hogo { background: var(--accent); color: var(--bg); font-weight: 600; }
+  #handoff .hogo:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
+  #handoff .hogo:disabled { opacity: .6; }
+  /* a chat a row cannot go to — live elsewhere, asking you — dimmed, saying why */
+  .pkrow.off { opacity: .55; }
 
   /* A count that rolls (rollIn, 2026-10-11): while it rolls, each digit a window one line tall onto a strip of 0–9 —
      a transform on the spring; plain text again once it has landed. */
@@ -3033,6 +3055,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <textarea id="pextra" rows="2" placeholder="~/code/some-repo"></textarea>
   <div class="dfoot"><button class="btn danger" id="pdel">Delete project</button><span class="err" id="perr"></span><span class="spacer"></span><button class="btn" id="pcancel">Cancel</button><button class="btn" id="psave">Save</button></div>
 </dialog>
+<dialog id="handoff" aria-labelledby="hoTitle">
+  <h3 id="hoTitle">Send to</h3>
+  <div class="hochats" id="hoChats"></div>
+  <textarea id="hoText" rows="4" aria-label="What to send"></textarea>
+  <div class="howhere" id="hoWhere" hidden><label for="hoCwd">Start in</label><select id="hoCwd"></select></div>
+  <p class="hosay" id="hoSay" role="status"></p>
+  <div class="dfoot"><span class="hokeys" id="hoKeys"></span><span class="spacer"></span><button class="btn" id="hoCancel">Cancel</button><button class="btn hogo" id="hoGo">Send</button></div>
+</dialog>
 <input type="color" id="colorInput" aria-hidden="true" tabindex="-1">
 <script src="/vendor/marked.min.js"></script>
 <script src="/vendor/purify.min.js"></script>
@@ -3105,6 +3135,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · keeping the Mac awake (2026-10-08)
 //   js  · resume: a chat whose claude has ended
 //   js  · attachments: files dropped on the board, images pasted
+//   js  · chats that talk (2026-10-31, round XIV): Send to…
 //   js  · a second claude on this chat
 //   js  · transcript rendering
 //   js  · the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17)
@@ -5893,9 +5924,10 @@ const toolName = n => {
     base: ctx => `${ctx.branch} — what it starts from · type to filter · ↑↓ · ⏎ · esc`,   // a new worktree's new branch (2026-10-28)
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
+    chatpick: ctx => `${ctx.ask} — type to filter · ↑↓ · ⏎ · esc`,   // a chat to send to, fold into, merge (2026-10-31)
   };
   const NO_FOLDER = '＋ new chat — no folder';   // ⌥⌘N's first row (2026-10-14)
-  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch' };   // for "no … matches"; the rest are projects
+  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', chatpick: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
@@ -6004,6 +6036,10 @@ const toolName = n => {
     } else if (pick.mode === 'chat') {
       pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
       row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
+    } else if (pick.mode === 'chatpick') {   // a chat to send to (2026-10-31): ⌥⌘K's rows, one it cannot go to dimmed and saying why
+      const c = pick.ctx;
+      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && !c.skip?.includes(s.id)).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
+      row = (s, i) => { const why = c.why?.(s); return `<div class="pkrow chat${why ? ' off' : ''}${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(why ? `Not this one: ${why}` : s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${why ? `<span class="cur">${esc(why)}</span>` : s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`; };
     } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow
       // A folder that is one git checkout gives ＋ a switch (2026-10-13; ←→ or a click): the new chat in this folder, or in
       // a new worktree on a branch of its own (newChatOnBranch) — the name typed is then the branch's, not a query, so
@@ -6078,6 +6114,7 @@ const toolName = n => {
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
+    else if (pick.mode === 'chatpick') { const { why, then } = pick.ctx, no = why?.(x); if (no) return note($('#pickq'), `Not this one: ${no}`, true); dlg.close(); then(x); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
       if (x.noFolder) { dlg.close(); newChat(x.cwd); }   // straight in: no chats step, and no Taskfile to ask
       else if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
@@ -6159,6 +6196,7 @@ const toolName = n => {
     const s = state.sessions.get(state.current), of = s ? ` — ${s.title}` : '';
     return [
       { name: 'New chat', hint: '⌥⌘N', fn: () => pickOpen('new'), stay: true },
+      { name: 'Send to a chat…', sub: ' — a message of yours, as its prompt', fn: sendPick, stay: true },   // chats that talk (2026-10-31)
       { name: 'Search the chat list', hint: '⌥⌘F', fn: hotFind },
       ...Object.entries(FILTERS).filter(([k]) => prefs.listFilter !== k).map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
       ...(prefs.listFilter ? [{ name: 'Show every chat again', sub: ` — no ${listFilter().name.toLowerCase()} filter`, fn: () => setFilter(null) }] : []),
@@ -7770,6 +7808,7 @@ const toolName = n => {
       { t: 'Open', fn: () => openSession(s.id) },
       ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
+      ...talkRows(s, card),   // chats that talk (2026-10-31): Send to…
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
@@ -11343,15 +11382,88 @@ const toolName = n => {
   // offers it), a reply is typed into the chat's Claude in its drawer here — over the page's own socket to it when the
   // chat is open, else one opened for the reply and closed after it, which sends no size, so the drawer is not resized.
   window.peixDone = id => { const s = state.sessions.get(id); if (!s || s.done || !canTick(s)) return; if (watchEnds(s) && !armedOn(id)) openSession(id, { locate: true }); tickDone(id, true, $('#shead')); };   // a watching chat's: shown, and asked once more
-  window.peixReply = async (id, text) => {
-    const s = state.sessions.get(id), d = s && drawerOf(s), body = String(text || '').replace(/\r?\n/g, '\x1b\r'); if (!d || !body) return false;
-    const tm = claudeTm(s); if (tm) { termSend(tm, body); setTimeout(() => termSend(tm, '\r'), 60); return true; }
+  window.peixReply = async (id, text) => { const s = state.sessions.get(id); return !!s && drawerType(s, text, true); };
+  /** Words typed into the chat's Claude in its drawer here, as you would type them — newlines as Claude Code's own
+   *  (ESC CR), then ⏎ when `send` (unsent: there for you to read and send): over the page's own socket to it when it is
+   *  attached, else one opened for the words and closed after them, which sends no size, so the drawer is not resized. */
+  async function drawerType(s, text, send) {
+    const d = drawerOf(s), body = String(text || '').replace(/\r?\n/g, '\x1b\r'); if (!d || !body) return false;
+    const tm = claudeTm(s); if (tm) { termSend(tm, body); if (send) setTimeout(() => termSend(tm, '\r'), 60); return true; }
     const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`));
     return new Promise(res => {
-      ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: body })); setTimeout(() => { ws.send(JSON.stringify({ t: 'in', d: '\r' })); setTimeout(() => { ws.close(); res(true); }, 200); }, 80); };
+      ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: body })); setTimeout(() => { if (send) ws.send(JSON.stringify({ t: 'in', d: '\r' })); setTimeout(() => { ws.close(); res(true); }, 200); }, 80); };
       ws.onerror = () => res(false);
     });
-  };
+  }
+  // ---- chats that talk (2026-10-31, round XIV): Send to… -------------------------------------------------------------
+  // A message of yours to a chat, from its card's menu or the launcher's picker, written in a box of its own and sent as
+  // its prompt: typed into its drawer when it runs here; for a chat with no process, the resume >_ makes — the words
+  // handed to `claude --resume` as its first prompt, which Claude Code sends once it is up (spawnTerm's `prompt`). A chat
+  // live in iTerm or VS Code is out of reach, as for everything else on the board; one asking you would take the words
+  // for its answer. Only what you typed is ever sent — nothing a chat said, nothing the board received.
+  const ho = { mode: null, ids: [], busy: false };
+  /** Why the board cannot send to this chat, or null. */
+  function sendWhy(s) {
+    if (!s) return 'it is not on the board';
+    if (asking(s)) return 'it is asking you something — answer it first';
+    if (drawerOf(s)) return null;
+    if (s.alive) return `it runs in ${inVsCode(s) ? 'VS Code' : 'another terminal'}, out of the board's reach — ⌥⌘C takes it over`;
+    if (!s.file) return 'there is nothing in it to resume yet';
+    return s.cwd ? null : 'no folder is known for it';
+  }
+  /** How the words will land, in words — under the box. */
+  const sendSay = s => drawerOf(s) ? `Typed into its drawer here and sent${s.status === 'working' ? ' — it is clauding: Claude Code takes it in as it would from you' : ''}.`
+    : `Its Claude isn’t running: its drawer opens here (claude --resume), with this as its first prompt${s.folderMissing && s.cloneRef ? ` — after cloning ${s.cloneRef}` : ''}.`;
+  /** A chat as the box lists it: its project's square, name and title. */
+  const hoChat = (s, extra = '') => `<div class="hochat" style="${repoStyle(repoColor(s.cwd))}" data-id="${esc(s.id)}"><span class="sq"></span><b>${projIcon(s.project)}${esc(s.project)}</b><span class="ht">${ticks(esc(s.title))}</span>${extra}</div>`;
+  /** A card's rows for the right-click menu: what can be done with it and another chat. */
+  function talkRows(s, card) {
+    const no = sendWhy(s);
+    return [{ hr: true }, { t: 'Send to this chat…', ...no ? { off: true, sub: no } : {}, fn: () => sendOpen(s) }];
+  }
+  const sendPick = () => pickOpen('chatpick', { ask: 'Send to a chat', back: 'launch', why: sendWhy, then: sendOpen });
+  function hoShow() { const dlg = $('#handoff'); if (!dlg.open) { if (inApp) post({ type: 'focus' }); dlg.showModal(); repostPane(); } $('#hoText').focus(); }
+  function sendOpen(s) {
+    const why = sendWhy(s); if (why) return note($('#shead'), `Not to ${s.title}: ${why}`, true);
+    Object.assign(ho, { mode: 'send', ids: [s.id] });
+    $('#hoTitle').textContent = 'Send to'; $('#hoChats').innerHTML = hoChat(s);
+    const t = $('#hoText'); t.value = ''; t.rows = 4; t.placeholder = 'For its Claude — what you would type in its drawer';
+    $('#hoWhere').hidden = true; hoSay(sendSay(s));
+    $('#hoKeys').innerHTML = '<kbd>⏎</kbd>send<kbd>⇧⏎</kbd>a new line<kbd>esc</kbd>'; $('#hoGo').textContent = 'Send';
+    hoShow();
+  }
+  const hoSay = (text, err = false) => { const p = $('#hoSay'); p.textContent = text; p.classList.toggle('err', err); };
+  /** A chat's drawer, come up with its Claude ready for words — the registry says idle — or null after `ms`. */
+  async function drawerReady(id, ms = 20_000) {
+    for (const t0 = Date.now(); Date.now() - t0 < ms; await new Promise(r => setTimeout(r, 150))) {
+      const s = state.sessions.get(id); if (s && drawerOf(s) && s.alive && s.live?.status === 'idle') return s;
+    }
+    return null;
+  }
+  /** The words sent to the chat: typed into its drawer, or the resume's first prompt. Throws why not. */
+  async function sendTo(s0, text) {
+    const s = state.sessions.get(s0.id) || s0, why = sendWhy(s); if (why) throw new Error(`Not sent: ${why}`);
+    if (drawerOf(s)) { if (!await drawerType(s, text, true)) throw new Error('Its drawer did not answer — not sent'); return; }
+    const r = await withCheckout(s.id, () => api('POST', `/api/sessions/${s.id}/terminal`, { ...termSize(), prompt: text }));
+    showTerminal(s, r.terminal); saidBack(r.back);
+    if (r.prompted) return;
+    const up = await drawerReady(s.id);   // a drawer another ask had started: the words go in once its Claude is up
+    if (!up || !await drawerType(up, text, true)) throw new Error('Its drawer did not come up — not sent');
+  }
+  async function hoGo() {
+    if (ho.busy) return;
+    const text = $('#hoText').value; if (!text.trim()) return $('#hoText').focus();
+    const s = state.sessions.get(ho.ids[0]); if (!s) return hoSay('That chat is gone from the board', true);
+    ho.busy = true; $('#hoGo').disabled = true; hoSay(drawerOf(s) ? 'Sending…' : 'Opening its drawer…');
+    try { await sendTo(s, text); $('#handoff').close(); note(document.querySelector(`#slist > .card[data-id="${CSS.escape(s.id)}"]`) || $('#shead'), `Sent to ${s.title}`); }
+    catch (e) { hoSay(e.message, true); }
+    finally { ho.busy = false; $('#hoGo').disabled = false; }
+  }
+  $('#hoGo').onclick = hoGo; $('#hoCancel').onclick = () => $('#handoff').close();
+  $('#hoText').addEventListener('keydown', e => {   // Send: ⏎ sends, ⇧⏎ a new line
+    if (e.key !== 'Enter' || e.isComposing) return;
+    if (ho.mode === 'send' ? !e.shiftKey && !e.altKey : e.metaKey) { e.preventDefault(); hoGo(); }
+  });
   window.peixDragging = on => setDropping(!!on);
   const pastedFiles = e => [...(e.clipboardData?.files || [])];
   for (const tm of terms) $(tm.el.tbody).addEventListener('paste', e => {   // capture, so xterm's own paste (the text, a file's name) does not run
