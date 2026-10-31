@@ -91,7 +91,8 @@ colour — or a Mac sidebar, the chats as rows, in one of four styles (Settings 
 over the open chat's colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same
 lights on a plain sidebar, the open chat solid in its project's colour; *Edge*, the project's colour an edge down each row with a
 light running down it while a chat works; *Tinted*, Safari's — the open chat and the toolbar in its project's colour, a
-spinner and a pinging dot.
+spinner and a pinging dot. Each row names its project on a tag of its colour (but Edge's, whose edge is it), and the
+toolbar on a capsule of it — or, under *Project in the toolbar*, a line of it along the toolbar's foot.
 
 <table>
   <tr>

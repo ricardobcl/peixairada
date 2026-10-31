@@ -8,7 +8,8 @@
 // reload (the head's script); at the notch nothing borders the cut; reduced motion holds the ring still. Each other
 // style says its signals its own way: Edge an edge on every row with a light run down it by a transform and a red ping;
 // Ring the lanes' marks; Tinted a spinner and a pinging dot, the toolbar solid; both the open row solid in its project's
-// colour (green here), never the system's blue. Tiles brings every edge back.
+// colour (green here), never the system's blue. The project a tag on each row but Edge's, its name in its colour on a
+// tint of it; in the toolbar a capsule, or under Settings' Line a line along its foot. Tiles brings every edge back.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -18,7 +19,7 @@ import { tmpDir } from '../../lib/testserver.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 const GREEN = '#2e9e6a';
-// an open row's colour, by its hue: oklch() as Chrome computes a relative colour, else rgb()
+// a colour's hue: oklch() as Chrome computes a relative colour, else rgb() or a color-mix()'s color(srgb …)
 const hueOf = c => { const n = c.match(/[\d.]+/g).map(Number);
   if (c.startsWith('oklch')) return n[2];
   const [r, g, b] = n.map(v => v / 255), M = Math.max(r, g, b), d = M - Math.min(r, g, b);
@@ -128,7 +129,7 @@ export default async function (ctx) {
       return { sidebar: document.documentElement.dataset.sidebar, readyEdge: [cs('${R} > .rg').display, cs('${R} > .rg').width].join(' '),
         workRg: cs('${W} > .rg').display, workRun: cs('${W} > .rg', '::before').animationName, runTurn: run ? run.effect.getKeyframes().map(k => k.transform).join() : null, runStart: run ? run.startTime : null,
         askBefore: cs('${A}', '::before').content, askAfter: cs('${A}', '::after').animationName,
-        dot: cs('${R} .top .repo', '::before').content, spinner: cs('${W} .trow', '::after').animationName, askDot: cs('${A} .trow', '::after').animationName,
+        dot: cs('${R} .top .repo', '::before').content, tag: [cs('${R} .top .repo').backgroundColor, cs('${R} .top .repo').paddingLeft], openTag: cs('${W} .top .repo').backgroundColor, spinner: cs('${W} .trow', '::after').animationName, askDot: cs('${A} .trow', '::after').animationName,
         sel: cs('${W}').backgroundColor, selInk: cs('${W} .title').color, pix: cs('.gsep.lane.working .pix').display,
         list: [cs('#sessions').backdropFilter, cs('#wall').display].join(' '), head: cs('#shead').backdropFilter }; })()`;
     await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
@@ -146,7 +147,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.edge.readyEdge, 'block 3px', 'Edge: every row its project’s edge');
     ctx.assert.deepEqual([out.edge.workRun, out.edge.runStart], ['edgerun', 0], 'a light run down the clauding row’s, in step');
     ctx.assert.match(out.edge.runTurn, /translateY\(50%\)/, 'by a transform');
-    ctx.assert.deepEqual([out.edge.askBefore, out.edge.askAfter, out.edge.dot], ['none', 'edgeping', 'none'], 'a question pings off its red edge; no dot for the project');
+    ctx.assert.deepEqual([out.edge.askBefore, out.edge.askAfter, out.edge.dot, ...out.edge.tag], ['none', 'edgeping', 'none', 'rgba(0, 0, 0, 0)', '0px'], 'a question pings off its red edge; no mark for the project');
     ctx.assert.deepEqual([out.edge.list, out.edge.head], ['none none', 'blur(18px) saturate(1.6)'], 'the list flat, the wallpaper not drawn, the toolbar plain glass');
     out.edgeStill = await reduced(true); await reduced(false);
     ctx.assert.deepEqual([out.edgeStill.workRun, out.edgeStill.askAfter], ['none', 'none'], 'reduced: the light still, no ping');
@@ -156,7 +157,9 @@ export default async function (ctx) {
     ctx.assert.equal(out.ring.workRun, 'ring', 'Ring: the ring');
     ctx.assert.ok(hueOf(out.ring.sel) > 120 && hueOf(out.ring.sel) < 200, `the open row in its project’s green, not the system’s blue: ${out.ring.sel}`);
     ctx.assert.equal(out.ring.selInk, 'rgb(255, 255, 255)', 'white on it');
-    ctx.assert.deepEqual([out.ring.pix, out.ring.dot], ['block', '""'], 'the lanes’ marks, the project’s dot');
+    ctx.assert.deepEqual([out.ring.pix, out.ring.dot, out.ring.tag[1]], ['block', 'none', '6px'], 'the lanes’ marks; the project a tag, no dot');
+    ctx.assert.ok(hueOf(out.ring.tag[0]) > 120 && hueOf(out.ring.tag[0]) < 200, `the tag a tint of its project’s green: ${out.ring.tag[0]}`);
+    ctx.assert.equal(out.ring.openTag, 'rgba(0, 0, 0, 0.2)', 'on the open row a shade');
     out.tinted = await style('tinted');
     ctx.assert.deepEqual([out.tinted.workRg, out.tinted.spinner, out.tinted.askDot, out.tinted.askBefore], ['none', 'ring', 'dotping', 'none'], 'Tinted: a spinner, a pinging dot, no ring, no sonar');
     ctx.assert.equal(out.tinted.sel, out.ring.sel, 'the open row solid in its project’s colour, as Ring’s');
@@ -170,11 +173,35 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.glass.workRun, out.glass.readyEdge.split(' ')[0]], ['ring', 'none'], 'Glass: the ring again, no edge');
     await ctx.evaluate(`document.querySelector('#settings').close()`);
 
+    // the project in the toolbar: a capsule of its colour, or a line along the foot — Settings, kept over a reload
+    const head = `(() => { const r = getComputedStyle(document.querySelector('#shead h2 .repo')), h = getComputedStyle(document.querySelector('#shead'));
+      return { mark: document.documentElement.dataset.hmark, capsule: r.backgroundColor, round: r.borderTopLeftRadius, before: getComputedStyle(document.querySelector('#shead h2 .repo'), '::before').content,
+        foot: h.borderBottomWidth, footc: h.borderBottomColor }; })()`;
+    out.capsule = await ctx.evaluate(head);
+    ctx.assert.deepEqual([out.capsule.mark, out.capsule.round, out.capsule.before, out.capsule.foot], ['capsule', '999px', 'none', '1px'], 'the toolbar’s project a capsule, no dot, the foot a hairline');
+    ctx.assert.ok(hueOf(out.capsule.capsule) > 120 && hueOf(out.capsule.capsule) < 200, `the capsule its project’s green: ${out.capsule.capsule}`);
+    await ctx.evaluate(`document.querySelector('#settingsBtn').click(); document.querySelector('#settings .stabs [data-tab="look"]').click()`);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#headMarkSay').textContent`), 'Its name in its colour, on a capsule of it', 'the row says the capsule');
+    await ctx.evaluate(`document.querySelector('#headMarkPick [data-hm="line"]').click()`);
+    await ctx.waitFor(`document.documentElement.dataset.hmark === 'line'`, { what: 'the line' });
+    ctx.assert.equal(await ctx.evaluate(`JSON.parse(localStorage.getItem('peixairada-prefs')).headMark`), 'line', 'kept in the prefs');
+    await ctx.evaluate(`document.querySelector('#settings').close()`);
+    await ctx.reload();
+    ctx.assert.equal(await ctx.evaluate(`document.documentElement.dataset.hmark`), 'line', 'the line from the prefs at once');
+    await ctx.openChat(work.id);
+    await ctx.settle();
+    out.line = await ctx.evaluate(head);
+    ctx.assert.deepEqual([out.line.capsule, out.line.before, out.line.foot], ['rgba(0, 0, 0, 0)', 'none', '2px'], 'Line: the name plain, a line along the foot');
+    ctx.assert.ok(hueOf(out.line.footc) > 120 && hueOf(out.line.footc) < 200, `the line its project’s green: ${out.line.footc}`);
+    await ctx.shot('sidebar-line');
+
     // Tiles again: every edge back, the card's own ring, the glow
     await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="look"]').click(); document.querySelector('#layoutPick [data-lay="tiles"]').click()`);
     await ctx.waitFor(`document.documentElement.dataset.layout === 'tiles'`, { what: 'tiles again' });
+    ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#headMarkRow').classList.contains('off'), document.querySelector('#headMarkPick [data-hm="capsule"]').disabled, document.querySelector('#headMarkSay').textContent]`),
+      [true, true, 'Only with the sidebar layout'], 'the toolbar’s project off under Tiles, and why');
     await ctx.evaluate(`document.querySelector('#settings').close()`);
     await ctx.settle();
     out.back = await read(ctx);

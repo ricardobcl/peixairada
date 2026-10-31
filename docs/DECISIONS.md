@@ -5,6 +5,27 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-31, later — the project's mark in the sidebar (round XI)
+
+Ricardo, on the sidebar's dot before each row's project and before the toolbar's: *"I'm not sure I love the color dot
+on each card for the projects color. give me alterntives. also the same for the project name on the top bar"*. Round XI
+laid seven marks for each over the made-up board (Ring, dark and light); the pick: *"Project mark: rows R2, toolbar T2
+and T5 as a setting."*
+
+* **A row's project is a tag** (R2): its name in its colour on an 18 % tint of it, in Ring, Tinted and Glass — Edge
+  keeps the plain name, its edge being the colour. The dot read as one more light among the board's state lights (the
+  red of a question, Tinted's dots). On the open row the tag is a shade of black, white on it: in Ring and Tinted on
+  the solid colour, in Glass in dark, where a tint on the row's tint bleached the name to 3.4:1.
+* **The toolbar's project is a capsule of its colour** (T2), the default, **or a line of it along the toolbar's foot**,
+  the name plain (T5) — Settings › Appearance › *Project in the toolbar*, under the style, off with why under Tiles
+  (`prefs.headMark` → `data-hmark`, before the first paint as the layout is). The line is the header's eased colour
+  (`--hbg-eased`), so it moves with the chat; only a chat with a colour has one.
+* **The names are darker in light and lighter in dark than the study's**: OKLCH `l` at most .42, at least .82 (the
+  study's .5 and .78 left billing-api's tag at 3.5:1). Measured against the pixels under them on the made-up board,
+  every style and both themes, the lowest is now 4.8:1.
+* Checked: `sidebar-layout.mjs` (the tag green in Ring, none in Edge, a shade on the open row; the capsule green; Line a
+  2 px foot in green, kept over a reload; the row off under Tiles).
+
 ## Decisions of 2026-10-31 — Ring's open row in its project's colour
 
 Ricardo, on the Ring sidebar: *"why is my highlighted card always blue an not the project color?"*

@@ -721,7 +721,8 @@ npm run map                         # rewrite the section maps at the top of ser
   script; **its every rule is `:root[data-layout="sidebar"] …`**, a style's `…[data-sidebar=…]`, over the tiles'
   (`main.tiles` stays). The shell: no gaps or edges (no `.ncut`); the list and the status bar `--side`; the header a
   flush toolbar, no black, the theme's inks (`--hd-*`), lowered at the notch by padding; cards are rows — no ground,
-  edge or spot (`spotSoon` rests); PR and ticket chips a tint; no glow (`wallOn`), `#wall` not drawn but in Glass (over
+  edge or spot (`spotSoon` rests); the project a tag on a row but Edge's, in the toolbar a capsule or a line along its foot
+  (2026-10-31, Settings, `prefs.headMark` → `data-hmark`); PR and ticket chips a tint; no glow (`wallOn`), `#wall` not drawn but in Glass (over
   it, `--side-glass` and a `backdrop-filter`). **`.card > .rg`, on every card (cardHtml; `display: none` in tiles), is
   each style's own signal** — Ring's and Glass's ring, a still mask to a 1.5 px band, its `::before` the turning square;
   Edge's 3 px edge, its `::before` a strip of lights moved by a transform (`edgerun`) —; Edge pings off the card's

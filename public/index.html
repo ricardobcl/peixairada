@@ -8,12 +8,13 @@
 <script>
   // The board's appearance before its first paint (2026-10-12): the one it wore last (prefs.look, kept by applySkin),
   // unless its theme follows macOS — then, as with no prefs at all, the system's — and its layout (2026-10-30,
-  // prefs.layout and prefs.sidebarStyle, kept by applyLayout). The page's script below takes over.
+  // prefs.layout, prefs.sidebarStyle and prefs.headMark, kept by applyLayout). The page's script below takes over.
   (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
     const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = look;
     document.documentElement.dataset.layout = p.layout === 'sidebar' ? 'sidebar' : 'tiles';
-    document.documentElement.dataset.sidebar = ['edge', 'ring', 'tinted', 'glass'].includes(p.sidebarStyle) ? p.sidebarStyle : 'glass'; })();
+    document.documentElement.dataset.sidebar = ['edge', 'ring', 'tinted', 'glass'].includes(p.sidebarStyle) ? p.sidebarStyle : 'glass';
+    document.documentElement.dataset.hmark = p.headMark === 'line' ? 'line' : 'capsule'; })();
 </script>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <style>
@@ -2046,8 +2047,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"][data-sidebar="glass"] #chat > #shead { background: color-mix(in srgb, color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) 72%, transparent); }
   :root[data-layout="sidebar"] #chat > #prlist { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
   :root[data-layout="sidebar"] #chat .shead::after { display: none; }
-  :root[data-layout="sidebar"] #chat .shead h2 .repo::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 8px; border-radius: 50%; vertical-align: 1px; background: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
-  :root[data-layout="sidebar"][data-theme="dark"] #chat .shead h2 .repo::before { background: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
+  /* The project in the toolbar (2026-10-31, round XI; prefs.headMark → data-hmark): its name in its colour on a capsule
+     of it, the default, or plain over a line of that colour along the toolbar's foot — the header's eased colour, and
+     only for a chat that has one */
+  :root[data-layout="sidebar"]:not([data-hmark="line"]) #chat .shead h2 .repo { padding: 2px 11px; border-radius: 999px;
+    color: oklch(from var(--repo, var(--nocolor)) min(l, .42) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) min(l, .72) c h) 18%, transparent); }
+  :root[data-layout="sidebar"][data-theme="dark"]:not([data-hmark="line"]) #chat .shead h2 .repo {
+    color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) max(l, .62) c h) 18%, transparent); }
+  :root[data-layout="sidebar"][data-hmark="line"] #chat.tinted > #shead { border-bottom: 2px solid oklch(from var(--hbg-eased) min(l, .72) c h); }
+  :root[data-layout="sidebar"][data-hmark="line"][data-theme="dark"] #chat.tinted > #shead { border-bottom-color: oklch(from var(--hbg-eased) max(l, .62) c h); }
   /* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
      the toolbar's ground, opaque: the card's chips overlap */
   :root[data-layout="sidebar"] :is(#slist .card .cpr, #chat .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]), :root[data-layout="sidebar"] :is(#slist .card .ctk, #chat .shead .hpr.tk)[data-cat] {
@@ -2065,13 +2073,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"][data-sidebar="ring"] .gsep.lane.working { color: color-mix(in srgb, var(--working) 60%, var(--ink)); }
   :root[data-layout="sidebar"][data-sidebar="ring"] .gsep.lane.asking { color: var(--needs); }
   /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer (spotSoon rests), a grey
-     under the pointer; the project a tag dot before its name — but in Edge, where the edge is */
+     under the pointer; the project a tag, its name in its colour on a tint of it (2026-10-31, round XI: a dot read as one
+     more light) — but in Edge, where the edge is */
   :root[data-layout="sidebar"] #slist { gap: 2px; }
   :root[data-layout="sidebar"] #slist .card { background: none; border: 0; outline: 0; box-shadow: none; border-radius: 7px; padding: 8px 12px; }
   :root[data-layout="sidebar"] #slist .card:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
   :root[data-layout="sidebar"] #slist .card.qsel { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent); }
   :root[data-layout="sidebar"] #slist .card .top .repo { color: var(--muted); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; }
-  :root[data-layout="sidebar"]:not([data-sidebar="edge"]) #slist .card .top .repo::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--lift); }
+  :root[data-layout="sidebar"]:not([data-sidebar="edge"]) #slist .card .top .repo { padding: 0 6px; border-radius: 5px; line-height: 16px;
+    color: oklch(from var(--repo, var(--nocolor)) min(l, .42) c h); background: color-mix(in srgb, var(--lift) 18%, transparent); }
+  :root[data-layout="sidebar"][data-theme="dark"]:not([data-sidebar="edge"]) #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); }
   /* The open row: Edge's a tint of its project's colour, Glass's a deeper one with a hairline of it; Ring's and Tinted's
      its project's colour, solid — darkened till white reads on it (2026-10-31: Ring's was the system's blue) —, all on it
      white, a question on it too (its red line and pings say it) */
@@ -2080,8 +2091,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active { background: var(--selc); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(*, .top .repo) { color: #fff; }
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live, .top .repo) { color: rgb(255 255 255 / .84); }
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo::before { background: #fff; }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo, :root[data-layout="sidebar"][data-sidebar="glass"][data-theme="dark"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
   /* At work, watching and asking, the card's own ring and sonar give way to each style's (the board's ring is a square
      under a cover in the card's ground, which a row has none of): .rg, a box of the card's own (cardHtml), carries
@@ -2819,6 +2830,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         <section class="sgrp"><div class="slist" role="group" aria-label="Layout">
           <div class="srow set" id="layoutRow" data-kw="layout tiles sidebar rows glass frosted native mac window panels gaps wallpaper"><span class="sl" id="slLayout"><b>Layout</b><small id="layoutSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slLayout" id="layoutPick"><button type="button" role="radio" data-lay="tiles">Tiles</button><button type="button" role="radio" data-lay="sidebar">Sidebar</button></span></div>
           <div class="srow set sub" id="sideStyleRow" data-kw="sidebar style edge ring tinted glass lights spinner frosted"><span class="sl" id="slSideStyle"><b>Sidebar style</b><small id="sideStyleSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slSideStyle" id="sideStylePick"><button type="button" role="radio" data-sbs="edge">Edge</button><button type="button" role="radio" data-sbs="ring">Ring</button><button type="button" role="radio" data-sbs="tinted">Tinted</button><button type="button" role="radio" data-sbs="glass">Glass</button></span></div>
+          <div class="srow set sub" id="headMarkRow" data-kw="sidebar toolbar header project name capsule pill line colour color mark"><span class="sl" id="slHeadMark"><b>Project in the toolbar</b><small id="headMarkSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slHeadMark" id="headMarkPick"><button type="button" role="radio" data-hm="capsule">Capsule</button><button type="button" role="radio" data-hm="line">Line</button></span></div>
         </div></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Text size">
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
@@ -3058,7 +3070,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass', headMark: 'capsule' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3689,18 +3701,24 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     ring: 'A ring of light round a chat at work, sonar round a question; the open chat in its project’s colour',
     tinted: 'The open chat solid in its project’s colour, the toolbar tinted with it; a spinner, a dot that pings',
     glass: 'Frosted over the open chat’s colour; a ring of light round a chat at work, sonar round a question' };
+  // the project in the toolbar, every style's (2026-10-31, round XI's T2 and T5), the row under the style
+  const HEADMARK_SAY = { capsule: 'Its name in its colour, on a capsule of it', line: 'Its name plain, a line of its colour along the toolbar’s foot' };
   function layoutOf() { return prefs.layout === 'sidebar' ? 'sidebar' : 'tiles'; }
   function sidebarOf() { return ['edge', 'ring', 'tinted', 'glass'].includes(prefs.sidebarStyle) ? prefs.sidebarStyle : 'glass'; }
+  function headMarkOf() { return prefs.headMark === 'line' ? 'line' : 'capsule'; }
   function sidebarOn() { return document.documentElement.dataset.layout === 'sidebar'; }   // declarations: the list and the wallpaper ask before this line has run
   function applyLayout() {
-    const k = layoutOf(), st = sidebarOf(), off = k !== 'sidebar';
-    Object.assign(document.documentElement.dataset, { layout: k, sidebar: st });
+    const k = layoutOf(), st = sidebarOf(), hm = headMarkOf(), off = k !== 'sidebar';
+    Object.assign(document.documentElement.dataset, { layout: k, sidebar: st, hmark: hm });
     for (const b of document.querySelectorAll('#layoutPick [data-lay]')) b.setAttribute('aria-checked', String(b.dataset.lay === k));
     $('#layoutSay').textContent = LAYOUT_SAY[k];
-    // the style under it: off, with why, under Tiles
+    // the style under it and the toolbar's project: off, with why, under Tiles
     for (const b of document.querySelectorAll('#sideStylePick [data-sbs]')) { b.setAttribute('aria-checked', String(b.dataset.sbs === st)); b.disabled = off; }
     $('#sideStyleRow').classList.toggle('off', off);
     $('#sideStyleSay').textContent = off ? 'Only with the sidebar layout' : SIDEBAR_SAY[st];
+    for (const b of document.querySelectorAll('#headMarkPick [data-hm]')) { b.setAttribute('aria-checked', String(b.dataset.hm === hm)); b.disabled = off; }
+    $('#headMarkRow').classList.toggle('off', off);
+    $('#headMarkSay').textContent = off ? 'Only with the sidebar layout' : HEADMARK_SAY[hm];
   }
   // what reads the layout on its own: the wallpaper's glow (wallOn), the cards' light under the pointer (spotSoon), the
   // list's frame and the rings, which the change starts anew (phaseAnims)
@@ -3708,9 +3726,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (k === layoutOf() && style === sidebarOf()) return;
     revealFrom(from, () => { prefs.layout = k; prefs.sidebarStyle = style; savePrefs(); applyLayout(); wallGo(); listChanged(); phaseAnims(); });
   }
+  // the capsule is wider than the name alone: the header's chips fold again for it
+  function setHeadMark(m, from = null) {
+    if (m === headMarkOf()) return;
+    revealFrom(from, () => { prefs.headMark = m; savePrefs(); applyLayout(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); });
+  }
   applyLayout();
   $('#layoutPick').addEventListener('click', e => { const b = e.target.closest('[data-lay]'); if (b) setLayout(b.dataset.lay, centreOf(b)); });
   $('#sideStylePick').addEventListener('click', e => { const b = e.target.closest('[data-sbs]'); if (b && !b.disabled) setLayout('sidebar', centreOf(b), b.dataset.sbs); });
+  $('#headMarkPick').addEventListener('click', e => { const b = e.target.closest('[data-hm]'); if (b && !b.disabled) setHeadMark(b.dataset.hm, centreOf(b)); });
   // a tile: its appearance's slot, worn now where that appearance is
   for (const id of ['#darkPick', '#lightPick']) $(id).addEventListener('click', e => {
     const b = e.target.closest('[data-skin]'); if (!b || b.disabled) return;
