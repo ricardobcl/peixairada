@@ -138,12 +138,10 @@ export default async function (ctx) {
     ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane.covered')].length`), 0, 'at the top, none hidden');
     await ctx.shot('glass-light-top', await crop());
     await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`); await ctx.settle(); await ctx.shot('glass-dark-top', await crop());
-    for (const st of ['ring', 'edge', 'tinted']) {
-      await ctx.evaluate(`document.documentElement.dataset.sidebar = '${st}'`); await ctx.settle();
-      out[st] = await ctx.evaluate(`(h => [getComputedStyle(h).backgroundColor, getComputedStyle(h).backdropFilter])(document.querySelector('#slist > .gsep.lane.ready'))`);
-      ctx.assert.equal(out[st][1], 'none', `${st}: a plain ground`);
-    }
-    await ctx.evaluate(`document.documentElement.dataset.sidebar = 'ring'; document.documentElement.dataset.theme = 'dark'`); await ctx.settle(); await ctx.shot('ring-dark', await crop());
+    await ctx.evaluate(`document.documentElement.dataset.sidebar = 'ring'`); await ctx.settle();
+    out.ring = await ctx.evaluate(`(h => [getComputedStyle(h).backgroundColor, getComputedStyle(h).backdropFilter])(document.querySelector('#slist > .gsep.lane.ready'))`);
+    ctx.assert.equal(out.ring[1], 'none', 'Ring: a plain ground');
+    await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`); await ctx.settle(); await ctx.shot('ring-dark', await crop());
     return out;
   } finally { for (const p of sleeps) try { p.kill(); } catch {} }
 }

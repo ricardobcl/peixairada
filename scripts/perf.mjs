@@ -164,7 +164,7 @@ for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) 
 for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e => { console.error(`${ev}: ${e?.stack || e}`); finish(1); });
 
 // ---- one run: the page in WebKit, its phases, and the web process's CPU time sampled beside it ----
-const prefs = { barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skin: 'own-dark', look: 'dark' };
+const prefs = { barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skinFollow: false, look: 'dark' };
 if (PREFS) { try { Object.assign(prefs, JSON.parse(PREFS)); } catch { console.error('--prefs is not JSON'); process.exit(2); } }
 const body = `await sleep(3000);
   const rules = ${ANIM_RULES}, list = document.querySelector('#slist'), out = { phases: [], opens: [] };

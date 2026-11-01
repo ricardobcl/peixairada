@@ -107,19 +107,18 @@ the PR list under the header is as tall as you drag its foot.
 ## Make it yours
 
 Every look is in Settings › Appearance and Chat list (⌘,), or a key: the chat list hidden and the chat the whole width
-(⌥⌘B, or the first button in the status bar, whose mark says which). The board's own light and dark lay the chat in a
-frame a step darker — the window, the list and the status bar — and under *Frame* that frame can be the other
-appearance's: *Ink*, a graphite frame round the light chat, or *Stage*, a paper one round the dark chat. Beside them are
-Softened — the board's light, flat, with no white in it —, Black — the board's own colours on true black — and
-Omarchy's twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows,
-or one of each following it; your projects keep their hue in the theme's shades, and in every theme the small text
-reads at 4.5:1 or better. The board is a Mac window: the chats a sidebar of rows, in one of four styles (Settings ›
-Appearance › Sidebar style): *Glass*, frosted
-over the open chat's colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same
-lights on a plain sidebar, the open chat solid in its project's colour; *Edge*, the project's colour an edge down each row with a
-light running down it while a chat works; *Tinted*, Safari's — the open chat and the toolbar in its project's colour, a
-spinner and a pinging dot. Each row names its project on a tag of its colour (but Edge's, whose edge is it), and the
-toolbar on a capsule of it — or, under *Project in the toolbar*, a line of it along the toolbar's foot.
+(⌥⌘B, or the first button in the status bar, whose mark says which). A theme comes in two halves, dark and light, and
+*Appearance* — Auto (following macOS), Dark or Light — picks the half: pick Tokyo Night and it is Night after dark and
+Day by day. Beside the board's own are Tokyo Night, Catppuccin, Gruvbox, Rosé Pine, Everforest, Kanagawa, Flexoki and
+Nord, each with both halves, and three with one — Black, the board's own colours on true black; Matte Black; and
+Softened, the board's light with no white in it —, the board's own wearing the other half (⌥⌘Y shows them all on the
+board as you move). Every theme lays the chat in a frame a step darker — the window, the list and the status bar —,
+and *Dark frame* makes that frame the theme's dark half round a light chat. Your projects keep their hue in the
+theme's shades, and in every theme the small text reads at 4.5:1 or better. The board is a Mac window: the chats a
+sidebar of rows, in one of two styles (Settings › Appearance › Sidebar style): *Glass*, frosted over the open chat's
+colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same lights on a plain
+sidebar, the open chat solid in its project's colour. Each row names its project on a tag of its colour, and the
+toolbar on a capsule of it.
 
 <table>
   <tr>
@@ -260,9 +259,9 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 or *key* to find a setting wherever it is):
 
 - **General** — notifications and sounds, which editor a file path opens in, and (in the app) which full screen ⌃⌘F is.
-- **Appearance** — Auto, Dark or Light (Auto follows macOS), a theme for each as tiles (⌥⌘Y shows them all on the
-  board), the frame round the chat (Matching, Ink or Stage), the sidebar's style (one of four), the text size, and what else the status bar shows (a right-click on the bar
-  picks that too).
+- **Appearance** — Auto, Dark or Light (Auto follows macOS), the theme — a swatch each, its dark and light halves
+  (⌥⌘Y shows them all on the board) —, a dark frame round the light chat, the sidebar's style (Glass or Ring), the
+  text size, and what else the status bar shows (a right-click on the bar picks that too).
 - **Chat list** — card size (compact, or larger only where a chat needs you).
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the

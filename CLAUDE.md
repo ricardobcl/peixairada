@@ -329,23 +329,26 @@ npm run map                         # rewrite the section maps at the top of ser
   its own, or a theme does not reach it.** → `project-colors.mjs`.
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): a block of tokens under
   `:root:root[data-skin=…]` (three classes deep, beating `:root` and the dark block), set only beside its own
-  appearance. **The appearance is the board's, whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`,
-  which every dark rule reads — **never `prefers-color-scheme`**; a new one is `:root[data-theme="dark"] …` —, set
-  before the first paint by the head's script from `prefs.look` and kept by `applySkin`. Worn (`wornKey()`, `skinOn()`):
-  `prefs.skin` (a theme, `own-dark` or `own-light`), or under Appearance › Auto (`prefs.skinFollow`, the
-  default; `setLook`) the slot of the system's appearance (`slotOf`: `prefs.skinDark` / `prefs.skinLight`, which
-  every pick fills). The app's window wears the appearance kept (`appearance` → `window.appearance`, remembered as
-  `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read `--crust`, `--bar`,
-  `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
-  `repoColor`; none under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
+  appearance. **A theme is a family of two halves** (2026-11-01, round XVII; `FAMILIES`, `prefs.theme`, `halfOf`,
+  `famOf`): the appearance picks the half — the family the same day and night; Black, Matte Black and Softened have
+  one half, the other the board's own (`own-dark`, `own-light`). Settings › Appearance › Theme is a swatch a family
+  (`#themePick`, `setTheme`), ⌥⌘Y a tile a family. **The appearance is the board's, whatever macOS shows**
+  (2026-10-12): `<html data-theme="dark|light">`, which every dark rule reads — **never `prefers-color-scheme`**; a new
+  one is `:root[data-theme="dark"] …` —, set before the first paint by the head's script. Worn (`wornKey()`,
+  `skinOn()`): the family's half of `darkNow()` — under Appearance › Auto (`prefs.skinFollow`, the default; `setLook`)
+  the system's, else `prefs.look`. The app's window wears the appearance picked (`appearance` → `window.appearance`,
+  remembered as `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read
+  `--crust`, `--bar`, `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; none
+  under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
   **Black** (2026-10-30) is the board's own dark on true black: its grounds black by rules of its own
-  (`:root[data-skin="black"]` — the wallpaper without glow or grain, `wallOn`; no wash on the transcript). **The board's
-  own lay the chat in a frame** (2026-11-01; a theme is flat): `--frame` the window's ground, the wallpaper, the sidebar
-  and the status bar, the chat a sheet in it in the sidebar (`:root:not([data-skin])`). **`data-frame` is the frame's
-  appearance** (`prefs.frame`: Ink, Stage), which what sits on it — `#sessions`, `#sbar`, wearing the frame's tokens —
-  reads, never `data-theme`. **Every small ink holds 4.5:1 on its grounds**: the own fitted in the CSS, a theme's by
-  `themeInks`; the amber as text is `--working-ink`. **A colour that reads no token is one no theme reaches.**
-  → `themes.mjs`, `frame-themes.mjs`, `test/inks.test.mjs`.
+  (`:root[data-skin="black"]` — the wallpaper without glow or grain; no wash on the transcript). **Every theme lays the
+  chat in a frame** (2026-11-01; round XVII's C1): `--frame` (the board's own in `:root`, a theme's its `crust`) the
+  window's ground, the wallpaper, the sidebar (`--side`) and the status bar, the chat a sheet in it. **`data-frame` is
+  the frame's appearance** — dark round a light chat under Settings' *Dark frame* (`prefs.darkFrame`, light only; a
+  theme's frame is then its family's dark half, skinCss's `[data-frame="dark"]` blocks) —, which what sits on it —
+  `#sessions`, `#sbar`, wearing the frame's tokens — reads, never `data-theme`. **Every small ink holds 4.5:1 on its
+  grounds**: the own fitted in the CSS, a theme's by `themeInks`; the amber as text is `--working-ink`. **A colour that
+  reads no token is one no theme reaches.** → `themes.mjs`, `frame-themes.mjs`, `test/inks.test.mjs`.
 * **The header floats** (2026-10-09; `<html data-head="float">` in the markup, never toggled): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of
   `#chat` placed in column 1: two overlapping items, one auto-placed, take two columns). A half with a strip pads down
@@ -720,18 +723,15 @@ npm run map                         # rewrite the section maps at the top of ser
   markup, never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the
   panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` and `tileTints` for a split's
   halves and Glass's pools, `#wall` and `--wallc`, `tileNotch`'s cut round the housing). **Its style** is Settings ›
-  Appearance › Sidebar style (`prefs.sidebarStyle`, `applyLayout`, `setSideStyle`): `data-sidebar="edge|ring|tinted|glass"`
-  (round X's D1–D4, Glass the default), set before the first paint by the head's script; a style's rules
-  `…[data-sidebar=…]`. The shell: no gaps or edges (no `.ncut`); the list and the status bar `--side`; the header a
-  flush toolbar, no black, the theme's inks (`--hd-*`), lowered at the notch by padding; cards are rows — no ground,
-  edge or light under the pointer; the project a tag on a row but Edge's, in the toolbar a capsule or a line along its foot
-  (2026-10-31, Settings, `prefs.headMark` → `data-hmark`); PR and ticket chips a tint; `#wall` not drawn but in Glass (over
-  it, `--side-glass` and a `backdrop-filter`). **`.card > .rg`, on every card (cardHtml), is
-  each style's own signal** — Ring's and Glass's ring, a still mask to a 1.5 px band, its `::before` the turning square;
-  Edge's 3 px edge, its `::before` a strip of lights moved by a transform (`edgerun`) —; Edge pings off the card's
-  `::after` (`edgeping`), Tinted spins and pings off `.trow`'s pseudo-elements (`dotping`); the card's own two are the
-  sonar's in Ring and Glass, else `content: none`. A new card rule is checked in all four; a new animation of
-  theirs joins `PHASED` and the reduced-motion block. → `sidebar-layout.mjs`.
+  Appearance › Sidebar style (`prefs.sidebarStyle`, `applyLayout`, `setSideStyle`): `data-sidebar="ring|glass"` (round
+  X's D2 and D4, Glass the default; Edge and Tinted gone 2026-11-01), set before the first paint by the head's script; a
+  style's rules `…[data-sidebar=…]`. The shell: no gaps or edges (no `.ncut`); the list and the status bar `--side`; the
+  header a flush toolbar, no black, the theme's inks (`--hd-*`), lowered at the notch by padding; cards are rows — no
+  ground, edge or light under the pointer; the project a tag on a row, in the toolbar a capsule; PR and ticket chips a
+  tint; `#wall` not drawn but in Glass (over it, `--side-glass` and a `backdrop-filter`). **`.card > .rg`, on every card
+  (cardHtml), is the row's ring** — a still mask to a 1.5 px band, its `::before` the turning square; the card's own
+  pseudo-elements are the sonar's. A new card rule is checked in both styles; a new animation joins `PHASED` and the
+  reduced-motion block. → `sidebar-layout.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).
@@ -1011,7 +1011,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
   change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
   on that commit beside it (a worktree, the runs interleaved; `--runs n`, medians), `--sample` the top of macOS
-  `sample`'s stacks, `--prefs '<json>'` another look (2026-10-30: `'{"layout":"sidebar"}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
+  `sample`'s stacks, `--prefs '<json>'` another look (`'{"sidebarStyle":"ring"}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every

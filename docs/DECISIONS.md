@@ -5,6 +5,37 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, night — the Appearance pane: a theme is a family (round XVII)
+
+Round XVII's study (the themes didn't hold together: Auto paired two strangers, the board's own were framed and every
+other theme flat, Frame was greyed out under 14 of 16 themes), and Ricardo's picks: *"Appearance: themes as pairs
+(A1); every family; drop Osaka Jade, Ristretto; keep Black, Matte Black, Softened; every theme framed (C1); Ink as a
+switch (D1); styles Ring, Glass; toolbar Capsule only (F1)."*
+
+* **A theme is a family of two halves** (A1; `FAMILIES`, `prefs.theme`): Appearance (Auto · Dark · Light) picks the
+  half, the family stays. The pane's two grids of sixteen unnamed tiles (`#darkRow`, `#lightRow`, `prefs.skin`,
+  `skinDark`, `skinLight`, `slotOf`) are one row of named swatches, each split dark | light (`#themePick`, `setTheme`);
+  ⌥⌘Y is a tile a family, previewed in the appearance worn, found by either half's name. The halves a palette lacked
+  are made from its own published variant: Tokyo Night Day, Gruvbox Light, Rosé Pine Dawn, Everforest Light, Kanagawa
+  Lotus, Flexoki Dark; Nord Light from Nord's Snow Storm greys. Black, Matte Black and Softened stay with one half, the
+  board's own wearing the other. Osaka Jade and Ristretto went. Twelve swatches; nineteen halves.
+* **Every theme is framed** (C1): a theme's `crust` is its frame — the window's ground, the sidebar (`--side`), the status
+  bar —, the chat a sheet in it, as the board's own since round XV's T3. A theme changes the colours, never the window's
+  shape. `themeInks` fits the sidebar's inks on the crust (a mix of the ink and the ground before).
+* **Ink is a switch, Dark frame** (D1; `prefs.darkFrame`), for every theme and in light only — off in dark, with why: a
+  theme's light half framed in its family's dark half (skinCss's `[data-frame="dark"]` blocks: the frame that half's
+  ground, the list and the status bar in its tokens); the board's own, and Softened (its dark half the board's own),
+  the graphite of round XV's T5. Stage, a paper frame round a dark chat, went. The inks' check covers each light half in
+  its dark frame (31 looks).
+* **Two sidebar styles, Ring and Glass** (E): Edge and Tinted went — with them two of the three ways of saying clauding
+  and asking (`edgerun`, `edgeping`, `dotping`, the spinner, Tinted's toolbar). **The toolbar's project is a capsule**
+  (F1): the Line and its row went (`prefs.headMark`, `data-hmark`).
+* **A board from before comes over once** (`savePrefs` then): the family of what it wore — following macOS, of the
+  slot it showed, else the other's (an empty slot was the board's own) —; a theme gone, the board's own; picked
+  rather than followed, that theme's appearance; Frame › Ink is the dark frame on. A saved Edge or Tinted is Glass.
+* Settings › Appearance had nine rows, two of them grids; it has six: Appearance, Theme, Dark frame, Sidebar style,
+  Text size, the status bar's meters.
+
 ## Decisions of 2026-11-01, evening — Tiles go
 
 Ricardo: *"we need to simplify settings on appearance. remove "tiles" for example. also, themes are still not very

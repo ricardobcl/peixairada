@@ -57,14 +57,14 @@ export default async function (ctx) {
     // 6 · the ways it can look, smaller: each a switch or a key, the board reloaded on it
     await scale(1);
     const looks = [
-      ['look-tokyo', { cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
-      ['look-latte', { skinDark: null, skinLight: 'catppuccin-latte' }, false],
+      ['look-tokyo', { cards: 'large', cardsEven: false, theme: 'tokyo-night' }, true],
+      ['look-latte', { theme: 'catppuccin' }, false],
     ];
     for (const [name, prefs, dark] of looks) {
       await theme(dark); await board(prefs);
       await ctx.sleep(500); await snap(name);
     }
-    await scale(2); await theme(true); await board({ skinLight: null });
+    await scale(2); await theme(true); await board({ theme: 'own' });
 
     // 7 · home, ⌥⌘0: the board at a glance and the day
     await ctx.key('Digit0'); await ctx.waitFor(`document.querySelector('#home .hh')`, { what: 'the home' });
