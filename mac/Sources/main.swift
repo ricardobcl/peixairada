@@ -240,7 +240,7 @@ final class ServerController {
 // App
 // ---------------------------------------------------------------------------------------------
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScriptMessageHandler,
                          WKNavigationDelegate, UNUserNotificationCenterDelegate, NSMenuItemValidation,
                          NSSearchFieldDelegate, NSWindowDelegate {
   var window: BoardWindow!
@@ -275,12 +275,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var needsInput: [[String: String]] = []
   var newReplies: [[String: String]] = []
   var muted = false                       // notifications off: the fish wears a slash, the menu says so (round XIX's S7)
+  var watching: [[String: String]] = [], plan = ""   // the status menu's: what watches behind a turn, the plan in a line (S5)
+  let statusMenu = NSMenu()
+  var statusMenuOpen = false
   var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
   // The board's own zoom (2026-10-12, the settings' text size): the web view's pageZoom, so the page's CSS px are
   // `zoom` points — what the page and the shell say of places (the pane's rects, the housing, the pane's edge) is
   // turned between the two here.
   var zoom: CGFloat = 1
-  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], muted: Bool) = ([], [], [], [], false)   // what the badge and the status menu last showed
+  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], watching: [[String: String]], plan: String, muted: Bool) = ([], [], [], [], [], "", false)   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again
@@ -923,6 +926,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   private func buildStatusItem() {
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     statusItem.button?.imagePosition = .imageLeading
+    statusMenu.delegate = self; statusMenu.autoenablesItems = false
+    statusItem.menu = statusMenu
     drawFish()
     rebuildStatusMenu()
   }
@@ -959,7 +964,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func rebuildStatusMenu() {
-    let menu = NSMenu()
+    let menu = statusMenu
+    menu.removeAllItems()
     if muted && !serverDown {   // an inhibit shows, and undoes in one click (S7)
       menu.addItem(withTitle: "Notifications are off · Turn On", action: #selector(notificationsOn(_:)), keyEquivalent: "").target = self
       menu.addItem(.separator())
@@ -972,27 +978,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
       menu.addItem(.separator())
       menu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-      statusItem.menu = menu
       return
     }
-    menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
-    menu.addItem(.separator())
-    // what wants you, a section each (2026-10-12): the chats asking you, the PRs at your move, the new replies — and
-    // what Claude is at work in, last
-    let sections: [(String, [[String: String]])] = [("Asking you", needsInput), ("Your move", yourMoves), ("New replies", newReplies), ("Clauding", clauding)]
-    if sections.prefix(3).allSatisfy({ $0.1.isEmpty }) {
-      menu.addItem(withTitle: "Nothing is asking you", action: nil, keyEquivalent: "").isEnabled = false
+    // what wants you, a section each (2026-10-12), in the menu's own clothes (2026-11-01, round XIX's S5): real headers with
+    // their counts, the project and how long under each row, a row saying what did not fit, the work you cannot act on
+    // folded into submenus, the plan in a line. Asks come longest wait first, as the page sorts them.
+    if needsInput.isEmpty && yourMoves.isEmpty && newReplies.isEmpty {
+      menu.addItem(withTitle: "Nothing wants you", action: nil, keyEquivalent: "").isEnabled = false
     }
-    for (heading, chats) in sections where !chats.isEmpty {
-      menu.addItem(withTitle: heading, action: nil, keyEquivalent: "").isEnabled = false
-      for s in chats.prefix(12) {
-        let item = NSMenuItem(title: "  \(s["project"] ?? "")  ·  \(s["title"] ?? "")",
-                              action: #selector(openFromMenu(_:)), keyEquivalent: "")
-        item.target = self; item.representedObject = s["id"]
+    let waited: ([String: String]) -> String = { s in
+      guard let since = Double(s["since"] ?? ""), since > 0 else { return "" }
+      let m = Int((Date().timeIntervalSince1970 * 1000 - since) / 60_000)
+      return m < 1 ? "just now" : m < 60 ? "waited \(m) min" : "waited \(m / 60) h"
+    }
+    let sections: [(heading: String, chats: [[String: String]], room: Int, sub: ([String: String]) -> String)] = [
+      ("Asking you", needsInput, 12, waited), ("Your move", yourMoves, 6, { $0["why"] ?? "" }), ("New replies", newReplies, 5, { _ in "" })]
+    for section in sections where !section.chats.isEmpty {
+      menu.addItem(sectionHeading(section.heading, section.chats.count))
+      for s in section.chats.prefix(section.room) { menu.addItem(chatRow(s, sub: section.sub(s))) }
+      let more = section.chats.count - section.room
+      if more > 0 {
+        let item = NSMenuItem(title: "+\(more) more…", action: #selector(overviewFromMenu(_:)), keyEquivalent: ""); item.target = self
         menu.addItem(item)
       }
     }
+    let folded: [(String, [[String: String]])] = [("Clauding", clauding), ("Watching", watching)]
+    if !needsInput.isEmpty || !yourMoves.isEmpty || !newReplies.isEmpty, folded.contains(where: { !$0.1.isEmpty }) { menu.addItem(.separator()) }
+    for (title, chats) in folded where !chats.isEmpty {
+      let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+      if #available(macOS 14, *) { item.badge = NSMenuItemBadge(count: chats.count) } else { item.title = "\(title) (\(chats.count))" }
+      let sub = NSMenu(); for s in chats.prefix(20) { sub.addItem(chatRow(s, sub: "")) }
+      item.submenu = sub
+      menu.addItem(item)
+    }
+    if !plan.isEmpty { menu.addItem(withTitle: plan, action: nil, keyEquivalent: "").isEnabled = false }
     menu.addItem(.separator())
+    menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
     // ⌃⌘F's way out where the menu bar shows it (2026-10-13): filled, the View menu is behind the auto-hidden menu bar, and
     // with the board in the back the fill still covers the screen — this menu is then the one control in reach. Its
     // title flips with View's (validateMenuItem).
@@ -1004,7 +1025,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     menu.addItem(withTitle: "Open Server Log", action: #selector(openLog(_:)), keyEquivalent: "").target = self
     menu.addItem(.separator())
     menu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-    statusItem.menu = menu
+  }
+  // Drawn as it opens too (menuNeedsUpdate), so "waited 12 min" is right whenever you look, and not while it is open: a
+  // menu emptied under the pointer loses its highlight.
+  func menuNeedsUpdate(_ m: NSMenu) { if m === statusMenu { rebuildStatusMenu() } }
+  func menuWillOpen(_ m: NSMenu) { if m === statusMenu { statusMenuOpen = true } }
+  func menuDidClose(_ m: NSMenu) { if m === statusMenu { statusMenuOpen = false } }
+  private func sectionHeading(_ title: String, _ count: Int) -> NSMenuItem {
+    if #available(macOS 14, *) { return NSMenuItem.sectionHeader(title: "\(title) · \(count)") }
+    let item = NSMenuItem(title: "\(title) · \(count)", action: nil, keyEquivalent: ""); item.isEnabled = false
+    return item
+  }
+  /// A chat's row: its title, and under it its project and what `sub` says. Before 14.4, one line. Long titles are clipped:
+  /// a menu is as wide as its widest row.
+  private func chatRow(_ s: [String: String], sub: String) -> NSMenuItem {
+    let clip: (String) -> String = { $0.count > 58 ? String($0.prefix(57)) + "…" : $0 }
+    let project = s["project"] ?? "", title = clip(s["title"] ?? ""), below = sub.isEmpty ? project : "\(project) · \(clip(sub))"
+    let item = NSMenuItem(title: title, action: #selector(openFromMenu(_:)), keyEquivalent: "")
+    if #available(macOS 14.4, *) { item.subtitle = below } else { item.title = "\(below)  ·  \(title)" }
+    item.target = self; item.representedObject = s["id"]
+    return item
   }
 
   private func buildMenu() {
@@ -1456,7 +1496,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     serverDown = down
     logLine("fish: the server \(down ? "gone, belly-up" : "back")")
     NSApp.dockTile.badgeLabel = down ? nil : (needsInput.count + newReplies.count > 0 ? String(needsInput.count + newReplies.count) : nil)
-    drawFish(); rebuildStatusMenu()
+    drawFish(); if !statusMenuOpen { rebuildStatusMenu() }
   }
 
   private func checkServer() {
@@ -1478,6 +1518,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
   }
   @objc func notificationsOn(_ sender: Any?) { web.evaluateJavaScript("window.peixNotifyOn?.()", completionHandler: nil) }
+  @objc func overviewFromMenu(_ sender: Any?) { showWindow(nil); web.evaluateJavaScript("window.peixKey && window.peixKey('KeyA', 'altcmd')", completionHandler: nil) }
   @objc func openFromMenu(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
     open(sessionId: id)
@@ -1489,12 +1530,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func refreshBadges() {
-    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.muted != muted else { return }   // the status menu was rebuilt per message before (2026-09-27)
-    badged = (needsInput, newReplies, yourMoves, clauding, muted)
+    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.watching != watching || badged.plan != plan || badged.muted != muted else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (needsInput, newReplies, yourMoves, clauding, watching, plan, muted)
     let wanting = needsInput.count + newReplies.count
     NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
     drawFish()
-    rebuildStatusMenu()
+    if !statusMenuOpen { rebuildStatusMenu() }
   }
 
   // The fish in the menu bar says one thing at a glance (2026-11-01, round XIX's S1, its face V1): dim, nothing wants you;
@@ -1534,13 +1575,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
       let asked = Set(needsInput.map { $0["id"] ?? "" })
       let brief: ([String: Any]) -> [String: String] = {
-        ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "", "title": $0["title"] as? String ?? ""]
+        ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "", "title": $0["title"] as? String ?? "", "since": $0["since"] as? String ?? "", "why": $0["why"] as? String ?? ""]
       }
       needsInput = (body["needs"] as? [[String: Any]] ?? []).map(brief)
       newReplies = (body["replied"] as? [[String: Any]] ?? []).map(brief)
       yourMoves = (body["moves"] as? [[String: Any]] ?? []).map(brief)
       clauding = (body["working"] as? [[String: Any]] ?? []).map(brief)
+      watching = (body["watching"] as? [[String: Any]] ?? []).map(brief)
       muted = body["muted"] as? Bool ?? false
+      plan = body["plan"] as? String ?? ""
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,

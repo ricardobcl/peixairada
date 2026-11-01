@@ -4661,7 +4661,7 @@ const toolName = n => {
       if (Array.isArray(d.windows)) Object.assign(usage, { data: d, err: '', off: false, fails: 0 });
       else Object.assign(usage, { err: 'no windows in the answer', fails: usage.fails + 1 });
     } catch (e) { Object.assign(usage, { err: e.message, off: !!e.body?.off, fails: usage.fails + 1 }); }
-    Object.assign(usage, { busy: false, at: Date.now() }); renderBar();
+    Object.assign(usage, { busy: false, at: Date.now() }); renderBar(); postState();
   }
   // Due: the interval is up (longer after failures), or a window has reset since the last answer — its numbers are old.
   const usageDue = () => Date.now() - usage.at > USAGE_EVERY_MS * 2 ** Math.min(usage.fails, 4)
@@ -4855,16 +4855,23 @@ const toolName = n => {
   const byWait = (a, b) => askedAt(a) - askedAt(b);
   const waitWord = ms => { const m = Math.floor(ms / 60_000); return m < 1 ? '' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`; };
   const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && asking(s)), replied: all.filter(s => visible(s) && !s.done && !asking(s) && replied(s)).sort(byWord) }; };
+  // The plan usage in a line, for the fish's menu (2026-11-01, round XIX's S5): each window's tag and percent, the next reset
+  function planLine() {
+    const ws = (usage.data?.windows || []).filter(w => !uGrant(w)); if (usage.off || !ws.length) return '';
+    const soon = ws.map(w => w.resetsAt ? new Date(w.resetsAt).getTime() : Infinity).reduce((a, b) => Math.min(a, b));
+    return `Plan ${ws.map(w => `${w.percent}% of ${uShort(w)}`).join(' · ')}${soon < Infinity ? ` · resets ${new Date(soon).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : ''}`;
+  }
   function postState() {
     const w = wanting(), brief = s => ({ id: s.id, project: s.project, title: s.title });
     const needs = [...w.needs].sort(byWait).map(s => ({ ...brief(s), since: String(askedAt(s)) })), replies = w.replied.map(brief);
     // …and for the status menu alone (2026-10-12, P2): the PRs at your move, by chat, and what is clauding
     const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
-    const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}` }));
+    const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
     const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
-    const muted = !state.notifications;
-    const sig = JSON.stringify([needs, replies, moves, working, muted]); if (sig === postState.last) return; postState.last = sig;
-    post({ type: 'state', needs, replied: replies, moves, working, muted });
+    const watching = live.filter(s => inWatch(s) && bucket(s) !== 'working').sort(byWord).map(brief);
+    const muted = !state.notifications, plan = planLine();
+    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan]); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan });
   }
   // The chats asking you, one after another from the one open, longest wait first (the status bar's count, 2026-10-12)
   function nextAsking() {
