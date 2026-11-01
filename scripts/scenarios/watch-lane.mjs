@@ -2,12 +2,13 @@
 // of its own after Clauding — whatever its age —, a question and work beating it, as the ring ranks them. A turn its own
 // monitor's notice woke keeps it there (the clauding ring lit on it), so a chatty watch does not bounce the card; your
 // word or the last task ending moves it. Its ✓ says what Done would end and asks once more — from the card, and from
-// its right-click menu.
+// its right-click menu. A wake-up the chat set itself (ScheduleWakeup, CronCreate) is a watch too: Watching till it goes
+// off, saying when on its live line at every card size.
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs';
+import { makeFixture, replyLines, scheduledLine, taskNoteLine, toolLines } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto', env: { REGISTRY_POLL_MS: '1200' } };
 
@@ -15,11 +16,14 @@ const lanes = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > *')].
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-watch', 'watch-repo');
-  const sleeps = Array.from({ length: 6 }, () => spawn('sleep', ['300'], { stdio: 'ignore' }));
+  const sleeps = Array.from({ length: 8 }, () => spawn('sleep', ['300'], { stdio: 'ignore' }));
   const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
   const now = Date.now(), at = ms => new Date(now - ms), mon = 'monwl7c1', dep = 'mondep42';
   const monitor = (id, task, what, ms) => toolLines({ id, cwd, name: 'Monitor', input: { command: 'gh pr checks', description: what, timeout_ms: 3600_000 },
     result: `Monitor started (task ${task}, expires in 60m unless the source ends first).`, at: at(ms) });
+  const wakeAt = now + 52 * 60_000 + 20_000, dueAt = now - 20_000;
+  const wakeup = (id, scheduledFor, ms) => toolLines({ id, cwd, name: 'ScheduleWakeup', input: { delaySeconds: 1200, prompt: '/loop check the canary', reason: 'the canary needs its hour', noop: false },
+    result: 'Scheduled.', toolUseResult: { scheduledFor, clampedDelaySeconds: 1200, wasClamped: false }, at: at(ms) });
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
       // a watch whose last word is older than the ready chat's: the lane is not the age's
@@ -36,17 +40,44 @@ export default async function (ctx) {
       // a question beats a watch
       { cwd, title: 'Asking, watching', prompt: 'set it up', reply: 'one question', at: at(600_000), live: { ...live(5), status: 'waiting', waitingFor: 'permission prompt' },
         lines: id => [...monitor(id, 'monask11', 'the logs', 500_000), ...toolLines({ id, cwd, name: 'Bash', input: { command: 'rm -rf build' }, at: at(10_000) })] },
+      // wake-ups it set itself: one in 52 minutes, one due
+      { cwd, title: 'Back in an hour', prompt: '/loop check the canary', reply: 'set', at: at(1000_000), live: live(6),
+        lines: id => [...wakeup(id, wakeAt, 995_000), ...replyLines({ id, cwd, text: 'I will look again in 52 minutes.', at: at(990_000) })] },
+      { cwd, title: 'Due now', prompt: '/loop check the queue', reply: 'set', at: at(1100_000), live: live(7),
+        lines: id => [...wakeup(id, dueAt, 1095_000), ...replyLines({ id, cwd, text: 'Back soon.', at: at(1090_000) })] },
     ]);
     const chat = t => chats.find(c => c.title === t), ci = chat('Watching CI'), card = `document.querySelector('#slist > .card[data-id="${ci.id}"]')`;
-    await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 6 && document.querySelector('#slist > .gsep.lane[data-lane="watching"]')`, { what: 'the six chats, a Watching lane' });
+    await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 8 && document.querySelector('#slist > .gsep.lane[data-lane="watching"]')`, { what: 'the eight chats, a Watching lane' });
     await ctx.settle(); await ctx.waitFor(`!document.querySelector('.rn.rolling')`);
     const mine = l => l.filter(x => x.startsWith('lane:') || chats.some(c => c.title === x));
     out.lanes = mine(await lanes(ctx));
-    ctx.assert.deepEqual(out.lanes.slice(0, 9), ['lane:asking 1', 'Asking, watching', 'lane:working 2', 'At work', 'Work and a watch', 'lane:watching 2', 'Watching the deploy', 'Watching CI', 'lane:ready 3'],
+    ctx.assert.deepEqual(out.lanes.slice(0, 11), ['lane:asking 1', 'Asking, watching', 'lane:working 2', 'At work', 'Work and a watch', 'lane:watching 4', 'Watching the deploy', 'Watching CI', 'Back in an hour', 'Due now', 'lane:ready 3'],
       `asking, then clauding — each beating a watch —, then Watching by its last word whatever its age, then Ready: ${JSON.stringify(out.lanes)}`);
     out.counts = await ctx.evaluate(`({ title: document.title, vh: ${card}.querySelector('.top .vh').textContent })`);
     ctx.assert.equal(out.counts.vh, 'Watching — ', 'the card says its lane once');
     await ctx.shot('watch-lane', { x: 0, y: 0, width: 420, height: 900 });
+
+    // ---- a wake-up says when, at every card size ----
+    const bk = chat('Back in an hour'), due = chat('Due now'), line = id => `document.querySelector('#slist > .card[data-id="${id}"] .state.live')`;
+    await ctx.waitFor(`/in \\d/.test(${line(bk.id)}?.textContent || '')`, { what: 'the wake-up on its card' });
+    const hm = t => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    out.wake = await ctx.evaluate(`({ said: ${line(bk.id)}.textContent, due: ${line(due.id)}.textContent, tip: ${line(bk.id)}.querySelector('[title]')?.title,
+      compact: (document.querySelector('#sessions').dataset.cards = 'compact', getComputedStyle(${line(bk.id)}).display), plain: getComputedStyle(document.querySelector('#slist > .card[data-id="${ci.id}"] .state.live') || document.body).display })`);
+    await ctx.settle(); await ctx.shot('watch-wake-compact', { x: 0, y: 0, width: 420, height: 700 });
+    await ctx.evaluate(`document.querySelector('#sessions').dataset.cards = window.peix.prefs().cards`);
+    ctx.assert.match(out.wake.said, new RegExp(`^wakes at ${hm(wakeAt)} · in 5[23] min$`), `when it wakes: ${JSON.stringify(out.wake)}`);
+    ctx.assert.equal(out.wake.due, `wakes at ${hm(dueAt)} · due now`);
+    ctx.assert.equal(out.wake.tip, `Claude set itself to wake at ${hm(wakeAt)} — the canary needs its hour`);
+    ctx.assert.equal(out.wake.compact, 'grid', 'a compact card shows it: it is why the card is here');
+    // its Done names it: the wake-up dies with the claude
+    await ctx.evaluate(`(c => c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: c.getBoundingClientRect().left + 40, clientY: c.getBoundingClientRect().top + 20 })))(document.querySelector('#slist > .card[data-id="${bk.id}"]'))`);
+    await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'its menu' });
+    out.wake.menu = await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.querySelector('.ct')?.textContent === 'Done')?.querySelector('.csub')?.textContent`);
+    await ctx.evaluate(`document.querySelector('#ctxm').close()`);
+    ctx.assert.equal(out.wake.menu, `ends its watch — the wake-up at ${hm(wakeAt)}`);
+    // the time it set comes: its turn spends the wake-up, and the chat is Ready (or Clauding, at work)
+    appendFileSync(due.file, JSON.stringify(scheduledLine({ id: due.id, cwd })) + '\n');
+    await ctx.waitFor(`!window.peix.session('${due.id}').wake && document.querySelector('#slist > .card[data-id="${due.id}"]')?.dataset.rank === 'ready'`, { what: 'the wake-up spent' });
 
     // ---- no ping-pong: a turn its monitor's notice woke stays in Watching, the clauding ring lit on it ----
     const append = lines => appendFileSync(ci.file, lines.map(l => JSON.stringify(l)).join('\n') + '\n');

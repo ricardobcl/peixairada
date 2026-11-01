@@ -38,14 +38,19 @@ const lineBase = (id, cwd, entrypoint = 'cli') => ({ isSidechain: false, userTyp
 /** A turn that calls a tool and stops there (stop_reason 'tool_use' — the chat is working), and its result if the
  *  tool answered. A call with no result is what a chat waiting on you looked like to a claude that reports no
  *  status (AskUserQuestion, ExitPlanMode); a real one writes that line only with its answer — see `live.status`. */
-export function toolLines({ id, cwd, name, input, result = null, at = new Date() }) {
+export function toolLines({ id, cwd, name, input, result = null, toolUseResult = null, at = new Date() }) {
   const base = lineBase(id, cwd);
   const useId = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
   const lines = [{ ...base, parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: at.toISOString(),
     message: { model: 'fixture-1', id: 'msg_' + useId.slice(6, 14), type: 'message', role: 'assistant', content: [{ type: 'tool_use', id: useId, name, input }], stop_reason: 'tool_use' } }];
   if (result !== null) lines.push({ ...base, parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: new Date(at.getTime() + 1000).toISOString(),
-    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: useId, content: result }] } });
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: useId, content: result }] }, ...toolUseResult && { toolUseResult } });
   return lines;
+}
+
+/** The meta line a wake-up the chat set itself writes when it goes off (2026-10-31): `/loop`'s prompt, `turnOrigin` scheduled. */
+export function scheduledLine({ id, cwd, at = new Date() }) {
+  return { ...lineBase(id, cwd), parentUuid: null, type: 'user', isMeta: true, promptSource: 'system', turnOrigin: 'scheduled', uuid: randomUUID(), timestamp: at.toISOString(), message: { role: 'user', content: 'the loop again' } };
 }
 
 /** A `<task-notification>` line: an event of a running task, or — with a status — the end of one. */

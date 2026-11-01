@@ -609,7 +609,7 @@ function newSession(id, file) {
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null, tasksGone: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks, the calls that started them, and the ids the poll let go (letTaskGo)
-    woke: null,   // a turn its own task's notice woke
+    woke: null, wakes: null, wakeCalls: null,   // a turn its own task's notice woke; the wake-ups it set itself and their calls (startWake)
     branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
     prActs: [], actsWait: new Map(),   // what its Bash did to a PR — a push, a review, a reply — and the calls still waiting on their result (prActs)
     opening: new Map(),   // its Bash calls with a `gh pr create` in them, waiting on their result (noteOpening)
@@ -693,8 +693,9 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
     peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
     team: s.alive ? s.team || null : null,   // its agent team's teammates, while its claude runs (noteTeam, 2026-10-31)
-    // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you
-    woken: status === 'working' && !!s.woke,
+    // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you; the next
+    // wake-up it set itself
+    woken: status === 'working' && !!s.woke, wake: nextWake(s),
     doing: status === 'working' ? doingOf(s) : null,   // the turn's newest tool call: the card's live line (2026-10-11)
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
@@ -2148,13 +2149,15 @@ function fold(s, line) {
       if (line.gitBranch) { s.gitBranch = line.gitBranch; if (line.gitBranch !== s.ticketBranch) noteBranchTicket(s, line.gitBranch, ts); }
       noteBranch(s, line, ts);
       if (line.isMeta) { const p = peerOf(line); if (p) return notePeer(s, p, ts); }   // another chat's message (2026-10-31): drawn, never your word
-      if (line.isMeta || line.isCompactSummary) return false;
+      const fired = line.turnOrigin === 'scheduled' && wakeFired(s, ts);   // a wake-up it set itself went off (2026-10-31): its prompt is a meta line
+      if (line.isMeta || line.isCompactSummary) return fired;
       const content = line.message?.content;
       const blocks = Array.isArray(content) ? content : null;
       const toolResults = blocks ? blocks.filter(b => b?.type === 'tool_result') : [];
       if (toolResults.length) {
         for (const b of toolResults) {
-          startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
+          startTask(s, b, ts); if (s.wakeCalls?.size) startWake(s, b, line.toolUseResult, ts);
+          pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
           if (s.actsWait.size) noteActsDone(s, b);
           if (s.opening.size) noteOpened(s, b);
           if (s.sends?.size) noteSent(s, b, line.toolUseResult, ts);
@@ -2223,6 +2226,7 @@ function fold(s, line) {
           if (NEEDS_INPUT_TOOLS.has(b.name)) { const opts = b.input?.questions?.[0]?.options, list = Array.isArray(opts) ? opts : [];   // a model's own input: options as a string once (2026-10-14)
             s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: list.length, labels: list.slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
+          if (WAKE_TOOLS.has(b.name)) noteWakeCall(s, b, ts);
           if (b.name === 'Bash') { noteGitCmd(s.gitCmds, b.input?.command, ts, m.id); noteActsCalled(s, b, ts, line.gitBranch); noteOpening(s, b, ts); }
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
@@ -2319,6 +2323,7 @@ function indexFile(file, { full = false } = {}) {
   s.newEntries = []; // initial load: nothing is "new"
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
   if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks;   // a tail re-read has not seen the calls that started them
+  if (!s.wakes && prev?.wakes?.size) s.wakes = prev.wakes;   // …nor the wake-ups it set (2026-10-31)
   if (prev) { s.diskDrift = prev.diskDrift; s.diskSeen = prev.diskSeen; s.linesIn = prev.linesIn; }   // the disk's word, not the transcript's: a re-read's old prompts do not clear it
   settleDrift(s);
   delete s.silent;
@@ -2713,6 +2718,101 @@ function letTaskGo(s, id) {
   s.tasks?.delete(id);
   const g = (s.tasksGone ||= new Set()); g.add(id);
   if (g.size > 200) g.delete(g.values().next().value);
+}
+
+// ---- wake-ups: a chat that set itself to wake (2026-10-31, round XIII's I8) ------------------------------------
+// `/loop` without an interval paces itself with ScheduleWakeup ({delaySeconds, prompt, reason} — its result's
+// toolUseResult {scheduledFor: ms, clampedDelaySeconds}; {stop: true} cancels), with one `CronCreate` ({cron, prompt,
+// recurring, durable}; CronDelete {id}) for a fixed interval or a time. Both live in the claude that set them (a durable
+// job aside) and fire only while it is idle, as a user line `turnOrigin: "scheduled"` — a meta one for ScheduleWakeup.
+// Such a chat is Watching till the time and a grace after, or till the turn it set comes.
+const WAKE_TOOLS = new Set(['ScheduleWakeup', 'CronCreate', 'CronDelete']);
+const WAKE_GRACE_MS = Number(process.env.WAKE_GRACE_MS || 5 * 60_000);   // a fire waits for an idle claude, a recurring job up to a share of its period
+const CRON_MAX_MS = 7 * 86_400_000;   // a recurring job expires on its own
+function noteWakeCall(s, b, ts) {
+  (s.wakeCalls ||= new Map()).set(b.id, { name: b.name, input: b.input || {}, ts });
+  while (s.wakeCalls.size > 20) s.wakeCalls.delete(s.wakeCalls.keys().next().value);
+}
+/** The call's result: the wake-up it set, its time the harness's own when it says one. True when the wakes changed. */
+function startWake(s, res, out, ts) {
+  const c = s.wakeCalls.get(res.tool_use_id); if (!c) return false;
+  s.wakeCalls.delete(res.tool_use_id);
+  if (res.is_error) return false;
+  const i = c.input, wakes = (s.wakes ||= new Map()), from = Date.parse(ts) || Date.now();
+  const ms = v => typeof v === 'number' ? v : typeof v === 'string' ? Date.parse(v) : NaN;
+  if (c.name === 'ScheduleWakeup') {
+    if (i.stop || out?.stopped) return wakes.delete('loop');
+    let at = ms(out?.scheduledFor);
+    if (!(at > 0)) at = (Date.parse(c.ts) || from) + (Number(out?.clampedDelaySeconds ?? i.delaySeconds) || 0) * 1000;
+    if (!(at > from - 60_000)) return false;
+    wakes.set('loop', { kind: 'loop', at, recurring: false, what: snippet(i.reason || '', 90), from });
+    return true;
+  }
+  if (c.name === 'CronDelete') return wakes.delete('cron:' + i.id);
+  const id = out?.id || /\b(?:job|task) ([\w-]+)/.exec(resultText(res))?.[1]; if (!id) return false;
+  const recurring = i.recurring !== false;
+  let at = ms(out?.nextFireAt ?? out?.nextRunAt ?? out?.scheduledFor); if (!(at > 0)) at = cronNext(i.cron, from);
+  if (!(at > 0)) return false;
+  wakes.set('cron:' + id, { kind: 'cron', at, recurring, cron: i.cron, what: snippet(i.prompt || '', 90), from });
+  return true;
+}
+/** A scheduled turn began: the wake-up it was — the soonest due by then — is spent, a recurring job moved to its next. */
+function wakeFired(s, ts) {
+  if (!s.wakes?.size) return false;
+  const t = Date.parse(ts) || Date.now();
+  const w = [...s.wakes].filter(([, w]) => w.at <= t + 60_000).sort((a, b) => a[1].at - b[1].at)[0]; if (!w) return false;
+  const next = w[1].recurring ? cronNext(w[1].cron, t) : NaN;
+  if (next > 0) w[1].at = next; else s.wakes.delete(w[0]);
+  return true;
+}
+/** The first minute after `after` (ms) a five-field cron expression — "M H DoM Mon DoW", the Mac's local time — matches,
+ *  within a year; NaN for one it cannot read. A day matches either of DoM and DoW when both are set, as cron's does. */
+function cronNext(expr, after) {
+  const f = String(expr || '').trim().split(/\s+/); if (f.length !== 5) return NaN;
+  const field = (src, lo, hi) => {
+    const out = new Set();
+    for (const part of src.split(',')) {
+      const m = /^(?:(\*)|(\d+)(?:-(\d+))?)(?:\/(\d+))?$/.exec(part); if (!m) return null;
+      const a = m[1] ? lo : +m[2], b = m[1] || (m[4] && m[3] == null) ? hi : m[3] != null ? +m[3] : a, step = m[4] ? +m[4] : 1;
+      if (a < lo || b > hi || a > b || step < 1) return null;
+      for (let v = a; v <= b; v += step) out.add(v);
+    }
+    return out;
+  };
+  const [M, H, D, Mo, W] = [field(f[0], 0, 59), field(f[1], 0, 23), field(f[2], 1, 31), field(f[3], 1, 12), field(f[4], 0, 7)];
+  if (!M || !H || !D || !Mo || !W || !(after >= 0)) return NaN;
+  const days = new Set([...W].map(v => v % 7)), anyD = f[2] === '*', anyW = f[4] === '*';
+  const mins = [...M].sort((a, b) => a - b), hours = [...H].sort((a, b) => a - b), t = new Date(after);
+  for (let d = 0; d < 367; d++) {
+    const day = new Date(t.getFullYear(), t.getMonth(), t.getDate() + d);
+    if (!Mo.has(day.getMonth() + 1)) continue;
+    const dm = D.has(day.getDate()), dw = days.has(day.getDay());
+    if (!(anyD && anyW ? true : anyD ? dw : anyW ? dm : dm || dw)) continue;
+    for (const h of hours) for (const m of mins) { const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m).getTime(); if (at > after) return at; }
+  }
+  return NaN;
+}
+/** What wakes it next, for the summary — reads only: a live claude's, set since it started, not past its grace. */
+function nextWake(s, now = Date.now()) {
+  if (!s.alive || !s.wakes?.size) return null;
+  const born = Number(s.live?.startedAt) || 0;
+  let best = null;
+  for (const w of s.wakes.values()) if (w.from >= born && now <= w.at + WAKE_GRACE_MS && (!best || w.at < best.at)) best = w;
+  return best && { at: new Date(best.at).toISOString(), kind: best.kind, recurring: best.recurring, what: best.what };
+}
+/** The poll's half: a wake-up of a claude gone goes with it, one past its grace goes — a recurring one to its next time,
+ *  till it expires. True when any changed. */
+function pruneWakes(s, now = Date.now()) {
+  if (!s.wakes?.size) return false;
+  const n = s.wakes.size, born = Number(s.live?.startedAt) || 0;
+  let moved = false;
+  for (const [k, w] of s.wakes) {
+    if (!s.alive || w.from < born) { s.wakes.delete(k); continue; }
+    if (now <= w.at + WAKE_GRACE_MS) continue;
+    const next = w.recurring && now - w.from < CRON_MAX_MS ? cronNext(w.cron, now) : NaN;
+    if (next > 0) { w.at = next; moved = true; } else s.wakes.delete(k);
+  }
+  return moved || s.wakes.size !== n;
 }
 
 function scanProjects() {
@@ -6214,7 +6314,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cronNext, nextWake, pruneWakes, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();
@@ -6300,7 +6400,7 @@ setInterval(() => {
   // a live chat's file looked at: what an event never told of is read (2026-10-14) — a stat when nothing was
   for (const f of [...sessions.values()].filter(s => s.alive && s.file).map(s => s.file)) try { tailFile(f); } catch (e) { console.error('[peixairada] tail error', f, e); }
   for (const s of sessions.values()) {
-    if (pruneTasks(s)) schedulePush(s);
+    if (pruneTasks(s) + pruneWakes(s)) schedulePush(s);   // both asked, each its own pruning
     if (s.alive) scanAgents(s);
     else if (s.agentsRunning) { s.agentsRunning = 0; schedulePush(s); }   // its claude is gone, and its agents with it — a stale card read "2 agents" until a restart
   }

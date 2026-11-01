@@ -885,7 +885,10 @@
   .card .state.live .ic { width: 11px; height: 11px; flex: none; color: var(--watch); }
   .card .state.live { perspective: 160px; }
   .card .state.live b { flex: none; font: 600 var(--fs-xs)/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
-  #sessions[data-cards="compact"] .card .state.live { display: none; }
+  #sessions[data-cards="compact"] .card .state.live:not(.wake) { display: none; }   /* a wake-up is the reason it is Watching: at every size (2026-10-31) */
+  #sessions[data-even] .card .state.live.wake { display: none; }
+  .card .state.live.wake .ll > span b { font: inherit; font-weight: 700; color: var(--watch); }
+  .card .state.live .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   /* An agent team's teammates under their lead (2026-10-31, fillTeam): a row each — a dot, its name, at work or done in
      words, its last line —, at every size but compact's same height. The dot: at work's colour, done's, a ring if only
      the roster knows it yet. */
@@ -4027,6 +4030,7 @@ const toolName = n => {
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     // ± in a square: a chat's changes, its diff (2026-10-10)
     timeline: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5v13M7.5 4.5h6M7.5 11.5h4"/><circle cx="4.5" cy="4.5" r="1.75"/><circle cx="4.5" cy="11.5" r="1.75"/></svg>',   // the timeline tab (2026-10-17)
+    wake: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5.75V8.5l2 1.25M3 3.25 4.75 1.75M13 3.25l-1.75-1.5"/></svg>',   // a wake-up the chat set itself (2026-10-31)
     diff: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2.5h1.5v2.25H11v1.5H8.75V8.5h-1.5V6.25H5v-1.5h2.25ZM5 10.5h6V12H5Z"/><path fill-rule="evenodd" d="M2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1Zm0 1.5v11h11v-11Z"/></svg>',
     // a branch (Primer's git-branch, MIT): the changes tab's branch
     branch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
@@ -4561,10 +4565,15 @@ const toolName = n => {
   // Watching, whatever its age: a live claude with work out behind the turn, nothing more pressing — a question beats a
   // watch, work beats it too, as the ring ranks them; but a turn the chat's own task notice woke (the server's `woken`)
   // stays, so a chatty monitor does not bounce the card a lane on every event. Your word or the last task ending moves it.
-  const inWatch = s => !s.done && s.alive && (s.tasks?.length || 0) > 0 && (s.status !== 'working' || (s.woken && !s.agents));
+  // A wake-up it set itself is a watch too (2026-10-31, later: ScheduleWakeup, CronCreate — the server's `wake`, gone once
+  // its turn comes or its time is well past).
+  const inWatch = s => !s.done && s.alive && ((s.tasks?.length || 0) > 0 || !!s.wake) && (s.status !== 'working' || (s.woken && !s.agents));
   const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : inWatch(s) ? 'watching' : b !== 'ready' ? b : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
   // What Done would end on a watching chat — the ✓ names it and asks once more (tickGate) —, or ''.
-  const watchEnds = s => !inWatch(s) ? '' : (s.tasks || []).map(t => `${t.kind === 'monitor' ? 'monitor' : 'running'}${t.what ? ` · ${t.what}` : ''}`).join(' and ');
+  const watchEnds = s => !inWatch(s) ? '' : [...(s.tasks || []).map(t => `${t.kind === 'monitor' ? 'monitor' : 'running'}${t.what ? ` · ${t.what}` : ''}`), ...s.wake ? [`the wake-up at ${hhmm(s.wake.at)}`] : []].join(' and ');
+  // a time of day as the board writes one, and how far off it is (a wake-up's: `data-in`, written by fillAges)
+  const hhmm = ts => { const d = new Date(ts); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const relIn = ts => { const m = Math.round((new Date(ts) - Date.now()) / 60000); return !(m > 0) ? 'due now' : m < 60 ? `in ${m} min` : `in ${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`; };
   const tickArmed = new Map(), armedOn = id => (tickArmed.get(id) || 0) > performance.now();   // chat id → until when its ✓ is armed
   // The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the chats with a PR at your
   // move — clauding ones too, the PR waits on you all the same — or the ready ones with a new reply. Done chats never.
@@ -4701,7 +4710,7 @@ const toolName = n => {
   // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Idle · Done — with its mark and
   // how many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match,
   // none; under a filter, which shows every match, a head that does not fold (`still`).
-  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
+  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running, or a wake-up it set'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
   // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
@@ -4771,6 +4780,7 @@ const toolName = n => {
       const tip = prTip(pr); if (el.title !== tip) el.title = tip;
     }
     for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
+    for (const el of root.querySelectorAll('[data-in]')) { const t = relIn(el.dataset.in); if (el.textContent !== t) el.textContent = t; }   // a time to come: a wake-up's (2026-10-31)
     for (const el of root.querySelectorAll('.tvtrk3')) fillTracks(el);   // the chat and its PRs on one clock (2026-10-17)
   }
   const dayHtml = day => `<div class="gsep day" title="below: the chats you were in ${day === 'Yesterday' ? 'yesterday' : 'on ' + day}"><b>${day}</b></div>`;
@@ -4890,7 +4900,7 @@ const toolName = n => {
     // now and then (the bar's own interval), nothing else moving.
     const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
     const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
-    fillAges($('#slist')); fillLive($('#slist')); fillTeam($('#slist')); fadeSoon();
+    fillLive($('#slist')); fillAges($('#slist')); fillTeam($('#slist')); fadeSoon();   // the live line first: a wake-up's is an age to fill
     caughtUp(zero);
     drawFilter(p, narrow);
     if (drawn) phaseAnims();
@@ -5664,7 +5674,10 @@ const toolName = n => {
   // so a new event or a new tool call keeps the card's node, and the ring on it. A turn at work: the tool it called last
   // and what for (the server's `doing`), flipping to the next like a split-flap board. Else a monitor's: its newest
   // event, rolled in, the watching light blipping once per event.
-  const liveSlot = s => s.alive && !s.done && (s.status === 'working' || watching(s)) ? '<div class="state live"></div>' : '';
+  // A wake-up is the line's when nothing else says more — no tool at work, no event — and then at every card size, as
+  // the reason the chat is Watching (2026-10-31, round XIII): `wakes at 14:30 · in 52 min`.
+  const wakeSaid = s => !!s.wake && !(s.status === 'working' && s.doing) && !(s.tasks || []).some(t => t.last);
+  const liveSlot = s => s.alive && !s.done && (s.status === 'working' || watching(s) || s.wake) ? `<div class="state live${wakeSaid(s) ? ' wake' : ''}"></div>` : '';
   // An agent team's teammates under their lead (2026-10-31): a row each — its name, at work or done, its last line —,
   // filled after the render as the live line is, so a teammate's step keeps the card's node. None for a team of the lead alone.
   const teamSlot = s => s.alive && s.team?.length ? '<div class="team"></div>' : '';
@@ -5681,6 +5694,7 @@ const toolName = n => {
     const ts = s.alive ? s.tasks || [] : [], n = ts.reduce((a, t) => a + (t.events || 0), 0);
     if (s.status === 'working' && s.doing) return { html: `<b>${esc(toolName(s.doing.name))}</b><span>${esc(pathTail(s.doing.text, s.cwd))}</span>`, n, flap: true, at: s.doing.ts };
     const ev = ts.filter(t => t.last).sort((a, b) => String(b.lastEventAt || '').localeCompare(String(a.lastEventAt || '')))[0];
+    if (!ev && s.wake) return { html: `${ICON.wake}<span title="${esc(`Claude set itself to wake at ${hhmm(s.wake.at)}${s.wake.recurring ? ', and again after' : ''}${s.wake.what ? ` — ${s.wake.what}` : ''}`)}"><b>wakes</b> at ${hhmm(s.wake.at)} · <span data-in="${esc(s.wake.at)}"></span>${s.wake.recurring ? ' · again after' : ''}</span>`, n };
     return { html: ev ? `${ICON.watch}<span>${esc(ev.last)}</span>` : '', n };
   }
   function fillLive(root) {
