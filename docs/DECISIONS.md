@@ -53,6 +53,17 @@ This entry is I2 (*see chats talk*); the others are built beside it.
   of the lead alone is none, so no card changes on a Mac without teams. Filled after the render, as the live line is: a
   teammate's step keeps the card's node. Read-only — the mailboxes are files under `~/.claude`, and stay Claude Code's.
   Checked: `test/team.test.mjs`, `team-rows.mjs`.
+* **What the board never opens, written down** (the round's guardrails): beside each `sessions/<pid>.json` is a 0600
+  `<pid>.<hash>.key` holding that chat's peer token — with it, any process could pass for the chat to every other one,
+  which would turn a board that only reads into one that can impersonate. `loadRegistry` read only `.json` names
+  already; now it is a rule with a tripwire: `test/peer-keys.test.mjs` makes the key, a shell snapshot, `history.jsonl`
+  and a team's mailbox FIFOs — a FIFO opened to read blocks until a writer comes, and opening it to write without
+  blocking fails (ENXIO) while no reader holds it — and holds that after the boot, the registry's polls and events, a team
+  and a chat read, none has a reader and the server still answers. Nor does the board post to a chat's socket
+  (`/tmp/cc-socks/`): the docs now say the auth line is optional on macOS, but the message frame is not documented, a
+  post the board could not sign is held by a chat that bypasses prompts, and one that looked signed would need the key.
+  So "Deliberately not done" says so: the board drives a chat only through Claude. Nothing received is typed into a
+  drawer by itself either.
 
 ## Decisions of 2026-10-31, at night — a card's PRs as one (round XII)
 

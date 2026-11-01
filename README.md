@@ -110,8 +110,8 @@ click to answer, everyone's votes shown by name. See [the guide](docs/GUIDE.md#c
 
 - The server listens on `127.0.0.1` only and answers nothing but its own page without the board's key — a file
   only you can read; the app has it, a browser gets it once from `scripts/launchd.sh open`. Keep it on `127.0.0.1`.
-- It reads `~/.claude` and never writes there. A chat running elsewhere is never written to: take it over, or
-  continue it where it is.
+- It reads `~/.claude` and never writes there; the chats' peer keys, your shell snapshots and your prompt history
+  it never opens. A chat running elsewhere is never written to: take it over, or continue it where it is.
 - Only `gh`, your plan-usage numbers, Jira and the chat (if you set them up) and the board's own update check leave your machine.
 
 **More**: [the guide](docs/GUIDE.md) — every feature, settings and the setup file, keys, updating; [CLAUDE.md](CLAUDE.md)

@@ -438,6 +438,11 @@ function reloadConfig() {
 }
 
 // ---- nothing under CLAUDE_DIR: Claude Code's, never the board's to write in --------------------------------------
+// …and some of it never the board's to read (2026-10-31): beside each `sessions/<pid>.json` lies a 0600
+// `<pid>.<hash>.key` with that chat's peer token — whoever holds it can pass for the chat to every other one —, and
+// `shell-snapshots/` and `history.jsonl` are your shell's environment and every prompt you typed, anywhere. None is
+// opened: the registry is read by name (`.json`), a team by its config's path. Nor does the board post to a chat's socket
+// (/tmp/cc-socks): it reaches a chat only through a claude it runs. test/peer-keys.test.mjs holds it.
 /** Whether a path is CLAUDE_DIR or in it, as the disk has it (2026-10-14): the board writes nothing there, and a chat
  *  run in ~/.claude, a folder linked into it or another spelling of it (the disk ignores case) is no way round that.
  *  Judged by the nearest folder of it there is, real, against CLAUDE_DIR's device and inode. */
@@ -2785,7 +2790,7 @@ function loadRegistry() {
   for (const s of sessions.values()) if (s.live) for (const l of [s.live, ...s.rivals]) held.set(`${l.pid}:${l.procStart}`, s);
   const found = new Map();   // sessionId -> its registry entries, one per pid
   for (const name of readdirSync(SESSIONS_DIR)) {
-    if (!name.endsWith('.json')) continue;
+    if (!name.endsWith('.json')) continue;   // the registry's own files only: never the `<pid>.<hash>.key` beside each (2026-10-31, see inClaudeDir's section)
     let reg;
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
     if (!reg.sessionId || ownReader(reg)) continue;   // a lunch menu's reader (2026-10-18): the board's own claude, no chat
