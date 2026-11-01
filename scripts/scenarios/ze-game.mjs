@@ -86,10 +86,9 @@ export default async function (ctx) {
   ctx.assert.equal(out.focus.mass, 9);
   ctx.assert.ok(await ctx.evaluate(`window.peix.ze().g.ride.t`) <= 5, 'five seconds a car');
   await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'ArrowRight', key: 'ArrowRight', windowsVirtualKeyCode: 39 });
-  await ctx.sleep(700);
+  await ctx.waitFor(`window.peix.ze().g.vx > 600`, { timeout: 4000, what: 'the Focus quick' });   // by frames, not the clock: a loaded Mac has fewer
   out.fast = await ctx.evaluate(`window.peix.ze().g.vx`);
   await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'ArrowRight', key: 'ArrowRight', windowsVirtualKeyCode: 39 });
-  ctx.assert.ok(out.fast > 600, `the Focus is quick: ${out.fast}`);
   await ctx.sleep(400);
   await press('Space', ' ', 32);
   ctx.assert.ok((await game()).words.includes('BEEP BEEP!'), 'space: its horn');

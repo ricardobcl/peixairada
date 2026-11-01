@@ -120,8 +120,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await g(`return [g.power?.kind, g.mass, g.gape]`), ['francesinha', 12, true], 'the francesinha: full bulk, a wide mouth');
   await g(`g.power = null`); await eat({ kind: 'power', p: 'bifana', e: '', pts: 25 });
   await push({ kind: 'meat', e: '🥩', say: 'posta' }); await g(`Object.assign(g.items.at(-1), { x: g.x + 220, y: g.y - 300, vy: 40, g: 40 })`);
-  await ctx.sleep(300);
-  ctx.assert.ok(await g(`return g.items.at(-1).vx < -50`), 'the bifana: meat curving to him');
+  await ctx.waitFor(`window.peix.ze().g.items.at(-1)?.vx < -50`, { timeout: 3000, what: 'the bifana: meat curving to him' });   // by frames, not the clock
   await g(`g.power = null; g.items.length = 0;`); await eat({ kind: 'power', p: 'vinho', e: '', pts: 25 });
   ctx.assert.equal(await g(`return g.power?.kind`), 'vinho');
   await g(`g.power = null; g.mass = 6;`);

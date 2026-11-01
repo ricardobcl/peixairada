@@ -2781,7 +2781,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #zeGame { width: min(94vw, calc((96vh - 58px) * .8)); max-width: none; max-height: none; padding: 0; border: 0; background: transparent; overflow: visible; outline: none; }
   #zeGame[open] { display: grid; gap: 10px; }
   #zeGame::backdrop { background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(10px); }
-  #zeCanvas { display: block; width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-4); background: #2a0f4f; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); touch-action: none; }
+  #zeStack { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-4); overflow: hidden; background: #2a0f4f; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); }
+  #zeCanvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+  #zeGL { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
   #zeGame .zefoot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
   #zeGame .zefoot .spacer { flex: 1; }
   #zeGame .zefoot .btn { font-size: var(--fs-xs); }
@@ -3058,7 +3060,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="lfoot" id="lunchFoot"></div>
 </dialog>
 <dialog id="zeGame" aria-label="Zé, the Bruce Lee of Barcelos — a game" tabindex="-1">
-  <canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat, grows, and dodges the vegetables"></canvas>
+  <div id="zeStack"><canvas id="zeCanvas" width="800" height="450" role="img" aria-label="Zé eats the meat, grows, and dodges the vegetables"></canvas></div>
   <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run, twice a dash</span><span><kbd>↑</kbd> jump</span><span><kbd>↓</kbd> drop</span><span><kbd>space</kbd> kick, held the nunchaku</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeTune" title="The music — T">♪ funk</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
@@ -3170,6 +3172,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · alerts
 //   js  · lunch: the reminder, and the menus of the places you go (2026-10-18)
 //   js  · Zé: ⌥⌘Z's game (2026-10-30)
+//   js  · the stage: Zé's game on the GPU (2026-11-01, the HD-2D round)
 //   js  · the chat column across a reload (2026-10-16)
 //   js  · SSE
 // Map ▴
@@ -13030,7 +13033,7 @@ const toolName = n => {
     zeSize(); zeGo();
   }
   function zeToggle() { if ($('#zeGame').open) $('#zeGame').close(); else zeOpen(); }   // a declaration: HOTKEYS names it before this line runs
-  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); ze.scene = ze.was = null; savePrefs(); repostPane(); });   // the scene's canvases go with it, the counts are kept
+  $('#zeGame').addEventListener('close', () => { zeStop(); zeHush(); zgFree(); ze.scene = ze.was = null; savePrefs(); repostPane(); });   // the scene's canvases go with it, the counts are kept
   function zeGo() { if (!ze.raf) { ze.at = 0; ze.raf = requestAnimationFrame(zeTick); } }
   function zeStop() { cancelAnimationFrame(ze.raf); ze.raf = 0; }
   /** The sky's fade, and its rain: drops falling slant while the sky has rain — held where they are under reduced motion. */
@@ -13044,7 +13047,7 @@ const toolName = n => {
   function zeTick(now) {
     ze.raf = 0;
     const dt = ze.at ? Math.min(.05, (now - ze.at) / 1000) : 0; ze.at = now;
-    zeStep(dt); zeWeather(dt); zeDraw(); ze.frames++;
+    ze.dt = dt; zeStep(dt); zeWeather(dt); zeDraw(); ze.frames++;
     if ($('#zeGame').open && ze.g.phase !== 'pause' && ze.g.phase !== 'call') ze.raf = requestAnimationFrame(zeTick);
   }
   /** The canvas's pixels are its box's at the screen's density; the logic is ZE_W × ZE_H whatever they are. */
@@ -13593,6 +13596,7 @@ const toolName = n => {
 
   // ---- the picture
   function zeDraw() {
+    if (zgOn()) return zgDraw();
     const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W, calm = zeCalm(), dark = zeDark(g);
     cx.setTransform(k, 0, 0, k, 0, 0);
     if (g.power?.kind === 'vinho' && !calm) { const a = Math.sin(g.t * 1.9) * .018; cx.translate(ZE_W / 2, ZE_H / 2); cx.rotate(a); cx.scale(1.03, 1.03 + Math.sin(g.t * 2.7) * .012); cx.translate(-ZE_W / 2, -ZE_H / 2); }   // the vinho verde: the picture wobbles
@@ -13622,6 +13626,12 @@ const toolName = n => {
       cx.fillStyle = `rgba(255, 246, 210, ${.35 * a})`; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 2, w * 1.4, 10, 0, 0, Math.PI * 2); cx.fill();
     }
     if (g.shake > 0 && !calm) cx.translate((Math.random() - .5) * 24 * g.shake, (Math.random() - .5) * 24 * g.shake);
+    zeActors(cx, g, calm);
+    if (L.P.rain && ze.drops.length) { cx.strokeStyle = 'rgba(190, 210, 240, .45)'; cx.lineWidth = 1.4; cx.beginPath(); for (const d of ze.drops) { cx.moveTo(d.x, d.y); cx.lineTo(d.x - 4, d.y + 16); } cx.stroke(); }   // Minho's rain
+    zeUi(cx, g, k, calm);
+  }
+  /** What moves, on the 2D canvas or on the stage's batcher (zgBatch): what falls, the fire, the cars, Zé, the galo, what flies off. */
+  function zeActors(cx, g, calm) {
     for (const it of g.items) {
       cx.save(); cx.translate(it.x, it.y);
       const glow = it.kind === 'gold' || it.stood > 0 ? 48 : 34;
@@ -13666,9 +13676,11 @@ const toolName = n => {
       cx.restore();
     }
     cx.globalAlpha = 1;
+  }
+  /** What is read, on the top canvas whichever draws the rest, and never lit or blurred: the floating words, the HUD, the cards. */
+  function zeUi(cx, g, k, calm) {
     for (const w of g.words) { cx.globalAlpha = Math.min(1, 2.2 - w.t * 2); zeText(cx, w.s, w.x, w.y, w.big ? 30 : 19, w.c, 'center'); }
     cx.globalAlpha = 1;
-    if (L.P.rain && ze.drops.length) { cx.strokeStyle = 'rgba(190, 210, 240, .45)'; cx.lineWidth = 1.4; cx.beginPath(); for (const d of ze.drops) { cx.moveTo(d.x, d.y); cx.lineTo(d.x - 4, d.y + 16); } cx.stroke(); }   // Minho's rain
     cx.setTransform(k, 0, 0, k, 0, 0);
     if (!calm && g.red > 0) { cx.fillStyle = 'rgba(228, 59, 68, .28)'; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the hit
     if (!calm && g.flash > 0) { cx.fillStyle = `rgba(255, 250, 235, ${Math.min(.65, g.flash * 4)})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the lightning's
@@ -13686,7 +13698,7 @@ const toolName = n => {
       zeText(cx, 'TROPHY', ZE_W / 2 - w / 2 + 62, y - 6, 12, '#ffd23f', 'left', 700); zeText(cx, T.name, ZE_W / 2 - w / 2 + 62, y + 13, 20, '#fff3c4');
     }
     if (g.phase !== 'play') zeCard(cx, g);
-  }
+    }
   /** The house above Trota's, risen behind it while the Avó da Horta is out: a granite front, a window with its green
    *  shutters open, geraniums on the sill, and her in it — throwing, hit, and what she says. */
   function zeAvoHouse(cx, g, calm) {
@@ -14117,6 +14129,7 @@ const toolName = n => {
    *  part 'back' is the whole car, drawn before him, 'front' its doors and wheels again over his lap, a beltline along
    *  their top. tilt pitches it on its rear wheel; flip turns it over its middle onto its roof, with a hop. */
   function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
+    if (cx.zg) return zgCar(cx, kind, x, y, f, wheel, tilt, flip, part);
     const K = '#1b0b2e', focus = kind === 'focus', shape = pts => { cx.beginPath(); cx.moveTo(...pts[0]); for (const p of pts.slice(1)) cx.lineTo(...p); cx.closePath(); };
     cx.save(); cx.translate(x, y); cx.scale(f, 1);
     if (flip) { cx.translate(0, -50 - Math.sin(flip) * 60); cx.rotate(flip); cx.translate(0, 50); }
@@ -14324,6 +14337,285 @@ const toolName = n => {
     }
     x.restore();
   }
+
+  // ---- the stage: Zé's game on the GPU (2026-11-01, the HD-2D round) ------------------------------------------------
+  // The same round on a lit set. What the game draws is cut in three: the set, painted and baked once a sky; the actors, its
+  // own 2D drawing code on an object shaped like a 2D context (zgBatch); the UI, the top canvas, never post-processed.
+  // WebGL2, made when the dialog opens and let go when it closes; none, or a context lost, and the game is its 2D canvas.
+  const zg = ze.stage = { gl: null, off: false, P: null, scenes: new Map(), sky: -1, was: null, T: 0, frames: 0 };
+  const ZG_HEAD = `#version 300 es
+precision highp float;
+vec2 cuv(vec2 p){return p/vec2(720.,900.);}
+vec2 fuv(vec2 p){return vec2(p.x/720.,1.-p.y/900.);}
+vec3 lin(vec3 c){return pow(max(c,vec3(0.)),vec3(2.2));}
+in vec2 vP; out vec4 o;
+`;
+  const ZG_VS = `#version 300 es
+uniform vec4 uRect; out vec2 vP;
+void main(){vec2 q=vec2(float(gl_VertexID&1),float((gl_VertexID>>1)&1));vP=uRect.xy+q*uRect.zw;vec2 c=vP/vec2(720.,900.);gl_Position=vec4(c.x*2.-1.,1.-c.y*2.,0.,1.);}`;
+  const ZG_FS = {
+    layer: `uniform sampler2D uT;uniform float uA;uniform vec2 uShift;
+void main(){o=texture(uT,fuv(vP-uShift))*uA;}`,
+    canvas: `uniform sampler2D uT;
+void main(){vec4 a=texture(uT,cuv(vP));o=a.a>.002?vec4(lin(a.rgb/a.a)*a.a,a.a):vec4(0.);}`,
+    tint: `uniform vec4 uC;
+void main(){o=uC;}`,
+    final: `uniform sampler2D uS;uniform mat3 uCam;
+void main(){vec2 p=(uCam*vec3(vP,1.)).xy;vec3 c=texture(uS,fuv(p)).rgb;
+c=pow(max(c,vec3(0.)),vec3(1./2.2));
+float d=fract(sin(dot(gl_FragCoord.xy,vec2(12.98,78.23)))*43758.5)-.5;c+=d/255.;
+o=vec4(c,1.);}`,
+  };
+  function zgCompile(gl, vs, fs) {
+    const mk = (t, s) => { const h = gl.createShader(t); gl.shaderSource(h, s); gl.compileShader(h); if (!gl.getShaderParameter(h, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(h)); return h; };
+    const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return { p, u: new Map() };
+  }
+  /** The stage up or not. Made on the first frame of an opening; what cannot be made is the 2D canvas until the dialog is opened again. */
+  function zgOn() {
+    if (zg.off) return false;
+    if (zg.gl) return true;
+    const cv = document.createElement('canvas'); cv.id = 'zeGL'; cv.setAttribute('aria-hidden', 'true');
+    const gl = cv.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false });
+    if (!gl) { zg.off = true; return false; }
+    try {
+      zg.hdr = !!gl.getExtension('EXT_color_buffer_float') || !!gl.getExtension('EXT_color_buffer_half_float');
+      zg.fmt = zg.hdr ? [gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT] : [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE];
+      zg.gl = gl; zg.P = {}; for (const k of Object.keys(ZG_FS)) zg.P[k] = zgCompile(gl, ZG_VS, ZG_HEAD + ZG_FS[k]);
+      zg.vao = gl.createVertexArray(); gl.bindVertexArray(zg.vao);
+      gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+      zg.ax = zgBatch(gl);
+    } catch (e) { console.error('Zé: no stage', e); zg.gl = null; zg.off = true; return false; }
+    cv.addEventListener('webglcontextlost', e => { e.preventDefault(); zgFree(); zg.off = true; const c = $('#zeCanvas'); c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0); if ($('#zeGame').open && !ze.raf) zeDraw(); });
+    $('#zeStack').prepend(cv);
+    return true;
+  }
+  /** All of it let go with the dialog: the context, so its memory with it — the next opening starts clean. */
+  function zgFree() {
+    const gl = zg.gl; zg.off = false;
+    if (gl) { const cv = gl.canvas; gl.getExtension('WEBGL_lose_context')?.loseContext(); cv.remove(); }
+    Object.assign(zg, { gl: null, P: null, ax: null, sky: -1, was: null, fS: null, fA: null, fC: null, set: null, cars: null, frames: 0 }); zg.scenes.clear();
+    $('#zeCanvas').getContext('2d').setTransform(1, 0, 0, 1, 0, 0); $('#zeCanvas').getContext('2d').clearRect(0, 0, 1e4, 1e4);
+  }
+  function zgTex(gl, filt = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap); return t;
+  }
+  function zgFbo(gl, w, h, fmt = zg.fmt, mips = false) {
+    const t = zgTex(gl, mips ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+    if (mips) gl.texStorage2D(gl.TEXTURE_2D, Math.floor(Math.log2(Math.max(w, h))) + 1, fmt[0], w, h);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, fmt[0], w, h, 0, fmt[1], fmt[2], null);
+    const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    return { t, f, w, h };
+  }
+  const zgDrop = (gl, b) => { if (b) { gl.deleteTexture(b.t); gl.deleteFramebuffer(b.f); } };
+  const zgUp = (gl, cv) => { const t = zgTex(gl); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, cv); return t; };
+  function zgUse(P, rect, vals = {}, texs = {}) {
+    const gl = zg.gl; gl.useProgram(P.p);
+    const U = n => { if (!P.u.has(n)) P.u.set(n, gl.getUniformLocation(P.p, n)); return P.u.get(n); };
+    gl.uniform4f(U('uRect'), rect[0], rect[1], rect[2], rect[3]);
+    let i = 0; for (const n in texs) { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, texs[n]); gl.uniform1i(U(n), i); i++; }
+    for (const n in vals) {
+      const v = vals[n], u = U(n); if (u == null) continue;
+      if (typeof v === 'number') gl.uniform1f(u, v);
+      else if (v.int !== undefined) gl.uniform1i(u, v.int);
+      else if (v.v4) gl.uniform4fv(u, v.v4);
+      else if (v.v3) gl.uniform3fv(u, v.v3);
+      else if (v.m3) gl.uniformMatrix3fv(u, false, v.m3);
+      else if (v.length === 2) gl.uniform2f(u, v[0], v[1]);
+      else if (v.length === 3) gl.uniform3f(u, v[0], v[1], v[2]);
+      else if (v.length === 4) gl.uniform4f(u, v[0], v[1], v[2], v[3]);
+    }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  const ZG_FULL = [0, 0, ZE_W, ZE_H];
+  function zgBind(b) { const gl = zg.gl; gl.bindFramebuffer(gl.FRAMEBUFFER, b ? b.f : null); gl.viewport(0, 0, b ? b.w : gl.canvas.width, b ? b.h : gl.canvas.height); }
+
+  // ---- the batcher: what the game's own code draws goes straight to the GPU. A canvas handed to WebGL each frame costs 7 ms
+  // in WebKit whatever its size (a sync with its GPU process), and frames lost; a sprite goes up once.
+  const ZG_BATCH_VS = `#version 300 es
+layout(location=0)in vec2 aP;layout(location=1)in vec2 aU;layout(location=2)in vec4 aC;out vec2 vU;out vec4 vC;
+void main(){vec2 c=aP/vec2(720.,900.);gl_Position=vec4(c.x*2.-1.,c.y*2.-1.,0.,1.);vU=aU;vC=aC;}`;
+  const ZG_BATCH_FS = `#version 300 es
+precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void main(){o=texture(uT,vU)*vC;}`;
+  function zgBatch(gl) {
+    const P = zgCompile(gl, ZG_BATCH_VS, ZG_BATCH_FS), vao = gl.createVertexArray(), buf = gl.createBuffer(), V = new Float32Array(8 * 24000);
+    gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 32, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 32, 8);
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 4, gl.FLOAT, false, 32, 16);
+    gl.bindVertexArray(zg.vao);
+    const sL = gl.createSampler(), sN = gl.createSampler();
+    for (const [sm, f] of [[sL, gl.LINEAR], [sN, gl.NEAREST]]) { gl.samplerParameteri(sm, gl.TEXTURE_MIN_FILTER, f); gl.samplerParameteri(sm, gl.TEXTURE_MAG_FILTER, f); gl.samplerParameteri(sm, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.samplerParameteri(sm, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); }
+    const white = zgTex(gl); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+    const texs = new WeakMap(), texts = new Map(), colors = new Map(), probe = document.createElement('canvas').getContext('2d');
+    let n = 0, curT = null, curS = null, M = [1, 0, 0, 1, 0, 0], stack = [], paths = [], cur = null, K = 1;
+    const flush = () => {
+      if (!n) return;
+      gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, V.subarray(0, n * 8), gl.DYNAMIC_DRAW);
+      gl.useProgram(P.p); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, curT); gl.bindSampler(0, curS); gl.uniform1i(gl.getUniformLocation(P.p, 'uT'), 0);
+      gl.drawArrays(gl.TRIANGLES, 0, n); gl.bindSampler(0, null); gl.bindVertexArray(zg.vao); n = 0;
+    };
+    const bind = (t, sm) => { if (t !== curT || sm !== curS || n > 23900) { flush(); curT = t; curS = sm; } };
+    const vert = (x, y, u, v, c) => { const i = n++ * 8; V[i] = M[0] * x + M[2] * y + M[4]; V[i + 1] = M[1] * x + M[3] * y + M[5]; V[i + 2] = u; V[i + 3] = v; V[i + 4] = c[0]; V[i + 5] = c[1]; V[i + 6] = c[2]; V[i + 7] = c[3]; };
+    const rawv = (x, y, c) => { const i = n++ * 8; V[i] = x; V[i + 1] = y; V[i + 2] = .5; V[i + 3] = .5; V[i + 4] = c[0]; V[i + 5] = c[1]; V[i + 6] = c[2]; V[i + 7] = c[3]; };
+    const color = (css, a) => {
+      let c = colors.get(css);
+      if (!c) { probe.fillStyle = '#000'; probe.fillStyle = css; const t = probe.fillStyle; let m; if (t[0] === '#') { const h = parseInt(t.slice(1), 16); c = [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255, 1]; } else if ((m = t.match(/rgba?\(([^)]+)\)/))) { const q = m[1].split(',').map(Number); c = [q[0] / 255, q[1] / 255, q[2] / 255, q[3] ?? 1]; } else c = [1, 1, 1, 1]; colors.set(css, c); }
+      const A = c[3] * a; return [c[0] * A, c[1] * A, c[2] * A, A];
+    };
+    const texOf = cv => { let t = texs.get(cv); if (!t) { t = zgUp(gl, cv); texs.set(cv, t); zg.ups = (zg.ups || 0) + 1; } return t; };
+    const X = {
+      zg: true, globalAlpha: 1, fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, lineCap: 'butt', lineJoin: 'miter', font: '10px sans-serif', textAlign: 'left', textBaseline: 'alphabetic', imageSmoothingEnabled: true, shadowBlur: 0, shadowColor: '',
+      begin(k) { K = k; n = 0; curT = null; curS = null; M = [1, 0, 0, 1, 0, 0]; stack = []; X.globalAlpha = 1; X.imageSmoothingEnabled = true; },
+      end() { flush(); },
+      save() { stack.push({ M: M.slice(), a: X.globalAlpha, f: X.fillStyle, s: X.strokeStyle, l: X.lineWidth, fo: X.font, al: X.textAlign, ba: X.textBaseline, sm: X.imageSmoothingEnabled }); },
+      restore() { const q = stack.pop(); if (!q) return; M = q.M; X.globalAlpha = q.a; X.fillStyle = q.f; X.strokeStyle = q.s; X.lineWidth = q.l; X.font = q.fo; X.textAlign = q.al; X.textBaseline = q.ba; X.imageSmoothingEnabled = q.sm; },
+      translate(x, y) { M[4] += M[0] * x + M[2] * y; M[5] += M[1] * x + M[3] * y; },
+      scale(x, y) { M[0] *= x; M[1] *= x; M[2] *= y; M[3] *= y; },
+      rotate(a) { const c = Math.cos(a), s = Math.sin(a), [A, B, C, D] = M; M[0] = A * c + C * s; M[1] = B * c + D * s; M[2] = C * c - A * s; M[3] = D * c - B * s; },
+      drawImage(img, a, b, c, d, e, f, g, h) {
+        let sx = 0, sy = 0, sw = img.width, sh = img.height, dx = a, dy = b, dw = c ?? sw, dh = d ?? sh;
+        if (e !== undefined) { sx = a; sy = b; sw = c; sh = d; dx = e; dy = f; dw = g; dh = h; }
+        bind(texOf(img), X.imageSmoothingEnabled ? sL : sN);
+        const u0 = sx / img.width, v0 = sy / img.height, u1 = (sx + sw) / img.width, v1 = (sy + sh) / img.height, A = X.globalAlpha, cl = [A, A, A, A];
+        vert(dx, dy, u0, v0, cl); vert(dx + dw, dy, u1, v0, cl); vert(dx, dy + dh, u0, v1, cl); vert(dx + dw, dy, u1, v0, cl); vert(dx + dw, dy + dh, u1, v1, cl); vert(dx, dy + dh, u0, v1, cl);
+      },
+      fillRect(x, y, w, h) {
+        if (typeof X.fillStyle !== 'string') return; const c = color(X.fillStyle, X.globalAlpha); bind(white, sL);
+        vert(x, y, .5, .5, c); vert(x + w, y, .5, .5, c); vert(x, y + h, .5, .5, c); vert(x + w, y, .5, .5, c); vert(x + w, y + h, .5, .5, c); vert(x, y + h, .5, .5, c);
+      },
+      createRadialGradient() { return { addColorStop() {} }; },   // a soft glow is the stage's own to give
+      beginPath() { paths = []; cur = null; },
+      moveTo(x, y) { cur = [[M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]]]; paths.push(cur); },
+      lineTo(x, y) { if (!cur) return X.moveTo(x, y); cur.push([M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]]); },
+      closePath() { if (cur) cur.push(cur[0].slice()); },
+      rect(x, y, w, h) { X.moveTo(x, y); X.lineTo(x + w, y); X.lineTo(x + w, y + h); X.lineTo(x, y + h); X.closePath(); },
+      roundRect(x, y, w, h, r = 0) { r = typeof r === 'number' ? r : r[0] ?? 0; X.moveTo(x + r, y); X.arc(x + w - r, y + r, r, -Math.PI / 2, 0); X.arc(x + w - r, y + h - r, r, 0, Math.PI / 2); X.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI); X.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5); X.closePath(); },
+      arc(x, y, r, a0, a1, ccw) { X.ellipse(x, y, r, r, 0, a0, a1, ccw); },
+      ellipse(x, y, rx, ry, rot, a0, a1, ccw) {
+        let d = a1 - a0; if (ccw && d > 0) d -= Math.PI * 2; if (!ccw && d < 0) d += Math.PI * 2; if (Math.abs(a1 - a0) >= Math.PI * 2) d = Math.PI * 2;
+        const st = Math.max(8, Math.min(56, Math.ceil(Math.abs(d) * Math.max(rx, ry) * .7))), co = Math.cos(rot), si = Math.sin(rot);
+        for (let i = 0; i <= st; i++) { const t = a0 + d * i / st, px = Math.cos(t) * rx, py = Math.sin(t) * ry, qx = x + px * co - py * si, qy = y + px * si + py * co; if (i === 0 && !cur) X.moveTo(qx, qy); else X.lineTo(qx, qy); }
+      },
+      clip() {},
+      fill() {
+        if (typeof X.fillStyle !== 'string') return; const c = color(X.fillStyle, X.globalAlpha); bind(white, sL);
+        for (const p of paths) { if (p.length < 3) continue; let cx0 = 0, cy0 = 0; for (const q of p) { cx0 += q[0]; cy0 += q[1]; } cx0 /= p.length; cy0 /= p.length; bind(white, sL); for (let i = 0; i < p.length - 1; i++) { rawv(cx0, cy0, c); rawv(p[i][0], p[i][1], c); rawv(p[i + 1][0], p[i + 1][1], c); } }
+      },
+      stroke() {
+        const c = color(X.strokeStyle, X.globalAlpha), w = X.lineWidth * Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2])) / 2; bind(white, sL);
+        for (const p of paths) for (let i = 0; i < p.length - 1; i++) {
+          bind(white, sL); const [a, b] = p[i], [e, f] = p[i + 1], dx = e - a, dy = f - b, l = Math.hypot(dx, dy) || 1, nx = -dy / l * w, ny = dx / l * w, ex = dx / l * w * .5, ey = dy / l * w * .5;
+          rawv(a + nx - ex, b + ny - ey, c); rawv(e + nx + ex, f + ny + ey, c); rawv(a - nx - ex, b - ny - ey, c); rawv(e + nx + ex, f + ny + ey, c); rawv(e - nx + ex, f - ny + ey, c); rawv(a - nx - ex, b - ny - ey, c);
+        }
+      },
+      measureText(s) { probe.font = X.font; return probe.measureText(s); },
+      _text(s, x, y, mode) {
+        const style = mode === 'fill' ? X.fillStyle : X.strokeStyle, lw = mode === 'fill' ? 0 : X.lineWidth, key = `${K}|${X.font}|${mode}|${style}|${lw}|${s}`; let T = texts.get(key);
+        if (!T) {
+          probe.font = X.font; const tw = probe.measureText(s).width, size = parseFloat(X.font.match(/([\d.]+)px/)?.[1] || 12), pad = 4 + lw, w = tw + pad * 2, h = size * 1.5 + pad * 2, cv = document.createElement('canvas'); cv.width = Math.ceil(w * K); cv.height = Math.ceil(h * K);
+          const q = cv.getContext('2d'); q.scale(K, K); q.font = X.font; q.textAlign = 'left'; q.textBaseline = 'middle'; q.lineJoin = 'round'; q.fillStyle = q.strokeStyle = style; q.lineWidth = lw; if (mode === 'fill') q.fillText(s, pad, h / 2); else q.strokeText(s, pad, h / 2);
+          T = { cv, w, h, tw, pad }; if (texts.size > 240) texts.clear(); texts.set(key, T);
+        }
+        const dx = X.textAlign === 'center' ? -T.tw / 2 : X.textAlign === 'right' ? -T.tw : 0, sm = X.imageSmoothingEnabled; X.imageSmoothingEnabled = true; X.drawImage(T.cv, x + dx - T.pad, y - T.h / 2, T.w, T.h); X.imageSmoothingEnabled = sm;
+      },
+      fillText(s, x, y) { X._text(s, x, y, 'fill'); },
+      strokeText(s, x, y) { X._text(s, x, y, 'stroke'); },
+    };
+    return X;
+  }
+  /** A car is too much path for a frame: drawn once a wheel's phase by its own code, then a sprite that pitches and rolls. */
+  function zgCar(cx, kind, x, y, f, wheel, tilt, flip, part) {
+    const step = Math.PI * 2 / 5, w = ((wheel % step) + step) % step, ph = Math.floor(w / step * 4), k = zg.k, key = `${kind}|${f}|${part}|${ph}|${k}`, m = zg.cars ||= new Map();
+    let cv = m.get(key);
+    if (!cv) { cv = document.createElement('canvas'); cv.width = Math.ceil(320 * k); cv.height = Math.ceil(170 * k); const q = cv.getContext('2d'); q.scale(k, k); q.translate(160, 140); zeCar(q, kind, 0, 0, f, ph / 4 * step, 0, 0, part); m.set(key, cv); }
+    cx.save(); cx.translate(x, y); cx.scale(f, 1);
+    if (flip) { cx.translate(0, -50 - Math.sin(flip) * 60); cx.rotate(flip); cx.translate(0, 50); }
+    else if (tilt) { const pv = kind === 'focus' ? -58 : -46; cx.translate(pv, 0); cx.rotate(tilt); cx.translate(-pv, 0); }
+    cx.scale(f, 1); cx.drawImage(cv, -160, -140, 320, 170); cx.restore();
+  }
+
+  // ---- the set: today's scene as it stands, its layers on the GPU
+  function zgScene(i) {
+    if (zg.scenes.has(i)) return zg.scenes.get(i);
+    const gl = zg.gl, c = $('#zeCanvas'), base = zeScene(c, i), S = { i, P: base.P };
+    const town = document.createElement('canvas'); town.width = c.width; town.height = c.height; { const x = town.getContext('2d'), k = c.width / ZE_W; x.scale(k, k); zeTown(x, base.P, 0); }
+    const full = src => { const b = document.createElement('canvas'); b.width = c.width; b.height = c.height; return [b, b.getContext('2d')]; };
+    const [sky, sx] = full(); sx.drawImage(base.sky, 0, 0);
+    const [front, fx] = full(); fx.drawImage(base.front, 0, Math.round(ZE_FRONT * c.width / ZE_W));
+    const shade = cv => { const t = zgUp(gl, cv), A = zgFbo(gl, c.width, c.height); zgBind(A); gl.disable(gl.BLEND); zgUse(zg.P.canvas, ZG_FULL, {}, { uT: t }); gl.deleteTexture(t); return A; };
+    S.sky = shade(sky); S.town = shade(town); S.front = shade(front);
+    gl.enable(gl.BLEND); zg.scenes.set(i, S); ze.scene = ze.was = null; return S;
+  }
+  function zgSize(w, h) {
+    const gl = zg.gl, cv = gl.canvas;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    if (zg.fS?.w === w && zg.fS.h === h) return;
+    for (const b of [zg.fS, zg.fA, zg.fC]) zgDrop(gl, b);
+    const b8 = [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]; zg.fA = zgFbo(gl, w, h, b8); zg.fC = zgFbo(gl, w, h, b8); zg.fS = zgFbo(gl, w, h);
+    for (const S of zg.scenes.values()) for (const n of ['sky', 'town', 'front']) zgDrop(gl, S[n]); zg.scenes.clear(); zg.was = null; zg.sky = -1;
+  }
+
+  // ---- a frame
+  function zgDraw() {
+    const c = $('#zeCanvas'), cx = c.getContext('2d'), g = ze.g, k = c.width / ZE_W, calm = zeCalm(), gl = zg.gl, ax = zg.ax;
+    zg.k = k; zgSize(c.width, c.height);
+    gl.disable(gl.BLEND); zgBind(zg.fA); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    ax.begin(k);
+    zeBulbs(ax, g);
+    if (ze.mossad) zeShades(ax, 110 + 39 * 1.35, ZE_FLOOR - 126 * 1.35, 1.35, '#c8ccd2');
+    if (g.flex > 0) { const a = Math.min(1, g.flex / .3, (1.4 - g.flex) / .2), w = 70 * zeSz(g); ax.fillStyle = `rgba(255, 246, 210, ${.13 * a})`; ax.beginPath(); ax.moveTo(g.x - 18, 0); ax.lineTo(g.x + 18, 0); ax.lineTo(g.x + w * 1.4, ZE_FLOOR); ax.lineTo(g.x - w * 1.4, ZE_FLOOR); ax.closePath(); ax.fill(); }
+    zeActors(ax, g, calm);
+    if (ZE_SKIES[zeSkyOf(g)].rain && ze.drops.length) { ax.strokeStyle = 'rgba(190, 210, 240, .45)'; ax.lineWidth = 1.4; ax.beginPath(); for (const d of ze.drops) { ax.moveTo(d.x, d.y); ax.lineTo(d.x - 4, d.y + 16); } ax.stroke(); }
+    ax.end();
+    cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, c.width, c.height); cx.setTransform(k, 0, 0, k, 0, 0);
+    zeUi(cx, g, k, calm);
+    let behind = false;
+    if (g.bolt || g.avo) {   // what stands behind Trota's: the bolt, the Avó's house
+      behind = true; zgBind(zg.fC); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); ax.begin(k);
+      if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) { ax.strokeStyle = col; ax.lineWidth = w; ax.beginPath(); ax.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) ax.lineTo(...pt); ax.stroke(); }
+      if (g.avo) zeAvoHouse(ax, g, calm);
+      ax.end();
+    }
+    zgRender(g, calm, behind); zg.frames++;
+  }
+  function zgRender(g, calm, behind) {
+    const gl = zg.gl, dt = ze.dt || 0, iSky = zeSkyOf(g), S = zgScene(iSky), px = (ZE_W / 2 - g.x) * .05;
+    if (g.freeze <= 0 && !calm) zg.T += dt;
+    if (zg.sky !== iSky) { if (zg.sky >= 0) zg.was = { S: zg.scenes.get(zg.sky), a: 1 }; zg.sky = iSky; }
+    if (zg.was && (zg.was.a -= dt / 1.4) <= 0) zg.was = null;
+    const dark = zeDark(g);
+    zgBind(zg.fS); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    const back = (T, a) => {
+      zgUse(zg.P.layer, [0, 0, ZE_W, ZE_FLOOR], { uA: a, uShift: [0, 0] }, { uT: T.sky.t });
+      zgUse(zg.P.layer, [0, 600, ZE_W, 200], { uA: a, uShift: [px, 0] }, { uT: T.town.t });
+      if (behind) zgUse(zg.P.canvas, ZG_FULL, {}, { uT: zg.fC.t });
+      zgUse(zg.P.layer, [0, ZE_FRONT, ZE_W, ZE_H - ZE_FRONT], { uA: a, uShift: [0, 0] }, { uT: T.front.t });
+    };
+    back(S, 1); if (zg.was) back(zg.was.S, zg.was.a);
+    if (dark) { zgUse(zg.P.tint, [0, 0, ZE_W, ZE_FLOOR], { uC: [.06 * .4 * dark, 0, .01 * .4 * dark, .4 * dark] }); zgUse(zg.P.tint, [0, 0, ZE_W, 360], { uC: [.007 * .3 * dark, 0, .003 * .3 * dark, .3 * dark] }); }
+    zgUse(zg.P.canvas, ZG_FULL, {}, { uT: zg.fA.t });
+    gl.disable(gl.BLEND);
+    zgBind(null);
+    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) } }, { uS: zg.fS.t });
+  }
+  /** The camera's moves — a combo's push, the vinho's wobble, a shake — as a matrix from the glass to the picture. */
+  function zgCam(g, calm) {
+    let z = 1, cx = ZE_W / 2, cy = ZE_H / 2, a = 0, sx = 0, sy = 0, sy2 = 1;
+    if (!calm) {
+      if (g.power?.kind === 'vinho') { a = Math.sin(g.t * 1.9) * .018; z = 1.03; sy2 = 1 + Math.sin(g.t * 2.7) * .012; }
+      if (g.punch > 0) { z *= 1 + .07 * g.punch / .2; cx = g.x; cy = g.y - 100; }
+      if (g.shake > 0) { sx = (Math.random() - .5) * 24 * g.shake; sy = (Math.random() - .5) * 24 * g.shake; }
+    }
+    const co = Math.cos(a) / z, si = Math.sin(a) / z, ty = 1 / sy2;
+    return new Float32Array([co, si * ty, 0, -si, co * ty, 0, cx - co * cx + si * cy - sx, cy - (si * cx + co * cy) * ty - sy, 1]);
+  }
+
+  // the harness's hands: a round the bot plays, and what brings a moment on
+  ze.lab = { zeDragon, zeRide, zeAvo, zeDrop, draw: () => zeDraw(), demo() { const g = zeRound('play'); Object.assign(g, { demo: true, next: Infinity, lunch: [] }); ze.g = g; zeGo(); return g; } };
 
   // ---- the sound: a funk band of oscillators, and what the round does to it
   /** The context, made by a press that starts a round (a page may not start sound by itself). */
