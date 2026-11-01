@@ -5,6 +5,58 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, later — a lane folds in one motion
+
+Ricardo: *"toggling show/hide of a status in the cards does some janky animation like showing the card folding and then
+showing the name of the status."* Measured first, the moves paused right after the click and stepped through, tiles
+and sidebar (`lane-fold.mjs`):
+
+* **Folding, the head went last.** Its markup changes with the fold (`shut`, `aria-expanded`, the title), so it was a
+  new node, and the reconcile put it *after* the lane's folding cards: they jumped up into its place, folded each on
+  its own (a wrapper a card), the day lines gone at once, and the head rode up from under them — the name coming last.
+  Its caret never turned: a new node has no transition.
+* **Opening, the cards below flew across the new ones.** The lane's cards came in at full height, fading, while the
+  lanes under them FLIPped from where they had stood — hundreds of pixels down over the fading cards — and their heads
+  and day lines, not FLIPped, jumped.
+* **In the sidebar a fold overshot**: `leaveCard` ended at the tiles' 7 px gap where the rows are 2 px apart — the list
+  under a folded card 5 px too high a card (50 for a lane of ten), dropping back as the fold ended.
+
+Decided:
+
+* **A lane's lines are keyed** (the head `lane:<g>`, a day line `day:<g>:<day>`, the more line `more:<g>`), and a keyed
+  line whose markup changed is drawn anew in place (`lineMorph`: its attributes, the children whose markup changed).
+  The head is one node through every fold — its place, the keys and `drawEdges`' classes kept — and the caret turns
+  by its transition (at once under reduced motion). A day line is its own lane's: keyed by `html#n` across the list, a
+  folding lane's *Yesterday* had been handed to the next lane's.
+* **A fold is one block under a head that stays** (`foldRun`): everything under the head down to the next one — cards,
+  day lines, the more line — in one `div.leaving` (the cards lose their data-id, as `leaveCard`'s), its height to
+  nothing and its margin to minus the gap, fading; the cards stand where they stood and the lane under them rises over
+  them. FLIP_MS, `--ease-out`: settling.
+* **An opening is the fold backwards, the cards the list's from its first frame** (`openRun`): whatever counts or
+  walks `#slist > .card` sees them at once, so they are not wrapped — each is clipped to what the list under the lane
+  has uncovered (`clip-path: inset(…)` from its top, `calc(100% - shown)`), and that list slides down by an animated
+  `margin-bottom` under the lane's last node. Nothing under the lane enters or FLIPs: it moves with the lane, cards and
+  lines alike. It is measured after the cards are filled in (an age or a live line can make a new card taller).
+* **All of it on the main thread, on purpose**: height, margin and clip run on one clock, so the edge and what it
+  uncovers stay in step; a FLIP's transform on the compositor beside a clip on the main thread would not. A click's
+  220 ms, a layout a frame, as `leaveCard`'s always was.
+* **Only the room in the window moves**: what is past the list's foot goes or comes at once, out of sight, so a long
+  lane's edge crosses the window in the 220 ms rather than in its first few.
+* **A click mid-way takes it back from where it stands**: an opening starts from the room a fold under way still holds
+  (that fold removed at once — a cancel's event comes a frame later), a fold from what an opening has uncovered.
+* **A head stuck over its own lane**: what lies under it or above the window goes first and the scroll comes back by as
+  much, measured in the list's own coordinates (Chrome's scroll anchoring may move the scroll as they go), so nothing
+  in sight moves and the fold starts where the lane does.
+* **`leaveCard` reads the gap off the list.**
+
+Checked in WebKit too: the frames of a fold and an opening sampled in a `WKWebView` against a throwaway board (the
+edge and the next head in step, frame by frame, both layouts; no drop at the end), and the compositor's frame
+mid-opening clipped exactly at the next head. `npm run perf -- --against main --runs 3`: as main, within its noise (a
+fold is not one of its phases).
+
+Open: a long lane's *N more* (`moreLane`) still brings its cards in by enter and FLIP; the opening's curtain would
+serve it.
+
 ## Decisions of 2026-11-01 — the chat laid in a frame, Ink and Stage, Softened, the inks fitted (round XV)
 
 Round XV laid nine ways to do the themes over the made-up board (Sidebar Ring, a blue project open, each measured on

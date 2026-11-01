@@ -249,7 +249,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The list moves rather than jumps** (2026-09-27): `drawCards` FLIPs a card that changed rank (WAAPI, `FLIP_MS`),
   fades in one that arrived (`ENTER_MS`) and folds one that left (`leaveCard`, `LEAVE_MS`) — within a screen of the
   window, never on the first draw or under reduced motion. **A folding card is wrapped in `div.leaving` and loses its
-  `data-id`**, so `#slist > .card` — the page's and the harness's count — never sees it. `window.peix.motion()` logs
+  `data-id`**, so `#slist > .card` — the page's and the harness's count — never sees it. `peix.motion()` logs
   every move by its `id`. → `list-motion.mjs`. **A landing** is `landed` (`landedAt` from `working` → `idle`;
   `flareLanded()` sets a negative `animation-delay` for `LANDED_MS`, so a rebuilt card carries it on).
 * **A card's glow is registered properties, never a `background`**: the lit 3 px edge (`--edge`, the first
@@ -463,12 +463,14 @@ npm run map                         # rewrite the section maps at the top of ser
   tool call is not a word, **a PR come round to you is**, at `turn.movedAt` — `movedAt(s)`, both copies), newest first;
   a project ranks by its newest chat. Every count goes by `bucket()` — only the order knows asking and watching.
   **Each group has a lane head** (`laneHtml`: a still glyph; sticky, `--stick` and `.covered` from
-  `drawEdges`; none under a query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
+  `drawEdges`; none under a query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at
+  first), in one motion: the head one node (keyed, `lineMorph`), the list under it sliding over the cards or off them
+  (2026-11-01, `foldRun`, `openRun`). **A day label over each run of one day in a lane** (`dayHtml`, `dayBefore`, `dayName`) **but
   today's** (2026-10-14). **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
   Ready goes; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies are the funnel's filters,
   never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its newest cards and a
   `.gsep.more` line for the rest, shown till a reload (`laneMore`); the open chat's card whatever its place; a query or
-  a filter every match. → `lanes.mjs`, `lane-heads.mjs`, `day-separator.mjs`, `long-lanes.mjs`.
+  a filter every match. → `lanes.mjs`, `lane-heads.mjs`, `lane-fold.mjs`, `day-separator.mjs`, `long-lanes.mjs`.
 * **The list's filter is the funnel** (2026-10-12; `#fBtn`, `FILTERS`, `prefs.listFilter`; its menu through
   `ctxShow`, counted by `fCounts`): *Every chat* · *Your move* (`yourMove`: a PR waiting on you, not done for good) ·
   *New replies* (`replied`: a ready chat whose last word is Claude's and came after the board last showed it —

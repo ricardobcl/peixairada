@@ -841,7 +841,8 @@
   /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
   .card.forgood .tprs:not(.ttks) { filter: grayscale(1); }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
-  #slist > .leaving { pointer-events: none; overflow: hidden; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it */
+  #slist > .leaving { pointer-events: none; overflow: hidden; display: flex; flex-direction: column; gap: inherit; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it — or a lane's, all in one (foldRun, 2026-11-01), laid out as they stood */
+  #slist > .leaving > * { flex: none; }   /* never squashed as the box closes */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 18px; margin-bottom: 2px; }
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
@@ -2820,6 +2821,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
+    .gsep.lane .lc { transition: none; }   /* a lane's caret turns at once (its head kept since 2026-11-01; the lane itself folds at once: drawCards reads REDUCED) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     :root[data-layout="sidebar"][data-sidebar] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"][data-sidebar] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
     :root[data-layout="sidebar"][data-sidebar="edge"] #slist .card.asking::after, :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.asking .trow::after { animation: none; opacity: 0; }   /* no pings: the red edge, the red dot */
@@ -5064,9 +5066,10 @@ const toolName = n => {
     if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, p, q) }));
     else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
       if (zero && (g === 'idle' || g === 'done') && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
-      items.push({ html: laneHtml(g, inLane[g], !flt && laneShut(g), !!flt) });
-      if (flt || !laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
-      if (held[g] && !laneShut(g)) items.push({ html: moreHtml(g, held[g]) });
+      // a lane's lines keyed by the lane (2026-11-01): its head one node, folded or not, and a day's line the lane's own
+      items.push({ key: `lane:${g}`, html: laneHtml(g, inLane[g], !flt && laneShut(g), !!flt) });
+      if (flt || !laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ key: `day:${g}:${days[i]}`, html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
+      if (held[g] && !laneShut(g)) items.push({ key: `more:${g}`, html: moreHtml(g, held[g]) });
     }
     if (zero && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
@@ -5074,6 +5077,7 @@ const toolName = n => {
     const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
     const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillLive($('#slist')); fillAges($('#slist')); fillTeam($('#slist')); fadeSoon();   // the live line first: a wake-up's is an age to fill
+    const o = drawCards.opening; drawCards.opening = null; if (o) openRun($('#slist'), o.g, o.lr, o.gap);   // a lane opened, its cards filled in
     caughtUp(zero);
     drawFilter(p, narrow);
     if (drawn) phaseAnims();
@@ -5147,11 +5151,12 @@ const toolName = n => {
   function drawCards(items, empty) {
     const list = $('#slist'), want = new Set(), nodes = [], fresh = new Set(), redrawn = [], lines = new Map(), seen = new Map();
     const move = !!drawCards.drawn && !REDUCED.matches && !prefs.listHidden;   // hidden, nothing to see move
+    const lane = move ? drawCards.lane : null; drawCards.lane = null;   // a lane folded or opened by its head (foldLane)
     drawCards.drawn = true;
     for (const it of items) {
-      if (!it.id) {   // a line: the node it had, by its html and how many of the same came before it
-        const n = (seen.get(it.html) || 0) + 1; seen.set(it.html, n);
-        const k = `${it.html}#${n}`, el = lineNodes.get(k) || html2el(it.html);
+      if (!it.id) {   // a line: the node it had, by its key (else its html) and how many of the same came before it
+        const base = it.key || it.html, n = (seen.get(base) || 0) + 1; seen.set(base, n);
+        const k = `${base}#${n}`, was = lineNodes.get(k), el = !was ? lineEl(it.html) : was._html === it.html ? was : lineMorph(was, it.html);
         lines.set(k, el); nodes.push(el); continue;
       }
       let c = cardNodes.get(it.id);
@@ -5176,7 +5181,8 @@ const toolName = n => {
       for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
       for (const [was, el] of redrawn) if (was.isConnected) before.set(el, was.getBoundingClientRect());
     }
-    const keep = new Set(nodes), gone = [];
+    const keep = new Set(nodes), gone = [], gap = move ? parseFloat(getComputedStyle(list).rowGap) || 0 : 0;
+    if (lane?.shut) foldRun(list, lane.g, lr, gap, n => n.classList.contains('leaving') || (n.classList.contains('card') ? !want.has(n.dataset.id) : !keep.has(n)));
     let cur = list.firstElementChild;
     // a node no longer wanted: a line, or the old node of a card redrawn, goes at once; a card that is gone from the
     // list is kept in place to fold (leaveCard); a wrapper already folding is stepped over
@@ -5187,14 +5193,22 @@ const toolName = n => {
       list.insertBefore(el, cur);   // a new node lands; an existing one further down moves up
     }
     skip();
-    for (const el of gone) leaveCard(el, lr);
+    for (const el of gone) leaveCard(el, lr, gap);
     flareLanded();
     if (!move) return true;
     for (const a of [...sliding]) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
+    // a lane opened is uncovered once its cards are filled in (openRun, from renderSessionList: a card's age and live line
+    // set after this can make it taller); what is under a lane folded or opened moves with it, by the room it makes —
+    // no enter, no FLIP (a card past the window's foot was put just below it at once: a FLIP from there would leave the
+    // lines it stands among behind)
+    if (lane && !lane.shut) drawCards.opening = { g: lane.g, lr, gap };
+    const laneHead = lane && lineNodes.get(`lane:${lane.g}#1`), under = el => !!laneHead && !!(laneHead.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
     // every read first, then every animation: a read after an animate() is a style flush each
     const moves = [];
     for (const [id, c] of cardNodes) {
-      const el = c.el, r = el.getBoundingClientRect();
+      const el = c.el;
+      if (under(el)) continue;
+      const r = el.getBoundingClientRect();
       if (!nearList(r, lr)) continue;
       const was = before.get(el);
       if (!was) { if (fresh.has(id)) moves.push([el, 'enter', getComputedStyle(el).opacity]); continue; }   // to its own opacity: a done card is dimmed
@@ -5207,17 +5221,90 @@ const toolName = n => {
     }
     return true;
   }
-  // The card is wrapped in a `div.leaving` that folds shut around it (height, opacity and the list's 7 px gap to
-  // nothing): the card itself keeps its look, loses its data-id, and — no longer a child of the list — is out of
-  // `#slist > .card`, which is how everything on the page and in the harness counts and walks the cards.
-  function leaveCard(el, lr) {
+  // The card is wrapped in a `div.leaving` that folds shut around it (height, opacity and the list's gap to nothing —
+  // read off the list, 2026-11-01: a 7 written here pulled the sidebar's rows, 2 px apart, 5 px a card too far up, and
+  // they dropped back as the fold ended): the card itself keeps its look, loses its data-id, and — no longer a child of
+  // the list — is out of `#slist > .card`, which is how everything on the page and in the harness counts and walks the cards.
+  function leaveCard(el, lr, gap) {
     const r = lr && el.getBoundingClientRect();
     if (!r || !nearList(r, lr)) { el.remove(); return; }
     const h = el.offsetHeight, wrap = document.createElement('div'); wrap.className = 'leaving';
     noteMotion(el.dataset.id || null, 'leave');
     el.replaceWith(wrap); wrap.append(el); el.removeAttribute('data-id');
-    const a = follow(wrap.animate([{ height: `${h}px`, opacity: 1, marginBottom: '0px' }, { height: '0px', opacity: 0, marginBottom: '-7px' }], { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards', id: 'leave' }));
+    const a = follow(wrap.animate([{ height: `${h}px`, opacity: 1, marginBottom: '0px' }, { height: '0px', opacity: 0, marginBottom: `${-gap}px` }], { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards', id: 'leave' }));
     a.onfinish = a.oncancel = () => { wrap.remove(); listChanged(); };   // the cards below moved up under the fold: the ends' counts and the timeline read the list again
+  }
+  // A line's node keeps its markup, and each child its own (2026-11-01), so a keyed line drawn anew — a lane's head
+  // folded or opened, its count moved — is the same node: its attributes set, the children whose markup changed
+  // replaced. The caret turns by its transition, the keys stay on it, and drawEdges' classes stay till it next looks.
+  function lineEl(html) { const el = html2el(html); el._html = html; for (const c of el.children) c._drawn = c.outerHTML; return el; }
+  function lineMorph(el, html) {
+    const n = lineEl(html); if (n.tagName !== el.tagName || n.childNodes.length !== n.children.length) return n;
+    const edge = ['covered', 'stuck', 'pushed'].filter(c => el.classList.contains(c));
+    for (const a of [...el.attributes]) if (!n.hasAttribute(a.name)) el.removeAttribute(a.name);
+    for (const a of n.attributes) if (el.getAttribute(a.name) !== a.value) el.setAttribute(a.name, a.value);
+    el.classList.add(...edge);
+    const kids = [...n.children];
+    kids.forEach((k, i) => { const c = el.children[i]; if (c?._drawn !== k._drawn) { if (c) c.replaceWith(k); else el.append(k); } });
+    while (el.children.length > kids.length) el.lastElementChild.remove();
+    el._html = html; return el;
+  }
+  // A lane folded or opened by its head is one motion (2026-11-01): the head stays put and the list under it slides —
+  // up over the lane's cards as they fade, or down off them as they come up — in one FLIP_MS, eased out. Each card had
+  // folded on its own before (drawCards' leave), the day lines gone at once, the head a new node put after the folding
+  // cards, which jumped up into its place while it rode up under them; and opening, the cards under the lane slid down
+  // across the new ones from where they had been while the lines jumped. The lane's cards stand still: a fold wraps
+  // them, its day lines and its `more` line, in one `div.leaving` (leaveCard's: the cards lose their data-id) whose
+  // height goes to nothing; an opening leaves them children of the list (`#slist > .card` sees them at once), clips
+  // each to what the list under the lane has uncovered so far, and slides that list down by the margin under the last
+  // of them. Height, margin and clip are the main thread's, so the edge and the cards it uncovers stay in step, as no
+  // transform on the compositor beside a clip on the main thread would; it is a click's 220 ms, a layout a frame, as
+  // leaveCard's always was. Only the room in the list's window moves: what is past its foot goes or comes at once.
+  const laneRun = head => { const run = []; for (let n = head.nextElementSibling; n && !n.matches('.gsep.lane'); n = n.nextElementSibling) run.push(n); return run; };
+  const cssPx = (el, p) => parseFloat(getComputedStyle(el)[p]) || 0;
+  const rectOf = el => el.getBoundingClientRect();   // to the fraction: offsetTop and offsetHeight are whole pixels
+  function foldRun(list, g, lr, gap, going) {
+    const head = lineNodes.get(`lane:${g}#1`);
+    if (!head?.isConnected || !nearList(head.getBoundingClientRect(), lr)) return;
+    const run = laneRun(head).filter(going); if (!run.length) return;
+    const out = n => { if (n.classList.contains('card')) { noteMotion(n.dataset.id || null, 'leave'); n.removeAttribute('data-id'); } };
+    for (const n of run) for (const a of n.getAnimations()) if (a.id === 'flip') a.cancel();   // measured where it lies
+    // the head stuck over its own lane: what is under it or above the window goes at once and the scroll comes back as
+    // far — nothing in sight moves, and the fold starts where the lane does
+    const st = list.scrollTop, hb = rectOf(head).bottom;
+    let i = 0; if (st > 0) while (i < run.length - 1 && rectOf(run[i]).bottom <= hb) i++;
+    const at = n => rectOf(n).top - rectOf(list).top + list.scrollTop;   // in the list, whatever the scroll: Chrome's anchoring may move it as they go
+    if (i) { const y = at(run[i]); for (const n of run.splice(0, i)) { out(n); n.remove(); } list.scrollTop = st - (y - at(run[0])); }
+    const first = run[0], last = run[run.length - 1], foot = rectOf(list).top + list.clientHeight;
+    const top = rectOf(first).top - cssPx(first, 'marginTop'), room = rectOf(last).bottom + cssPx(last, 'marginBottom') - top;   // with an opening's margin, if one was under way
+    const h = Math.min(room, Math.max(0, foot - top));   // past the window's foot: folded at once
+    for (const n of run) for (const a of n.getAnimations()) if (a.id === 'enter' || a.id === 'open') a.cancel();
+    const wrap = document.createElement('div'); wrap.className = 'leaving';
+    first.before(wrap); for (const n of run) { out(n); wrap.append(n); }
+    const a = follow(wrap.animate([{ height: `${Math.max(0, h)}px`, marginBottom: `${Math.min(0, h)}px`, opacity: 1 }, { height: '0px', marginBottom: `${-gap}px`, opacity: 0 }], { duration: FLIP_MS, easing: EASE_OUT, fill: 'forwards', id: 'fold' }));
+    a.onfinish = a.oncancel = () => { wrap.remove(); listChanged(); };
+  }
+  function openRun(list, g, lr, gap) {
+    const head = lineNodes.get(`lane:${g}#1`);
+    if (!head?.isConnected || !nearList(head.getBoundingClientRect(), lr)) return;
+    const all = laneRun(head), held = all.filter(n => n.classList.contains('leaving')), run = all.filter(n => !held.includes(n));
+    if (!run.length) return;
+    // a fold of the lane still under way: the room it holds now is where the opening starts
+    const from = held.reduce((x, w) => x + rectOf(w).height + cssPx(w, 'marginBottom') + gap, 0);
+    for (const w of held) { for (const a of w.getAnimations()) a.cancel(); w.remove(); }   // at once: a cancel's event comes a frame on
+    // the room under the head, from the gap below it: at `x` of it uncovered, the list under the lane starts at x + gap
+    const first = run[0], last = run[run.length - 1], mb = cssPx(last, 'marginBottom'), top = rectOf(first).top - cssPx(first, 'marginTop') - gap;
+    const full = rectOf(last).bottom + mb - top, to = Math.min(full, Math.max(from, rectOf(list).top + list.clientHeight - top));
+    if (to <= from) return;
+    const at = x => Math.min(1, Math.max(0, (x - from) / (to - from))), r2 = v => Math.round(v * 100) / 100;
+    const plans = run.map(n => {   // every read first
+      const r = rectOf(n), t = r.top - top, h = r.height, o = +getComputedStyle(n).opacity;
+      const marks = [...new Set([0, at(t - gap), at(t + h - gap), 1])].sort((a, b) => a - b);
+      return [n, marks.map(p => { const x = from + p * (to - from), shown = Math.min(h, Math.max(0, x + gap - t));
+        return { offset: p, clipPath: `inset(0px -40px ${shown < h ? `calc(100% - ${r2(shown)}px)` : '0px'} -40px)`, opacity: r2(o * p) }; })];   // from its top: a card that grows as its live line is filled shows no more
+    });
+    for (const [n, frames] of plans) { if (n.dataset.id) noteMotion(n.dataset.id, 'enter'); follow(n.animate(frames, { duration: FLIP_MS, easing: EASE_OUT, id: 'enter' })); }
+    follow(last.animate([{ marginBottom: `${r2(mb + from - full)}px` }, { marginBottom: `${r2(mb + to - full)}px` }], { duration: FLIP_MS, easing: EASE_OUT, id: 'open' }));
   }
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
   // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27; measured: a new
@@ -7276,13 +7363,14 @@ const toolName = n => {
     const t = e.target.closest('.card .tprs'); if (!t || t._fan) return;
     t._fan = true; t.addEventListener('wheel', fanWheel, { passive: false }); t.addEventListener('pointerleave', fanLeave);
   });
-  // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — the cards fold away as a
-  // ticked one does, and come back fading in (drawCards' own moves)
+  // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — in one motion since
+  // 2026-11-01, the head staying put and the list under it sliding over the lane's cards or off them (foldRun, openRun)
   function foldLane(g, byKey = false) {
     if (listFilter()) return;   // a filter shows every match: its heads do not fold
     const shut = new Set(prefs.lanesShut || []); if (shut.has(g)) shut.delete(g); else shut.add(g);
     prefs.lanesShut = [...shut]; savePrefs(); noteMotion(g, shut.has(g) ? 'fold' : 'unfold');
-    renderBoard(); if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true });   // the head drawn anew keeps the keys
+    drawCards.lane = { g, shut: shut.has(g) };
+    renderBoard(); if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true });   // the same node, but a render may draw it anew
   }
   $('#slist').addEventListener('keydown', e => { const l = e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
   const moreLane = g => { laneMore.add(g); noteMotion(g, 'more'); renderBoard(); };   // a long lane's rest (LANE_CAP)
