@@ -541,6 +541,7 @@
   .gsep.lane.done > i { background: var(--lanec); }
   .gsep.lane.away { cursor: pointer; color: var(--needs); opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
   #sbar .seg.ask { cursor: pointer; }
+  #sbar .seg.mute { color: var(--working-ink); font-weight: 600; } #sbar .seg.mute .ic { width: 13px; height: 13px; }
   /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
      down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
   .gsep.lane[data-lane] { cursor: pointer; user-select: none; }
@@ -3424,12 +3425,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // its banners from the alerts it hears, a browser tab from its own, and all of them follow the `quiet` flag the
   // server puts on each alert. A browser that has never been asked is asked on the way to on — the app has its own
   // permission, granted to the app.
-  const showNotify = () => { $('#notifyOn').checked = state.notifications; };
-  $('#notifyOn').addEventListener('change', e => {
-    state.notifications = e.target.checked;
-    api('PUT', '/api/notifications', { on: state.notifications }).catch(e => { state.notifications = !state.notifications; showNotify(); note($('#notifyOn'), `Could not save the switch: ${e.message}`, true); });   // refused: it shows what the server has
-    if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
-  });
+  const showNotify = () => { $('#notifyOn').checked = state.notifications; if (state.snapshots) { renderBar(); postState(); } };
+  function setNotify(on) {
+    state.notifications = on; showNotify();
+    api('PUT', '/api/notifications', { on }).catch(e => { state.notifications = !on; showNotify(); note($('#notifyOn'), `Could not save the switch: ${e.message}`, true); });   // refused: it shows what the server has
+    if (on && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
+  }
+  $('#notifyOn').addEventListener('change', e => setNotify(e.target.checked));
+  window.peixNotifyOn = () => setNotify(true);   // the fish's menu's row (round XIX's S7)
   // The board's own code kept up to date (2026-10-12): the server's switch and its word on the checkout (checkUpdate in
   // server.mjs), and the page reloading itself once an update has changed it — at once when the update was asked for
   // here, else once the page is left be: no dialog up, no box being typed in, no page of the pane in front, nothing
@@ -4129,6 +4132,7 @@ const toolName = n => {
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
+    bellOff: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 11H3l1.5-2.5V6.5A3.5 3.5 0 0 1 10 3.6M11.5 6.5v2L13 11H7.5M6.5 13a1.6 1.6 0 0 0 3 0M2.5 13.5l11-11"/></svg>',
     // the tab strip's glyphs, drawn (2026-10-11, the studies' Q1; ‹ › ↻ ↗ ◫ ⊟ ⨯ × in text before): strokes, .st
     back: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5"/></svg>',
     forward: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>',
@@ -4528,6 +4532,17 @@ const toolName = n => {
     const lane = $('#sbSwim'); if (document.hidden || !lane || REDUCED.matches) return;
     if (Math.random() < (lane.classList.contains('rest') ? .5 : .35)) blurp();
   }, 2600);   // the fish, for the bar's connection: the same mark, belly-up while the stream is down
+  // A mute shows (2026-11-01, round XIX's S7; an inhibit must be unmistakable, as the FAA has it): notifications off is a
+  // mark on the bar and a slash through the menu bar's fish, and a click turns them on. It says how long past the first
+  // hour and nods once as each hour turns, so one left on by accident gets noticed.
+  function muteSeg() {
+    if (state.notifications) { if (prefs.mutedAt) { delete prefs.mutedAt; savePrefs(); } muteSeg.h = 0; return []; }
+    if (!prefs.mutedAt) { prefs.mutedAt = Date.now(); savePrefs(); }
+    const h = Math.floor((Date.now() - prefs.mutedAt) / 3600e3);
+    if (h > (muteSeg.h ?? h) && !REDUCED.matches) requestAnimationFrame(() => { noteMotion(null, 'mute:remind', h); $('#sbLeft .mute')?.animate([{ transform: 'none' }, { transform: 'translateY(-3px)' }, { transform: 'none' }], { duration: 420, easing: SPRING }); });
+    muteSeg.h = h;
+    return [`<button class="seg mute" title="Notifications are off${h ? ` for ${h} h` : ''}: chats still count here, no banner comes. Click to turn them on">${ICON.bellOff}muted${h ? ` · ${h}h` : ''}</button>`];
+  }
   function renderBar() {
     if (!state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length;
@@ -4541,6 +4556,7 @@ const toolName = n => {
       // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before); what is
       // watching is the card's mark and its count (2026-10-27), the word out of sight
       ...(ask ? [`<button class="seg ask" title="chats waiting on your answer — click for the next one">${`<em>${rn('asking', ask)} asking you</em>`}</button>`] : []),
+      ...muteSeg(),
       ...(mons ? [`<span class="seg mons" title="${mons} monitor${mons > 1 ? 's' : ''} and background commands running">${ICON.watch}${rn('mons', mons)}<span class="vh"> watching</span></span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const cs = chatSeg(); if (cs) left.splice(1, 0, cs);   // the chat (2026-10-17), after the connection
@@ -4584,6 +4600,7 @@ const toolName = n => {
     if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
     if (e.target.closest('.conn')) { aboutOpen(); return; }
     if (e.target.closest('#sbChat')) { chatSegClick(); return; }
+    if (e.target.closest('.seg.mute')) { setNotify(true); return; }
     if (e.target.closest('.seg.ask')) { nextAsking(); return; }   // (2026-10-12) the count opens the chats it counts, one after another
     const upg = e.target.closest('.seg.upg'); if (upg) { if (reload.want && reload.why !== 'server') location.reload(); else if (upg.dataset.take) updNow(); else updatesOpen(); return; }
     const aw = e.target.closest('#sbAwake'); if (aw) { setAwake({ awake: !state.awake.awake }, aw); return; }
@@ -4839,8 +4856,9 @@ const toolName = n => {
     const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
     const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}` }));
     const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
-    const sig = JSON.stringify([needs, replies, moves, working]); if (sig === postState.last) return; postState.last = sig;
-    post({ type: 'state', needs, replied: replies, moves, working });
+    const muted = !state.notifications;
+    const sig = JSON.stringify([needs, replies, moves, working, muted]); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs, replied: replies, moves, working, muted });
   }
   // The chats asking you, one after another from the one open (the status bar's count, 2026-10-12)
   function nextAsking() {

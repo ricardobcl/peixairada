@@ -274,12 +274,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // in the back before, the menu bar the questions), and the status menu lists them.
   var needsInput: [[String: String]] = []
   var newReplies: [[String: String]] = []
+  var muted = false                       // notifications off: the fish wears a slash, the menu says so (round XIX's S7)
   var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
   // The board's own zoom (2026-10-12, the settings' text size): the web view's pageZoom, so the page's CSS px are
   // `zoom` points — what the page and the shell say of places (the pane's rects, the housing, the pane's edge) is
   // turned between the two here.
   var zoom: CGFloat = 1
-  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]]) = ([], [], [], [])   // what the badge and the status menu last showed
+  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], muted: Bool) = ([], [], [], [], false)   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again
@@ -928,8 +929,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   /// The fish as drawn: the system's, a template. Belly-up it hangs under a line, the water's surface: `fish.fill` has a fin
   /// above and below, so turned over alone it reads as the same fish at this size (rendered and looked at, 2026-11-01).
-  private func fishFace(bellyUp: Bool) -> NSImage? {
+  private func fishFace(bellyUp: Bool, slashed: Bool) -> NSImage? {
     guard let sym = NSImage(systemSymbolName: "fish.fill", accessibilityDescription: "peixAIrada") else { return nil }
+    if slashed && !bellyUp {   // notifications off (S7): a slash with a gap round it, as the system's bell.slash has
+      let img = NSImage(size: sym.size, flipped: false) { r in
+        sym.draw(in: r)
+        let k = r.height / 16, line = NSBezierPath(); line.lineCapStyle = .round
+        line.move(to: NSPoint(x: r.minX + r.width * 0.12, y: r.minY + r.height * 0.1)); line.line(to: NSPoint(x: r.maxX - r.width * 0.12, y: r.maxY - r.height * 0.1))
+        NSGraphicsContext.current?.compositingOperation = .clear; line.lineWidth = 3.6 * k; line.stroke()
+        NSGraphicsContext.current?.compositingOperation = .sourceOver; NSColor.black.set(); line.lineWidth = 1.5 * k; line.stroke()
+        return true
+      }
+      img.isTemplate = true; img.accessibilityDescription = "peixAIrada, notifications off"
+      return img
+    }
     guard bellyUp else { sym.isTemplate = true; return sym }
     let img = NSImage(size: NSSize(width: 22, height: 17), flipped: false) { r in
       guard let g = NSGraphicsContext.current?.cgContext else { return false }
@@ -947,6 +960,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   private func rebuildStatusMenu() {
     let menu = NSMenu()
+    if muted && !serverDown {   // an inhibit shows, and undoes in one click (S7)
+      menu.addItem(withTitle: "Notifications are off · Turn On", action: #selector(notificationsOn(_:)), keyEquivalent: "").target = self
+      menu.addItem(.separator())
+    }
     if serverDown {   // what can help, first; what the page last said would be stale, so it is not shown (2026-11-01, S2)
       menu.addItem(withTitle: "The server isn't answering", action: nil, keyEquivalent: "").isEnabled = false
       menu.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "").target = self
@@ -1460,6 +1477,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       }
     }
   }
+  @objc func notificationsOn(_ sender: Any?) { web.evaluateJavaScript("window.peixNotifyOn?.()", completionHandler: nil) }
   @objc func openFromMenu(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
     open(sessionId: id)
@@ -1471,8 +1489,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func refreshBadges() {
-    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding else { return }   // the status menu was rebuilt per message before (2026-09-27)
-    badged = (needsInput, newReplies, yourMoves, clauding)
+    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.muted != muted else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (needsInput, newReplies, yourMoves, clauding, muted)
     let wanting = needsInput.count + newReplies.count
     NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
     drawFish()
@@ -1487,7 +1505,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // like a quiet one. The watchdog says so, not the page, whose view hides whenever the screen locks.
   private func drawFish() {
     guard let b = statusItem.button else { return }
-    b.image = fishFace(bellyUp: serverDown)
+    b.image = fishFace(bellyUp: serverDown, slashed: muted)
     if serverDown {
       b.title = ""; b.appearsDisabled = true
       b.toolTip = "peixAIrada: the server isn't answering"; b.setAccessibilityLabel(b.toolTip)
@@ -1500,6 +1518,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     if asks > 0 { said.append("\(asks) asking you") }
     if moves > 0 { said.append("\(moves) at your move") }
     if replies > 0 { said.append("\(replies) new \(replies == 1 ? "reply" : "replies")") }
+    if muted { said.append("notifications off") }
     b.toolTip = said.isEmpty ? "peixAIrada: nothing wants you" : "peixAIrada: " + said.joined(separator: ", ")
     b.setAccessibilityLabel(b.toolTip)
   }
@@ -1521,6 +1540,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       newReplies = (body["replied"] as? [[String: Any]] ?? []).map(brief)
       yourMoves = (body["moves"] as? [[String: Any]] ?? []).map(brief)
       clauding = (body["working"] as? [[String: Any]] ?? []).map(brief)
+      muted = body["muted"] as? Bool ?? false
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,
