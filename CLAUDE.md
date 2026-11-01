@@ -342,7 +342,7 @@ npm run map                         # rewrite the section maps at the top of ser
   under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
   **Black** (2026-10-30) is the board's own dark on true black: its grounds black by rules of its own
   (`:root[data-skin="black"]` — the wallpaper without glow or grain; no wash on the transcript). **Every theme lays the
-  chat in a frame** (2026-11-01; round XVII's C1): `--frame` (the board's own in `:root`, a theme's its `crust`) the
+  chat in a frame** (2026-11-01; round XVII's C1): `--frame` (the board's own in `:root` — in dark Settings' grey, its list's inks lifted for it, round XVIII —, a theme's its `crust`) the
   window's ground, the wallpaper, the sidebar (`--side`) and the status bar, the chat a sheet in it. **`data-frame` is
   the frame's appearance** — dark round a light chat under Settings' *Dark frame* (`prefs.darkFrame`, light only; a
   theme's frame is then its family's dark half, skinCss's `[data-frame="dark"]` blocks) —, which what sits on it —

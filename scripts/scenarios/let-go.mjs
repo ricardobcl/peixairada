@@ -40,7 +40,7 @@ export default async function (ctx) {
     const mouse = (type, p, alt) => ctx.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, modifiers: alt ? 1 : 0, ...(type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 }) });
     const altClick = async p => { await mouse('mouseMoved', p, true); await mouse('mousePressed', p, true); await mouse('mouseReleased', p, true); };
     const tag = sel => ctx.evaluate(`(t => t && JSON.stringify({ alt: document.documentElement.hasAttribute('data-alt'), bg: getComputedStyle(t).backgroundColor, ic: getComputedStyle(t.querySelector('.ic')).display,
-      x: getComputedStyle(t, '::before').content, red: (p => { p.style.color = 'var(--needs)'; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; })(document.createElement('i')) }))(document.querySelector(${JSON.stringify(sel)}))`).then(JSON.parse);
+      x: getComputedStyle(t, '::before').content, red: (p => { p.style.color = 'var(--needs)'; t.append(p); const c = getComputedStyle(p).color; p.remove(); return c; })(document.createElement('i')) }))(document.querySelector(${JSON.stringify(sel)}))`).then(JSON.parse);
 
     await ctx.waitFor(`${card}?.querySelector('.state.prmove')`, { timeout: 10_000, what: 'the PR at your move, on the card' });
     await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events?key=' + window.PEIX_KEY); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);

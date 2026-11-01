@@ -25,7 +25,8 @@
     --r-1: 3px; --r-2: 4px; --r-3: 6px; --r-4: 10px; --r-5: 14px; }
   /* The board's own light and dark are round XV's Inset (2026-11-01, T3): a frame — the window's ground, the sidebar, the
      status bar, the tiles' wallpaper (--frame) — and the chat a sheet laid in it a step lighter; nothing in light above
-     L* 95, the whites gone, and in dark a near-black frame with the chat a step up. */
+     L* 95, the whites gone; in dark the frame Settings' grey, a step lighter than the chat (2026-11-01, round XVIII:
+     near-black before, which left the list and the status bar black). */
   :root {
     --bg: #f1f0ec; --panel: #f5f4f0; --ink: #21211e; --muted: #5c5b54; --line: #d6d5cd; --accent: #ad5030; --frame: #dedcd6; --bar: var(--frame);
     --working: #d9a82a; --working-ink: #795b01; --idle: #116e3d; --needs: #a61e22; --ended: #a1a19a; --unread: #9c4426;   /* --working is a fill; set as text, its ink */
@@ -57,7 +58,7 @@
      Every dark rule reads it; none reads prefers-color-scheme. */
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #1c1c1a; --panel: #22221f; --ink: #e6e4dc; --muted: #9d9c92; --line: #2e2e2b; --accent: #e08a68; --frame: #0e0e0d;
+    --bg: #1c1c1a; --panel: #22221f; --ink: #e6e4dc; --muted: #9d9c92; --line: #2e2e2b; --accent: #e08a68; --frame: #282825;
     --user-bg: #2a2a27; --tool-bg: #242422; --code-bg: #131312; --code-line: #30302c; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
@@ -2251,6 +2252,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles.notch.lhide > #chat { border-top-left-radius: 10px; }   /* the list hidden: that corner too (2026-11-01) */
   :root[data-layout="sidebar"] #splitter:not(:hover, .drag) { background: transparent; }   /* the frame between them; its grip stays */
   :root[data-layout="sidebar"] main.tiles ~ #sbar { border-top: 0; }
+  /* the board's own dark on its frame (2026-11-01, round XVIII): the inks that fell under 4.5:1 on the lighter grey,
+     lifted for the list and the status bar alone (themeInks' rule, run once) */
+  :root[data-theme="dark"]:not([data-skin]) :is(#sessions, #sbar) { --needs: #fc6c6b; --idle: #35a360; --pr-merged: #b38bff; --pr-closed: #ff7368; --pr-draft: #a1a19a; --tk-todo: #93a2b3; --tk-doing: #5fa1fe; }
   /* The dark frame (Settings › Appearance › Dark frame; T5's Ink, 2026-11-01): a graphite frame round the light chat
      (Stage, T6's paper frame round a dark one, gone with round XVII). <html data-frame> is the frame's appearance; what
      sits on it — the list, the status bar — wears the frame's own tokens here (a theme's, its dark half's: skinCss), and
@@ -3795,7 +3799,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   };
   // the board's own, as a tile in the picker draws them (the tokens themselves are :root's; the crust its frame)
   const OWN_SKINS = {
-    dark: { name: 'peixAIrada', dark: true, bg: '#1c1c1a', panel: '#22221f', crust: '#0e0e0d', ink: '#e6e4dc', muted: '#9d9c92', line: '#2e2e2b', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#f36464', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+    dark: { name: 'peixAIrada', dark: true, bg: '#1c1c1a', panel: '#22221f', crust: '#282825', ink: '#e6e4dc', muted: '#9d9c92', line: '#2e2e2b', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#f36464', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
     light: { name: 'peixAIrada', dark: false, bg: '#f1f0ec', panel: '#f5f4f0', crust: '#dedcd6', ink: '#21211e', muted: '#5c5b54', line: '#d6d5cd', accent: '#ad5030', working: '#d9a82a', idle: '#116e3d', needs: '#a61e22', watch: '#066b6b', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
   };
   // A theme is a family of two halves (2026-11-01, round XVII's A1; two slots, a dark theme and a light one picked apart,

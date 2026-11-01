@@ -24,9 +24,9 @@ export default async function (ctx) {
   ctx.assert.deepEqual([out.rest.hidden, out.rest.bottom, out.rest.mainBottom], [false, 0, 0], `at the window's foot, flush under the board (the tiles' 8 px gap round it until 2026-11-01): ${JSON.stringify(out.rest)}`);
   ctx.assert.equal(out.rest.segs[0], 'connected', 'the connection said, out of sight');
   // …by the fish alone (2026-10-27): no word beside it, its colour the state's — green on the stream, amber trying again,
-  // red turned away (the classes the bar's draw sets, read at once)
+  // red turned away (the classes the bar's draw sets, read at once) — the bar's own, which the frame may lift (2026-11-01)
   out.fish = await ctx.evaluate(`(b => { const fill = () => getComputedStyle(b.querySelector('.logo .fishg g')).fill, on = fill(); b.classList.add('off'); const trying = fill(); b.classList.add('lost'); const lost = fill(); b.classList.remove('off', 'lost');
-    const css = v => { const d = document.createElement('i'); d.style.color = 'var(' + v + ')'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; };
+    const css = v => { const d = document.createElement('i'); d.style.color = 'var(' + v + ')'; b.append(d); const c = getComputedStyle(d).color; d.remove(); return c; };
     return JSON.stringify({ shown: [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim(), said: b.querySelector('.vh')?.textContent, w: Math.round(b.getBoundingClientRect().width), on, trying, lost, want: [css('--idle'), css('--working'), css('--needs')] }); })(document.querySelector('#sbar .conn'))`).then(JSON.parse);
   ctx.assert.deepEqual([out.fish.shown, out.fish.said], ['', 'connected'], `no word beside the fish: ${JSON.stringify(out.fish)}`);
   ctx.assert.ok(out.fish.w <= 36, `the fish's width alone: ${out.fish.w}`);

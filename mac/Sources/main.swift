@@ -416,7 +416,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // themes laid the chat in a frame), so what shows first is what the page will show; underPageBackgroundColor is the
     // same colour for the moments WebKit paints its own ground (an overscroll).
     let ground = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-      ? NSColor(srgbRed: 0x0e / 255, green: 0x0e / 255, blue: 0x0d / 255, alpha: 1)
+      ? NSColor(srgbRed: 0x28 / 255, green: 0x28 / 255, blue: 0x25 / 255, alpha: 1)
       : NSColor(srgbRed: 0xde / 255, green: 0xdc / 255, blue: 0xd6 / 255, alpha: 1) }
     web.setValue(false, forKey: "drawsBackground")
     web.underPageBackgroundColor = ground

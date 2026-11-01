@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, late night — the board's own dark frame is Settings' grey (round XVIII)
+
+Ricardo: *"why is default theme "peixAIrada" so black on the cards/status bar? should be a mutted silver or something
+like settings. give me some options"* — round XVIII's page, seven greys for the frame (D0 today's #0e0e0d, graphite,
+Settings' grey, pewter, cool silver, the chat's own ground, a light silver), each with the list's inks kept at 4.5:1;
+his pick: *"Dark frame grey: D2 (Settings grey, #282825); the light's Dark frame stays graphite."*
+
+* **The board's own dark frame is `#282825`**, the grey of Settings' sidebar (the ink at 3 % over the panel): the list,
+  its rows and the status bar on it, the chat (#1c1c1a) now a step *darker* than the frame, as a Mac's sidebars are in
+  dark. A row has no ground of its own in the sidebar, so the near-black frame of round XV's T3 was the list's colour.
+* **Seven of the list's inks fell under 4.5:1 on the lighter grey** — the asking red, the ready green, the merged,
+  closed and draft PRs, two ticket states — and are lifted in lightness for `#sessions` and `#sbar` alone (themeInks'
+  rule, run once); the chat keeps its own. `status-bar.mjs` reads the fish's colours where the fish is.
+* main.swift's window ground moves with it (the app wants a rebuild); the light's Dark frame stays graphite (#1e1e1c).
+
 ## Decisions of 2026-11-01, night — the Appearance pane: a theme is a family (round XVII)
 
 Round XVII's study (the themes didn't hold together: Auto paired two strangers, the board's own were framed and every

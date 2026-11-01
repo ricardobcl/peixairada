@@ -57,7 +57,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.reduced.ring, 'none', 'the ring stands still');
     ctx.assert.equal(out.reduced.ringBg, 'none', "…as a steady edge in the light's colour, not a turning gradient");
     ctx.assert.equal(out.reduced.blink, 'none', 'the question stops pinging');
-    ctx.assert.match(out.reduced.border, /rgb\(166, 30, 34\)|rgb\(243, 100, 100\)/, 'and holds the red line');   // the reds fitted on 2026-11-01, light and dark
+    ctx.assert.match(out.reduced.border, /rgb\(166, 30, 34\)|rgb\(252, 108, 107\)/, 'and holds the red line');   // the reds fitted on 2026-11-01, light and dark (the list's own on the dark frame)
     ctx.assert.equal(out.reduced.pix, 'none', 'the spinner holds its frame');
     ctx.assert.equal(out.reduced.dialog, 'none', 'a closed dialog has no offset to rise from');
     ctx.assert.deepEqual([out.reduced.shim, out.reduced.wag], ['none', 'none'], 'no light across clauding…, the fish still');

@@ -112,7 +112,8 @@ Every look is in Settings › Appearance and Chat list (⌘,), or a key: the cha
 Day by day. Beside the board's own are Tokyo Night, Catppuccin, Gruvbox, Rosé Pine, Everforest, Kanagawa, Flexoki and
 Nord, each with both halves, and three with one — Black, the board's own colours on true black; Matte Black; and
 Softened, the board's light with no white in it —, the board's own wearing the other half (⌥⌘Y shows them all on the
-board as you move). Every theme lays the chat in a frame a step darker — the window, the list and the status bar —,
+board as you move). Every theme lays the chat in a frame — the window, the list and the status bar — a step apart from it (in
+peixAIrada's dark, the grey of the settings' own sidebar),
 and *Dark frame* makes that frame the theme's dark half round a light chat. Your projects keep their hue in the
 theme's shades, and in every theme the small text reads at 4.5:1 or better. The board is a Mac window: the chats a
 sidebar of rows, in one of two styles (Settings › Appearance › Sidebar style): *Glass*, frosted over the open chat's
