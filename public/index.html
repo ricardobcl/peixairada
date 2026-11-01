@@ -14648,11 +14648,11 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
 
   // ---- the set: Barcelos across the Cávado, in stone and tile (H2). Painted once; each sky lights it when it bakes it.
   const ZE_RIGS = [
-    { name: 'sunset', amb: [.92, .74, .76], cloud: [.53, [.20, .06, .17], [.95, .32, .30], .5], fog: [1.0, .50, .38, .20], rays: .95, bloom: .52, shadow: [.25, 3.3, .62], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
-    { name: 'blue hour', amb: [.56, .62, .92], cloud: [.56, [.03, .04, .11], [.12, .16, .36], .55], fog: [.34, .34, .62, .16], rays: .18, bloom: .78, shadow: [-.5, 3.0, .46], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
-    { name: 'storm', amb: [.66, .40, .42], cloud: [.44, [.04, .008, .018], [.34, .06, .05], .74], fog: [.55, .10, .07, .28], rays: 0, bloom: .72, shadow: [.0, 0, 0], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
-    { name: 'rain', amb: [.60, .68, .84], cloud: [.38, [.05, .065, .09], [.14, .17, .23], .92], fog: [.40, .47, .58, .34], rays: 0, bloom: .66, shadow: [.0, 0, 0], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
-    { name: 'dawn', amb: [.94, .84, .86], cloud: [.55, [.60, .48, .62], [1.2, .78, .66], .42], fog: [1.0, .86, .80, .50], rays: 1.1, bloom: .46, shadow: [-.3, 3.5, .5], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
+    { name: 'sunset', amb: [.92, .74, .76], festa: .5, cloud: [.53, [.20, .06, .17], [.95, .32, .30], .5], fog: [1.0, .50, .38, .20], rays: .95, bloom: .52, shadow: [.25, 3.3, .62], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
+    { name: 'blue hour', amb: [.56, .62, .92], festa: 1, cloud: [.56, [.03, .04, .11], [.12, .16, .36], .55], fog: [.34, .34, .62, .16], rays: .18, bloom: .78, shadow: [-.5, 3.0, .46], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
+    { name: 'storm', amb: [.66, .40, .42], festa: .3, cloud: [.44, [.04, .008, .018], [.34, .06, .05], .74], fog: [.55, .10, .07, .28], rays: 0, bloom: .72, shadow: [.0, 0, 0], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
+    { name: 'rain', amb: [.60, .68, .84], festa: .8, cloud: [.38, [.05, .065, .09], [.14, .17, .23], .92], fog: [.40, .47, .58, .34], rays: 0, bloom: .66, shadow: [.0, 0, 0], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
+    { name: 'dawn', amb: [.94, .84, .86], festa: .12, cloud: [.55, [.60, .48, .62], [1.2, .78, .66], .42], fog: [1.0, .86, .80, .50], rays: 1.1, bloom: .46, shadow: [-.3, 3.5, .5], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
   ];
   const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
   const zgCanvas = S => { const c = document.createElement('canvas'); c.width = Math.round(ZE_W * S); c.height = Math.round(ZE_H * S); const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
@@ -14735,6 +14735,10 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     return c;
   }
   const ZE_LAMPS = [{ x: 252, y: 722 }, { x: 406, y: 722 }];
+  // the festa's lights: wires from the left to lamp to lamp to Trota's sign, a bulb every 15 px, Minho's colours
+  const ZE_WIRES = [[[-4, 690], [252, 716], 34], [[252, 716], [406, 716], 26], [[406, 716], [490, 672], 18]];
+  const zgWire = ([a, b, s], t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t + Math.sin(t * Math.PI) * s];
+  const ZE_FESTA = (() => { const o = [], C = [[1, .22, .18], [1, .72, .2], [.3, .85, .35], [1, .9, .7], [.35, .55, 1]]; let n = 0; for (const w of ZE_WIRES) { const L = Math.hypot(w[1][0] - w[0][0], w[1][1] - w[0][1]), m = Math.round(L / 15); for (let i = 1; i < m; i++) { const [x, y] = zgWire(w, i / m); o.push({ x, y, c: C[n++ % C.length], ph: n * 1.7 }); } } return o; })();
   /** The terrace he runs on: its iron rail and granite kerb, two lamps, Trota's with its side and roof, the galo on granite; what shines by itself apart. */
   function zgPaintSet(k) {
     const [c, x] = zgCanvas(k), [e, y] = zgCanvas(k), { x: RX, w: RW, top: RT } = ZE_REST, AY = RT + 18, F = ZE_FLOOR, iron = '#161a24', end = RX - 30;
@@ -14742,6 +14746,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     x.fillStyle = iron; x.fillRect(0, 803, end, 2.5); x.fillRect(0, 815, end, 1.5);
     for (let i = 0; i < end; i += 6) { x.fillStyle = 'rgba(22, 26, 36, .65)'; x.fillRect(i + 1, 805, 1.2, 19); }
     x.fillStyle = '#8c8a88'; x.fillRect(0, 824, end + 2, 8); x.fillStyle = '#b4b1ac'; x.fillRect(0, 824, end + 2, 2); const r = zgRng(9); for (let i = 0; i < end; i += 26 + r() * 10) { x.fillStyle = 'rgba(30, 25, 30, .4)'; x.fillRect(i, 826, 1.2, 6); }
+    x.strokeStyle = 'rgba(14, 14, 22, .85)'; x.lineWidth = 1; for (const w of ZE_WIRES) { x.beginPath(); for (let i = 0; i <= 24; i++) { const [a, b] = zgWire(w, i / 24); x.lineTo(a, b); } x.stroke(); }
     for (const L of ZE_LAMPS) {
       x.fillStyle = iron; x.fillRect(L.x - 2, L.y + 2, 4, 830 - L.y); x.fillRect(L.x - 6, 822, 12, 10); x.fillRect(L.x - 4, 812, 8, 4);
       x.fillRect(L.x - 9, L.y - 15, 18, 3); x.beginPath(); x.moveTo(L.x - 7, L.y - 15); x.lineTo(L.x, L.y - 23); x.lineTo(L.x + 7, L.y - 15); x.fill(); x.fillRect(L.x - 7, L.y + 1, 14, 3);
@@ -14871,7 +14876,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     if (zg.sky !== iSky) { if (zg.sky >= 0) zg.was = { S: zg.scenes.get(zg.sky), a: 1 }; zg.sky = iSky; }
     if (zg.was && (zg.was.a -= dt / 1.4) <= 0) zg.was = null;
     const dark = zeDark(g), R0 = S.R, Rw = zg.was?.S.R, mixv = (a, b) => zg.was ? a.map((v, i) => v + (b[i] - v) * zg.was.a) : a, mixn = (a, b) => zg.was ? a + (b - a) * zg.was.a : a;
-    const R = { ...R0, amb: mixv(R0.amb, Rw?.amb), gnd: mixv(R0.gnd, Rw?.gnd), keyC: mixv(R0.keyC, Rw?.keyC), lamp: mixn(R0.lamp, Rw?.lamp), win: mixn(R0.win, Rw?.win), wet: mixn(R0.wet, Rw?.wet), bloom: mixn(R0.bloom, Rw?.bloom) };
+    const R = { ...R0, amb: mixv(R0.amb, Rw?.amb), gnd: mixv(R0.gnd, Rw?.gnd), keyC: mixv(R0.keyC, Rw?.keyC), lamp: mixn(R0.lamp, Rw?.lamp), win: mixn(R0.win, Rw?.win), wet: mixn(R0.wet, Rw?.wet), bloom: mixn(R0.bloom, Rw?.bloom), festa: mixn(R0.festa, Rw?.festa) };
     if (dark) { R.amb = R.amb.map((v, i) => v * (1 - dark * [.25, .62, .6][i])); R.gnd = R.gnd.map((v, i) => v * (1 - dark * [.2, .65, .6][i])); R.lamp = Math.max(R.lamp, .8 * dark); R.win = Math.max(R.win, .8 * dark); }
     if (g.flash > 0 && !calm) { const f = Math.min(1, g.flash * 5); R.amb = R.amb.map((v, i) => v + f * [.9, .9, 1.2][i]); }
     gl.disable(gl.BLEND); zgBind(zg.fH); zgUse(zg.P.alpha, ZG_FULL, {}, { uT: zg.fA.t });   // how high what moves stands, for its light
@@ -14893,6 +14898,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     if (g.phase !== 'title' && g.y < ZE_FLOOR - 1 && bn < 16) { bl.set([g.x, 26, .35 * (1 - Math.min(1, (ZE_FLOOR - g.y) / 300))], bn * 3); bn++; }
     const { lp, lc, n } = zgLights(g, R, calm), lit = { uAmbS: R.amb, uAmbG: R.gnd, uKey: zgNorm(R0.key), uKeyC: R.keyC, uRim: R0.rim, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n } };
     zgUse(zg.P.floor, [0, ZE_TERRACE, ZE_W, ZE_H - ZE_TERRACE], { uT: zg.T, uWet: R.wet > .5 ? 1 : 0, uRefl: R.wet, uAmbS: R.amb, uKs: R0.shadow, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n }, uBl: { v3: bl }, uBn: { int: bn } }, { uTile: zg.tile, uM: zg.fM.t, uN: zg.noise, uA: zg.fA.t, uH: zg.fH.t });
+    { const L = { n: 0 }; for (const b of ZE_FESTA) { const tw = calm ? 1 : .8 + .2 * Math.sin(zg.T * 2.2 + b.ph), v = R.festa * tw * 2.4; zgPt(L, b.x, b.y, 16, b.c[0] * v, b.c[1] * v, b.c[2] * v, .55, 1); zgPt(L, b.x, b.y, 3.4, b.c[0] * v * 2, b.c[1] * v * 2, b.c[2] * v * 2, 1, 1); } gl.blendFunc(gl.ONE, gl.ONE); zgPoints(L, gl.POINTS); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); }   // the festa, each bulb a little bokeh
     if (behind) zgUse(zg.P.canvas, ZG_FULL, {}, { uT: zg.fC.t });
     zgUse(zg.P.lit, [0, 420, ZE_W, 480], { ...lit, uKeep: 0, uEdge: 0, uBev: 1.1, uUseE: 1, uSpec: .55, uEm: R.win * .8 + .001, uDrop: R0.shadow[2] > 0 ? .34 : .2, uDropD: [-lit.uKey[0] * 12, -lit.uKey[1] * 6 + 4] }, { uA: set.a, uH: set.h.t, uE: set.e, uD: zg.fH.t });
     // the sign's bulbs chase each other
