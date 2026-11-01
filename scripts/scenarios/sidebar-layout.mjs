@@ -102,13 +102,14 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`document.documentElement.dataset.layout`), 'sidebar', 'the layout from the prefs at once');
     await ctx.openChat(work.id);
 
-    // at the notch: the panels cut round the housing, nothing bordering the cut, the screen's corners square
+    // at the notch: the panels cut round the housing, nothing bordering the cut; the chat the board's own lay in a frame
+    // (2026-11-01, square at the screen's corner before), its corner there concentric with the screen's
     const N = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
     await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
     await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut')`, { what: 'the chat cut round the housing' });
     await ctx.settle();
     ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat > .ncut')).display`), 'none', 'no border round the cut');
-    ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).borderTopRightRadius`), '0px', 'square at the screen’s corner');
+    ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).borderTopRightRadius`), '10px', 'the sheet’s corner concentric with the screen’s');
     await ctx.evaluate(`document.body.insertAdjacentHTML('beforeend', '<i id="housing" style="position:fixed;z-index:99;top:0;left:${N.left}px;width:${N.right - N.left}px;height:${N.top}px;background:#000;border-radius:0 0 9px 9px"></i>')`);
     await ctx.shot('sidebar-notch');
     await ctx.evaluate(`document.getElementById('housing').remove(); window.peixFill(false, null)`);

@@ -119,7 +119,7 @@ export default async function (ctx) {
     }
     ctx.assert.equal(out.blackDark.head, 'rgb(74, 74, 69)', `dark: the header right of the project is grey: ${JSON.stringify(out.blackDark)}`);
     // in the light the header's black is the panel since 2026-10-12 (off the notch): no grey to need
-    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.ink], ['rgb(255, 255, 255)', 'rgb(28, 28, 26)'],
+    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.ink], ['rgb(245, 244, 240)', 'rgb(33, 33, 30)'],   // the board's own light panel and ink (2026-11-01)
       `light: the header right of the project the panel, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
     // the card's edge, glow and border wear the colour as it reads on the panel (2026-10-09, late night): in the dark a
     // black is a grey there, its lightness held at .62; on the light panel it is black as set

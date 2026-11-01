@@ -412,11 +412,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     web.navigationDelegate = self
     // No flash before the page paints (2026-09-27, night): a WKWebView draws white until the document's CSS lands —
     // in dark mode a flash of the wrong colour at every launch and reload. The view draws no ground of its own and
-    // the window's is the page's --bg for the appearance in force, so what shows first is what the page will show;
-    // underPageBackgroundColor is the same colour for the moments WebKit paints its own ground (an overscroll).
+    // the window's is the page's --frame for the appearance in force (its --bg until 2026-11-01, when the board's own
+    // themes laid the chat in a frame), so what shows first is what the page will show; underPageBackgroundColor is the
+    // same colour for the moments WebKit paints its own ground (an overscroll).
     let ground = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-      ? NSColor(srgbRed: 0x14 / 255, green: 0x14 / 255, blue: 0x13 / 255, alpha: 1)
-      : NSColor(srgbRed: 0xf6 / 255, green: 0xf6 / 255, blue: 0xf4 / 255, alpha: 1) }
+      ? NSColor(srgbRed: 0x0e / 255, green: 0x0e / 255, blue: 0x0d / 255, alpha: 1)
+      : NSColor(srgbRed: 0xde / 255, green: 0xdc / 255, blue: 0xd6 / 255, alpha: 1) }
     web.setValue(false, forKey: "drawsBackground")
     web.underPageBackgroundColor = ground
     // A file dragged in from the Finder: the page gets its path (a browser page never could) and hands

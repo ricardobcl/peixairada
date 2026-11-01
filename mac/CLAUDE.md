@@ -71,6 +71,6 @@ server.mjs, build.sh's `SOURCE`).
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
   **The board's web view draws no ground** (`drawsBackground` off): the window's `backgroundColor` and
-  `underPageBackgroundColor` are the page's `--bg` per appearance, two hex pairs in `buildWindow`.
+  `underPageBackgroundColor` are the page's `--frame` per appearance (2026-11-01), two hex pairs in `buildWindow`.
 * Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
   node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).

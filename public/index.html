@@ -23,22 +23,25 @@
      the initials in a 16 px face — keeps its number). */
   :root { --fs-2xs: 10px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
     --r-1: 3px; --r-2: 4px; --r-3: 6px; --r-4: 10px; --r-5: 14px; }
+  /* The board's own light and dark are round XV's Inset (2026-11-01, T3): a frame — the window's ground, the sidebar, the
+     status bar, the tiles' wallpaper (--frame) — and the chat a sheet laid in it a step lighter; nothing in light above
+     L* 95, the whites gone, and in dark a near-black frame with the chat a step up. */
   :root {
-    --bg: #f6f6f4; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e5e5e0; --accent: #c96442;
-    --working: #d9a82a; --idle: #2f9e5b; --needs: #c53535; --ended: #a3a39e; --unread: #b04f2e;   /* a red and the unread badge's that read at small sizes (2026-10-12: #d64545 4.05, #c96442 3.9 against AA's 4.5) */
-    --watch: #0e8a8a;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
+    --bg: #f1f0ec; --panel: #f5f4f0; --ink: #21211e; --muted: #5c5b54; --line: #d6d5cd; --accent: #b05232; --frame: #dedcd6; --bar: var(--frame);
+    --working: #d9a82a; --idle: #237a48; --needs: #b42e2e; --ended: #a1a19a; --unread: #9c4426;
+    --watch: #0a7474;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
     --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
     --prg: 28%;          /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
-    --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #efeee8; --code-line: #dedcd2;
-    --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
-    --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
-    --pr-open: #1f7d45; --pr-merged: #7442d0; --pr-closed: #c53535; --pr-draft: #6e6e68;   /* deep enough for the page's ground as ink on them (2026-10-12; 3.15 and 3.17 for open and draft before) */
-    --tk-todo: #5e6a7c; --tk-doing: #1a62c2; --tk-done: #1a7f55;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper (2026-10-12) */
-    --term-bg: #f4f3ee; --term-sel: rgba(201, 100, 66, .28);   /* the accent, as ::selection is */
-    --nocolor: #b9b9b3;   /* light gray: a project without a colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
+    --user-bg: #e5e3db; --tool-bg: #e9e8e2; --code-bg: #e7e5de; --code-line: #d5d3ca;
+    --code-ink: #9e3f1f; --inline-bg: rgb(40 38 30 / .07);
+    --you: #21756a; --snip-claude: #42413b; --vscode: #0066b8;
+    --pr-open: #1a6c3b; --pr-merged: #6634c0; --pr-closed: #b42e2e; --pr-draft: #5c5c56;
+    --tk-todo: #4f5b6c; --tk-doing: #1556ad; --tk-done: #156b48;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper */
+    --term-bg: #eae8e2; --term-sel: rgba(176, 82, 50, .28);   /* the accent, as ::selection is */
+    --nocolor: #b3b3ac;   /* light gray: a project without a colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
-    --hl-com: #6f6e66; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
-    --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
+    --hl-com: #5f5e57; --hl-key: #9c27a0; --hl-str: #3c7832; --hl-num: #82560f;
+    --hl-fn: #2560be; --hl-cls: #8a6310; --hl-var: #b83c2e; --hl-meta: #6b7f9e;
     /* Motion (2026-10-11): one ease out for what settles, and a spring for what arrives with a touch of overshoot — a
        linear() curve of a damped oscillator (damping .6) sampled at 40 stops; --t-hover the small controls' ease. The
        script reads the spring from here (SPRING), so the curve is written once. */
@@ -54,13 +57,13 @@
      Every dark rule reads it; none reads prefers-color-scheme. */
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
-    --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
+    --bg: #1c1c1a; --panel: #22221f; --ink: #e6e4dc; --muted: #9d9c92; --line: #2e2e2b; --accent: #e08a68; --frame: #0e0e0d;
+    --user-bg: #2a2a27; --tool-bg: #242422; --code-bg: #131312; --code-line: #30302c; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --needs: #ef6060; --pr-draft: #8b8b85;
     --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97;
-    --term-bg: #111110; --term-sel: rgba(224, 138, 104, .32);
+    --term-bg: #121211; --term-sel: rgba(224, 138, 104, .32);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   }
@@ -1335,9 +1338,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-theme="light"]:not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
   :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) .shead::after { background: var(--crust); }
   /* a theme (2026-10-10) paints this black in its own darkest, --crust, and its inks are the theme's (--hd-*) */
-  .shead > :not(h2, .details) { --ink: var(--hd-ink, #e8e6df); --muted: var(--hd-muted, #9a998f); --line: var(--hd-line, #2c2c29); --rink: var(--hd-ink, #e8e6df); --panel: var(--hd-panel, #1c1c1a); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
+  .shead > :not(h2, .details) { --ink: var(--hd-ink, #e6e4dc); --muted: var(--hd-muted, #9d9c92); --line: var(--hd-line, #2e2e2b); --rink: var(--hd-ink, #e6e4dc); --panel: var(--hd-panel, #22221f); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
-  .shead h2 .t { color: var(--hd-ink, #e8e6df); }
+  .shead h2 .t { color: var(--hd-ink, #e6e4dc); }
   #chat.tinted .shead :is(.status, .path, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .btn:hover { color: var(--rink); }
@@ -2211,6 +2214,21 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.working:not(.asking) .trow::after { content: ''; flex: none; order: 9; width: 13px; height: 13px; margin-top: 3px; box-sizing: border-box; border-radius: 50%;
     border: 2px solid color-mix(in srgb, var(--lift) 26%, transparent); border-top-color: var(--lift); border-right-color: var(--lift); animation: ring .9s linear infinite; }
   :root[data-layout="sidebar"][data-sidebar="tinted"] #slist .card.working.active:not(.asking) .trow::after { border-color: rgb(255 255 255 / .3); border-top-color: #fff; border-right-color: #fff; }
+
+  /* ---- the inset (2026-11-01, round XV's T3): the board's own themes lay the chat in a frame — the window's ground,
+     the tiles' wallpaper, the sidebar and the status bar in --frame (the window's own ground, main.swift's) — and in the
+     sidebar layout the chat is a sheet, rounded, 8 px in from the frame's edges, a hairline and a soft shadow round it.
+     A theme of the picker draws the board flat, as it was. ---- */
+  :root:not([data-skin]) { --sheet-edge: rgb(0 0 0 / .07); --sheet-shade: 0 2px 10px -4px rgb(0 0 0 / .14); }
+  :root[data-theme="dark"]:not([data-skin]) { --sheet-edge: rgb(255 255 255 / .06); --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / .7); }
+  :root:not([data-skin]) body { background: var(--frame); }
+  :root:not([data-skin]) #wall { --bg: var(--frame); }
+  :root[data-layout="sidebar"]:not([data-skin]) { --side: var(--frame); }
+  :root[data-layout="sidebar"]:not([data-skin]) main.tiles > #chat { margin: 8px 8px 8px 0; border-radius: 12px; overflow: clip; box-shadow: 0 0 0 1px var(--sheet-edge), var(--sheet-shade); }
+  :root[data-layout="sidebar"]:not([data-skin]) main.tiles.lhide > #chat { margin-left: 8px; }   /* the list hidden: the frame on every side */
+  :root[data-layout="sidebar"]:not([data-skin]) main.tiles.notch > #chat { border-top-right-radius: 10px; }   /* concentric with the screen's corner, as the tiles' are */
+  :root[data-layout="sidebar"]:not([data-skin]) #splitter:not(:hover, .drag) { background: transparent; }   /* the frame between them; its grip stays */
+  :root[data-layout="sidebar"]:not([data-skin]) main.tiles ~ #sbar { border-top: 0; }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
   #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
@@ -3712,8 +3730,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   };
   // the board's own, as a tile in the picker draws them (the tokens themselves are :root's)
   const OWN_SKINS = {
-    dark: { name: 'peixAIrada', dark: true, bg: '#141413', panel: '#1c1c1a', crust: '#000000', ink: '#e8e6df', muted: '#9a998f', line: '#2c2c29', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#d64545', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
-    light: { name: 'peixAIrada', dark: false, bg: '#f6f6f4', panel: '#ffffff', crust: '#000000', ink: '#1c1c1a', muted: '#6b6b66', line: '#e5e5e0', accent: '#c96442', working: '#d9a82a', idle: '#2f9e5b', needs: '#d64545', watch: '#0e8a8a', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+    dark: { name: 'peixAIrada', dark: true, bg: '#1c1c1a', panel: '#22221f', crust: '#000000', ink: '#e6e4dc', muted: '#9d9c92', line: '#2e2e2b', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#ef6060', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+    light: { name: 'peixAIrada', dark: false, bg: '#f1f0ec', panel: '#f5f4f0', crust: '#000000', ink: '#21211e', muted: '#5c5b54', line: '#d6d5cd', accent: '#b05232', working: '#d9a82a', idle: '#237a48', needs: '#b42e2e', watch: '#0a7474', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
   };
   const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'];
   // Each theme a block of tokens under its own data-skin, set only beside its own appearance's data-theme (applySkin).
