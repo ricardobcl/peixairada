@@ -96,7 +96,9 @@ export default async function (ctx) {
       const b = document.querySelector('#driftBtn'), st = getComputedStyle(b), under = getComputedStyle(document.querySelector('#shead'), '::after').backgroundColor;
       const card = ${card(moved.id)};
       const root = getComputedStyle(document.documentElement);
-      return { ink: rgb(st.color), tint: st.backgroundColor, under: rgb(under), mark: rgb(getComputedStyle(card.querySelector('.trow .drift')).color), grounds: ['--panel', '--bg'].map(v => rgb(root.getPropertyValue(v).trim())) };
+      const own = getComputedStyle(card).backgroundColor;   // the open row's solid colour (2026-11-01, Ring the one style), else the list's grounds
+      return { ink: rgb(st.color), tint: st.backgroundColor, under: rgb(under), mark: rgb(getComputedStyle(card.querySelector('.trow .drift')).color),
+        grounds: card.classList.contains('active') && !/rgba\(0, 0, 0, 0\)|transparent/.test(own) ? [rgb(own)] : ['--panel', '--bg'].map(v => rgb(root.getPropertyValue(v).trim())) };
     })()`);
     // the tint is the red at 16 % over the header's black or panel, composited by hand — `color(srgb r g b / a)` in 0–1
     const mix = (fg, bg) => { const f = fg.match(/[\d.]+/g).map(Number), unit = /^color\(/.test(fg) ? 255 : 1, k = f[3] ?? 1, b = bg.match(/[\d.]+/g).map(Number);

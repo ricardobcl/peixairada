@@ -116,10 +116,8 @@ board as you move). Every theme lays the chat in a frame — the window, the lis
 peixAIrada's dark, the grey of the settings' own sidebar),
 and *Dark frame* makes that frame the theme's dark half round a light chat. Your projects keep their hue in the
 theme's shades, and in every theme the small text reads at 4.5:1 or better. The board is a Mac window: the chats a
-sidebar of rows, in one of two styles (Settings › Appearance › Sidebar style): *Glass*, frosted over the open chat's
-colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same lights on a plain
-sidebar, the open chat solid in its project's colour. Each row names its project on a tag of its colour, and the
-toolbar on a capsule of it.
+sidebar of rows, a ring of light round a chat at work and sonar round a question, the open chat solid in its
+project's colour. Each row names its project on a tag of its colour, and the toolbar on a capsule of it.
 
 <table>
   <tr>
@@ -261,8 +259,8 @@ or *key* to find a setting wherever it is):
 
 - **General** — notifications and sounds, which editor a file path opens in, and (in the app) which full screen ⌃⌘F is.
 - **Appearance** — Auto, Dark or Light (Auto follows macOS), the theme — a swatch each, its dark and light halves
-  (⌥⌘Y shows them all on the board) —, a dark frame round the light chat, the sidebar's style (Glass or Ring), the
-  text size, and what else the status bar shows (a right-click on the bar picks that too).
+  (⌥⌘Y shows them all on the board) —, a dark frame round the light chat, the text size, and what else the status
+  bar shows (a right-click on the bar picks that too).
 - **Chat list** — card size (compact, or larger only where a chat needs you).
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the

@@ -7,14 +7,12 @@
 <title>peixAIrada</title>
 <script>
   // The board's appearance before its first paint (2026-10-12): the one picked (prefs.look), unless it follows macOS —
-  // then, as with no prefs at all, the system's —, its frame's (2026-11-01, prefs.darkFrame: dark round a light chat)
-  // and its sidebar's style (2026-10-30, prefs.sidebarStyle, kept by applyLayout; the sidebar the one layout since
-  // 2026-11-01, data-layout in the markup). The page's script below takes over.
+  // then, as with no prefs at all, the system's —, and its frame's (2026-11-01, prefs.darkFrame: dark round a light
+  // chat). The page's script below takes over.
   (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
     const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = look;
-    document.documentElement.dataset.frame = look === 'light' && p.darkFrame ? 'dark' : look;
-    document.documentElement.dataset.sidebar = p.sidebarStyle === 'ring' ? 'ring' : 'glass'; })();
+    document.documentElement.dataset.frame = look === 'light' && p.darkFrame ? 'dark' : look; })();
 </script>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <style>
@@ -2083,16 +2081,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 
   /* ---- tiles (2026-10-10; main.tiles is in the markup, and its rules are the panels' — the sidebar's below draws over
      them, the one layout since 2026-11-01): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
-     project's colour (--tile-edge, set by tintChat and tileTints: a black one --tile-grey; the list's on
-     ALL the open chat's), faint, and whole on the panel the keys are in ---- */
+     project's colour (--tile-edge, set by tintChat: a black one --tile-grey), faint, and whole on the panel the keys
+     are in ---- */
   :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
-  /* the wallpaper in the hue of the project in view — the open chat's, else the list's, else the theme's accent (tileTints);
-     registered, so a change of chat eases it. A fixed layer under the board (#wall, the body's ground before); the grain
-     over it, still. (Its glow after the pointer went with Tiles, 2026-11-01.) */
-  @property --wallc { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  #wall { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --wallc: var(--accent); transition: --wallc .25s;
-    background: radial-gradient(90% 70% at 8% 96%, color-mix(in srgb, var(--wallc) 20%, var(--bg)), transparent 62%), var(--bg); }
-  #wall::after { content: ''; position: absolute; inset: 0; background: var(--grain); }
   main.tiles { padding: 8px 8px 0; }
   main.tiles :is(#sessions, #chat) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); }
   main.tiles .kf:is(#sessions, #chat) { border-color: var(--tile-edge, var(--nocolor)); }
@@ -2110,36 +2101,25 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.tiles.notch > #chat { border-top-right-radius: var(--screen-r); overflow: hidden; }
   main.tiles.notch.lhide > #chat { border-top-left-radius: var(--screen-r); }   /* the list hidden: the chat's tile has that corner too */
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
-  /* Black, the theme (2026-10-30): its grounds black — the wallpaper without its grain, the transcript without the
-     chat's wash —, the colours on what they mark. The sidebar's Glass keeps its pools: the style asked for them. */
-  :root[data-skin="black"] #wall { background: #000; }
-  :root[data-skin="black"] #wall::after { display: none; }
+  /* Black, the theme (2026-10-30): its grounds black — the transcript without the chat's wash —, the colours on what
+     they mark */
   :root[data-skin="black"] #log, :root[data-skin="black"] #chat #groups .gbody.haslog { background: none; }
 
   /* ---- the sidebar layout (2026-10-30, round X; the one layout since 2026-11-01 — <html data-layout="sidebar"> in the
-     markup, never toggled —, Settings › Appearance › Sidebar style): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a toolbar —
-     with the board's signals kept on the rows, the board's ring round a row at work and its sonar round a question, in
-     one of two styles, round X's D2 and D4 (<html data-sidebar>; Edge and Tinted, D1 and D3, gone 2026-11-01): Ring —
-     the open row solid in its project's colour, the list flat on the frame; Glass (the default) — the list frosted over a
-     wallpaper in the open chat's colour, the open row a tint of it. <html data-sidebar>, set before the first paint by
-     the head's script and kept by applyLayout. The sidebar is the frame (the inset, below). ---- */
-  :root[data-layout="sidebar"] { --side: var(--frame); --side-glass: color-mix(in srgb, var(--side) 60%, transparent); }
+     markup, never toggled): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a
+     toolbar — with the board's signals kept on the rows: the board's ring round a row at work and its sonar round a
+     question, the open row solid in its project's colour, the list flat on the frame (round X's D2, Ring; its other
+     styles — Edge, Tinted, and Glass, the list frosted over a wallpaper in the open chat's colour — gone 2026-11-01).
+     The sidebar is the frame (the inset, below). ---- */
+  :root[data-layout="sidebar"] { --side: var(--frame); }
   /* the panels meet, square at the screen's corners too; the cut round the housing stays, with no border round it */
   :root[data-layout="sidebar"] main.tiles { padding: 0; }
   :root[data-layout="sidebar"] main.tiles :is(#sessions, #chat) { border: 0; }
   :root[data-layout="sidebar"] main.tiles.notch { --screen-r: 0px; }
   :root[data-layout="sidebar"] :is(.ncut, .ncap) { display: none; }
-  /* the list and the status bar under it in the sidebar's grey, the wallpaper unseen and not drawn */
+  /* the list and the status bar under it in the sidebar's grey */
   :root[data-layout="sidebar"] #sessions { background: var(--side); }
   :root[data-layout="sidebar"] main.tiles ~ #sbar { margin: 0; border: 0; border-top: 1px solid var(--line); background: var(--side); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #wall { display: none; }
-  /* Glass: the wallpaper shows under the list alone, two pools of the open chat's colour (--wallc, eased as the tiles'
-     is), the deeper from the bottom left; the list and the status bar glass over it, half — their own grey at 60 %, the
-     wallpaper blurred and saturated through the rest */
-  :root[data-layout="sidebar"][data-sidebar="glass"] #wall { background: radial-gradient(80% 70% at 4% 96%, color-mix(in srgb, var(--wallc) 42%, var(--bg)), transparent 72%),
-    radial-gradient(60% 55% at 18% 8%, color-mix(in srgb, var(--wallc) 24%, var(--bg)), transparent 70%), var(--bg); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] #sessions { background: var(--side-glass); -webkit-backdrop-filter: blur(44px) saturate(1.9); backdrop-filter: blur(44px) saturate(1.9); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] main.tiles ~ #sbar { background: var(--side-glass); -webkit-backdrop-filter: blur(30px) saturate(1.7); backdrop-filter: blur(30px) saturate(1.7); }
   :root[data-layout="sidebar"] .sedge.up { background: linear-gradient(color-mix(in srgb, var(--side) 85%, transparent) 25%, transparent); }
   :root[data-layout="sidebar"] .sedge.down { background: linear-gradient(transparent, color-mix(in srgb, var(--side) 85%, transparent) 80%); }
   :root[data-layout="sidebar"] #stitle { background: color-mix(in srgb, var(--repo, var(--nocolor)) 20%, transparent); border-top-color: color-mix(in srgb, var(--ink) 10%, transparent); }
@@ -2158,14 +2138,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles.split .grp.on { border-color: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 55%, transparent); }
   /* the transcript on the chat's plain ground */
   :root[data-layout="sidebar"] #log, :root[data-layout="sidebar"] #chat #groups .gbody.haslog { background: none; }
-  /* the header a toolbar: the window's width, an edge at its foot alone, glass of the panel; the project's colour a dot
-     before its name, no black beside it, the theme's own inks. Lowered at the notch by padding, not a margin — the
-     toolbar reaches the top whatever it holds. Glass's is the chat's colour at 14 %, still glass. */
+  /* the header a toolbar: the window's width, an edge at its foot alone, glass of the panel; no black beside the
+     project, the theme's own inks. Lowered at the notch by padding, not a margin — the toolbar reaches the top whatever
+     it holds. */
   :root[data-layout="sidebar"] main.notch > #chat.npad > #shead { padding-top: calc(7px + var(--notch-top, 0px)); }   /* under the housing with no hole for it: below the strip (the rule under it outweighed the tiles', 2026-11-01) */
   :root[data-layout="sidebar"] #chat > #shead { margin: 0; padding-top: calc(7px + var(--hdrop, 0px)); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink);
     background: color-mix(in srgb, var(--panel) 76%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
     --hfade-w: 24px; --rink: var(--ink); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] #chat > #shead { background: color-mix(in srgb, color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) 72%, transparent); }
   :root[data-layout="sidebar"] #chat > #prlist { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
   :root[data-layout="sidebar"] #chat .shead::after { display: none; }
   /* The project in the toolbar (2026-10-31, round XI): its name in its colour on a capsule of it, as a row's tag (a
@@ -2182,14 +2161,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"], .tk[data-cat]) { background: color-mix(in srgb, var(--prc) 12%, var(--panel)); border-color: color-mix(in srgb, var(--prc) 34%, var(--panel)); }
   :root[data-layout="sidebar"] #chat .shead .hpr .ck { background: transparent; }
   /* the lanes as the tiles' were (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
-     sidebar's ground (Glass's glass); all caught up keeps its still mark, where its sparks start */
+     sidebar's ground; all caught up keeps its still mark, where its sparks start */
   :root[data-layout="sidebar"] .gsep.lane { margin: 6px -8px 2px; padding: 7px 12px 5px 16px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; }
   :root[data-layout="sidebar"] .gsep.lane[data-lane] { background: var(--side); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] .gsep.lane[data-lane] { background: none; }   /* on the list's glass, no band of its own… */
-  /* …but stuck, over the rows, the glass as it reads there, solid: the list's grey over the open chat's colour (a head's
-     own backdrop blur, inside the list's, left the rows legible through it) */
-  :root[data-layout="sidebar"][data-sidebar="glass"] .gsep.lane.stuck { background: color-mix(in srgb, var(--side) 62%, color-mix(in srgb, var(--tile-edge, var(--nocolor)) 16%, var(--bg))); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] .gsep.lane.pushed { visibility: hidden; }
   :root[data-layout="sidebar"] .gsep.lane:first-child { margin-top: 0; }
   :root[data-layout="sidebar"] .gsep.lane > i { width: 13px; height: 13px; margin: 0 1px; }
   :root[data-layout="sidebar"] .gsep.lane b { font-size: var(--fs-sm); font-weight: 500; }
@@ -2204,21 +2178,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card .top .repo { padding: 0 6px; border-radius: 5px; line-height: 16px; font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none;
     color: oklch(from var(--repo, var(--nocolor)) min(l, .42) c h); background: color-mix(in srgb, var(--lift) 18%, transparent); }
   :root[data-layout="sidebar"][data-frame="dark"] #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); }
-  /* The open row: Glass's a tint of its project's colour with a hairline of it; Ring's its project's colour, solid —
-     darkened till white reads on it (2026-10-31: the system's blue before) —, all on it white, a question on it too (its
-     red line and pings say it) */
-  :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.active { background: color-mix(in srgb, var(--lift) 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active { background: var(--selc); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active :is(*, .top .repo) { color: #fff; }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active .top .repo, :root[data-layout="sidebar"][data-sidebar="glass"][data-frame="dark"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
+  /* The open row: its project's colour, solid — darkened till white reads on it (2026-10-31: the system's blue
+     before) —, all on it white, a question on it too (its red line and pings say it) */
+  :root[data-layout="sidebar"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
+  :root[data-layout="sidebar"] #slist .card.active { background: var(--selc); }
+  :root[data-layout="sidebar"] #slist .card.active :is(*, .top .repo) { color: #fff; }
+  :root[data-layout="sidebar"] #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
+  :root[data-layout="sidebar"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
+  :root[data-layout="sidebar"] #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
   /* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
      an open PR's green on a green project's row is otherwise gone; one ground under them all, nothing round each
      (2026-11-01, later) —, a stack's line white */
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active .tmx .mxg { background: rgb(0 0 0 / .2); border-radius: var(--r-1); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.active .tmx .mxc > s { background: rgb(255 255 255 / .6); }
+  :root[data-layout="sidebar"] #slist .card.active .tmx .mxg { background: rgb(0 0 0 / .2); border-radius: var(--r-1); }
+  :root[data-layout="sidebar"] #slist .card.active .tmx .mxc > s { background: rgb(255 255 255 / .6); }
   /* At work and watching, the card's own ring gives way to the row's (the board's ring is a square under a cover in the
      card's ground, which a row has none of): .rg, a box of the card's own (cardHtml), carries it. */
   .card > .rg { display: none; }
@@ -2231,11 +2203,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg)); animation: ring var(--spins, 1.4s) linear infinite; }
   :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
   :root[data-layout="sidebar"] #slist .card.working { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.working.active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 40%, transparent), 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
-  /* …and a question: a red hairline, a red wash (not under Ring's solid row) and the sonar's two pings leaving the
-     row's own outline */
+  /* …and a question: a red hairline, a red wash (not on the open row's solid colour) and the sonar's two pings leaving
+     the row's own outline */
   :root[data-layout="sidebar"] #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs); }
-  :root[data-layout="sidebar"][data-sidebar="glass"] #slist .card.asking, :root[data-layout="sidebar"][data-sidebar="ring"] #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, transparent); }
+  :root[data-layout="sidebar"] #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, transparent); }
   :root[data-layout="sidebar"] #slist .card.asking::before, :root[data-layout="sidebar"] #slist .card.asking::after { inset: 0; border-width: 1.5px; border-radius: inherit; }
 
   /* ---- the inset (2026-11-01, round XV's T3; every theme's, round XVII's C1): the chat laid in a frame — the window's
@@ -2245,7 +2216,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root { --sheet-edge: rgb(0 0 0 / .07); --sheet-shade: 0 2px 10px -4px rgb(0 0 0 / .14); }
   :root[data-theme="dark"] { --sheet-edge: rgb(255 255 255 / .06); --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / .7); }
   :root body { background: var(--frame); }
-  :root #wall { --bg: var(--frame); }
   :root[data-layout="sidebar"] main.tiles > #chat { margin: 8px 8px 8px 0; border-radius: 12px; overflow: clip; box-shadow: 0 0 0 1px var(--sheet-edge), var(--sheet-shade); }
   :root[data-layout="sidebar"] main.tiles.lhide > #chat { margin-left: 8px; }   /* the list hidden: the frame on every side */
   :root[data-layout="sidebar"] main.tiles.notch > #chat { border-top-right-radius: 10px; }   /* concentric with the screen's corner, as the tiles' are */
@@ -2267,7 +2237,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     --needs: #f96968; --watch: #45c8c8; --working: #d9a82a; --working-ink: #d9a82a; --idle: #32a15d; --you: #4fb8a8; --spend: #f28a3c; --vscode: #4aa5f0;
     --pr-open: #3fb950; --pr-merged: #b186ff; --pr-closed: #fe6e63; --pr-draft: #9e9e98; --tk-todo: #91a0b0; --tk-doing: #5a9efe; --tk-done: #4bce97; }
   :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { --side: var(--bg); --bar: var(--bg);
-    --side-glass: color-mix(in srgb, var(--side) 60%, transparent); --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
+    --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
     --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
@@ -2745,10 +2715,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-reduced-transparency: reduce) {
     #ov, .sedge, .tl-glass { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
     #ov { background: var(--bg); }
-    :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar, #chat > #shead, #slist > .gsep.lane) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }   /* the sidebar layout's glass */
-    :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar, #slist > .gsep.lane[data-lane]) { background: var(--side) !important; }
-    :root[data-layout="sidebar"][data-sidebar="ring"] #chat > #shead { background: var(--panel) !important; }
-    :root[data-layout="sidebar"][data-sidebar="glass"] #chat > #shead { background: color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) !important; }
+    :root[data-layout="sidebar"] #chat > #shead { background: var(--panel) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }   /* the toolbar's glass */
   }
   /* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
   @media (forced-colors: active) {
@@ -2839,7 +2806,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
     .gsep.lane .lc { transition: none; }   /* a lane's caret turns at once (its head kept since 2026-11-01; the lane itself folds at once: drawCards reads REDUCED) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
-    :root[data-layout="sidebar"][data-sidebar] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"][data-sidebar] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
+    :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
@@ -2899,7 +2866,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </style>
 </head>
 <body>
-<div id="wall" aria-hidden="true"></div>
 <template id="logo"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></template>
 <main id="main" class="tiles">
   <section id="sessions">
@@ -2982,9 +2948,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set wide" id="themeRow" data-kw="theme colours colors skin palette family pair dark light half"><span class="sl" id="slTheme"><b>Theme</b><small id="themeSay"></small></span><span class="sfams" role="radiogroup" aria-labelledby="slTheme" id="themePick"></span></div>
           <div class="srow set" id="frameRow" data-kw="dark frame ink graphite inset sheet window ground sidebar list status bar contrast"><label class="sl" for="darkFrame"><b>Dark frame</b><small data-d="A graphite frame round the light chat: the list and the status bar in the theme’s dark half" data-off="Only in light: in dark the frame is dark already"></small></label><input type="checkbox" class="sw" role="switch" id="darkFrame"></div>
         </div><p class="sgf">Every theme, the board wearing each as you move through them: <button type="button" class="slink" id="themeBtn">⌥⌘Y</button></p></section>
-        <section class="sgrp"><div class="slist" role="group" aria-label="Sidebar">
-          <div class="srow set" id="sideStyleRow" data-kw="sidebar style layout ring glass lights frosted rows"><span class="sl" id="slSideStyle"><b>Sidebar style</b><small id="sideStyleSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slSideStyle" id="sideStylePick"><button type="button" role="radio" data-sbs="ring">Ring</button><button type="button" role="radio" data-sbs="glass">Glass</button></span></div>
-        </div></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Text size">
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
         </div></section>
@@ -3237,7 +3200,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, sidebarStyle: 'glass', prChips: 'matrix' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3263,7 +3226,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   if ('sessionsCompact' in prefs) { prefs.listHidden = !!prefs.sessionsCompact; delete prefs.sessionsCompact; }
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar', 'layout']) delete prefs[k];   // layout: Tiles · Sidebar until 2026-11-01
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar', 'layout', 'sidebarStyle']) delete prefs[k];   // layout: Tiles · Sidebar, sidebarStyle: Ring · Glass, until 2026-11-01
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -4004,27 +3967,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#lookPick').addEventListener('click', e => { const b = e.target.closest('[data-look]'); if (b) setLook(b.dataset.look, centreOf(b)); });
   $('#themePick').addEventListener('click', e => { const b = e.target.closest('[data-fam]'); if (b) setTheme(b.dataset.fam, centreOf(b)); });
   $('#darkFrame').addEventListener('change', e => { const on = e.target.checked; revealFrom(centreOf(e.target), () => { prefs.darkFrame = on; savePrefs(); applySkin(); }); });
-  // ---- the sidebar's style (2026-10-30, round X): the Mac's own window — the list a sidebar of rows, the header a
-  // toolbar (the CSS's sidebar block; the one layout since 2026-11-01, Tiles gone) — in one of two styles: Ring and Glass
-  // (the default), round X's D2 and D4 (Edge and Tinted, D1 and D3, gone 2026-11-01, round XVII: three ways of saying
-  // clauding and asking were two too many). Settings › Appearance › Sidebar style; it spreads from where it was asked
-  // for, as a look does. <html data-sidebar>, which the head's script set before the first paint.
-  const SIDEBAR_SAY = { ring: 'A ring of light round a chat at work, sonar round a question; the open chat in its project’s colour',
-    glass: 'Frosted over the open chat’s colour; a ring of light round a chat at work, sonar round a question' };
-  function sidebarOf() { return prefs.sidebarStyle === 'ring' ? 'ring' : 'glass'; }
-  function applyLayout() {
-    const st = sidebarOf();
-    document.documentElement.dataset.sidebar = st;
-    for (const b of document.querySelectorAll('#sideStylePick [data-sbs]')) b.setAttribute('aria-checked', String(b.dataset.sbs === st));
-    $('#sideStyleSay').textContent = SIDEBAR_SAY[st];
-  }
-  // what reads the style on its own: the list's frame and the rings, which the change starts anew (phaseAnims)
-  function setSideStyle(style, from = null) {
-    if (style === sidebarOf()) return;
-    revealFrom(from, () => { prefs.sidebarStyle = style; savePrefs(); applyLayout(); listChanged(); phaseAnims(); });
-  }
-  applyLayout();
-  $('#sideStylePick').addEventListener('click', e => { const b = e.target.closest('[data-sbs]'); if (b) setSideStyle(b.dataset.sbs, centreOf(b)); });
   $('#themeBtn').addEventListener('click', () => { settingsOpen(false); themesOpen(); });
   // ⌥⌘Y: the grid, a tile a family. The arrows move and the board behind follows, in its half of the appearance worn;
   // ⏎ or a click wears it; Esc, or a click on the backdrop, puts back what was worn.
@@ -4297,17 +4239,7 @@ const toolName = n => {
       const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
       c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--hveil', veil(.26)); c.style.setProperty('--hveil2', veil(.16));
     } else for (const p of ['--repo', '--rink', '--hveil', '--hveil2']) c.style.removeProperty(p);
-    tintChat.color = color; tileTints();
   };
-  // The tiles' two colours that are not a panel's own (2026-10-10): the list's border is its project's colour — on ALL,
-  // which is no project's, the chat column's — and the wallpaper's hue is the chat column's colour, else the list's
-  // project's, else the theme's accent. From renderSessionList (the project) and tintChat (the chat).
-  function tileTints(p = tileTints.p) {
-    if (!p) return; tileTints.p = p;
-    const chat = tintChat.color, own = p.key === ALL ? null : projColor(p), wall = chat || own;
-    $('#sessions').style.setProperty('--tile-edge', tileEdge(p.key === ALL ? chat || projColor(p) : own));
-    $('#wall').style.setProperty('--wallc', wall ? tileEdge(wall) : 'var(--accent)');
-  }
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   // What the cog's setup says of a project, by the name the board shows — so a worktree or a second checkout of it is
   // the same: a short name, a colour. Written into this file for one Mac until 2026-09-28 (PROJECT_ABBR, PROJECT_COLORS).
@@ -5062,7 +4994,6 @@ const toolName = n => {
   });
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
-    tileTints(p);
     // The magnifier matches the way ⌥⌘K does (2026-09-25): any letters
     // in order, each word within one of the chat's fields, and the best match leads — so with something typed the list
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
@@ -5437,8 +5368,7 @@ const toolName = n => {
     // the sticky head covers the list's top, under its padding: a card under it is out of sight, and the ends' fog and
     // the scroll's padding start below it (--stick; the padding alone with no heads — under the notch's strip)
     if (drawEdges.stick !== g.stick) { drawEdges.stick = g.stick; $('#sessions').style.setProperty('--stick', g.stick + 'px'); $('#sessions').style.setProperty('--lpad', g.pad + 'px'); }
-    // the head stuck on top (.stuck), the ones stuck under it (.covered), and it while the next pushes in (.pushed): a
-    // head of glass (the sidebar's Glass) is a ground only stuck, and would show what is under it
+    // the head stuck on top (.stuck), the ones stuck under it (.covered), and it while the next pushes in (.pushed)
     const last = g.stuck.lastIndexOf(true), pushed = last >= 0 && g.rects[last + 1] && g.rects[last + 1].top < g.rects[last].bottom;
     g.heads.forEach((h, i) => { h.classList.toggle('covered', g.stuck[i] && i < last); h.classList.toggle('stuck', i === last && !pushed); h.classList.toggle('pushed', i === last && !!pushed); });
     const bottom = g.top + g.ch, under = g.top > 0 ? g.stick : 0;

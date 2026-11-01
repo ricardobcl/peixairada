@@ -281,7 +281,7 @@ npm run map                         # rewrite the section maps at the top of ser
   timeline, `main`'s `timeline-scope`); else `--shade` (`SCROLL_TIMELINES`).
 * **A name too long fades, not …** (`fadeOver`, `fadeSoon`): a mask only where `.over` says it overflows — the header's
   title and `.purl` on every draw, a card's title once per node (`.ovr`) and when the list's width moves.
-* **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash, the wallpaper) —
+* **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash) —
   not the cards, whose first layer is the lit edge the harness reads. A new wide gradient takes it.
 * **Accessibility is kept by rule** (2026-10-12): the settings' `.stabs` and each half's strip are `tablist`s
   (`aria-selected`), the small terminals `inert`, `readerOn` xterm's `screenReaderMode` (VoiceOver or
@@ -341,9 +341,9 @@ npm run map                         # rewrite the section maps at the top of ser
   `--crust`, `--bar`, `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; none
   under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
   **Black** (2026-10-30) is the board's own dark on true black: its grounds black by rules of its own
-  (`:root[data-skin="black"]` — the wallpaper without glow or grain; no wash on the transcript). **Every theme lays the
+  (`:root[data-skin="black"]` — no wash on the transcript). **Every theme lays the
   chat in a frame** (2026-11-01; round XVII's C1): `--frame` (the board's own in `:root` — in dark Settings' grey, its list's inks lifted for it, round XVIII —, a theme's its `crust`) the
-  window's ground, the wallpaper, the sidebar (`--side`) and the status bar, the chat a sheet in it. **`data-frame` is
+  window's ground, the sidebar (`--side`) and the status bar, the chat a sheet in it. **`data-frame` is
   the frame's appearance** — dark round a light chat under Settings' *Dark frame* (`prefs.darkFrame`, light only; a
   theme's frame is then its family's dark half, skinCss's `[data-frame="dark"]` blocks) —, which what sits on it —
   `#sessions`, `#sbar`, wearing the frame's tokens — reads, never `data-theme`. **Every small ink holds 4.5:1 on its
@@ -721,17 +721,15 @@ npm run map                         # rewrite the section maps at the top of ser
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
 * **The sidebar is the one layout** (2026-10-30, round X; Tiles gone 2026-11-01): `<html data-layout="sidebar">` in the
   markup, never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the
-  panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` and `tileTints` for a split's
-  halves and Glass's pools, `#wall` and `--wallc`, `tileNotch`'s cut round the housing). **Its style** is Settings ›
-  Appearance › Sidebar style (`prefs.sidebarStyle`, `applyLayout`, `setSideStyle`): `data-sidebar="ring|glass"` (round
-  X's D2 and D4, Glass the default; Edge and Tinted gone 2026-11-01), set before the first paint by the head's script; a
-  style's rules `…[data-sidebar=…]`. The shell: no gaps or edges (no `.ncut`); the list and the status bar `--side`; the
-  header a flush toolbar, no black, the theme's inks (`--hd-*`), lowered at the notch by padding; cards are rows — no
-  ground, edge or light under the pointer; the project a tag on a row, in the toolbar a capsule; PR and ticket chips a
-  tint; `#wall` not drawn but in Glass (over it, `--side-glass` and a `backdrop-filter`). **`.card > .rg`, on every card
-  (cardHtml), is the row's ring** — a still mask to a 1.5 px band, its `::before` the turning square; the card's own
-  pseudo-elements are the sonar's. A new card rule is checked in both styles; a new animation joins `PHASED` and the
-  reduced-motion block. → `sidebar-layout.mjs`.
+  panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` for a split's halves,
+  `tileNotch`'s cut round the housing). **Ring is its one style** (round X's D2; Edge, Tinted and Glass — the list
+  frosted over a wallpaper, `#wall` — gone 2026-11-01, no setting). The shell: no gaps or edges (no `.ncut`); the list
+  and the status bar flat on `--side` (the frame); the header a flush toolbar of glass, no black, the theme's inks
+  (`--hd-*`), lowered at the notch by padding; cards are rows — no ground, edge or light under the pointer, the open
+  one solid in its project's colour (`--selc`), white on it; the project a tag on a row, in the toolbar a capsule; PR
+  and ticket chips a tint. **`.card > .rg`, on every card (cardHtml), is the row's ring** — a still mask to a 1.5 px
+  band, its `::before` the turning square; the card's own pseudo-elements are the sonar's. A new animation joins
+  `PHASED` and the reduced-motion block. → `sidebar-layout.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).
@@ -1011,7 +1009,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
   change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
   on that commit beside it (a worktree, the runs interleaved; `--runs n`, medians), `--sample` the top of macOS
-  `sample`'s stacks, `--prefs '<json>'` another look (`'{"sidebarStyle":"ring"}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
+  `sample`'s stacks, `--prefs '<json>'` another look (`'{"look":"light","skinFollow":false}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every

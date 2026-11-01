@@ -18,7 +18,7 @@ const dir = tmpDir('peix-themes-'), cwd = join(dir, 'blue-repo');
 const BLUE = '#3b7ddd';
 mkdirSync(cwd, { recursive: true });
 
-export const meta = { server: true, fixture: 'auto', prefs: { skinFollow: false, look: 'dark', sidebarStyle: 'ring' } };   // the board's own, dark: the harness follows the system; Ring, whose wallpaper is the theme's ground (Glass's has its pools)
+export const meta = { server: true, fixture: 'auto', prefs: { skinFollow: false, look: 'dark' } };   // the board's own, dark: the harness follows the system
 
 export default async function (ctx) {
   const out = {}, now = Date.now(), projects = { 'blue-repo': { color: BLUE } };
@@ -67,8 +67,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#themegrid .tt').length`), 2, 'Black and Matte Black');
   ctx.assert.deepEqual([await root('--bg'), await root('--term-bg'), await repo()], ['#000000', '#000000', BLUE], 'Black: the ground and the terminal black, the blue project its own blue');
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).backgroundColor`), 'rgb(0, 0, 0)', 'the chat’s panel black');
-  ctx.assert.deepEqual(await ctx.evaluate(`[getComputedStyle(document.querySelector('#wall')).backgroundImage, getComputedStyle(document.querySelector('#log')).backgroundImage]`),
-    ['none', 'none'], 'the wallpaper black, no wash over the transcript');
+  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#log')).backgroundImage`), 'none', 'no wash over the transcript');
   await ctx.settle(); await ctx.shot('black');
   await escape();
   await ctx.waitFor(`!document.querySelector('#themes').open && !document.documentElement.dataset.skin`, { what: 'Esc puts the board’s own back' });

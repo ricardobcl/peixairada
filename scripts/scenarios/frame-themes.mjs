@@ -1,9 +1,9 @@
 // Round XV's themes (2026-11-01): the board's own lay the chat in a frame (T3), every theme too since round XVII (C1);
 // the frame of the other appearance a switch, Settings › Appearance › Dark frame (T5's Ink, round XVII's D1; Stage, a
 // paper frame round a dark chat, gone); Softened a light theme (T9); and every theme's small inks fitted to 4.5:1. A
-// project painted blue and a chat in it. What this checks: in light the window's ground, the wallpaper, the list and the
+// project painted blue and a chat in it. What this checks: in light the window's ground, the list and the
 // status bar are the frame, the chat a sheet in it a step lighter — 8 px in, rounded. The dark frame turns it graphite
-// round the light chat: the list, the status bar and the wallpaper in the frame's own tokens, the cards reading the
+// round the light chat: the list and the status bar in the frame's own tokens, the cards reading the
 // frame's appearance (their colour lifted as on dark), the chat and its header light; a reload paints it at once (the
 // head's script); in dark the switch is off and says why. A theme is framed in its crust — Gruvbox, Softened —, and its
 // light half's dark frame is its family's dark half: Tokyo Night round Tokyo Night Day, its list in Tokyo Night's
@@ -30,10 +30,10 @@ export default async function (ctx) {
   await ctx.openChat(chat.id);
   const click = sel => ctx.evaluate(`document.querySelector(${JSON.stringify(sel)}).click()`);
   const attrs = () => ctx.evaluate(`(({ theme, frame, skin, layout }) => ({ theme, frame, skin: skin || null, layout }))(document.documentElement.dataset)`);
-  /** The grounds as drawn: the window's, the wallpaper's, the list's, the chat's, the status bar's; the sheet's shape;
+  /** The grounds as drawn: the window's, the list's, the chat's, the status bar's; the sheet's shape;
    *  the list's ink; the dark frame's row as Settings has it. */
   const look = () => ctx.evaluate(`(() => { const cs = s => getComputedStyle(document.querySelector(s));
-    return { body: cs('body').backgroundColor, wall: cs('#wall').getPropertyValue('--bg').trim(), list: cs('#sessions').backgroundColor, chat: cs('#chat').backgroundColor,
+    return { body: cs('body').backgroundColor, list: cs('#sessions').backgroundColor, chat: cs('#chat').backgroundColor,
       bar: cs('#sbar').backgroundColor, sheet: [cs('#chat').marginTop, cs('#chat').marginRight, cs('#chat').borderTopLeftRadius].join(' '), ink: cs('#sessions').getPropertyValue('--ink').trim(),
       lift: getComputedStyle(document.querySelector('${card}')).getPropertyValue('--lift').includes('max(l') ? 'dark' : 'light',
       say: document.querySelector('#frameRow small').textContent, off: document.querySelector('#frameRow').classList.contains('off'),
@@ -42,15 +42,11 @@ export default async function (ctx) {
   const appearance = async m => { await click(`#lookPick [data-look="${m}"]`); await ctx.waitFor(`document.documentElement.dataset.theme === '${m}'`, { what: `Appearance › ${m}` }); await ctx.settle(); };
   const theme = async (f, skin) => { await click(`#themePick [data-fam="${f}"]`); await ctx.waitFor(`(document.documentElement.dataset.skin || null) === ${JSON.stringify(skin)}`, { what: `${f} worn` }); await ctx.settle(); };
 
-  // light, Ring (flat: Glass's list is the frame at 60 % over the wallpaper): the frame is the window's ground, the
-  // wallpaper's, the list's and the status bar's; the chat a sheet in it, a step lighter
+  // light: the frame is the window's ground, the list's and the status bar's; the chat a sheet in it, a step lighter
   await appearance('light');
-  await click('#sideStylePick [data-sbs="ring"]');
-  await ctx.waitFor(`document.documentElement.dataset.sidebar === 'ring'`, { what: 'Ring' });
-  await ctx.settle();
   ctx.assert.deepEqual(await attrs(), { theme: 'light', frame: 'light', skin: null, layout: 'sidebar' }, 'the board’s own light');
   let l = await look();
-  ctx.assert.deepEqual([l.body, l.wall, l.list, l.bar], ['rgb(222, 220, 214)', '#dedcd6', 'rgb(222, 220, 214)', 'rgb(222, 220, 214)'], 'the frame round the chat');
+  ctx.assert.deepEqual([l.body, l.list, l.bar], ['rgb(222, 220, 214)', 'rgb(222, 220, 214)', 'rgb(222, 220, 214)'], 'the frame round the chat');
   ctx.assert.deepEqual([l.chat, l.sheet], ['rgb(241, 240, 236)', '8px 8px 12px'], 'the chat a sheet 8 px in, rounded, a step lighter');
   ctx.assert.deepEqual([l.on, l.can, l.off, l.say], [false, true, false, 'A graphite frame round the light chat: the list and the status bar in the theme’s dark half'], 'Settings › Dark frame: off, to be switched on');
   out.matching = await ctx.shot('matching-light');

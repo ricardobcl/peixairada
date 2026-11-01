@@ -5,6 +5,20 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, later at night — Ring is the sidebar's one style
+
+Ricardo: *"ring is the only mode, remove the sidebar style and the code for "glass""*
+
+* **Ring is the one style**: Settings › Appearance › Sidebar style, `prefs.sidebarStyle` (a saved one dropped on
+  load), `<html data-sidebar>`, `applyLayout`, `setSideStyle` and every `[data-sidebar=…]` qualifier went; Ring's rules
+  are the sidebar's own. The list and the status bar are flat on the frame; the toolbar keeps its glass of the panel.
+* **Glass's code went with it**: the frosted list and status bar (`--side-glass`, their backdrop filters), the
+  wallpaper under them (`#wall`, `--wallc`, `tileTints`, Black's rules for it), Glass's toolbar tint, its open row and
+  its lane heads' bands. A new board was on Glass: it opens on Ring now.
+* `lane-heads.mjs` checks every head a band of the list's ground; `sidebar-layout.mjs` that no style is left to pick
+  and that a saved Glass or Line changes nothing.
+* Settings › Appearance has five rows now: Appearance, Theme, Dark frame, Text size, the status bar's meters.
+
 ## Decisions of 2026-11-01, late night — the board's own dark frame is Settings' grey (round XVIII)
 
 Ricardo: *"why is default theme "peixAIrada" so black on the cards/status bar? should be a mutted silver or something

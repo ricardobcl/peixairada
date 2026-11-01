@@ -1,7 +1,8 @@
 // A project's colour (2026-10-01 as the simple colours' scenario; the switch went on 2026-10-14; the setup's alone since
 // 2026-10-15, Peacock's before). A project with a colour in the setup and three chats in it: one clauding, one asking,
 // one on an open PR with a face and a block of code. What this checks: the cards and the open chat's header wear the
-// project's colour, the list ALL's black, a PR chip its state's green, the code its syntax colours; the setup shows the
+// project's colour, the list ALL's black, a PR chip its state's green (white on the open row, solid in the project's
+// colour), the code its syntax colours; the setup shows the
 // colour; the chat header's square writes it there, and ⌥-click takes it off. Black still stands out: an open black
 // card's lit colour is a grey on the dark (the sidebar's rows since 2026-11-01: the tag, the open row's tint — the
 // tiles' card ground and the header's black beside the project went with them).
@@ -28,8 +29,13 @@ export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPat
  *  A grey is a few units of spread (--nocolor's warm grey is 6); the folder's blue mixed into a card is far more. */
 function chroma(v) {
   const hex = h => (h.length < 6 ? [...h].map(c => c + c).join('') : h).match(/../g).slice(0, 3).map(x => parseInt(x, 16));
-  const cs = [...String(v).matchAll(/rgba?\(([^)]*)\)|color\(srgb ([^)]*)\)|#([0-9a-f]{3,8})\b/gi)].map(m =>
-    m[1] ? m[1].split(/[\s,/]+/).filter(Boolean).slice(0, 3).map(Number) : m[2] ? m[2].split(/[\s/]+/).filter(Boolean).slice(0, 3).map(x => Number(x) * 255) : hex(m[3]));
+  // oklch() as Chrome computes a relative colour (the open row's, 2026-11-01), to sRGB's 0–255
+  const ok = t => { const [L, C, H] = t.split(/[\s/]+/).filter(Boolean).slice(0, 3).map(parseFloat), h = H * Math.PI / 180, a = C * Math.cos(h), b = C * Math.sin(h);
+    const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+    return [4.0767416621 * l - 3.3077115913 * m + .2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - .3413193965 * s, -.0041960863 * l - .7034186147 * m + 1.707614701 * s]
+      .map(x => 255 * (x <= .0031308 ? 12.92 * x : 1.055 * Math.min(1, x) ** (1 / 2.4) - .055)); };
+  const cs = [...String(v).matchAll(/rgba?\(([^)]*)\)|color\(srgb ([^)]*)\)|#([0-9a-f]{3,8})\b|oklch\(([\d.]+\s+[\d.]+\s+[\d.]+)[^)]*\)/gi)].map(m =>
+    m[1] ? m[1].split(/[\s,/]+/).filter(Boolean).slice(0, 3).map(Number) : m[2] ? m[2].split(/[\s/]+/).filter(Boolean).slice(0, 3).map(x => Number(x) * 255) : m[4] ? ok(m[4]) : hex(m[3]));
   return cs.length ? Math.round(Math.max(...cs.map(c => Math.max(...c) - Math.min(...c)))) : -1;
 }
 
@@ -81,11 +87,16 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.full.repo, [COLOR, COLOR], 'the cards wear the folder\'s colour');
     ctx.assert.equal(out.full.list, '#000000', 'ALL is black');
     ctx.assert.equal(out.full.tinted, true, 'the chat header is tinted');
-    for (const k of ['card', 'open', 'head', 'lit', 'pr', 'hpr']) ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
+    for (const k of ['card', 'open', 'head', 'lit', 'hpr']) ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
     ctx.assert.ok(out.full.dots.some(c => c > 40) && out.full.code.every(c => c > 40), `the lanes' marks and the code in colour: ${JSON.stringify(out.full)}`);
     ctx.assert.equal(out.full.face, 'none', 'a face in its colours');
-    ctx.assert.ok(out.full.you > 40, `your mark in its colour: ${out.full.you}`);
+    ctx.assert.deepEqual([out.full.pr, out.full.you], [0, 0], 'on the open row, its project’s colour solid, the chip and your mark white (2026-11-01)');
     await ctx.shot('full');
+    // …and on the row when another chat is open: the chip its state's green, your mark its colour
+    await ctx.openChat(busy.id); await ctx.settle();
+    out.rest = await look();
+    ctx.assert.ok(out.rest.pr > 40 && out.rest.you > 40, `the PR chip and your mark in their colours off the open row: ${JSON.stringify(out.rest)}`);
+    await ctx.openChat(onPr.id); await ctx.waitFor(`document.querySelector('#log .hljs-keyword')`, { what: 'the code again' }); await ctx.settle();
 
     // 2 · the setup is where a colour is set: its square shows it
     await paint({ 'calm-repo': { abbr: 'CR', color: COLOR } });

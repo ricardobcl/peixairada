@@ -307,7 +307,7 @@ if (VS.child) {
 const zdot = join(root, 'zdot'); mkdirSync(zdot);
 writeFileSync(join(zdot, '.zshrc'), "PROMPT='%F{green}ada@studio%f %F{blue}%1~%f %# '\n");
 
-// the board as it starts — the app's own defaults: the sidebar (Glass), the status bar, Done folded (the
+// the board as it starts — the app's own defaults: the sidebar, the status bar, Done folded (the
 // harness opens every lane unless told)
 export const meta = {
   server: true, fake: true, fixture: claudeDir,

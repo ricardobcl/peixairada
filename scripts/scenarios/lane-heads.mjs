@@ -1,11 +1,11 @@
 // The lane heads, L1 (2026-10-31, round XIII — Linear's states): a still glyph a lane in its colour — asking a dot with
 // a halo, clauding a half-filled ring, watching a dashed ring round a dot, ready a ring round a dot, idle a dotted ring,
 // done filled —, the name in ink, the count bare, no pixels and no shimmer; each head sticky at the list's top while its
-// lane scrolls under it, on the list's ground. What this checks, in the sidebar (sentence case; Glass: no band at
-// rest, a solid one stuck; tiles' small caps went with them, 2026-11-01): the glyphs and inks; a head stuck over the cards scrolling under it, the
+// lane scrolls under it, on the list's ground. What this checks, in the sidebar (sentence case, each head a band of the
+// list's own ground; tiles' small caps went with them, 2026-11-01): the glyphs and inks; a head stuck over the cards scrolling under it, the
 // ones stuck under it hidden; the list's top end counting the cards under it and its fog below it; at the notch, below
 // the strip with its ground over it; a stuck head clicked folds its lane and stays in sight; the day lines and the
-// timeline's runs as they were; nothing in a head moving, reduced motion or not. Shots dark and light, each style.
+// timeline's runs as they were; nothing in a head moving, reduced motion or not. Shots dark and light.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -62,7 +62,7 @@ export default async function (ctx) {
       }
       return h;
     };
-    out.heads = await check('glass', 'none');
+    out.heads = await check('sidebar', 'none');
 
     // ---- scrolled: Ready's head stuck at the top, its cards passing under it ----
     const stuck = async () => {
@@ -86,7 +86,7 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.stuck.fog, out.stuck.pad], [out.stuck.stick, out.stuck.stick], 'its fog starts under the head, and a card scrolled to stops under it');
     await ctx.settle();
     const crop = () => ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: Math.min(r.height, 760), scale: 2 }))(document.querySelector('#sessions').getBoundingClientRect())`);
-    await ctx.shot('glass-dark-stuck', await crop());
+    await ctx.shot('dark-stuck', await crop());
     // the day lines scroll as before, under it
     out.days = await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.day')].map(d => d.textContent + ':' + getComputedStyle(d).position)`);
     ctx.assert.ok(out.days.length >= 1 && out.days.every(d => d.endsWith(':static')), `the day lines: ${out.days}`);
@@ -106,7 +106,7 @@ export default async function (ctx) {
     await ctx.waitFor(`!document.querySelector('#slist > .gsep.lane.ready.shut')`, { what: 'Ready open again' });
     // light
     await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`); await ctx.settle();
-    await stuck(); await ctx.settle(); await ctx.shot('glass-light-stuck', await crop());
+    await stuck(); await ctx.settle(); await ctx.shot('light-stuck', await crop());
     // at the notch, the list padded under its strip: the head sticks below the strip, its ground over it, the top end
     // under the head
     await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'; window.peixFill(true, { top: 32, left: 100, right: 285 })`);
@@ -116,7 +116,7 @@ export default async function (ctx) {
     out.notch = await ctx.evaluate(`(() => { const l = document.querySelector('#slist'), lr = l.getBoundingClientRect(), h = l.querySelector(':scope > .gsep.lane.ready'), hr = h.getBoundingClientRect();
       return { pad: parseFloat(getComputedStyle(l).paddingTop), at: Math.round(hr.top - lr.top), stuck: h.classList.contains('stuck'), cover: parseFloat(getComputedStyle(h, '::before').height), up: Math.round(document.querySelector('#sup').getBoundingClientRect().top - hr.bottom) }; })()`);
     ctx.assert.deepEqual([out.notch.at, out.notch.stuck, out.notch.cover, out.notch.up], [out.notch.pad, true, out.notch.pad, 0], `at the notch: ${JSON.stringify(out.notch)}`);
-    await ctx.settle(); await ctx.shot('glass-notch', await crop());
+    await ctx.settle(); await ctx.shot('notch', await crop());
     await ctx.evaluate(`window.peixFill(false, null)`);
     await ctx.waitFor(`!document.querySelector('#sessions.npad')`, { what: 'the strip gone' });
     // reduced motion: still nothing moving in a head (and nothing to hold)
@@ -125,23 +125,18 @@ export default async function (ctx) {
     ctx.assert.ok((await heads(ctx)).every(h => h.moving === 0), 'reduced: the heads as they are');
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] });
 
-    // ---- Glass's glass: no band at rest, a solid one stuck ----
+    // ---- every head a band of the list's own ground, stuck or not, nothing blurred through it ----
     await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`);
     out.sideStuck = await stuck();
     ctx.assert.deepEqual([out.sideStuck.lane, out.sideStuck.flush, out.sideStuck.onTop, out.sideStuck.up === out.sideStuck.under], ['ready', 0, true, true], `the sidebar's stuck head: ${JSON.stringify(out.sideStuck)}`);
-    out.glass = await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane[data-lane]')].map(h => h.dataset.lane + ':' + (h.classList.contains('stuck') ? 'stuck ' : '') + getComputedStyle(h).backdropFilter + ' ' + getComputedStyle(h).backgroundColor)`);
-    ctx.assert.match(out.glass.find(x => x.startsWith('ready:')), /^ready:stuck none (rgb|color)\([^/]*\)$/, `Glass: the stuck head a solid ground over the rows: ${out.glass}`);
-    ctx.assert.ok(out.glass.filter(x => !x.startsWith('ready:')).every(x => /:none rgba\(0, 0, 0, 0\)$/.test(x)), `…the rest no band of their own on the list's glass: ${out.glass}`);
-    await ctx.settle(); await ctx.shot('glass-dark', await crop());
-    await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`); await ctx.settle(); await ctx.shot('glass-light', await crop());
+    out.bands = await ctx.evaluate(`(side => [...document.querySelectorAll('#slist > .gsep.lane[data-lane]')].map(h => h.dataset.lane + ':' + (getComputedStyle(h).backdropFilter === 'none' && getComputedStyle(h).backgroundColor === side)))(getComputedStyle(document.querySelector('#sessions')).backgroundColor)`);
+    ctx.assert.ok(out.bands.every(x => x.endsWith(':true')), `each head on the list's ground: ${out.bands}`);
+    await ctx.settle(); await ctx.shot('dark', await crop());
+    await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`); await ctx.settle(); await ctx.shot('light', await crop());
     await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`); await ctx.sleep(200); await ctx.settle();
     ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane.covered')].length`), 0, 'at the top, none hidden');
-    await ctx.shot('glass-light-top', await crop());
-    await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`); await ctx.settle(); await ctx.shot('glass-dark-top', await crop());
-    await ctx.evaluate(`document.documentElement.dataset.sidebar = 'ring'`); await ctx.settle();
-    out.ring = await ctx.evaluate(`(h => [getComputedStyle(h).backgroundColor, getComputedStyle(h).backdropFilter])(document.querySelector('#slist > .gsep.lane.ready'))`);
-    ctx.assert.equal(out.ring[1], 'none', 'Ring: a plain ground');
-    await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`); await ctx.settle(); await ctx.shot('ring-dark', await crop());
+    await ctx.shot('light-top', await crop());
+    await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`); await ctx.settle(); await ctx.shot('dark-top', await crop());
     return out;
   } finally { for (const p of sleeps) try { p.kill(); } catch {} }
 }
