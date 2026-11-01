@@ -152,6 +152,8 @@ export default async function (ctx) {
     await ctx.evaluate(`window.peix.ze().g.mass = 1`);
     await drop('veg', '🍆', [0, -100]);
     await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O.' });
+    ctx.assert.equal(await ctx.evaluate(`window.peix.ze().g.overT`), 0, 'the card waits for the last bite');
+    await ctx.waitFor(`window.peix.ze().g.koT >= .9 && window.peix.ze().g.overT > 0`, { timeout: 5000, what: 'the bones and the card' });
   };
   await ko();
   out.ko = await game();

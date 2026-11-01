@@ -13024,7 +13024,7 @@ const toolName = n => {
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: phase === 'title' ? Infinity : zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], lunch: [], sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
-    lightT: 0, focusAt: -99, jumpBuf: 0, kickBuf: 0, coyote: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
+    lightT: 0, koT: 0, focusAt: -99, jumpBuf: 0, kickBuf: 0, coyote: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
   const ze = { tap: null, typed: '', mossad: false, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
@@ -13052,7 +13052,9 @@ const toolName = n => {
   function zeTick(now) {
     ze.raf = 0;
     const dt = ze.at ? Math.min(.05, (now - ze.at) / 1000) : 0; ze.at = now;
-    ze.dt = dt; zeStep(dt); zeWeather(dt); zeRoom(ze.g); zeDraw(); ze.frames++;
+    const ko = ze.g.phase === 'over' && ze.g.koT < ZE_KO_T;   // the K.O.'s moment: what still flies, at a quarter speed
+    if (ko && (ze.g.koT += dt) >= ZE_KO_T) { ze.g.shake = .3; zeBits(ze.g, ze.g.x, ze.g.y - 60, ['#f2ead8', '#fff3c4'], 14); }
+    ze.dt = dt; zeStep(ko ? dt / 4 : dt); zeWeather(dt); zeRoom(ze.g); zeDraw(); ze.frames++;
     if ($('#zeGame').open && ze.g.phase !== 'pause' && ze.g.phase !== 'call') ze.raf = requestAnimationFrame(zeTick);
   }
   /** The canvas's pixels are its box's at the screen's density; the logic is ZE_W × ZE_H whatever they are. */
@@ -13080,9 +13082,11 @@ const toolName = n => {
     else if (!on && prefs.zeSound) { zeGroove(true); if (ze.g.ride) zeEngine(ze.g.ride.kind); }   // the sound turned on while it stood
     if (on) { zeStop(); zeDraw(); } else zeGo();
   }
+  /** The K.O. (2026-11-01): the last bite in slow motion, the camera going in, the lights going down on him, and then the bones and the card. At once under reduced motion. */
+  const ZE_KO_T = .9, zeKoK = g => g.phase === 'over' ? 1 - (1 - Math.min(1, g.koT / ZE_KO_T)) ** 2 : 0;
   function zeOver(g) {
     if (g.ride) zeLeave(g);
-    Object.assign(g, { phase: 'over', quote: zePick(ZE_LEE), mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : g.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null, avo: null });
+    Object.assign(g, { phase: 'over', koT: zeCalm() ? ZE_KO_T : 0, quote: zePick(ZE_LEE), mass: 0, ko: g.agent ? 'the Mossad has never heard of him' : g.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO), hurt: 0, overT: 0, sel: 0, dragon: 0, bolt: null, banner: null, avo: null });
     g.words.length = 0; g.flames.length = 0;
     const bests = zeBests(), id = zeDiff().id, today = zeDayBests();
     if (g.score > (bests[id] || 0)) { bests[id] = g.score; g.best = true; }
@@ -13502,7 +13506,7 @@ const toolName = n => {
       else { l.x += l.f * (l.kind === 'focus' ? 640 : 320) * dt; l.wheel += l.f * (l.kind === 'focus' ? 640 : 0) * dt / 17; }
       if (l.x < -220 || l.x > ZE_W + 220) g.leaving = null;
     }
-    if (g.phase === 'over') g.overT += dt;
+    if (g.phase === 'over' && g.koT >= ZE_KO_T) g.overT += dt;
     if (g.phase === 'title' && (g.cardT += dt) >= ZE_CARD_T) { g.card++; g.cardT = 0; }   // the rules turn while the demo plays
     if (g.stamp) g.stamp = Math.max(0, g.stamp - dt * 6);
     if (g.phase !== 'play' && !g.demo) return;
@@ -13613,6 +13617,7 @@ const toolName = n => {
     cx.setTransform(k, 0, 0, k, 0, 0);
     if (g.power?.kind === 'vinho' && !calm) { const a = Math.sin(g.t * 1.9) * .018; cx.translate(ZE_W / 2, ZE_H / 2); cx.rotate(a); cx.scale(1.03, 1.03 + Math.sin(g.t * 2.7) * .012); cx.translate(-ZE_W / 2, -ZE_H / 2); }   // the vinho verde: the picture wobbles
     if (g.punch > 0 && !calm) { const z = 1 + .07 * g.punch / .2, hy = g.y - 100; cx.translate(g.x, hy); cx.scale(z, z); cx.translate(-g.x, -hy); }   // a combo's camera punch
+    const koK = calm ? 0 : zeKoK(g); if (koK) { const z = 1 + .14 * koK, hy = g.y - 90; cx.translate(g.x, hy); cx.scale(z, z); cx.translate(-g.x, -hy); }
     const L = zeScene(c, zeSkyOf(g)), u = ZE_W / c.width, was = ze.was?.scene.w === c.width ? ze.was : null, ox = (ZE_W / 2 - g.x) * .05;
     const layers = (sky, town, front) => {   // the new sky, and the last one fading over it
       for (const [S, a] of was ? [[L, 1], [was.scene, was.a]] : [[L, 1]]) { cx.globalAlpha = a; if (sky) cx.drawImage(S.sky, 0, 0, ZE_W, S.sky.height * u); if (town) zeTown(cx, S.P, ox); if (front) cx.drawImage(S.front, 0, ZE_FRONT, ZE_W, S.front.height * u); }
@@ -13637,6 +13642,7 @@ const toolName = n => {
       cx.fillStyle = sp; cx.beginPath(); cx.moveTo(g.x - 18, 0); cx.lineTo(g.x + 18, 0); cx.lineTo(g.x + w * 1.4, ZE_FLOOR); cx.lineTo(g.x - w * 1.4, ZE_FLOOR); cx.fill();
       cx.fillStyle = `rgba(255, 246, 210, ${.35 * a})`; cx.beginPath(); cx.ellipse(g.x, ZE_FLOOR + 2, w * 1.4, 10, 0, 0, Math.PI * 2); cx.fill();
     }
+    if (koK) { cx.fillStyle = `rgba(10, 2, 20, ${.55 * koK})`; cx.fillRect(-100, -100, ZE_W + 200, ZE_H + 200); }
     if (g.shake > 0 && !calm) cx.translate((Math.random() - .5) * 24 * g.shake, (Math.random() - .5) * 24 * g.shake);
     zeActors(cx, g, calm);
     if (L.P.rain && ze.drops.length) { cx.strokeStyle = 'rgba(190, 210, 240, .45)'; cx.lineWidth = 1.4; cx.beginPath(); for (const d of ze.drops) { cx.moveTo(d.x, d.y); cx.lineTo(d.x - 4, d.y + 16); } cx.stroke(); }   // Minho's rain
@@ -13697,6 +13703,7 @@ const toolName = n => {
     if (!calm && g.red > 0) { cx.fillStyle = 'rgba(228, 59, 68, .28)'; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the hit
     if (!calm && g.flash > 0 && !zg.gl) { cx.fillStyle = `rgba(255, 250, 235, ${Math.min(.65, g.flash * 4)})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the lightning's
     if (!calm && g.gold > 0) { cx.fillStyle = `rgba(255, 210, 63, ${g.gold * .7})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the miracle's
+    if (g.phase === 'over' && g.koT < ZE_KO_T) return;   // the card waits for the bones
     if (g.phase !== 'title' && g.phase !== 'over') zeHud(cx, g);   // the K.O. says the score itself, and what landed
     if (g.banner && g.phase === 'play') {
       const b = g.banner; zeText(cx, b.s, ZE_W / 2, 300, 46, b.cs[zeBlink(g, 8) ? 0 : 1], 'center', 900);
@@ -14105,11 +14112,11 @@ const toolName = n => {
    *  and pitching with it —, as big as his bulk and the dragon make him; blinking while a green's hit lasts; at the K.O.
    *  his bones, flat on his back, seeing stars. */
   function zeHero(cx, g) {
-    const air = g.y < g.gy - .5, over = g.phase === 'over', moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
+    const air = g.y < g.gy - .5, over = g.phase === 'over' && g.koT >= ZE_KO_T, moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
     const k = zeSz(g) * (1 + g.pump * .25), p = ZE_PX * k, flip = g.f < 0 && !over;
     const pose = over ? 'bones' : g.ride ? 'sit' : g.kick > .04 ? 'kick' : air ? 'jump' : g.flex > 0 ? 'flex' : moving ? (Math.floor(g.run) % 2 ? 'run1' : 'run2') : 'stand';
     const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape;
-    const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, shades: ze.mossad, sick: g.hurt > .9, flip });
+    const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, shades: ze.mossad, sick: g.hurt > .9 || g.phase === 'over', flip });
     const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2, tw = zeTw(g);
     const under = zePlatform(g.x, g.y);   // his shadow, on whatever is under him
     if (!cx.zg) { cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, under + 3, Math.max(10, tw + 10 - (under - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill(); }
@@ -14449,7 +14456,7 @@ void main(){vec2 p=gl_FragCoord.xy*uPx;vec3 c=texture(uT,p).rgb*4.;c+=texture(uT
 if(uThr>0.){float b=max(c.r,max(c.g,c.b));float k=max(b-uThr,0.);k=k*k/(k+.5);c*=k/max(b,1e-4);}o=vec4(min(c,vec3(30.)),1.);}`,
     up: `uniform sampler2D uT;uniform vec2 uPx;
 void main(){vec2 p=gl_FragCoord.xy*uPx;vec3 c=vec3(0.);c+=texture(uT,p+vec2(-uPx.x*2.,0.)).rgb+texture(uT,p+vec2(uPx.x*2.,0.)).rgb+texture(uT,p+vec2(0.,-uPx.y*2.)).rgb+texture(uT,p+vec2(0.,uPx.y*2.)).rgb;c+=(texture(uT,p+vec2(-uPx.x,uPx.y)).rgb+texture(uT,p+vec2(uPx.x,uPx.y)).rgb+texture(uT,p+vec2(uPx.x,-uPx.y)).rgb+texture(uT,p+vec2(-uPx.x,-uPx.y)).rgb)*2.;o=vec4(c/12.,1.);}`,
-    final: `uniform sampler2D uS,uB,uR,uA;uniform mat3 uCam;uniform float uFlash,uBloom,uRays,uT,uVig,uSat;uniform vec3 uFlashC,uLift,uGain;
+    final: `uniform sampler2D uS,uB,uR,uA;uniform mat3 uCam;uniform float uFlash,uBloom,uRays,uT,uVig,uSat,uKo;uniform vec2 uKoP;uniform vec3 uFlashC,uLift,uGain;
 void main(){vec2 p=(uCam*vec3(vP,1.)).xy;vec3 c=texture(uS,fuv(p)).rgb;
 float m=1.-.8*texture(uA,cuv(p)).a;
 c+=texture(uB,fuv(p)).rgb*uBloom*m;
@@ -14457,6 +14464,7 @@ if(uRays>0.)c+=texture(uR,fuv(p)).rgb*uRays*(.86+.14*sin(uT*.5+p.x*.012))*m;
 c+=uFlashC*uFlash;
 c=c*uGain+uLift;float g=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(g),c,uSat);
 vec2 q=(vP-vec2(360.,450.))/vec2(360.,450.);c*=1.-uVig*smoothstep(.55,1.45,length(q));
+if(uKo>0.){vec2 kq=(p-uKoP)/vec2(1.,1.25);c*=1.-uKo*.82*smoothstep(90.,360.,length(kq));}
 c=mix(c,vec3(1.)-(vec3(1.)-vec3(.8))*exp(-(c-vec3(.8))/.2),step(.8,c));
 c=pow(max(c,vec3(0.)),vec3(1./2.2));
 float d=fract(sin(dot(gl_FragCoord.xy,vec2(12.98,78.23))+uT)*43758.5)-.5;c+=d/255.;
@@ -14988,7 +14996,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     for (let i = zg.fB.length - 2; i >= 0; i--) { const b = zg.fB[i]; zgBind(b); zgUse(zg.P.up, ZG_FULL, { uPx: [1 / b.w, 1 / b.h] }, { uT: zg.fB[i + 1].t }); }
     gl.disable(gl.BLEND);
     zgBind(null);
-    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) }, uFlash: !calm && g.flash > 0 ? Math.min(.26, g.flash * 1.6) : 0, uFlashC: g.bolt ? [.65, .55, 1] : [1, 1, 1], uBloom: R.bloom, uRays: S.rays ? R0.rays : 0, uT: zg.T, uVig: .3, uSat: R0.sat, uLift: R0.lift, uGain: R0.gain }, { uS: zg.fS.t, uB: zg.fB[0].t, uR: S.rays?.t || zg.fB[3].t, uA: zg.fA.t });
+    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) }, uFlash: !calm && g.flash > 0 ? Math.min(.26, g.flash * 1.6) : 0, uFlashC: g.bolt ? [.65, .55, 1] : [1, 1, 1], uBloom: R.bloom, uRays: S.rays ? R0.rays : 0, uT: zg.T, uVig: .3, uSat: R0.sat, uLift: R0.lift, uGain: R0.gain, uKo: zeKoK(g), uKoP: [g.x, g.y - 90] }, { uS: zg.fS.t, uB: zg.fB[0].t, uR: S.rays?.t || zg.fB[3].t, uA: zg.fA.t });
   }
   /** The camera's moves — a combo's push, the vinho's wobble, a shake — as a matrix from the glass to the picture. */
   function zgCam(g, calm) {
@@ -14997,6 +15005,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       if (g.power?.kind === 'vinho') { a = Math.sin(g.t * 1.9) * .018; z = 1.03; sy2 = 1 + Math.sin(g.t * 2.7) * .012; }
       if (g.punch > 0) { z *= 1 + .07 * g.punch / .2; cx = g.x; cy = g.y - 100; }
       if (g.shake > 0) { sx = (Math.random() - .5) * 24 * g.shake; sy = (Math.random() - .5) * 24 * g.shake; }
+      const ko = zeKoK(g); if (ko) { z *= 1 + .14 * ko; cx = g.x; cy = g.y - 90; }
     }
     const co = Math.cos(a) / z, si = Math.sin(a) / z, ty = 1 / sy2;
     return new Float32Array([co, si * ty, 0, -si, co * ty, 0, cx - co * cx + si * cy - sx, cy - (si * cx + co * cy) * ty - sy, 1]);
