@@ -839,7 +839,7 @@
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
   .card.done { filter: saturate(.45); } .card.done :is(.title, .snip) { color: var(--muted); }   /* dimmed by colour, not opacity (2026-10-12: its snippet read 2.15 to 1) */
   /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
-  .card.forgood .tprs:not(.ttks) { filter: grayscale(1); }
+  .card.forgood :is(.tprs:not(.ttks), .tmx) { filter: grayscale(1); }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   #slist > .leaving { pointer-events: none; overflow: hidden; display: flex; flex-direction: column; gap: inherit; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it — or a lane's, all in one (foldRun, 2026-11-01), laid out as they stood */
   #slist > .leaving > * { flex: none; }   /* never squashed as the box closes */
@@ -957,7 +957,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     overflow-x: auto; scrollbar-width: none; transition: grid-template-columns .3s var(--spring), column-gap .3s var(--spring); }
   .card .top .tprs::-webkit-scrollbar { display: none; }
   /* what a card leaves out (2026-10-21, Settings › Chat list › Show on a card) */
-  #sessions[data-hide~="prs"] .card .top :is(.tprs:not(.ttks), .tlead), #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
+  #sessions[data-hide~="prs"] .card .top :is(.tprs:not(.ttks), .tmx), #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
   #sessions[data-hide~="faces"] .card .top .faces, #sessions[data-hide~="rounds"] .card .prpips { display: none; }
   .card .top .tprs:hover { grid-template-columns: 1fr repeat(var(--under), var(--span)); column-gap: 0; }
   .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
@@ -980,25 +980,37 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .top .faces > :not(:first-child) { margin-right: -12px; }
   .card .top .faces:hover > :not(:first-child) { margin-right: 2px; }
   .card .top .faces .face { display: grid; place-items: center; font-size: var(--fs-2xs); font-weight: 700; color: var(--ink); text-transform: uppercase; }
-  /* The card's PRs as one (2026-10-31, round XII's P11; cardLead): the lead PR a chip tinted with its state's colour —
-     its state in GitHub's glyph, not a fill, so a CI dot reads on it —, a stack pill when its PRs chain, else a count.
-     The chip's rules carry an id: the stack's solid fill (tiles) and tint (sidebar) are rules of every .cpr's. */
-  .card .top .tlead { display: inline-flex; align-items: center; gap: 4px; flex: none; }
-  #slist .card .tlead > a.cpr.lead[data-state] { display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-color: transparent; color: var(--ink); background: color-mix(in srgb, var(--prc) 14%, transparent); }
-  #slist .card .tlead > a.cpr.lead[data-turn="you"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
-  #slist .card .tlead > .cpr.lead .ic { width: 12px; height: 12px; flex: none; fill: currentColor; color: var(--prc); }
-  .card .tlead .ckd { flex: none; width: 6px; height: 6px; margin-left: 1px; border-radius: 50%; box-sizing: border-box; }
-  .card .tlead .ckd[data-checks="pass"] { background: var(--pr-open); } .card .tlead .ckd[data-checks="fail"] { background: var(--pr-closed); }
-  .card .tlead .ckd[data-checks="pending"] { border: 1.5px solid var(--working); }
-  .card .tlead .pstk { display: inline-grid; grid-template-columns: auto auto; align-items: center; column-gap: 4px; row-gap: 2px; height: 18px; padding: 0 6px; border-radius: var(--r-2);
-    background: var(--ctl); color: var(--muted); font-size: var(--fs-xs); font-weight: 600; line-height: 1; }
-  .card .tlead .pstk .ic { grid-row: 1 / 3; width: 12px; height: 12px; fill: currentColor; }
-  .card .tlead .pstk .bar { display: flex; gap: 1.5px; color: var(--ink); }
-  .card .tlead .pstk .bar i { width: 5px; height: 2px; border-radius: 1px; background: var(--prc); }
-  .card .tlead .pstk .bar i[data-state="open"] { --prc: var(--pr-open); } .card .tlead .pstk .bar i[data-state="merged"] { --prc: var(--pr-merged); }
-  .card .tlead .pstk .bar i[data-state="closed"] { --prc: var(--pr-closed); } .card .tlead .pstk .bar i[data-state="draft"] { --prc: var(--pr-draft); }
-  .card .tlead .pstk .bar i.at { background: currentColor; } .card .tlead .pstk .bar i.at.you { background: var(--accent); }   /* the lead's layer: ink, white on an open row */
-  .card .tlead .pmore { color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+  /* The card's PRs as a matrix (2026-11-01, round XVI's M5; cardMatrix): a square a PR in its state's colour, a draft
+     hollow, one GitHub has not answered for a faint grey; a stack's squares joined by a line (<s>), base first. The number
+     before them stays put while the squares scroll in their own box (.mxg) — past the row's room, its ends with more
+     past them faded (.ofl .ofr, fadeOver and mxEdges). Its padding (3 px) holds the ring, which a scroll box would cut;
+     the box hangs that much past the row's end, so the last square is flush with it. The matrix gives way first
+     (a shrink of 999), down to the number and three squares (--nw, --mn: cardMatrix's), so the project's name keeps
+     its room. Past MX_COMPACT PRs the squares are smaller and closer (.cmp). Each square's hit area reaches into the
+     gaps round it (::after). */
+  .card .top .tmx { --q: 7px; --c: 4px; --g: 5px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); display: flex; align-items: center; gap: 2px; flex: 0 999 auto; min-width: calc(var(--nw) + 2px + var(--mn)); margin-right: -3px;
+    font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .card .top .tmx.cmp { --q: 5px; --c: 3px; --g: 3px; }
+  .card .tmx .mxn { flex: none; max-width: 9ch; overflow: hidden; color: var(--ink); cursor: pointer; }
+  :root[data-theme="dark"] .card .top .tmx { --mxyou: color-mix(in srgb, var(--accent) 82%, var(--ink)); }
+  .card .tmx .mxn.you { color: var(--mxyou); }   /* the accent towards the ink, so it reads at 11 px: 4.9:1 at least on the sidebar's light grey (the accent 3.9 on white) */
+  .card .tmx .mxg { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--g); padding: 3px; position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; --fl: 0px; --fr: 0px; }
+  .card .tmx .mxg::-webkit-scrollbar { display: none; }
+  .card .tmx .mxg:is(.ofl, .ofr) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+  .card .tmx .mxg.ofl { --fl: 12px; } .card .tmx .mxg.ofr { --fr: 12px; }
+  .card .tmx .mxc { flex: none; display: flex; align-items: center; }
+  .card .tmx .mxc > s { flex: none; width: var(--c); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+  .card .tmx .mxs, #rpop .rsq { --prc: initial; position: relative; flex: none; display: block; width: var(--q); height: var(--q); border-radius: 2px; box-sizing: border-box; background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent)); }
+  .card .tmx .mxs[data-state="open"], #rpop .rsq[data-state="open"] { --prc: var(--pr-open); } .card .tmx .mxs[data-state="merged"], #rpop .rsq[data-state="merged"] { --prc: var(--pr-merged); }
+  .card .tmx .mxs[data-state="closed"], #rpop .rsq[data-state="closed"] { --prc: var(--pr-closed); }
+  .card .tmx .mxs[data-state="draft"], #rpop .rsq[data-state="draft"] { --prc: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
+  .card .tmx.cmp .mxs { border-radius: 1.5px; } .card .tmx.cmp .mxs[data-state="draft"] { box-shadow: inset 0 0 0 1px var(--prc); }
+  .card .tmx .mxs { cursor: pointer; }
+  .card .tmx .mxs::after { content: ''; position: absolute; inset: -5px calc(var(--g) / -2); }
+  .card .tmx .mxs:hover { filter: brightness(1.15); }
+  .card .tmx .mxs.lead { outline: 1.5px solid var(--ink); outline-offset: 1.5px; }
+  .card .tmx .mxs.lead.you { outline-color: var(--mxyou); }
+  .card .tmx.cmp .mxs.lead { outline-width: 1px; outline-offset: 1px; }
   /* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
      narrows the list to that person's chats and rings the face in the accent, the others dimmed; again, every chat. */
   #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
@@ -1086,6 +1098,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #rpop .rpr[data-k="them"] .h { color: var(--muted); font-weight: 500; }
   #rpop .rpr .s { grid-column: 3; font-size: var(--fs-xs); color: var(--muted); }
   #rpop .rpr .s .un { color: var(--accent); font-weight: 700; }
+  /* …every PR with the matrix (2026-11-01): its square, number and title, its state in its colour and its CI, its round
+     under them; a stack's rows joined by a line from square to square, as on the card */
+  #rpop .rpr.mx { position: relative; }
+  #rpop .rpr.mx .rsq { --q: 8px; align-self: start; margin-top: 4px; }
+  #rpop .rpr.mx[data-k] .h { color: var(--ink); font-weight: 600; }
+  #rpop .rpr.mx .h.pending { color: var(--muted); font-weight: 500; font-style: italic; }
+  #rpop .rpr.mx .s .st { font-weight: 600; } #rpop .rpr.mx .s .st[data-state="open"] { color: var(--pr-open); } #rpop .rpr.mx .s .st[data-state="merged"] { color: var(--pr-merged); }
+  #rpop .rpr.mx .s .st[data-state="closed"] { color: var(--pr-closed); } #rpop .rpr.mx .s .st[data-state="draft"] { color: var(--pr-draft); }
+  #rpop .rpr.mx .s .rtag { margin-right: 5px; vertical-align: 1px; } #rpop .rpr.mx .s .rh { font-weight: 600; color: var(--ink); }
+  #rpop .rstk { display: grid; gap: 2px; }
+  #rpop .rstk > .rpr:not(:last-child)::after { content: ''; position: absolute; left: 11.25px; top: 18px; bottom: -12px; width: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+  #rpop .rmore { padding: 2px 8px; font-size: var(--fs-xs); color: var(--muted); }
   #rpop .rlat { display: grid; gap: 0; }
   #rpop .rev { display: grid; grid-template-columns: 54px 16px minmax(0, 1fr); column-gap: 7px; align-items: start; padding: 4px 6px 4px 0; border-radius: var(--r-3); }
   #rpop .rev.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
@@ -2168,7 +2192,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo, :root[data-layout="sidebar"][data-sidebar="glass"][data-frame="dark"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tlead > :is(.cpr.lead, .pstk) { background: rgb(0 0 0 / .2); }
+  /* the matrix on the solid colour (2026-11-01): the number white as the rest, each square a white hairline round it —
+     an open PR's green on a green project's row is otherwise gone —, the ring and a stack's line white */
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxs { box-shadow: 0 0 0 1px rgb(255 255 255 / .85); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxs[data-state="draft"] { box-shadow: inset 0 0 0 1.5px var(--prc), 0 0 0 1px rgb(255 255 255 / .85); }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxs.lead { outline-color: #fff; }
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxc > s { background: rgb(255 255 255 / .6); }
   /* At work, watching and asking, the card's own ring and sonar give way to each style's (the board's ring is a square
      under a cover in the card's ground, which a row has none of): .rg, a box of the card's own (cardHtml), carries
      Edge's edge and the ring of Ring and Glass. */
@@ -2699,12 +2728,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .card .tmx .mxn, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
   #slist, #log, #picklist, #pfolders, #prScroll, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
-  .card .top .tprs, .ptrack { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
+  .card .top .tprs, .card .tmx .mxg, .ptrack { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
   /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
@@ -2737,7 +2766,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
     :root[data-layout="sidebar"] #slist .card { border: 1px solid CanvasText; } :root[data-layout="sidebar"] #slist .card.active { outline: 2px solid Highlight; }   /* the sidebar's rows */
-    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .card .trow .drift) { forced-color-adjust: none; }
+    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .card .trow .drift, .card .tmx .mxs, #rpop .rsq) { forced-color-adjust: none; }
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
 
@@ -2986,7 +3015,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set sub" id="laneRow" data-kw="card size larger lane needs you asking"><label class="sl" for="cardsByLane"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></label><input type="checkbox" class="sw" role="switch" id="cardsByLane"></div>
           <div class="srow set sub" id="evenRow" data-kw="card size same height even uniform compact"><label class="sl" for="cardsEven"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></label><input type="checkbox" class="sw" role="switch" id="cardsEven"></div>
           <div class="srow set" data-kw="card busy faces avatars people github tickets jira prs pull requests rounds chips show hide" id="cardPartsRow"><span class="sl"><b>Show on a card</b><small>Its PRs, their rounds, its tickets and the faces on its PRs</small></span><span class="schecks"><label><input type="checkbox" data-part="prs"> PRs</label><label><input type="checkbox" data-part="rounds"> Rounds</label><label><input type="checkbox" data-part="tickets"> Tickets</label><label><input type="checkbox" data-part="faces"> Faces</label></span></div>
-          <div class="srow set sub" id="prChipsRow" data-kw="card prs pull requests chips stack one lead count faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="one">One</button><button type="button" role="radio" data-pc="all">All</button></span></div>
+          <div class="srow set sub" id="prChipsRow" data-kw="card prs pull requests chips stack matrix squares number your move updated faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="matrix">Matrix</button><button type="button" role="radio" data-pc="all">All</button></span></div>
         </div></section>
       </div>
       <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
@@ -3224,7 +3253,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, frame: 'matching', fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass', headMark: 'capsule', prChips: 'one' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, frame: 'matching', fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass', headMark: 'capsule', prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3256,6 +3285,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
+  // a card's PRs (2026-11-01): round XII's one chip gave way to round XVI's matrix, the default — a board saved on it is on the matrix
+  if (prefs.prChips === 'one') prefs.prChips = 'matrix';
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   // ---- the board's key (2026-10-16) -----------------------------------------------------------------------------------
@@ -3658,13 +3689,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS;
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
     for (const c of $('#cardPartsRow').querySelectorAll('input')) c.checked = parts.includes(c.dataset.part);
-    // a card's PRs (2026-10-31): one, or all of them stacked with their faces — the faces' box off beside one, and the
-    // row off, with why, when no PR shows; a change redraws the cards (the two are other markup: both, every chip twice)
+    // a card's PRs (2026-10-31; the matrix 2026-11-01): a square each, or all of them stacked with their faces — the
+    // faces' box off beside the matrix, and the row off, with why, when no PR shows; a change redraws the cards (the two
+    // are other markup: both, every PR twice)
     const pc = prChipsOf(), noPrs = !parts.includes('prs'), faces = $('#cardPartsRow input[data-part="faces"]');
     for (const b of document.querySelectorAll('#prChipsPick [data-pc]')) { b.setAttribute('aria-checked', String(b.dataset.pc === pc)); b.disabled = noPrs; }
     $('#prChipsRow').classList.toggle('off', noPrs);
     $('#prChipsSay').textContent = noPrs ? 'Only with PRs shown on a card' : PRCHIPS_SAY[pc];
-    faces.disabled = pc === 'one'; faces.closest('label').title = pc === 'one' ? 'The faces show with every PR — A card’s PRs: All' : '';
+    faces.disabled = pc === 'matrix'; faces.closest('label').title = pc === 'matrix' ? 'The faces show with every PR — A card’s PRs: All' : '';
     $('#cardsEven').checked = !!prefs.cardsEven;
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
     for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
@@ -3673,10 +3705,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       const r = $(row), say = r.querySelector('small');
       r.classList.toggle('off', off); r.querySelector('input').disabled = off; say.textContent = off ? say.dataset.off : say.dataset.d;
     }
-    listChanged();   // the cards changed height under the same scroll position
+    listChanged(); fadeSoon();   // the cards changed height under the same scroll position; a PR matrix shown again is read (fadeOver)
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); };
-  const PRCHIPS_SAY = { one: 'The one that wants you, its CI and its place in a stack; the rest a count', all: 'Every PR, stacked, and the faces of the people on them' };
+  const PRCHIPS_SAY = { matrix: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', all: 'Every PR, stacked, and the faces of the people on them' };
   $('#prChipsPick').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b || b.disabled) return; prefs.prChips = b.dataset.pc; savePrefs(); applyCards(); renderBoard(); });
   for (const c of $('#cardPartsRow').querySelectorAll('input')) c.addEventListener('change', () => { prefs.cardParts = [...$('#cardPartsRow').querySelectorAll('input:checked')].map(x => x.dataset.part); savePrefs(); applyCards(); });
   // …and by lane (2026-10-12, a switch, off): the lanes that want you — a question, a PR at your move, Claude at work, a
@@ -4191,11 +4223,8 @@ const toolName = n => {
     cog: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg>',
     // a pull request (Primer's octicon, MIT): a PR of the chat's has come round to you (moveHtml, headMove)
     pr: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>',
-    // a PR's other states and a stack (2026-10-31): GitHub's own octicons (Primer, MIT), as pr above is
-    prDraft: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.25 1A2.25 2.25 0 0 1 4 5.372v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.251 2.251 0 0 1 3.25 1Zm9.5 14a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5ZM2.5 3.25a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0ZM3.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm9.5 0a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM14 7.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm0-4.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"/></svg>',
+    // a merged PR (2026-10-31): GitHub's own octicon (Primer, MIT), as pr above is — a merge's mark (linkChip)
     prMerged: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z"/></svg>',
-    prClosed: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.25 1A2.25 2.25 0 0 1 4 5.372v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.251 2.251 0 0 1 3.25 1Zm9.5 5.5a.75.75 0 0 1 .75.75v3.378a2.251 2.251 0 1 1-1.5 0V7.25a.75.75 0 0 1 .75-.75Zm-2.03-5.273a.75.75 0 0 1 1.06 0l.97.97.97-.97a.748.748 0 0 1 1.265.332.75.75 0 0 1-.205.729l-.97.97.97.97a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-.97-.97-.97.97a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l.97-.97-.97-.97a.75.75 0 0 1 0-1.06ZM2.5 3.25a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0ZM3.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm9.5 0a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
-    stack: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.122.392a1.75 1.75 0 0 1 1.756 0l5.003 2.902c.83.481.83 1.68 0 2.162L8.878 8.358a1.75 1.75 0 0 1-1.756 0L2.119 5.456a1.251 1.251 0 0 1 0-2.162ZM8.125 1.69a.248.248 0 0 0-.25 0l-4.63 2.685 4.63 2.685a.248.248 0 0 0 .25 0l4.63-2.685ZM1.601 7.789a.75.75 0 0 1 1.025-.273l5.249 3.044a.248.248 0 0 0 .25 0l5.249-3.044a.75.75 0 0 1 .752 1.298l-5.248 3.044a1.75 1.75 0 0 1-1.756 0L1.874 8.814A.75.75 0 0 1 1.6 7.789Zm0 3.5a.75.75 0 0 1 1.025-.273l5.249 3.044a.248.248 0 0 0 .25 0l5.249-3.044a.75.75 0 0 1 .752 1.298l-5.248 3.044a1.75 1.75 0 0 1-1.756 0l-5.248-3.044a.75.75 0 0 1-.273-1.025Z"/></svg>',
     // a stylized F with a spark: the chat runs on Fable (see onFable)
     fable: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path transform="translate(1.6 0) skewX(-12)" d="M4 3.2h7v2.4H6.7v2.7h4.2v2.3H6.7V14H4Z"/><path d="M13.8 0l.7 1.5 1.5.7-1.5.7-.7 1.5-.7-1.5-1.5-.7 1.5-.7Z"/></svg>',
     // a folder (Primer's file-directory-fill, MIT): a folder of repos, in the setup
@@ -4308,10 +4337,30 @@ const toolName = n => {
   // does overflow (a mask on one that fits would fade its last letters): read for the boxes not read yet, or all of
   // them when the list's width moved; every read, then every write.
   function fadeSoon() { if (!fadeSoon.f) fadeSoon.f = requestAnimationFrame(() => { fadeSoon.f = 0; fadeOver(); }); }
+  // …and a card's PR matrix (2026-11-01): `.over` where its squares run past their box, the end with more past it faded
+  // (.ofl .ofr, mxEdges — again on a scroll of it); a box drawn anew is scrolled the least that brings its ringed square
+  // clear of the fade (MX_FADE, the CSS's --fl), the ring's own room (MX_RING) with it. A box read before keeps its scroll.
+  const MX_FADE = 12, MX_RING = 3;
   function fadeOver(all = false) {
     const els = [...document.querySelectorAll(`#shead h2 .t, .ptabs .purl, #slist > .card .title${all ? '' : ':not(.ovr)'}`)];   // the header's and the strip's are few: read every time
+    const mxs = [...document.querySelectorAll(`#slist > .card .tmx .mxg${all ? '' : ':not(.ovr)'}`)];
     const over = els.map(e => e.classList.contains('title') ? e.scrollHeight > e.clientHeight + 1 : e.scrollWidth > e.clientWidth + 1);
+    const mx = mxs.map(g => { const r = !g.classList.contains('ovr') && g.querySelector('.mxs.lead'); return { x: g.scrollLeft, w: g.clientWidth, sw: g.scrollWidth, l: r ? r.offsetLeft : -1, rw: r ? r.offsetWidth : 0 }; });
     els.forEach((e, i) => { e.classList.toggle('over', over[i]); e.classList.add('ovr'); });
+    mxs.forEach((g, i) => {
+      const m = mx[i]; let x = m.x;
+      if (!m.w) return;   // not laid out (the PRs left off the cards, the list hidden): read once it is
+      if (m.l >= 0 && m.sw > m.w) {
+        const lo = m.l - MX_RING - MX_FADE, hi = m.l + m.rw + MX_RING + MX_FADE;
+        x = Math.max(0, Math.min(m.sw - m.w, lo < x ? lo : hi > x + m.w ? hi - m.w : x));
+        if (x !== m.x) g.scrollLeft = x;
+      }
+      g.classList.add('ovr'); mxEdges(g, x, m.w, m.sw);
+    });
+  }
+  function mxEdges(g, x = g.scrollLeft, w = g.clientWidth, sw = g.scrollWidth) {
+    const l = x > 1, r = x + w < sw - 1;
+    g.classList.toggle('over', l || r); g.classList.toggle('ofl', l); g.classList.toggle('ofr', r);
   }
   function rollSoon() { if (!rollSoon.f) rollSoon.f = requestAnimationFrame(() => { rollSoon.f = 0; rollIn(); prMoments(); }); }
   // A PR's change, seen (2026-10-11), in the same pass: a chip whose CI went from running to an answer draws it — the
@@ -5751,15 +5800,35 @@ const toolName = n => {
     const f = faces.get(e.w);
     return f ? `<img class="ri" src="${esc(f)}" alt="">` : `<i class="ri" style="--h:${hueAt([...String(e.w || '?')].reduce((a, c) => a + c.charCodeAt(0), 0))}">${esc(String(e.w || '?')[0].toUpperCase())}</i>`;
   }
+  const RPOP_MAX = 12;   // the matrix's rows at most (2026-11-01): a chat holds up to 40 PRs, the popover one window's height
   function rpopHtml(s) {
     const K = { you: 0, let: 1, ok: 2, them: 3 }, rows = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r).sort((a, b) => K[a.r.k] - K[b.r.k]);   // as the marks go
     const log = prlogOf(s, () => { if (rpop.sid === s.id) rpopShow(); });
     const byUrl = new Map((s.prs || []).map(p => [p.url, p])), faces = new Map((s.prs || []).flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
-    const now = rows.map(({ pr, r }) => {
-      const sub = r.k === 'you' ? (r.cur ? `${when(r.cur.from)} · <span data-at="${esc(r.cur.from)}"></span> ago · <b class="un">unanswered</b>` : esc(when(pr.turn.at)))
+    const round = (pr, r) => ({
+      sub: r.k === 'you' ? (r.cur ? `${when(r.cur.from)} · <span data-at="${esc(r.cur.from)}"></span> ago · <b class="un">unanswered</b>` : esc(when(pr.turn.at)))
         : r.k === 'let' ? `${r.cur ? `${when(r.cur.from)} · ` : ''}let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''} · nothing since`
-        : r.k === 'ok' ? `${when(r.cur.end)} · <span data-at="${esc(r.cur.end)}"></span> ago${r.cur.by ? ` · from ${r.cur.by.c === s.id ? 'this chat' : 'another chat'}` : ''} · ${esc(pr.turn.why)}` : '';
-      const head = r.k === 'ok' ? `you ${r.cur.by ? BY[r.cur.by.x] || 'answered' : 'answered'}` : pr.turn.why;
+        : r.k === 'ok' ? `${when(r.cur.end)} · <span data-at="${esc(r.cur.end)}"></span> ago${r.cur.by ? ` · from ${r.cur.by.c === s.id ? 'this chat' : 'another chat'}` : ''} · ${esc(pr.turn.why)}` : '',
+      head: r.k === 'ok' ? `you ${r.cur.by ? BY[r.cur.by.x] || 'answered' : 'answered'}` : pr.turn.why });
+    // With the matrix on the cards (2026-11-01): every PR, in the matrix's order — a stack's rows joined by a line, base
+    // first —, each its square, number and title, its state and CI, and a PR in play its round as the rows below say it;
+    // past RPOP_MAX the ones in play and the numbered one first. Else the PRs in play alone.
+    const mx = prChipsOf() === 'matrix', prs = s.prs || [];
+    const mxRow = pr => {
+      const r = roundOf(pr), b = r && round(pr, r), ck = prCk(pr);
+      return `<div class="rpr mx" data-k="${r?.k || ''}"><i class="rsq" data-state="${esc(pr.state || '')}"></i>${pchip(s, pr)}<span class="h${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>`
+        + `<span class="s"><span class="st" data-state="${esc(pr.state || '')}">${esc(pr.state || 'not heard from GitHub yet')}</span>${ck ? ` · ${CK_SAID[ck]}` : ''}`
+        + `${r ? `<br>${RTAG[r.k] || ''}<b class="rh">${esc(b.head)}</b>${b.sub ? ` · ${b.sub}` : ''}${r.prev ? `<br>round before: ${esc(prevWords(r.prev, s))}` : ''}` : ''}</span></div>`;
+    };
+    let now;
+    if (mx) {
+      const groups = prGroups(prs), lead = mxLead(s).pr, order = groups.flat();
+      const keep = order.length > RPOP_MAX ? new Set(order.filter(p => p === lead || roundOf(p)).slice(0, RPOP_MAX)) : null;
+      if (keep) for (const p of order) { if (keep.size >= RPOP_MAX) break; keep.add(p); }
+      now = groups.map(g => { const rs = g.filter(p => !keep || keep.has(p)).map(mxRow).join(''); return g.length > 1 && rs ? `<div class="rstk">${rs}</div>` : rs; }).join('')
+        + (keep ? `<div class="rmore">+${order.length - keep.size} more — every one in the chat header’s PR list</div>` : '');
+    } else now = rows.map(({ pr, r }) => {
+      const { sub, head } = round(pr, r);
       return `<div class="rpr" data-k="${r.k}">${pchip(s, pr)}${RTAG[r.k] || ''}<span class="h">${esc(head)}</span>${sub || r.prev ? `<span class="s">${sub}${sub && r.prev ? '<br>' : ''}${r.prev ? `round before: ${esc(prevWords(r.prev, s))}` : ''}</span>` : ''}</div>`;
     }).join('');
     // the latest: GitHub's events, the chat's own, the board's, and your words naming a PR — the newest five, in order
@@ -5776,7 +5845,7 @@ const toolName = n => {
       const live = opens && !opens.end && pr.turn?.you;
       return `<div class="rev${live ? ' live' : ''}"><span class="t">${esc(when(e.a))}</span>${evMark(e, faces)}<div class="x">${pchip(s, pr)} <b>${e.w === '' || e.k === 'chat' || e.k === 'board' ? 'you' : esc(e.w || 'someone')}</b> ${esc(EV_SAY(e))}${e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : ''}${opens ? `<div class="rr">${RTAG.you}</div>` : ''}${closes ? `<div class="rr ok">✓ answers ${esc(closes.why)}</div>` : ''}</div></div>`;
     }).join('');
-    return `<div class="rph">this chat’s PRs</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
+    return `<div class="rph">this chat’s PRs${mx ? ` · ${prs.length}` : ''}</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">${mx ? 'click a square: its PR · ' : ''}click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
   }
   const rpop = { el: null, sid: null, anchor: null, timer: 0 };
   /** The pane's pages over the chat column, as last posted: a popover there would be under them. */
@@ -5802,7 +5871,7 @@ const toolName = n => {
     el.classList.add('on');
   }
   function rpopHide() { clearTimeout(rpop.timer); rpop.sid = rpop.anchor = null; rpop.el?.classList.remove('on'); }
-  const RPOP_AT = '.card .top .tprs, .card .top .tlead, .card .state.prmove, .card .state.prans, .card .prpips';
+  const RPOP_AT = '.card .top .tprs, .card .top .tmx, .card .state.prmove, .card .state.prans, .card .prpips';
   $('#slist').addEventListener('pointerover', e => {
     const a = e.target.closest(RPOP_AT);
     if (!a) return;
@@ -5882,14 +5951,19 @@ const toolName = n => {
     const top = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, STACK_SLIVERS + 1));
     return chipStack([...prs.filter(p => top.has(p)), ...prs.filter(p => !top.has(p))], (pr, style) => `<a class="cpr"${style} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
   }
-  /** The card's PRs as one (2026-10-31, round XII's P11; prefs.prChips 'one', the default — 'all' is the stack above, the
-   *  faces with it): the PR that wants you — the newest at your move, else the first open one in the chat's order, else
-   *  its first — as GitHub's glyph for its state, its number and its CI; then, when the chat's PRs chain base to head in
-   *  one repo (GitHub's stacks, read off each PR's refs), a pill: the lead's layer of the stack's depth and a bar a layer,
-   *  base first; the rest a count. The pointer on it shows every PR, as on the stack (#rpop). */
-  const PR_GLYPH = { open: 'pr', draft: 'prDraft', merged: 'prMerged', closed: 'prClosed' };
-  const CK_SAID = { pass: 'checks passed', fail: 'checks failed', pending: 'checks running' };
-  function prChipsOf() { return prefs.prChips === 'all' ? 'all' : 'one'; }   // a declaration: the settings ask before this line has run
+  /** The card's PRs as a matrix (2026-11-01, round XVI's M5; prefs.prChips 'matrix', the default — 'all' is the stack
+   *  above, the faces with it): a square a PR in its state's colour, in stack order — the PRs that chain base to head in
+   *  one repo (GitHub's stacks, read off each PR's refs) together, base first, joined by a line; a PR on its own apart.
+   *  Before them one number: the newest move's PR, in the accent, when one waits on you — else the one GitHub updated
+   *  last, in ink; its square ringed. Past MX_COMPACT PRs the squares are smaller; past the row's room they scroll in
+   *  their box, the number put, the ringed one brought into sight (fadeOver). Each square is a link to its PR, as a chip
+   *  is (its click, its right-click menu), its tooltip its title, state, CI and whose move; the pointer on the matrix
+   *  shows every PR (#rpop). */
+  const MX_COMPACT = 8;   // 7 px squares a PR, 12 px with the gap: eight are ~130 px with the number, a third of the row
+  const MX_PX = { q: 7, c: 4, g: 5 }, MX_CMP = { q: 5, c: 3, g: 3 };   // a square, a stack's line, the gap: the CSS's --q --c --g
+  const MX_PAD = 3;   // the box's padding, the ring's room
+  const CK_SAID = { pass: 'checks passed', fail: 'checks failing', pending: 'checks running' };
+  function prChipsOf() { return prefs.prChips === 'all' ? 'all' : 'matrix'; }   // a declaration: the settings ask before this line has run
   const prRepo = pr => (pr.url || '').match(/github\.com\/([^/]+\/[^/]+)\/pull\//)?.[1] || '';
   /** A PR's stack among the chat's PRs, base first: each the one whose head is the next one's base, in one repo, no fork's. */
   function prChain(prs, pr) {
@@ -5900,14 +5974,37 @@ const toolName = n => {
     for (let p = pr, q; (q = same.find(x => !seen.has(x) && x.refs.base === p.refs.head)); p = q) { chain.push(q); seen.add(q); }
     return chain;
   }
-  function cardLead(s) {
+  /** The chat's PRs in the matrix's order: by repo and number, each stack whole where its first PR comes, base first. */
+  function prGroups(prs) {
+    const sorted = [...prs].sort((a, b) => prRepo(a).localeCompare(prRepo(b)) || (a.number || 0) - (b.number || 0)), placed = new Set(), out = [];
+    for (const p of sorted) {
+      if (placed.has(p)) continue;
+      const g = prChain(sorted.filter(x => !placed.has(x)), p); for (const x of g) placed.add(x); out.push(g);
+    }
+    return out;
+  }
+  /** When GitHub last updated a PR (its updatedAt), else the newest time the board knows of it — before GitHub has
+   *  answered, when the chat last named it. */
+  const prUpdatedAt = pr => pr.updated ? Date.parse(pr.updated) || 0
+    : Math.max(0, ...[pr.turn?.at, pr.turn?.movedAt, pr.lastAt, ...(pr.people || []).map(p => p.at), ...(pr.rounds || []).flatMap(r => [r.from, r.end])].map(t => Date.parse(t) || 0));
+  /** The PR the matrix numbers: the newest move's, else the one updated last (the chat's first of a tie). */
+  function mxLead(s) {
+    const move = !s.done && movedPrs(s)[0]; if (move) return { pr: move, you: true };
+    const prs = s.prs || []; let pr = prs[0], at = pr ? prUpdatedAt(pr) : 0;
+    for (const p of prs) { const t = prUpdatedAt(p); if (t > at) { pr = p; at = t; } }
+    return { pr, you: false };
+  }
+  const prNum = pr => pr.number != null ? `#${pr.number}` : pr.label;
+  /** A PR in words, as a square's tooltip says it: its number and title, its state and CI, its place in a stack, whose move. */
+  const mxTip = (pr, g) => `${prNum(pr)}${pr.title ? ` · ${pr.title}` : ''}\n${pr.state || 'not heard from GitHub yet'}${prCk(pr) ? ` · ${CK_SAID[prCk(pr)]}` : ''}${g.length > 1 ? ` · ${g.indexOf(pr) + 1} of a stack of ${g.length}, base first` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`;
+  function cardMatrix(s) {
     const prs = s.prs || []; if (!prs.length) return '';
-    const lead = movedPrs(s)[0] || prs.find(p => p.state === 'open' || p.state === 'draft') || prs[0];
-    const chain = prChain(prs, lead), at = chain.indexOf(lead), rest = prs.filter(p => !chain.includes(p)), num = p => p.label.replace(/^.*?#/, '#');
-    const live = (lead.state === 'open' || lead.state === 'draft') && CK_SAID[lead.checks];
-    const chip = `<a class="cpr lead" data-state="${esc(lead.state || '')}" data-turn="${turnOf(lead)}" data-url="${esc(lead.url)}"${live ? ` data-checks="${esc(lead.checks)}"` : ''} title="${esc(`${lead.title ? lead.title + '\n' : ''}${lead.url}${lead.state ? '\n' + lead.state : ''}${lead.turn ? '\n' + turnTip(lead) : ''}`)}">${ICON[PR_GLYPH[lead.state]] || ICON.pr}${esc(num(lead))}${live ? `<i class="ckd" data-checks="${esc(lead.checks)}"></i><span class="vh">, ${CK_SAID[lead.checks]}</span>` : ''}</a>`;
-    const pill = chain.length > 1 ? `<span class="pstk" title="${esc(`A stack of ${chain.length}, base first: ${chain.map(num).join(' › ')}`)}">${ICON.stack}<b>${at + 1}/${chain.length}</b><span class="bar">${chain.map(p => `<i data-state="${esc(p.state || '')}"${p === lead ? ` class="at${lead.turn?.you ? ' you' : ''}"` : ''}></i>`).join('')}</span><span class="vh">, layer ${at + 1} of a stack of ${chain.length}</span></span>` : '';
-    return `<span class="tlead">${chip}${pill}${rest.length ? `<span class="pmore" title="${esc(rest.map(p => p.label).join('\n'))}">+${rest.length}</span>` : ''}</span>`;
+    const groups = prGroups(prs), lead = mxLead(s), cmp = prs.length > MX_COMPACT, px = cmp ? MX_CMP : MX_PX;
+    const wide = groups.reduce((w, g) => w + g.length * px.q + (g.length - 1) * px.c, 0) + (groups.length - 1) * px.g;   // the squares' own width
+    const least = Math.min(wide, 3 * px.q + 2 * px.g) + 2 * MX_PAD, num = prNum(lead.pr);
+    const sq = (pr, g) => `<a class="mxs${pr === lead.pr ? ` lead${lead.you ? ' you' : ''}` : ''}" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(mxTip(pr, g))}"><span class="vh">${esc(prNum(pr))} ${esc(pr.state || 'not known yet')}${prCk(pr) ? `, ${CK_SAID[prCk(pr)]}` : ''}${pr.turn?.you ? ', your move' : ''}</span></a>`;
+    return `<span class="tmx${cmp ? ' cmp' : ''}" style="--nw:${Math.min(num.length, 9)}ch;--mn:${least}px"><a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}" title="${esc(mxTip(lead.pr, groups.find(g => g.includes(lead.pr))))}">${esc(num)}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${prs.length} PR${prs.length === 1 ? '' : 's'}: </span></a>`
+      + `<span class="mxg">${groups.map(g => `<span class="mxc">${g.map(pr => sq(pr, g)).join('<s></s>')}</span>`).join('')}</span></span>`;
   }
   /** The card's Jira tickets (2026-10-08): chips in their status category's colour, the first — the branch's, else the
    *  last one named — on top; a stack as the PRs are since 2026-10-11 (a chip and a count before). */
@@ -5942,7 +6039,7 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${teamSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -7200,9 +7297,9 @@ const toolName = n => {
     { id: 'split', at: () => state.current ? $('#groups') : null, title: 'Two halves, side by side or stacked',
       text: () => '<kbd>⌘2</kbd> splits the chat column side by side, <kbd>⌥⌘2</kbd> one over the other: the digit is the half, the modifier the layout, so <kbd>⌘1</kbd> <kbd>⌘2</kbd> or <kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> move between the halves, turning the split. A new tab opens in the second half; drag a tab across to move it; <kbd>⌘0</kbd> closes the other half.',
       pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
-    { id: 'prs', side: () => state.current ? 'below' : 'right', at: () => (state.current && onScreen($('#prToggle'))) || [...document.querySelectorAll('#slist > .card :is(.tprs, .tlead)')].find(t => t.querySelector(':scope > .cpr') && onScreen(t)) || null,
+    { id: 'prs', side: () => state.current ? 'below' : 'right', at: () => (state.current && onScreen($('#prToggle'))) || [...document.querySelectorAll('#slist > .card :is(.tprs, .tmx)')].find(t => t.querySelector(':scope > .cpr, .mxs') && onScreen(t)) || null,
       title: 'PRs and tickets link themselves',
-      text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A chip says its state and CI; a click on the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
+      text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A chip says its state and CI — on a card a square, its tooltip the rest; a click on the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
       pic: () => `<div class="tlink"><span class="tq">“…#12 is the base, and acme/widgets#13 depends on it”</span><span class="tto">→ <span class="tchip" data-state="open">#12</span><span class="tchip" data-state="draft">#13</span><span class="tchip tk">PAY-311</span></span></div>` },
     { id: 'move', side: () => onScreen($('#shead .hmove')) ? 'below' : 'above', at: () => onScreen($('#shead .hmove')) || onScreen($('#slist > .card .prmove')) || onScreen($('#fBtn')), title: 'Your move',
       text: () => 'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; a click on the tag opens the timeline at the move, ⌥-click lets that round go. The funnel shows only the chats at your move.',
@@ -7363,6 +7460,19 @@ const toolName = n => {
     const t = e.target.closest('.card .tprs'); if (!t || t._fan) return;
     t._fan = true; t.addEventListener('wheel', fanWheel, { passive: false }); t.addEventListener('pointerleave', fanLeave);
   });
+  // …and a PR matrix past its row's room (2026-11-01) the same way, over its squares or its number: down is further
+  // along, rightwards. It stays where it was taken (fadeOver brings the ringed square into sight on a new draw only).
+  const mxWheel = e => {
+    const t = e.currentTarget.querySelector('.mxg');
+    if (!t || t.scrollWidth <= t.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    t.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
+  };
+  $('#slist').addEventListener('pointerover', e => {
+    const t = e.target.closest('.card .tmx'); if (!t || t._wheel) return;
+    t._wheel = true; t.addEventListener('wheel', mxWheel, { passive: false });
+  });
+  $('#slist').addEventListener('scroll', e => { if (e.target.classList?.contains('mxg')) mxEdges(e.target); }, { capture: true, passive: true });
   // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — in one motion since
   // 2026-11-01, the head staying put and the list under it sliding over the lane's cards or off them (foldRun, openRun)
   function foldLane(g, byKey = false) {
@@ -7384,7 +7494,7 @@ const toolName = n => {
     const card = e.target.closest('.card'); if (!card) return;
     const pin = e.target.closest('.peerin[data-sid]');
     if (pin && state.sessions.has(pin.dataset.sid)) { e.stopPropagation(); openSession(pin.dataset.sid, { locate: true }); return; }   // the chat that sent it (2026-10-31)
-    const cpr = e.target.closest('.cpr');
+    const cpr = e.target.closest('.cpr, .tmx [data-url]');   // a chip, or the matrix's square or number (2026-11-01)
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const ctk = e.target.closest('.ctk');
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
@@ -8023,7 +8133,7 @@ const toolName = n => {
       const s = state.sessions.get(state.current), url = tvc.dataset.url, sc = s && tvScope(s, tvModel(s)); if (!s) return null;
       return [{ t: sc.solo === url ? 'Everything in play again' : 'Only this one', fn: () => tvSolo(s, url) }, { t: sc.on.has(url) ? 'Leave it out' : 'Bring it in', fn: () => tvToggle(s, url) }, { hr: true }, { t: 'Open it on GitHub', fn: () => openExternal(url, { s }) }];
     }
-    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
+    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .tmx [data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
       return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Copy its link', fn: () => copyText(url).then(ok => note(chip, ok ? 'Link copied' : 'Could not copy it', !ok)) }, { t: 'Its timeline', sub: 'its events and the turns about it · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, url); } }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];

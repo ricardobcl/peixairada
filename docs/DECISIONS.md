@@ -57,6 +57,39 @@ fold is not one of its phases).
 Open: a long lane's *N more* (`moreLane`) still brings its cards in by enter and FLIP; the opening's curtain would
 serve it.
 
+## Decisions of 2026-11-01 — a card's PRs as a matrix (round XVI)
+
+Round XII's one chip (P11) said which PR wanted you but hid how many there were and where they stood. Round XVI drew
+nine matrices — a mark a PR, a number beside them — over the made-up board; the pick: *"PR matrix: M5, the number
+follows your move. if there is not room for so many PRs, can sure to compact it but make a visual cue that there's
+more and allow to scroll."* — and then *"on hover, do we show the PR number/title?"*
+
+* **A square a PR, in stack order** (`cardMatrix`): 7 px, its state's colour (`--pr-*`), a draft hollow, one GitHub has
+  not answered for a faint grey; by repo and number, the PRs that chain base to head in one repo (`prChain`, `prGroups`)
+  together, base first, joined by a short line; a PR on its own apart. It says how many, in which states, and which
+  belong together, at a glance — what the one chip could not. P11 went with it (no "as a setting" was ticked): the
+  setting keeps two values, *Matrix* the default and *All*, round XII's stack and faces unchanged. A board saved on
+  *One* is on the matrix.
+* **The number follows your move**: the newest move's PR, in the accent (towards the ink, so it reads at 11 px: 4.9:1
+  at the least, on the sidebar's light grey) — else the PR GitHub updated last, in ink; its square ringed in the same
+  colour. *Updated last* is GitHub's `updatedAt`, now in `PR_FIELDS` (a scalar, no cost) and on each chat's PR
+  (`pr.updated`); before GitHub answers, the newest time the board has of it — when the chat last named it. The YOUR MOVE
+  line under the card stays as it was.
+* **Many**: past eight PRs (`MX_COMPACT`) the squares are 5 px, 3 px apart. Eight 7 px squares and the number are about
+  130 px, a third of the 380 px list's row, which also holds the project, the env and worktree chips, `>_` and the ✓;
+  past that the row crowds. Past the row's room the squares scroll in their own box, the number put: the end with more
+  past it fades (`.ofl` `.ofr`, as the tabs'), a wheel or a swipe over the matrix moves them (`mxWheel`, added on the
+  pointer's coming, as the stack's), and a card drawn anew brings the ringed square into sight (`fadeOver`). The
+  matrix gives way before the project's name does: it shrinks first, down to the number and three squares.
+* **Hover**: each square is a link to its PR, as a chip was — its click opens it (`showPr`), its right-click is the
+  chip's menu — with a tooltip of its own: `#482 · its title`, its state and CI, its place in a stack, whose move. The
+  number opens the PR it names. Resting on the matrix brings up the rounds' popover, which with the matrix lists
+  **every** PR of the chat in the matrix's order, each with its square, number, title, state and CI, a stack's rows
+  joined by a line, and a PR in play its round as before (twelve at most, those in play first).
+* No faces beside it, as with P11; the faces' box stays off beside *Matrix*. On the open row of Ring and Tinted each
+  square wears a white hairline (an open PR's green on a green project's row was gone), the number and the ring white.
+  `card-pr-matrix.mjs` replaces `card-pr-lead.mjs`; the harness still starts on *All*.
+
 ## Decisions of 2026-11-01 — the chat laid in a frame, Ink and Stage, Softened, the inks fitted (round XV)
 
 Round XV laid nine ways to do the themes over the made-up board (Sidebar Ring, a blue project open, each measured on

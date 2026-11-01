@@ -82,7 +82,8 @@ const git = (...a) => spawnSync('git', ['-c', 'user.name=Ada', '-c', 'user.email
 git('init', '-q', '-b', 'main'); git('add', '-A'); git('commit', '-qm', 'The product grid');
 writeFileSync(join(SF, 'src/components/ProductGrid/ProductCard.css'), CARD('var(--surface)', 'var(--text)', 'var(--border-subtle)', 'var(--surface-sunken)', 'var(--accent-muted)'));
 
-// The PRs, as GitHub would answer for them: who wrote, reviewed and pushed, their CI, and so whose move it is.
+// The PRs, as GitHub would answer for them: who wrote, reviewed and pushed, their CI, and so whose move it is — and
+// when each was last updated, and infra's two a stack (2026-11-01: a card's matrix numbers the PR updated last and joins a stack).
 const now = Date.now(), DAY = 24 * 60;
 export const ago = min => new Date(now - min * 60_000);
 const iso = min => ago(min).toISOString().replace(/\.\d+Z$/, 'Z');
@@ -94,23 +95,23 @@ const pr = (o) => ({ isDraft: false, headRefOid: 'A', reviewRequests: { nodes: [
 export const prsFile = join(root, 'prs.json');
 export const PRS = {
   // the open chat's: CI passed, a review asked of priya, mara's comment answered — theirs to move
-  'acme/storefront#479': pr({ state: 'OPEN', title: 'Product grid follows the dark theme', createdAt: iso(34), author: me, ...ci('SUCCESS'),
+  'acme/storefront#479': pr({ state: 'OPEN', title: 'Product grid follows the dark theme', createdAt: iso(34), updatedAt: iso(30), author: me, ...ci('SUCCESS'),
     reviewRequests: { nodes: [{ requestedReviewer: { login: 'priya' } }] }, asks: { nodes: [{ createdAt: iso(33), requestedReviewer: { login: 'priya' } }] },
     reviews: { nodes: [{ author: joel, state: 'COMMENTED', submittedAt: iso(32) }] },
     comments: { nodes: [{ author: mara, createdAt: iso(31) }, { author: me, createdAt: iso(30) }] } }),
   // a reply on yours: your move, CI running
-  'acme/storefront#482': pr({ state: 'OPEN', title: 'Retry declined card payments with backoff', createdAt: iso(19), author: me, ...ci('PENDING'),
+  'acme/storefront#482': pr({ state: 'OPEN', title: 'Retry declined card payments with backoff', createdAt: iso(19), updatedAt: iso(4), author: me, ...ci('PENDING'),
     comments: { nodes: [{ author: joel, createdAt: iso(4) }] } }),
-  'acme/storefront#471': pr({ state: 'MERGED', title: 'Cache search suggestions for 5 minutes', createdAt: iso(3 * DAY), author: me, reviews: { nodes: [{ author: mara, state: 'APPROVED', submittedAt: iso(2 * DAY + 200) }] } }),
+  'acme/storefront#471': pr({ state: 'MERGED', title: 'Cache search suggestions for 5 minutes', createdAt: iso(3 * DAY), updatedAt: iso(2 * DAY + 190), author: me, reviews: { nodes: [{ author: mara, state: 'APPROVED', submittedAt: iso(2 * DAY + 200) }] } }),
   // someone else's, pushed to since you asked for changes: your move
-  'acme/infra#91': pr({ state: 'OPEN', title: 'Node 22 across every service', createdAt: iso(DAY + 300), author: kenji, headRefOid: 'B', ...ci('SUCCESS'),
+  'acme/infra#91': pr({ state: 'OPEN', title: 'Node 22 across every service', createdAt: iso(DAY + 300), updatedAt: iso(50), author: kenji, headRefOid: 'B', baseRefName: 'main', headRefName: 'node-22', ...ci('SUCCESS'),
     viewerLatestReview: { submittedAt: iso(DAY + 100), commit: { oid: 'A' } },
     reviews: { nodes: [{ author: me, state: 'CHANGES_REQUESTED', submittedAt: iso(DAY + 100) }, { author: priya, state: 'APPROVED', submittedAt: iso(DAY + 90) }] },
     pushes: { nodes: [{ __typename: 'PullRequestCommit', commit: { committedDate: iso(50), author: { user: { login: kenji.login, avatarUrl: kenji.avatarUrl } } } }] } }),   // a commit's author is a login and a face, no __typename (PR_FIELDS)
-  'acme/infra#92': pr({ state: 'OPEN', isDraft: true, title: 'Drop the Node 18 base image', createdAt: iso(DAY + 280), author: me, ...ci('FAILURE') }),
-  'acme/mobile-app#310': pr({ state: 'CLOSED', title: 'Guard the keychain read on first launch', createdAt: iso(2 * DAY + 90), author: me, reviews: { nodes: [{ author: kenji, state: 'COMMENTED', submittedAt: iso(2 * DAY + 70) }] } }),
+  'acme/infra#92': pr({ state: 'OPEN', isDraft: true, title: 'Drop the Node 18 base image', createdAt: iso(DAY + 280), updatedAt: iso(DAY + 20), baseRefName: 'node-22', headRefName: 'node-22-drop-18', author: me, ...ci('FAILURE') }),
+  'acme/mobile-app#310': pr({ state: 'CLOSED', title: 'Guard the keychain read on first launch', createdAt: iso(2 * DAY + 90), updatedAt: iso(2 * DAY + 60), author: me, reviews: { nodes: [{ author: kenji, state: 'COMMENTED', submittedAt: iso(2 * DAY + 70) }] } }),
   // named by no chat yet: the clips' reply mentions it, and its chip comes in (readme-clips.mjs)
-  'acme/billing-api#57': pr({ state: 'OPEN', isDraft: true, title: 'Invoice webhooks through a queue', createdAt: iso(1), author: me, ...ci('PENDING') }),
+  'acme/billing-api#57': pr({ state: 'OPEN', isDraft: true, title: 'Invoice webhooks through a queue', createdAt: iso(1), updatedAt: iso(1), author: me, ...ci('PENDING') }),
 };
 writeFileSync(prsFile, JSON.stringify(PRS));
 
@@ -367,7 +368,7 @@ export function kit(ctx) {
   const rect = sel => ctx.evaluate(`(r => ({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect())`);
   const grid = chat('Dark mode for the product grid');
   const board = async (prefs = {}, open = grid.id) => {
-    prefs = { prChips: 'one', ...prefs };   // the board's own (2026-10-31): the harness starts its scenarios on every PR
+    prefs = { prChips: 'matrix', ...prefs };   // the board's own (2026-10-31; the matrix 2026-11-01): the harness starts its scenarios on every PR
     await ctx.evaluate(`(p => { const k = 'peixairada-prefs'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), ...p })); })(${JSON.stringify(prefs)})`);
     await ctx.reload();
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length >= ${chats.length - 2}`, { what: 'the cards', timeout: 15000 });

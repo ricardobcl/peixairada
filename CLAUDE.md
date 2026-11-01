@@ -428,10 +428,11 @@ npm run map                         # rewrite the section maps at the top of ser
   chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
   a non-passive listener added on `pointerover`). CSS only (a right-to-left grid, `--d`, `--i`, `--under`, `--span`),
   the box `flex: 999 0 0` between `min-content` and `max-content`: the row's free room, not the folder's. → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
-  `CARD_FACES`, spread under the pointer); the tests' fake gh hands `data:` faces. **That is *All*; the default is *One***
-  (2026-10-31, Settings › Chat list › A card's PRs, `prefs.prChips`; `cardLead`, `.tlead`, markup by the pref): the PR that
-  wants you in GitHub's glyph for its state, tinted, its CI a dot; a stack pill where PRs chain base to head (`prChain` on
-  `pr.refs`), the rest a count, no faces. The harness starts on *All*. → `card-pr-lead.mjs`.
+  `CARD_FACES`, spread under the pointer); the tests' fake gh hands `data:` faces. **That is *All*; the default is the
+  matrix** (2026-11-01, Settings › Chat list › A card's PRs, `prefs.prChips`; `cardMatrix`, `.tmx`, markup by the pref): a
+  square a PR in stack order (`prGroups`, `prChain` on `pr.refs`), the number your move's, else the newest `pr.updated`
+  (`mxLead`); past `MX_COMPACT` smaller, past the row's room `.mxg` scrolls (`mxWheel`; `fadeOver` brings the ring into
+  sight); `#rpop` lists every PR, no faces. The harness starts on *All*. → `card-pr-matrix.mjs`.
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
   GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving

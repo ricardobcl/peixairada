@@ -21,11 +21,14 @@ setup file, and how the pictures are made.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you, answered where it shows in the app: *Reply…*
   (straight into the chat's Claude, when it runs here), *Done*, or *In 15 minutes*. The Dock badge and the menu bar
   count the chats asking you and those with a new reply; the menu lists them, your PRs' moves and what is clauding.
-- 🐙 **PRs** — on a card, the one that wants you: GitHub's glyph for its state, its number, a dot for its CI, and how
-  many more; PRs stacked on each other on GitHub show as a stack, the layer it is of how many. Settings › Chat list ›
-  *A card's PRs: All* puts every chip back, stacked and fanned out under the pointer, with the faces of the people on them. ⌥-click
-  the ✓ to tick a chat done for good: its PRs won't bring it back. Take a PR off a chat from its chip's right-click
-  menu (or ⌥-click) — until you name it there yourself.
+- 🐙 **PRs** — on a card, a small square for each, in its state's colour (a draft hollow); PRs stacked on each other on
+  GitHub sit together, joined by a line, base first. The number before them is the PR at your move, in the accent —
+  else the one updated last —, its square ringed. Many PRs make the squares smaller, and past the row's room they
+  scroll under the pointer. Hover a square for its number, title, state, CI and whose move; click it for the PR; rest
+  on them for every PR the chat has. Settings › Chat list › *A card's PRs: All* puts every chip back, stacked and
+  fanned out under the pointer, with the faces of the people on them. ⌥-click the ✓ to tick a chat done for good: its
+  PRs won't bring it back. Take a PR off a chat from its square's or chip's right-click menu (or ⌥-click a chip) —
+  until you name it there yourself.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
   *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat
   is at work —, the sender a click away; the sender's SendMessage links back. A message is never counted as yours.
