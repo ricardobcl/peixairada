@@ -145,6 +145,11 @@ export default async function (ctx) {
   await press('ArrowUp', 'ArrowUp', 38); await ctx.waitFor(`window.peix.ze().g.vy < -300`, { timeout: 3000, what: 'the jump just off an edge' });
   await ctx.waitFor(`window.peix.ze().g.y === 842`, { what: 'down again' });
 
+  // ---- RASPÃO: a green that lands a whisker from him pays and fills a little of the nunchaku; further off, nothing
+  const shave = async dx => { await g(`g.items.length = 0; g.spawn = 1e9; g.hurt = 0; g.nun = 0; g.x = 300; g.vx = 0; const w = (9 + g.mass * 1.6 + 6) * (.84 + g.mass * .03); g.items.push({ kind: 'veg', e: '🥕', say: 'x', x: g.x + w + ${dx}, y: g.y - 120, vx: 0, vy: 260, g: 0, rot: 0, spin: 0 }); window.__s = g.score;`); await ctx.waitFor(`window.peix.ze().g.items.length === 0`, { what: 'the green landed' }); return g(`return { d: g.score - window.__s, nun: g.nun, mass: g.mass }`); };
+  { const m0 = await g(`return g.mass`); out.shave = await shave(24); ctx.assert.equal(out.shave.d, 5, 'RASPÃO pays'); ctx.assert.ok(out.shave.nun > 0 && out.shave.nun < 1, 'a little nunchaku'); ctx.assert.equal(out.shave.mass, m0, 'and he is untouched');
+    const far = await shave(90); ctx.assert.equal(far.d, 0, 'too far to count'); }
+
   // ---- the height: the awning, the sign (a trophy), down again; the double jump; a dash through a green
   await g(`g.x = 560; g.vx = 0; g.mass = 6;`);
   await press('ArrowUp', 'ArrowUp', 38); await ctx.waitFor(`window.peix.ze().g.y === 728 && window.peix.ze().g.vy === 0`, { what: 'on the awning' });

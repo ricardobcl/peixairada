@@ -13116,6 +13116,7 @@ const toolName = n => {
   }
   // controls that forgive (2026-11-01, as Celeste's do): a press in the moment before it can happen is kept; off an edge he can still jump for a moment
   const ZE_FORGIVE = .12, ZE_COYOTE = .1;
+  const ZE_SHAVE = 34;   // how near a green must pass for a RASPÃO (2026-11-01): grazing, from the shmups — staying close pays, running away does not
   /** ↑: a jump from what he stands on, high enough for Trota's awning (2026-10-30, the next round) — and at his full
    *  bulk, a second one in the air. ↓ drops him through the awning or the sign. */
   function zeJump(g) {
@@ -13591,9 +13592,11 @@ const toolName = n => {
         continue;
       }
       const green = it.kind === 'veg' && !g.dragon;   // a green while he still blinks from the last one passes him by
+      if (green && !it.shaved && !g.hurt && !g.dash && !g.ride && zeTouch(it, body, ZE_SHAVE)) it.shaved = true;   // that close: if it lands without touching him, RASPÃO
       if (!(green && (g.hurt > 0 || g.dash > 0)) && zeTouch(it, green ? body : mouth)) { it.dead = true; zeEat(g, it); if (g.phase !== 'play') return; continue; }
       if (it.y >= ZE_FLOOR - 8) {
         it.dead = true; zeChunks(g, it.x, ZE_FLOOR - 4, it.kind === 'veg' || it.kind === 'fish' ? it.kind : 'meat', 3);
+        if (it.shaved && it.kind === 'veg' && !g.dragon) { zeWord(g, 'RASPÃO! +5', it.x, ZE_FLOOR - 44, '#9be15d', true); zeSfx('peck'); zeScore(g, 5); g.nun = Math.min(ZE_NUN, g.nun + .34); }
         if (it.kind === 'meat' && !g.dragon) { if (g.streak >= 5) zeWord(g, 'wasted!', it.x, ZE_FLOOR - 30, '#d9c7e8'); g.streak = 0; g.mult = 1; }   // a miss lets the combo go
       }
     }
@@ -13889,7 +13892,7 @@ const toolName = n => {
     if (thin) zeText(cx, 'SKIN AND BONES!', ZE_W - 20, 86, 14, '#ff5a64', 'right');
     const full = g.nun >= ZE_NUN;   // the nunchaku's meter, under his score
     zeText(cx, full ? 'NUNCHAKU! HOLD SPACE' : 'NUNCHAKU', 20, 92, 13, full ? (zeBlink(g, 4) ? '#ffd23f' : '#ff5a64') : '#d9c7e8');
-    if (!full) for (let i = 0; i < ZE_NUN; i++) { cx.fillStyle = '#1b0b2e'; cx.fillRect(108 + i * 11, 85, 9, 14); cx.fillStyle = i < g.nun ? '#ffd23f' : 'rgba(255, 255, 255, .12)'; cx.fillRect(109.5 + i * 11, 86.5, 6, 11); }
+    if (!full) for (let i = 0; i < ZE_NUN; i++) { cx.fillStyle = '#1b0b2e'; cx.fillRect(108 + i * 11, 85, 9, 14); cx.fillStyle = i < Math.floor(g.nun) ? '#ffd23f' : 'rgba(255, 255, 255, .12)'; cx.fillRect(109.5 + i * 11, 86.5, 6, 11); }
     if (g.agent) {   // AGENT ZÉ's stamp
       cx.save(); cx.translate(ZE_W / 2, 66); cx.rotate(-.08);
       cx.strokeStyle = '#e43b44'; cx.lineWidth = 3; cx.strokeRect(-74, -15, 148, 30);
@@ -13976,7 +13979,7 @@ const toolName = n => {
     } else if (shown === 1) {
       ZE_VEG.slice(0, 5).concat(ZE_VEG.slice(-4)).forEach(([e], j) => cx.drawImage(zeGlyph(e), 104 + j * 56 + (j > 4 ? 14 : 0), y0 + 50, 40, 40));
       zeText(cx, 'not what they seem!', 534, y0 + 102, 12, '#ff5a64', 'center', 600);
-      zeText(cx, 'kick the greens out of the sky — space', mid, y0 + 134, 14, '#fff3c4', 'center', 600);
+      zeText(cx, 'kick the greens out of the sky — space — or let one shave past: RASPÃO!', mid, y0 + 134, 14, '#fff3c4', 'center', 600);
       zeText(cx, `${ZE_NUN} kicks fill the nunchaku: hold space, let go — every green swept`, mid, y0 + 162, 12, '#d9c7e8', 'center', 600);
       zeText(cx, 'the awning and the sign hold him — ↓ drops through', mid, y0 + 184, 12, '#d9c7e8', 'center', 600);
     } else if (shown === 2) {
