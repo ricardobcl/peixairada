@@ -13683,7 +13683,7 @@ const toolName = n => {
     cx.globalAlpha = 1;
     cx.setTransform(k, 0, 0, k, 0, 0);
     if (!calm && g.red > 0) { cx.fillStyle = 'rgba(228, 59, 68, .28)'; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the hit
-    if (!calm && g.flash > 0) { cx.fillStyle = `rgba(255, 250, 235, ${Math.min(.65, g.flash * 4)})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the lightning's
+    if (!calm && g.flash > 0 && !zg.gl) { cx.fillStyle = `rgba(255, 250, 235, ${Math.min(.65, g.flash * 4)})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the lightning's
     if (!calm && g.gold > 0) { cx.fillStyle = `rgba(255, 210, 63, ${g.gold * .7})`; cx.fillRect(0, 0, ZE_W, ZE_H); }   // the miracle's
     if (g.phase !== 'title' && g.phase !== 'over') zeHud(cx, g);   // the K.O. says the score itself, and what landed
     if (g.banner && g.phase === 'play') {
@@ -14382,12 +14382,29 @@ float col=exp(-pow((vP.x-uSunX)/mix(34.,92.,t),2.));float gl=smoothstep(.5,.62,n
 float gl2=smoothstep(.70,.86,texture(uN,vec2(vP.x/18.,vP.y/4.)-vec2(uT*.02,uT*.12)).g);c+=lin(vec3(.9))*gl2*.05;
 c*=.78+.22*smoothstep(0.,5.,vP.y-${ZE_WATER}.);
 o=vec4(c,1.)*uA;}`,
+    alpha: `uniform sampler2D uT;
+void main(){float s=0.;for(int i=0;i<16;i++){float a=float(i)*2.39996;float r=sqrt(float(i)+.5)/4.*7.;s+=texture(uT,cuv(vP+vec2(cos(a),sin(a))*r)).a;}o=vec4(s/16.);}`,
+    lit: `uniform sampler2D uA,uH,uE;uniform vec3 uAmbS,uAmbG,uKey,uKeyC;uniform float uRim,uBev,uUseE,uEm,uSpec,uKeep,uEdge;
+uniform vec4 uLp[12];uniform vec4 uLc[12];uniform int uLn;
+void main(){vec2 uv=cuv(vP);vec4 a=texture(uA,uv);vec3 e=uUseE>.5?lin(texture(uE,uv).rgb)*uEm:vec3(0.);
+if(a.a<.004){o=vec4(0.);return;}
+vec3 alb=lin(a.rgb/a.a);vec3 sp=vec3(0.);
+float d=5.;float hl=texture(uH,fuv(vP-vec2(d,0.))).r,hr=texture(uH,fuv(vP+vec2(d,0.))).r,hu=texture(uH,fuv(vP-vec2(0.,d))).r,hd=texture(uH,fuv(vP+vec2(0.,d))).r;
+vec3 N=normalize(vec3((hl-hr)*uBev,(hu-hd)*uBev,1.));
+vec3 l=mix(uAmbG,uAmbS,.5-.5*N.y);
+l+=uKeyC*max(dot(N,uKey),0.);vec3 V=vec3(0.,0.,1.);sp+=uKeyC*pow(max(dot(N,normalize(uKey+V)),0.),18.)*uSpec*.5*smoothstep(.0,.18,1.-N.z);sp+=uAmbS*(1.-N.z)*(1.-N.z)*uSpec*.34;
+vec2 kd=normalize(uKey.xy+vec2(1e-4));l+=uKeyC*uRim*(1.-N.z)*max(dot(normalize(N.xy+vec2(1e-4)),kd),0.);
+for(int i=0;i<uLn;i++){vec3 d3=vec3(uLp[i].xy-vP,uLp[i].z);float r2=dot(d3,d3);float R=uLp[i].w;float at=1./(1.+r2/(R*R*.28));at*=smoothstep(R*R*5.,R*R*.4,r2);vec3 Ld=d3/sqrt(r2);l+=uLc[i].rgb*at*max(dot(N,Ld),0.)*1.6;sp+=uLc[i].rgb*at*pow(max(dot(N,normalize(Ld+V)),0.),30.)*uSpec*1.4*smoothstep(.0,.18,1.-N.z);}
+l=mix(l,max(l,vec3(1.)),uKeep);if(uEdge>0.){float h0=texture(uH,fuv(vP)).r;l*=mix(1.-uEdge,1.,smoothstep(.12,.5,h0));}
+o=vec4((alb*l+alb*e*1.6+sp)*a.a,a.a);}`,
     floor: `uniform sampler2D uTile,uM,uN;uniform vec3 uAmbS;uniform float uT,uWet,uRefl;
+uniform vec4 uLp[12];uniform vec4 uLc[12];uniform int uLn;
 void main(){float y=vP.y,x=vP.x;float h=max(y-${ZE_HORIZ}.,1.);
 float X=(x-360.)*3.17/h;float Z=285./h;vec2 uv=vec2(X*.56,Z*2.3);
 float near=smoothstep(860.,900.,y);vec3 alb=lin(texture(uTile,uv,near*1.6).rgb);
 vec2 id=floor(uv*2.);float hs=fract(sin(dot(id,vec2(41.3,17.7)))*4375.);alb*=.9+.14*hs;
-vec3 l=uAmbS*.62;
+float dz=y-${ZE_FLOOR}.;float fz=dz*2.6;vec3 l=uAmbS*.62;
+for(int i=0;i<uLn;i++){vec3 d3=vec3(uLp[i].x-x,${ZE_FLOOR}.-uLp[i].y,uLp[i].z-fz);float r2=dot(d3,d3);float R=uLp[i].w;float at=1./(1.+r2/(R*R*.4));at*=smoothstep(R*R*7.,R*R*.3,r2);l+=uLc[i].rgb*at*max(d3.y/sqrt(r2)+.25,0.)*1.5;}
 vec3 c=alb*l;c*=mix(1.,.62,smoothstep(846.,900.,y));
 float aoback=1.-.45*smoothstep(${ZE_TERRACE + 7}.,${ZE_TERRACE}.,y);c*=aoback;
 float ao=0.;if(y>=${ZE_FLOOR}.){float a1=smoothstep(14.,0.,y-${ZE_FLOOR}.);if(x>466.&&x<676.)ao=a1;else if(x>58.&&x<162.)ao=a1;}c*=1.-.42*ao;
@@ -14397,8 +14414,9 @@ vec3 r=textureLod(uM,fuv(vec2(x,ry)+w),.8+near*2.).rgb;float fres=mix(.8,.28,smo
 o=vec4(c,1.);}`,
     down: `uniform sampler2D uT;uniform vec2 uPx;
 void main(){vec2 p=gl_FragCoord.xy*uPx;vec3 c=texture(uT,p).rgb*4.;c+=texture(uT,p+vec2(uPx.x,uPx.y)).rgb+texture(uT,p+vec2(-uPx.x,uPx.y)).rgb+texture(uT,p+vec2(uPx.x,-uPx.y)).rgb+texture(uT,p-uPx).rgb;c/=8.;o=vec4(min(c,vec3(30.)),1.);}`,
-    final: `uniform sampler2D uS;uniform mat3 uCam;
+    final: `uniform sampler2D uS;uniform mat3 uCam;uniform float uFlash;uniform vec3 uFlashC;
 void main(){vec2 p=(uCam*vec3(vP,1.)).xy;vec3 c=texture(uS,fuv(p)).rgb;
+c+=uFlashC*uFlash;
 c=pow(max(c,vec3(0.)),vec3(1./2.2));
 float d=fract(sin(dot(gl_FragCoord.xy,vec2(12.98,78.23)))*43758.5)-.5;c+=d/255.;
 o=vec4(c,1.);}`,
@@ -14432,7 +14450,7 @@ o=vec4(c,1.);}`,
   function zgFree() {
     const gl = zg.gl; zg.off = false;
     if (gl) { const cv = gl.canvas; gl.getExtension('WEBGL_lose_context')?.loseContext(); cv.remove(); }
-    Object.assign(zg, { gl: null, P: null, ax: null, sky: -1, was: null, fS: null, fA: null, fC: null, fM: null, set: null, cars: null, baked: false, frames: 0 }); zg.scenes.clear();
+    Object.assign(zg, { gl: null, P: null, ax: null, sky: -1, was: null, fS: null, fA: null, fC: null, fM: null, fH: null, set: null, cars: null, baked: false, frames: 0 }); zg.scenes.clear();
     $('#zeCanvas').getContext('2d').setTransform(1, 0, 0, 1, 0, 0); $('#zeCanvas').getContext('2d').clearRect(0, 0, 1e4, 1e4);
   }
   function zgTex(gl, filt = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
@@ -14598,11 +14616,11 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
 
   // ---- the set: Barcelos across the Cávado, in stone and tile (H2). Painted once; each sky lights it when it bakes it.
   const ZE_RIGS = [
-    { name: 'sunset', amb: [.92, .74, .76], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
-    { name: 'blue hour', amb: [.56, .62, .92], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
-    { name: 'storm', amb: [.66, .40, .42], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
-    { name: 'rain', amb: [.60, .68, .84], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
-    { name: 'dawn', amb: [.94, .84, .86], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
+    { name: 'sunset', amb: [.92, .74, .76], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
+    { name: 'blue hour', amb: [.56, .62, .92], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
+    { name: 'storm', amb: [.66, .40, .42], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
+    { name: 'rain', amb: [.60, .68, .84], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
+    { name: 'dawn', amb: [.94, .84, .86], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
   ];
   const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
   const zgCanvas = S => { const c = document.createElement('canvas'); c.width = Math.round(ZE_W * S); c.height = Math.round(ZE_H * S); const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
@@ -14750,8 +14768,10 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
   function zgSet(k) {
     if (zg.set?.k === k) return zg.set;
     const gl = zg.gl, { c, e } = zgPaintSet(k);
-    if (zg.set) { gl.deleteTexture(zg.set.a); gl.deleteTexture(zg.set.e); }
-    return zg.set = { k, a: zgUp(gl, c), e: zgUp(gl, e) };
+    if (zg.set) { gl.deleteTexture(zg.set.a); gl.deleteTexture(zg.set.e); zgDrop(gl, zg.set.h); }
+    const a = zgUp(gl, c), h = zgFbo(gl, gl.canvas.width >> 2, gl.canvas.height >> 2, [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
+    gl.disable(gl.BLEND); zgBind(h); zgUse(zg.P.alpha, ZG_FULL, {}, { uT: a }); gl.enable(gl.BLEND);
+    return zg.set = { k, a, e: zgUp(gl, e), h };
   }
   function zgSize(w, h) {
     const gl = zg.gl, cv = gl.canvas;
@@ -14760,6 +14780,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     for (const b of [zg.fS, zg.fA, zg.fC]) zgDrop(gl, b);
     const b8 = [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]; zg.fA = zgFbo(gl, w, h, b8); zg.fC = zgFbo(gl, w, h, b8); zg.fS = zgFbo(gl, w, h);
     zgDrop(gl, zg.fM); zg.fM = zgFbo(gl, w >> 1, h >> 1, zg.fmt, true);
+    zgDrop(gl, zg.fH); zg.fH = zgFbo(gl, w >> 2, h >> 2, b8);
   }
 
   // ---- a frame
@@ -14785,13 +14806,35 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     }
     zgRender(g, calm, behind); zg.frames++;
   }
+  /** What lights the round this frame: Trota's lamps, windows and sign, the terrace's lamps, the dragon's fire, MONSTRO's spot, a power-up, what shines as it falls, a car's headlight. */
+  function zgLights(g, R, calm) {
+    const lp = zg.lp ||= new Float32Array(48), lc = zg.lc ||= new Float32Array(48); let n = 0;
+    const add = (x, y, z, r, cr, cg, cb, casts = 0) => { if (n >= 12) return; lp.set([x, y, z, r], n * 4); lc.set([cr, cg, cb, casts], n * 4); n++; };
+    const { x: RX, w: RW, top: RT } = ZE_REST, AY = RT + 18, warm = [1.9, 1.25, .55], t = zg.T, fl = calm ? 1 : .94 + .06 * Math.sin(t * 13) * Math.sin(t * 7.3);
+    const on = R.lamp * fl, w = R.win * fl;
+    for (const lx of [RX + 32, RX + RW - 32]) add(lx, RT + 9, 34, 62, warm[0] * on * .9, warm[1] * on * .9, warm[2] * on * .9);
+    for (const wx of [RX + 42, RX + RW - 42]) add(wx, AY + 52, 46, 84, warm[0] * w * .8, warm[1] * w * .8, warm[2] * w * .8);
+    const sign = g.dragon ? [1.6, .28, .3] : [1.5, 1.2, .72], so = Math.max(.3, on) * .6; add(ZE_SIGN.x + ZE_SIGN.w / 2, ZE_SIGN.y + 44, 70, 90, sign[0] * so, sign[1] * so, sign[2] * so);
+    for (const L of ZE_LAMPS) add(L.x, L.y - 6, -24, 120, warm[0] * on * 1.25, warm[1] * on * 1.25, warm[2] * on * 1.25, on > .3 ? 1 : 0);
+    if (g.dragon) { const f = calm ? 1 : .8 + .2 * Math.sin(t * 21) + .1 * Math.sin(t * 37); add(g.x, g.y - 70, -46, 210, 3.2 * f, 1.3 * f, .36 * f); }   // the fire is round him, not in his face
+    if (g.flex > 0) { const a = Math.min(1, g.flex / .3, (1.4 - g.flex) / .2); add(g.x, g.y - 250, 40, 180, 2.6 * a, 2.4 * a, 1.9 * a); }
+    if (g.power) { const h = parseInt(ZE_POWERS[g.power.kind].c.slice(1), 16); add(g.x, g.y - 120, 30, 110, ((h >> 16) & 255) / 120, ((h >> 8) & 255) / 120, (h & 255) / 120); }
+    let glows = 0; for (const it of g.items) { if (glows >= 2) break; if (it.out) continue; if (it.kind === 'gold' || it.kind === 'galo' || it.kind === 'case' || it.kind === 'power' || it.stood > 0 || it.special) { glows++; const cold = it.kind === 'case'; add(it.x, it.y, 30, 90, cold ? .8 : 2, cold ? 1.1 : 1.4, cold ? 2 : .4); } }
+    if (g.ride && R.lamp > .3) add(g.x + g.f * 128, ZE_FLOOR - 26, 40, 120, 1.7, 1.6, 1.2);
+    return { lp, lc, n };
+  }
+  const zgNorm = v => { const l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
   function zgRender(g, calm, behind) {
     const gl = zg.gl, dt = ze.dt || 0, iSky = zeSkyOf(g), S = zgScene(iSky), set = zgSet(zg.k), px = (ZE_W / 2 - g.x) * .05;
     if (!zg.baked) zgBakeAhead();
     if (g.freeze <= 0 && !calm) zg.T += dt;
     if (zg.sky !== iSky) { if (zg.sky >= 0) zg.was = { S: zg.scenes.get(zg.sky), a: 1 }; zg.sky = iSky; }
     if (zg.was && (zg.was.a -= dt / 1.4) <= 0) zg.was = null;
-    const dark = zeDark(g);
+    const dark = zeDark(g), R0 = S.R, Rw = zg.was?.S.R, mixv = (a, b) => zg.was ? a.map((v, i) => v + (b[i] - v) * zg.was.a) : a, mixn = (a, b) => zg.was ? a + (b - a) * zg.was.a : a;
+    const R = { ...R0, amb: mixv(R0.amb, Rw?.amb), gnd: mixv(R0.gnd, Rw?.gnd), keyC: mixv(R0.keyC, Rw?.keyC), lamp: mixn(R0.lamp, Rw?.lamp), win: mixn(R0.win, Rw?.win), wet: mixn(R0.wet, Rw?.wet) };
+    if (dark) { R.amb = R.amb.map((v, i) => v * (1 - dark * [.25, .62, .6][i])); R.gnd = R.gnd.map((v, i) => v * (1 - dark * [.2, .65, .6][i])); R.lamp = Math.max(R.lamp, .8 * dark); R.win = Math.max(R.win, .8 * dark); }
+    if (g.flash > 0 && !calm) { const f = Math.min(1, g.flash * 5); R.amb = R.amb.map((v, i) => v + f * [.9, .9, 1.2][i]); }
+    gl.disable(gl.BLEND); zgBind(zg.fH); zgUse(zg.P.alpha, ZG_FULL, {}, { uT: zg.fA.t });   // how high what moves stands, for its light
     zgBind(zg.fS); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     const back = (T, a) => {
       zgUse(zg.P.layer, [0, 0, ZE_W, ZE_BANK], { uA: a, uShift: [0, 0] }, { uT: T.sky.t });
@@ -14802,14 +14845,15 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     };
     back(S, 1); if (zg.was) back(zg.was.S, zg.was.a);
     if (dark) { zgUse(zg.P.tint, [0, 0, ZE_W, ZE_BANK], { uC: [.06 * .4 * dark, 0, .01 * .4 * dark, .4 * dark] }); zgUse(zg.P.tint, [0, 0, ZE_W, 360], { uC: [.007 * .3 * dark, 0, .003 * .3 * dark, .3 * dark] }); }
-    zgUse(zg.P.floor, [0, ZE_TERRACE, ZE_W, ZE_H - ZE_TERRACE], { uT: zg.T, uWet: S.R.wet > .5 ? 1 : 0, uRefl: S.R.wet, uAmbS: S.R.amb }, { uTile: zg.tile, uM: zg.fM.t, uN: zg.noise });
+    const { lp, lc, n } = zgLights(g, R, calm), lit = { uAmbS: R.amb, uAmbG: R.gnd, uKey: zgNorm(R0.key), uKeyC: R.keyC, uRim: R0.rim, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n } };
+    zgUse(zg.P.floor, [0, ZE_TERRACE, ZE_W, ZE_H - ZE_TERRACE], { uT: zg.T, uWet: R.wet > .5 ? 1 : 0, uRefl: R.wet, uAmbS: R.amb, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n } }, { uTile: zg.tile, uM: zg.fM.t, uN: zg.noise });
     if (behind) zgUse(zg.P.canvas, ZG_FULL, {}, { uT: zg.fC.t });
-    zgUse(zg.P.canvas, [0, 420, ZE_W, 480], {}, { uT: set.a });
-    zgUse(zg.P.canvas, ZG_FULL, {}, { uT: zg.fA.t });
+    zgUse(zg.P.lit, [0, 420, ZE_W, 480], { ...lit, uKeep: 0, uEdge: 0, uBev: 1.1, uUseE: 1, uSpec: .55, uEm: R.win * .8 + .001 }, { uA: set.a, uH: set.h.t, uE: set.e });
+    zgUse(zg.P.lit, ZG_FULL, { ...lit, uKeep: .55, uEdge: .42, uBev: 2.2, uUseE: 0, uSpec: .1, uEm: 0 }, { uA: zg.fA.t, uH: zg.fH.t, uE: zg.fA.t });   // what must read keeps most of its own colour, an edge against the blur
     gl.disable(gl.BLEND);
     zgBind(zg.fM); zgUse(zg.P.down, ZG_FULL, { uPx: [1 / zg.fM.w, 1 / zg.fM.h] }, { uT: zg.fS.t }); gl.bindTexture(gl.TEXTURE_2D, zg.fM.t); gl.generateMipmap(gl.TEXTURE_2D);   // next frame's mirror
     zgBind(null);
-    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) } }, { uS: zg.fS.t });
+    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) }, uFlash: !calm && g.flash > 0 ? Math.min(.26, g.flash * 1.6) : 0, uFlashC: g.bolt ? [.65, .55, 1] : [1, 1, 1] }, { uS: zg.fS.t });
   }
   /** The camera's moves — a combo's push, the vinho's wobble, a shake — as a matrix from the glass to the picture. */
   function zgCam(g, calm) {
