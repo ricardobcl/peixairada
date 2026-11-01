@@ -3143,6 +3143,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · merged, folded, branched: the chats tied to one, by your hand (2026-10-31)
 //   js  · Merge with…: a new chat from several, its first prompt where each stands (2026-10-31)
 //   js  · Fold into…: one chat's handoff typed into another's drawer, unsent; the first ticked done (2026-10-31)
+//   js  · Branch from here: a copy of the chat in a drawer of its own (2026-10-31)
 //   js  · a second claude on this chat
 //   js  · transcript rendering
 //   js  · the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17)
@@ -6241,6 +6242,7 @@ const toolName = n => {
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
         ...(!foldFromWhy(s) ? [{ name: 'Fold it into another chat…', sub: of, fn: () => foldPick(s, 'launch'), stay: true }] : []),   // 2026-10-31
+        ...(s.file ? [{ name: 'Branch it — a copy in a drawer of its own', sub: of, fn: () => branchChat(s) }] : []),
         ...(s.prs || []).filter(shownHere).map(pr => ({ name: `Take ${pr.label.replace(/^.*?#/, '#')} off it`, sub: ` — ${pr.title || pr.label}`, fn: () => unlinkUrl(s, pr.url) })),
         ...(isSplit(s) ? [{ name: 'Move this tab to the other half', sub: of, fn: () => moveFocused(s) }] : []),
         ...(s.cwd && ownColor(s.cwd) ? [{ name: 'Let go of its project’s colour', sub: ` — ${s.project}`, fn: () => clearColor(colorKey(s.cwd)) }] : []),
@@ -7584,6 +7586,7 @@ const toolName = n => {
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
       `<button class="hmi" id="tvBtn" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them">${ICON.timeline}<span class="lbl">timeline</span><span class="k">⌥⌘J</span></button>`,
+      s.file ? `<button class="hmi" id="branchBtn" title="A copy of this chat in a drawer of its own — claude --resume --fork-session; this one goes on as it is">${ICON.branch}<span class="lbl">branch from here</span><span class="k"></span></button>` : '',
       linkMenuHtml(s),   // the chats tied to it: merged, folded, branched (2026-10-31)
       s.cwd ? `<button class="hmi" id="webBtn" title="${onVim() ? VIM_TIP : WEB_TIP}">${onVim() ? ICON.vim : ICON.vscode}<span class="lbl">${inEdName()}</span><span class="k">⌥⌘E</span></button>` : '',
       s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">⌥⌘V</span></button>` : '',
@@ -7648,6 +7651,7 @@ const toolName = n => {
     const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
     $('#tvBtn').onclick = () => { menu.close(); hotTimeline(); };
     for (const b of menu.querySelectorAll('[data-lnk]')) b.onclick = () => { menu.close(); openSession(b.dataset.lnk, { locate: true }); };
+    const bb = $('#branchBtn'); if (bb) bb.onclick = () => { menu.close(); branchChat(s); };
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) && !isVimTab(s, tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + zshsOf(s)[0].id; if (k) dropTab(s, k); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
@@ -11446,6 +11450,7 @@ const toolName = n => {
     return [{ hr: true }, { t: 'Send to this chat…', ...no ? { off: true, sub: no } : {}, fn: () => sendOpen(s) },
       { t: 'Merge with…', ...mno ? { off: true, sub: mno } : { sub: 'a new chat, its first prompt where each stands' }, fn: () => mergePick([s.id]) },
       { t: 'Fold into…', ...fno ? { off: true, sub: fno } : { sub: 'where it stands, typed into another chat — then done' }, fn: () => foldPick(s) },
+      { t: 'Branch from here', ...s.file ? { sub: 'a copy in a drawer of its own — this one goes on as it is' } : { off: true, sub: 'nothing in it to branch yet' }, fn: () => branchChat(s) },
       ...(s.links || []).map(l => ({ t: linkSay(l), ...state.sessions.has(l.id) ? {} : { off: true }, fn: () => openSession(l.id, { locate: true }) }))];
   }
   // ---- merged, folded, branched: the chats tied to one, by your hand (2026-10-31) -----------------------------------
@@ -11527,6 +11532,17 @@ const toolName = n => {
     if (state.current === b.id) focusTerm();
     await api('POST', `/api/sessions/${a.id}/fold`, { into: b.id });
     tickDone(a.id, true, $('#shead'));
+  }
+  // ---- Branch from here: a copy of the chat in a drawer of its own (2026-10-31) --------------------------------------
+  // A card's menu, the header's ···, the launcher: the server starts `claude --resume <id> --fork-session --session-id
+  // <new>` in the chat's folder, the new id its own, and the column opens on the copy, its drawer attached; the chat it
+  // copied goes on as it was, a branch of it listed on it.
+  async function branchChat(s) {
+    if (!s?.file) return note($('#shead'), 'Nothing in it to branch yet', true);
+    let r; try { r = await withCheckout(`branch:${s.id}`, () => api('POST', `/api/sessions/${s.id}/branch`, termSize())); }
+    catch (e) { return note($('#shead'), `Could not branch it: ${e.message}`, true); }
+    await openSession(r.sessionId);
+    if (state.current === r.sessionId) note($('#shead'), `A branch of “${s.title}” — that one goes on as it was`);
   }
   const sendPick = () => pickOpen('chatpick', { ask: 'Send to a chat', back: 'launch', why: sendWhy, then: sendOpen });
   function hoShow() { const dlg = $('#handoff'); if (!dlg.open) { if (inApp) post({ type: 'focus' }); dlg.showModal(); repostPane(); } $('#hoText').focus(); }

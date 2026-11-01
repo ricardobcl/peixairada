@@ -40,6 +40,15 @@ handoff you saw and started go into a chat.
   as a review's prompt is —, then ticks the first chat done, tied (`POST …/fold`). A chat at work is not folded: the
   tick would end it mid-turn. **Drag a card onto another was not built**: the cards have no drag of their own to fit it
   into, and a new one would fight the list's slides and a card's click.
+* **Branch from here** (I6; a card's menu, the header's ···, ⌥⌘L): `claude --resume <id> --fork-session --session-id
+  <new>` in a drawer, in the chat's folder, the new id the board's — the tie is kept before Claude Code writes a line,
+  and a fork's transcript names no origin of its own (none on this Mac had one). The column opens on the copy, which
+  goes by the title of the chat it copied until its lines come; *branch* on its card, *1 branch* on the first one's,
+  each ··· naming the other. The chat itself is read, never written to, so one live anywhere can be branched. Its
+  drawer is never taken for the chat it copied, should claude say that id first (`linkTermToRegistry`); the past it
+  copies is no news, however its lines come in (`forkAt`). **The new-worktree option was not built**: a branch there
+  needs a branch name and a base asked for, the chat's uncommitted work would not come with it, and the new-chat flow's
+  worktree steps carry no fork through them — not the cheap add the pick allowed for.
 
 ## Decisions of 2026-10-31, near midnight — Watching, wake-ups, stopped, and the heads L1 (round XIII)
 

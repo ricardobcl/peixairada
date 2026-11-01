@@ -355,12 +355,16 @@ function handoffText(items, kind = 'merge') {
   const tail = kind === 'fold' ? 'Take it in, then wait for what I ask next.' : 'Read these, say in a few lines where you understand things stand, then wait for what I ask next.';
   return [head, ...parts, tail].join('\n\n');
 }
-/** A chat started with an id the board picked (2026-10-31: a merge's new chat): on the board from its start, so a page
- *  can open it and its links hold before claude has registered or written a line. */
-function placeholder(id, cwd) {
-  const s = newSession(id, null); s.cwd = cwd; s.startedAt = new Date().toISOString();
+/** A chat started with an id the board picked (2026-10-31: a merge's new chat, a branch): on the board from its start, so
+ *  a page can open it and its links hold before claude has registered or written a line. `forkOf`, a branch's: until a
+ *  line comes it goes by the title of the chat it copied, and the past it copies — lines from before `forkAt`, carried
+ *  across its reads — is no news (queueNotify). */
+function placeholder(id, cwd, forkOf = null) {
+  const s = newSession(id, null); s.cwd = cwd; s.startedAt = new Date().toISOString(); s.forkOf = forkOf;
+  if (forkOf) s.forkAt = s.startedAt;
   sessions.set(id, s); return s;
 }
+const forkTitle = s => { const o = !s.lastActivity && s.forkOf && sessions.get(s.forkOf); return o ? titles[o.id] || o.customTitle || o.title || o.lastPrompt || null : null; };
 
 // ---- the board's setup: CONFIG_FILE, the settings' Setup ------------------------------------------------------------
 // What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
@@ -754,7 +758,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     gitBranch: s.gitBranch, model: s.model,
     // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
     // branch, standup. A title the user typed still wins over both.
-    title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || (!s.lastActivity && s.alive ? '(no messages yet)' : '(untitled)'),
+    title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || forkTitle(s) || (!s.lastActivity && s.alive ? '(no messages yet)' : '(untitled)'),
     aiTitle: s.title, customTitle: s.customTitle, prTitle: prT, boardTitle: titles[s.id] || null,
     lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs.filter(shownPr), tickets: shownTickets(s),
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
@@ -2395,7 +2399,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'team', 'teamJson', 'headNow', 'headOk', 'peers', 'tasksGone']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'team', 'teamJson', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
@@ -3051,6 +3055,7 @@ function nativeNotify(title, subtitle, body) {
 
 function queueNotify(s, kind) {
   if (indexing || s.silent) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news
+  if (s.forkAt && String(s.lastActivity || '') < s.forkAt) return;   // a branch's copied past, however its lines come in (2026-10-31)
   (s.pendingNotify ||= new Set()).add(kind);   // one of each kind (2026-10-14): a branch's move and a reply in one window were one alert, the other lost — and a move is said once
   clearTimeout(s.notifyTimer);
   // Debounce: the thinking block and the text block of one reply land as separate lines.
@@ -5634,7 +5639,7 @@ const VIM_BIN = process.env.VIM_BIN || 'vim';
  * Only the words you wrote in the board's Send box; never logged.
  */
 const PROMPT_MAX = 100_000;
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null, fork = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = editor ? VIM_BIN : shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
@@ -5656,8 +5661,9 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
       : boardConfig().roots.some(r => r.org && (cwd + sep).startsWith(r.dir + sep)) ? `${tildePath(cwd)} is not there — its repo is checked out, but not this folder in it (a worktree since removed?)`
       : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Projects)` };
   }
-  // `newId` (2026-10-31): a new chat under an id the board picked — `--session-id` — so it is known before claude registers
-  const args = editor ? ['.'] : task ? [task] : shell ? [] : sessionId ? ['--resume', sessionId] : newId ? ['--session-id', newId] : [];
+  // `newId` (2026-10-31): a new chat under an id the board picked — `--session-id` — so it is known before claude registers;
+  // with `fork`, a copy of that chat under it (Claude Code's --fork-session: the chat itself is not written to)
+  const args = editor ? ['.'] : task ? [task] : shell ? [] : sessionId ? ['--resume', sessionId] : fork && newId ? ['--resume', fork, '--fork-session', '--session-id', newId] : newId ? ['--session-id', newId] : [];
   const said = args.join(' ');   // the log's: the prompt is yours, and not the log's to keep
   if (prompt && !editor && !task && !shell) args.push('--', String(prompt).slice(0, PROMPT_MAX));
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
@@ -5665,7 +5671,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   const sock = join(TERMS_DIR, `${id}.sock`);
   if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!(sessionId || fork), ...fork && { fork }, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -5708,7 +5714,7 @@ async function adoptHolder(f) {
   let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { return; }
   const id = meta.id || f.slice(0, -5);
   const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
-  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, editor: meta.editor ?? null, task: meta.task ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, editor: meta.editor ?? null, task: meta.task ?? null, fork: meta.fork ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
   try {
     await connectHolder(t);
     terms.set(id, t);
@@ -5754,7 +5760,7 @@ function noteEnv(sessionId, task) {
 }
 function linkTermToRegistry(pid, s, ppids = null) {
   for (const t of terms.values()) {
-    if (t.shell || t.sessionId === s.id) continue;
+    if (t.shell || t.sessionId === s.id || t.fork === s.id) continue;   // a branch's drawer is never the chat it copied (2026-10-31)
     // the PTY's own process; the claude it was tied to (behind a launcher that is not the PTY's — /clear there gives
     // that claude a new id, and the drawer has to follow it as it does any other, 2026-10-03); or, not yet tied, a
     // claude below a launcher's task
@@ -6372,6 +6378,19 @@ const server = createServer(async (req, res) => {
       let mine = false;
       const r = await spawnOnce(`${s.id}:claude`, async () => { mine = true; return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, prompt }); });
       return json(res, r.code, { ...r, prompted: !!prompt && mine && r.code === 201 });
+    }
+    // Branch from here (2026-10-31): a copy of the chat in a drawer of its own — `claude --resume <id> --fork-session
+    // --session-id <new>`, the new id the board's, so the tie holds before Claude Code writes the copy. The chat itself is
+    // read, not written to: a chat live anywhere, even elsewhere, can be branched.
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/branch$/))) {
+      const s = sessions.get(m[1]), body = await jsonBody(req);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      if (!s.file) return json(res, 409, { error: 'nothing in it to branch yet' });
+      const cwd = s.live?.cwd || s.cwd, newId = randomUUID(); placeholder(newId, cwd, s.id);
+      const r = await spawnTerm({ cwd, fork: s.id, newId, cols: body.cols, rows: body.rows });
+      if (r.code !== 201) { sessions.delete(newId); return json(res, r.code, r); }
+      addLink('branch', s.id, newId);
+      return json(res, r.code, { ...r, sessionId: newId });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end every claude it is live in elsewhere, resume it here
       const s = sessions.get(m[1]);

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A stand-in for `claude` in tests: the shapes of the real thing that the board depends on, none of the cost.
-//   fakeclaude.mjs [--resume <id> | --session-id <uuid>] [-- <prompt>]      (what the server passes)
+//   fakeclaude.mjs [--resume <id> [--fork-session] | --session-id <uuid>] [-- <prompt>]      (what the server passes)
 // It registers in $CLAUDE_DIR/sessions/<pid>.json like the CLI, appends user/assistant lines to the chat's
 // transcript under $CLAUDE_DIR/projects/<slug>/<id>.jsonl, and draws a TUI the way Claude Code does: the
 // transcript scrolls above, a live region sits at the bottom (rule · prompt · rule · three status lines), the
@@ -30,7 +30,10 @@ const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null
 // `--session-id <uuid>` (2026-10-31): a new chat under the id the board picked, as Claude Code takes one; with --resume
 // only beside --fork-session, as Claude Code refuses it otherwise
 if (arg('--session-id') && arg('--resume') && !args.includes('--fork-session')) { console.error('Error: --session-id can only be used with --continue or --resume if --fork-session is also specified.'); process.exit(1); }
-let sessionId = arg('--resume') || arg('--session-id') || randomUUID();
+// `--resume <id> --fork-session [--session-id <uuid>]`: a copy of that chat under a new id, the chat itself untouched — its
+// lines written into the copy's file at the start, each under the new id
+const forkOf = args.includes('--fork-session') ? arg('--resume') : null;
+let sessionId = forkOf ? arg('--session-id') || randomUUID() : arg('--resume') || arg('--session-id') || randomUUID();
 const cwd = process.cwd();
 const slug = cwd.replace(/[/.]/g, '-');
 const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
@@ -38,9 +41,14 @@ const sessDir = join(CLAUDE_DIR, 'sessions'), regFile = join(sessDir, `${process
 mkdirSync(projDir, { recursive: true }); mkdirSync(sessDir, { recursive: true });
 // resumed in another folder than its own (2026-10-19, a chat whose folder is gone): Claude Code finds the transcript by
 // its id in whichever project folder has it, one alone, and writes on there
-if (arg('--resume') && !existsSync(file)) {
-  const found = readdirSync(join(CLAUDE_DIR, 'projects')).map(d => join(CLAUDE_DIR, 'projects', d, `${sessionId}.jsonl`)).filter(f => existsSync(f));
+const foundById = id => readdirSync(join(CLAUDE_DIR, 'projects')).map(d => join(CLAUDE_DIR, 'projects', d, `${id}.jsonl`)).filter(f => existsSync(f));
+if (arg('--resume') && !forkOf && !existsSync(file)) {
+  const found = foundById(sessionId);
   if (found.length === 1) file = found[0];
+}
+if (forkOf) {
+  const src = foundById(forkOf)[0];
+  if (src) appendFileSync(file, readFileSync(src, 'utf8').split('\n').filter(Boolean).map(l => { try { const j = JSON.parse(l); if ('sessionId' in j) j.sessionId = sessionId; return JSON.stringify(j) + '\n'; } catch { return ''; } }).join(''));
 }
 const now = () => new Date().toISOString();
 let parent = null;
@@ -190,7 +198,7 @@ out('\x1b[?2004h\x1b[?1004h');   // bracketed paste, focus reporting — the mod
 const history = [];
 if (existsSync(file)) for (const raw of readFileSync(file, 'utf8').split('\n')) { try { const j = JSON.parse(raw); const t = j.message?.content?.find?.(c => c.type === 'text')?.text; if (t && (j.type === 'user' || j.type === 'assistant')) history.push(`${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`); } catch {} }
 out(`${FULL ? '\x1b[?1049h' : ''}\x1b[2J\x1b[H`);
-say(SCREEN ? SCREEN.screen : [`\x1b[1mfake claude\x1b[0m · session ${sessionId}${arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
+say(SCREEN ? SCREEN.screen : [`\x1b[1mfake claude\x1b[0m · session ${sessionId}${forkOf ? ` (a branch of ${forkOf.slice(0, 8)})` : arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
 /** /clear, as Claude Code does it: the same process goes on under a new session id — the registry file says so — with a
  *  fresh transcript and the screen started over. The board must follow the pid to the new chat (2026-09-20). The new
  *  transcript is written at once with the command's own lines — a caveat, the command, its empty output — which are

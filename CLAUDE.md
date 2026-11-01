@@ -925,8 +925,8 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **Chats that talk** (2026-10-31; `#handoff`): Send to… types into the drawer (`drawerType`), else the resume takes the
-  words as claude's argument after `--` (`spawnTerm`'s `prompt`, never logged); a merge's chat gets an id the board
-  picks (`newId`); `links` ties chats (`addLink`). → `handoffs.test.mjs`.
+  words after `--` (`spawnTerm`'s `prompt`, never logged); a merge or a branch (`fork`) gets the board's id (`newId`);
+  `links` ties chats (`addLink`). → `handoffs.test.mjs`.
 * **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.

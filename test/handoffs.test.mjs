@@ -12,6 +12,21 @@ import { defaultFixture, makeFixture, yesterday } from '../scripts/fixture.mjs';
 import { handoffText } from '../server.mjs';
 
 const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+/** The stream's `alert` events as they come, once its snapshot is in (reindex.test's). */
+async function alerts(srv) {
+  const res = await fetch(`${srv.url}events?key=${srv.key}`); assert.ok(res.ok, `the event stream: ${res.status}`);
+  const reader = res.body.getReader(), dec = new TextDecoder(), got = [], { promise: snapshot, resolve } = Promise.withResolvers();
+  (async () => {
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n\n')) >= 0) { const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i)); buf = buf.slice(i + 2); if (m?.[1] === 'snapshot') resolve(); if (m?.[1] === 'alert') got.push(JSON.parse(m[2])); }
+    }
+  })().catch(() => {});
+  await snapshot;
+  return { got, stop: () => reader.cancel().catch(() => {}) };
+}
 const linksOf = async (srv, id) => (await chatOf(srv, id))?.links || [];
 /** Claude Code's recap, as this Mac's transcripts have it: a system line, its words in `content`. */
 const awayLine = (id, cwd, text, at) => ({ parentUuid: null, isSidechain: false, type: 'system', subtype: 'away_summary', content: text, timestamp: at.toISOString(), uuid: randomUUID(), isMeta: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: id, version: 'fixture', gitBranch: 'main' });
@@ -79,6 +94,44 @@ test('Fold: the tie from the chat folded to the one it went into, said both ways
     const h = await srv.api(`api/handoff?kind=fold&ids=${a.id}`);
     assert.match(h.body.text, /^Another chat of mine, folded into this one[\s\S]*Two PRs mentioned[\s\S]*Take it in, then wait for what I ask next\.$/);
   } finally { await srv.stop(); }
+});
+
+test('Branch: a copy in a drawer under an id the board picked — --fork-session — tied both ways; the chat it copied untouched, its copied past no news', { timeout: 40_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1], was = readFileSync(chat.file, 'utf8');
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  const a = await alerts(srv);
+  try {
+    const r = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const id = r.body.sessionId;
+    assert.match(id, /^[0-9a-f-]{36}$/); assert.notEqual(id, chat.id);
+    assert.equal(r.body.terminal.sessionId, id, 'the drawer is the copy\'s');
+    assert.match(srv.logText(), new RegExp(`claude --resume ${chat.id} --fork-session --session-id ${id} in `));
+    assert.deepEqual((await linksOf(srv, id)).map(l => [l.k, l.dir, l.id]), [['branch', 'in', chat.id]], 'the copy: branched from it');
+    assert.deepEqual((await linksOf(srv, chat.id)).map(l => [l.k, l.dir, l.id]), [['branch', 'out', id]], 'the chat: its branch');
+    assert.equal((await chatOf(srv, id)).title, 'Plain chat', 'before a line of its own, the copy goes by the title of the chat it copied');
+    const s = await waitFor(async () => { const c = await chatOf(srv, id); return c?.alive && c.file && c; }, { what: 'the copy alive, its transcript written' });
+    assert.equal(s.terminal?.id, r.body.terminal.id, 'its drawer is its own');
+    assert.equal(s.lastPrompt, 'what day is it?', 'it carries the past it copied');
+    const orig = await chatOf(srv, chat.id);
+    assert.equal(orig.alive, false, 'the chat it copied is not resumed');
+    assert.equal(orig.terminal, null, 'nor given the drawer');
+    assert.equal(readFileSync(chat.file, 'utf8'), was, 'nor written to');
+    await new Promise(res => setTimeout(res, 900));   // the alert debounce is 400 ms
+    assert.deepEqual(a.got, [], 'the past it copied is no news');
+    // a word in the copy is the copy's alone
+    const ws = new WebSocket(srv.ws(`api/terminals/${r.body.terminal.id}/ws`));
+    await new Promise(res => ws.addEventListener('open', res, { once: true }));
+    ws.send(JSON.stringify({ t: 'in', d: 'try it the other way\r' }));
+    await waitFor(async () => (await chatOf(srv, id))?.lastPrompt === 'try it the other way', { what: 'the copy taking a word' });
+    ws.close();
+    assert.equal((await chatOf(srv, chat.id)).lastPrompt, 'what day is it?');
+    assert.equal(readFileSync(chat.file, 'utf8'), was);
+    await waitFor(() => a.got.length, { what: 'the copy\'s own reply, news' });
+    assert.deepEqual(a.got.map(x => [x.kind, x.sessionId]), [['reply', id]]);
+    await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+  } finally { a.stop(); await srv.stop(); }
 });
 
 test('Send to…: a chat with no process resumes with your words as its first prompt — never logged — and one with a drawer is not handed them again', { timeout: 40_000 }, async () => {
