@@ -14366,6 +14366,8 @@ if(a.a<.002){o=vec4(e,dot(e,vec3(.33)));return;}
 vec3 alb=lin(a.rgb/a.a);vec3 c=alb*uAmb;
 float ahead=texture(uA,cuv(vP+uRimD*2.5)).a;float rim=clamp(a.a-ahead,0.,1.);c+=(alb*.6+.4)*uRimC*rim;
 c+=e;o=vec4(c*a.a,a.a);}`,
+    disc: `uniform sampler2D uT;uniform float uR,uB;
+void main(){vec4 s=vec4(0.);float w=0.;for(int i=0;i<48;i++){float a=float(i)*2.39996;float r=sqrt(float(i)+.5)/6.93*uR;vec4 c=texture(uT,fuv(vP+vec2(cos(a),sin(a))*r));float b=1.+dot(c.rgb,vec3(.3,.6,.1))*uB;s+=c*b;w+=b;}o=s/w;}`,
     final: `uniform sampler2D uS;uniform mat3 uCam;
 void main(){vec2 p=(uCam*vec3(vP,1.)).xy;vec3 c=texture(uS,fuv(p)).rgb;
 c=pow(max(c,vec3(0.)),vec3(1./2.2));
@@ -14680,18 +14682,19 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     const sun = P.sun ? [R.sunX, P.sun.y > 860 ? ZE_WATER : P.sun.y - 74] : P.moon === 'full' ? [590, 150] : [R.sunX, 600];
     const rimD = (() => { const a = sun[0] - 360, b = sun[1] - 720, l = Math.hypot(a, b) || 1; return [a / l, b / l]; })();
     gl.disable(gl.BLEND);
-    const bake = (alb, em, { amb = [1, 1, 1], rim = 0, s = 1, emB = 1 }) => {
+    const bake = (alb, em, { amb = [1, 1, 1], rim = 0, s = 1, emB = 1, blur = 0 }) => {
       const ta = zgUp(gl, alb), te = em ? zgUp(gl, em) : null, A = zgFbo(gl, Math.round(ZE_W * s), Math.round(ZE_H * s));
       zgBind(A); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       zgUse(zg.P.bake, ZG_FULL, { uAmb: amb, uRimC: R.keyC.map(v => v * rim), uRimD: rimD, uEm: emB, uUseE: em ? 1 : 0 }, em ? { uA: ta, uE: te } : { uA: ta });
       gl.deleteTexture(ta); if (te) gl.deleteTexture(te);
-      return A;
+      if (!blur) return A;
+      const B = zgFbo(gl, A.w, A.h); zgBind(B); zgUse(zg.P.disc, ZG_FULL, { uR: blur, uB: 1.4 }, { uT: A.t }); zgDrop(gl, A); return B;   // out of focus by its distance: what shines opens into a disc
     };
     const S = { i, R, sun }, [sc, se] = zgPaintSky(P.sun ? { ...P, sun: { ...P.sun, x: R.sunX } } : P);
-    S.sky = bake(sc, se, { s: .75, emB: 1.5 });
-    S.hills = bake(zgPaintHills(P), null, { s: .5 });
-    S.town = bake(zg.town.c, zg.town.e, { amb: R.tAmb, rim: R.rim * .9, emB: R.win * 2.6 });
-    S.bridge = bake(zg.bridge.c, zg.bridge.e, { amb: R.tAmb.map(v => v * 1.1), rim: R.rim, emB: Math.max(R.lamp, R.win * .6) * 3.6 });
+    S.sky = bake(sc, se, { s: .75, emB: 1.5, blur: .9 });
+    S.hills = bake(zgPaintHills(P), null, { s: .5, blur: 3.2 });
+    S.town = bake(zg.town.c, zg.town.e, { amb: R.tAmb, rim: R.rim * .9, emB: R.win * 2.6, blur: 2.4 });
+    S.bridge = bake(zg.bridge.c, zg.bridge.e, { amb: R.tAmb.map(v => v * 1.1), rim: R.rim, emB: Math.max(R.lamp, R.win * .6) * 3.6, blur: 1.1 });
     gl.enable(gl.BLEND); zg.scenes.set(i, S); return S;
   }
   /** Every sky baked ahead, one a frame, so a level-up never waits for its own. */
