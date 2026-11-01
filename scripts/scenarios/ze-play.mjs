@@ -131,7 +131,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.ze().g.items.every(i => i.out)`, { what: 'the carrot kicked' });
   ctx.assert.ok((await ctx.evaluate(`window.peix.motion().slice(${m0}).map(m => m.kind)`)).includes('haptic:alignment'), 'a bump on the kick');
   await g(`g.items.length = 0; g.nun = 8; for (const [x, y] of [[120, 300], [520, 420], [620, 200]]) g.items.push({ kind: 'veg', e: '🥦', say: 'BLEH!', x, y, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`);
-  await g(`g.cool = 0`); await down('Space', ' ', 32); await ctx.sleep(450); await up('Space', ' ', 32);
+  await g(`g.cool = 0`); await down('Space', ' ', 32); await ctx.waitFor(`(z => z.g.holdAt != null && z.g.t - z.g.holdAt > .32)(window.peix.ze())`, { what: 'the hold, by the game\'s clock' }); await up('Space', ' ', 32);
   ctx.assert.deepEqual(await g(`return [g.items.filter(i => i.out).length, g.nun, g.banner?.s]`), [3, 0, 'NUNCHAKU!'], 'every green swept');
   await g(`g.items.length = 0`);
 

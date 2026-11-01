@@ -14513,22 +14513,38 @@ void main(){vec2 d=gl_PointCoord*2.-1.;float r=dot(d,d);float a=vSoft<.5?1.:smoo
     try {
       zg.hdr = !!gl.getExtension('EXT_color_buffer_float') || !!gl.getExtension('EXT_color_buffer_half_float');
       zg.fmt = zg.hdr ? [gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT] : [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE];
-      zg.gl = gl; zg.P = {}; for (const k of Object.keys(ZG_FS)) zg.P[k] = zgCompile(gl, ZG_VS, ZG_HEAD + ZG_FS[k]);
+      zgKeep(gl); zg.gl = gl; zg.P = {}; for (const k of Object.keys(ZG_FS)) zg.P[k] = zgCompile(gl, ZG_VS, ZG_HEAD + ZG_FS[k]);
       zg.Pt = zgCompile(gl, ZG_PT_VS, ZG_PT_FS); zg.pts = new Float32Array(8 * 4000); zg.ptVao = gl.createVertexArray(); zg.ptBuf = gl.createBuffer(); gl.bindVertexArray(zg.ptVao); gl.bindBuffer(gl.ARRAY_BUFFER, zg.ptBuf);
       gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 32, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 32, 8); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24);
       zg.vao = gl.createVertexArray(); gl.bindVertexArray(zg.vao);
       gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
       zg.ax = zgBatch(gl); zg.noise = zgNoise(gl); zg.tile = zgTile(gl);
     } catch (e) { console.error('Zé: no stage', e); zg.gl = null; zg.off = true; return false; }
-    cv.addEventListener('webglcontextlost', e => { e.preventDefault(); zgFree(); zg.off = true; const c = $('#zeCanvas'); c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0); if ($('#zeGame').open && !ze.raf) zeDraw(); });
+    cv.addEventListener('webglcontextlost', e => { e.preventDefault(); if (zg.gl !== gl) return; zgFree(); zg.off = true; const c = $('#zeCanvas'); c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0); if ($('#zeGame').open && !ze.raf) zeDraw(); });
     $('#zeStack').prepend(cv);
     return true;
   }
+  /** What the context makes, kept to delete by hand: WebKit's lost context holds on to its textures until a collection, 200 MB an opening. */
+  function zgKeep(gl) {
+    const made = zg.made = [];
+    for (const [mk, del] of [['createTexture', 'deleteTexture'], ['createFramebuffer', 'deleteFramebuffer'], ['createBuffer', 'deleteBuffer'], ['createVertexArray', 'deleteVertexArray'], ['createProgram', 'deleteProgram'], ['createSampler', 'deleteSampler']]) {
+      const f = gl[mk].bind(gl); gl[mk] = () => { const o = f(); made.push(del, o); return o; };
+    }
+  }
+  /** A canvas done with, its pixels let go now: WebKit keeps a dropped one's until a collection, and a page with little script rarely has one. */
+  const zgLetGo = (...cs) => { for (const c of cs) if (c) c.width = c.height = 0; };
   /** All of it let go with the dialog: the context, so its memory with it — the next opening starts clean. */
   function zgFree() {
     const gl = zg.gl; zg.off = false;
-    if (gl) { const cv = gl.canvas; gl.getExtension('WEBGL_lose_context')?.loseContext(); cv.remove(); }
-    Object.assign(zg, { gl: null, P: null, ax: null, sky: -1, was: null, fS: null, fA: null, fC: null, fM: null, fH: null, fB: null, set: null, cars: null, baked: false, dust: null, dustK: null, splash: null, frames: 0 }); zg.scenes.clear();
+    if (gl) {
+      const cv = gl.canvas, m = zg.made;
+      gl.useProgram(null); gl.bindVertexArray(null); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      for (let u = 0; u < 8; u++) { gl.activeTexture(gl.TEXTURE0 + u); gl.bindTexture(gl.TEXTURE_2D, null); gl.bindSampler(u, null); }
+      for (let i = 0; i < m.length; i += 2) gl[m[i]](m[i + 1]);
+      cv.width = cv.height = 1; gl.getExtension('WEBGL_lose_context')?.loseContext(); cv.remove();
+    }
+    zg.ax?.free(); if (zg.cars) zgLetGo(...zg.cars.values()); zgLetGo(zg.town?.c, zg.town?.e, zg.bridge?.c, zg.bridge?.e);
+    Object.assign(zg, { gl: null, P: null, ax: null, sky: -1, was: null, fS: null, fA: null, fC: null, fM: null, fH: null, fB: null, set: null, cars: null, town: null, bridge: null, made: null, baked: false, dust: null, dustK: null, splash: null, frames: 0 }); zg.scenes.clear();
     $('#zeCanvas').getContext('2d').setTransform(1, 0, 0, 1, 0, 0); $('#zeCanvas').getContext('2d').clearRect(0, 0, 1e4, 1e4);
   }
   function zgTex(gl, filt = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
@@ -14564,7 +14580,7 @@ void main(){vec2 d=gl_PointCoord*2.-1.;float r=dot(d,d);float a=vSoft<.5?1.:smoo
     x.beginPath(); x.moveTo(14.5, 8); x.lineTo(21, 14.5); x.lineTo(14.5, 21); x.lineTo(8, 14.5); x.fill();
     x.fillStyle = 'rgba(30, 20, 50, .35)'; x.fillRect(0, 0, 29, .5); x.fillRect(0, 0, .5, 29);
     const t = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c); gl.generateMipmap(gl.TEXTURE_2D); return t;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c); gl.generateMipmap(gl.TEXTURE_2D); zgLetGo(c); return t;
   }
   function zgUse(P, rect, vals = {}, texs = {}) {
     const gl = zg.gl; gl.useProgram(P.p);
@@ -14624,6 +14640,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     const X = {
       zg: true, globalAlpha: 1, fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, lineCap: 'butt', lineJoin: 'miter', font: '10px sans-serif', textAlign: 'left', textBaseline: 'alphabetic', imageSmoothingEnabled: true, shadowBlur: 0, shadowColor: '',
       begin(k) { K = k; n = 0; curT = null; curS = null; M = [1, 0, 0, 1, 0, 0]; stack = []; X.globalAlpha = 1; X.imageSmoothingEnabled = true; },
+      free() { for (const T of texts.values()) zgLetGo(T.cv); texts.clear(); },
       end() { flush(); },
       save() { stack.push({ M: M.slice(), a: X.globalAlpha, f: X.fillStyle, s: X.strokeStyle, l: X.lineWidth, fo: X.font, al: X.textAlign, ba: X.textBaseline, sm: X.imageSmoothingEnabled }); },
       restore() { const q = stack.pop(); if (!q) return; M = q.M; X.globalAlpha = q.a; X.fillStyle = q.f; X.strokeStyle = q.s; X.lineWidth = q.l; X.font = q.fo; X.textAlign = q.al; X.textBaseline = q.ba; X.imageSmoothingEnabled = q.sm; },
@@ -14834,9 +14851,10 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       if (!blur) return A;
       const B = zgFbo(gl, A.w, A.h); zgBind(B); zgUse(zg.P.disc, ZG_FULL, { uR: blur, uB: 1.4 }, { uT: A.t }); zgDrop(gl, A); return B;   // out of focus by its distance: what shines opens into a disc
     };
-    const S = { i, R, sun }, [sc, se] = zgPaintSky(P.sun ? { ...P, sun: { ...P.sun, x: R.sunX } } : P);
+    const S = { i, R, sun }, [sc, se] = zgPaintSky(P.sun ? { ...P, sun: { ...P.sun, x: R.sunX } } : P), hc = zgPaintHills(P);
     S.sky = bake(sc, se, { s: .75, emB: 1.5, blur: .9 });
-    S.hills = bake(zgPaintHills(P), null, { s: .5, blur: 3.2, haze: R.hz[0] * .55 });
+    S.hills = bake(hc, null, { s: .5, blur: 3.2, haze: R.hz[0] * .55 });
+    zgLetGo(sc, se, hc);
     S.town = bake(zg.town.c, zg.town.e, { amb: R.tAmb, rim: R.rim * .9, emB: R.win * 2.6, blur: 2.4, haze: R.hz[1] });
     S.bridge = bake(zg.bridge.c, zg.bridge.e, { amb: R.tAmb.map(v => v * 1.1), rim: R.rim, emB: Math.max(R.lamp, R.win * .6) * 3.6, blur: 1.1, haze: R.hz[2] });
     // the picture the river sees
@@ -14848,14 +14866,15 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     zg.scenes.set(i, S); return S;
   }
   /** Every sky baked ahead, one a frame, so a level-up never waits for its own. */
-  function zgBakeAhead() { for (let i = 0; i < ZE_SKIES.length; i++) if (!zg.scenes.has(i)) { zgScene(i); return; } zg.baked = true; }
+  function zgBakeAhead() { for (let i = 0; i < ZE_SKIES.length; i++) if (!zg.scenes.has(i)) { zgScene(i); return; } zg.baked = true; zgLetGo(zg.town?.c, zg.town?.e, zg.bridge?.c, zg.bridge?.e); zg.town = zg.bridge = null; }
   function zgSet(k) {
     if (zg.set?.k === k) return zg.set;
     const gl = zg.gl, { c, e } = zgPaintSet(k);
     if (zg.set) { gl.deleteTexture(zg.set.a); gl.deleteTexture(zg.set.e); zgDrop(gl, zg.set.h); }
     const a = zgUp(gl, c), h = zgFbo(gl, gl.canvas.width >> 2, gl.canvas.height >> 2, [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
     gl.disable(gl.BLEND); zgBind(h); zgUse(zg.P.alpha, ZG_FULL, {}, { uT: a }); gl.enable(gl.BLEND);
-    return zg.set = { k, a, e: zgUp(gl, e), h };
+    const ta = zgUp(gl, e); zgLetGo(c, e);
+    return zg.set = { k, a, e: ta, h };
   }
   function zgSize(w, h) {
     const gl = zg.gl, cv = gl.canvas;

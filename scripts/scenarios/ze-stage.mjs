@@ -31,6 +31,7 @@ export default async function (ctx) {
   await ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.lab.demo(); g.demo = false; g.spawn = 1e9; g.next = g.score + 1; g.items.push({ kind: 'meat', e: '🥩', pts: 15, say: 'x', x: g.x, y: g.y - 120, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 }); })()`);
   await ctx.waitFor(`window.peix.ze().g.level === 2 && window.peix.ze().g.fw.length === 3`, { what: 'the fireworks' });
   { const f0 = await ctx.evaluate(`window.peix.ze().stage.frames`); await ctx.waitFor(`window.peix.ze().stage.frames > ${f0 + 3}`, { what: 'the fireworks drawn' }); }
+  assert.equal(await ctx.evaluate(`window.peix.ze().stage.gl.getError()`), 0, 'not one GL error in all of that');
   // under reduced motion: nothing drifts, no fireworks, the K.O. at once
   await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   const calm = JSON.parse(await ctx.evaluate(`(async () => { const z = window.peix.ze(), g = z.lab.demo(), T0 = z.stage.T, f0 = z.stage.frames; while (z.stage.frames < f0 + 4) await new Promise(r => setTimeout(r, 30)); return JSON.stringify({ still: z.stage.T === T0 }); })()`));
@@ -48,6 +49,7 @@ export default async function (ctx) {
   // closed, all of it goes; opened again, the stage is back
   await ctx.evaluate(`document.querySelector('#zeGame').close()`);
   await ctx.waitFor(`!document.querySelector('#zeGame').open && !window.peix.ze().stage.gl && !document.querySelector('#zeGL') && !window.peix.ze().stage.off`, { what: 'the stage gone with the dialog' });
+  await ctx.sleep(300); assert.equal(await ctx.evaluate(`window.peix.ze().stage.off`), false, 'the close letting go is no loss of the context');
   await ctx.key('KeyZ');
   await ctx.waitFor(`window.peix.ze().stage.frames > 3 && document.querySelector('#zeGL')`, { what: 'the stage back' });
   await ctx.evaluate(`document.querySelector('#zeGame').close()`);
