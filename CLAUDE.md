@@ -471,8 +471,6 @@ npm run map                         # rewrite the section maps at the top of ser
   chat never shown). Done chats never. On, the list is narrowed before anything counts it, every match shows (the
   heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. The Dock's
   badge and the menu bar read `replied` too. → `test/seen.test.mjs`, `lanes.mjs`, `pr-turn.mjs`.
-* **A card clicked open flies its title into the header** (`flyFrom`, `flyTitle`, `.flytitle`) — the click handler
-  only, never a key, a picker or the chat already open.
 * **A chat opened from elsewhere is located** (`openSession(id, { locate:
   true })`, `locateCard`): scrolled to, and a band of light sweeps
   across it (`.card > .loc`, a box of its own: the pseudo-elements are the ring's). Not a click on the card, ⌥⌘↑↓ or a

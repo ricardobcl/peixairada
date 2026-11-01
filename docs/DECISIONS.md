@@ -5,6 +5,14 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01 — the flying title goes
+
+* **A card clicked open no longer sends its title into the header** (2026-11-01; `flyFrom`, `flyTitle`, `.flytitle`
+  removed, the `fly` motion with them). Ricardo: *"remove the chat title 'moving' from the card to there."* The
+  header's title is drawn where it lives at once; its colour still eases from chat to chat (`tintChat`), and a chat
+  opened from elsewhere is still located on its card (`locateCard`). The study's *16 · the title travels*
+  (2026-10-11) is undone; `small-motions.mjs`' step 16 now holds that nothing travels.
+
 ## Decisions of 2026-10-31, at the very end — chats that drive chats: send, merge, fold, branch (round XIV)
 
 Ricardo asked whether the board could merge chats, or let them talk. Round XIV laid what Claude Code has now — no merge

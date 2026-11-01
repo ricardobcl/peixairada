@@ -797,7 +797,6 @@
   /* Fade, not … (fadeOver): a one-line name's end, and a card title's last line's end, fade out over 2.2 em. */
   :is(.shead h2 .t, .ptabs .purl).over { text-overflow: clip; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); }
   .card .title.over { -webkit-mask-image: linear-gradient(#000 calc(100% - 1lh), transparent calc(100% - 1lh)), linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); mask-image: linear-gradient(#000 calc(100% - 1lh), transparent calc(100% - 1lh)), linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); }
-  .flytitle { position: fixed; z-index: 40; transform-origin: 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
   .card > .loc { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
   .card > .loc i { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent); }
   @keyframes wash { from { transform: scale(0); opacity: 1; } 40% { transform: scale(5); opacity: .55; } to { transform: scale(7.5); opacity: 0; } }
@@ -7189,9 +7188,7 @@ const toolName = n => {
     // the move line, or a PR's mark beside it: the chat, its timeline on that PR, at the move (2026-10-17)
     const pm = e.target.closest('.prmove, .prpips .pp[data-url]'), cs = pm && state.sessions.get(card.dataset.id);
     if (pm && cs) { e.stopPropagation(); openSession(cs.id); tvOpenOn(cs, pm.dataset.url || movedPrs(cs)[0]?.url); return; }
-    const from = card.dataset.id !== state.current && flyFrom(card);
-    openSession(card.dataset.id);
-    if (from) flyTitle(from);
+    openSession(card.dataset.id);   // the title appears in the header where it is, nothing flies there (2026-11-01)
   });
 
   // ---- project editor ----------------------------------------------------------------
@@ -11889,25 +11886,6 @@ const toolName = n => {
     if (stick) log.scrollTop = log.scrollHeight;
   }
 
-  // The title travels (2026-10-11, Rauno Freiberg's *motion shows where it came from*): a card clicked open sends its
-  // title — a copy on one line — from where it sat on the card to the header's, scaled from the card's size to the
-  // header's, while the header's own title waits hidden; the header's colour eases as it always has. A click only:
-  // ⌥⌘↑↓ walks the list a card at a time, and a key's move is instant.
-  function flyFrom(card) {
-    const t = card.querySelector('.title'); if (!t || REDUCED.matches) return null;
-    const r = t.getBoundingClientRect(), cs = getComputedStyle(t);
-    return { text: t.textContent, x: r.left, y: r.top, size: parseFloat(cs.fontSize), color: cs.color, weight: cs.fontWeight, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.35 };
-  }
-  function flyTitle(a) {
-    const to = document.querySelector('#shead h2 .t'); if (!to || !to.getClientRects().length) return;
-    const r = to.getBoundingClientRect(), cs = getComputedStyle(to), k = parseFloat(cs.fontSize) / a.size;
-    const fly = document.createElement('div'); fly.className = 'flytitle'; fly.textContent = a.text;
-    fly.style.cssText = `left: ${a.x}px; top: ${a.y}px; width: ${r.width / k}px; font-size: ${a.size}px; font-weight: ${a.weight}; line-height: ${a.line}px; color: ${a.color}`;
-    document.body.append(fly); to.style.opacity = 0; noteMotion(state.current, 'fly');
-    const dy = r.top + (r.height - a.line * k) / 2 - a.y;
-    fly.animate([{ transform: 'none', color: a.color }, { transform: `translate(${r.left - a.x}px, ${dy}px) scale(${k})`, color: cs.color }], { duration: 280, easing: EASE_OUT, fill: 'forwards', id: 'fly' })
-      .finished.catch(() => {}).then(() => { fly.remove(); to.style.opacity = ''; });
-  }
   // Located (2026-10-11): a chat opened from somewhere other than its card — ⌥⌘K, the launcher, a notification, the
   // overview, a tile, the home — flashes its card once, a light sweeping across it, so the eye finds where it lives.
   function locateCard(id) {

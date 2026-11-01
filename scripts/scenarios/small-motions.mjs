@@ -106,18 +106,17 @@ export default async function (ctx) {
   ctx.assert.equal(out.located.ids[0], out.located.current, 'on the chat it opened');
   await ctx.waitFor(`document.querySelectorAll('#slist .loc').length === 0`, { what: 'the sweep gone', timeout: 4000 });
 
-  // ---- 16 · the title travels: a card clicked open sends its title into the header; ⌥⌘↓ does not ----
+  // ---- 16 · a card clicked open: its title is in the header at once, nothing travels there (the flying title went
+  // 2026-11-01) ----
   const other = (await ctx.evaluate(`window.peix.state().current`)) === one.id ? two : one;
   const p16 = await ctx.evaluate(at(`#slist > .card[data-id="${other.id}"] .title`));
-  const m16 = await ctx.evaluate(`Math.round(performance.now())`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p16.x, y: p16.y });
   await mouse('mousePressed', p16); await mouse('mouseReleased', p16);
-  out.fly = await ctx.evaluate(`({ fly: document.querySelector('.flytitle')?.textContent, hidden: document.querySelector('#shead h2 .t')?.style.opacity, head: document.querySelector('#shead h2 .t')?.textContent })`);
-  ctx.assert.equal(out.fly.fly, out.fly.head, 'a copy of the title on its way to the header');
-  ctx.assert.equal(out.fly.hidden, '0', 'the header\'s own waits');
-  await ctx.waitFor(`!document.querySelector('.flytitle') && document.querySelector('#shead h2 .t')?.style.opacity === ''`, { what: 'the title landed', timeout: 4000 });
+  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(other.id)}`, { what: 'the chat opened' });
+  out.fly = await ctx.evaluate(`({ head: document.querySelector('#shead h2 .t')?.textContent, opacity: document.querySelector('#shead h2 .t')?.style.opacity, flying: document.getAnimations().filter(a => a.effect?.target?.parentElement === document.body && a.effect.target.textContent === document.querySelector('#shead h2 .t')?.textContent).length })`);
+  ctx.assert.equal(out.fly.flying, 0, 'no copy of the title on its way');
+  ctx.assert.equal(out.fly.opacity, '', 'the header\'s own shows at once');
   await ctx.key('ArrowDown'); await ctx.settle();
-  ctx.assert.equal((await ctx.evaluate(`window.peix.motion().filter(m => m.at >= ${m16})`)).filter(m => m.kind === 'fly').length, 1, 'a key flies nothing');
 
   // ---- 20 · the fish belly-up: the stream down, the status bar's fish floats belly-up; back, it flips
   // over and wiggles ----
