@@ -23,6 +23,9 @@ setup file, and how the pictures are made.
   *A card's PRs: All* puts every chip back, stacked and fanned out under the pointer, with the faces of the people on them. ⌥-click
   the ✓ to tick a chat done for good: its PRs won't bring it back. Take a PR off a chat from its chip's right-click
   menu (or ⌥-click) — until you name it there yourself.
+- 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
+  *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat
+  is at work —, the sender a click away; the sender's SendMessage links back. A message is never counted as yours.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders, or named sets of folders, each in a colour of your choosing.

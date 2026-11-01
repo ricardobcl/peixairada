@@ -5,6 +5,42 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-31, late — chats that talk (round XIV)
+
+Round XIV asked whether the board can merge chats or let them talk, after a research pass on what Claude Code offers
+(2.1.316): no merge — a message between sessions is never the sender's history —, but chats message each other by name
+since 2.1.224, and every part of it is on disk. Ten proposals; the pick: *"Integrations: I1, I2, I4, I5, I6, I8, I9."*
+This entry is I2 (*see chats talk*); the others are built beside it.
+
+* **A message from another chat is a row of its own** (`peerOf` → `notePeer`, an entry of kind `peer`; `peerHtml`):
+  neither your bubble nor Claude's prose — Claude's measure in a box with the accent down its left, *← from* the
+  sender, its permission mode (`from-mode`: what it may do unasked, which a reader weighs a message by) and *unverified*
+  when Claude Code could not tell the process. Its words are another Claude's, drawn as Claude's are (`md()`).
+* **The shapes, as read on this Mac** (keys and types only, never the text; 2026-10-27 and 2026-10-31): delivered, a
+  `user` line with `isMeta`, `promptSource: "system"`, `turnOrigin: "peer"` and `origin {kind: "peer", from, name,
+  fromMode, msg_id, verifiedPeerPid, body}`, its text Claude Code's framing round the `<cross-session-message>`
+  envelope; waiting, a `queue-operation` `enqueue` of the bare envelope, then a `dequeue` as it is delivered. Of the 125
+  peer-origin lines here only one was another chat's: the rest carry a `senderTaskId` and an `<agent-message>` — a
+  chat's own background agent handing back — and stay out, as before. Absorbed mid-turn, the delivery is a
+  `queued_command` attachment with the same origin (seen for the agents', assumed for a chat's), deduplicated by
+  `msg_id`. On the sender's side, a SendMessage's result carries the same `msg_id` (paired across two transcripts here,
+  0.1 s apart) and no `routing` — one with `routing` was to a teammate or a sub-agent. `scripts/fixture.mjs`'s
+  `peerLines` holds the shapes; the parser lets unknown fields be.
+* **Who sent it** (`peerSender`): the chat whose SendMessage has that `msg_id`; else the chat the verified pid runs,
+  if it ran then; else the chat the registry last gave the sender's name (`peerNames`, from `sessions/<pid>.json`'s
+  `name`). A queued one has only the envelope's socket address, its pid unverified. Where a SendMessage went
+  (`peerTarget`): the chat its `msg_id` arrived in, else the live chat of that name. Both resolved as a page is handed
+  the entries (`resolvePeers`), so a chat read later still finds its other end.
+* **Never your word**: the line moves no `lastUserAt`, last prompt, turn, status or activity, names no PR or ticket of
+  yours — so no lane, no *New replies*, no PR's turn and no un-tick comes of a message itself; the chat's reply to it is
+  Claude's and counts as Claude's. Nothing received is typed anywhere by the board.
+* **The card says it** (`peerMark`): *← from <the sender's title>* after the project, while one waits (`queued`), or for
+  an hour after one came and before your next word in that chat; a click opens the sender, located. In words for a
+  screen reader. The queued ones are the log's foot, before the clauding line (`renderPeerQueue`, `.peerq`).
+* Checked: `test/peers.test.mjs` (delivered, absorbed, queued and taken off, the agents' handbacks left out, unknown
+  fields, never your word, the sender by pid, name and `msg_id` through a server), `chats-talk.mjs` (the mark, the row,
+  the queue, both links; tiles and the sidebar, dark and light).
+
 ## Decisions of 2026-10-31, at night — a card's PRs as one (round XII)
 
 Ricardo asked for alternatives to *"PR stack and github icons on cards"* after a deep-research pass (four researchers on

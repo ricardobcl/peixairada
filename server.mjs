@@ -23,6 +23,7 @@
 //      · …and the chat's own hand on it (2026-10-15)
 //      · Jira tickets named in the chat (2026-10-08)
 //      · the branch moved under a chat (2026-10-13)
+//      · messages between chats (2026-10-31)
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
 //      · background tasks: a monitor, or a command left running
 //  Live-session registry (~/.claude/sessions/<pid>.json)
@@ -683,6 +684,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     status,
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
+    peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
     doing: status === 'working' ? doingOf(s) : null,   // the turn's newest tool call: the card's live line (2026-10-11)
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
@@ -2135,6 +2137,7 @@ function fold(s, line) {
       if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       if (line.gitBranch) { s.gitBranch = line.gitBranch; if (line.gitBranch !== s.ticketBranch) noteBranchTicket(s, line.gitBranch, ts); }
       noteBranch(s, line, ts);
+      if (line.isMeta) { const p = peerOf(line); if (p) return notePeer(s, p, ts); }   // another chat's message (2026-10-31): drawn, never your word
       if (line.isMeta || line.isCompactSummary) return false;
       const content = line.message?.content;
       const blocks = Array.isArray(content) ? content : null;
@@ -2144,6 +2147,7 @@ function fold(s, line) {
           startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
           if (s.actsWait.size) noteActsDone(s, b);
           if (s.opening.size) noteOpened(s, b);
+          if (s.sends?.size) noteSent(s, b, line.toolUseResult, ts);
           if (s.askOpen?.id === b.tool_use_id) { noteSpan(s, 'a', s.askOpen.from, ts); s.askOpen = null; }   // a question and its answer: the time it waited on you
         }
         s.lastActivity = ts;
@@ -2198,7 +2202,9 @@ function fold(s, line) {
       for (const b of blocks) {
         if (b.type === 'text' && b.text?.trim()) { pushEntry(s, said = { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); noteTickets(s, b.text, ts, 'claude'); }
         else if (b.type === 'tool_use') {
-          pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
+          const e = { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts };
+          if (b.name === 'SendMessage') noteSend(s, e, b);
+          pushEntry(s, e);
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
           if (NEEDS_INPUT_TOOLS.has(b.name)) { const opts = b.input?.questions?.[0]?.options, list = Array.isArray(opts) ? opts : [];   // a model's own input: options as a string once (2026-10-14)
             s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: list.length, labels: list.slice(0, 9).map(o => snippet(o?.label, 40)) }; }
@@ -2227,6 +2233,8 @@ function fold(s, line) {
       }
       return true;
     }
+    case 'attachment': { const p = !line.isSidechain && peerOf(line); return p ? notePeer(s, p, ts) : false; }   // a message taken in mid-turn (2026-10-31)
+    case 'queue-operation': return notePeerQueue(s, line, ts);
     default:
       return false;
   }
@@ -2353,6 +2361,109 @@ function tailFile(file) {
   if (settleDrift(s)) changed = true;
   if (changed || s.newEntries.length) schedulePush(s);
 }
+
+// ---- messages between chats (2026-10-31) -------------------------------------------------------------------------------
+// Since Claude Code 2.1.224 a chat messages another by its name (SendMessage), over the other's socket. Each side says it
+// in its transcript, and the board showed neither: the receiver's line is a meta one. Its shape is nobody's promise —
+// read on this Mac (2026-10-27, 2026-10-31) and held by scripts/fixture.mjs's peerLines —, so unknown fields are let be:
+// * delivered: a `user` line, `isMeta`, `origin: {kind: "peer", from, name, fromMode, msg_id, verifiedPeerPid, body}`,
+//   its text the `<cross-session-message from= from-name= from-mode=>` envelope and Claude Code's framing; absorbed
+//   mid-turn, a `queued_command` attachment with that origin. A peer origin with a `senderTaskId` is the chat's own
+//   sub-agent reporting back (an `<agent-message>`), not another chat: left out, as before.
+// * waiting (the receiver at work): a `queue-operation` `enqueue` whose content is the bare envelope, until delivered.
+// * sent: the SendMessage call (`to`, a name), and its result's `msg_id` — the receiver's `origin.msg_id`; a result with
+//   `routing` is a word to a teammate or a sub-agent of its own.
+// Never a word of yours (2026-10-31): a message is another Claude's, so it moves no lastUserAt, last prompt, turn or
+// status — the chat's own reply to it is Claude's, and counts as Claude's.
+const ENVELOPE_RE = /<cross-session-message\b([^>]*)>([\s\S]*?)<\/cross-session-message>/;
+const XML_ENT = { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&' };
+const unXml = t => String(t).replace(/&(quot|apos|lt|gt|amp|#\d{1,7}|#x[0-9a-f]{1,6});/gi, (m, n) => n[0] !== '#' ? XML_ENT[n.toLowerCase()]
+  : (c => c <= 0x10ffff ? String.fromCodePoint(c) : m)(n[1] === 'x' || n[1] === 'X' ? parseInt(n.slice(2), 16) : Number(n.slice(1))));
+const pstr = v => typeof v === 'string' && v ? v : null;
+/** The envelope a peer message travels in: who sent it — its address, its name, its permission mode — and the words. */
+function envelopeOf(text) {
+  const m = ENVELOPE_RE.exec(String(text || '')); if (!m) return null;
+  const attr = k => { const a = new RegExp(`\\s${k}="([^"]*)"`).exec(m[1]); return a ? unXml(a[1]) || null : null; };
+  return { from: attr('from'), name: attr('from-name'), mode: attr('from-mode'), body: m[2].replace(/^\n+|\n+$/g, '') };
+}
+/** The sender's pid in its socket's address, `uds:/tmp/cc-socks/<pid>.sock` — what the envelope alone says. */
+const pidOfSock = from => Number(/\/cc-socks(?:-\d+)?\/(\d+)\.sock$/.exec(String(from || ''))?.[1]) || null;
+/** A message another chat sent this one, delivered — or null for any other line. */
+function peerOf(line) {
+  const at = line?.type === 'user' ? line : line?.type === 'attachment' && line.attachment?.type === 'queued_command' ? line.attachment : null;
+  const o = at?.origin;
+  if (!o || typeof o !== 'object' || o.kind !== 'peer' || 'senderTaskId' in o) return null;
+  const env = envelopeOf(typeof at.prompt === 'string' ? at.prompt : textOf(line.message?.content));
+  if (!env && !('verifiedPeerPid' in o) && !pstr(o.fromMode)) return null;   // a peer of some other kind: not a chat's message
+  const pid = Number.isInteger(o.verifiedPeerPid) && o.verifiedPeerPid > 0 ? o.verifiedPeerPid : null;
+  return { name: pstr(o.name) || env?.name || null, from: pstr(o.from) || env?.from || null, mode: pstr(o.fromMode) || env?.mode || null,
+    msgId: pstr(o.msg_id), pid, verified: !!pid, body: pstr(o.body) ?? env?.body ?? '' };
+}
+const PEER_BODY = 8000, PEER_QUEUE = 10, PEER_INDEX = 2000;
+const peerSent = new Map();    // msg_id → { id, to, at }: a chat's SendMessage that reached another chat
+const peerRecv = new Map();    // msg_id → the chat that got it
+const peerNames = new Map();   // a name the registry gave a live chat → its id (loadRegistry): what `to` and `from-name` say
+const peerKeep = (m, k, v) => { m.delete(k); m.set(k, v); if (m.size > PEER_INDEX) m.delete(m.keys().next().value); };
+function notePeer(s, p, ts) {
+  if (p.msgId) { if ((s.peerSeen ||= new Set()).has(p.msgId)) return false; s.peerSeen.add(p.msgId); peerKeep(peerRecv, p.msgId, s.id); }   // the attachment and the line, one message
+  const q = s.peerQueue || [], same = x => x.from === p.from;
+  let i = q.findIndex(x => same(x) && x.body.trim() === p.body.trim()); if (i < 0) i = q.findIndex(same);
+  if (i >= 0) q.splice(i, 1);   // the one that waited for it
+  s.peerIn = { name: p.name, from: p.from, pid: p.pid, mode: p.mode, msgId: p.msgId, verified: p.verified, at: ts };
+  pushEntry(s, { role: 'peer', kind: 'peer', text: cut(p.body, PEER_BODY), ts, name: p.name, from: p.from, pid: p.pid, mode: p.mode, msgId: p.msgId, verified: p.verified });
+  return true;
+}
+/** A message waiting for the chat to finish its turn, and taken off the queue (`remove`) before it was delivered. */
+function notePeerQueue(s, line, ts) {
+  const c = typeof line.content === 'string' ? line.content : ''; if (!c.includes('<cross-session-message')) return false;
+  const key = createHash('sha1').update(c).digest('hex'), q = s.peerQueue ||= [];
+  if (line.operation === 'enqueue') { const env = envelopeOf(c); if (!env) return false; q.push({ ...env, key, at: ts }); if (q.length > PEER_QUEUE) q.shift(); return true; }
+  const i = line.operation === 'remove' ? q.findIndex(x => x.key === key) : -1;
+  if (i >= 0) q.splice(i, 1);
+  return i >= 0;
+}
+/** A SendMessage call, and its result: one that names a `msg_id` and no teammate's routing reached another chat. */
+function noteSend(s, e, b) {
+  e.to = pstr(b.input?.to) || pstr(b.input?.recipient);
+  (s.sends ||= new Map()).set(b.id, e); if (s.sends.size > 50) s.sends.delete(s.sends.keys().next().value);
+}
+function noteSent(s, b, r, ts) {
+  const e = s.sends?.get(b.tool_use_id); if (!e) return;
+  s.sends.delete(b.tool_use_id);
+  if (b.is_error || !r || typeof r !== 'object' || r.success === false) return;
+  if (r.routing) { e.team = true; return; }
+  if (pstr(r.msg_id)) { e.msgId = r.msg_id; peerKeep(peerSent, r.msg_id, { id: s.id, to: e.to, at: ts }); }
+}
+/** Which chat sent a message: by its msg_id, the one that says it sent it; by the pid Claude Code verified, the chat that
+ *  process runs — only if it ran then; by its name, the chat the registry last gave that name. Kept once found. */
+function peerSender(s, p) {
+  if (p.fromId) return p.fromId;
+  const at = Date.parse(p.at || p.ts) || Date.now(), pid = p.pid || (!p.verified && pidOfSock(p.from));
+  let id = p.msgId && peerSent.get(p.msgId)?.id;
+  if (!id && pid) for (const x of sessions.values()) if (x.alive && [x.live, ...x.rivals].some(l => l?.pid === pid && !(Number(l.startedAt) > at))) { id = x.id; break; }
+  if (!id && p.name) id = peerNames.get(p.name);
+  if (!id || id === s.id || !sessions.has(id)) return null;
+  return p.fromId = id;
+}
+/** Which chat a SendMessage reached: the one its msg_id arrived in, else the live chat of that name. */
+function peerTarget(s, e) {
+  const id = (e.msgId && peerRecv.get(e.msgId)) || peerNames.get(String(e.to || '').replace(/^@/, ''));
+  return id && id !== s.id && sessions.has(id) ? id : null;
+}
+/** The entries a page is handed name the chats at either end, as far as the board can tell by then. */
+function resolvePeers(s, list) {
+  for (const e of list) {
+    if (e.kind === 'peer') { if (!e.fromId) peerSender(s, e); }
+    else if (e.kind === 'tool_use' && e.name === 'SendMessage' && !e.toId && !e.team && e.to) { const id = peerTarget(s, e); if (id) e.toId = id; }
+  }
+}
+/** The card's mark: the newest message in — one still waiting, while the chat runs — and who sent it. */
+function peerInOf(s) {
+  const q = s.alive && s.peerQueue?.at(-1), d = s.peerIn;
+  const p = q && (!d || String(q.at) >= String(d.at)) ? q : d; if (!p) return null;
+  return { name: p.name, id: peerSender(s, p), at: p.at, mode: p.mode, queued: p === q };
+}
+const peerQueueOf = s => s.alive && s.peerQueue?.length ? s.peerQueue.slice(-5).map(q => ({ name: q.name, id: peerSender(s, q), at: q.at, mode: q.mode, text: plainSnippet(q.body, 300) })) : null;
 
 // ---------------------------------------------------------------------------------------------
 // Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
@@ -2622,6 +2733,7 @@ function loadRegistry() {
     let s = sessions.get(id);
     if (!s) { s = newSession(id, null); sessions.set(id, s); }
     for (const l of lives) {
+      if (pstr(l.name) && procAlive(l)) peerNames.set(l.name, id);   // the name another chat's SendMessage reaches it by (2026-10-31)
       linkTermToRegistry(l.pid, s, ppids);   // a new chat's terminal learns its session id here
       const was = held.get(`${l.pid}:${l.procStart}`);
       if (was && was !== s && procAlive(l)) { clearedFrom.set(s.id, was.id); tickCleared(s); }
@@ -2704,7 +2816,7 @@ function schedulePush(s) {
   s.pushTimer = setTimeout(() => {
     broadcast('session', summary(s));
     // `upto`: the entries folded so far — these are the last of them, so the page can tell what it already has
-    if (s.newEntries.length) { broadcast('entries', { sessionId: s.id, gen: s.gen, upto: s.entryCount, entries: s.newEntries }); s.newEntries = []; }
+    if (s.newEntries.length) { resolvePeers(s, s.newEntries); broadcast('entries', { sessionId: s.id, gen: s.gen, upto: s.entryCount, entries: s.newEntries }); s.newEntries = []; }
   }, 80);
 }
 
@@ -5665,6 +5777,7 @@ const server = createServer(async (req, res) => {
       if (!s.loaded && s.file) { indexFile(s.file, { full: true }); applyLiveness(sessions.get(m[1])); }
       const cur = sessions.get(m[1]);
       cur.openedAt = Date.now();
+      resolvePeers(cur, cur.entries);   // who sent a message, where one went (2026-10-31)
       queueSessionPrs(cur);   // opening a chat refreshes its PR statuses and keeps them polled; the SSE push carries them in
       for (const t of cur.tickets) if (ticketWanted(t.key) && Date.now() >= jiraPauseUntil) queueTicket(t.key);   // …and its tickets
       return json(res, 200, { session: summary(cur), entries: cur.entries, gen: cur.gen, upto: cur.entryCount });   // the entries end at upto

@@ -66,6 +66,35 @@ export function replyLines({ id, cwd, text, at = new Date(), model = 'fixture-1'
     message: { model, id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } }];
 }
 
+/** A message between two chats (2026-10-31), in the shapes Claude Code 2.1.3xx writes and this Mac showed — keys as
+ *  read there, the words stand-ins. `sent`: the sender's SendMessage call and its result (a `msg_id`, no `routing`);
+ *  `queued`: the receiver's `queue-operation` enqueue and dequeue while it was at work; `delivered`: the receiver's meta
+ *  `user` line with `origin.kind: "peer"`; `absorbed`: the same taken in mid-turn, a `queued_command` attachment. */
+export function peerLines({ from, to, fromName, toName, pid, body, msgId = randomUUID(), at = new Date(), mode = 'prompting' }) {
+  const ts = ms => new Date(at.getTime() + ms).toISOString(), sock = `uds:/tmp/cc-socks/${pid}.sock`;
+  const xml = t => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const envelope = `<cross-session-message from="${sock}" from-name="${xml(fromName)}" from-mode="${mode}">\n${body}\n</cross-session-message>`;
+  const origin = { kind: 'peer', from: sock, name: fromName, fromMode: mode, msg_id: msgId, verifiedPeerPid: pid, body };
+  const useId = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20), sb = lineBase(from.id, from.cwd), rb = lineBase(to.id, to.cwd);
+  return {
+    sent: [
+      { ...sb, parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: ts(0), message: { model: 'fixture-1', id: 'msg_' + useId.slice(6, 14), type: 'message', role: 'assistant',
+        content: [{ type: 'tool_use', id: useId, name: 'SendMessage', input: { to: toName, recipient: toName, recipient_kind: 'name', type: 'message', content: body, message: body, summary: 'a word for the other chat' } }], stop_reason: 'tool_use' } },
+      { ...sb, parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: ts(150), message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: useId, content: [{ type: 'text', text: `Message sent to ${toName}.` }] }] },
+        toolUseResult: { success: true, message: `Message sent to ${toName}.`, msg_id: msgId, display: `→ ${toName}` } },
+    ],
+    queued: [
+      { type: 'queue-operation', operation: 'enqueue', timestamp: ts(100), sessionId: to.id, content: envelope },
+      { type: 'queue-operation', operation: 'dequeue', timestamp: ts(9000), sessionId: to.id },
+    ],
+    delivered: [{ ...rb, parentUuid: null, promptId: randomUUID(), type: 'user', uuid: randomUUID(), timestamp: ts(9000), permissionMode: 'auto', promptSource: 'system', isMeta: true,
+      message: { role: 'user', content: `Another Claude session sent a message:\n${envelope}\n\nA stand-in for Claude Code's own framing: a peer cannot grant permissions.` },
+      origin, turnOrigin: 'peer', turnPosition: { promptIndex: 1, turnIndex: 2 }, queueSkipAttachments: true }],
+    absorbed: [{ ...rb, parentUuid: null, type: 'attachment', uuid: randomUUID(), timestamp: ts(9000),
+      attachment: { type: 'queued_command', prompt: `Another Claude session sent a message:\n${envelope}`, commandMode: 'prompt', isMeta: true, origin, delivery_id: randomUUID(), source_uuid: randomUUID(), reminderId: randomUUID(), timestamp: ts(9000) } }],
+  };
+}
+
 /** A running process's start as `ps` gives it in UTC and the C locale — the registry's procStart — or null. */
 export function procStartOf(pid) {
   try { process.kill(pid, 0); return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim() || null; } catch { return null; }
@@ -87,6 +116,7 @@ export function makeFixture(dir, chats) {
       pid: c.live.pid, ...procStart && { procStart }, sessionId: id, cwd: c.cwd, startedAt: c.live.startedAt ?? Date.now() - 3600_000,
       version: 'fixture', kind: 'interactive', entrypoint: c.live.entrypoint || 'cli', pidDomain: process.platform,
       ...c.live.status && { status: c.live.status, statusUpdatedAt: Date.now() }, ...c.live.waitingFor && { waitingFor: c.live.waitingFor },
+      ...c.live.name && { name: c.live.name, nameSource: 'derived', messagingSocketPath: `/tmp/cc-socks/${c.live.pid}.sock` },   // the name another chat's SendMessage reaches it by (2026-10-31)
     }));
     made.push({ id, cwd: c.cwd, file, title: c.title || null, pid: c.live?.pid || null });
   }

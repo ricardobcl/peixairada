@@ -1086,6 +1086,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead .hdrift .q { overflow: hidden; text-overflow: ellipsis; min-width: 0; opacity: .85; }
   .card .trow .drift { color: var(--needs); flex: none; display: inline-flex; align-items: center; height: 18px; }
   .card .trow .drift .ic { width: 13px; height: 13px; fill: currentColor; }
+  /* another chat messaged this one (2026-10-31, peerMark): ← from that chat, after the project, a click away */
+  .card .top .chip.peerin { flex: 0 1 auto; max-width: min(55%, 260px); font-size: var(--fs-xs); line-height: 16px; color: var(--ink); background: color-mix(in srgb, var(--accent) 18%, transparent); cursor: pointer; }
+  .card .top .chip.peerin > [aria-hidden] { margin-right: 3px; font-weight: 700; }
   .shead > .hfold, .shead > .hdiff.hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it — the changes' count's own display, later and as specific, beat it until 2026-10-14 */
   /* ⌥ held over a "your move" — a card's line or the chat header's (2026-10-12): its tag turns red, an ✕ for its PR
      mark, and ⌥-click lets the round go (letGo): not your move until the next one, which alerts as ever. */
@@ -1675,6 +1678,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .msg .turnfoot .tcopy:hover { color: var(--ink); background: var(--ctl); }
   .msg .turnfoot .tcopy.did { color: var(--idle); }
   .msg.assistant .bubble { padding: 4px 2px; }
+  /* A message from another chat (2026-10-31, peerHtml): neither yours nor Claude's — Claude's measure, in a box of its
+     own with the accent down its left, the sender a click away; one still waiting for the turn's end, the edge dashed */
+  .msg.peer .bubble { max-width: min(100%, 84ch); padding: 7px 12px; border-left: 2px solid var(--accent); border-radius: 0 var(--r-3) var(--r-3) 0; background: var(--ctl); }
+  .msg.peer.queued .bubble { border-left-style: dashed; color: var(--muted); }
+  .msg.peer .who { align-items: baseline; }
+  .msg.peer .pmode, .msg.peer .pq { font-size: var(--fs-2xs); font-weight: 600; padding: 0 5px; border-radius: var(--r-1); background: var(--ctl); color: var(--ink); }
+  .msg.peer .pq { text-transform: uppercase; letter-spacing: .4px; }
+  :is(.msg.peer, .tool) .peerlink { border: 0; padding: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; text-decoration: underline 1px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
+  :is(.msg.peer, .tool) .peerlink:hover { text-decoration-color: currentColor; }
+  .tool .peerlink { flex: none; }
 /* Claude's prose keeps to a reading measure (2026-10-12): at 1700 px a line ran to ~200 characters. Its paragraphs,
    lists, quotes and headings stop at 80ch; a code block, a table, a rule and an image take the width they need. */
 .msg.assistant .text > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, dl) { max-width: 80ch; }
@@ -5505,6 +5518,15 @@ const toolName = n => {
   }
   const driftChip = s => s.drift ? `<button class="hdrift" id="driftBtn" title="${esc(driftTip(s))}"><span class="vh">The branch moved under this chat: </span>${ICON.branch}<span class="n"><b>${esc(s.drift.to)}</b> now</span><span class="q">· was ${esc(s.drift.from)}</span></button>` : '';
   const driftMark = s => s.drift ? `<span class="drift" title="${esc(`The branch moved under it: ${s.drift.to} now, was ${s.drift.from}`)}">${ICON.branch}<span class="vh">, its branch moved</span></span>` : '';
+  /** Another chat messaged this one (2026-10-31): ← from <that chat>, while one waits for its turn to end, or for
+   *  PEER_MARK_MS after one came and before your next word in it; a click opens the chat that sent it. */
+  const PEER_MARK_MS = 60 * 60_000;
+  const peerWho = (id, name) => state.sessions.get(id)?.title || name || 'another chat';   // the chat by its title, else the name it sent under
+  function peerMark(s) {
+    const p = s.peerIn; if (!p || !(p.queued || (Date.now() - Date.parse(p.at) < PEER_MARK_MS && String(p.at) > String(s.lastUserAt || '')))) return '';
+    const who = peerWho(p.id, p.name);
+    return `<span class="chip peerin"${p.id ? ` data-sid="${esc(p.id)}"` : ''} title="${esc(`${p.queued ? 'A message waiting for this chat, from' : 'A message came from'} ${who}${p.mode ? ` (${p.mode})` : ''}${p.id ? ' — click: open that chat' : ''}`)}"><span class="vh">, a message </span><span aria-hidden="true">←</span><span class="pn">from ${esc(who)}</span>${p.queued ? '<span class="vh">, queued</span>' : ''}</span>`;
+  }
   /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28) —: every PR the chat
    *  mentions, a stack since 2026-10-04 (the CSS). The top one and the three slivers under it are the first four in the
    *  chat's order, every one at your move among them, and the rest follow in that order under the third; the pointer
@@ -5599,7 +5621,7 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -6986,6 +7008,8 @@ const toolName = n => {
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
+    const pin = e.target.closest('.peerin[data-sid]');
+    if (pin && state.sessions.has(pin.dataset.sid)) { e.stopPropagation(); openSession(pin.dataset.sid, { locate: true }); return; }   // the chat that sent it (2026-10-31)
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const ctk = e.target.closest('.ctk');
@@ -7132,6 +7156,11 @@ const toolName = n => {
     let ok = false; try { await navigator.clipboard.writeText(text); ok = true; } catch {}
     const w = b.querySelector('span'); w.textContent = ok ? 'copied' : 'failed'; b.classList.toggle('did', ok);
     clearTimeout(b.timer); b.timer = setTimeout(() => { w.textContent = 'copy'; b.classList.remove('did'); }, 1200);
+  });
+  // a message's sender, or where a SendMessage went (2026-10-31): that chat, its card located
+  $('#log').addEventListener('click', e => {
+    const b = e.target.closest('.peerlink[data-sid]'); if (!b) return;
+    if (state.sessions.has(b.dataset.sid)) openSession(b.dataset.sid, { locate: true }); else note(b, 'That chat is not on the board');
   });
   $('#chat').addEventListener('click', e => {
     const a = e.target.closest('a[href]'); if (!a) return;
@@ -11337,6 +11366,15 @@ const toolName = n => {
   }
   /** How long a turn worked, as the footer says it: 12s, 4m 12s, 1h 05m. */
   const workedFor = ms => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}m`; };
+  // Chats that talk (2026-10-31): a message from another chat is a third kind of row — neither yours nor Claude's —, its
+  // sender named and a click away; the SendMessage that sent one links to where it went; one still waiting for the chat's
+  // turn to end is at the log's foot, queued (renderPeerQueue). Its words are another Claude's, drawn as Claude's are.
+  const peerLink = (id, name, arrow = '') => `<button type="button" class="peerlink" data-sid="${esc(id)}" title="${esc(`Open ${peerWho(id, name)}`)}">${arrow ? `<span aria-hidden="true">${arrow} </span>` : ''}${esc(peerWho(id, name))}</button>`;
+  const peerFrom = (e, at) => `<div class="who"><span class="pfrom"><span aria-hidden="true">← </span>from ${e.fromId || e.id ? peerLink(e.fromId || e.id, e.name) : `<b>${esc(e.name || 'another chat')}</b>`}</span>${e.mode ? `<span class="pmode" title="the sender's permission mode">${esc(e.mode)}</span>` : ''}${e.verified === false ? '<span class="pmode" title="Claude Code could not tell which process sent it">unverified</span>' : ''}<span>${at}</span></div>`;
+  function peerHtml(e) {
+    const r = md(e.text, state.sessions.get(state.current)?.cwd), at = e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    return `<div class="msg peer"${e.ts ? ` data-ts="${esc(e.ts)}"` : ''}><span class="vh">A message from another chat: </span>${peerFrom(e, at)}<div class="bubble"><div class="text ${r.cls}">${r.html}</div></div></div>`;
+  }
   /** `cont`: a word of Claude's after another in the same turn — no who-line again (2026-10-08). */
   function entryHtml(e, cont = false) {
     if (e.kind === 'text') {
@@ -11344,7 +11382,8 @@ const toolName = n => {
       const foot = e.turnEnd && e.role === 'assistant' ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(e.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${e.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(e.worked)}</span>` : ''}</div>` : '';
       return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${e.ts ? ` data-ts="${esc(e.ts)}"` : ''}${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
     }
-    if (e.kind === 'tool_use') return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" role="img" aria-label="${({ run: 'running', ok: 'done', err: 'failed' })[toolMark(e.toolUseId)]}"></i><b${toolName(e.name) !== e.name ? ` title="${esc(e.name)}"` : ''}>${esc(toolName(e.name))}</b><span>${esc(e.text)}</span></div>`;
+    if (e.kind === 'peer') return peerHtml(e);
+    if (e.kind === 'tool_use') return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" role="img" aria-label="${({ run: 'running', ok: 'done', err: 'failed' })[toolMark(e.toolUseId)]}"></i><b${toolName(e.name) !== e.name ? ` title="${esc(e.name)}"` : ''}>${esc(toolName(e.name))}</b>${e.toId ? peerLink(e.toId, e.to, '→') : ''}<span>${esc(e.text)}</span></div>`;
     if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
     if (e.kind === 'interrupt' || e.kind === 'compact') return `<div class="sysline">${esc(e.text)}</div>`;
     return '';
@@ -11397,7 +11436,7 @@ const toolName = n => {
     // the presence line and the new-reply pill, which stay last.
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
     let replies = 0;
-    const tail = log.querySelector(':scope > .presence, :scope > .lognew');   // once: per entry, it was a query over the whole log
+    const tail = log.querySelector(':scope > .peerq, :scope > .presence, :scope > .lognew');   // once: per entry, it was a query over the whole log
     // …and a reply of Claude's that lands while you are at the end comes up part by part out of a slight blur (2026-10-11,
     // the agent apps' streaming text — the transcript has no stream, a reply arrives whole): its paragraphs, code and
     // lists, REVEAL_GAP apart, instead of the whole message fading in at once.
@@ -11420,17 +11459,17 @@ const toolName = n => {
       // a line where the day changes, as the list has (2026-09-27, night): none for today's messages at the top, a
       // date where the transcript goes to another day, "today" where it comes back — by the date itself (2026-10-03: by
       // its label, and a chat open across midnight had no line between yesterday's words and today's)
-      if (e.kind === 'text' && e.ts) { const k = new Date(e.ts).toDateString(); if (k !== 'Invalid Date' && k !== logView.dayKey) { logView.dayKey = k; add(htmlNodes(`<div class="sysline day"><b>${dayOf(e.ts)}</b></div>`, cwd)); } }
+      if ((e.kind === 'text' || e.kind === 'peer') && e.ts) { const k = new Date(e.ts).toDateString(); if (k !== 'Invalid Date' && k !== logView.dayKey) { logView.dayKey = k; add(htmlNodes(`<div class="sysline day"><b>${dayOf(e.ts)}</b></div>`, cwd)); } }
       const cont = e.kind === 'text' && e.role === 'assistant' && logView.lastWho === 'assistant';
       add(htmlNodes(entryHtml(e, cont), cwd));
-      if (e.kind === 'text') logView.lastWho = e.turnEnd ? null : e.role; else if (e.kind === 'interrupt' || e.kind === 'compact') logView.lastWho = null;   // a turn's end: the next word is a new turn's
+      if (e.kind === 'text') logView.lastWho = e.turnEnd ? null : e.role; else if (e.kind === 'interrupt' || e.kind === 'compact' || e.kind === 'peer') logView.lastWho = null;   // a turn's end: the next word is a new turn's
       if (e.kind === 'text' && e.role === 'assistant') replies++;
     }
     group();
     logView.n = state.entries.length;
     if (live && arrived) noteMotion(state.current, 'msg', arrived);
     log.querySelector(':scope > .empty')?.remove();
-    if (!log.querySelector(':scope > :not(.presence, .lognew)')) log.insertAdjacentHTML('afterbegin', '<div class="empty">No messages yet</div>');
+    if (!log.querySelector(':scope > :not(.peerq, .presence, .lognew)')) log.insertAdjacentHTML('afterbegin', '<div class="empty">No messages yet</div>');
     renderPresence();
     if (stick) { log.scrollTop = log.scrollHeight; logNew(0); }
     else if (keep !== null) log.scrollTop = log.scrollHeight - keep;
@@ -11475,8 +11514,19 @@ const toolName = n => {
     old.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-90%)', opacity: 0 }], { duration: 220, easing: EASE_OUT, fill: 'forwards', id: 'verb' }).onfinish = () => old.remove();
     nu.animate([{ transform: 'translateY(90%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, easing: SPRING, id: 'verb' });
   }, VERB_MS);
+  /** Another chat's messages waiting for this one's turn to end (2026-10-31): before the presence line, gone once taken. */
+  function renderPeerQueue(log, s) {
+    const html = (s?.peerQueue || []).map(q => `<div class="msg peer queued"><span class="vh">A message from another chat, waiting for this one's turn to end: </span>${peerFrom(q, '<b class="pq">queued</b>')}<div class="bubble"><div class="text">${esc(q.text)}</div></div></div>`).join('');
+    let el = log.querySelector(':scope > .peerq');
+    if (!html) { el?.remove(); return; }
+    if (!el) el = html2el('<div class="peerq"></div>');
+    if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+    const after = log.querySelector(':scope > .presence, :scope > .lognew');
+    if (el.parentNode !== log || el.nextElementSibling !== after) log.insertBefore(el, after);
+  }
   function renderPresence() {
     const log = $('#log'), s = state.sessions.get(state.current);
+    renderPeerQueue(log, s);
     log.classList.toggle('working', s?.status === 'working');   // a tool call without its result turns only while the chat works
     const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w"><span class="verb"><span class="vw">${shim('clauding…')}</span></span>${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
       : asking(s) ? `<div class="presence ask">${askHtml(s)}</div>` : '';
