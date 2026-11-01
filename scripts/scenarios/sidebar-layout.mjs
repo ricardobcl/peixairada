@@ -1,15 +1,15 @@
-// The sidebar layout (2026-10-30, round X): Settings › Appearance › Layout, Tiles by default, and the sidebar's style
-// under it — Edge, Ring, Tinted, Glass (the default; round X's D1–D4). Two live chats — one asking, one clauding, open —
-// and a ready one. What this checks: the board starts as tiles, the style off with why; Sidebar from the settings turns
-// it into the Mac's window — no gaps, no edges, the list glass over the wallpaper in the chat's colour, the header a
-// toolbar of glass, no black beside the project — and keeps the signals on the rows: the clauding row's ring is .rg's
-// square turned by a transform under a still mask, in step with the rest (phaseAnims), the card's own pseudo-elements
-// left alone; the asking row's sonar round its rounded outline; the lanes plain. The layout is there at once after a
-// reload (the head's script); at the notch nothing borders the cut; reduced motion holds the ring still. Each other
-// style says its signals its own way: Edge an edge on every row with a light run down it by a transform and a red ping;
-// Ring the lanes' marks; Tinted a spinner and a pinging dot, the toolbar solid; both the open row solid in its project's
-// colour (green here), never the system's blue. The project a tag on each row but Edge's, its name in its colour on a
-// tint of it; in the toolbar a capsule, or under Settings' Line a line along its foot. Tiles brings every edge back.
+// The sidebar layout (2026-10-30, round X; the one layout since 2026-11-01, Tiles gone) and its style, Settings ›
+// Appearance › Sidebar style — Edge, Ring, Tinted, Glass (the default; round X's D1–D4). Two live chats — one asking, one
+// clauding, open — and a ready one. What this checks: the board is the Mac's window from the start — no gaps, no edges,
+// the list glass over the wallpaper in the chat's colour, the header a toolbar of glass, no black beside the project; no
+// Layout row in the settings — and keeps the signals on the rows: the clauding row's ring is .rg's square turned by a
+// transform under a still mask, in step with the rest (phaseAnims), the card's own pseudo-elements left alone; the
+// asking row's sonar round its rounded outline; the lanes plain. A pref left from Tiles changes nothing; at the notch
+// nothing borders the cut; reduced motion holds the ring still. Each other style says its signals its own way: Edge an
+// edge on every row with a light run down it by a transform and a red ping; Ring the lanes' marks; Tinted a spinner and
+// a pinging dot, the toolbar solid; both the open row solid in its project's colour (green here), never the system's
+// blue. The project a tag on each row but Edge's, its name in its colour on a tint of it; in the toolbar a capsule, or
+// under Settings' Line a line along its foot.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -31,7 +31,7 @@ const read = ctx => ctx.evaluate(`(() => {
   const ring = document.getAnimations().find(x => x.animationName === 'ring' && x.effect.target === rg && x.effect.pseudoElement === '::before');
   return {
     layout: document.documentElement.dataset.layout, pad: cs('main').paddingTop, border: cs('#sessions').borderTopWidth,
-    glass: cs('#sessions').backdropFilter, wallGlow: cs('#wall i').display,
+    glass: cs('#sessions').backdropFilter, wallKids: document.querySelector('#wall').children.length,
     cardBefore: cs(w, '::before').animationName, rgShown: rg ? getComputedStyle(rg).display : null,
     rgRing: cs(w + ' > .rg', '::before')?.animationName, rgTurn: ring ? ring.effect.getKeyframes().map(k => k.transform).join() : null,
     rgStart: ring ? ring.startTime : null, mask: rg ? getComputedStyle(rg).maskImage.split('linear-gradient').length - 1 : null,
@@ -60,27 +60,18 @@ export default async function (ctx) {
     await ctx.openChat(work.id);
     await ctx.settle();
 
-    // tiles to begin with: the ring is the card's own, .rg there and not shown
-    out.tiles = await read(ctx);
-    ctx.assert.deepEqual([out.tiles.layout, out.tiles.pad, out.tiles.cardBefore, out.tiles.rgShown], ['tiles', '8px', 'ring', 'none'], 'tiles: the gaps, the card’s own ring');
-
-    // Settings › Appearance › Layout: Sidebar
+    // Settings › Appearance: the sidebar's style, no layout to pick, nothing off
     await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="look"]').click()`);
-    ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#layoutPick [data-lay]')].map(b => b.dataset.lay + ':' + b.getAttribute('aria-checked'))`), ['tiles:true', 'sidebar:false'], 'Tiles picked');
-    ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#sideStyleRow').classList.contains('off'), document.querySelector('#sideStylePick [data-sbs="edge"]').disabled, document.querySelector('#sideStyleSay').textContent]`),
-      [true, true, 'Only with the sidebar layout'], 'the sidebar’s style off under Tiles, and why');
-    await ctx.evaluate(`document.querySelector('#layoutPick [data-lay="sidebar"]').click()`);
-    await ctx.waitFor(`document.documentElement.dataset.layout === 'sidebar'`, { what: 'the sidebar layout' });
-    ctx.assert.equal(await ctx.evaluate(`JSON.parse(localStorage.getItem('peixairada-prefs')).layout`), 'sidebar', 'kept in the prefs');
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#layoutPick [data-lay="sidebar"]').getAttribute('aria-checked')`), 'true', 'Sidebar picked');
+    ctx.assert.deepEqual(await ctx.evaluate(`[!!document.querySelector('#layoutPick, #layoutRow'), document.querySelector('#sideStyleRow').classList.contains('off'), document.querySelector('#sideStylePick [data-sbs="glass"]').getAttribute('aria-checked')]`),
+      [false, false, 'true'], 'no Layout row; the style on, Glass picked');
     await ctx.evaluate(`document.querySelector('#settings').close()`);
     await ctx.settle();
 
     out.sidebar = await read(ctx);
     const sb = out.sidebar;
-    ctx.assert.deepEqual([sb.pad, sb.border, sb.wallGlow], ['0px', '0px', 'none'], 'no gaps, no edges, no glow after the pointer');
+    ctx.assert.deepEqual([sb.layout, sb.pad, sb.border, sb.wallKids], ['sidebar', '0px', '0px', 0], 'the sidebar: no gaps, no edges, no glow on the wallpaper');
     ctx.assert.match(sb.glass, /blur\(44px\)/, 'the list is glass');
     ctx.assert.equal(sb.cardBefore, 'none', 'the card’s own ring is off');
     ctx.assert.deepEqual([sb.rgShown, sb.rgRing, sb.mask], ['block', 'ring', 2], 'the ring is .rg’s, masked');
@@ -92,14 +83,12 @@ export default async function (ctx) {
     ctx.assert.deepEqual([sb.pix, sb.laneCase], [true, 'none'], 'the lanes as the tiles\' (2026-10-31): the glyph, in sentence case');
     ctx.assert.equal(sb.head, '0px 0px none', 'the header a toolbar: the top, square, no black');
     ctx.assert.match(sb.headGlass, /blur\(18px\)/, 'of glass');
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 200, y: 300 });
-    await ctx.sleep(300);
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#wall i').style.transform`), '', 'the glow not sent after the pointer');
     await ctx.shot('sidebar');
 
-    // a reload: the head's script has it before the first paint
+    // a board that had picked Tiles: the pref changes nothing, and goes on load (the prefs literal has no key for it)
+    await ctx.evaluate(`localStorage.setItem('peixairada-prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'), layout: 'tiles' }))`);
     await ctx.reload();
-    ctx.assert.equal(await ctx.evaluate(`document.documentElement.dataset.layout`), 'sidebar', 'the layout from the prefs at once');
+    ctx.assert.deepEqual(await ctx.evaluate(`[document.documentElement.dataset.layout, 'layout' in window.peix.prefs()]`), ['sidebar', false], 'Tiles kept in the prefs: still the sidebar, the pref gone');
     await ctx.openChat(work.id);
 
     // at the notch: the panels cut round the housing, nothing bordering the cut; the chat the board's own lay in a frame
@@ -122,7 +111,7 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.still, ['none', 'none'], 'reduced: the ring stands still, a steady band');
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] });
 
-    // the other styles, from the row under Layout
+    // the other styles, from Settings
     const W = '#slist > .card.working', A = '#slist > .card.asking', R = '#slist > .card:not(.working, .asking)';
     const look = `(() => { const cs = (sel, pseudo) => getComputedStyle(document.querySelector(sel), pseudo);
       const anim = (sel, name) => document.getAnimations().find(x => x.animationName === name && x.effect.target === document.querySelector(sel) && x.effect.pseudoElement === '::before');
@@ -196,17 +185,6 @@ export default async function (ctx) {
     ctx.assert.ok(hueOf(out.line.footc) > 120 && hueOf(out.line.footc) < 200, `the line its project’s green: ${out.line.footc}`);
     await ctx.shot('sidebar-line');
 
-    // Tiles again: every edge back, the card's own ring, the glow
-    await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
-    await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
-    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="look"]').click(); document.querySelector('#layoutPick [data-lay="tiles"]').click()`);
-    await ctx.waitFor(`document.documentElement.dataset.layout === 'tiles'`, { what: 'tiles again' });
-    ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#headMarkRow').classList.contains('off'), document.querySelector('#headMarkPick [data-hm="capsule"]').disabled, document.querySelector('#headMarkSay').textContent]`),
-      [true, true, 'Only with the sidebar layout'], 'the toolbar’s project off under Tiles, and why');
-    await ctx.evaluate(`document.querySelector('#settings').close()`);
-    await ctx.settle();
-    out.back = await read(ctx);
-    ctx.assert.deepEqual([out.back.pad, out.back.border, out.back.cardBefore, out.back.rgShown, out.back.wallGlow], ['8px', '2px', 'ring', 'none', 'block'], 'tiles: the gaps, the edges, the card’s ring, the glow');
     return out;
   } finally { for (const s of sleeps) try { s.kill(); } catch {} }
 }

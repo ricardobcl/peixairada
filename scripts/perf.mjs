@@ -15,7 +15,7 @@
 //   npm run perf -- --app [s]          the app as it runs instead: its board's web process, CPU over s seconds (10), its
 //                                      memory, and where its time went — the real board, your chats and settings
 //   npm run perf -- --prefs '<json>'   the page's prefs over the board's own — another look's cost, as
-//                                      '{"layout":"sidebar"}' (2026-10-30)
+//                                      '{"sidebarStyle":"ring"}'
 //   npm run perf -- --json             the results as JSON on the last line too
 //   CEIL_REST=15 CEIL_POINTER=25 CEIL_SCROLL=45 CEIL_HOME=30 CEIL_OPEN=400 CEIL_LAYERS=600   the ceilings, in % of a
 //   core, ms and layers — about twice what the board measured on 2026-10-13

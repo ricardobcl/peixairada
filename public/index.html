@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-head="float">
+<html lang="en" data-head="float" data-layout="sidebar">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,14 +8,14 @@
 <script>
   // The board's appearance before its first paint (2026-10-12): the one it wore last (prefs.look, kept by applySkin),
   // unless its theme follows macOS — then, as with no prefs at all, the system's —, its frame's (2026-11-01,
-  // prefs.frame) and its layout (2026-10-30, prefs.layout, prefs.sidebarStyle and prefs.headMark, kept by applyLayout).
+  // prefs.frame) and its sidebar's style (2026-10-30, prefs.sidebarStyle and prefs.headMark, kept by applyLayout; the
+  // sidebar the one layout since 2026-11-01, data-layout in the markup).
   // The page's script below takes over.
   (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
     const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = look;
     const k = p.skinFollow ? (look === 'dark' ? p.skinDark : p.skinLight) : p.skin, own = !k || /^own-/.test(k);   // the frame (2026-11-01): the board's own themes only
     document.documentElement.dataset.frame = own && p.frame === 'ink' ? 'dark' : own && p.frame === 'stage' ? 'light' : look;
-    document.documentElement.dataset.layout = p.layout === 'sidebar' ? 'sidebar' : 'tiles';
     document.documentElement.dataset.sidebar = ['edge', 'ring', 'tinted', 'glass'].includes(p.sidebarStyle) ? p.sidebarStyle : 'glass';
     document.documentElement.dataset.hmark = p.headMark === 'line' ? 'line' : 'capsule'; })();
 </script>
@@ -2077,23 +2077,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .home .hsum b { color: var(--ink); } .home .hsum em { font-style: normal; color: var(--needs); font-weight: 700; } .home .hsum .r { margin-left: auto; }
   .home .hnone { color: var(--muted); padding: 6px 0; }
 
-  /* ---- tiles (2026-10-10; the only layout since 2026-10-14 — main.tiles is in the markup, and its rules are the
-     panels' look): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
+  /* ---- tiles (2026-10-10; main.tiles is in the markup, and its rules are the panels' — the sidebar's below draws over
+     them, the one layout since 2026-11-01): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
      project's colour (--tile-edge, set by tintChat and tileTints: a black one --tile-grey; the list's on
      ALL the open chat's), faint, and whole on the panel the keys are in ---- */
   :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
   /* the wallpaper in the hue of the project in view — the open chat's, else the list's, else the theme's accent (tileTints);
-     registered, so a change of chat eases it. A fixed layer under the board (#wall, the body's ground before), so that
-     its bright glow can be a layer of its own: #wall i, the glow's ellipse as the body's gradient drew it (110 % × 80 %
-     of the window to transparent at 58 %, so 127.6vw × 92.8vh), centred on its own origin and put at 88 % 6 % by a
-     transform — and moved after the pointer by one (2026-10-11, late night; wallGo; a switch until 2026-10-14): the compositor's,
-     so a move repaints nothing. The grain over both, still. */
+     registered, so a change of chat eases it. A fixed layer under the board (#wall, the body's ground before); the grain
+     over it, still. (Its glow after the pointer went with Tiles, 2026-11-01.) */
   @property --wallc { syntax: '<color>'; inherits: true; initial-value: transparent; }
   #wall { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --wallc: var(--accent); transition: --wallc .25s;
     background: radial-gradient(90% 70% at 8% 96%, color-mix(in srgb, var(--wallc) 20%, var(--bg)), transparent 62%), var(--bg); }
   #wall::after { content: ''; position: absolute; inset: 0; background: var(--grain); }
-  #wall i { position: absolute; left: 0; top: 0; width: 127.6vw; height: 92.8vh; margin: -46.4vh 0 0 -63.8vw; will-change: transform;
-    background: radial-gradient(closest-side, color-mix(in srgb, var(--wallc) 34%, var(--bg)), transparent); transform: translate(88vw, 6vh); transition: transform 1.1s var(--ease-out); }
   main.tiles { padding: 8px 8px 0; }
   main.tiles :is(#sessions, #chat) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); }
   main.tiles .kf:is(#sessions, #chat) { border-color: var(--tile-edge, var(--nocolor)); }
@@ -2111,23 +2106,21 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.tiles.notch > #chat { border-top-right-radius: var(--screen-r); overflow: hidden; }
   main.tiles.notch.lhide > #chat { border-top-left-radius: var(--screen-r); }   /* the list hidden: the chat's tile has that corner too */
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
-  /* Black, the theme (2026-10-30): its grounds black — the wallpaper without its glow or its grain, the transcript
-     without the chat's wash (the glow not sent after the pointer, wallOn) —, the colours on what they mark. The
-     sidebar's Glass keeps its pools: the style asked for them. */
+  /* Black, the theme (2026-10-30): its grounds black — the wallpaper without its grain, the transcript without the
+     chat's wash —, the colours on what they mark. The sidebar's Glass keeps its pools: the style asked for them. */
   :root[data-skin="black"] #wall { background: #000; }
-  :root[data-skin="black"] #wall i { display: none; }
   :root[data-skin="black"] #wall::after { display: none; }
   :root[data-skin="black"] #log, :root[data-skin="black"] #chat #groups .gbody.haslog { background: none; }
 
-  /* ---- the sidebar layout (2026-10-30, round X; Settings › Appearance › Layout: Tiles · Sidebar, Tiles by default, and
-     its style under it): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a toolbar —
+  /* ---- the sidebar layout (2026-10-30, round X; the one layout since 2026-11-01 — <html data-layout="sidebar"> in the
+     markup, never toggled —, Settings › Appearance › Sidebar style): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a toolbar —
      with the board's signals kept on the rows, in one of four styles, round X's D1–D4 (<html data-sidebar>):
      Edge — the project's colour an edge on each row, a light running down it while a chat works, a red ping off it for a
      question; Ring — the board's ring round a row at work and its sonar round a question, the open row in the system's
      blue, the lanes as the tiles' are; Tinted — Safari's: the toolbar tinted with the chat's colour, the open row solid
      in its project's, a spinner, a dot that pings; Glass (the default) — the list frosted over a wallpaper in the open
-     chat's colour, the ring and the sonar. The lanes are plain but Ring's. <html data-layout> and data-sidebar, set
-     before the first paint by the head's script and kept by applyLayout. ---- */
+     chat's colour, the ring and the sonar. The lanes are plain but Ring's. <html data-sidebar>, set before the first
+     paint by the head's script and kept by applyLayout. ---- */
   :root[data-layout="sidebar"] { --side: color-mix(in srgb, var(--ink) 5%, var(--bg)); --side-glass: color-mix(in srgb, var(--side) 60%, transparent); }
   :root[data-layout="sidebar"][data-theme="dark"] { --side: color-mix(in srgb, var(--ink) 6%, var(--bg)); }
   /* the panels meet, square at the screen's corners too; the cut round the housing stays, with no border round it */
@@ -2135,12 +2128,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles :is(#sessions, #chat) { border: 0; }
   :root[data-layout="sidebar"] main.tiles.notch { --screen-r: 0px; }
   :root[data-layout="sidebar"] :is(.ncut, .ncap) { display: none; }
-  /* the list and the status bar under it in the sidebar's grey, the wallpaper unseen and not drawn; the pointer's glow off
-     (wallOn) */
+  /* the list and the status bar under it in the sidebar's grey, the wallpaper unseen and not drawn */
   :root[data-layout="sidebar"] #sessions { background: var(--side); }
   :root[data-layout="sidebar"] main.tiles ~ #sbar { margin: 0; border: 0; border-top: 1px solid var(--line); background: var(--side); }
   :root[data-layout="sidebar"]:not([data-sidebar="glass"]) #wall { display: none; }
-  :root[data-layout="sidebar"] #wall i { display: none; }
   /* Glass: the wallpaper shows under the list alone, two pools of the open chat's colour (--wallc, eased as the tiles'
      is), the deeper from the bottom left; the list and the status bar glass over it, half — their own grey at 60 %, the
      wallpaper blurred and saturated through the rest */
@@ -2170,6 +2161,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      before its name, no black beside it, the theme's own inks. Lowered at the notch by padding, not a margin — the
      toolbar reaches the top whatever it holds. Tinted's is the chat's colour at 20 %, solid, its foot in it; Glass's that
      colour at 14 %, still glass. */
+  :root[data-layout="sidebar"] main.notch > #chat.npad > #shead { padding-top: calc(7px + var(--notch-top, 0px)); }   /* under the housing with no hole for it: below the strip (the rule under it outweighed the tiles', 2026-11-01) */
   :root[data-layout="sidebar"] #chat > #shead { margin: 0; padding-top: calc(7px + var(--hdrop, 0px)); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink);
     background: color-mix(in srgb, var(--panel) 76%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
     --hfade-w: 24px; --rink: var(--ink); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
@@ -2190,6 +2182,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      the toolbar's ground, opaque: the card's chips overlap */
   :root[data-layout="sidebar"] :is(#slist .card .cpr, #chat .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]), :root[data-layout="sidebar"] :is(#slist .card .ctk, #chat .shead .hpr.tk)[data-cat] {
     background: color-mix(in srgb, var(--prc) 12%, var(--side)); border-color: color-mix(in srgb, var(--prc) 34%, var(--side)); color: var(--prc); }
+  :root[data-layout="sidebar"] #slist .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; }   /* a stack's slivers carry no number (the tint's ink beat the stack's rule, 2026-11-01) */
   :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"], .tk[data-cat]) { background: color-mix(in srgb, var(--prc) 12%, var(--panel)); border-color: color-mix(in srgb, var(--prc) 34%, var(--panel)); }
   :root[data-layout="sidebar"] #chat .shead .hpr .ck { background: transparent; }
   /* the lanes as the tiles' (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
@@ -2205,7 +2198,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] .gsep.lane > i { width: 13px; height: 13px; margin: 0 1px; }
   :root[data-layout="sidebar"] .gsep.lane b { font-size: var(--fs-sm); font-weight: 500; }
   :root[data-layout="sidebar"] .gsep.lane.zero { color: var(--idle); }
-  /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer (spotSoon rests), a grey
+  /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer, a grey
      under the pointer; the project a tag, its name in its colour on a tint of it (2026-10-31, round XI: a dot read as one
      more light) — but in Edge, where the edge is */
   :root[data-layout="sidebar"] #slist { gap: 2px; }
@@ -2294,6 +2287,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"]:not([data-skin]) main.tiles > #chat { margin: 8px 8px 8px 0; border-radius: 12px; overflow: clip; box-shadow: 0 0 0 1px var(--sheet-edge), var(--sheet-shade); }
   :root[data-layout="sidebar"]:not([data-skin]) main.tiles.lhide > #chat { margin-left: 8px; }   /* the list hidden: the frame on every side */
   :root[data-layout="sidebar"]:not([data-skin]) main.tiles.notch > #chat { border-top-right-radius: 10px; }   /* concentric with the screen's corner, as the tiles' are */
+  :root[data-layout="sidebar"]:not([data-skin]) main.tiles.notch.lhide > #chat { border-top-left-radius: 10px; }   /* the list hidden: that corner too (2026-11-01) */
   :root[data-layout="sidebar"]:not([data-skin]) #splitter:not(:hover, .drag) { background: transparent; }   /* the frame between them; its grip stays */
   :root[data-layout="sidebar"]:not([data-skin]) main.tiles ~ #sbar { border-top: 0; }
   /* The frame of the other appearance (Settings › Appearance › Frame): Ink (T5) a graphite frame round the light chat,
@@ -2882,7 +2876,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .zewalk .zw, .zewalk .zw i { animation: none; } .zewalk .zw i { left: auto; right: 8px; } .zewalk .zw i + i { opacity: 0; }   /* Zé stands at the end of All caught up */
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
-    #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
     .gsep.lane .lc { transition: none; }   /* a lane's caret turns at once (its head kept since 2026-11-01; the lane itself folds at once: drawCards reads REDUCED) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
@@ -2948,7 +2941,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </style>
 </head>
 <body>
-<div id="wall" aria-hidden="true"><i></i></div>
+<div id="wall" aria-hidden="true"></div>
 <template id="logo"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></template>
 <main id="main" class="tiles">
   <section id="sessions">
@@ -3032,10 +3025,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set wide" id="lightRow" data-kw="light theme colours colors skin"><span class="sl" id="slLight"><b>Light theme</b><small></small></span><span class="stiles" role="radiogroup" aria-labelledby="slLight" id="lightPick"></span></div>
           <div class="srow set" id="frameRow" data-kw="frame inset sheet window ground sidebar graphite ink paper stage mixed contrast"><span class="sl" id="slFrame"><b>Frame</b><small id="frameSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slFrame" id="framePick"><button type="button" role="radio" data-fr="matching">Matching</button><button type="button" role="radio" data-fr="ink">Ink</button><button type="button" role="radio" data-fr="stage">Stage</button></span></div>
         </div><p class="sgf">Every theme, the board wearing each as you move through them: <button type="button" class="slink" id="themeBtn">⌥⌘Y</button></p></section>
-        <section class="sgrp"><div class="slist" role="group" aria-label="Layout">
-          <div class="srow set" id="layoutRow" data-kw="layout tiles sidebar rows glass frosted native mac window panels gaps wallpaper"><span class="sl" id="slLayout"><b>Layout</b><small id="layoutSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slLayout" id="layoutPick"><button type="button" role="radio" data-lay="tiles">Tiles</button><button type="button" role="radio" data-lay="sidebar">Sidebar</button></span></div>
-          <div class="srow set sub" id="sideStyleRow" data-kw="sidebar style edge ring tinted glass lights spinner frosted"><span class="sl" id="slSideStyle"><b>Sidebar style</b><small id="sideStyleSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slSideStyle" id="sideStylePick"><button type="button" role="radio" data-sbs="edge">Edge</button><button type="button" role="radio" data-sbs="ring">Ring</button><button type="button" role="radio" data-sbs="tinted">Tinted</button><button type="button" role="radio" data-sbs="glass">Glass</button></span></div>
-          <div class="srow set sub" id="headMarkRow" data-kw="sidebar toolbar header project name capsule pill line colour color mark"><span class="sl" id="slHeadMark"><b>Project in the toolbar</b><small id="headMarkSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slHeadMark" id="headMarkPick"><button type="button" role="radio" data-hm="capsule">Capsule</button><button type="button" role="radio" data-hm="line">Line</button></span></div>
+        <section class="sgrp"><div class="slist" role="group" aria-label="Sidebar">
+          <div class="srow set" id="sideStyleRow" data-kw="sidebar style layout edge ring tinted glass lights spinner frosted rows"><span class="sl" id="slSideStyle"><b>Sidebar style</b><small id="sideStyleSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slSideStyle" id="sideStylePick"><button type="button" role="radio" data-sbs="edge">Edge</button><button type="button" role="radio" data-sbs="ring">Ring</button><button type="button" role="radio" data-sbs="tinted">Tinted</button><button type="button" role="radio" data-sbs="glass">Glass</button></span></div>
+          <div class="srow set" id="headMarkRow" data-kw="sidebar toolbar header project name capsule pill line colour color mark"><span class="sl" id="slHeadMark"><b>Project in the toolbar</b><small id="headMarkSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slHeadMark" id="headMarkPick"><button type="button" role="radio" data-hm="capsule">Capsule</button><button type="button" role="radio" data-hm="line">Line</button></span></div>
         </div></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Text size">
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
@@ -3289,7 +3281,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, frame: 'matching', fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass', headMark: 'capsule', prChips: 'matrix' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, frame: 'matching', fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, sidebarStyle: 'glass', headMark: 'capsule', prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3315,7 +3307,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   if ('sessionsCompact' in prefs) { prefs.listHidden = !!prefs.sessionsCompact; delete prefs.sessionsCompact; }
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar', 'layout']) delete prefs[k];   // layout: Tiles · Sidebar until 2026-11-01
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -3997,40 +3989,30 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const b = e.target.closest('[data-fr]'); if (!b || b.disabled || b.dataset.fr === frameOf()) return;
     revealFrom(centreOf(b), () => { prefs.frame = b.dataset.fr; savePrefs(); applySkin(); });
   });
-  // ---- the layout (2026-10-30, round X): Tiles — panels over a wallpaper, each edged in its project's colour — or
-  // Sidebar — the Mac's own window: the list a sidebar of rows, the header a toolbar (the CSS's sidebar block) — in one of
-  // four styles, round X's D1–D4: Edge, Ring, Tinted, Glass (the one picked, the default). Settings › Appearance › Layout
-  // and the style under it, the launcher's switch; each spreads from where it was asked for, as a look does. <html
-  // data-layout> and data-sidebar, which the head's script set before the first paint.
-  const LAYOUT_SAY = { tiles: 'Panels over a wallpaper, each edged in its project’s colour', sidebar: 'A sidebar of rows, the header a toolbar' };
+  // ---- the sidebar's style (2026-10-30, round X): the Mac's own window — the list a sidebar of rows, the header a
+  // toolbar (the CSS's sidebar block; the one layout since 2026-11-01, Tiles gone) — in one of four styles, round X's
+  // D1–D4: Edge, Ring, Tinted, Glass (the one picked, the default). Settings › Appearance › Sidebar style; it spreads from
+  // where it was asked for, as a look does. <html data-sidebar>, which the head's script set before the first paint.
   const SIDEBAR_SAY = { edge: 'The project’s colour an edge down each row, a light running down it while a chat works',
     ring: 'A ring of light round a chat at work, sonar round a question; the open chat in its project’s colour',
     tinted: 'The open chat solid in its project’s colour, the toolbar tinted with it; a spinner, a dot that pings',
     glass: 'Frosted over the open chat’s colour; a ring of light round a chat at work, sonar round a question' };
   // the project in the toolbar, every style's (2026-10-31, round XI's T2 and T5), the row under the style
   const HEADMARK_SAY = { capsule: 'Its name in its colour, on a capsule of it', line: 'Its name plain, a line of its colour along the toolbar’s foot' };
-  function layoutOf() { return prefs.layout === 'sidebar' ? 'sidebar' : 'tiles'; }
   function sidebarOf() { return ['edge', 'ring', 'tinted', 'glass'].includes(prefs.sidebarStyle) ? prefs.sidebarStyle : 'glass'; }
   function headMarkOf() { return prefs.headMark === 'line' ? 'line' : 'capsule'; }
-  function sidebarOn() { return document.documentElement.dataset.layout === 'sidebar'; }   // declarations: the list and the wallpaper ask before this line has run
   function applyLayout() {
-    const k = layoutOf(), st = sidebarOf(), hm = headMarkOf(), off = k !== 'sidebar';
-    Object.assign(document.documentElement.dataset, { layout: k, sidebar: st, hmark: hm });
-    for (const b of document.querySelectorAll('#layoutPick [data-lay]')) b.setAttribute('aria-checked', String(b.dataset.lay === k));
-    $('#layoutSay').textContent = LAYOUT_SAY[k];
-    // the style under it and the toolbar's project: off, with why, under Tiles
-    for (const b of document.querySelectorAll('#sideStylePick [data-sbs]')) { b.setAttribute('aria-checked', String(b.dataset.sbs === st)); b.disabled = off; }
-    $('#sideStyleRow').classList.toggle('off', off);
-    $('#sideStyleSay').textContent = off ? 'Only with the sidebar layout' : SIDEBAR_SAY[st];
-    for (const b of document.querySelectorAll('#headMarkPick [data-hm]')) { b.setAttribute('aria-checked', String(b.dataset.hm === hm)); b.disabled = off; }
-    $('#headMarkRow').classList.toggle('off', off);
-    $('#headMarkSay').textContent = off ? 'Only with the sidebar layout' : HEADMARK_SAY[hm];
+    const st = sidebarOf(), hm = headMarkOf();
+    Object.assign(document.documentElement.dataset, { sidebar: st, hmark: hm });
+    for (const b of document.querySelectorAll('#sideStylePick [data-sbs]')) b.setAttribute('aria-checked', String(b.dataset.sbs === st));
+    $('#sideStyleSay').textContent = SIDEBAR_SAY[st];
+    for (const b of document.querySelectorAll('#headMarkPick [data-hm]')) b.setAttribute('aria-checked', String(b.dataset.hm === hm));
+    $('#headMarkSay').textContent = HEADMARK_SAY[hm];
   }
-  // what reads the layout on its own: the wallpaper's glow (wallOn), the cards' light under the pointer (spotSoon), the
-  // list's frame and the rings, which the change starts anew (phaseAnims)
-  function setLayout(k, from = null, style = sidebarOf()) {
-    if (k === layoutOf() && style === sidebarOf()) return;
-    revealFrom(from, () => { prefs.layout = k; prefs.sidebarStyle = style; savePrefs(); applyLayout(); wallGo(); listChanged(); phaseAnims(); });
+  // what reads the style on its own: the list's frame and the rings, which the change starts anew (phaseAnims)
+  function setSideStyle(style, from = null) {
+    if (style === sidebarOf()) return;
+    revealFrom(from, () => { prefs.sidebarStyle = style; savePrefs(); applyLayout(); listChanged(); phaseAnims(); });
   }
   // the capsule is wider than the name alone: the header's chips fold again for it
   function setHeadMark(m, from = null) {
@@ -4038,9 +4020,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     revealFrom(from, () => { prefs.headMark = m; savePrefs(); applyLayout(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); });
   }
   applyLayout();
-  $('#layoutPick').addEventListener('click', e => { const b = e.target.closest('[data-lay]'); if (b) setLayout(b.dataset.lay, centreOf(b)); });
-  $('#sideStylePick').addEventListener('click', e => { const b = e.target.closest('[data-sbs]'); if (b && !b.disabled) setLayout('sidebar', centreOf(b), b.dataset.sbs); });
-  $('#headMarkPick').addEventListener('click', e => { const b = e.target.closest('[data-hm]'); if (b && !b.disabled) setHeadMark(b.dataset.hm, centreOf(b)); });
+  $('#sideStylePick').addEventListener('click', e => { const b = e.target.closest('[data-sbs]'); if (b) setSideStyle(b.dataset.sbs, centreOf(b)); });
+  $('#headMarkPick').addEventListener('click', e => { const b = e.target.closest('[data-hm]'); if (b) setHeadMark(b.dataset.hm, centreOf(b)); });
   // a tile: its appearance's slot, worn now where that appearance is
   for (const id of ['#darkPick', '#lightPick']) $(id).addEventListener('click', e => {
     const b = e.target.closest('[data-skin]'); if (!b || b.disabled) return;
@@ -5169,7 +5150,6 @@ const toolName = n => {
     if (drawn) phaseAnims();
     markQsel();
     listChanged();
-    spotSoon();
   }
   // The cards are reconciled, not rebuilt (2026-09-27): every SSE update set the list's innerHTML — every card parsed
   // again, six inline SVGs each, 183 of them under ALL, the one under the pointer detached — for a change on one. A
@@ -5496,28 +5476,7 @@ const toolName = n => {
     });
   }
   $('#slist').addEventListener('scroll', () => listChanged(true), { passive: true });
-  // The glow under the pointer (2026-10-09): the hovered card's --mx / --my, the pointer's place in it,
-  // read and written once a frame. A scroll moves another card under a still pointer, and a card redrawn under it is a
-  // new node with none, so both ask again (the scroll here, renderSessionList). A function, and its state on it: the
-  // list renders before this line has run.
-  // The card's place is read once, not every frame (2026-10-13): a move over the same card is the pointer against the
-  // rect it had — a read in the frame came after the frame's writes, a style pass and in WebKit a layer walk each; a
-  // scroll, a render (spotSoon() with no event) or the list resized reads it again.
-  function spotSoon(e) {
-    if (sidebarOn()) return;   // a row has no light under the pointer (2026-10-30)
-    if (e?.clientX != null) { spotSoon.x = e.clientX; spotSoon.y = e.clientY; } else spotSoon.r = null;
-    if (spotSoon.raf || spotSoon.x == null) return;
-    spotSoon.raf = requestAnimationFrame(() => {
-      spotSoon.raf = 0;
-      const c = document.querySelector('#slist > .card:hover'); if (!c) return;
-      if (c !== spotSoon.c || !spotSoon.r) { spotSoon.c = c; spotSoon.r = c.getBoundingClientRect(); }
-      const r = spotSoon.r;
-      c.style.setProperty('--mx', `${Math.round(spotSoon.x - r.left)}px`); c.style.setProperty('--my', `${Math.round(spotSoon.y - r.top)}px`);
-    });
-  }
-  $('#slist').addEventListener('pointermove', spotSoon, { passive: true });
-  $('#slist').addEventListener('scroll', () => spotSoon(), { passive: true });
-  new ResizeObserver(() => { listChanged(); fadeOver(true); spotSoon.r = null; }).observe($('#slist'));
+  new ResizeObserver(() => { listChanged(); fadeOver(true); }).observe($('#slist'));
   for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const list = $('#slist');
@@ -6604,7 +6563,6 @@ const toolName = n => {
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
     ...SWITCHES.map(([el, name]) => ({ kind: 'toggle', id: 'tg:' + el, name, on: () => $('#' + el).checked, flip: () => $('#' + el).click() })),
     { kind: 'toggle', id: 'tg:skinFollow', name: 'Theme follows macOS', hint: 'Settings › Appearance › Auto', on: () => !!prefs.skinFollow, flip: () => setLook(prefs.skinFollow ? (sysDark() ? 'dark' : 'light') : 'auto') },
-    { kind: 'toggle', id: 'tg:layout', name: 'Sidebar layout', hint: 'Settings › Appearance › Layout', on: () => layoutOf() === 'sidebar', flip: () => setLayout(layoutOf() === 'sidebar' ? 'tiles' : 'sidebar') },
   ];
   /** What ⏎ does with the dialog: `stay` re-fills it (another picker), else it closes first and the action runs. */
   const actionRows = () => {
@@ -10749,17 +10707,6 @@ const toolName = n => {
   // (`tileEdge`, a black one grey) — faint, and whole on the panel the keys are in (`.kf`). (The stack, up to three
   // live tiles of the chats asking or clauding beside the open one, ⌥⌘S, went on 2026-10-14 too.)
   $('#chat').classList.add('kf');   // the chat wears the border at first
-  // The wallpaper's glow after the pointer (2026-10-11, late night): its place, once a frame, from every pointer move on the
-  // board, and the transition eases it there — a lag that reads as light under glass. It stays where the pointer left
-  // the page (into the pane, out of the window); under reduced motion or without tiles, it is back in its corner. `wallGo()` with no move puts it where it should be now.
-  // Its target is set WALL_MS apart at most (2026-10-13; every frame before): each is a new 1.1 s transition, a style
-  // pass and in WebKit a layer walk — 16–18 % of a core with the pointer moving against 7.5 at rest. The ease starts from
-  // where the glow is, so eight a second still glide.
-  let wallAt = null, wallRaf = 0, wallLast = -Infinity;
-  const WALL_MS = 125;
-  const wallOn = () => !REDUCED.matches && !sidebarOn() && document.documentElement.dataset.skin !== 'black';   // the sidebar's wallpaper has no glow, nor Black's (2026-10-30)
-  function wallGo() { clearTimeout(wallRaf); wallRaf = 0; wallLast = performance.now(); $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
-  document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= setTimeout(() => requestAnimationFrame(wallGo), Math.max(0, wallLast + WALL_MS - performance.now())); }, { passive: true });
   // the panel the keys are in wears the border: the list or the chat (a pointer press or a focus inside it)
   const markKf = e => {
     const p = e.target.closest?.('#sessions, #chat'); if (!p) return;
@@ -10806,7 +10753,6 @@ const toolName = n => {
       }
     });
   }
-  wallGo();
 
   // ---- ⌥⌘A: the overview, every live agent at once (2026-10-10) ------------------------------------------------------
   // Hyprland's overview and a kanban's columns: Asking you · Clauding · Watching · Ready, unread — every project, each

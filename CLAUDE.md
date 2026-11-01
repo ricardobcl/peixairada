@@ -256,11 +256,6 @@ npm run map                         # rewrite the section maps at the top of ser
   `background` layer) and a glow from it, `--tint` · `--reach` · `--fall`; `.active` and `.qsel` set the
   numbers (hover is the light under the pointer) and the `transition` eases them. A new card state that wants a glow sets the variables. The outline is
   `1px solid transparent` at rest, so nothing moves.
-* **Under the pointer a card's glow follows it** (2026-10-09): a
-  `radial-gradient` layer at `--mx` / `--my`, `--spot` strong in `--spotc` — registered, not inheriting, so a move
-  restyles one card; `spotSoon` writes it once a frame on the `:hover` card, and after a render (a card redrawn under
-  a still pointer is a new node), **the card's rect read once** — again after a scroll, a render or a resize, never
-  every frame (2026-10-13). → `card-spot.mjs`.
 * **Type, corners and motion are tokens**: `--fs-2xs` … `--fs-xl` (10–18 px), `--r-1` … `--r-5` (3–14 px), and
   `--ease-out`, `--spring` (a `linear()` curve, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
@@ -453,7 +448,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Only the open card and a clauding one wear the colour round their border**; the rest have the lit left edge alone
   (`background-origin: border-box` under a transparent border). **ALL** (`key: 'all'`) is `BLACK` through
   `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. `#splitter`
-  is the tiles' gap between the list and the chat, dragged to size the list.
+  is the line between the list and the chat, dragged to size the list.
 * **A new chat has a card before its first word**: `visible()` shows a live chat with no transcript (not VS Code's);
   its `startedAt` — the moment the board first saw the id — is its time and place, carried over by `indexFile`, the
   last fallback of `wordAt` (both copies). **Empty is no word, not no file**: `/clear` writes lines at once, none of
@@ -721,27 +716,21 @@ npm run map                         # rewrite the section maps at the top of ser
   the split** (`unsplit` leaves it); the divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`). Stacked is
   `#groups.stack`; the second strip's `.gturn` turns it too. The app forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
-* **Tiles are the default layout** (2026-10-10; `main.tiles` in the markup, never toggled): gaps, square panels, **each
-  panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat` and `tileTints`;
-  a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
-  list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
-  hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`) — a move repaints
-  nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
-  `HOUSING_R` by eye) and the row keeps `notchPad()` clear; the top corners round as the screen's
-  (`main.tiles.notch`, `--screen-r`; the list hidden, both the chat's) only where a housing says the screen is a MacBook's. → `tiles.mjs`.
-* **Sidebar is the other** (2026-10-30, round X; Settings › Appearance › Layout and the style under it, `prefs.layout`,
-  `prefs.sidebarStyle`, `applyLayout`, `setLayout`, the launcher's `tg:layout`): `<html data-layout="tiles|sidebar">` and
-  `data-sidebar="edge|ring|tinted|glass"` (round X's D1–D4, Glass the default), set before the first paint by the head's
-  script; **its every rule is `:root[data-layout="sidebar"] …`**, a style's `…[data-sidebar=…]`, over the tiles'
-  (`main.tiles` stays). The shell: no gaps or edges (no `.ncut`); the list and the status bar `--side`; the header a
+* **The sidebar is the one layout** (2026-10-30, round X; Tiles gone 2026-11-01): `<html data-layout="sidebar">` in the
+  markup, never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the
+  panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` and `tileTints` for a split's
+  halves and Glass's pools, `#wall` and `--wallc`, `tileNotch`'s cut round the housing). **Its style** is Settings ›
+  Appearance › Sidebar style (`prefs.sidebarStyle`, `applyLayout`, `setSideStyle`): `data-sidebar="edge|ring|tinted|glass"`
+  (round X's D1–D4, Glass the default), set before the first paint by the head's script; a style's rules
+  `…[data-sidebar=…]`. The shell: no gaps or edges (no `.ncut`); the list and the status bar `--side`; the header a
   flush toolbar, no black, the theme's inks (`--hd-*`), lowered at the notch by padding; cards are rows — no ground,
-  edge or spot (`spotSoon` rests); the project a tag on a row but Edge's, in the toolbar a capsule or a line along its foot
-  (2026-10-31, Settings, `prefs.headMark` → `data-hmark`); PR and ticket chips a tint; no glow (`wallOn`), `#wall` not drawn but in Glass (over
-  it, `--side-glass` and a `backdrop-filter`). **`.card > .rg`, on every card (cardHtml; `display: none` in tiles), is
+  edge or light under the pointer; the project a tag on a row but Edge's, in the toolbar a capsule or a line along its foot
+  (2026-10-31, Settings, `prefs.headMark` → `data-hmark`); PR and ticket chips a tint; `#wall` not drawn but in Glass (over
+  it, `--side-glass` and a `backdrop-filter`). **`.card > .rg`, on every card (cardHtml), is
   each style's own signal** — Ring's and Glass's ring, a still mask to a 1.5 px band, its `::before` the turning square;
   Edge's 3 px edge, its `::before` a strip of lights moved by a transform (`edgerun`) —; Edge pings off the card's
   `::after` (`edgeping`), Tinted spins and pings off `.trow`'s pseudo-elements (`dotping`); the card's own two are the
-  sonar's in Ring and Glass, else `content: none`. A new card rule is checked in all four and tiles; a new animation of
+  sonar's in Ring and Glass, else `content: none`. A new card rule is checked in all four; a new animation of
   theirs joins `PHASED` and the reduced-motion block. → `sidebar-layout.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes

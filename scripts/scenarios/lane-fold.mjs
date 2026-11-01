@@ -2,13 +2,13 @@
 // once, and the head — drawn as a new node, put after the folding cards — vanished from its place while they jumped
 // up into it, then rode up under them; opening, the cards below slid down across the new ones from where they had
 // been while the lines jumped; in the sidebar the list under a folded card overshot by 5 px a card and dropped back.
-// What this checks, frame by frame (the moves paused right after the click and stepped through), in tiles and in the
-// sidebar: the head is the same node and never moves; folding, the lane's cards and day lines are one `.leaving`
+// What this checks, frame by frame (the moves paused right after the click and stepped through), in the sidebar (tiles
+// too, until 2026-11-01): the head is the same node and never moves; folding, the lane's cards and day lines are one `.leaving`
 // block under the head, each standing where it stood while the lane under it rises over them, and nothing jumps at
 // either end; opening, the cards are the list's own at once (`#slist > .card`), each at its place, shown only down to
 // the lane under them as it slides down from where it stood; nothing else in the list FLIPs; a click mid-fold or
 // mid-opening takes the motion back from where it stands; a head stuck over its lane folds it with nothing in sight
-// jumping; and under reduced motion it all happens at once. Shots: mid-fold and mid-opening, both layouts.
+// jumping; and under reduced motion it all happens at once. Shots: mid-fold and mid-opening.
 import { realpathSync } from 'node:fs';
 import { basename } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
@@ -61,13 +61,7 @@ export default async function (ctx) {
   const crop = () => ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: Math.min(r.height, 760), scale: 2 }))(document.querySelector('#sessions').getBoundingClientRect())`);
   const T = [0, 40, 80, 120, 160, 200];
 
-  for (const layout of ['tiles', 'sidebar']) {
-    if (layout === 'sidebar') {
-      await ctx.evaluate(`(p => { p.layout = 'sidebar'; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'))`);
-      await ctx.reload();
-      await ctx.waitFor(`document.documentElement.dataset.layout === 'sidebar' && document.querySelector('#slist > .gsep.lane.idle')`, { what: 'the sidebar' });
-      await ctx.settle(); await ctx.waitFor(`!document.querySelector('.rn.rolling')`);
-    }
+  for (const layout of ['sidebar']) {
     const o = out[layout] = {};
     // ---- folding Ready: one block under a head that stays, the lane under it rising over the cards ----
     const open0 = await look(ctx, 'ready', 'idle');

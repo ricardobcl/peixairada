@@ -2,8 +2,9 @@
 // 2026-10-15, Peacock's before). A project with a colour in the setup and three chats in it: one clauding, one asking,
 // one on an open PR with a face and a block of code. What this checks: the cards and the open chat's header wear the
 // project's colour, the list ALL's black, a PR chip its state's green, the code its syntax colours; the setup shows the
-// colour; the chat header's square writes it there, and ⌥-click takes it off. Black still stands out: the black beside it — the header right of the
-// project — turns grey, and an open black card's ink is light.
+// colour; the chat header's square writes it there, and ⌥-click takes it off. Black still stands out: an open black
+// card's lit colour is a grey on the dark (the sidebar's rows since 2026-11-01: the tag, the open row's tint — the
+// tiles' card ground and the header's black beside the project went with them).
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -65,10 +66,10 @@ export default async function (ctx) {
         repo: [${JSON.stringify(busy.id)}, ${JSON.stringify(onPr.id)}].map(id => card(id).style.getPropertyValue('--repo')),
         list: document.querySelector('#sessions').style.getPropertyValue('--repo'),
         tinted: document.querySelector('#chat').classList.contains('tinted'),
-        card: __chroma(cs(card(${JSON.stringify(asking.id)}), 'background-image')),
-        open: __chroma(cs(plain, 'background-image')), head: __chroma(cs(document.querySelector('.shead'), '--hbg-eased')),   // the header's own eased copy (2026-10-13)
+        card: __chroma(cs(card(${JSON.stringify(asking.id)}).querySelector('.top .repo'), 'background-color')),   // a row's project tag
+        open: __chroma(cs(plain, 'background-color')), head: __chroma(cs(document.querySelector('.shead'), '--hbg-eased')),   // the header's own eased copy (2026-10-13)
         lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
-        pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'background-color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'background-color')),
+        pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'color')),   // the sidebar's chips a tint, their ink the state's
         dots: [...document.querySelectorAll('#slist > .gsep.lane.working > i')].map(i => __chroma(cs(i, 'border-top-color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
         face: cs(plain.querySelector('.faces img'), 'filter'), you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),
@@ -101,13 +102,11 @@ export default async function (ctx) {
     // 3 · black, picked at the chat header's square: written into the setup, and what was black beside it is grey, in
     // both themes
     const scheme = dark => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] });
-    const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), 
-      head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor,
-      ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color,
+    const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'),
       lift: (c => { const p = document.createElement('i'); p.style.color = 'var(--lift)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.active')),
       wash: getComputedStyle(document.querySelector('#slist > .card.active')).getPropertyValue('--wash') })`).then(JSON.parse);
     out.mid = await frame();
-    ctx.assert.deepEqual([out.mid.dark, out.mid.head], [false, 'rgb(0, 0, 0)'], `a colour that is not black leaves the black alone: ${JSON.stringify(out.mid)}`);
+    ctx.assert.equal(out.mid.dark, false, `a colour that is not black is not the black chat: ${JSON.stringify(out.mid)}`);
     await ctx.evaluate(`document.querySelector('#shead .sq.pick').click()`);
     await ctx.evaluate(`(i => { i.value = '#000000'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#colorInput'))`);
     await ctx.waitFor(`document.querySelector('#main').classList.contains('darkchat')`, { what: 'the open chat in black' });
@@ -117,10 +116,6 @@ export default async function (ctx) {
       await scheme(dark); await ctx.waitFor(`document.documentElement.dataset.theme === '${dark ? 'dark' : 'light'}'`, { what: 'the board in that appearance' }); await ctx.sleep(100);
       out[dark ? 'blackDark' : 'blackLight'] = await frame();
     }
-    ctx.assert.equal(out.blackDark.head, 'rgb(74, 74, 69)', `dark: the header right of the project is grey: ${JSON.stringify(out.blackDark)}`);
-    // in the light the header's black is the panel since 2026-10-12 (off the notch): no grey to need
-    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.ink], ['rgb(245, 244, 240)', 'rgb(33, 33, 30)'],   // the board's own light panel and ink (2026-11-01)
-      `light: the header right of the project the panel, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
     // the card's edge, glow and border wear the colour as it reads on the panel (2026-10-09, late night): in the dark a
     // black is a grey there, its lightness held at .62; on the light panel it is black as set
     ctx.assert.deepEqual([out.blackDark.lift, out.blackLight.lift], ['oklch(0.62 0 0)', 'oklch(0 0 0)'], `the black card's lit colour: ${JSON.stringify([out.blackDark, out.blackLight])}`);
@@ -133,8 +128,7 @@ export default async function (ctx) {
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 500 });
     await ctx.shot('black');
 
-    // 4 · ⌥-click on the square takes the colour off: the project has none, its short name stays, and the black beside
-    // it is black again
+    // 4 · ⌥-click on the square takes the colour off: the project has none, its short name stays
     await ctx.evaluate(`document.querySelector('#shead .sq.pick').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);
     await waitFor(async () => (await setupColor()) === undefined, { what: 'the colour taken off' });
     ctx.assert.deepEqual((await ctx.server.api('api/config')).body.projects, { 'calm-repo': { abbr: 'CR' } }, 'the short name kept');

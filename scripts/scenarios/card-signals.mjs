@@ -26,7 +26,7 @@ const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')
   lit: getComputedStyle(c).getPropertyValue('--lit').trim(),
   spins: getComputedStyle(c).getPropertyValue('--spins').trim(),
   track: getComputedStyle(c).getPropertyValue('--track').trim(), active: c.classList.contains('active'),
-  ring: / 0px 0px 0px 1px|^[^,]*0px 0px 0px 1px/.test(getComputedStyle(c).boxShadow),
+  ring: /0px 0px 0px 1(\.5)?px/.test(getComputedStyle(c).boxShadow),   // a line round the row (the sidebar's, 2026-11-01: inset 1.5 px)
 }))`);
 
 export default async function (ctx) {
@@ -141,7 +141,7 @@ export default async function (ctx) {
     // anew (a tool call alone no longer is, since 2026-09-27 night — the age left the markup; see below).
     const ring = () => ctx.evaluate(`JSON.stringify((c => {
       const a = c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring');
-      const m = new DOMMatrix(getComputedStyle(c, '::before').transform), doc = document.timeline.currentTime;
+      const m = new DOMMatrix(getComputedStyle(c.querySelector(':scope > .rg'), '::before').transform), doc = document.timeline.currentTime;   // the sidebar's ring is .rg's (2026-11-01)
       c.__seen = (c.__seen || 0) + 1;
       return { seen: c.__seen, start: a && a.startTime, props: a && Object.keys(a.effect.getKeyframes().at(-1)).filter(k => !['offset', 'computedOffset', 'easing', 'composite'].includes(k)),
         angle: Math.round((Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360), expect: Math.round((doc % 1400) / 1400 * 360) };
@@ -260,12 +260,11 @@ export default async function (ctx) {
     out.alertsAfter = await ctx.evaluate(`window.__alerts.filter(a => a.title === 'Normal work').map(a => a.kind)`);
     ctx.assert.deepEqual(out.alertsAfter, ['needs-input'], 'and no second alert for a question whose line arrived with its answer');
 
-    // ---- the ink card's lit edge (2026-10-09), the ring round it (the edge light, its readings down that edge, was a
-    // switch until 2026-10-14) ----
-    const look = t => ctx.evaluate(`JSON.stringify((c => ({ bg: getComputedStyle(c).backgroundImage.slice(0, 40), anim: getComputedStyle(c, '::before').animationName, w: getComputedStyle(c, '::before').width,
+    // ---- the ring round the row (the sidebar's .rg since 2026-11-01; the tiles' card a lit edge, the ring its own) ----
+    const look = t => ctx.evaluate(`JSON.stringify((c => ({ anim: getComputedStyle(c.querySelector(':scope > .rg'), '::before').animationName,
       lights: c.style.getPropertyValue('--lights') || '1' }))([...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === ${JSON.stringify(t)})))`).then(JSON.parse);
     out.ring = await look('Normal work');
-    ctx.assert.ok(out.ring.bg.startsWith('linear-gradient(to right') && out.ring.anim === 'ring', `the lit edge first, the ring round: ${JSON.stringify(out.ring)}`);
+    ctx.assert.equal(out.ring.anim, 'ring', `the ring round the row: ${JSON.stringify(out.ring)}`);
     ctx.assert.equal((await look('Three agents out')).lights, '3', 'a light per agent');
     return out;
   } finally {

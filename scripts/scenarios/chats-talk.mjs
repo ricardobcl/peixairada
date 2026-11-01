@@ -4,8 +4,7 @@
 // wears ← from Retry declined payments, in words for a screen reader too, and a click on it opens the sender; the
 // transcript has the message as a row of its own — not your bubble, not Claude's —, its sender a button that opens that
 // chat, its mode said; the waiting one at the log's foot, queued, before the presence line; the sender's SendMessage
-// row links back to where it went; your last prompt and word are still yours. Shots in tiles and the sidebar, dark and
-// light.
+// row links back to where it went; your last prompt and word are still yours. Shots dark and light.
 import { spawn } from 'node:child_process';
 import { appendFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -62,7 +61,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.queued.beforePresence, true, 'the queue is the log’s foot, before the clauding line');
     const sum = await ctx.evaluate(`peix.session('${b.id}')`);
     ctx.assert.equal(sum.lastPrompt, 'queue the invoice webhooks', 'your last prompt, still yours');
-    await ctx.shot('chats-talk-tiles-dark');
+    await ctx.shot('chats-talk-large');
 
     // the sender's name, clicked: that chat, and its SendMessage row links back
     await ctx.evaluate(`document.querySelector('#log .msg.peer .peerlink').click()`);
@@ -79,18 +78,17 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('${card} .chip.peerin').click()`);
     await ctx.waitFor(`peix.state().current === '${a.id}'`, { what: 'the mark opens the sender' });
 
-    // the sidebar, and light
-    for (const [layout, scheme] of [['sidebar', 'dark'], ['sidebar', 'light'], ['tiles', 'light']]) {
+    // dark and light
+    for (const scheme of ['dark', 'light']) {
       await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] });
-      await ctx.evaluate(`localStorage.setItem('peixairada-prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'), layout: '${layout}' }))`);
       await ctx.reload();
       await ctx.openChat(b.id);
-      await ctx.waitFor(`document.querySelector('#log .msg.peer') && document.querySelector('${card} .chip.peerin')`, { what: `the rows in ${layout}, ${scheme}` });
+      await ctx.waitFor(`document.querySelector('#log .msg.peer') && document.querySelector('${card} .chip.peerin')`, { what: `the rows in ${scheme}` });
       await ctx.settle();
-      out[`${layout}-${scheme}`] = await ctx.evaluate(`(c => { const r = c.getBoundingClientRect(), t = c.closest('.card').getBoundingClientRect(); return { inCard: r.right <= t.right + 0.5 && r.left >= t.left - 0.5, w: Math.round(r.width), shown: getComputedStyle(c).display !== 'none' }; })(document.querySelector('${card} .chip.peerin'))`);
-      ctx.assert.equal(out[`${layout}-${scheme}`].shown, true, `the mark shows in ${layout}`);
-      ctx.assert.equal(out[`${layout}-${scheme}`].inCard, true, `and stays inside its card in ${layout}`);
-      await ctx.shot(`chats-talk-${layout}-${scheme}`);
+      out[scheme] = await ctx.evaluate(`(c => { const r = c.getBoundingClientRect(), t = c.closest('.card').getBoundingClientRect(); return { inCard: r.right <= t.right + 0.5 && r.left >= t.left - 0.5, w: Math.round(r.width), shown: getComputedStyle(c).display !== 'none' }; })(document.querySelector('${card} .chip.peerin'))`);
+      ctx.assert.equal(out[scheme].shown, true, `the mark shows in ${scheme}`);
+      ctx.assert.equal(out[scheme].inCard, true, `and stays inside its card in ${scheme}`);
+      await ctx.shot(`chats-talk-${scheme}`);
     }
     return out;
   } finally { for (const s of sleeps) s.kill(); }

@@ -5,6 +5,29 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, evening — Tiles go
+
+Ricardo: *"we need to simplify settings on appearance. remove "tiles" for example. also, themes are still not very
+coherent."*
+
+* **The sidebar is the one layout.** Settings › Appearance's Layout row, `prefs.layout` (a saved one is dropped on load,
+  as every key the prefs literal lacks), the launcher's *Sidebar layout* switch and the head script's line went;
+  `<html data-layout="sidebar">` is in the markup, never toggled — as `data-head="float"` and `main.tiles` are. The
+  sidebar's style and the toolbar's project are rows of their own now, never off.
+* **What only Tiles drew went with it**: the light under the pointer on a card (`spotSoon`, `card-spot.mjs`) and the
+  wallpaper's glow after the pointer (`#wall i`, `wallGo`, `wallOn`); `tiles.mjs` with them. The tiles' rules stay as
+  the panels' base the sidebar draws over (a split's halves, Glass's pools, the cut at the notch read them); the rest of
+  them is dead weight under the sidebar — **open**: fold the sidebar's rules into the base and drop the tiles' that
+  nothing reads, one pass with every scenario.
+* The scenarios that ran each layout run the sidebar alone; the harness's board is the sidebar (Glass) now, as a new
+  board's, and fourteen that read the tiles' geometry (a card's border and ring, the 8 px gaps, the floating header's
+  inset and its dip at the notch) read the sidebar's now. **Open**: the README's shots are still the tiles'.
+* Three of the sidebar's own, found by those: a stack's slivers showed their numbers' edges (*All*: the chips' tint
+  inked them over the stack's rule); at the notch, a list dragged under the housing left the toolbar's title under it
+  (the sidebar's padding outweighed the notch's); with the list hidden, the sheet's top left corner did not follow the
+  screen's.
+* The themes' coherence and the rest of the pane: a study first (round XVII).
+
 ## Decisions of 2026-11-01, later still — the matrix: one size, nothing round it, a PR's card
 
 Ricardo, on the matrix: *"make the PR squares a bit bigger and consistent, even when there are many PRs. Also, remove the

@@ -1,7 +1,7 @@
 // The clauding light (2026-09-29). Two clauding chats in a project with a colour and a few ready ones under
-// them. On a card the ring runs in the border's place: no border, the cover 2 px in, the colour lifted towards white;
-// a ready card keeps its border. The open card runs its own ring (its light ran on past it, #trail, until tiles were
-// the only layout — 2026-10-14), and a turn that ends puts it out.
+// them. On a row the ring is .rg's (the sidebar's, the one layout since 2026-11-01; the card's own border and cover
+// were the tiles'): shown and turning on a clauding row, the colour lifted towards white; none on a ready row. The open
+// card runs its own ring (its light ran on past it, #trail, until 2026-10-14), and a turn that ends puts it out.
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,11 +29,12 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelectorAll('#slist > .card.working').length === 2`, { what: 'the two clauding cards' });
     await ctx.waitFor(`document.querySelector('#slist > .card.working').style.getPropertyValue('--repo') === '#2f7fd8'`, { what: "the project's colour, from the setup" });
 
-    // 1 · on a card that is not open, the light runs where the border was
-    const ring = await ctx.evaluate(`JSON.stringify((c => ({ border: getComputedStyle(c).borderTopWidth, pad: getComputedStyle(c).paddingTop, cover: getComputedStyle(c, '::after').top, anim: getComputedStyle(c, '::before').animationName }))(document.querySelector('#slist > .card.working')))`).then(JSON.parse);
-    ctx.assert.deepEqual(ring, { border: '0px', pad: '10px', cover: '2px', anim: 'ring' }, 'no border, its 2 px in the padding, the cover 2 px in: the band is the edge itself');
-    const ready = await ctx.evaluate(`JSON.stringify((c => ({ border: getComputedStyle(c).borderTopWidth, pad: getComputedStyle(c).paddingTop }))(document.querySelector('#slist > .card:not(.working)')))`).then(JSON.parse);
-    ctx.assert.deepEqual(ready, { border: '2px', pad: '8px' }, 'a ready card keeps its border — the same outer box, the same content box');
+    // 1 · on a card that is not open, the ring runs round the row
+    const rg = sel => `(c => { const r = c.querySelector(':scope > .rg'); return { shown: getComputedStyle(r).display, anim: getComputedStyle(r, '::before').animationName }; })(document.querySelector('${sel}'))`;
+    const ring = await ctx.evaluate(`JSON.stringify(${rg('#slist > .card.working')})`).then(JSON.parse);
+    ctx.assert.deepEqual(ring, { shown: 'block', anim: 'ring' }, 'a clauding row: its ring shown and turning');
+    const ready = await ctx.evaluate(`JSON.stringify(${rg('#slist > .card:not(.working)')})`).then(JSON.parse);
+    ctx.assert.equal(ready.shown, 'none', 'a ready row: none');
     // and what runs is the colour lifted towards white (2026-10-02: a navy went round unseen in its own colour) — read
     // off a probe painted in it, as an OKLCH lightness: the blue's is .6
     out.lit = await ctx.evaluate(`(c => { const p = document.createElement('i'); p.style.color = 'var(--lit)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.working'))`);
@@ -44,12 +45,12 @@ export default async function (ctx) {
     // project box, until tiles were the only layout — 2026-10-14)
     await ctx.openChat(open.id);
     await ctx.settle();
-    ctx.assert.ok(await ctx.evaluate(`getComputedStyle(document.querySelector('#slist > .card.active'), '::before').animationName === 'ring'`), 'the open card runs its ring');
+    ctx.assert.ok(await ctx.evaluate(`getComputedStyle(document.querySelector('#slist > .card.active > .rg'), '::before').animationName === 'ring'`), 'the open card runs its ring');
     await ctx.shot('open', { x: 0, y: 0, width: 640, height: 140 });
 
-    // the turn ends: the ring goes out, and the card's own edge is its border again
+    // the turn ends: the ring goes out
     appendFileSync(open.file, replyLines({ id: open.id, cwd, text: 'Done.', at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
-    await ctx.waitFor(`!document.querySelector('#slist > .card.active').classList.contains('working') && getComputedStyle(document.querySelector('#slist > .card.active')).borderTopWidth === '2px'`, { what: 'the ring out when the turn ends', timeout: 8000 });
+    await ctx.waitFor(`!document.querySelector('#slist > .card.active').classList.contains('working') && getComputedStyle(document.querySelector('#slist > .card.active > .rg')).display === 'none'`, { what: 'the ring out when the turn ends', timeout: 8000 });
     return out;
   } finally {
     for (const p of sleeps) p.kill();

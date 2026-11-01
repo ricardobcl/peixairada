@@ -1,8 +1,8 @@
 // Round XV's themes (2026-11-01): the board's own lay the chat in a frame (T3), the frame of the other appearance a
 // setting (Settings › Appearance › Frame: Matching · Ink, T5 · Stage, T6), Softened a light theme of the picker (T9),
 // and every theme's small inks fitted to 4.5:1. A project painted blue and a chat in it. What this checks: in light the
-// window's ground, the wallpaper and the status bar are the frame, the chat a step lighter; the sidebar layout lays the
-// chat in it as a sheet — 8 px in, rounded — the list on the frame. Ink turns the frame graphite round the light chat:
+// window's ground, the wallpaper, the list and the status bar are the frame, the chat a sheet in it a step lighter — 8 px
+// in, rounded. Ink turns the frame graphite round the light chat:
 // the list, the status bar and the wallpaper in the frame's own tokens, the cards reading the frame's appearance (their
 // colour lifted as on dark), the chat and its header light; a reload paints it at once (the head's script); in dark Ink
 // is Matching. Stage turns the frame paper round the dark chat. Under a theme of the picker the row is off and says why,
@@ -39,21 +39,17 @@ export default async function (ctx) {
   const frame = async f => { await click(`#framePick [data-fr="${f}"]`); await ctx.waitFor(`window.peix.prefs().frame === '${f}'`, { what: `Frame › ${f}` }); await ctx.settle(); };
   const appearance = async m => { await click(`#lookPick [data-look="${m}"]`); await ctx.waitFor(`document.documentElement.dataset.theme === '${m}'`, { what: `Appearance › ${m}` }); await ctx.settle(); };
 
-  // light, tiles: the frame is the window's ground, the wallpaper's and the status bar's; the chat a step lighter
+  // light, Ring (flat: Glass's list is the frame at 60 % over the wallpaper): the frame is the window's ground, the
+  // wallpaper's, the list's and the status bar's; the chat a sheet in it, a step lighter
   await appearance('light');
-  ctx.assert.deepEqual(await attrs(), { theme: 'light', frame: 'light', skin: null, layout: 'tiles' }, 'the board’s own light, tiles');
-  let l = await look();
-  ctx.assert.deepEqual([l.body, l.wall, l.chat, l.bar], ['rgb(222, 220, 214)', '#dedcd6', 'rgb(241, 240, 236)', 'rgb(222, 220, 214)'], 'tiles: the frame round the panels');
-  ctx.assert.deepEqual([l.picked, l.off, l.say], ['matching', false, 'Frame and chat in one appearance, the chat a step lighter'], 'Settings › Frame: Matching');
-
-  // the sidebar (Ring, flat: Glass's list is the frame at 60 % over the wallpaper): the chat a sheet in the frame, the list on it
-  await click('#layoutPick [data-lay="sidebar"]');
-  await ctx.waitFor(`document.documentElement.dataset.layout === 'sidebar'`, { what: 'the sidebar layout' });
   await click('#sideStylePick [data-sbs="ring"]');
   await ctx.waitFor(`document.documentElement.dataset.sidebar === 'ring'`, { what: 'Ring' });
   await ctx.settle();
-  l = await look();
-  ctx.assert.deepEqual([l.list, l.chat, l.sheet], ['rgb(222, 220, 214)', 'rgb(241, 240, 236)', '8px 8px 12px'], 'the sidebar: the list the frame, the chat a sheet 8 px in, rounded');
+  ctx.assert.deepEqual(await attrs(), { theme: 'light', frame: 'light', skin: null, layout: 'sidebar' }, 'the board’s own light');
+  let l = await look();
+  ctx.assert.deepEqual([l.body, l.wall, l.list, l.bar], ['rgb(222, 220, 214)', '#dedcd6', 'rgb(222, 220, 214)', 'rgb(222, 220, 214)'], 'the frame round the chat');
+  ctx.assert.deepEqual([l.chat, l.sheet], ['rgb(241, 240, 236)', '8px 8px 12px'], 'the chat a sheet 8 px in, rounded, a step lighter');
+  ctx.assert.deepEqual([l.picked, l.off, l.say], ['matching', false, 'Frame and chat in one appearance, the chat a step lighter'], 'Settings › Frame: Matching');
   out.matching = await ctx.shot('matching-light');
 
   // Ink: a graphite frame round the light chat — the list and the status bar in the frame's tokens, the cards on dark
@@ -94,21 +90,14 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await attrs(), { theme: 'dark', frame: 'light', skin: null, layout: 'sidebar' }, 'Stage: the frame light, the chat dark');
   l = await look();
   ctx.assert.deepEqual([l.body, l.list, l.bar, l.chat, l.lift], ['rgb(233, 228, 217)', 'rgb(233, 228, 217)', 'rgb(233, 228, 217)', 'rgb(28, 28, 26)', 'light'], 'Stage: paper round the dark chat, the card as on light');
+  ctx.assert.equal(l.wall, '#e9e4d9', 'the wallpaper paper too');
   out.stage = await ctx.shot('stage-dark');
-  await click('#layoutPick [data-lay="tiles"]');
-  await ctx.waitFor(`document.documentElement.dataset.layout === 'tiles'`, { what: 'tiles again' });
-  await ctx.settle();
-  l = await look();
-  ctx.assert.deepEqual([l.wall, l.list, l.chat], ['#e9e4d9', 'rgb(233, 228, 217)', 'rgb(28, 28, 26)'], 'Stage in tiles: the wallpaper and the list paper, the chat dark');
-  out.stageTiles = await ctx.shot('stage-dark-tiles');
 
   // a theme of the picker: the row off and why; the board flat — Softened, second in the light row
   await appearance('light');
   ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#lightPick [data-skin]')].slice(0, 2).map(b => b.dataset.skin + ' ' + b.title)`), ['own-light peixAIrada', 'softened Softened'], 'Softened beside the board’s own');
   await click('#lightPick [data-skin="softened"]');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'softened'`, { what: 'Softened worn' });
-  await click('#layoutPick [data-lay="sidebar"]');
-  await ctx.waitFor(`document.documentElement.dataset.layout === 'sidebar'`, { what: 'the sidebar, under Softened' });
   await ctx.settle();
   ctx.assert.deepEqual(await attrs(), { theme: 'light', frame: 'light', skin: 'softened', layout: 'sidebar' }, 'Softened: no frame of the other appearance');
   l = await look();

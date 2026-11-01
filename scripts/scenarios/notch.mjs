@@ -4,9 +4,9 @@
 // header keeps its title left of the housing and its chips and ··· right of it, nothing of the row under it; a list
 // dragged under the housing pads its head down, and the header, too far left for a title, pads down too; a list past
 // the housing leaves a header that lifts as it is; the list hidden is the lifted case; and the fill going off puts it all
-// back. Since 2026-09-28: what follows the title stands at the far right, the header is black from the project's name
-// on, and a title that does not fit left of the housing runs on under it (the floating header's way, the only header
-// since 2026-10-14; it went right of the housing before) — a short one stays left.
+// back. Since 2026-09-28: what follows the title stands at the far right, and a title that does not fit left of the
+// housing goes right of it — the sidebar's toolbar (the one layout since 2026-11-01) sits too high for the tiles'
+// floating header's way, on under the housing — a short one stays left.
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
@@ -51,14 +51,13 @@ export default async function (ctx) {
   // The fill, the list at its usual width: both heads in the strip, the header with a hole where the housing is
   await fill(true);
   out.on = await read();
-  ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.tunder], [true, '32px', false, false, true], `filled: the list lifted, the title on under the housing: ${JSON.stringify(out.on)}`);
+  ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.tright], [true, '32px', false, false, true], `filled: the list lifted, the title past the housing: ${JSON.stringify(out.on)}`);
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
   ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [0, 7], 'the list\'s cards and the chat\'s header at the top, their own padding, the first card flush with the top (2026-09-29)');
   ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
-  ctx.assert.ok(!out.on.tright && out.on.tLeft < NOTCH.left && out.on.tRight > NOTCH.right, `a title too long for the left runs on under the housing (${out.on.tLeft}–${out.on.tRight})`);
+  ctx.assert.ok(!out.on.tunder && out.on.tLeft >= NOTCH.right, `a title too long for the left starts past the housing (${out.on.tLeft}–${out.on.tRight})`);
   ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);
   ctx.assert.equal(out.on.tailRight, out.on.headInner, 'and what follows the title stands at the far right (2026-09-28)');
-  ctx.assert.equal(out.on.split, out.on.sepRight, `the header is black from the project's name on, the housing inside it (${out.on.split})`);
   ctx.assert.deepEqual([out.on.underHousing, out.on.oneLine], [[], true], 'nothing of the row under the housing, and the row is one line');
   ctx.assert.ok(out.on.title > 150, `the title keeps room (${out.on.title} px)`);
   ctx.assert.deepEqual([out.on.chips, out.on.more], [2, true], 'two of the six chips right of the housing, and the count (two at most since 2026-10-12)');
@@ -92,7 +91,7 @@ export default async function (ctx) {
   // A redraw of the header keeps its way round the housing (the h2 is rebuilt): the chips' fold toggled
   await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(250);
   out.redrawn = await read();
-  ctx.assert.deepEqual([out.redrawn.tunder, out.redrawn.underHousing], [true, []], 'redrawn, the title runs on under the housing again');
+  ctx.assert.deepEqual([out.redrawn.tright, out.redrawn.underHousing], [true, []], 'redrawn, the title past the housing again');
   await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(100);
 
   // A title short enough for the left of the housing stays there, the chips still at the far right

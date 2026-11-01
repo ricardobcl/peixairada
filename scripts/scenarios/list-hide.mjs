@@ -4,7 +4,7 @@
 // runs (a clauding card's ring is no animation at all, so WebKit has none to keep on the main thread), and shown
 // again the rings turn in step. ⌥⌘↑↓ still walk the chats; what only narrows the list — the magnifier, a filter —
 // shows it. Kept across a reload, and a board saved with the list folded to its rail comes back with it hidden. At the
-// notch the chat's tile takes the screen's top left corner the list had.
+// notch the chat's sheet rounds both its top corners.
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,7 +17,7 @@ const LOOK = `JSON.stringify((() => {
   const r = el => el.getBoundingClientRect(), b = document.querySelector('#sbList');
   return { hidden: document.querySelector('#main').classList.contains('lhide'), list: getComputedStyle(document.querySelector('#sessions')).display,
     splitter: getComputedStyle(document.querySelector('#splitter')).display, chatLeft: Math.round(r(document.querySelector('#chat')).left),
-    chatW: Math.round(r(document.querySelector('#chat')).width), pressed: b.getAttribute('aria-pressed'), title: b.title,
+    chatW: Math.round(r(document.querySelector('#chat')).width), chatRight: Math.round(innerWidth - r(document.querySelector('#chat')).right), pressed: b.getAttribute('aria-pressed'), title: b.title,
     pane: getComputedStyle(b.querySelector('.lpane')).opacity, pref: window.peix.prefs().listHidden };
 })())`;
 // the rings and pings of the cards, as the document runs them
@@ -58,8 +58,8 @@ export default async function (ctx) {
     out.hidden = await look();
     ctx.assert.deepEqual([out.hidden.hidden, out.hidden.list, out.hidden.splitter, out.hidden.pressed, out.hidden.title, out.hidden.pane, out.hidden.pref],
       [true, 'none', 'none', 'false', 'Show the chat list (⌥⌘B)', '0', true], 'hidden, and the button says it would show it');
-    ctx.assert.equal(out.hidden.chatLeft, 8, 'the chat starts where the list did, the tiles’ gap from the window’s edge');
-    ctx.assert.ok(out.hidden.chatW >= out.shown.chatW + 380, `the chat the whole width: ${out.shown.chatW} → ${out.hidden.chatW}`);
+    ctx.assert.deepEqual([out.hidden.chatLeft, out.hidden.chatRight], [8, 8], 'the chat the whole width, the frame’s 8 px on either side');
+    ctx.assert.ok(out.hidden.chatW > out.shown.chatW + 360, `the chat wider by the list: ${out.shown.chatW} → ${out.hidden.chatW}`);
     ctx.assert.deepEqual(await ctx.evaluate(RINGS), [], 'no animation runs in the hidden list');
     ctx.assert.deepEqual(await ctx.evaluate(ANIM_RULES), [], 'and nothing breaks the compositor’s rules');
     ctx.assert.ok(await ctx.evaluate(`document.querySelector('#chat').classList.contains('kf')`), 'the keys’ border on the chat');

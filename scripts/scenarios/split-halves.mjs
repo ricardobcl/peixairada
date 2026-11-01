@@ -6,7 +6,8 @@
 // and ⌥⌘W closes the tab the keys are in; an empty half keeps its strip (the drop, and ⋯ for ⊟ ⨯). A tab dragged across
 // is pane-tabs.mjs's: a page gives a half the second tab a drag starts from. The strip's family (2026-10-11, the studies'
 // Q1/Q5/Q7): its controls 26 px, radius 6; the half's ⊟ ⨯ out beside ⋯ on a click, folded as the pointer leaves; and
-// with tiles, each half a tile — 8 px apart, bordered, whole on the half with the keys, a lone strip nothing at all.
+// each half a pane of its own — a hairline round each, the project's colour on the half with the keys, a 5 px rule
+// between them (the sidebar's; the tiles' 8 px gap and 2 px borders until 2026-11-01), a lone strip nothing at all.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0]));   // a zsh's tab is shell:<its id>
@@ -44,11 +45,12 @@ export default async function (ctx) {
   ctx.assert.equal((await family()).shut, false, '⋯ puts them out');
   await ctx.evaluate(`document.querySelector('#ptabsB').dispatchEvent(new PointerEvent('pointerleave'))`);
   ctx.assert.equal((await family()).shut, true, '…and the pointer leaving the strip folds them');
-  // each half a tile of its own
+  // each half a pane of its own
   await ctx.settle();
   const tiled = await ctx.evaluate(`JSON.stringify({ borders: ['#grp', '#grpB'].map(id => getComputedStyle(document.querySelector(id)).borderTopWidth), on: ['#grp', '#grpB'].map(id => getComputedStyle(document.querySelector(id)).borderTopColor),
     gap: Math.round(document.querySelector('#gsplit').getBoundingClientRect().width), rule: Math.round(document.querySelector('#ptabs').getBoundingClientRect().height) })`).then(JSON.parse);
-  ctx.assert.deepEqual([tiled.borders, tiled.gap, tiled.rule], [['2px', '2px'], 8, 0], `tiles: each half bordered, 8 px between, the lone strip nothing — ${JSON.stringify(tiled)}`);
+  ctx.assert.deepEqual([tiled.borders, tiled.gap, tiled.rule, tiled.on[0]], [['1px', '1px'], 5, 0, 'rgba(0, 0, 0, 0)'], `each half a hairline, 5 px between, the lone strip nothing — ${JSON.stringify(tiled)}`);
+  ctx.assert.match(tiled.on[1], /^color\(srgb|^rgb/, 'the half with the keys in its colour');
   ctx.assert.notEqual(tiled.on[0], tiled.on[1], 'the half with the keys whole, the other faint');
   await ctx.shot('tiled');
 

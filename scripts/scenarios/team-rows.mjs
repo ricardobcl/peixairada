@@ -2,8 +2,7 @@
 // at work, one done, one only the roster knows yet — and a chat whose team is itself alone. What this checks: the lead's
 // card has a row per teammate, by name, its state in words and its last line (the tool it calls, what it said); the
 // other card none; a teammate's next step changes its row and keeps the card's node (filled after the render, as the
-// live line is); compact cards keep the rows, compact's same height hides them. Shots in tiles and the sidebar, dark and
-// light.
+// live line is); compact cards keep the rows, compact's same height hides them. Shots dark and light.
 import { spawn } from 'node:child_process';
 import { appendFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -39,7 +38,7 @@ export default async function (ctx) {
     ctx.assert.match(out.rows[2].last, /All 12 retry tests pass/, 'done: what it said');
     ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#slist > .card[data-id="${alone.id}"] .team')`), false, 'a team of the lead alone: no rows');
     ctx.assert.match(await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${lead.id}"] .team').textContent`), /^Its team: /, 'said for a screen reader');
-    await ctx.shot('team-rows-tiles-dark');
+    await ctx.shot('team-rows-large');
 
     // the reviewer takes its next step, still at work: its row changes, the card's node stays
     await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${lead.id}"]')._mark = 1`);
@@ -59,16 +58,15 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#slist > .card[data-id="${lead.id}"] .team')).display`), 'none', 'not at one height');
     await ctx.evaluate(`delete document.querySelector('#sessions').dataset.even; document.querySelector('#sessions').dataset.cards = 'large'`);
 
-    for (const [layout, scheme] of [['sidebar', 'dark'], ['sidebar', 'light'], ['tiles', 'light']]) {
+    for (const scheme of ['dark', 'light']) {
       await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] });
-      await ctx.evaluate(`localStorage.setItem('peixairada-prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'), layout: '${layout}' }))`);
       await ctx.reload();
       await ctx.openChat(lead.id);
-      await ctx.waitFor(`document.querySelectorAll('#slist > .card[data-id="${lead.id}"] .team .tm').length === 3`, { what: `the rows in ${layout}, ${scheme}` });
+      await ctx.waitFor(`document.querySelectorAll('#slist > .card[data-id="${lead.id}"] .team .tm').length === 3`, { what: `the rows in ${scheme}` });
       await ctx.settle();
-      out[`${layout}-${scheme}`] = await ctx.evaluate(`(t => { const r = t.getBoundingClientRect(), c = t.closest('.card').getBoundingClientRect(); return { inside: r.left >= c.left - .5 && r.right <= c.right + .5 && r.bottom <= c.bottom + .5, h: Math.round(r.height) }; })(document.querySelector('#slist > .card[data-id="${lead.id}"] .team'))`);
-      ctx.assert.equal(out[`${layout}-${scheme}`].inside, true, `the rows inside the card in ${layout}`);
-      await ctx.shot(`team-rows-${layout}-${scheme}`);
+      out[scheme] = await ctx.evaluate(`(t => { const r = t.getBoundingClientRect(), c = t.closest('.card').getBoundingClientRect(); return { inside: r.left >= c.left - .5 && r.right <= c.right + .5 && r.bottom <= c.bottom + .5, h: Math.round(r.height) }; })(document.querySelector('#slist > .card[data-id="${lead.id}"] .team'))`);
+      ctx.assert.equal(out[scheme].inside, true, `the rows inside the card in ${scheme}`);
+      await ctx.shot(`team-rows-${scheme}`);
     }
     return out;
   } finally { for (const s of sleeps) s.kill(); }

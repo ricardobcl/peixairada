@@ -21,7 +21,7 @@ export default async function (ctx) {
   await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 2`, { what: 'the bar with the usage in it' });
   out.rest = await look();
-  ctx.assert.deepEqual([out.rest.hidden, out.rest.bottom, out.rest.mainBottom], [false, 8, -8], `at the window's foot, under the board, the tiles' gap round it: ${JSON.stringify(out.rest)}`);
+  ctx.assert.deepEqual([out.rest.hidden, out.rest.bottom, out.rest.mainBottom], [false, 0, 0], `at the window's foot, flush under the board (the tiles' 8 px gap round it until 2026-11-01): ${JSON.stringify(out.rest)}`);
   ctx.assert.equal(out.rest.segs[0], 'connected', 'the connection said, out of sight');
   // …by the fish alone (2026-10-27): no word beside it, its colour the state's — green on the stream, amber trying again,
   // red turned away (the classes the bar's draw sets, read at once)

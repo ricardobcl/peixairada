@@ -15,7 +15,7 @@ const dir = tmpDir('peix-themes-'), cwd = join(dir, 'blue-repo');
 const BLUE = '#3b7ddd';
 mkdirSync(cwd, { recursive: true });
 
-export const meta = { server: true, fixture: 'auto', prefs: { skinFollow: false } };   // the board's own: the harness follows the system
+export const meta = { server: true, fixture: 'auto', prefs: { skinFollow: false, sidebarStyle: 'ring' } };   // the board's own: the harness follows the system; Ring, whose wallpaper is the theme's ground (Glass's has its pools)
 
 export default async function (ctx) {
   const out = {}, now = Date.now(), projects = { 'blue-repo': { color: BLUE } };
@@ -56,8 +56,8 @@ export default async function (ctx) {
   await ctx.waitFor(`document.documentElement.dataset.skin === 'black'`, { what: 'Black previewed' });
   ctx.assert.deepEqual([await root('--bg'), await root('--term-bg'), await repo()], ['#000000', '#000000', BLUE], 'Black: the ground and the terminal black, the blue project its own blue');
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).backgroundColor`), 'rgb(0, 0, 0)', 'the chat’s panel black');
-  ctx.assert.deepEqual(await ctx.evaluate(`[getComputedStyle(document.querySelector('#wall')).backgroundImage, getComputedStyle(document.querySelector('#wall i')).display, getComputedStyle(document.querySelector('#log')).backgroundImage]`),
-    ['none', 'none', 'none'], 'the wallpaper black, no glow, no wash over the transcript');
+  ctx.assert.deepEqual(await ctx.evaluate(`[getComputedStyle(document.querySelector('#wall')).backgroundImage, getComputedStyle(document.querySelector('#log')).backgroundImage]`),
+    ['none', 'none'], 'the wallpaper black, no wash over the transcript');
   await ctx.settle(); await ctx.shot('black');
   await keyIn('ArrowRight');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'tokyo-night'`, { what: 'the preview' });
@@ -74,7 +74,8 @@ export default async function (ctx) {
   await keyIn('Enter');
   await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'gruvbox'`, { what: 'Gruvbox kept' });
   ctx.assert.deepEqual((({ skin, skinDark, look }) => ({ skin, skinDark, look }))(await ctx.peix('prefs()')), { skin: 'gruvbox', skinDark: 'gruvbox', look: 'dark' });
-  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar')).backgroundColor`), 'rgb(29, 32, 33)', "the status bar on the theme's crust");
+  ctx.assert.deepEqual(await ctx.evaluate(`['#sbar', '#sessions'].map(s => getComputedStyle(document.querySelector(s)).backgroundColor)`).then(([bar, list]) => [bar === list, bar]), [true, 'color(srgb 0.202745 0.19898 0.189333)'],
+    "the status bar on the sidebar's ground, Gruvbox's (its crust in the tiles' time)");
   ctx.assert.deepEqual(await pane(), { mode: 'dark', dark: 'Gruvbox', light: 'Only with Auto or Light', off: ['lightRow'] }, 'Settings: Dark, in Gruvbox');
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '#83a598'`, { what: "the blue in Gruvbox's blue" });
   await ctx.settle(); out.shot = await ctx.shot('gruvbox');

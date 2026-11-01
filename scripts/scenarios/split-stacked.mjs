@@ -26,9 +26,9 @@ export default async function (ctx) {
   let l = await layout(ctx), r = await rects(ctx);
   ctx.assert.deepEqual({ stack: l.stack, dir: l.dir, cursor: l.cursor }, { stack: true, dir: 'column', cursor: 'row-resize' }, 'the column stands, the divider resizes up and down');
   ctx.assert.ok(r.grpB.y >= r.grp.y + r.grp.h, `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`);
-  const inner = r.groups.w - 16;   // the tiles' 8 px round the halves
+  const inner = r.groups.w;   // the halves meet the column's edges (the tiles' 8 px round them until 2026-11-01)
   ctx.assert.ok(Math.abs(r.grp.w - inner) <= 1 && Math.abs(r.grpB.w - inner) <= 1, 'both halves are as wide as the column');
-  ctx.assert.ok(r.gsplit.h === 8 && Math.abs(r.gsplit.w - inner) <= 1, `the divider is the tiles' 8 px gap across the column (${r.gsplit.w}×${r.gsplit.h})`);
+  ctx.assert.ok(r.gsplit.h === 5 && Math.abs(r.gsplit.w - inner) <= 1, `the divider is a 5 px rule across the column (${r.gsplit.w}×${r.gsplit.h})`);
   ctx.assert.equal(l.turn, 'side', 'the empty half\'s strip offers the side-by-side layout (◫)');
   await ctx.shot('stacked-empty');
   // …and turns it: side by side, then stacked again
