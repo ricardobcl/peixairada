@@ -12214,6 +12214,7 @@ const toolName = n => {
     if (s.seenAt) s.seenAt = at;
     api('POST', `/api/sessions/${encodeURIComponent(id)}/seen`).catch(() => {});
   }
+  window.peixMarkRead = id => { if (!state.sessions.has(id)) return; markSeen(id); renderBoard(); };   // the fish's menu, ⌥ on a reply's row (round XIX's S8)
   async function openSession(id, { locate = false } = {}) {
     if (id !== state.current) drawer.err = null;   // a failure to start a drawer is the chat's it happened on (2026-10-07)
     state.current = id; state.unread.delete(id); hidePr(); markSeen(id);

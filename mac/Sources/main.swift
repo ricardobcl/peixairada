@@ -995,7 +995,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       ("Asking you", needsInput, 12, waited), ("Your move", yourMoves, 6, { $0["why"] ?? "" }), ("New replies", newReplies, 5, { _ in "" })]
     for section in sections where !section.chats.isEmpty {
       menu.addItem(sectionHeading(section.heading, section.chats.count))
-      for s in section.chats.prefix(section.room) { menu.addItem(chatRow(s, sub: section.sub(s))) }
+      for s in section.chats.prefix(section.room) {
+        menu.addItem(chatRow(s, sub: section.sub(s)))
+        // Hold ⌥ and a reply's row marks it read (2026-11-01, S8): reading is most of what the fish asks of you, and this
+        // triages it from where you are. isAlternate reads no event, so 27's empty currentEvent flags do not touch it.
+        if section.heading == "New replies" {
+          let read = chatRow(s, sub: section.sub(s)); read.title = "✓ Mark read: \(read.title)"
+          read.action = #selector(markReadFromMenu(_:)); read.isAlternate = true; read.keyEquivalentModifierMask = [.option]
+          menu.addItem(read)
+        }
+      }
       let more = section.chats.count - section.room
       if more > 0 {
         let item = NSMenuItem(title: "+\(more) more…", action: #selector(overviewFromMenu(_:)), keyEquivalent: ""); item.target = self
@@ -1013,18 +1022,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     }
     if !plan.isEmpty { menu.addItem(withTitle: plan, action: nil, keyEquivalent: "").isEnabled = false }
     menu.addItem(.separator())
+    // Each recovery row hides behind one you use, with ⌥ (S8); the server gone, they show plainly (the branch above).
+    let alt: (String, Selector) -> NSMenuItem = { title, action in
+      let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; item.isAlternate = true; item.keyEquivalentModifierMask = [.option]
+      return item
+    }
     menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
+    menu.addItem(alt("Reload Board", #selector(reloadBoard(_:))))
+    menu.addItem(withTitle: "Settings…", action: #selector(settingsFromMenu(_:)), keyEquivalent: "").target = self
+    menu.addItem(alt("Restart Server", #selector(restartServer(_:))))
     // ⌃⌘F's way out where the menu bar shows it (2026-10-13): filled, the View menu is behind the auto-hidden menu bar, and
     // with the board in the back the fill still covers the screen — this menu is then the one control in reach. Its
     // title flips with View's (validateMenuItem).
     let full = menu.addItem(withTitle: isFull ? "Exit Full Screen" : "Enter Full Screen", action: #selector(toggleFull(_:)), keyEquivalent: "f")
     full.keyEquivalentModifierMask = [.control, .command]; full.target = self
     menu.addItem(.separator())
-    menu.addItem(withTitle: "Reload", action: #selector(reloadBoard(_:)), keyEquivalent: "").target = self
-    menu.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "").target = self
-    menu.addItem(withTitle: "Open Server Log", action: #selector(openLog(_:)), keyEquivalent: "").target = self
-    menu.addItem(.separator())
-    menu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+    menu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+    menu.addItem(alt("Open Server Log", #selector(openLog(_:))))
   }
   // Drawn as it opens too (menuNeedsUpdate), so "waited 12 min" is right whenever you look, and not while it is open: a
   // menu emptied under the pointer loses its highlight.
@@ -1518,6 +1532,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     }
   }
   @objc func notificationsOn(_ sender: Any?) { web.evaluateJavaScript("window.peixNotifyOn?.()", completionHandler: nil) }
+  @objc func markReadFromMenu(_ sender: NSMenuItem) {
+    guard let id = sender.representedObject as? String else { return }
+    web.evaluateJavaScript("window.peixMarkRead?.(\(jsLit(id)))", completionHandler: nil)
+  }
+  @objc func settingsFromMenu(_ sender: Any?) { showWindow(nil); web.evaluateJavaScript("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil) }
   @objc func overviewFromMenu(_ sender: Any?) { showWindow(nil); web.evaluateJavaScript("window.peixKey && window.peixKey('KeyA', 'altcmd')", completionHandler: nil) }
   @objc func openFromMenu(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
