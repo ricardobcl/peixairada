@@ -3142,6 +3142,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · chats that talk (2026-10-31, round XIV): Send to…
 //   js  · merged, folded, branched: the chats tied to one, by your hand (2026-10-31)
 //   js  · Merge with…: a new chat from several, its first prompt where each stands (2026-10-31)
+//   js  · Fold into…: one chat's handoff typed into another's drawer, unsent; the first ticked done (2026-10-31)
 //   js  · a second claude on this chat
 //   js  · transcript rendering
 //   js  · the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17)
@@ -6239,6 +6240,7 @@ const toolName = n => {
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
+        ...(!foldFromWhy(s) ? [{ name: 'Fold it into another chat…', sub: of, fn: () => foldPick(s, 'launch'), stay: true }] : []),   // 2026-10-31
         ...(s.prs || []).filter(shownHere).map(pr => ({ name: `Take ${pr.label.replace(/^.*?#/, '#')} off it`, sub: ` — ${pr.title || pr.label}`, fn: () => unlinkUrl(s, pr.url) })),
         ...(isSplit(s) ? [{ name: 'Move this tab to the other half', sub: of, fn: () => moveFocused(s) }] : []),
         ...(s.cwd && ownColor(s.cwd) ? [{ name: 'Let go of its project’s colour', sub: ` — ${s.project}`, fn: () => clearColor(colorKey(s.cwd)) }] : []),
@@ -11440,9 +11442,10 @@ const toolName = n => {
   const hoChat = (s, extra = '') => `<div class="hochat" style="${repoStyle(repoColor(s.cwd))}" data-id="${esc(s.id)}"><span class="sq"></span><b>${projIcon(s.project)}${esc(s.project)}</b><span class="ht">${ticks(esc(s.title))}</span>${extra}</div>`;
   /** A card's rows for the right-click menu: what can be done with it and another chat — and the chats tied to it. */
   function talkRows(s, card) {
-    const no = sendWhy(s), mno = mergeWhy(s);
+    const no = sendWhy(s), mno = mergeWhy(s), fno = foldFromWhy(s);
     return [{ hr: true }, { t: 'Send to this chat…', ...no ? { off: true, sub: no } : {}, fn: () => sendOpen(s) },
       { t: 'Merge with…', ...mno ? { off: true, sub: mno } : { sub: 'a new chat, its first prompt where each stands' }, fn: () => mergePick([s.id]) },
+      { t: 'Fold into…', ...fno ? { off: true, sub: fno } : { sub: 'where it stands, typed into another chat — then done' }, fn: () => foldPick(s) },
       ...(s.links || []).map(l => ({ t: linkSay(l), ...state.sessions.has(l.id) ? {} : { off: true }, fn: () => openSession(l.id, { locate: true }) }))];
   }
   // ---- merged, folded, branched: the chats tied to one, by your hand (2026-10-31) -----------------------------------
@@ -11485,9 +11488,45 @@ const toolName = n => {
     hoSay('A new chat starts in a drawer, in that folder, with this as its first prompt. The chats stay as they are, each tied to it.');
     $('#hoKeys').innerHTML = '<kbd>⌘⏎</kbd>start<kbd>esc</kbd>'; $('#hoGo').textContent = 'Start';
     hoShow();
-    try { const d = await api('GET', `/api/handoff?ids=${ho.ids.map(encodeURIComponent).join(',')}`); if (gen === ho.gen) t.value = d.text; }
-    catch (e) { if (gen === ho.gen) hoSay(`Could not read where they stand: ${e.message}`, true); }
+    await hoFill(gen, 'merge');
+  }
+  /** The handoff the server writes for the box's chats, into the box — unless the box was opened anew meanwhile. */
+  async function hoFill(gen, kind) {
+    const t = $('#hoText');
+    try { const d = await api('GET', `/api/handoff?kind=${kind}&ids=${ho.ids.slice(0, kind === 'fold' ? 1 : 12).map(encodeURIComponent).join(',')}`); if (gen === ho.gen) t.value = d.text; }
+    catch (e) { if (gen === ho.gen) hoSay(`Could not read where ${kind === 'fold' ? 'it stands' : 'they stand'}: ${e.message}`, true); }
     finally { if (gen === ho.gen) { t.disabled = false; t.placeholder = 'The handoff'; t.focus(); t.setSelectionRange(0, 0); t.scrollTop = 0; } }
+  }
+  // ---- Fold into…: one chat's handoff typed into another's drawer, unsent; the first ticked done (2026-10-31) --------
+  // From a card's menu, or the launcher for the open chat: the chat it goes into from the picker (where Send to… could
+  // reach — a drawer here, or none running), the handoff in the box. Fold: that chat opened, its drawer resumed if it
+  // has none, the handoff typed in and not sent — yours to read and send, as a review's prompt is — then the first chat
+  // ticked done, tied to it. A chat at work is not folded: the tick would end it mid-turn.
+  const foldFromWhy = s => !s?.file ? 'nothing in it to hand off yet' : !canTick(s) ? 'it is at work — fold it once it is idle' : null;
+  const foldPick = (s, back = null) => pickOpen('chatpick', { ask: `Fold “${s.title}” into`, skip: [s.id], why: sendWhy, then: b => foldOpen(s, b), ...back && { back } });
+  async function foldOpen(a, b) {
+    const no = foldFromWhy(a) || sendWhy(b); if (no) return note($('#shead'), `Not folded: ${no}`, true);
+    const gen = ++ho.gen; Object.assign(ho, { mode: 'fold', ids: [a.id, b.id] });
+    $('#hoTitle').textContent = 'Fold one chat into another';
+    $('#hoChats').innerHTML = hoChat(a, '<span class="hx">then done</span>') + hoChat(b, '<span class="hx">gets it, unsent</span>');
+    const t = $('#hoText'); t.value = ''; t.rows = 12; t.placeholder = 'Reading where it stands…'; t.disabled = true;
+    $('#hoWhere').hidden = true;
+    hoSay(`Typed into “${b.title}”'s drawer${drawerOf(b) ? '' : ', resumed here for it,'} and not sent: read it there, and ⏎ sends it. “${a.title}” is then ticked done, tied to it.`);
+    $('#hoKeys').innerHTML = '<kbd>⌘⏎</kbd>fold<kbd>esc</kbd>'; $('#hoGo').textContent = 'Fold';
+    hoShow();
+    await hoFill(gen, 'fold');
+  }
+  /** The fold itself: the chat it goes into opened, its drawer up, the words typed unsent; then the tie and the tick. */
+  async function foldGo(a0, b0, text) {
+    const a = state.sessions.get(a0.id) || a0, no = foldFromWhy(a) || sendWhy(state.sessions.get(b0.id) || b0); if (no) throw new Error(`Not folded: ${no}`);
+    await openSession(b0.id);
+    const b = state.sessions.get(b0.id) || b0;
+    if (!drawerOf(b)) { await termAction(b); if (!await drawerReady(b.id)) throw new Error(`“${b.title}” did not come up — nothing typed, “${a.title}” as it was`); }
+    for (let i = 0; i < 40 && !claudeTm(state.sessions.get(b.id) || b); i++) await new Promise(r => setTimeout(r, 100));   // the page's own socket to it
+    if (!await drawerType(state.sessions.get(b.id) || b, text, false)) throw new Error(`“${b.title}”'s drawer did not answer — nothing typed, “${a.title}” as it was`);
+    if (state.current === b.id) focusTerm();
+    await api('POST', `/api/sessions/${a.id}/fold`, { into: b.id });
+    tickDone(a.id, true, $('#shead'));
   }
   const sendPick = () => pickOpen('chatpick', { ask: 'Send to a chat', back: 'launch', why: sendWhy, then: sendOpen });
   function hoShow() { const dlg = $('#handoff'); if (!dlg.open) { if (inApp) post({ type: 'focus' }); dlg.showModal(); repostPane(); } $('#hoText').focus(); }
@@ -11522,6 +11561,11 @@ const toolName = n => {
     if (ho.busy || $('#hoText').disabled) return;
     const text = $('#hoText').value; if (!text.trim()) return $('#hoText').focus();
     if (ho.mode === 'merge') { const cwd = $('#hoCwd').value, from = ho.ids.slice(); $('#handoff').close(); return newChat(cwd, null, { prompt: text, from }); }
+    if (ho.mode === 'fold') {
+      const [a, b] = ho.ids.map(id => state.sessions.get(id)); if (!a || !b) return hoSay('A chat of the two is gone from the board', true);
+      $('#handoff').close();
+      return foldGo(a, b, text).catch(e => note($('#shead'), e.message, true));
+    }
     const s = state.sessions.get(ho.ids[0]); if (!s) return hoSay('That chat is gone from the board', true);
     ho.busy = true; $('#hoGo').disabled = true; hoSay(drawerOf(s) ? 'Sending…' : 'Opening its drawer…');
     try { await sendTo(s, text); $('#handoff').close(); note(document.querySelector(`#slist > .card[data-id="${CSS.escape(s.id)}"]`) || $('#shead'), `Sent to ${s.title}`); }

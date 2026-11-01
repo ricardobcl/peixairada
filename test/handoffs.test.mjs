@@ -65,6 +65,22 @@ test('Merge: the handoff of two chats starts a new one under an id the board pic
   } finally { await srv.stop(); }
 });
 
+test('Fold: the tie from the chat folded to the one it went into, said both ways; none to itself or to a chat the board lacks', { timeout: 30_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const [a, b] = fx.chats;
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    assert.equal((await srv.post(`api/sessions/${a.id}/fold`, { into: a.id })).status, 400);
+    assert.equal((await srv.post(`api/sessions/${a.id}/fold`, { into: 'nope' })).status, 404);
+    const r = await srv.post(`api/sessions/${a.id}/fold`, { into: b.id });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.deepEqual((await linksOf(srv, a.id)).map(l => [l.k, l.dir, l.id]), [['fold', 'out', b.id]]);
+    assert.deepEqual((await linksOf(srv, b.id)).map(l => [l.k, l.dir, l.id]), [['fold', 'in', a.id]]);
+    const h = await srv.api(`api/handoff?kind=fold&ids=${a.id}`);
+    assert.match(h.body.text, /^Another chat of mine, folded into this one[\s\S]*Two PRs mentioned[\s\S]*Take it in, then wait for what I ask next\.$/);
+  } finally { await srv.stop(); }
+});
+
 test('Send to…: a chat with no process resumes with your words as its first prompt — never logged — and one with a drawer is not handed them again', { timeout: 40_000 }, async () => {
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const chat = fx.chats[1];

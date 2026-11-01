@@ -34,6 +34,12 @@ handoff you saw and started go into a chat.
   file, `addLink`): a word on each card — *merged*, *merge of 2* —, rows in the card's menu and the header's ···
   that open the other chat. No `claude -p` summary, as asked: the recap costs nothing where it exists, and the
   research's other way (a headless fork) spends tokens on a cold cache.
+* **Fold into…** (I5; a card's menu, ⌥⌘L for the open chat): where it can go is the picker's (where Send to… reaches,
+  never itself), the handoff the same composer's (`kind=fold`). Fold opens that chat, resumes its drawer if it has
+  none (waiting for its claude to say idle), and types the handoff into its prompt **unsent** — yours to read and send,
+  as a review's prompt is —, then ticks the first chat done, tied (`POST …/fold`). A chat at work is not folded: the
+  tick would end it mid-turn. **Drag a card onto another was not built**: the cards have no drag of their own to fit it
+  into, and a new one would fight the list's slides and a card's click.
 
 ## Decisions of 2026-10-31, near midnight — Watching, wake-ups, stopped, and the heads L1 (round XIII)
 

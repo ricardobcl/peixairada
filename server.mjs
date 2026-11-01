@@ -6214,6 +6214,13 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s), forGood: forgotten(s) });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/fold$/))) {   // folded into another chat (2026-10-31): the tie, said to both — the page ticks it done
+      const s = sessions.get(m[1]), body = await jsonBody(req), into = typeof body.into === 'string' ? sessions.get(body.into) : null;
+      if (!s || !into) return json(res, 404, { error: !s ? 'unknown session' : 'expected {into: <the chat it went into>}' });
+      if (into === s) return json(res, 400, { error: 'a chat is not folded into itself' });
+      addLink('fold', s.id, into.id);
+      return json(res, 200, { ok: true, links: linksOf(s.id) });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/seen$/))) {   // the board showed the chat (2026-10-12)
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
