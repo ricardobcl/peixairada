@@ -13513,7 +13513,7 @@ const toolName = n => {
     const half = car ? 100 : 28 * k;
     g.x = Math.max(half, Math.min(ZE_W - half, g.x + g.vx * dt));
     // what he stands on: the floor, or the awning or the sign come down on from above (G4, 2026-10-30, the next round)
-    const wasY = g.y, gy = g.drop > 0 || g.ride || g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, wasY), aloft = wasY < gy - .5;
+    const wasY = g.y, gy = g.drop > 1e-6 || g.ride || g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, wasY), aloft = wasY < gy - .5;
     g.drop = Math.max(0, g.drop - dt); g.vy += 1500 * dt; g.y += g.vy * dt;
     if (g.y >= gy) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.y = gy; g.vy = 0; g.jumps = 0; if (gy === ZE_PLATS[1].y) zeTrophy(g, 'telhado'); }
     g.gy = g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, g.y);
