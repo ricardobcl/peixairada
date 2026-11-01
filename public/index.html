@@ -14369,6 +14369,8 @@ float ahead=texture(uA,cuv(vP+uRimD*2.5)).a;float rim=clamp(a.a-ahead,0.,1.);c+=
 c+=e;o=vec4(c*a.a,a.a);}`,
     disc: `uniform sampler2D uT;uniform float uR,uB;
 void main(){vec4 s=vec4(0.);float w=0.;for(int i=0;i<48;i++){float a=float(i)*2.39996;float r=sqrt(float(i)+.5)/6.93*uR;vec4 c=texture(uT,fuv(vP+vec2(cos(a),sin(a))*r));float b=1.+dot(c.rgb,vec3(.3,.6,.1))*uB;s+=c*b;w+=b;}o=s/w;}`,
+    rays: `uniform sampler2D uT;uniform vec2 uC;uniform float uThr;
+void main(){vec3 s=vec3(0.);vec2 d=(uC-vP)/44.;vec2 p=vP+d*fract(sin(dot(vP,vec2(12.9,78.2)))*437.);float w=1.;for(int i=0;i<44;i++){vec3 c=texture(uT,fuv(p)).rgb;float l=max(dot(c,vec3(.3,.6,.1))-uThr,0.);s+=c*l*w;w*=.965;p+=d;}o=vec4(s/44.,1.);}`,
     river: `uniform sampler2D uC,uN;uniform float uT,uWet,uA,uSunX,uSunS;uniform vec3 uWater,uSunC;
 void main(){float t=clamp((vP.y-${ZE_WATER}.)/(${ZE_BANK - ZE_WATER}.),0.,1.);
 vec2 q=vec2(vP.x/(90.+t*170.),(vP.y-${ZE_WATER}.)/(7.+t*20.));
@@ -14423,9 +14425,10 @@ void main(){vec2 p=gl_FragCoord.xy*uPx;vec3 c=texture(uT,p).rgb*4.;c+=texture(uT
 if(uThr>0.){float b=max(c.r,max(c.g,c.b));float k=max(b-uThr,0.);k=k*k/(k+.5);c*=k/max(b,1e-4);}o=vec4(min(c,vec3(30.)),1.);}`,
     up: `uniform sampler2D uT;uniform vec2 uPx;
 void main(){vec2 p=gl_FragCoord.xy*uPx;vec3 c=vec3(0.);c+=texture(uT,p+vec2(-uPx.x*2.,0.)).rgb+texture(uT,p+vec2(uPx.x*2.,0.)).rgb+texture(uT,p+vec2(0.,-uPx.y*2.)).rgb+texture(uT,p+vec2(0.,uPx.y*2.)).rgb;c+=(texture(uT,p+vec2(-uPx.x,uPx.y)).rgb+texture(uT,p+vec2(uPx.x,uPx.y)).rgb+texture(uT,p+vec2(uPx.x,-uPx.y)).rgb+texture(uT,p+vec2(-uPx.x,-uPx.y)).rgb)*2.;o=vec4(c/12.,1.);}`,
-    final: `uniform sampler2D uS,uB;uniform mat3 uCam;uniform float uFlash,uBloom;uniform vec3 uFlashC;
+    final: `uniform sampler2D uS,uB,uR;uniform mat3 uCam;uniform float uFlash,uBloom,uRays,uT;uniform vec3 uFlashC;
 void main(){vec2 p=(uCam*vec3(vP,1.)).xy;vec3 c=texture(uS,fuv(p)).rgb;
 c+=texture(uB,fuv(p)).rgb*uBloom;
+if(uRays>0.)c+=texture(uR,fuv(p)).rgb*uRays*(.86+.14*sin(uT*.5+p.x*.012));
 c+=uFlashC*uFlash;
 c=pow(max(c,vec3(0.)),vec3(1./2.2));
 float d=fract(sin(dot(gl_FragCoord.xy,vec2(12.98,78.23)))*43758.5)-.5;c+=d/255.;
@@ -14634,11 +14637,11 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
 
   // ---- the set: Barcelos across the Cávado, in stone and tile (H2). Painted once; each sky lights it when it bakes it.
   const ZE_RIGS = [
-    { name: 'sunset', amb: [.92, .74, .76], bloom: .52, shadow: [.25, 3.3, .62], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
-    { name: 'blue hour', amb: [.56, .62, .92], bloom: .78, shadow: [-.5, 3.0, .46], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
-    { name: 'storm', amb: [.66, .40, .42], bloom: .72, shadow: [.0, 0, 0], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
-    { name: 'rain', amb: [.60, .68, .84], bloom: .66, shadow: [.0, 0, 0], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
-    { name: 'dawn', amb: [.94, .84, .86], bloom: .46, shadow: [-.3, 3.5, .5], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
+    { name: 'sunset', amb: [.92, .74, .76], rays: .95, bloom: .52, shadow: [.25, 3.3, .62], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
+    { name: 'blue hour', amb: [.56, .62, .92], rays: .18, bloom: .78, shadow: [-.5, 3.0, .46], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
+    { name: 'storm', amb: [.66, .40, .42], rays: 0, bloom: .72, shadow: [.0, 0, 0], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
+    { name: 'rain', amb: [.60, .68, .84], rays: 0, bloom: .66, shadow: [.0, 0, 0], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
+    { name: 'dawn', amb: [.94, .84, .86], rays: 1.1, bloom: .46, shadow: [-.3, 3.5, .5], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
   ];
   const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
   const zgCanvas = S => { const c = document.createElement('canvas'); c.width = Math.round(ZE_W * S); c.height = Math.round(ZE_H * S); const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
@@ -14779,6 +14782,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     zgBind(S.comp); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     for (const L of [S.sky, S.hills, S.town, S.bridge]) zgUse(zg.P.layer, ZG_FULL, { uA: 1, uShift: [0, 0] }, { uT: L.t });
     gl.bindTexture(gl.TEXTURE_2D, S.comp.t); gl.generateMipmap(gl.TEXTURE_2D);
+    if (R.rays > 0) { gl.disable(gl.BLEND); S.rays = zgFbo(gl, 180, 225); zgBind(S.rays); zgUse(zg.P.rays, ZG_FULL, { uC: sun, uThr: P.sun ? .55 : .25 }, { uT: S.comp.t }); gl.enable(gl.BLEND); }   // the light through the town, baked from it
     zg.scenes.set(i, S); return S;
   }
   /** Every sky baked ahead, one a frame, so a level-up never waits for its own. */
@@ -14896,7 +14900,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     for (let i = zg.fB.length - 2; i >= 0; i--) { const b = zg.fB[i]; zgBind(b); zgUse(zg.P.up, ZG_FULL, { uPx: [1 / b.w, 1 / b.h] }, { uT: zg.fB[i + 1].t }); }
     gl.disable(gl.BLEND);
     zgBind(null);
-    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) }, uFlash: !calm && g.flash > 0 ? Math.min(.26, g.flash * 1.6) : 0, uFlashC: g.bolt ? [.65, .55, 1] : [1, 1, 1], uBloom: R.bloom }, { uS: zg.fS.t, uB: zg.fB[0].t });
+    zgUse(zg.P.final, ZG_FULL, { uCam: { m3: zgCam(g, calm) }, uFlash: !calm && g.flash > 0 ? Math.min(.26, g.flash * 1.6) : 0, uFlashC: g.bolt ? [.65, .55, 1] : [1, 1, 1], uBloom: R.bloom, uRays: S.rays ? R0.rays : 0, uT: zg.T }, { uS: zg.fS.t, uB: zg.fB[0].t, uR: S.rays?.t || zg.fB[3].t });
   }
   /** The camera's moves — a combo's push, the vinho's wobble, a shake — as a matrix from the glass to the picture. */
   function zgCam(g, calm) {
