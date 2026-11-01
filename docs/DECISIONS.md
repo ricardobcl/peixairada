@@ -5,6 +5,53 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01 — the fill's menu bar hidden beside the housing too
+
+Ricardo, filled on the MacBook: "clicking on the top of the app just drops down the app menu bar instead of the things
+that I wanted to do. happens with '...', git diff, the toggle for the status on top, etc."
+
+* **What happened**: beside a camera housing the fill auto-hid the menu bar (`fillOptions()`, `autoHideMenuBar` while
+  `fillHousing`), and the page lays the head row into that strip (`layoutNotch`: the title left of the housing, the PR
+  chips, the changes chip, the switches and ··· right of it — the floating header dipping round it, the Sidebar's
+  toolbar beside it). A control 10–30 pt under the top edge is a reach that overshoots to the edge, and the edge brings
+  an auto-hidden bar down over the row's 33 pt. Then `lightsTick` saw the bar out with the pointer in its strip and
+  brought the lights down under it (`lightsDown`: 28 pt more, the bar held out, `lightsOut`) until the pointer was
+  73 pt down (`lightsBand`). Back down onto the control, the pointer was on the menu bar or the lights: the click opened
+  a menu. The app log has it, four times between 00:30 and 00:32 UTC: `fill: lights down (menu bar 33 pt)`, `lights up
+  (the pointer left)` a second or two on, then `menu bar: tucked (it was in)`.
+* **Why the housing had kept the auto-hide**: 2026-09-27 took the custom full screen as kitty and Sublime Text do it,
+  the menus a touch away, and counted the bar as its cost ("slides down over the strip whenever the pointer touches the
+  top edge"). 2026-09-28 found the same overlap on a screen without a housing ("the menu bar is showing and overlapping
+  the app") and hid the bar outright there, let out by a 1 s hold at the top edge (`menuOut`); the housing kept "the
+  code that was there", its strip read as the menu bar's and the board's both. The lights (2026-10-13) made the cost a
+  block: a touch held the bar out and put 28 pt more under it until the pointer had left the row.
+* **The fix, in the shell — one rule for every screen**: the menu bar hidden outright (`hideMenuBar`) and let out by the
+  same hold (`menuHold`, 1 s); the lights come with it as before, now only after the hold. `fillHousing` is gone.
+  * **A bar let out goes back once the pointer is below its strip** (`fillMenuH` + 8) and the system has hidden it
+    (`dockTick`) — it was 100 pt down, the Dock's distance, and between, a reach for the row that touched the edge
+    brought the bar back over it.
+  * **`tuckMenuBar` lets go a bar let out** (`menuOut`, on either screen) half a second after the app comes forward or
+    the Space changes: hidden outright — no longer hidden 0.1 s and auto-hidden again. At rest the bar is hidden
+    outright and a change of desktop cannot leave it out (the DELL's since 2026-09-28), so the tuck does nothing then,
+    and `menu bar: tucked (it was in)` no longer follows every coming forward. **Not after the lights go up any more**:
+    forced, it would pull the bar from under a status item's menu the pointer went down into (the run loop tracks only
+    the app's own), and the log never once found the bar out (`tucked (it was out)`: none, ever) — the system hides it
+    and `dockTick` lets it go, as on the DELL, which never tucked (`menu bar: back` within the second of `lights up`).
+* **The page**: the fill's word (`fillHint`) and ⌃⌘F's row on the ? sheet say *after a hold at the top edge* beside a
+  housing too (`fill-hint.mjs`). Nothing in the head row moved, in either layout.
+* **Rejected**: keeping the row's controls out of the bar's way — the header lowered by the strip at the notch, and by
+  the lights' 28 pt under it: the strip is what the fill is for ("we don't really use that upper real estate"), and the
+  row's design round the housing stays. Keeping the auto-hide and dropping only the lights, or their hold: the bar alone
+  still covers the row at every touch of the edge. A shorter hold beside the housing: one hold for both screens, as the
+  Dock has one; tuned in the app if 1 s feels long.
+* **Checked**: `swiftc -typecheck` (`npm run check`), `fill-hint.mjs`. **Not checkable outside the app**: a warped
+  pointer moves no menu bar. To try, filled on the MacBook: throw the pointer to the top edge and back down onto ···,
+  the changes chip, a PR chip or a switch, and click — each should act, with no menu bar, no lights and nothing in the
+  log; hold the pointer at the top edge a second — the menu bar and the lights come (`menu bar: out`, `fill: lights
+  down`), work as before, and go once the pointer is below the lights (`fill: lights up`, then `menu bar: back`).
+  Still wrong: a bar or the lights at a touch of the edge, or `fill: lights down` with no `menu bar: out` before it
+  while the Dock is in.
+
 ## Decisions of 2026-11-01 — the flying title goes
 
 * **A card clicked open no longer sends its title into the header** (2026-11-01; `flyFrom`, `flyTitle`, `.flytitle`

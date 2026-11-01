@@ -6372,7 +6372,7 @@ const toolName = n => {
     ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
     ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
     ['⌥⌘B', 'Layout', 'hide the chat list, and show it again', 'the chat takes the whole width · the status bar\'s first button too', ['alt:KeyB']],
-    ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › General picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar at the top edge · remembered across launches', []],
+    ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › General picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar after a hold at the top edge · remembered across launches', []],
     ['⌥⌘R', 'Look', 'reload the board', 'the chat you are on kept · ⇧⌘R restarts the server too, in the app · ⌘R is the page\'s in the pane', ['alt:KeyR']],
     ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
     ['⌘,', 'Look', 'the settings', 'the chat header\'s ··· has them too', ['cmd:Comma']],
@@ -6482,7 +6482,7 @@ const toolName = n => {
     $('#fillHint')?.remove();
     const n = state.notch, head = $('#shead').getBoundingClientRect(), el = document.createElement('div');
     el.id = 'fillHint'; el.setAttribute('role', 'status');
-    el.innerHTML = `<b>Full screen</b>${n ? ', up to the notch' : ''} · <kbd>⌃⌘F</kbd> leaves it, or the green light ${n ? 'at the top edge' : 'after a hold at the top edge'}`;
+    el.innerHTML = `<b>Full screen</b>${n ? ', up to the notch' : ''} · <kbd>⌃⌘F</kbd> leaves it, or the green light after a hold at the top edge`;   // beside a housing too (2026-11-01)
     el.style.left = `${n ? (n.left + n.right) / 2 : innerWidth / 2}px`;
     el.style.top = `${Math.round(Math.max(head.bottom, n?.top || 0) + 10)}px`;
     document.body.append(el);

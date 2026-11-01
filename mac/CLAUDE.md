@@ -37,14 +37,18 @@ server.mjs, build.sh's `SOURCE`).
 * **⌃⌘F's two full screens** (2026-10-14; the page's `toggleFull` → `fullscreen` → `spaceMode`): on at quit,
   `peixairada.fill`, on again at launch; `kill -USR1 $(pgrep -x peixAIrada)` too. **Its own Space** is macOS's
   (`.fullScreenPrimary`), below the housing: the page hears no fill. **Up to the notch is the fill** (`toggleFill`;
-  `BoardWindow`, borderless, the whole screen): the menu bar auto-hidden beside a camera housing, else hidden
-  (`placeFill`, `fillOptions()`), out with the pointer at the top (`menuOut`), tucked after a change of desktop
-  (`tuckMenuBar`); the Dock out at its edge (`dockTick`); `.fullScreenNone`, the green button's plain click the fill
+  `BoardWindow`, borderless, the whole screen): **the menu bar hidden outright on every screen** (`placeFill`,
+  `fillOptions()`; 2026-11-01 — auto-hidden beside a housing, a touch of the top edge brought it and the lights over
+  the head row's controls), out after a 1 s hold at the top edge (`menuOut`, `menuHold`), back once the pointer is below
+  its strip and it has hidden, a let-out one tucked after a change of desktop (`tuckMenuBar`); the Dock out after a
+  hold at its edge (`dockTick`); `.fullScreenNone`, the green button's plain click the fill
   (`windowShouldZoom`); ⌘W leaves it first. `NSFullScreenMenuItemEverywhere` and
   `NSPrefersDisplaySafeAreaCompatibilityMode` are false; *Exit Full Screen* (View's, the fish's) is retitled in
   `validateMenuItem`. The page is told `peixFill(on, notch)`, the housing in CSS px. → `full-screen-pick.mjs`.
 * **The lights come down with the menu bar** (2026-10-13; `lightsTick`): a strip under it, over the pane too — the
-  lights (`LightButton`), the title —, the menu bar held out over it (`lightsOut`) until the pointer is below.
+  lights (`LightButton`), the title —, the menu bar held out over it (`lightsOut`) until the pointer is below. Both
+  cover the head row, so only a hold brings them — the menu bar's own, or the Dock's (with the Dock out AppKit
+  wants the menu bar auto-hidden) (2026-11-01).
 * **The pane's views**: a web view per page (`paneViews`, up to `paneViewsMax`, the chat's own spared), placed by the
   page's `{type:'pane'}`; **the overlay covers the window**, a click on no page let through (`PaneOverlay.hitTest`). A
   page's new window is a tab beside it (`PaneDelegate.open` → `peixPaneOpen`), a link to another host the page's to

@@ -39,7 +39,7 @@ export default async function (ctx) {
   await ctx.waitFor(`!!document.querySelector('#fillHint')`, { what: 'the hint' });
   await ctx.settle();
   out.dark = await hint();
-  ctx.assert.match(out.dark.text, /Full screen, up to the notch · ⌃⌘F leaves it, or the green light at the top edge/);
+  ctx.assert.match(out.dark.text, /Full screen, up to the notch · ⌃⌘F leaves it, or the green light after a hold at the top edge/);
   ctx.assert.equal(out.dark.role, 'status', 'a reader says it');
   ctx.assert.ok(Math.abs(out.dark.mid - (NOTCH.left + NOTCH.right) / 2) <= 1, `centred on the housing (${out.dark.mid})`);
   ctx.assert.ok(out.dark.top >= out.dark.headBottom + 8 && out.dark.top <= out.dark.headBottom + 12, `under the head row (${out.dark.top} against ${out.dark.headBottom})`);

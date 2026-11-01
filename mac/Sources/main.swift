@@ -291,8 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var voiceOverObs: NSKeyValueObservation?   // VoiceOver on or off, told to the page (tellVoiceOver)
   var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
   var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
-  var fillHousing = false                 // filled on a screen with a camera housing: the menu bar auto-hidden there, hidden outright elsewhere (placeFill)
-  var menuOut = false                     // no housing: the menu bar let out after a hold at the top edge, until it has hidden again
+  var menuOut = false                     // the menu bar let out after a hold at the top edge, until it has hidden again (every screen since 2026-11-01)
   var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
   var topSince: TimeInterval?             // when the pointer reached the top edge
   var tuck: DispatchWorkItem?             // a tuckMenuBar pending after the app came forward or the Space changed
@@ -1122,9 +1121,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// NSScreen.safeAreaInsets says so; measured again 2026-10-14), which is why the window offers it only when Settings ›
   /// Look picks it (toggleFull). This is what
   /// Apple calls a custom full-screen experience, kitty's and Sublime Text's: the window borderless, its frame the
-  /// whole screen, the menu bar auto-hidden and the Dock hidden, out only after a hold at its edge (dockTick) — on a
-  /// screen with a housing; without one the menu bar is hidden outright (placeFill). The page is told where the housing
-  /// is (tellFill) and lays its top row around it. No Space of its own —
+  /// whole screen, the menu bar and the Dock hidden, each out only after a hold at its edge (dockTick, placeFill). The
+  /// page is told where the housing is (tellFill) and lays its top row around it. No Space of its own —
   /// Mission Control shows a window. The frame's autosave is off meanwhile, so a quit mid-fill does not bring the next
   /// launch up screen-sized; the fill itself is remembered (kFillKey), so it does come back filled. Info.plist says
   /// NSPrefersDisplaySafeAreaCompatibilityMode = false, or a window behind the housing could switch the display into
@@ -1155,39 +1153,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off") options \(NSApp.presentationOptions.rawValue) visible \(NSStringFromRect(window.screen?.visibleFrame ?? .zero))")
     tellFill()
   }
-  /// What becomes of the menu bar in the fill, per screen (2026-09-28). Both take the whole screen; what tells them
-  /// apart is the camera housing, which the screen reports exactly (a top safe-area inset) — no guessing from the
-  /// resolution, and it follows the lid, a display plugged in and mirroring (mirrored, the one screen is the
-  /// external's). Beside a housing the strip either side of it is the menu bar's and the board's both: the menu bar
-  /// auto-hidden, sliding into the strip at the top edge, the page laying its top row around the housing (tellFill).
-  /// Without one there is no such strip — an auto-hidden menu bar slid over the search box and the chat's title at
-  /// every reach for the top edge ("the menu bar is showing and overlapping the app") — so it is hidden outright while
-  /// the board is in front, and let out by a hold at the top edge, as the Dock is at its own (dockTick). The Dock is
-  /// hidden on both. Run on the fill and on every change of screen.
+  /// The menu bar in the fill (2026-09-28, every screen alike since 2026-11-01): hidden outright while the board is in
+  /// front, and let out by a hold at the top edge, as the Dock is at its own (dockTick). Its strip is the head row's — on
+  /// a screen without a camera housing the row is right under the top edge, beside one the page lays it into the strip
+  /// either side of the housing (tellFill) —, and an auto-hidden menu bar slid over it at every touch of the top edge:
+  /// without a housing over the search box and the chat's title ("the menu bar is showing and overlapping the app"),
+  /// beside one over the head row's ···, chips and switches, a reach for one that overshot to the edge bringing the bar
+  /// and the lights down over it, the click landing on the menu bar. The Dock is hidden too. Run on the fill and on
+  /// every change of screen.
   func placeFill(on screen: NSScreen) {
-    fillHousing = screen.safeAreaInsets.top > 0
     fillMenuH = max(screen.safeAreaInsets.top, NSApp.mainMenu?.menuBarHeight ?? 0)   // the housing's strip beside one, the main menu's own elsewhere
     if fillMenuH <= 0 { fillMenuH = 24 }
     let options = fillOptions()
     if NSApp.presentationOptions != options { NSApp.presentationOptions = options }   // the same again is the Dock's and the menu bar's work for nothing (2026-10-15)
     if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
   }
-  /// The fill's options as things stand: the Dock hidden unless let out; the menu bar auto-hidden beside a housing or
-  /// while let out, hidden outright otherwise — and auto-hidden whenever the Dock is out, since AppKit refuses
-  /// hideMenuBar without hideDock (an exception, not a no-op). With the lights down the menu bar is not hidden at all,
-  /// so it stays out over their strip while the pointer goes down to them (lightsDown).
+  /// The fill's options as things stand: the Dock hidden unless let out; the menu bar hidden outright unless let out
+  /// (menuOut), when it is auto-hidden — and auto-hidden whenever the Dock is out, since AppKit refuses hideMenuBar
+  /// without hideDock (an exception, not a no-op). With the lights down the menu bar is not hidden at all, so it stays
+  /// out over their strip while the pointer goes down to them (lightsDown).
   func fillOptions() -> NSApplication.PresentationOptions {
     let dock: NSApplication.PresentationOptions = dockOut ? .autoHideDock : .hideDock
     if lightsOut { return dock }
-    let menu: NSApplication.PresentationOptions = fillHousing || menuOut || dockOut ? .autoHideMenuBar : .hideMenuBar
+    let menu: NSApplication.PresentationOptions = menuOut || dockOut ? .autoHideMenuBar : .hideMenuBar
     return menu.union(dock)
   }
-  /// Beside a housing the menu bar is auto-hidden, and coming forward across a change of Space — a swipe, ⌘-Tab to the
-  /// board on another desktop, a launch — left it out over the head row until the pointer had been through it
-  /// (2026-10-03, measured: the system's options autoHideMenuBar all along and the bar still out 18 s on; back from
-  /// Mission Control, no Space changed, it went at once). So half a second on, the slide over, it is hidden outright for a
-  /// moment and auto-hidden again — not while the Dock is out (hideMenuBar wants hideDock), nor with the pointer in the
-  /// strip, reaching for it. The log says whether it was out.
+  /// An auto-hidden menu bar has stayed out with the pointer away from it: coming forward across a change of Space — a
+  /// swipe, ⌘-Tab to the board on another desktop, a launch — left it out over the head row until the pointer had been
+  /// through it (2026-10-03, measured beside a housing, where it was auto-hidden at rest: the system's options
+  /// autoHideMenuBar all along and the bar still out 18 s on; back from Mission Control, no Space changed, it went at
+  /// once). Hidden outright at rest, it cannot be (2026-11-01); let out by the hold, it is auto-hidden, so half a second
+  /// after the app comes forward or the Space changes, the slide over, a bar let out is let go — hidden outright again —
+  /// not while the Dock is out (hideMenuBar wants hideDock), nor with the pointer in the strip, reaching for it. The log
+  /// says whether it was out.
   func tuckMenuBarSoon() {
     tuck?.cancel()
     let w = DispatchWorkItem { [weak self] in self?.tuckMenuBar() }
@@ -1195,14 +1193,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: w)
   }
   func tuckMenuBar() {
-    guard fillSaved != nil, fillHousing, !dockOut, !lightsOut, NSApp.isActive, !window.isMiniaturized, let screen = window.screen,
-          NSEvent.mouseLocation.y < screen.frame.maxY - screen.safeAreaInsets.top - 8 else { return }
+    guard fillSaved != nil, menuOut, !dockOut, !lightsOut, NSApp.isActive, !window.isMiniaturized, let screen = window.screen,
+          NSEvent.mouseLocation.y < screen.frame.maxY - fillMenuH - 8 else { return }
     let out = NSMenu.menuBarVisible()
-    NSApp.presentationOptions = [.hideDock, .hideMenuBar]
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-      guard let self, self.fillSaved != nil, !self.window.isMiniaturized else { return }
-      NSApp.presentationOptions = self.fillOptions()
-    }
+    menuOut = false; topSince = nil
+    NSApp.presentationOptions = fillOptions()
     logLine("menu bar: tucked (\(out ? "it was out" : "it was in"))")
   }
   /// The Dock's edge of the screen, from its own preference: bottom unless it says left or right.
@@ -1221,9 +1216,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// A pointer *held* at its edge for dockHold lets it out (autoHideDock, with the pointer already there) until the
   /// pointer is 100 px off that edge again — the system full screen's kind of push (then: "the dock is not showing
   /// when I go to the edge on the right"). Polled, not tracked: the pointer is over web views and native views alike.
-  /// The menu bar the same way on a screen without a housing (2026-09-28): a hold at the top edge for menuHold lets it
-  /// out (auto-hidden, with the pointer already there), and it goes back to hidden outright once the pointer is 100 pt
-  /// below the top *and* the system has hidden it again — never under an open menu, ours or a status item's.
+  /// The menu bar the same way (2026-09-28; beside a housing too since 2026-11-01): a hold at the top edge for menuHold
+  /// lets it out (auto-hidden, with the pointer already there), and it goes back to hidden outright once the pointer is
+  /// below its strip *and* the system has hidden it again — never under an open menu, ours or a status item's. Below the
+  /// strip, not 100 pt down as the Dock's (2026-11-01): the head row is in it, and a reach for the row that touched the
+  /// top edge on the way brought the bar back over it.
   func dockTick() {
     guard fillSaved != nil, let screen = window.screen else { return }
     let p = NSEvent.mouseLocation, f = screen.frame, now = Date().timeIntervalSinceReferenceDate
@@ -1242,9 +1239,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         dockOut = true; edgeSince = nil; NSApp.presentationOptions = fillOptions(); logLine("dock: out")
       } else if edgeSince == nil { edgeSince = now }
     } else { edgeSince = nil }
-    guard !fillHousing else { return }
     if menuOut {
-      if p.y < f.maxY - 100, !NSMenu.menuBarVisible() { menuOut = false; NSApp.presentationOptions = fillOptions(); logLine("menu bar: back") }
+      if p.y < f.maxY - fillMenuH - 8, !NSMenu.menuBarVisible() { menuOut = false; NSApp.presentationOptions = fillOptions(); logLine("menu bar: back") }
     } else if p.y >= f.maxY - 2 {
       if let since = topSince, now - since >= AppDelegate.menuHold {
         menuOut = true; topSince = nil; NSApp.presentationOptions = fillOptions(); logLine("menu bar: out")
@@ -1254,7 +1250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // ---- the lights ----------------------------------------------------------------------------------
   // (2026-10-13) Filled, the window is borderless: no title bar, no lights, and the one way out in sight was View's item
   // behind the hidden menu bar. So the lights come down with the menu bar, as the system's full screen shows its title
-  // bar: when the menu bar comes out — the pointer at the top edge beside a housing, its hold elsewhere (menuOut) — a
+  // bar: when the menu bar comes out — after its hold at the top edge (menuOut; beside a housing a touch, till 2026-11-01) — a
   // strip slides in under it, the three lights on the left and the window's title (the page's chat) in the middle,
   // over the board and the pane's pages alike. Green leaves the fill, yellow minimizes, red quits the app
   // (2026-10-13: the window is the app, so its close is the app's). While the strip is down the menu bar is held out (fillOptions), or it would slide away as the
@@ -1288,13 +1284,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     logLine("fill: lights down (menu bar \(Int(top)) pt)")
   }
-  /// The strip up and the menu bar let go — beside a housing tucked half a second on, since an auto-hidden menu bar
-  /// let go with the pointer away from it has stayed out before (tuckMenuBar).
+  /// The strip up and the menu bar let go: auto-hidden again, and hidden outright once the system has hidden it with
+  /// the pointer below its strip (dockTick). Not tucked (2026-11-01; beside a housing it was, half a second on, and the
+  /// log never once found the bar out then): forced, it would pull the bar from under a status item's menu the pointer
+  /// went down into, which the run loop does not track.
   func lightsUp(_ why: String) {
     guard lightsOut else { return }
     lightsOut = false
     lightsGroup.hover = false
-    if fillSaved != nil { NSApp.presentationOptions = fillOptions(); if fillHousing { tuckMenuBarSoon() } }
+    if fillSaved != nil { NSApp.presentationOptions = fillOptions() }
     NSAnimationContext.runAnimationGroup({ ctx in ctx.duration = 0.15; lights.animator().alphaValue = 0 }, completionHandler: { [weak self] in
       guard let self, !self.lightsOut else { return }
       self.lights.isHidden = true
