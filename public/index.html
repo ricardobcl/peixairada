@@ -14368,6 +14368,19 @@ float ahead=texture(uA,cuv(vP+uRimD*2.5)).a;float rim=clamp(a.a-ahead,0.,1.);c+=
 c+=e;o=vec4(c*a.a,a.a);}`,
     disc: `uniform sampler2D uT;uniform float uR,uB;
 void main(){vec4 s=vec4(0.);float w=0.;for(int i=0;i<48;i++){float a=float(i)*2.39996;float r=sqrt(float(i)+.5)/6.93*uR;vec4 c=texture(uT,fuv(vP+vec2(cos(a),sin(a))*r));float b=1.+dot(c.rgb,vec3(.3,.6,.1))*uB;s+=c*b;w+=b;}o=s/w;}`,
+    river: `uniform sampler2D uC,uN;uniform float uT,uWet,uA,uSunX,uSunS;uniform vec3 uWater,uSunC;
+void main(){float t=clamp((vP.y-${ZE_WATER}.)/(${ZE_BANK - ZE_WATER}.),0.,1.);
+vec2 q=vec2(vP.x/(90.+t*170.),(vP.y-${ZE_WATER}.)/(7.+t*20.));
+float n1=texture(uN,q*.5+vec2(uT*.012,uT*.05)).r-.5;float n2=texture(uN,q*vec2(1.3,1.)+vec2(-uT*.02,uT*.085)).g-.5;float n=n1+.6*n2;
+float amp=mix(2.5,17.,t)*(1.+uWet);
+vec2 rp=vec2(vP.x+n*amp,${ZE_WATER}.-(vP.y-${ZE_WATER}.)*1.25-abs(n)*amp*.5);
+vec3 r=textureLod(uC,fuv(rp),mix(.6,2.4,t)).rgb;
+vec3 c=mix(r*.82,uWater,mix(.16,.58,t));
+float n3=texture(uN,vec2(vP.x/42.+n*.7,vP.y/4.4)+vec2(uT*.015,uT*.2)).b*.55+texture(uN,vec2(vP.x/15.-n*.5,vP.y/2.6)-vec2(uT*.02,uT*.1)).g*.45;
+float col=exp(-pow((vP.x-uSunX)/mix(34.,92.,t),2.));float gl=smoothstep(.5,.62,n3)*col;c+=uSunC*gl*uSunS;
+float gl2=smoothstep(.70,.86,texture(uN,vec2(vP.x/18.,vP.y/4.)-vec2(uT*.02,uT*.12)).g);c+=lin(vec3(.9))*gl2*.05;
+c*=.78+.22*smoothstep(0.,5.,vP.y-${ZE_WATER}.);
+o=vec4(c,1.)*uA;}`,
     final: `uniform sampler2D uS;uniform mat3 uCam;
 void main(){vec2 p=(uCam*vec3(vP,1.)).xy;vec3 c=texture(uS,fuv(p)).rgb;
 c=pow(max(c,vec3(0.)),vec3(1./2.2));
@@ -14393,7 +14406,7 @@ o=vec4(c,1.);}`,
       zg.gl = gl; zg.P = {}; for (const k of Object.keys(ZG_FS)) zg.P[k] = zgCompile(gl, ZG_VS, ZG_HEAD + ZG_FS[k]);
       zg.vao = gl.createVertexArray(); gl.bindVertexArray(zg.vao);
       gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-      zg.ax = zgBatch(gl);
+      zg.ax = zgBatch(gl); zg.noise = zgNoise(gl);
     } catch (e) { console.error('Zé: no stage', e); zg.gl = null; zg.off = true; return false; }
     cv.addEventListener('webglcontextlost', e => { e.preventDefault(); zgFree(); zg.off = true; const c = $('#zeCanvas'); c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0); if ($('#zeGame').open && !ze.raf) zeDraw(); });
     $('#zeStack').prepend(cv);
@@ -14420,6 +14433,17 @@ o=vec4(c,1.);}`,
   }
   const zgDrop = (gl, b) => { if (b) { gl.deleteTexture(b.t); gl.deleteFramebuffer(b.f); } };
   const zgUp = (gl, cv) => { const t = zgTex(gl); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, cv); return t; };
+  /** Tiling noise in three channels. */
+  function zgNoise(gl) {
+    const N = 256, d = new Uint8Array(N * N * 4), r = (x, y, s, c) => { const f = v => Math.abs(Math.sin(v * 127.1 + c * 11.3) * 43758.5453) % 1; return f(((x % s + s) % s) + ((y % s + s) % s) * 57.3 + s); };
+    const n = (x, y, s, c) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (r(ix, iy, s, c) * (1 - u) + r(ix + 1, iy, s, c) * u) * (1 - v) + (r(ix, iy + 1, s, c) * (1 - u) + r(ix + 1, iy + 1, s, c) * u) * v; };
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) for (let c = 0; c < 3; c++) {
+      let a = 0, w = .5, s = 8; for (let o = 0; o < 5; o++) { a += n(x / N * s, y / N * s, s, c) * w; w *= .5; s *= 2; }
+      d[(y * N + x) * 4 + c] = Math.min(255, a * 255 * 1.05);
+    }
+    const t = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, d); gl.generateMipmap(gl.TEXTURE_2D); return t;
+  }
   function zgUse(P, rect, vals = {}, texs = {}) {
     const gl = zg.gl; gl.useProgram(P.p);
     const U = n => { if (!P.u.has(n)) P.u.set(n, gl.getUniformLocation(P.p, n)); return P.u.get(n); };
@@ -14549,11 +14573,11 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
   // ---- the set: Barcelos across the Cávado, in stone and tile (H2). Painted once; each sky lights it when it bakes it.
   const ZE_WATER = 762, ZE_BANK = 826, ZE_TERRACE = 832;
   const ZE_RIGS = [
-    { name: 'sunset', tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, sunX: 400 },
-    { name: 'blue hour', tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, sunX: 590 },
-    { name: 'storm', tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, sunX: 360 },
-    { name: 'rain', tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, sunX: 360 },
-    { name: 'dawn', tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, sunX: 296 },
+    { name: 'sunset', tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
+    { name: 'blue hour', tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
+    { name: 'storm', tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
+    { name: 'rain', tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
+    { name: 'dawn', tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
   ];
   const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
   const zgCanvas = S => { const c = document.createElement('canvas'); c.width = Math.round(ZE_W * S); c.height = Math.round(ZE_H * S); const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
@@ -14695,7 +14719,12 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     S.hills = bake(zgPaintHills(P), null, { s: .5, blur: 3.2 });
     S.town = bake(zg.town.c, zg.town.e, { amb: R.tAmb, rim: R.rim * .9, emB: R.win * 2.6, blur: 2.4 });
     S.bridge = bake(zg.bridge.c, zg.bridge.e, { amb: R.tAmb.map(v => v * 1.1), rim: R.rim, emB: Math.max(R.lamp, R.win * .6) * 3.6, blur: 1.1 });
-    gl.enable(gl.BLEND); zg.scenes.set(i, S); return S;
+    // the picture the river sees
+    S.comp = zgFbo(gl, 360, 450, zg.fmt, true);
+    zgBind(S.comp); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    for (const L of [S.sky, S.hills, S.town, S.bridge]) zgUse(zg.P.layer, ZG_FULL, { uA: 1, uShift: [0, 0] }, { uT: L.t });
+    gl.bindTexture(gl.TEXTURE_2D, S.comp.t); gl.generateMipmap(gl.TEXTURE_2D);
+    zg.scenes.set(i, S); return S;
   }
   /** Every sky baked ahead, one a frame, so a level-up never waits for its own. */
   function zgBakeAhead() { for (let i = 0; i < ZE_SKIES.length; i++) if (!zg.scenes.has(i)) { zgScene(i); return; } zg.baked = true; }
@@ -14749,7 +14778,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       zgUse(zg.P.layer, [0, 520, ZE_W, ZE_WATER + 4 - 520], { uA: a, uShift: [px * .22, 0] }, { uT: T.hills.t });
       zgUse(zg.P.layer, [0, 520, ZE_W, ZE_WATER + 2 - 520], { uA: a, uShift: [px * .5, 0] }, { uT: T.town.t });
       zgUse(zg.P.layer, [0, 680, ZE_W, ZE_WATER + 2 - 680], { uA: a, uShift: [px * .7, 0] }, { uT: T.bridge.t });
-      zgUse(zg.P.tint, [0, ZE_WATER, ZE_W, ZE_BANK - ZE_WATER + 8], { uC: [...T.R.water.map(v => v * a), a] });
+      zgUse(zg.P.river, [0, ZE_WATER, ZE_W, ZE_BANK - ZE_WATER + 8], { uA: a, uT: zg.T, uWet: T.R.wet > .5 ? 1 : 0, uSunX: T.R.sunX, uSunS: T.R.glint, uWater: T.R.water, uSunC: T.R.keyC }, { uC: T.comp.t, uN: zg.noise });
     };
     back(S, 1); if (zg.was) back(zg.was.S, zg.was.a);
     if (dark) { zgUse(zg.P.tint, [0, 0, ZE_W, ZE_BANK], { uC: [.06 * .4 * dark, 0, .01 * .4 * dark, .4 * dark] }); zgUse(zg.P.tint, [0, 0, ZE_W, 360], { uC: [.007 * .3 * dark, 0, .003 * .3 * dark, .3 * dark] }); }
