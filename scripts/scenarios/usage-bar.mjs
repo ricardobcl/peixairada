@@ -55,7 +55,7 @@ export default async function (ctx) {
   await ctx.reload(); await board();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 3`, { what: 'the meters' });
   out.rest = await bar(ctx);
-  ctx.assert.deepEqual(out.rest.meters, ['5H42%', '1W75%', 'F95%'], 'a tag and a percent for each limit — the credit grant only in the rows');
+  ctx.assert.deepEqual(out.rest.meters, ['5H42%', '1W75%', 'F!95%'], 'a tag and a percent for each limit — the credit grant only in the rows');
   ctx.assert.equal(out.rest.open, false, 'the rows out of sight');
 
   // A click: the rows over the bar; again, or a click elsewhere, and they go
@@ -63,7 +63,7 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#sbar .sbpanel .urow').length === 4`, { what: 'four rows' });
   out.rows = await bar(ctx);
   ctx.assert.deepEqual(out.rows.rows.map(r => r.pct), ['42%', '75%', '95%', '12%']);
-  ctx.assert.deepEqual(out.rows.rows.map(r => r.colour), ['var(--spend)', 'var(--spend)', 'var(--needs)', 'var(--spend)'], 'orange, red from 90');
+  ctx.assert.deepEqual(out.rows.rows.map(r => r.colour), ['var(--spend)', 'var(--spend)', 'var(--ink)', 'var(--spend)'], 'orange, the ink from 90: red is for asking (round XIX\'s S3)');
   // 2 h 30 m left of five hours, 3 d 12 h of seven days: both clocks stand half way; a credit grant has no clock
   ctx.assert.deepEqual(out.rows.rows.map(r => r.tick), [50, 50, 50, null], 'a tick where the clock stands, where the window has one');
   ctx.assert.deepEqual(out.rows.rows.map(r => r.reset), ['2h 30m', '3d 12h', '3d 12h', '']);

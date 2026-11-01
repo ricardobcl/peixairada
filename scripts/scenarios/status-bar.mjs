@@ -53,8 +53,8 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#sbar .conn').click()`);
   await ctx.waitFor(`document.querySelector('#about').open`, { what: 'the About box from the bar' });
   await ctx.evaluate(`document.querySelector('#about').close()`);
-  ctx.assert.deepEqual(out.rest.segs.at(-2), '5H42%1W93%', 'the plan usage as meters, before the clock');
-  ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#sbar .us .m i')].map(i => i.style.getPropertyValue('--u'))`), ['var(--spend)', 'var(--needs)'], 'red from 90');
+  ctx.assert.deepEqual(out.rest.segs.at(-2), '5H42%1W!93%', 'the plan usage as meters, before the clock');
+  ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#sbar .us .m i')].map(i => i.style.getPropertyValue('--u'))`), ['var(--spend)', 'var(--ink)'], 'the ink from 90: red is for asking');
   await ctx.evaluate(`document.querySelector('#sbar .us').click()`);
   await ctx.waitFor(`document.querySelectorAll('#sbar .sbpanel .urow').length === 2`, { what: 'the usage rows over the board' });
   await ctx.shot('1-usage', { x: 700, y: 640, width: 1000, height: 360 });

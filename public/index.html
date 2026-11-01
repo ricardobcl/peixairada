@@ -1282,7 +1282,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbar .m { font-size: var(--fs-xs); } #sbar .m + .m { margin-left: 9px; }
   #sbar .us.stale { opacity: .55; } #sbar .us .unote { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
   /* keeping the Mac awake: the cup in amber, the laptop in red while each holds; a muted mark while off */
-  #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .lidb { color: var(--needs); font-weight: 650; }
+  #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .lidb { color: var(--working-ink); font-weight: 650; }
   #sbar :is(.aw, .lidb) .ic { width: 14px; height: 14px; } #sbar :is(.aw, .lidb).off { color: var(--muted); padding: 0 9px; }
   #sbar .aw.moot { color: var(--muted); font-weight: inherit; }   /* nothing to hold off (2026-10-09): on, muted all the same */
   #sbar .conn { cursor: pointer; }
@@ -4376,6 +4376,8 @@ const toolName = n => {
   // renderBoard, the usage, the awake state, the stream's open and error, and each stats answer.
   const bar = { stats: {}, conn: true, lost: false, open: false, busy: false };
   const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
+  // A meter past 90 % (2026-11-01, round XIX's S3): the ink and a ! that reads without colour, never the red that means asking
+  const hotInk = p => p >= 90 ? 'var(--ink)' : 'var(--watch)', hotMark = p => p >= 90 ? '!' : '';
   const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
   const FISH_LOGO = () => $('#logo').innerHTML;
   // The pixel fish (the home's, 2026-10-10), 26 × 11, head to the left: # its body, = its scales, o its eye.
@@ -4544,13 +4546,13 @@ const toolName = n => {
     const cs = chatSeg(); if (cs) left.splice(1, 0, cs);   // the chat (2026-10-17), after the connection
     left.push(updSeg());
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
-    if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
-    if (want.includes('mem')) { const pct = st.mem ? Math.round(st.mem.used / st.mem.total * 100) : null; stat.push(st.mem ? sbMeter('RAM', pct, `${pct}%`, pct >= 90 ? 'var(--needs)' : 'var(--watch)', `memory used, as Activity Monitor counts it: ${fmtBytes(st.mem.used)} of ${fmtBytes(st.mem.total)}`, `${rn('mem', pct)}%`) : sbMeter('RAM', 0, '…', 'var(--watch)')); }
+    if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, hotInk(st.cpu), 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${hotMark(st.cpu)}${rn('cpu', st.cpu)}%`));
+    if (want.includes('mem')) { const pct = st.mem ? Math.round(st.mem.used / st.mem.total * 100) : null; stat.push(st.mem ? sbMeter('RAM', pct, `${pct}%`, hotInk(pct), `memory used, as Activity Monitor counts it: ${fmtBytes(st.mem.used)} of ${fmtBytes(st.mem.total)}`, `${hotMark(pct)}${rn('mem', pct)}%`) : sbMeter('RAM', 0, '…', 'var(--watch)')); }
     if (want.includes('claude')) stat.push(`<span class="m" title="what the Claude processes running hold in memory (their children aside)">Claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
     if (stat.length) right.push(`<span class="seg">${stat.join('')}</span>`);
     if (!usage.off) {
       const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
-      right.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w), `${rn('bu:' + uShort(w), w.percent)}%`)).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
+      right.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w), `${hotMark(w.percent)}${rn('bu:' + uShort(w), w.percent)}%`)).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
     }
     // keeping the Mac awake, both switches, always here (2026-10-09): a muted mark while off, and a muted cup while there
     // is nothing for it to hold off (cupMoot)
@@ -4623,7 +4625,7 @@ const toolName = n => {
   const uGrant = w => !w.resetsAt && w.limit == null;
   // Orange for what is spent, red once a window is nearly gone (2026-09-24 — it was green, amber from 70 %, red from 90
   // %; amber under orange would have read as a step down).
-  const uColor = p => p >= 90 ? 'var(--needs)' : 'var(--spend)';
+  const uColor = p => p >= 90 ? 'var(--ink)' : 'var(--spend)';   // red is for a chat asking you alone (2026-11-01, round XIX's S3)
   // How far through its window the clock is, 0–1 — for the windows whose length is known; a credit grant has none. A
   // month is the calendar month before its reset.
   const uSpan = (k, w = {}) => k === 'five_hour' ? 5 * 3600e3 : /^seven_day|^limits:weekly/.test(k) || w.period === 'weekly' ? 7 * 86400e3 : w.period === 'daily' ? 86400e3
