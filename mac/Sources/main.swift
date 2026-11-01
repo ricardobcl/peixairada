@@ -928,6 +928,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       statusItem.button?.title = "🐟"
     }
     statusItem.button?.imagePosition = .imageLeading
+    drawFish()
     rebuildStatusMenu()
   }
 
@@ -1438,8 +1439,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     badged = (needsInput, newReplies, yourMoves, clauding)
     let wanting = needsInput.count + newReplies.count
     NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
-    statusItem.button?.title = wanting > 0 ? " \(wanting)" : ""
+    drawFish()
     rebuildStatusMenu()
+  }
+
+  // The fish in the menu bar says one thing at a glance (2026-11-01, round XIX's S1, its face V1): dim, nothing wants you;
+  // full, something does; a number, that many chats are asking. A reply or a PR at your move lights it and adds no number,
+  // so a question never drowns in them (replies are three alerts in four, questions under one in a hundred). The Dock
+  // keeps the count of what wants you.
+  private func drawFish() {
+    guard let b = statusItem.button else { return }
+    let asks = needsInput.count, replies = newReplies.count, moves = yourMoves.count
+    b.title = asks > 0 ? " \(asks)" : ""
+    b.appearsDisabled = asks + replies + moves == 0
+    var said = [String]()
+    if asks > 0 { said.append("\(asks) asking you") }
+    if moves > 0 { said.append("\(moves) at your move") }
+    if replies > 0 { said.append("\(replies) new \(replies == 1 ? "reply" : "replies")") }
+    b.toolTip = said.isEmpty ? "peixAIrada: nothing wants you" : "peixAIrada: " + said.joined(separator: ", ")
+    b.setAccessibilityLabel(b.toolTip)
   }
 
   // ---- bridge ----------------------------------------------------------------------------------
