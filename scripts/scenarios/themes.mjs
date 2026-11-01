@@ -50,7 +50,7 @@ export default async function (ctx) {
   // ⌥⌘Y: the grid, on the board's own; → previews Black (2026-10-30), the board's own on true black, its projects'
   // colours as set; → again Tokyo Night, the board behind wearing it
   await ctx.key('KeyY');
-  await ctx.waitFor(`document.querySelector('#themes').open && document.querySelectorAll('#themegrid .tt').length === 15`, { what: 'the grid of themes' });
+  await ctx.waitFor(`document.querySelector('#themes').open && document.querySelectorAll('#themegrid .tt').length === 16`, { what: 'the grid of themes' });
   ctx.assert.match(await ctx.evaluate(`document.querySelector('#themegrid .tt.sel .nm').textContent`), /peixAIrada.*worn.*dark/, 'the board’s own dark, worn, is selected');
   await keyIn('ArrowRight');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'black'`, { what: 'Black previewed' });

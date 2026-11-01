@@ -3690,7 +3690,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // Omarchy's way: a theme is every surface at once — the cards, the transcript, the code, the drawer's sixteen colours,
   // the header's black and the status bar — picked from a grid that the board behind follows (⌥⌘Y). Omarchy's twelve,
   // and Black (2026-10-30): the board's own dark on true black — every ground #000, a hair lifted for the cards, its own
-  // colours, the projects' kept as set (asSet: skinColor leaves them), the terminal black too.
+  // colours, the projects' kept as set (asSet: skinColor leaves them), the terminal black too; and Softened (2026-11-01).
+  // A theme draws the board flat: the frame round the chat is the board's own themes' (the inset).
   // A theme is light or dark, and the board wears its appearance whatever macOS shows (2026-10-12; the dark rules read
   // the root's data-theme): the theme picked is worn (prefs.skin — a theme, or the board's own 'own-dark' / 'own-light').
   // Following macOS is Settings › Appearance › Auto (prefs.skinFollow; a switch, off by default, until 2026-10-16 — Auto
@@ -3744,6 +3745,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       working: '#f9cc6c', idle: '#adda78', needs: '#fd6883', watch: '#85dacc', spend: '#f38d70', code: '#211c1c',
       hl: ['#72696a', '#fd6883', '#f9cc6c', '#a8a9eb', '#adda78', '#f9cc6c', '#f38d70', '#85dacc'], proj: ['#a8a9eb', '#85dacc', '#adda78', '#f38d70', '#fd6883', '#f9cc6c'],
       ansi: ['#2c2525', '#fd6883', '#adda78', '#f9cc6c', '#f38d70', '#a8a9eb', '#85dacc', '#e6d9db', '#72696a', '#fd6883', '#adda78', '#f9cc6c', '#f38d70', '#a8a9eb', '#85dacc', '#fff1f3'] },
+    // Softened (2026-11-01, round XV's T9): the board's light as it was before the frame, softened — flat, the whites
+    // gone, the grounds two steps apart: a light with no frame round the chat. Its colours the board's own, as Black's.
+    softened: { name: 'Softened', dark: false, asSet: true, bg: '#efeee9', panel: '#f5f4f0', raise: '#e5e3db', crust: '#e3e2dc', ink: '#21211e', muted: '#5e5d56', line: '#d6d5cd', accent: '#b05232',
+      working: '#d9a82a', idle: '#237a48', needs: '#b42e2e', watch: '#0a7474', spend: '#e8782a', code: '#e7e5de',
+      hl: ['#5f5e57', '#9c27a0', '#3c7832', '#82560f', '#2560be', '#8a6310', '#b83c2e', '#6b7f9e'], proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
+      tok: { '--tool-bg': '#e9e8e2', '--code-line': '#d5d3ca', '--inline-bg': 'rgb(40 38 30 / .07)', '--snip-claude': '#42413b', '--nocolor': '#b1b0a8', '--ended': '#9f9e96',
+        '--term-bg': '#eae8e2', '--code-ink': '#9e3f1f', '--unread': '#9c4426', '--you': '#21756a', '--side': '#e3e2dc' } },
     'catppuccin-latte': { name: 'Catppuccin Latte', dark: false, bg: '#eff1f5', panel: '#ffffff', raise: '#e6e9ef', crust: '#dce0e8', ink: '#4c4f69', muted: '#6c6f85', line: '#ccd0da', accent: '#8839ef',
       working: '#df8e1d', idle: '#40a02b', needs: '#d20f39', watch: '#179299', spend: '#fe640b', code: '#e6e9ef',
       hl: ['#9ca0b0', '#8839ef', '#40a02b', '#fe640b', '#1e66f5', '#df8e1d', '#d20f39', '#179299'], proj: ['#1e66f5', '#8839ef', '#40a02b', '#fe640b', '#d20f39', '#179299', '#df8e1d'],
@@ -3768,7 +3776,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: color-mix(in srgb, ${t.accent} 30%, transparent);
     --crust: ${t.crust}; --bar: ${t.crust}; --hd-ink: ${t.ink}; --hd-muted: ${t.muted}; --hd-line: ${t.line}; --hd-panel: ${t.panel}; --hd-inline: color-mix(in srgb, ${t.ink} 8%, transparent);
     --working: ${t.working}; --idle: ${t.idle}; --needs: ${t.needs}; --watch: ${t.watch}; --spend: ${t.spend}; --you: ${t.watch}; --code-ink: ${num};
-    --hl-com: ${com}; --hl-key: ${key}; --hl-str: ${str}; --hl-num: ${num}; --hl-fn: ${fn}; --hl-cls: ${cls}; --hl-var: ${vr}; --hl-meta: ${meta}; }`;
+    --hl-com: ${com}; --hl-key: ${key}; --hl-str: ${str}; --hl-num: ${num}; --hl-fn: ${fn}; --hl-cls: ${cls}; --hl-var: ${vr}; --hl-meta: ${meta};
+    ${Object.entries(t.tok || {}).map(([n, v]) => `${n}: ${v};`).join(' ')} }`;   // a theme's own where the rule above would guess (Softened's)
   };
   document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
   const sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches;   // macOS's, which the board follows only when asked
