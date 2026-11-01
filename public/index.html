@@ -2568,8 +2568,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #handoff .hogo { background: var(--accent); color: var(--bg); font-weight: 600; }
   #handoff .hogo:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
   #handoff .hogo:disabled { opacity: .6; }
-  /* a chat a row cannot go to — live elsewhere, asking you — dimmed, saying why */
+  /* a chat a row cannot go to — live elsewhere, asking you — dimmed, saying why; the chats a merge takes in, ✓ */
   .pkrow.off { opacity: .55; }
+  .pkrow .pkon { display: inline-block; width: 16px; color: var(--accent); font-weight: 700; }
+  /* the chats a link ties this one to (2026-10-31): merged, folded, branched — a word beside its project, as a worktree's */
+  .card .top .chip.lnk { display: inline-flex; align-items: center; gap: 3px; flex: none; color: var(--muted); background: none; padding-left: 0; font-weight: 600; }
+  .card .top .chip.lnk .ic { width: 10px; height: 10px; fill: currentColor; flex: none; }
 
   /* A count that rolls (rollIn, 2026-10-11): while it rolls, each digit a window one line tall onto a strip of 0–9 —
      a transform on the spring; plain text again once it has landed. */
@@ -3136,6 +3140,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · resume: a chat whose claude has ended
 //   js  · attachments: files dropped on the board, images pasted
 //   js  · chats that talk (2026-10-31, round XIV): Send to…
+//   js  · merged, folded, branched: the chats tied to one, by your hand (2026-10-31)
+//   js  · Merge with…: a new chat from several, its first prompt where each stands (2026-10-31)
 //   js  · a second claude on this chat
 //   js  · transcript rendering
 //   js  · the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17)
@@ -5730,7 +5736,7 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${teamSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -5924,7 +5930,7 @@ const toolName = n => {
     base: ctx => `${ctx.branch} — what it starts from · type to filter · ↑↓ · ⏎ · esc`,   // a new worktree's new branch (2026-10-28)
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
-    chatpick: ctx => `${ctx.ask} — type to filter · ↑↓ · ⏎ · esc`,   // a chat to send to, fold into, merge (2026-10-31)
+    chatpick: ctx => ctx.many ? `${ctx.ask} — ⏎ takes a chat in or out · ${ctx.picked.length} in · esc` : `${ctx.ask} — type to filter · ↑↓ · ⏎ · esc`,   // a chat to send to, fold into, merge (2026-10-31)
   };
   const NO_FOLDER = '＋ new chat — no folder';   // ⌥⌘N's first row (2026-10-14)
   const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', chatpick: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch' };   // for "no … matches"; the rest are projects
@@ -6037,9 +6043,13 @@ const toolName = n => {
       pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
       row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
     } else if (pick.mode === 'chatpick') {   // a chat to send to (2026-10-31): ⌥⌘K's rows, one it cannot go to dimmed and saying why
+      // …or several to merge (`many`): ⏎ takes one in or out, ✓ before it; the first row goes on with those taken in
       const c = pick.ctx;
-      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && !c.skip?.includes(s.id)).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
-      row = (s, i) => { const why = c.why?.(s); return `<div class="pkrow chat${why ? ' off' : ''}${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(why ? `Not this one: ${why}` : s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${why ? `<span class="cur">${esc(why)}</span>` : s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`; };
+      const chats = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && !c.skip?.includes(s.id)).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
+      pick.list = c.many ? [{ isGo: true }, ...chats] : chats;
+      if (pick.typed) { if (c.many) pick.sel = chats.length ? 1 : 0; pick.typed = false; }   // typing lands on the first match, as the chats step's
+      const go = i => { const n = c.picked.length, ok = n >= (c.min || 1); return `<div class="pkrow chat new go${ok ? '' : ' off'}${sel(i)}" data-i="${i}" title="${esc(ok ? c.goSay(n) : `Take ${c.min} chats in at least — ⏎ on one`)}"><span class="sq"></span><span class="n">${esc(c.goSay(n))}</span><span class="num"></span><span class="st"></span><span class="t"></span></div>`; };
+      row = (s, i) => { if (s.isGo) return go(i); const why = c.why?.(s), on = c.many && c.picked.includes(s.id); return `<div class="pkrow chat${why ? ' off' : ''}${on ? ' on' : ''}${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(why ? `Not this one: ${why}` : s.cwd || '')}"><span class="sq"></span><span class="n">${c.many ? `<span class="pkon" aria-hidden="true">${on ? '✓' : ''}</span>${on ? '<span class="vh">taken in: </span>' : ''}` : ''}${ticks(mark(s.title))}${idsHit(s, q)}${why ? `<span class="cur">${esc(why)}</span>` : s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`; };
     } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow
       // A folder that is one git checkout gives ＋ a switch (2026-10-13; ←→ or a click): the new chat in this folder, or in
       // a new worktree on a branch of its own (newChatOnBranch) — the name typed is then the branch's, not a query, so
@@ -6114,7 +6124,13 @@ const toolName = n => {
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
-    else if (pick.mode === 'chatpick') { const { why, then } = pick.ctx, no = why?.(x); if (no) return note($('#pickq'), `Not this one: ${no}`, true); dlg.close(); then(x); }
+    else if (pick.mode === 'chatpick') {
+      const c = pick.ctx;
+      if (x.isGo) { if (c.picked.length < (c.min || 1)) return note($('#pickq'), `Take ${c.min} chats in at least — ⏎ on a chat takes it in`, true); dlg.close(); return c.go(c.picked.slice()); }
+      const no = c.why?.(x); if (no) return note($('#pickq'), `Not this one: ${no}`, true);
+      if (c.many) { const k = c.picked.indexOf(x.id); if (k < 0) c.picked.push(x.id); else c.picked.splice(k, 1); $('#pickq').value = ''; pickHint(); return pickRender(true); }
+      dlg.close(); c.then(x);
+    }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
       if (x.noFolder) { dlg.close(); newChat(x.cwd); }   // straight in: no chats step, and no Taskfile to ask
       else if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
@@ -6146,7 +6162,7 @@ const toolName = n => {
   // Typing filters the chats, not ＋, so the selection moves off it and onto the first match — and falls back to
   // ＋ (the clamp below) when nothing matches, which is the thing to do with a name no chat has yet. On "new worktree"
   // it names the branch: ＋ stays selected, and where that branch is already is asked (brAsk).
-  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = pick.mode === 'chats' && !!$('#pickq').value.trim(); pickRender(); brAsk(); });
+  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick') && !!$('#pickq').value.trim(); pickRender(); brAsk(); });
   // ＋'s switch takes ← and → past the box's ends (2026-10-13): → with the caret at the end goes to "new worktree" (and
   // onto ＋, from any row), ← with it at the start back to "this folder"; inside the text they move the caret.
   const caretAt = end => { const q = $('#pickq'); return q.selectionStart === q.selectionEnd && q.selectionStart === (end ? q.value.length : 0); };
@@ -6197,6 +6213,7 @@ const toolName = n => {
     return [
       { name: 'New chat', hint: '⌥⌘N', fn: () => pickOpen('new'), stay: true },
       { name: 'Send to a chat…', sub: ' — a message of yours, as its prompt', fn: sendPick, stay: true },   // chats that talk (2026-10-31)
+      { name: 'Merge chats into a new one…', sub: ' — where each stands, its first prompt', fn: () => mergePick(state.current ? [state.current] : [], 'launch'), stay: true },
       { name: 'Search the chat list', hint: '⌥⌘F', fn: hotFind },
       ...Object.entries(FILTERS).filter(([k]) => prefs.listFilter !== k).map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
       ...(prefs.listFilter ? [{ name: 'Show every chat again', sub: ` — no ${listFilter().name.toLowerCase()} filter`, fn: () => setFilter(null) }] : []),
@@ -7565,6 +7582,7 @@ const toolName = n => {
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
       `<button class="hmi" id="tvBtn" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them">${ICON.timeline}<span class="lbl">timeline</span><span class="k">⌥⌘J</span></button>`,
+      linkMenuHtml(s),   // the chats tied to it: merged, folded, branched (2026-10-31)
       s.cwd ? `<button class="hmi" id="webBtn" title="${onVim() ? VIM_TIP : WEB_TIP}">${onVim() ? ICON.vim : ICON.vscode}<span class="lbl">${inEdName()}</span><span class="k">⌥⌘E</span></button>` : '',
       s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">⌥⌘V</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
@@ -7627,6 +7645,7 @@ const toolName = n => {
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
     const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
     $('#tvBtn').onclick = () => { menu.close(); hotTimeline(); };
+    for (const b of menu.querySelectorAll('[data-lnk]')) b.onclick = () => { menu.close(); openSession(b.dataset.lnk, { locate: true }); };
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) && !isVimTab(s, tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + zshsOf(s)[0].id; if (k) dropTab(s, k); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
@@ -7808,7 +7827,7 @@ const toolName = n => {
       { t: 'Open', fn: () => openSession(s.id) },
       ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
-      ...talkRows(s, card),   // chats that talk (2026-10-31): Send to…
+      ...talkRows(s, card),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
@@ -11260,11 +11279,13 @@ const toolName = n => {
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
-  async function newChat(cwd, task = null) {
+  // `more` (2026-10-31, a merge): `{prompt, from}` — the handoff you started, and the chats it merges — the server picks
+  // the new chat's id and says it, so the column opens on it at once.
+  async function newChat(cwd, task = null, more = null) {
     if (isHidden(cwd)) showProject(cwd);   // working in a folder again is the plainest way of saying it belongs on the board
     let d, box = null;   // box: the column saying a clone is under way, while it is still on show
     try {
-      d = await withCheckout(`new:${cwd}`, () => api('POST', '/api/terminals', { cwd, task, ...termSize() }), c => {
+      d = await withCheckout(`new:${cwd}`, () => api('POST', '/api/terminals', { cwd, task, ...more, ...termSize() }), c => {
         leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">cloning ${esc(c.ref)}…</span></h2>`,
           `<div class="empty clonebox" data-dir="${esc(c.dir)}"><b>Cloning ${esc(c.ref)}</b> into ${esc(homePath(c.dir))}: the folder is not checked out yet, and the chat starts once it is.<span class="cp"></span><i class="cbar"></i></div>`, repoColor(cwd));
         box = $('#log .clonebox');
@@ -11273,11 +11294,12 @@ const toolName = n => {
     catch (e) { if (!box || box.isConnected) $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`; else note($('#shead'), `Could not start a chat in ${folderName(cwd)}: ${e.message}`, true); return; }
     // cloned while another chat was opened: the new one is on the list, and the open chat keeps its column and its drawer
     if (box && !box.isConnected) { note($('#shead'), `Cloned — the new chat in ${folderName(cwd)} is on the list`); renderBoard(); return; }
-    leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`,
+    leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">${more?.from?.length ? `merged from ${more.from.length} chats` : 'new chat'}${task ? ` · task ${esc(task)}` : ''}</span></h2>`,
       '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>', repoColor(cwd));
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = projDir(cwd);   // so the new chat lands in view
     savePrefs(); renderBoard();
     attachTerm(curTerm(), d.terminal);
+    if (d.sessionId) openSession(d.sessionId);   // an id the board picked: no registry to wait on
   }
   // ---- ⌘+ / ⌘- / ⌘0: the chat's size — the transcript through CSS zoom, the terminal through its font
   // ⌘0 reaches here only with one half (CMDKEYS takes it first and hands it back through hotOnlyHalf): split, the
@@ -11401,7 +11423,7 @@ const toolName = n => {
   // handed to `claude --resume` as its first prompt, which Claude Code sends once it is up (spawnTerm's `prompt`). A chat
   // live in iTerm or VS Code is out of reach, as for everything else on the board; one asking you would take the words
   // for its answer. Only what you typed is ever sent — nothing a chat said, nothing the board received.
-  const ho = { mode: null, ids: [], busy: false };
+  const ho = { mode: null, ids: [], busy: false, gen: 0 };   // the box's: send, merge or fold, the chats, an ask under way, which opening
   /** Why the board cannot send to this chat, or null. */
   function sendWhy(s) {
     if (!s) return 'it is not on the board';
@@ -11416,16 +11438,62 @@ const toolName = n => {
     : `Its Claude isn’t running: its drawer opens here (claude --resume), with this as its first prompt${s.folderMissing && s.cloneRef ? ` — after cloning ${s.cloneRef}` : ''}.`;
   /** A chat as the box lists it: its project's square, name and title. */
   const hoChat = (s, extra = '') => `<div class="hochat" style="${repoStyle(repoColor(s.cwd))}" data-id="${esc(s.id)}"><span class="sq"></span><b>${projIcon(s.project)}${esc(s.project)}</b><span class="ht">${ticks(esc(s.title))}</span>${extra}</div>`;
-  /** A card's rows for the right-click menu: what can be done with it and another chat. */
+  /** A card's rows for the right-click menu: what can be done with it and another chat — and the chats tied to it. */
   function talkRows(s, card) {
-    const no = sendWhy(s);
-    return [{ hr: true }, { t: 'Send to this chat…', ...no ? { off: true, sub: no } : {}, fn: () => sendOpen(s) }];
+    const no = sendWhy(s), mno = mergeWhy(s);
+    return [{ hr: true }, { t: 'Send to this chat…', ...no ? { off: true, sub: no } : {}, fn: () => sendOpen(s) },
+      { t: 'Merge with…', ...mno ? { off: true, sub: mno } : { sub: 'a new chat, its first prompt where each stands' }, fn: () => mergePick([s.id]) },
+      ...(s.links || []).map(l => ({ t: linkSay(l), ...state.sessions.has(l.id) ? {} : { off: true }, fn: () => openSession(l.id, { locate: true }) }))];
+  }
+  // ---- merged, folded, branched: the chats tied to one, by your hand (2026-10-31) -----------------------------------
+  // The server keeps the ties (its `links`, from the merge's, the fold's or the branch's own route); a card says it has
+  // some by a word beside its project — `branch`, `merged`, `merge of 2` — its tooltip saying with which; the header's ···
+  // and the card's right-click menu list them, each a row that opens its chat.
+  /** A tie in words: what it is, and the chat at its other end — “Merged into ‘Queue for invoice webhooks’”. */
+  function linkSay(l) {
+    const say = { 'merge:out': 'Merged into', 'merge:in': 'Merged from', 'fold:out': 'Folded into', 'fold:in': 'Folded in from', 'branch:in': 'Branched from', 'branch:out': 'Its branch' }[`${l.k}:${l.dir}`];
+    return `${say} “${state.sessions.get(l.id)?.title || 'a chat no longer on the board'}”`;
+  }
+  function linkChip(s) {
+    const ls = s.links || []; if (!ls.length) return '';
+    const n = k => ls.filter(l => `${l.k}:${l.dir}` === k).length;
+    const words = [['branch:in', () => 'branch'], ['branch:out', c => `${c} branch${c > 1 ? 'es' : ''}`], ['merge:in', c => `merge of ${c}`], ['merge:out', () => 'merged'], ['fold:in', c => `${c} folded in`], ['fold:out', () => 'folded']]
+      .filter(([k]) => n(k)).map(([k, say]) => say(n(k)));
+    return `<span class="chip lnk" title="${esc(ls.map(linkSay).join('\n'))}">${ls.some(l => l.k === 'branch') ? ICON.branch : ICON.prMerged}${esc(words.slice(0, 2).join(' · '))}</span>`;
+  }
+  function linkMenuHtml(s) {
+    return (s.links || []).map(l => `<button class="hmi" data-lnk="${esc(l.id)}"${state.sessions.has(l.id) ? '' : ' disabled'} title="Open it">${l.k === 'branch' ? ICON.branch : ICON.prMerged}<span class="lbl">${esc(linkSay(l))}</span><span class="k"></span></button>`).join('');
+  }
+  // ---- Merge with…: a new chat from several, its first prompt where each stands (2026-10-31) -----------------------
+  // From a card's menu (that chat taken in) or the launcher: the chats picked in the picker (⏎ takes one in or out), then
+  // the handoff the server writes from their transcripts (GET /api/handoff) in the box, yours to change, and the folder
+  // the new chat starts in — the first chat's, another's, or none. Start: a new chat in a drawer, the handoff its first
+  // prompt (POST /api/terminals with `prompt` and `from`); the old chats stay as they are, tied to it.
+  const mergeWhy = s => s?.file ? null : 'nothing in it to hand off yet';
+  const mergePick = (picked = [], back = null) => pickOpen('chatpick', { ask: 'Merge into a new chat', many: true, picked: picked.filter(id => !mergeWhy(state.sessions.get(id))), min: 2, why: mergeWhy, go: mergeOpen,
+    goSay: n => n >= 2 ? `Merge these ${n} chats into a new one →` : `Merge — ${n} chat${n === 1 ? '' : 's'} in so far, ⏎ on another`, ...back && { back } });
+  async function mergeOpen(ids) {
+    const list = ids.map(id => state.sessions.get(id)).filter(Boolean);
+    if (list.length < 2) return note($('#shead'), 'Two chats at least to merge', true);
+    const gen = ++ho.gen; Object.assign(ho, { mode: 'merge', ids: list.map(s => s.id) });
+    $('#hoTitle').textContent = `Merge ${list.length} chats into a new chat`;
+    $('#hoChats').innerHTML = list.map(s => hoChat(s)).join('');
+    const t = $('#hoText'); t.value = ''; t.rows = 14; t.placeholder = 'Reading where each stands…'; t.disabled = true;
+    const dirs = [...new Set(list.map(s => s.cwd).filter(Boolean))];
+    $('#hoCwd').innerHTML = dirs.map(d => `<option value="${esc(d)}">${esc(homePath(d))}</option>`).join('') + (state.about.scratch ? `<option value="${esc(state.about.scratch)}">no folder — the board’s own</option>` : '');
+    $('#hoWhere').hidden = false;
+    hoSay('A new chat starts in a drawer, in that folder, with this as its first prompt. The chats stay as they are, each tied to it.');
+    $('#hoKeys').innerHTML = '<kbd>⌘⏎</kbd>start<kbd>esc</kbd>'; $('#hoGo').textContent = 'Start';
+    hoShow();
+    try { const d = await api('GET', `/api/handoff?ids=${ho.ids.map(encodeURIComponent).join(',')}`); if (gen === ho.gen) t.value = d.text; }
+    catch (e) { if (gen === ho.gen) hoSay(`Could not read where they stand: ${e.message}`, true); }
+    finally { if (gen === ho.gen) { t.disabled = false; t.placeholder = 'The handoff'; t.focus(); t.setSelectionRange(0, 0); t.scrollTop = 0; } }
   }
   const sendPick = () => pickOpen('chatpick', { ask: 'Send to a chat', back: 'launch', why: sendWhy, then: sendOpen });
   function hoShow() { const dlg = $('#handoff'); if (!dlg.open) { if (inApp) post({ type: 'focus' }); dlg.showModal(); repostPane(); } $('#hoText').focus(); }
   function sendOpen(s) {
     const why = sendWhy(s); if (why) return note($('#shead'), `Not to ${s.title}: ${why}`, true);
-    Object.assign(ho, { mode: 'send', ids: [s.id] });
+    ho.gen++; Object.assign(ho, { mode: 'send', ids: [s.id] }); $('#hoText').disabled = false;
     $('#hoTitle').textContent = 'Send to'; $('#hoChats').innerHTML = hoChat(s);
     const t = $('#hoText'); t.value = ''; t.rows = 4; t.placeholder = 'For its Claude — what you would type in its drawer';
     $('#hoWhere').hidden = true; hoSay(sendSay(s));
@@ -11451,8 +11519,9 @@ const toolName = n => {
     if (!up || !await drawerType(up, text, true)) throw new Error('Its drawer did not come up — not sent');
   }
   async function hoGo() {
-    if (ho.busy) return;
+    if (ho.busy || $('#hoText').disabled) return;
     const text = $('#hoText').value; if (!text.trim()) return $('#hoText').focus();
+    if (ho.mode === 'merge') { const cwd = $('#hoCwd').value, from = ho.ids.slice(); $('#handoff').close(); return newChat(cwd, null, { prompt: text, from }); }
     const s = state.sessions.get(ho.ids[0]); if (!s) return hoSay('That chat is gone from the board', true);
     ho.busy = true; $('#hoGo').disabled = true; hoSay(drawerOf(s) ? 'Sending…' : 'Opening its drawer…');
     try { await sendTo(s, text); $('#handoff').close(); note(document.querySelector(`#slist > .card[data-id="${CSS.escape(s.id)}"]`) || $('#shead'), `Sent to ${s.title}`); }

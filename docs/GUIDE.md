@@ -47,7 +47,9 @@ setup file, and how the pictures are made.
   lid closed too, by Touch ID where sudo takes it), CPU and memory, and the time.
 - 🤝 **One chat to another** — right-click a card: *Send to this chat…* writes your words into its Claude (a chat
   with no Claude running resumes in a drawer with them); ⌥⌘L's *Send to a chat…* picks one. A chat running in iTerm or
-  VS Code is out of reach, and says so.
+  VS Code is out of reach, and says so. *Merge with…* takes two or more chats into a new one: the board writes where
+  each stands — Claude Code's own recap where it has one —, you read and change it, pick the folder, and Start opens
+  the new chat with it as its first prompt; the old ones stay, each marked *merged*.
 
 <table>
   <tr>

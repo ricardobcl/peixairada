@@ -23,6 +23,17 @@ handoff you saw and started go into a chat.
   with one. The words are never logged. The row is there but off, saying why, for a chat live in iTerm or VS Code — the
   study's way to it, a drawer chat's Claude sending with SendMessage, is I3, not picked — and for one asking you, which
   would take the words for its answer. The column stays where it was: sending is not going there.
+* **Merge with…** (I4; a card's menu takes that chat in, ⌥⌘L's *Merge chats into a new one…* the open one): the picker
+  takes chats in and out on ⏎, its first row goes on; the box holds the handoff the server writes from the
+  transcripts (`GET /api/handoff`, `handoffText`) — each chat's title, folder and branch, PRs, first and last words
+  of yours, Claude Code's `away_summary` recap where it wrote one (a `system` line, its words in `content` — measured
+  read-only on this Mac's transcripts, keys only, 1494 of them), its last reply only where that came after, and its
+  transcript's path to read for more — and the folder to start in, the first chat's by default. Start: a new chat in a
+  drawer under an id the board picks (`--session-id`, so the ties are kept before claude registers: `placeholder`),
+  the handoff its first prompt. The old chats stay as they are; each is tied to the new one (`links` in the state
+  file, `addLink`): a word on each card — *merged*, *merge of 2* —, rows in the card's menu and the header's ···
+  that open the other chat. No `claude -p` summary, as asked: the recap costs nothing where it exists, and the
+  research's other way (a headless fork) spends tokens on a cold cache.
 
 ## Decisions of 2026-10-31, near midnight — Watching, wake-ups, stopped, and the heads L1 (round XIII)
 

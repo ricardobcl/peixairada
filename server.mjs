@@ -10,6 +10,7 @@
 //   CLAUDE_DIR=/path/to/fixture node server.mjs   # point at a different ~/.claude (tests)
 // Map ▾ — the sections, from the file's own banners (node scripts/map.mjs rewrites this; grep a name to jump)
 //  State
+//      · chats tied by your hand: merged, folded, branched (2026-10-31)
 //      · the board's setup: CONFIG_FILE, the settings' Setup
 //      · nothing under CLAUDE_DIR: Claude Code's, never the board's to write in
 //      · Peacock's colours, moved into the setup once (2026-10-15)
@@ -56,7 +57,7 @@
 // Map ▴
 
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
   accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, cpSync, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
@@ -206,8 +207,12 @@ let peacockMoved = null;   // when Peacock's colours went into the setup (2026-1
 // The chat (2026-10-17; see chatTick): `owner/repo#room` -> the newest message shown there — after it, someone else's are
 // unread; and the chat repos whose GitHub mails were turned off (chatBoot), once each.
 let chatSeen = {}, chatQuiet = [];
+// Chats tied by a hand of yours (2026-10-31; see addLink): [{ k, from, to, at }] — `merge`, a chat merged into a new one;
+// `fold`, one folded into another; `branch`, a chat's copy (from the chat, to its copy). Claude Code keeps no such record
+// (a fork's transcript names no origin), and the board never writes under ~/.claude, so the board keeps it.
+let chatLinks = [];
 // Lunch (2026-10-18; see lunchTick): the day's menus and what you did about lunch — Going, In 15 min, back.
-let lunchDay = { day: null, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 };
+let lunchDay ={ day: null, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 };
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
 // the port — the agent behind the app's own, an `npm start` beside the agent — booted on the copy it had read at its
@@ -257,6 +262,7 @@ function loadState() {
     keyEnforced = st.keyEnforced === true;
     chatSeen = st.chatSeen && typeof st.chatSeen === 'object' ? st.chatSeen : {};
     chatQuiet = Array.isArray(st.chatQuiet) ? st.chatQuiet.filter(r => typeof r === 'string') : [];
+    chatLinks = Array.isArray(st.links) ? st.links.filter(l => LINK_KINDS.has(l?.k) && typeof l.from === 'string' && typeof l.to === 'string') : []; linkIdx = null;
     if (st.lunch && typeof st.lunch === 'object' && typeof st.lunch.day === 'string') lunchDay = { ...lunchDay, ...st.lunch, menus: st.lunch.menus && typeof st.lunch.menus === 'object' ? st.lunch.menus : {} };
   } catch (e) {
     if (e.code !== 'ENOENT') {
@@ -275,7 +281,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, lunch: lunchDay }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
@@ -292,6 +298,69 @@ const isDone = s => {
 };
 /** Done for good, and still done: its PRs move nothing of the chat's. */
 const forgotten = s => forGood(s) && isDone(s);
+
+// ---- chats tied by your hand: merged, folded, branched (2026-10-31) -------------------------------------------------
+const LINK_KINDS = new Set(['merge', 'fold', 'branch']), LINKS_MAX = 2000;
+let linkIdx = null;   // chat id → its links as the summary says them, rebuilt after a change
+/** `from` tied to `to`: kept, said to both chats' pages. The ones neither of whose chats the board knows go. */
+function addLink(k, from, to) {
+  if (!LINK_KINDS.has(k) || !from || !to || from === to) return;
+  chatLinks = chatLinks.filter(l => !(l.k === k && l.from === from && l.to === to));
+  chatLinks.push({ k, from, to, at: new Date().toISOString() });
+  if (!indexing) chatLinks = chatLinks.filter(l => sessions.has(l.from) || sessions.has(l.to));
+  if (chatLinks.length > LINKS_MAX) chatLinks = chatLinks.slice(-LINKS_MAX);
+  linkIdx = null; saveState();
+  for (const id of [from, to]) { const s = sessions.get(id); if (s) schedulePush(s); }
+}
+/** A chat's links, each `{k, dir, id, at}` — `out` from it (merged into, folded into, its branch), `in` to it (merged
+ *  from, folded in, branched from) — or null. */
+function linksOf(id) {
+  if (!linkIdx) {
+    linkIdx = new Map();
+    for (const l of chatLinks) for (const [me, id2, dir] of [[l.from, l.to, 'out'], [l.to, l.from, 'in']]) {
+      if (!linkIdx.has(me)) linkIdx.set(me, []);
+      linkIdx.get(me).push({ k: l.k, dir, id: id2, at: l.at });
+    }
+  }
+  return linkIdx.get(id) || null;
+}
+// A handoff (2026-10-31): where chats stand, written from their transcripts as the board reads them — for a new chat that
+// merges them, or one another is folded into. Claude Code's own recap first where it wrote one (away_summary), its last
+// reply where that came after; no `claude -p` asked to sum anything up. You read it, and may change it, before it goes.
+const HANDOFF_TEXT = 1500;
+function handoffItem(s) {
+  const sum = summary(s);
+  return { id: s.id, title: sum.title, cwd: sum.cwd ? tildePath(sum.cwd) : null, branch: s.gitBranch && s.gitBranch !== 'HEAD' ? s.gitBranch : null,
+    prs: sum.prs.map(p => ({ url: p.url, state: p.state || null, title: p.title || null })),
+    first: s.truncatedHead ? null : s.firstPrompt, last: s.lastPrompt, away: s.away, reply: s.replyText ? { text: s.replyText, at: s.lastReplyAt } : null,
+    file: s.file ? tildePath(s.file) : null };
+}
+const handoffWhen = ts => { const d = new Date(ts), p = n => String(n).padStart(2, '0'); return isNaN(d) ? '' : `, ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const quoted = t => String(t).trim().split('\n').map(l => `> ${l}`.trimEnd()).join('\n');
+/** The handoff's words for `items` (handoffItem's): `merge`, the first prompt of a new chat; `fold`, typed into another. Pure. */
+function handoffText(items, kind = 'merge') {
+  const n = items.length;
+  const head = kind === 'fold' ? `Another chat of mine, folded into this one — where it stands, so its work goes on here.`
+    : `A handoff: ${n === 1 ? 'a chat' : `${n} chats`} of mine, merged into this one — where each stands, so we carry ${n === 1 ? 'it' : 'them'} on from here.`;
+  const parts = items.map((c, i) => [
+    `## ${n > 1 ? `${i + 1}. ` : ''}${c.title}`,
+    ...c.cwd ? [`Folder: ${c.cwd}${c.branch ? ` · branch ${c.branch}` : ''}`] : [],
+    ...c.prs?.length ? [`PRs: ${c.prs.map(p => `${p.url}${p.state ? ` (${p.state})` : ''}${p.title ? ` — ${p.title}` : ''}`).join(' · ')}`] : [],
+    ...c.first && c.first !== c.last ? [`First asked: ${c.first}`] : [],
+    ...c.last ? [`Last asked: ${c.last}`] : [],
+    ...c.away ? [`Where it stands — Claude Code's recap${handoffWhen(c.away.at)}:\n${quoted(c.away.text)}`] : [],
+    ...c.reply && (!c.away || String(c.reply.at || '') > String(c.away.at || '')) ? [`${c.away ? 'After it, ' : ''}Claude's last reply${handoffWhen(c.reply.at)}:\n${quoted(c.reply.text)}`] : [],
+    ...c.file ? [`Its transcript, to read for more: ${c.file}`] : [],
+  ].join('\n'));
+  const tail = kind === 'fold' ? 'Take it in, then wait for what I ask next.' : 'Read these, say in a few lines where you understand things stand, then wait for what I ask next.';
+  return [head, ...parts, tail].join('\n\n');
+}
+/** A chat started with an id the board picked (2026-10-31: a merge's new chat): on the board from its start, so a page
+ *  can open it and its links hold before claude has registered or written a line. */
+function placeholder(id, cwd) {
+  const s = newSession(id, null); s.cwd = cwd; s.startedAt = new Date().toISOString();
+  sessions.set(id, s); return s;
+}
 
 // ---- the board's setup: CONFIG_FILE, the settings' Setup ------------------------------------------------------------
 // What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
@@ -603,6 +672,7 @@ function newSession(id, file) {
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
     compacting: false,   // the turn is a /compact you typed: its compact_boundary ends it (fold)
     clearedAt: null,   // the time of the /clear this transcript begins with, if it does (tickCleared)
+    firstPrompt: null, replyText: null, away: null,   // a handoff's (2026-10-31): your first words, Claude's last reply whole, Claude Code's recap ({text, at})
     startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
     openedAt: null,    // when a page last opened the chat (ms): its PRs are polled as if it had just been touched (prEvery)
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
@@ -711,6 +781,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
+    ...linksOf(s.id) && { links: linksOf(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
     // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
     // that checkout — while its claude runs, and not once you said you know
     drift: (d => d && { from: d.from, to: d.to, at: d.at, peers: s.peers || [] })(driftOf(s)), headNow: s.alive ? s.headNow : null,
@@ -2149,6 +2220,9 @@ function fold(s, line) {
       return true;
     }
     case 'system':
+      // Claude Code's own recap of where a chat stands, written as you come back to it (2026-10-31): a handoff's first
+      // word on it — `{type: system, subtype: away_summary, content: <text>}`, measured on this Mac's transcripts
+      if (line.subtype === 'away_summary' && typeof line.content === 'string' && line.content.trim()) { s.away = { text: cut(line.content.trim(), HANDOFF_TEXT), at: ts }; return false; }
       if (line.subtype !== 'compact_boundary') return false;
       pushEntry(s, { role: 'system', kind: 'compact', text: 'Conversation compacted', ts });
       if (!s.compacting) return false;   // one Claude Code ran mid-turn on its own: the turn goes on
@@ -2209,6 +2283,7 @@ function fold(s, line) {
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
       s.lastPrompt = plainSnippet(text, 200);
+      s.firstPrompt ??= plainSnippet(text, 400);
       branchHeard(s);
       // A prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`). Not
       // a turn the claude that began it never closed (2026-10-14): killed or crashed mid-way, and this prompt typed into
@@ -2249,7 +2324,7 @@ function fold(s, line) {
       s.lastActivity = ts;
       if (endsTurn(m)) {
         const text = textOf(blocks).trim();
-        if (text) { s.lastReply = plainSnippet(text, 300); s.lastReplyAt = ts; }
+        if (text) { s.lastReply = plainSnippet(text, 300); s.lastReplyAt = ts; s.replyText = cut(text, HANDOFF_TEXT); }
         // the reply that ends the turn, and how long since your last word it took — the transcript's footer under it
         // (2026-10-08); pushed in this same tick, so the page gets it marked
         if (said) { said.turnEnd = true; const ms = Date.parse(ts) - Date.parse(s.turnStart); if (ms > 0) said.worked = ms; }
@@ -5559,7 +5634,7 @@ const VIM_BIN = process.env.VIM_BIN || 'vim';
  * Only the words you wrote in the board's Send box; never logged.
  */
 const PROMPT_MAX = 100_000;
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = editor ? VIM_BIN : shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
@@ -5581,7 +5656,8 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
       : boardConfig().roots.some(r => r.org && (cwd + sep).startsWith(r.dir + sep)) ? `${tildePath(cwd)} is not there — its repo is checked out, but not this folder in it (a worktree since removed?)`
       : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Projects)` };
   }
-  const args = editor ? ['.'] : task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
+  // `newId` (2026-10-31): a new chat under an id the board picked — `--session-id` — so it is known before claude registers
+  const args = editor ? ['.'] : task ? [task] : shell ? [] : sessionId ? ['--resume', sessionId] : newId ? ['--session-id', newId] : [];
   const said = args.join(' ');   // the log's: the prompt is yours, and not the log's to keep
   if (prompt && !editor && !task && !shell) args.push('--', String(prompt).slice(0, PROMPT_MAX));
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
@@ -5589,7 +5665,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   const sock = join(TERMS_DIR, `${id}.sock`);
   if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -5618,7 +5694,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   terms.set(id, t);
   console.log(`[peixairada] terminal ${id}: ${editor || (shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (said ? ' ' + said : '') + (args.includes('--') ? ' -- <a prompt of yours>' : ''))} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
-  const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
+  const s = spec.sessionId && sessions.get(spec.sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t), ...back && { back } };
 }
 
@@ -5987,6 +6063,13 @@ const server = createServer(async (req, res) => {
       const since = Number(url.searchParams.get('since')) || new Date().setHours(0, 0, 0, 0);
       return json(res, 200, dayOf([...sessions.values()], since));
     }
+    // a handoff (2026-10-31): where these chats stand, for the box a merge or a fold is read and changed in before it goes
+    if (req.method === 'GET' && p === '/api/handoff') {
+      const ids = [...new Set((url.searchParams.get('ids') || '').split(',').filter(Boolean))].slice(0, 12), gone = ids.filter(id => !sessions.has(id));
+      if (!ids.length || gone.length) return json(res, 404, { error: ids.length ? `not on the board: ${gone.join(', ')}` : 'which chats? ?ids=a,b' });
+      const items = ids.map(id => handoffItem(sessions.get(id)));
+      return json(res, 200, { text: handoffText(items, url.searchParams.get('kind') === 'fold' ? 'fold' : 'merge'), chats: items.map(c => ({ id: c.id, title: c.title, cwd: c.cwd })) });
+    }
     // the overview's tiles (2026-10-10): the last few things each of these chats did
     if (req.method === 'GET' && p === '/api/tails') {
       const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 40);
@@ -6257,8 +6340,17 @@ const server = createServer(async (req, res) => {
       const body = await jsonBody(req);
       const cwd = typeof body.cwd === 'string' ? body.cwd : null, task = typeof body.task === 'string' && body.task ? body.task : null;
       if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(l => l.name === task))) return json(res, 400, { error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(l => l.name).join(', ') || 'none'}${cwd && !claudeTrusts(cwd) ? ' asked of it: Claude Code has not trusted the folder' : ''}` });
-      const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task });
-      return json(res, r.code, r);
+      // a merge (2026-10-31): the handoff you read and started as the new chat's first prompt, under an id the board picks,
+      // so the chats it came from are tied to it at once (addLink)
+      const prompt = typeof body.prompt === 'string' && body.prompt.trim() ? body.prompt : null;
+      const from = Array.isArray(body.from) ? [...new Set(body.from.filter(id => typeof id === 'string' && sessions.has(id)))] : [];
+      if ((prompt || from.length) && task) return json(res, 400, { error: 'a launcher takes no first prompt' });
+      if (!prompt && !from.length) { const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task }); return json(res, r.code, r); }
+      const newId = randomUUID(); placeholder(newId, cwd);
+      const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, prompt, newId });
+      if (r.code !== 201) { sessions.delete(newId); return json(res, r.code, r); }
+      for (const id of from) addLink('merge', id, newId);
+      return json(res, r.code, { ...r, sessionId: newId });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {   // attach to, or resume, this chat
       const s = sessions.get(m[1]);
@@ -6339,6 +6431,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
 export { cronNext, nextWake, pruneWakes, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { handoffText };   // chats that talk (2026-10-31)
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A stand-in for `claude` in tests: the shapes of the real thing that the board depends on, none of the cost.
-//   fakeclaude.mjs [--resume <id>] [-- <prompt>]      (what the server passes)
+//   fakeclaude.mjs [--resume <id> | --session-id <uuid>] [-- <prompt>]      (what the server passes)
 // It registers in $CLAUDE_DIR/sessions/<pid>.json like the CLI, appends user/assistant lines to the chat's
 // transcript under $CLAUDE_DIR/projects/<slug>/<id>.jsonl, and draws a TUI the way Claude Code does: the
 // transcript scrolls above, a live region sits at the bottom (rule · prompt · rule · three status lines), the
@@ -27,7 +27,10 @@ if (!CLAUDE_DIR || underReal(CLAUDE_DIR)) { console.error('fakeclaude: CLAUDE_DI
 const all = process.argv.slice(2), dd = all.indexOf('--');
 const args = dd >= 0 ? all.slice(0, dd) : all, firstPrompt = dd >= 0 ? all.slice(dd + 1).join(' ') : null;
 const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
-let sessionId = arg('--resume') || randomUUID();
+// `--session-id <uuid>` (2026-10-31): a new chat under the id the board picked, as Claude Code takes one; with --resume
+// only beside --fork-session, as Claude Code refuses it otherwise
+if (arg('--session-id') && arg('--resume') && !args.includes('--fork-session')) { console.error('Error: --session-id can only be used with --continue or --resume if --fork-session is also specified.'); process.exit(1); }
+let sessionId = arg('--resume') || arg('--session-id') || randomUUID();
 const cwd = process.cwd();
 const slug = cwd.replace(/[/.]/g, '-');
 const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
