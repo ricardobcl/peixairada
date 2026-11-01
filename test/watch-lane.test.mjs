@@ -1,5 +1,6 @@
 // The Watching lane's server half (2026-10-31, round XIII): a turn its own task's notice woke (`woken`), the wake-ups a
-// chat sets itself (`wake`, from ScheduleWakeup and CronCreate as Claude Code writes them) — pure functions of server.mjs.
+// chat sets itself (`wake`, from ScheduleWakeup and CronCreate as Claude Code writes them), and a turn that stopped short
+// (`stopped`: an API error after its retries, the token limit, a refusal) — pure functions of server.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -110,4 +111,31 @@ test('cronNext reads the five fields in local time', () => {
   assert.equal(t(cronNext('0 12 15 * 1', base)), '2/11 12:00', 'a day of the month or of the week, either');
   assert.ok(Number.isNaN(cronNext('every five minutes', base)));
   assert.ok(Number.isNaN(cronNext('61 * * * *', base)));
+});
+
+test('a turn that stopped short says why; your next word clears it', () => {
+  const s = live('w4');
+  fold(s, user('migrate the ledger', 0));
+  fold(s, said([{ type: 'text', text: 'API Error: Connection lost mid-response. The response may be incomplete.' }], 'stop_sequence', 1,
+    { isApiErrorMessage: true, error: 'server_error', message: { role: 'assistant', model: '<synthetic>', id: 'mx', content: [{ type: 'text', text: 'API Error: Connection lost mid-response. The response may be incomplete.' }], stop_reason: 'stop_sequence' } }));
+  let sum = summary(s);
+  assert.equal(sum.status, 'idle');
+  assert.deepEqual({ ...sum.stopped, at: null }, { why: 'api', text: 'Connection lost mid-response.', kind: 'server_error', at: null });
+  assert.equal(s.model, null, 'a synthetic line is no model');
+  fold(s, user('go on', 2));
+  assert.equal(summary(s).stopped, null, 'your word: working, and the stop behind it');
+  fold(s, said([{ type: 'text', text: 'API Error: 529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}' }], 'stop_sequence', 3, { isApiErrorMessage: true }));
+  assert.equal(summary(s).stopped.text, '529 · Overloaded');
+  fold(s, user('again', 4)); fold(s, said([{ type: 'text', text: 'half a rep' }], 'max_tokens', 5));
+  assert.equal(summary(s).stopped.why, 'max_tokens');
+  fold(s, user('and?', 6)); fold(s, said([{ type: 'text', text: 'I can\'t help with that.' }], 'refusal', 7));
+  assert.equal(summary(s).stopped.why, 'refusal');
+  fold(s, user('fine', 8)); fold(s, said([{ type: 'text', text: 'Done.' }], 'end_turn', 9));
+  assert.equal(summary(s).stopped, null, 'an answer');
+  fold(s, user('more', 10)); fold(s, said([{ type: 'text', text: 'API Error: x' }], 'stop_sequence', 11, { isApiErrorMessage: true }));
+  fold(s, user('[Request interrupted by user]', 12));
+  assert.equal(summary(s).stopped, null, 'an interrupt is yours, not an error');
+  // a max_tokens that cut a tool call is no stop: Claude Code goes on with it
+  fold(s, user('more', 13)); fold(s, said([{ type: 'tool_use', id: 'tz', name: 'Bash', input: {} }], 'max_tokens', 14));
+  assert.equal(summary(s).stopped, null);
 });

@@ -53,6 +53,12 @@ export function scheduledLine({ id, cwd, at = new Date() }) {
   return { ...lineBase(id, cwd), parentUuid: null, type: 'user', isMeta: true, promptSource: 'system', turnOrigin: 'scheduled', uuid: randomUUID(), timestamp: at.toISOString(), message: { role: 'user', content: 'the loop again' } };
 }
 
+/** The line Claude Code writes when a turn dies on an API error after its retries: synthetic, flagged, its words the error. */
+export function apiErrorLines({ id, cwd, text = 'API Error: Connection lost mid-response. The response may be incomplete.', error = 'server_error', at = new Date() }) {
+  return [{ ...lineBase(id, cwd), parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: at.toISOString(), error, isApiErrorMessage: true,
+    message: { model: '<synthetic>', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'stop_sequence' } }];
+}
+
 /** A `<task-notification>` line: an event of a running task, or — with a status — the end of one. */
 export function taskNoteLine({ id, cwd, taskId, summary = '', event = '', status = null, at = new Date() }) {
   const body = `<task-notification>\n<task-id>${taskId}</task-id>\n${status ? `<status>${status}</status>\n` : ''}<summary>${summary}</summary>\n${event ? `<event>${event}</event>\n` : ''}</task-notification>`;

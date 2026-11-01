@@ -609,7 +609,7 @@ function newSession(id, file) {
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null, tasksGone: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks, the calls that started them, and the ids the poll let go (letTaskGo)
-    woke: null, wakes: null, wakeCalls: null,   // a turn its own task's notice woke; the wake-ups it set itself and their calls (startWake)
+    woke: null, wakes: null, wakeCalls: null, stopped: null,   // a turn its own task's notice woke; the wake-ups it set itself and their calls (startWake); how its last turn stopped short (stopOf)
     branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
     prActs: [], actsWait: new Map(),   // what its Bash did to a PR — a push, a review, a reply — and the calls still waiting on their result (prActs)
     opening: new Map(),   // its Bash calls with a `gh pr create` in them, waiting on their result (noteOpening)
@@ -694,8 +694,8 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
     team: s.alive ? s.team || null : null,   // its agent team's teammates, while its claude runs (noteTeam, 2026-10-31)
     // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you; the next
-    // wake-up it set itself
-    woken: status === 'working' && !!s.woke, wake: nextWake(s),
+    // wake-up it set itself; and how its last turn stopped short, while nothing runs
+    woken: status === 'working' && !!s.woke, wake: nextWake(s), stopped: status === 'working' || status === 'needs-input' ? null : s.stopped,
     doing: status === 'working' ? doingOf(s) : null,   // the turn's newest tool call: the card's live line (2026-10-11)
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
@@ -2121,6 +2121,19 @@ const TURN_ENDS = new Set(['end_turn', 'stop_sequence', 'max_tokens', 'refusal']
  *  refusal (2026-10-03: a turn that ran out of tokens stayed working and its reply was never alerted), unless what ran
  *  out was a tool call Claude Code goes on with. */
 const endsTurn = m => TURN_ENDS.has(m?.stop_reason) && !(m.stop_reason === 'max_tokens' && Array.isArray(m.content) && m.content.some(b => b?.type === 'tool_use'));
+/** A turn that ended on something other than an answer (2026-10-31, round XIII's S4), or null: an API error Claude Code
+ *  wrote after its retries — a `<synthetic>` line flagged `isApiErrorMessage`, its words "API Error: …", `error` a kind
+ *  (server_error, authentication_failed, invalid_request…) —, a reply the token limit cut, a refusal. */
+function stopOf(line, m, text, ts) {
+  if (line.isApiErrorMessage) {
+    const t = String(text || '').replace(/^API Error:\s*/i, ''), code = /^(\d{3})\b/.exec(t)?.[1], msg = /"message"\s*:\s*"([^"]+)"/.exec(t)?.[1];
+    const why = msg || t.replace(/^\d{3}\s*/, '').split(/(?<=[.!?])\s/)[0];
+    return { why: 'api', text: snippet(`${code ? code + ' · ' : ''}${why}`, 90) || null, kind: typeof line.error === 'string' ? line.error : null, at: ts };
+  }
+  if (m.stop_reason === 'max_tokens') return { why: 'max_tokens', text: null, kind: null, at: ts };
+  if (m.stop_reason === 'refusal') return { why: 'refusal', text: null, kind: null, at: ts };
+  return null;
+}
 
 /** Fold one JSONL line into the session. Returns true if the session summary changed. */
 function fold(s, line) {
@@ -2176,7 +2189,7 @@ function fold(s, line) {
         pushEntry(s, { role: 'user', kind: 'interrupt', text: raw, ts });
         s.lastActivity = ts; s.lastUserAt = ts;   // Escape is you acting on the chat too
         noteSpan(s, 'w', s.turnStart, ts); s.askOpen = null;
-        s.turnStart = null; s.compacting = false; s.woke = null;
+        s.turnStart = null; s.compacting = false; s.woke = null; s.stopped = null;   // stopped by you: no error
         setStatus(s, 'idle', ts);
         return true;
       }
@@ -2203,7 +2216,7 @@ function fold(s, line) {
       if (orphan) noteSpan(s, 'w', s.turnStart, s.lastActivity);   // the turn as far as it went
       if (!s.turnStart || s.status !== 'working' || orphan) { s.turnStart = ts; s.turnFiles = new Set(); }
       s.compacting = /^\/compact(\s|$)/.test(text);
-      s.lastActivity = ts; s.lastUserAt = ts; s.woke = null;   // your word: the turn is yours
+      s.lastActivity = ts; s.lastUserAt = ts; s.woke = null; s.stopped = null;   // your word: the turn is yours, and whatever stopped the last is behind it
       setStatus(s, 'working', ts);
       return true;
     }
@@ -2240,7 +2253,7 @@ function fold(s, line) {
         // (2026-10-08); pushed in this same tick, so the page gets it marked
         if (said) { said.turnEnd = true; const ms = Date.parse(ts) - Date.parse(s.turnStart); if (ms > 0) said.worked = ms; }
         noteSpan(s, 'w', s.turnStart, ts);   // the day's timeline (2026-10-10): the turn, prompt to reply
-        s.turnStart = null; s.compacting = false; s.woke = null;
+        s.turnStart = null; s.compacting = false; s.woke = null; s.stopped = stopOf(line, m, text, ts);
         setStatus(s, 'idle', ts);
         if (!s.agentsRunning) queueNotify(s, 'reply');   // a turn that ends with agents still at work is not the reply yet
       } else if (needsInput) {
@@ -6314,7 +6327,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { cronNext, nextWake, pruneWakes, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cronNext, nextWake, pruneWakes, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();

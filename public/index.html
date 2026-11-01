@@ -907,6 +907,7 @@
   #sessions[data-bylane] .card.roomy .state.live:not(:empty) { display: grid; }
   #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
   #sessions[data-even] .card .state.needs-input { display: none; }
+  #sessions[data-even] .card .state.stopped { display: none; }   /* one height: the words in the card's .vh */
   #sessions[data-even] .card .state.moveslot { display: flex; visibility: hidden; }
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
@@ -1028,6 +1029,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   :is(.card, .presence) .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   :is(.card, .presence) .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
+  /* A turn that stopped short (stopHtml, 2026-10-31): the attention colour, a square for a stop, the reason in words */
+  .card .state.stopped { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
+  .card .state.stopped .ic { width: 10px; height: 10px; flex: none; align-self: center; }
+  .card .state.stopped .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-weight: 500; }
   /* a PR come round to you: a tag filled in the accent — like the chip it names, it reads on any project's tint — on
      the card's line (moveHtml), and in the chat header before the PR chips with the reason beside it (headMove) */
   .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: var(--r-1); background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
@@ -4030,6 +4035,7 @@ const toolName = n => {
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     // ± in a square: a chat's changes, its diff (2026-10-10)
     timeline: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5v13M7.5 4.5h6M7.5 11.5h4"/><circle cx="4.5" cy="4.5" r="1.75"/><circle cx="4.5" cy="11.5" r="1.75"/></svg>',   // the timeline tab (2026-10-17)
+    stop: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2.5"/></svg>',   // a turn that stopped short (2026-10-31)
     wake: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5.75V8.5l2 1.25M3 3.25 4.75 1.75M13 3.25l-1.75-1.5"/></svg>',   // a wake-up the chat set itself (2026-10-31)
     diff: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2.5h1.5v2.25H11v1.5H8.75V8.5h-1.5V6.25H5v-1.5h2.25ZM5 10.5h6V12H5Z"/><path fill-rule="evenodd" d="M2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1Zm0 1.5v11h11v-11Z"/></svg>',
     // a branch (Primer's git-branch, MIT): the changes tab's branch
@@ -5361,6 +5367,15 @@ const toolName = n => {
     const a = s.ask || {}, what = askWhat(s);
     return `<div class="state needs-input" title="${esc(what)}">${ICON.ask}<span class="q">${esc(what)}</span>${a.options ? `<span class="opts">${a.options} answers</span>` : ''}</div>`;
   }
+  /** A turn that stopped short (2026-10-31, round XIII's S4): the server's `stopped` — an API error after its retries, the
+   *  token limit, a refusal — on a ready card, why in words and in the attention colour, at every card size; no lane of
+   *  its own. Your next word clears it. */
+  const STOP_SAID = { max_tokens: 'cut short at the token limit', refusal: 'declined to answer' };
+  const stoppedSaid = s => !s.done && !asking(s) && s.status !== 'working' && s.stopped ? (s.stopped.why === 'api' ? `API error${s.stopped.text ? ` · ${s.stopped.text}` : ''}` : STOP_SAID[s.stopped.why] || 'no answer') : '';
+  function stopHtml(s) {
+    const w = stoppedSaid(s); if (!w) return '';
+    return `<div class="state stopped" title="${esc(`Its last turn stopped short, with no answer — ${w}. A word from you carries on`)}">${ICON.stop}<b>stopped</b><span class="q">${esc(w)}</span></div>`;
+  }
   /** The chat's PRs come round to you, the newest move first. */
   const movedPrs = s => (s.prs || []).filter(p => p.turn?.you).sort((a, b) => String(b.turn.movedAt).localeCompare(String(a.turn.movedAt)));
   const moveTip = prs => prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n') + '\nclick: its timeline, at the move (⌥⌘J) · ⌥-click: let this round go — the next move tells you';
@@ -5662,12 +5677,12 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${teamSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
-      ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
+      ${stopHtml(s)}${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
     </div>`;
   }
   // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,
