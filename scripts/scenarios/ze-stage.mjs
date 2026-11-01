@@ -27,6 +27,19 @@ export default async function (ctx) {
     `g.demo = false; g.mass = 1; g.hurt = 0; g.items.push({ kind: 'veg', e: '🥦', say: 'x', x: g.x, y: g.y - 110, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`]) {
     await ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.lab.demo(); ${m}; })()`); const f0 = await ctx.evaluate(`window.peix.ze().stage.frames`); await ctx.waitFor(`window.peix.ze().stage.frames > ${f0 + 3}`, { what: m });
   }
+  // a level-up: fireworks over the river
+  await ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.lab.demo(); g.demo = false; g.spawn = 1e9; g.next = g.score + 1; g.items.push({ kind: 'meat', e: '🥩', pts: 15, say: 'x', x: g.x, y: g.y - 120, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 }); })()`);
+  await ctx.waitFor(`window.peix.ze().g.level === 2 && window.peix.ze().g.fw.length === 3`, { what: 'the fireworks' });
+  { const f0 = await ctx.evaluate(`window.peix.ze().stage.frames`); await ctx.waitFor(`window.peix.ze().stage.frames > ${f0 + 3}`, { what: 'the fireworks drawn' }); }
+  // under reduced motion: nothing drifts, no fireworks, the K.O. at once
+  await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  const calm = JSON.parse(await ctx.evaluate(`(async () => { const z = window.peix.ze(), g = z.lab.demo(), T0 = z.stage.T, f0 = z.stage.frames; while (z.stage.frames < f0 + 4) await new Promise(r => setTimeout(r, 30)); return JSON.stringify({ still: z.stage.T === T0 }); })()`));
+  assert.ok(calm.still, 'the water and the air hold still');
+  await ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.lab.demo(); g.demo = false; g.spawn = 1e9; g.mass = 1; g.hurt = 0; g.items.push({ kind: 'veg', e: '🥦', say: 'x', x: g.x, y: g.y - 110, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 }); })()`);
+  await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O.' });
+  assert.ok(await ctx.evaluate(`window.peix.ze().g.koT >= .9`), 'the K.O. at once');
+  await ctx.send('Emulation.setEmulatedMedia', { features: [] });
+  await ctx.evaluate(`window.peix.ze().lab.demo()`);
   // a context lost: the same game on its 2D canvas, the same dialog
   await ctx.evaluate(`window.peix.ze().stage.gl.getExtension('WEBGL_lose_context').loseContext()`);
   await ctx.waitFor(`window.peix.ze().stage.off && !window.peix.ze().stage.gl && !document.querySelector('#zeGL')`, { what: 'the stage let go' });

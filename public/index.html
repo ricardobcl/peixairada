@@ -13023,7 +13023,7 @@ const toolName = n => {
   const zeBests = () => prefs.zeBest && typeof prefs.zeBest === 'object' ? prefs.zeBest : (prefs.zeBest = prefs.zeBest ? { normal: +prefs.zeBest } : {});
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: phase === 'title' ? Infinity : zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
-    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], lunch: [], sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
+    gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], lunch: [], sq: null, freeze: 0, punch: 0, trail: [], fw: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
     lightT: 0, koT: 0, focusAt: -99, jumpBuf: 0, kickBuf: 0, coyote: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
   const ze = { tap: null, typed: '', mossad: false, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
@@ -13352,7 +13352,25 @@ const toolName = n => {
     g.level++; g.next += zeDiff().step * (1 + (g.level - 2) * ZE_PACE.up);
     if (g.level === ZE_DRAGON_LEVEL) zeDragon(g, true);
     else if (g.level % ZE_AVO_EVERY === 0) zeAvo(g);
-    else { zeBanner(g, `LEVEL ${g.level}!`, g.level % ZE_PACE.bite === 1 ? `THE GREENS BITE ${zeBite(g)} NOW` : ''); zeSfx('level'); }
+    else { zeBanner(g, `LEVEL ${g.level}!`, g.level % ZE_PACE.bite === 1 ? `THE GREENS BITE ${zeBite(g)} NOW` : ''); zeSfx('level'); zeFireworks(g); }
+  }
+  /** Festa das Cruzes (B3, 2026-11-01): three rockets at a level-up, over the river and in it. None under reduced motion. */
+  const ZE_FW = ['#ffd23f', '#ff5a64', '#7ef0ff', '#9be15d', '#ff9ad5', '#fff3c4'], ZE_FW_N = 56, ZE_FW_LIFE = 1.6;
+  function zeFireworks(g) {
+    if (zeCalm()) return;
+    for (let i = 0; i < 3; i++) g.fw.push({ x: 90 + Math.random() * 540, y: 120 + Math.random() * 300, t: -i * .28, c: zePick(ZE_FW), a0: Math.random() * 6.3, R: 80 + Math.random() * 50 });
+    zeSfx('boom');
+  }
+  /** Where each spark of a rocket is at its age: out quickly, then falling. fn(x, y, fade). */
+  function zeFwEach(g, fn) {
+    for (const f of g.fw) {
+      if (f.t < 0) { fn(f.x, f.y - f.t * 900, 1, f, true); continue; }   // going up
+      for (const [back, dim] of [[0, 1], [.05, .55], [.1, .28]]) {   // each spark and its tail
+        const t = f.t - back; if (t < 0) continue;
+        const out = f.R * (1 - Math.exp(-3.4 * t)), down = 70 * t * t, fade = (1 - f.t / ZE_FW_LIFE) * dim;
+        for (let i = 0; i < ZE_FW_N; i++) { const a = f.a0 + i / ZE_FW_N * 6.283, k = .62 + (i % 4) * .14; fn(f.x + Math.cos(a) * out * k, f.y + Math.sin(a) * out * k + down, fade, f, false); }
+      }
+    }
   }
   function zeDragon(g, on) {
     g.streak = 0; g.mult = 1;
@@ -13507,6 +13525,7 @@ const toolName = n => {
       if (l.x < -220 || l.x > ZE_W + 220) g.leaving = null;
     }
     if (g.phase === 'over' && g.koT >= ZE_KO_T) g.overT += dt;
+    for (const f of g.fw) f.t += dt; g.fw = g.fw.filter(f => f.t < ZE_FW_LIFE);
     if (g.phase === 'title' && (g.cardT += dt) >= ZE_CARD_T) { g.card++; g.cardT = 0; }   // the rules turn while the demo plays
     if (g.stamp) g.stamp = Math.max(0, g.stamp - dt * 6);
     if (g.phase !== 'play' && !g.demo) return;
@@ -13627,6 +13646,8 @@ const toolName = n => {
     if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {   // lightning, the dragon's or the storm's
       cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
     }
+    if (g.fw.length) zeFwEach(g, (x, y, a, f, up) => { cx.globalAlpha = Math.max(0, a); cx.fillStyle = f.c; cx.fillRect(x, y, 3, 3); });
+    cx.globalAlpha = 1;
     layers(false, true, false);
     if (g.avo) zeAvoHouse(cx, g, calm);
     layers(false, false, true);
@@ -14955,6 +14976,10 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       zgUse(zg.P.river, [0, ZE_WATER, ZE_W, ZE_BANK - ZE_WATER + 8], { uA: a, uT: zg.T, uWet: T.R.wet > .5 ? 1 : 0, uSunX: T.R.sunX, uSunS: T.R.glint, uWater: T.R.water, uSunC: T.R.keyC }, { uC: T.comp.t, uN: zg.noise });
     };
     back(S, 1); if (zg.was) back(zg.was.S, zg.was.a);
+    if (g.fw.length) {   // the fireworks: light in the sky, and a broken line of it on the water
+      const L = { n: 0 }; zeFwEach(g, (x, y, a, f, up) => { const h = parseInt(f.c.slice(1), 16), r = ((h >> 16) & 255) / 255, gr = ((h >> 8) & 255) / 255, b = (h & 255) / 255, v = 6 * a; zgPt(L, x, y, up ? 4 : 6, r * v, gr * v, b * v, 1, 1); if (y < ZE_WATER) { const my = ZE_WATER + (ZE_WATER - y) * .1; if (my < ZE_BANK) zgPt(L, x + Math.sin(my * .9 + zg.T * 4) * 4, my, 3.4, r * v * .4, gr * v * .4, b * v * .4, 1, 1); } });
+      gl.blendFunc(gl.ONE, gl.ONE); zgPoints(L, gl.POINTS); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    }
     zgUse(zg.P.fog, [0, 660, ZE_W, 170], { uT: zg.T, uA: R0.fog[3], uY0: 660, uY1: 830, uC: R0.fog.slice(0, 3) }, { uN: zg.noise });   // mist on the water
     if (dark) { zgUse(zg.P.tint, [0, 0, ZE_W, ZE_BANK], { uC: [.06 * .4 * dark, 0, .01 * .4 * dark, .4 * dark], uFade: [1e4, 2e4] }); zgUse(zg.P.tint, [0, 0, ZE_W, 560], { uC: [.007 * .3 * dark, 0, .003 * .3 * dark, .3 * dark], uFade: [200, 560] }); }   // the dragon's sky, darker still
     // where it will land: a shadow under each thing falling, darker as it nears, and under him in the air
@@ -15202,6 +15227,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       [220, 277, 330, 440].forEach((hz, i) => zeTone(m, t + 1.05 + i * .03, 'square', hz, hz, .6, .07));
     }
     else if (kind === 'detransform') zeTone(m, t, 'sawtooth', 800, 110, .7, .12);
+    else if (kind === 'boom') for (const d of [.3, .58, .86]) { zeTone(m, t + d, 'sine', 120, 42, .3, .2); zeNoise(m, t + d, .16, .06); }
     else if (kind === 'thunder') { zeNoise(m, t, .7, .18); zeTone(m, t, 'sine', 70, 30, .5, .3); }
     else if (kind === 'whoosh') {
       const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
