@@ -7,11 +7,14 @@
 <title>peixAIrada</title>
 <script>
   // The board's appearance before its first paint (2026-10-12): the one it wore last (prefs.look, kept by applySkin),
-  // unless its theme follows macOS — then, as with no prefs at all, the system's — and its layout (2026-10-30,
-  // prefs.layout, prefs.sidebarStyle and prefs.headMark, kept by applyLayout). The page's script below takes over.
+  // unless its theme follows macOS — then, as with no prefs at all, the system's —, its frame's (2026-11-01,
+  // prefs.frame) and its layout (2026-10-30, prefs.layout, prefs.sidebarStyle and prefs.headMark, kept by applyLayout).
+  // The page's script below takes over.
   (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
     const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = look;
+    const k = p.skinFollow ? (look === 'dark' ? p.skinDark : p.skinLight) : p.skin, own = !k || /^own-/.test(k);   // the frame (2026-11-01): the board's own themes only
+    document.documentElement.dataset.frame = own && p.frame === 'ink' ? 'dark' : own && p.frame === 'stage' ? 'light' : look;
     document.documentElement.dataset.layout = p.layout === 'sidebar' ? 'sidebar' : 'tiles';
     document.documentElement.dataset.sidebar = ['edge', 'ring', 'tinted', 'glass'].includes(p.sidebarStyle) ? p.sidebarStyle : 'glass';
     document.documentElement.dataset.hmark = p.headMark === 'line' ? 'line' : 'capsule'; })();
@@ -704,7 +707,7 @@
      colour as set — the project's name reads its own way (below), and the header and the splitter
      (the open card's bleed into it too) wear it as it is. */
   .card { --lift: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
-  :root[data-theme="dark"] .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
+  :root[data-frame="dark"] .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
   /* …but a black project's glow is its black (2026-10-09, towards morning): --wash, the glow's colour, is --lift on every
      other card and the black itself on a black one — its lines (the edge, the border, the ring's track) the grey that
      shows, its ground black, the open card's too. The pointer on it, or the magnifier's mark, lights the ground in the
@@ -712,11 +715,11 @@
   @property --wash { syntax: '<color>'; inherits: false; initial-value: transparent; }
   .card.black:not(:hover, .qsel) { --wash: var(--repo); }
   /* in the dark a light is lighter than its colour: a dark project's (a forest green) was barely there */
-  :root[data-theme="dark"] .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); }
+  :root[data-frame="dark"] .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); }
   /* the project's name in its colour, a step towards what reads on the panel: lighter in the dark, darker in the light —
      in the dark from --lift's floor (2026-10-09, late night: a black's name, .45, sank into its grey glow) */
   .card .top .repo { color: oklch(from var(--repo, var(--muted)) min(l, .5) c h); text-transform: uppercase; letter-spacing: .8px; font-size: var(--fs-xs); }
-  :root[data-theme="dark"] .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); }
+  :root[data-frame="dark"] .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); }
   .card.black .top .repo { color: var(--ink); }
   /* Claude at work: a light runs round the card's edge. A conic gradient on a square pseudo-element bigger than
      the card, turned by a transform — the one kind of motion a browser runs off its main thread: Chrome's compositor
@@ -830,7 +833,7 @@
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
      hovered and open card wear in either theme (above). On the light theme's pale wash the black's own light, lifted
      (--glow), a grey on the black edge. */
-  :root[data-theme="dark"] .card.black { --ring: #fff; }
+  :root[data-frame="dark"] .card.black { --ring: #fff; }
   /* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
      them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
@@ -1186,7 +1189,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      whose panel of rows rises over the board ---- */
   #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: var(--fs-xs); color: var(--muted);
     background: var(--bar, var(--panel)); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  :root[data-theme="dark"] #sbar { background: var(--bar, #0f0f0e); }
+  :root[data-frame="dark"] #sbar { background: var(--bar, #0f0f0e); }
   #sbar .seg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 11px; border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: inherit; }
   /* its slots (2026-10-09): the search and the filter (#filters), the left's segments, the faces (#people) in the
      middle, the right's segments — the first and the faces nodes of the markup the bar's redraws never touch */
@@ -2152,7 +2155,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card .top .repo { color: var(--muted); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; }
   :root[data-layout="sidebar"]:not([data-sidebar="edge"]) #slist .card .top .repo { padding: 0 6px; border-radius: 5px; line-height: 16px;
     color: oklch(from var(--repo, var(--nocolor)) min(l, .42) c h); background: color-mix(in srgb, var(--lift) 18%, transparent); }
-  :root[data-layout="sidebar"][data-theme="dark"]:not([data-sidebar="edge"]) #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); }
+  :root[data-layout="sidebar"][data-frame="dark"]:not([data-sidebar="edge"]) #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); }
   /* The open row: Edge's a tint of its project's colour, Glass's a deeper one with a hairline of it; Ring's and Tinted's
      its project's colour, solid — darkened till white reads on it (2026-10-31: Ring's was the system's blue) —, all on it
      white, a question on it too (its red line and pings say it) */
@@ -2162,7 +2165,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active { background: var(--selc); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(*, .top .repo) { color: #fff; }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo, :root[data-layout="sidebar"][data-sidebar="glass"][data-theme="dark"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo, :root[data-layout="sidebar"][data-sidebar="glass"][data-frame="dark"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tlead > :is(.cpr.lead, .pstk) { background: rgb(0 0 0 / .2); }
   /* At work, watching and asking, the card's own ring and sonar give way to each style's (the board's ring is a square
@@ -2229,6 +2232,25 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"]:not([data-skin]) main.tiles.notch > #chat { border-top-right-radius: 10px; }   /* concentric with the screen's corner, as the tiles' are */
   :root[data-layout="sidebar"]:not([data-skin]) #splitter:not(:hover, .drag) { background: transparent; }   /* the frame between them; its grip stays */
   :root[data-layout="sidebar"]:not([data-skin]) main.tiles ~ #sbar { border-top: 0; }
+  /* The frame of the other appearance (Settings › Appearance › Frame): Ink (T5) a graphite frame round the light chat,
+     Stage (T6) a paper one round the dark chat. <html data-frame> is the frame's appearance; what sits on it — the list,
+     the status bar — wears the frame's own tokens here, and its rules read data-frame, never data-theme (the card's
+     lift, its project's name, the ALL card's ring). A token derived from others is set again beside them. */
+  :root[data-theme="light"][data-frame="dark"] { --frame: #1e1e1c; --sheet-edge: rgb(0 0 0 / .3); --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / .5); }
+  :root[data-theme="dark"][data-frame="light"] { --frame: #e9e4d9; --sheet-edge: rgb(0 0 0 / .12); --sheet-shade: 0 3px 16px -6px rgb(0 0 0 / .35); }
+  :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark;
+    --bg: #1e1e1c; --panel: #262624; --ink: #ebe9e2; --muted: #a3a197; --line: #333330; --accent: #e08a68; --user-bg: #2c2c29; --tool-bg: #262624; --inline-bg: rgb(255 255 255 / .08);
+    --code-bg: #141413; --code-ink: #e0a284; --snip-claude: #cfcdc3; --nocolor: #6a6a63; --ended: #605f5a; --prg: 44%;
+    --needs: #ef6060; --watch: #45c8c8; --working: #d9a82a; --idle: #2f9e5b; --you: #4fb8a8; --spend: #f28a3c; --vscode: #4aa5f0;
+    --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85; --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97; }
+  :root[data-theme="dark"][data-frame="light"] :is(#sessions, #sbar) { color-scheme: light;
+    --bg: #e9e4d9; --panel: #f1ede4; --ink: #29251e; --muted: #615848; --line: #d6ceba; --accent: #a64a28; --user-bg: #ded7c8; --tool-bg: #e4ded2; --inline-bg: rgb(90 60 10 / .08);
+    --code-bg: #e2dccf; --code-ink: #963b1e; --snip-claude: #4a4337; --nocolor: #b2a893; --ended: #a29884; --prg: 28%;
+    --needs: #b42e2e; --watch: #0a7474; --working: #d9a82a; --idle: #237a48; --you: #21756a; --spend: #e8782a; --vscode: #0066b8;
+    --pr-open: #1a6c3b; --pr-merged: #6634c0; --pr-closed: #b42e2e; --pr-draft: #5c5c56; --tk-todo: #4f5b6c; --tk-doing: #1556ad; --tk-done: #156b48; }
+  :root:is([data-theme="light"][data-frame="dark"], [data-theme="dark"][data-frame="light"]) :is(#sessions, #sbar) { --side: var(--bg); --bar: var(--bg);
+    --side-glass: color-mix(in srgb, var(--side) 60%, transparent); --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
+    --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
   #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
@@ -2696,6 +2718,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
+    :root[data-theme][data-frame] :is(#sessions, #sbar) { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
+      --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }   /* the frame's own, under Ink or Stage */
     :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
@@ -2939,6 +2963,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="appearance theme dark light mode follow macos system auto"><span class="sl" id="slLook"><b>Appearance</b><small id="lookSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slLook" id="lookPick"><button type="button" role="radio" data-look="auto">Auto</button><button type="button" role="radio" data-look="dark">Dark</button><button type="button" role="radio" data-look="light">Light</button></span></div>
           <div class="srow set wide" id="darkRow" data-kw="dark theme colours colors skin"><span class="sl" id="slDark"><b>Dark theme</b><small></small></span><span class="stiles" role="radiogroup" aria-labelledby="slDark" id="darkPick"></span></div>
           <div class="srow set wide" id="lightRow" data-kw="light theme colours colors skin"><span class="sl" id="slLight"><b>Light theme</b><small></small></span><span class="stiles" role="radiogroup" aria-labelledby="slLight" id="lightPick"></span></div>
+          <div class="srow set" id="frameRow" data-kw="frame inset sheet window ground sidebar graphite ink paper stage mixed contrast"><span class="sl" id="slFrame"><b>Frame</b><small id="frameSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slFrame" id="framePick"><button type="button" role="radio" data-fr="matching">Matching</button><button type="button" role="radio" data-fr="ink">Ink</button><button type="button" role="radio" data-fr="stage">Stage</button></span></div>
         </div><p class="sgf">Every theme, the board wearing each as you move through them: <button type="button" class="slink" id="themeBtn">⌥⌘Y</button></p></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Layout">
           <div class="srow set" id="layoutRow" data-kw="layout tiles sidebar rows glass frosted native mac window panels gaps wallpaper"><span class="sl" id="slLayout"><b>Layout</b><small id="layoutSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slLayout" id="layoutPick"><button type="button" role="radio" data-lay="tiles">Tiles</button><button type="button" role="radio" data-lay="sidebar">Sidebar</button></span></div>
@@ -3197,7 +3222,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass', headMark: 'capsule', prChips: 'one' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, frame: 'matching', fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, layout: 'tiles', sidebarStyle: 'glass', headMark: 'capsule', prChips: 'one' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3788,6 +3813,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     for (const p of SKINS[k].proj) { const q = hueOf(p); if (q === null) continue; const d = Math.min(Math.abs(h - q), 360 - Math.abs(h - q)); if (d < bd) { bd = d; best = p; } }
     return best;
   }
+  // The frame (2026-11-01, round XV): the board's own themes lay the chat in a frame of the appearance's own shades
+  // (Matching, T3), or of the other appearance's — a graphite frame round a light chat (Ink, T5), a paper one round a dark
+  // chat (Stage, T6). <html data-frame> is the frame's appearance, as data-theme is the chat's: what sits on the frame —
+  // the list, the status bar — reads it (the CSS's frame blocks), the rest data-theme.
+  const FRAME_SAY = { matching: 'Frame and chat in one appearance, the chat a step lighter', ink: 'A graphite frame round the light chat; in dark, as Matching',
+    stage: 'A paper frame round the dark chat; in light, as Matching' };
+  function frameOf() { return ['ink', 'stage'].includes(prefs.frame) ? prefs.frame : 'matching'; }
   /** The theme and its appearance on the root, and its name in the settings. The terminals and the board's colours
    *  follow (reskin). The app's window wears the appearance kept (not a preview) — its pages, its find bar, its ground —
    *  or macOS's while the theme follows it, so the board's own media query still says macOS's then. */
@@ -3796,6 +3828,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const k = wornKey(), root = document.documentElement, look = skinDarkOf(k) ? 'dark' : 'light';
     root.dataset.theme = look;
     if (SKINS[k]) root.dataset.skin = k; else delete root.dataset.skin;
+    root.dataset.frame = SKINS[k] ? look : frameOf() === 'ink' ? 'dark' : frameOf() === 'stage' ? 'light' : look;
     if (skinPreview === undefined && prefs.look !== look) { prefs.look = look; savePrefs(); }   // for the head's first paint
     const want = prefs.skinFollow ? null : skinDarkOf(prefs.skin);
     if (want !== lookPosted) { lookPosted = want; window.webkit?.messageHandlers?.hub?.postMessage({ type: 'appearance', dark: want }); }   // post is declared further down
@@ -3817,6 +3850,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       row.classList.toggle('off', off);
       row.querySelector('small').textContent = off ? `Only with Auto or ${dark ? 'Dark' : 'Light'}` : `${(SKINS[slot] || OWN_SKINS[dark ? 'dark' : 'light']).name}${mode === 'auto' ? ` while macOS is ${dark ? 'dark' : 'light'}` : ''}`;
     }
+    // the frame: the board's own themes' — off, with why, while a theme of the picker is worn
+    const fr = frameOf(), foff = !!skinOn();
+    for (const b of document.querySelectorAll('#framePick [data-fr]')) { b.setAttribute('aria-checked', String(b.dataset.fr === fr)); b.disabled = foff; }
+    $('#frameRow').classList.toggle('off', foff);
+    $('#frameSay').textContent = foff ? 'Only with the board’s own themes: a theme draws the board flat' : FRAME_SAY[fr];
   }
   applySkin();
   const reskin = () => { applySkin(); for (const tm of [...terms, ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
@@ -3827,6 +3865,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     revealFrom(from, () => { prefs.skinFollow = mode === 'auto'; if (mode !== 'auto') prefs.skin = slotOf(mode === 'dark'); savePrefs(); reskin(); });
   }
   $('#lookPick').addEventListener('click', e => { const b = e.target.closest('[data-look]'); if (b) setLook(b.dataset.look, centreOf(b)); });
+  $('#framePick').addEventListener('click', e => {
+    const b = e.target.closest('[data-fr]'); if (!b || b.disabled || b.dataset.fr === frameOf()) return;
+    revealFrom(centreOf(b), () => { prefs.frame = b.dataset.fr; savePrefs(); applySkin(); });
+  });
   // ---- the layout (2026-10-30, round X): Tiles — panels over a wallpaper, each edged in its project's colour — or
   // Sidebar — the Mac's own window: the list a sidebar of rows, the header a toolbar (the CSS's sidebar block) — in one of
   // four styles, round X's D1–D4: Edge, Ring, Tinted, Glass (the one picked, the default). Settings › Appearance › Layout
@@ -5807,7 +5849,8 @@ const toolName = n => {
       noteMotion(id, v.flap ? 'flap' : 'event');
       if (was && v.n > was.n) {   // an event: the watching light blips
         noteMotion(id, 'blip');
-        card.animate([{ boxShadow: `0 0 0 0 transparent` }, { boxShadow: `0 0 0 1px ${cssToken('--watch')}, 0 0 16px ${cssToken('--watch')}`, offset: .2 }, { boxShadow: '0 0 0 0 transparent' }], { duration: 700, easing: 'ease-out', id: 'blip' });
+        const w = getComputedStyle(card).getPropertyValue('--watch').trim();   // the frame's teal, which is not the root's under Ink or Stage
+        card.animate([{ boxShadow: `0 0 0 0 transparent` }, { boxShadow: `0 0 0 1px ${w}, 0 0 16px ${w}`, offset: .2 }, { boxShadow: '0 0 0 0 transparent' }], { duration: 700, easing: 'ease-out', id: 'blip' });
       }
     }
   }
