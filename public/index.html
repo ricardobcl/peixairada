@@ -13735,7 +13735,7 @@ const toolName = n => {
       spr = zeSprite(src); ze.sprites.set('galo2', spr);
     }
     const p = 3.2, bob = b.y >= ZE_FLOOR && Math.abs(b.vx) > 30 && !calm ? -Math.abs(Math.sin(b.t * 14)) * 3 : 0;
-    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(b.x, ZE_FLOOR + 3, 24, 5, 0, 0, Math.PI * 2); cx.fill();
+    if (!cx.zg) { cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(b.x, ZE_FLOOR + 3, 24, 5, 0, 0, Math.PI * 2); cx.fill(); }
     const halo = cx.createRadialGradient(b.x, b.y - 26, 4, b.x, b.y - 26, 46); halo.addColorStop(0, 'rgba(255, 236, 170, .45)'); halo.addColorStop(1, 'rgba(255, 236, 170, 0)');   // a pale glow: a black bird on the dusk
     cx.fillStyle = halo; cx.fillRect(b.x - 46, b.y - 72, 92, 92);
     cx.save(); cx.translate(b.x, b.y + bob); cx.scale(b.f, 1); if (b.peck > 0) cx.rotate(.45);
@@ -14100,7 +14100,7 @@ const toolName = n => {
     const spr = zeBuild(Math.max(0, g.mass), pose, { open, agent: g.agent, shades: ze.mossad, sick: g.hurt > .9, flip });
     const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2, tw = zeTw(g);
     const under = zePlatform(g.x, g.y);   // his shadow, on whatever is under him
-    cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, under + 3, Math.max(10, tw + 10 - (under - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill();
+    if (!cx.zg) { cx.fillStyle = 'rgba(20, 8, 30, .35)'; cx.beginPath(); cx.ellipse(g.x, under + 3, Math.max(10, tw + 10 - (under - g.y) * .05) * k, 5 * k, 0, 0, Math.PI * 2); cx.fill(); }
     cx.save(); cx.translate(g.x + (g.mass === 1 && g.phase === 'play' && !zeCalm() ? Math.sin(g.t * 70) * 1.6 : 0), g.y);   // on his last bit of bulk he shivers
     if (g.ride) { const pv = g.ride.kind === 'focus' ? -58 : -46; cx.scale(g.f, 1); cx.translate(pv, 0); cx.rotate(g.ride.tilt); cx.translate(-pv, 0); cx.scale(g.f, 1); cx.translate(-14 * g.f, 16); }   // in the driver's seat, pitching with his car
     if (g.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? .65 : Math.floor(g.hurt * 12) % 2 ? .4 : 1;
@@ -14384,7 +14384,7 @@ c*=.78+.22*smoothstep(0.,5.,vP.y-${ZE_WATER}.);
 o=vec4(c,1.)*uA;}`,
     alpha: `uniform sampler2D uT;
 void main(){float s=0.;for(int i=0;i<16;i++){float a=float(i)*2.39996;float r=sqrt(float(i)+.5)/4.*7.;s+=texture(uT,cuv(vP+vec2(cos(a),sin(a))*r)).a;}o=vec4(s/16.);}`,
-    lit: `uniform sampler2D uA,uH,uE;uniform vec3 uAmbS,uAmbG,uKey,uKeyC;uniform float uRim,uBev,uUseE,uEm,uSpec,uKeep,uEdge;
+    lit: `uniform sampler2D uA,uH,uE,uD;uniform vec3 uAmbS,uAmbG,uKey,uKeyC;uniform vec2 uDropD;uniform float uRim,uBev,uUseE,uEm,uSpec,uKeep,uEdge,uDrop;
 uniform vec4 uLp[12];uniform vec4 uLc[12];uniform int uLn;
 void main(){vec2 uv=cuv(vP);vec4 a=texture(uA,uv);vec3 e=uUseE>.5?lin(texture(uE,uv).rgb)*uEm:vec3(0.);
 if(a.a<.004){o=vec4(0.);return;}
@@ -14395,17 +14395,23 @@ vec3 l=mix(uAmbG,uAmbS,.5-.5*N.y);
 l+=uKeyC*max(dot(N,uKey),0.);vec3 V=vec3(0.,0.,1.);sp+=uKeyC*pow(max(dot(N,normalize(uKey+V)),0.),18.)*uSpec*.5*smoothstep(.0,.18,1.-N.z);sp+=uAmbS*(1.-N.z)*(1.-N.z)*uSpec*.34;
 vec2 kd=normalize(uKey.xy+vec2(1e-4));l+=uKeyC*uRim*(1.-N.z)*max(dot(normalize(N.xy+vec2(1e-4)),kd),0.);
 for(int i=0;i<uLn;i++){vec3 d3=vec3(uLp[i].xy-vP,uLp[i].z);float r2=dot(d3,d3);float R=uLp[i].w;float at=1./(1.+r2/(R*R*.28));at*=smoothstep(R*R*5.,R*R*.4,r2);vec3 Ld=d3/sqrt(r2);l+=uLc[i].rgb*at*max(dot(N,Ld),0.)*1.6;sp+=uLc[i].rgb*at*pow(max(dot(N,normalize(Ld+V)),0.),30.)*uSpec*1.4*smoothstep(.0,.18,1.-N.z);}
+if(uDrop>0.){float s=texture(uD,fuv(vP+uDropD)).r;l*=1.-s*uDrop;}
 l=mix(l,max(l,vec3(1.)),uKeep);if(uEdge>0.){float h0=texture(uH,fuv(vP)).r;l*=mix(1.-uEdge,1.,smoothstep(.12,.5,h0));}
 o=vec4((alb*l+alb*e*1.6+sp)*a.a,a.a);}`,
-    floor: `uniform sampler2D uTile,uM,uN;uniform vec3 uAmbS;uniform float uT,uWet,uRefl;
-uniform vec4 uLp[12];uniform vec4 uLc[12];uniform int uLn;
+    floor: `uniform sampler2D uTile,uM,uN,uA,uH;uniform vec3 uAmbS,uKs;uniform float uT,uWet,uRefl;
+uniform vec4 uLp[12];uniform vec4 uLc[12];uniform int uLn;uniform vec3 uBl[16];uniform int uBn;
 void main(){float y=vP.y,x=vP.x;float h=max(y-${ZE_HORIZ}.,1.);
 float X=(x-360.)*3.17/h;float Z=285./h;vec2 uv=vec2(X*.56,Z*2.3);
 float near=smoothstep(860.,900.,y);vec3 alb=lin(texture(uTile,uv,near*1.6).rgb);
 vec2 id=floor(uv*2.);float hs=fract(sin(dot(id,vec2(41.3,17.7)))*4375.);alb*=.9+.14*hs;
 float dz=y-${ZE_FLOOR}.;float fz=dz*2.6;vec3 l=uAmbS*.62;
 for(int i=0;i<uLn;i++){vec3 d3=vec3(uLp[i].x-x,${ZE_FLOOR}.-uLp[i].y,uLp[i].z-fz);float r2=dot(d3,d3);float R=uLp[i].w;float at=1./(1.+r2/(R*R*.4));at*=smoothstep(R*R*7.,R*R*.3,r2);l+=uLc[i].rgb*at*max(d3.y/sqrt(r2)+.25,0.)*1.5;}
-vec3 c=alb*l;c*=mix(1.,.62,smoothstep(846.,900.,y));
+float sh=0.;
+if(dz>0.){vec2 sp=vec2(x-dz*uKs.x,${ZE_FLOOR}.-dz*uKs.y);if(uKs.y>0.&&sp.y>0.){float s0=texture(uA,cuv(sp)).a;float s1=texture(uH,fuv(sp)).r;float k=smoothstep(4.,44.,dz);sh=mix(s0,s1*1.2,k)*uKs.z*(1.-.45*k);}}
+for(int i=0;i<uLn;i++){if(uLc[i].a<.5)continue;float H=${ZE_FLOOR}.-uLp[i].y;if(H<8.)continue;float lz=uLp[i].z;if(lz>=0.&&dz>0.)continue;if(lz<0.&&dz<-2.)continue;float f=abs(dz)/max(abs(lz)*.22,8.);vec2 sp=vec2(x-(x-uLp[i].x)*f*.55,${ZE_FLOOR}.-f*H*.8);if(sp.y<0.)continue;float s1=texture(uH,fuv(sp)).r;float at=max(uLc[i].r,uLc[i].g)*smoothstep(0.,.35,1./(1.+pow(length(vec2(x-uLp[i].x,fz-lz))/uLp[i].w,2.)));sh=max(sh,s1*1.05*at*.42);}
+for(int i=0;i<uBn;i++){vec2 d=vec2((x-uBl[i].x)/uBl[i].y,(y-${ZE_FLOOR + 3}.)/(uBl[i].y*.26));float q=1.-dot(d,d);if(q>0.)sh=max(sh,q*uBl[i].z);}
+sh=clamp(sh,0.,.8);
+vec3 c=alb*l*(1.-sh);c*=mix(1.,.62,smoothstep(846.,900.,y));
 float aoback=1.-.45*smoothstep(${ZE_TERRACE + 7}.,${ZE_TERRACE}.,y);c*=aoback;
 float ao=0.;if(y>=${ZE_FLOOR}.){float a1=smoothstep(14.,0.,y-${ZE_FLOOR}.);if(x>466.&&x<676.)ao=a1;else if(x>58.&&x<162.)ao=a1;}c*=1.-.42*ao;
 vec2 w=vec2(0.);if(uWet>.5){w=vec2(texture(uN,vec2(x/40.,y/9.)+vec2(0.,uT*.3)).r-.5,0.)*10.;}
@@ -14616,11 +14622,11 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
 
   // ---- the set: Barcelos across the Cávado, in stone and tile (H2). Painted once; each sky lights it when it bakes it.
   const ZE_RIGS = [
-    { name: 'sunset', amb: [.92, .74, .76], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
-    { name: 'blue hour', amb: [.56, .62, .92], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
-    { name: 'storm', amb: [.66, .40, .42], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
-    { name: 'rain', amb: [.60, .68, .84], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
-    { name: 'dawn', amb: [.94, .84, .86], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
+    { name: 'sunset', amb: [.92, .74, .76], shadow: [.25, 3.3, .62], gnd: [.50, .33, .40], key: [-.10, -.42, -.9], tAmb: [.46, .30, .40], keyC: [2.1, 1.05, .5], rim: 1.5, water: [.20, .07, .15], lamp: .3, win: .36, wet: .22, glint: 2.4, sunX: 400 },
+    { name: 'blue hour', amb: [.56, .62, .92], shadow: [-.5, 3.0, .46], gnd: [.26, .28, .46], key: [.42, -.55, -.7], tAmb: [.40, .46, .78], keyC: [.75, .9, 1.5], rim: 1.1, water: [.03, .05, .15], lamp: 1, win: 1, wet: .30, glint: .5, sunX: 590 },
+    { name: 'storm', amb: [.66, .40, .42], shadow: [.0, 0, 0], gnd: [.26, .12, .14], key: [.0, .6, .5], tAmb: [.42, .20, .20], keyC: [1.0, .34, .12], rim: .8, water: [.08, .015, .02], lamp: .75, win: .8, wet: .30, glint: 0, sunX: 360 },
+    { name: 'rain', amb: [.60, .68, .84], shadow: [.0, 0, 0], gnd: [.32, .38, .48], key: [.0, -.8, .4], tAmb: [.52, .58, .68], keyC: [.20, .24, .30], rim: .4, water: [.05, .08, .12], lamp: 1, win: .95, wet: .85, glint: 0, sunX: 360 },
+    { name: 'dawn', amb: [.94, .84, .86], shadow: [-.3, 3.5, .5], gnd: [.56, .46, .54], key: [.25, -.3, -.92], tAmb: [.86, .74, .76], keyC: [1.7, 1.15, .68], rim: 1.3, water: [.24, .22, .34], lamp: .1, win: .3, wet: .24, glint: 2.4, sunX: 296 },
   ];
   const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
   const zgCanvas = S => { const c = document.createElement('canvas'); c.width = Math.round(ZE_W * S); c.height = Math.round(ZE_H * S); const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
@@ -14845,11 +14851,15 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     };
     back(S, 1); if (zg.was) back(zg.was.S, zg.was.a);
     if (dark) { zgUse(zg.P.tint, [0, 0, ZE_W, ZE_BANK], { uC: [.06 * .4 * dark, 0, .01 * .4 * dark, .4 * dark] }); zgUse(zg.P.tint, [0, 0, ZE_W, 360], { uC: [.007 * .3 * dark, 0, .003 * .3 * dark, .3 * dark] }); }
+    // where it will land: a shadow under each thing falling, darker as it nears, and under him in the air
+    const bl = zg.bl ||= new Float32Array(48); let bn = 0;
+    for (const it of g.items) { if (bn >= 16) break; if (it.out || it.y > ZE_FLOOR - 4) continue; const up = Math.max(0, ZE_FLOOR - it.y), near = 1 - Math.min(1, up / 640); bl.set([it.x + it.vx * (up / Math.max(60, it.vy)) * .5, 7 + 26 * (1 - near) * .4 + near * 12, .1 + near * near * (it.kind === 'veg' ? .62 : .46)], bn * 3); bn++; }
+    if (g.phase !== 'title' && g.y < ZE_FLOOR - 1 && bn < 16) { bl.set([g.x, 26, .35 * (1 - Math.min(1, (ZE_FLOOR - g.y) / 300))], bn * 3); bn++; }
     const { lp, lc, n } = zgLights(g, R, calm), lit = { uAmbS: R.amb, uAmbG: R.gnd, uKey: zgNorm(R0.key), uKeyC: R.keyC, uRim: R0.rim, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n } };
-    zgUse(zg.P.floor, [0, ZE_TERRACE, ZE_W, ZE_H - ZE_TERRACE], { uT: zg.T, uWet: R.wet > .5 ? 1 : 0, uRefl: R.wet, uAmbS: R.amb, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n } }, { uTile: zg.tile, uM: zg.fM.t, uN: zg.noise });
+    zgUse(zg.P.floor, [0, ZE_TERRACE, ZE_W, ZE_H - ZE_TERRACE], { uT: zg.T, uWet: R.wet > .5 ? 1 : 0, uRefl: R.wet, uAmbS: R.amb, uKs: R0.shadow, uLp: { v4: lp }, uLc: { v4: lc }, uLn: { int: n }, uBl: { v3: bl }, uBn: { int: bn } }, { uTile: zg.tile, uM: zg.fM.t, uN: zg.noise, uA: zg.fA.t, uH: zg.fH.t });
     if (behind) zgUse(zg.P.canvas, ZG_FULL, {}, { uT: zg.fC.t });
-    zgUse(zg.P.lit, [0, 420, ZE_W, 480], { ...lit, uKeep: 0, uEdge: 0, uBev: 1.1, uUseE: 1, uSpec: .55, uEm: R.win * .8 + .001 }, { uA: set.a, uH: set.h.t, uE: set.e });
-    zgUse(zg.P.lit, ZG_FULL, { ...lit, uKeep: .55, uEdge: .42, uBev: 2.2, uUseE: 0, uSpec: .1, uEm: 0 }, { uA: zg.fA.t, uH: zg.fH.t, uE: zg.fA.t });   // what must read keeps most of its own colour, an edge against the blur
+    zgUse(zg.P.lit, [0, 420, ZE_W, 480], { ...lit, uKeep: 0, uEdge: 0, uBev: 1.1, uUseE: 1, uSpec: .55, uEm: R.win * .8 + .001, uDrop: R0.shadow[2] > 0 ? .34 : .2, uDropD: [-lit.uKey[0] * 12, -lit.uKey[1] * 6 + 4] }, { uA: set.a, uH: set.h.t, uE: set.e, uD: zg.fH.t });
+    zgUse(zg.P.lit, ZG_FULL, { ...lit, uKeep: .55, uEdge: .42, uBev: 2.2, uUseE: 0, uSpec: .1, uEm: 0, uDrop: 0, uDropD: [0, 0] }, { uA: zg.fA.t, uH: zg.fH.t, uE: zg.fA.t, uD: zg.fH.t });   // what must read keeps most of its own colour, an edge against the blur
     gl.disable(gl.BLEND);
     zgBind(zg.fM); zgUse(zg.P.down, ZG_FULL, { uPx: [1 / zg.fM.w, 1 / zg.fM.h] }, { uT: zg.fS.t }); gl.bindTexture(gl.TEXTURE_2D, zg.fM.t); gl.generateMipmap(gl.TEXTURE_2D);   // next frame's mirror
     zgBind(null);
