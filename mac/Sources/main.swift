@@ -921,19 +921,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   private func buildStatusItem() {
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    if let img = NSImage(systemSymbolName: "fish.fill", accessibilityDescription: "peixAIrada") {
-      img.isTemplate = true
-      statusItem.button?.image = img
-    } else {
-      statusItem.button?.title = "🐟"
-    }
     statusItem.button?.imagePosition = .imageLeading
     drawFish()
     rebuildStatusMenu()
   }
 
+  /// The fish as drawn: the system's, a template. Belly-up it hangs under a line, the water's surface: `fish.fill` has a fin
+  /// above and below, so turned over alone it reads as the same fish at this size (rendered and looked at, 2026-11-01).
+  private func fishFace(bellyUp: Bool) -> NSImage? {
+    guard let sym = NSImage(systemSymbolName: "fish.fill", accessibilityDescription: "peixAIrada") else { return nil }
+    guard bellyUp else { sym.isTemplate = true; return sym }
+    let img = NSImage(size: NSSize(width: 22, height: 17), flipped: false) { r in
+      guard let g = NSGraphicsContext.current?.cgContext else { return false }
+      NSColor.black.set()
+      let water = NSBezierPath(); water.move(to: NSPoint(x: 0.5, y: r.maxY - 1)); water.line(to: NSPoint(x: r.maxX - 0.5, y: r.maxY - 1)); water.lineWidth = 1.2; water.stroke()
+      let k = (r.height - 3) / sym.size.height, w = sym.size.width * k
+      g.translateBy(x: 0, y: r.height - 2.5); g.scaleBy(x: 1, y: -1)
+      sym.draw(in: NSRect(x: r.midX - w / 2, y: 0, width: w, height: r.height - 3))
+      return true
+    }
+    img.isTemplate = true
+    img.accessibilityDescription = "peixAIrada, its server gone"
+    return img
+  }
+
   private func rebuildStatusMenu() {
     let menu = NSMenu()
+    if serverDown {   // what can help, first; what the page last said would be stale, so it is not shown (2026-11-01, S2)
+      menu.addItem(withTitle: "The server isn't answering", action: nil, keyEquivalent: "").isEnabled = false
+      menu.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "").target = self
+      menu.addItem(withTitle: "Open Server Log", action: #selector(openLog(_:)), keyEquivalent: "").target = self
+      menu.addItem(.separator())
+      menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
+      menu.addItem(.separator())
+      menu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+      statusItem.menu = menu
+      return
+    }
     menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
     menu.addItem(.separator())
     // what wants you, a section each (2026-10-12): the chats asking you, the PRs at your move, the new replies — and
@@ -1396,6 +1420,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   private var misses = 0
   private var recovering = false          // a start is in flight — don't race it with a second one
   private var boardShown = false          // the board, not a message, is what the window shows
+  private var serverDown = false          // the fish floats belly-up, its counts stale (setServerDown)
   private var boardPid: Int32 = 0        // its web process, logged once each time it is a new one (`npm run perf -- --app`)
 
   private func bringUpServer(restart: Bool = false) {
@@ -1408,6 +1433,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     if restart { server.restart(done) } else { server.start(done) }
   }
 
+  /// The fish says it (2026-11-01, S2). ~15 s of silence, the watchdog's own, so a `launchd.sh restart` passes unseen.
+  private func setServerDown(_ down: Bool) {
+    guard down != serverDown else { return }
+    serverDown = down
+    logLine("fish: the server \(down ? "gone, belly-up" : "back")")
+    NSApp.dockTile.badgeLabel = down ? nil : (needsInput.count + newReplies.count > 0 ? String(needsInput.count + newReplies.count) : nil)
+    drawFish(); rebuildStatusMenu()
+  }
+
   private func checkServer() {
     guard !recovering else { return }
     ServerController.isServing { [weak self] ok in
@@ -1417,7 +1451,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         // a reload by hand (2026-10-03): the board comes back on its own.
         if ok && !self.boardShown { logLine("watchdog: the server answers — the board again"); self.loadBoard() }
         self.misses = ok ? 0 : self.misses + 1
+        if ok { self.setServerDown(false) }
         guard self.misses >= 3 else { return }   // ~15 s of silence, not one slow answer
+        self.setServerDown(true)
         logLine("watchdog: nothing answering on :\(kPort) — starting the server")
         self.showMessage("The server stopped — starting it again…")
         self.bringUpServer()
@@ -1447,8 +1483,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // full, something does; a number, that many chats are asking. A reply or a PR at your move lights it and adds no number,
   // so a question never drowns in them (replies are three alerts in four, questions under one in a hundred). The Dock
   // keeps the count of what wants you.
+  // The server gone, it floats belly-up with no number (S2): those counts are the page's, and a dead board must not look
+  // like a quiet one. The watchdog says so, not the page, whose view hides whenever the screen locks.
   private func drawFish() {
     guard let b = statusItem.button else { return }
+    b.image = fishFace(bellyUp: serverDown)
+    if serverDown {
+      b.title = ""; b.appearsDisabled = true
+      b.toolTip = "peixAIrada: the server isn't answering"; b.setAccessibilityLabel(b.toolTip)
+      return
+    }
     let asks = needsInput.count, replies = newReplies.count, moves = yourMoves.count
     b.title = asks > 0 ? " \(asks)" : ""
     b.appearsDisabled = asks + replies + moves == 0
