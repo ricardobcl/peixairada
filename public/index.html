@@ -981,16 +981,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .top .faces:hover > :not(:first-child) { margin-right: 2px; }
   .card .top .faces .face { display: grid; place-items: center; font-size: var(--fs-2xs); font-weight: 700; color: var(--ink); text-transform: uppercase; }
   /* The card's PRs as a matrix (2026-11-01, round XVI's M5; cardMatrix): a square a PR in its state's colour, a draft
-     hollow, one GitHub has not answered for a faint grey; a stack's squares joined by a line (<s>), base first. The number
-     before them stays put while the squares scroll in their own box (.mxg) — past the row's room, its ends with more
-     past them faded (.ofl .ofr, fadeOver and mxEdges). Its padding (3 px) holds the ring, which a scroll box would cut;
-     the box hangs that much past the row's end, so the last square is flush with it. The matrix gives way first
-     (a shrink of 999), down to the number and three squares (--nw, --mn: cardMatrix's), so the project's name keeps
-     its room. Past MX_COMPACT PRs the squares are smaller and closer (.cmp). Each square's hit area reaches into the
-     gaps round it (::after). */
-  .card .top .tmx { --q: 7px; --c: 4px; --g: 5px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); display: flex; align-items: center; gap: 2px; flex: 0 999 auto; min-width: calc(var(--nw) + 2px + var(--mn)); margin-right: -3px;
+     hollow, one GitHub has not answered for a faint grey; a stack's squares joined by a line (<s>), base first. One size
+     however many, nothing round them (2026-11-01, later: 9 px). The number before them stays put while the squares
+     scroll in their own box (.mxg) — past the row's room, its ends with more past them faded (.ofl .ofr, fadeOver and
+     mxEdges). Its padding (3 px) holds a square's lift, which a scroll box would cut; the box hangs that much past the
+     row's end, so the last square is flush with it. The matrix gives way first (a shrink of 999), down to the number and
+     three squares (--nw, --mn: cardMatrix's), so the project's name keeps its room. Each square's hit area reaches into
+     the gaps round it (::after). Under the pointer a square springs up, and its PR's card comes (#mxtip, mxtShow); the
+     number lifts the square it names (.hot). */
+  .card .top .tmx { --q: 9px; --c: 4px; --g: 4px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); display: flex; align-items: center; gap: 2px; flex: 0 999 auto; min-width: calc(var(--nw) + 2px + var(--mn)); margin-right: -3px;
     font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .card .top .tmx.cmp { --q: 5px; --c: 3px; --g: 3px; }
   .card .tmx .mxn { flex: none; max-width: 9ch; overflow: hidden; color: var(--ink); cursor: pointer; }
   :root[data-theme="dark"] .card .top .tmx { --mxyou: color-mix(in srgb, var(--accent) 82%, var(--ink)); }
   .card .tmx .mxn.you { color: var(--mxyou); }   /* the accent towards the ink, so it reads at 11 px: 4.9:1 at least on the sidebar's light grey (the accent 3.9 on white) */
@@ -1000,17 +1000,50 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .tmx .mxg.ofl { --fl: 12px; } .card .tmx .mxg.ofr { --fr: 12px; }
   .card .tmx .mxc { flex: none; display: flex; align-items: center; }
   .card .tmx .mxc > s { flex: none; width: var(--c); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
-  .card .tmx .mxs, #rpop .rsq { --prc: initial; position: relative; flex: none; display: block; width: var(--q); height: var(--q); border-radius: 2px; box-sizing: border-box; background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent)); }
-  .card .tmx .mxs[data-state="open"], #rpop .rsq[data-state="open"] { --prc: var(--pr-open); } .card .tmx .mxs[data-state="merged"], #rpop .rsq[data-state="merged"] { --prc: var(--pr-merged); }
-  .card .tmx .mxs[data-state="closed"], #rpop .rsq[data-state="closed"] { --prc: var(--pr-closed); }
-  .card .tmx .mxs[data-state="draft"], #rpop .rsq[data-state="draft"] { --prc: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
-  .card .tmx.cmp .mxs { border-radius: 1.5px; } .card .tmx.cmp .mxs[data-state="draft"] { box-shadow: inset 0 0 0 1px var(--prc); }
-  .card .tmx .mxs { cursor: pointer; }
+  .card .tmx .mxs, :is(#rpop, #mxtip) .rsq { --prc: initial; position: relative; flex: none; display: block; width: var(--q); height: var(--q); border-radius: 2px; box-sizing: border-box; background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent)); }
+  .card .tmx .mxs[data-state="open"], :is(#rpop, #mxtip) .rsq[data-state="open"] { --prc: var(--pr-open); } .card .tmx .mxs[data-state="merged"], :is(#rpop, #mxtip) .rsq[data-state="merged"] { --prc: var(--pr-merged); }
+  .card .tmx .mxs[data-state="closed"], :is(#rpop, #mxtip) .rsq[data-state="closed"] { --prc: var(--pr-closed); }
+  .card .tmx .mxs[data-state="draft"], :is(#rpop, #mxtip) .rsq[data-state="draft"] { --prc: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
+  .card .tmx .mxs { cursor: pointer; transition: scale .32s var(--spring), filter var(--t-hover); }
   .card .tmx .mxs::after { content: ''; position: absolute; inset: -5px calc(var(--g) / -2); }
-  .card .tmx .mxs:hover { filter: brightness(1.15); }
-  .card .tmx .mxs.lead { outline: 1.5px solid var(--ink); outline-offset: 1.5px; }
-  .card .tmx .mxs.lead.you { outline-color: var(--mxyou); }
-  .card .tmx.cmp .mxs.lead { outline-width: 1px; outline-offset: 1px; }
+  .card .tmx .mxs:is(:hover, .hot) { scale: 1.3; filter: brightness(1.1); }
+  /* A PR's card (2026-11-01, later; mxCardHtml, mxtShow): its repo and state, the number and title, its CI and its place
+     in a stack, whose move, who had a hand and when GitHub last updated it — over the square, its arrow on it, kept in
+     the list. It comes on a spring from a little below (above, when it opens under the square) and glides from square
+     to square; nothing in it takes the pointer. */
+  #mxtip { position: fixed; z-index: 46; left: 0; top: 0; width: var(--w, 280px); box-sizing: border-box; display: grid; gap: 8px; padding: 11px 12px 10px;
+    border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); color: var(--ink); box-shadow: 0 12px 30px rgb(0 0 0 / .26), 0 2px 6px rgb(0 0 0 / .1);
+    font-size: var(--fs-sm); line-height: 1.35; pointer-events: none; --dy: 8px; --oy: 100%;
+    opacity: 0; transform: translateY(var(--dy)) scale(.86); transform-origin: var(--ax, 50%) var(--oy); transition: opacity .1s var(--ease-out), transform .1s var(--ease-out); }
+  #mxtip.below { --dy: -8px; --oy: 0%; }
+  #mxtip.on { opacity: 1; transform: none; transition: opacity .14s var(--ease-out), transform .46s var(--spring), left .2s var(--ease-out), top .2s var(--ease-out); }
+  #mxtip::after { content: ''; position: absolute; left: calc(var(--ax, 50%) - 5px); bottom: -5.5px; width: 9px; height: 9px; box-sizing: border-box; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; rotate: 45deg; }
+  #mxtip.below::after { top: -5.5px; bottom: auto; border-width: 1px 0 0 1px; }
+  #mxtip.on::after { transition: left .2s var(--ease-out); }
+  #mxtip .mth { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); color: var(--muted); }
+  #mxtip .mtr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mxtip .mts { --prc: var(--muted); margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 7px; border-radius: 999px; font-weight: 600; line-height: 1.2;
+    color: var(--prc); background: color-mix(in srgb, var(--prc) 10%, transparent); }
+  #mxtip .mts::before { content: ''; width: 7px; height: 7px; border-radius: 2px; box-sizing: border-box; background: var(--prc); }
+  #mxtip .mts[data-state="open"] { --prc: var(--pr-open); } #mxtip .mts[data-state="merged"] { --prc: var(--pr-merged); } #mxtip .mts[data-state="closed"] { --prc: var(--pr-closed); }
+  #mxtip .mts[data-state="draft"] { --prc: var(--pr-draft); } #mxtip .mts[data-state="draft"]::before { background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
+  #mxtip .mtt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-size: var(--fs-md); font-weight: 600; line-height: 1.3; text-wrap: pretty; }
+  #mxtip .mtt b { margin-right: 4px; font: 600 var(--fs-sm) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  #mxtip .mtt i { font-weight: 500; color: var(--muted); }
+  #mxtip .mtx { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: var(--fs-xs); color: var(--muted); }
+  #mxtip .mtck, #mxtip .mtk { display: inline-flex; align-items: center; gap: 6px; }
+  #mxtip .mtck i { width: 7px; height: 7px; border-radius: 50%; background: var(--ck); } #mxtip .mtck[data-ck="pass"] { --ck: var(--pr-open); } #mxtip .mtck[data-ck="fail"] { --ck: var(--pr-closed); }
+  #mxtip .mtck[data-ck="pending"] i { background: none; box-shadow: inset 0 0 0 1.5px var(--working); }
+  #mxtip .mtc { display: inline-flex; align-items: center; } #mxtip .mtc .rsq { --q: 6px; opacity: .4; } #mxtip .mtc .rsq.on { opacity: 1; }
+  #mxtip .mtc > s { width: 3px; height: 1px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+  #mxtip .mtm { display: flex; align-items: baseline; gap: 7px; min-width: 0; padding: 6px 8px; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-xs); color: var(--ink); }
+  #mxtip .mtm.you { background: color-mix(in srgb, var(--accent) 11%, transparent); }
+  #mxtip .mtm > span { min-width: 0; overflow-wrap: anywhere; }
+  #mxtip .mtf { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); color: var(--muted); }
+  #mxtip .mtp { display: flex; flex: none; padding-left: 4px; } #mxtip .mtp > * { width: 18px; height: 18px; margin-left: -4px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); }
+  #mxtip .mtp > .face { display: grid; place-items: center; font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; }
+  #mxtip .mtp + .mtw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mxtip .mtu { margin-left: auto; flex: none; white-space: nowrap; }
   /* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
      narrows the list to that person's chats and rings the face in the accent, the others dimmed; again, every chat. */
   #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
@@ -1090,6 +1123,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     background: color-mix(in srgb, var(--panel) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
     box-shadow: 0 12px 34px rgba(0, 0, 0, .35); font-size: var(--fs-sm); line-height: 1.4; color: var(--ink); pointer-events: none; opacity: 0; transition: opacity .12s var(--ease-out); }
   #rpop.on { opacity: 1; }
+  #rpop .rtt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); }
+  #rpop .rtt span { color: var(--ink); }
   #rpop .rph { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
   #rpop .rnow { display: grid; gap: 2px; }
   #rpop .rpr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 6px; row-gap: 1px; align-items: baseline; padding: 6px 8px; border-radius: var(--r-3); }
@@ -1110,8 +1145,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #rpop .rstk { display: grid; gap: 2px; }
   #rpop .rstk > .rpr:not(:last-child)::after { content: ''; position: absolute; left: 11.25px; top: 18px; bottom: -12px; width: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
   #rpop .rmore { padding: 2px 8px; font-size: var(--fs-xs); color: var(--muted); }
-  #rpop .rlat { display: grid; gap: 0; }
-  #rpop .rev { display: grid; grid-template-columns: 54px 16px minmax(0, 1fr); column-gap: 7px; align-items: start; padding: 4px 6px 4px 0; border-radius: var(--r-3); }
+  #rpop .rlat { display: grid; grid-template-columns: auto 16px minmax(0, 1fr); column-gap: 7px; }   /* the times one column, as wide as the widest: "Yesterday 9:41 AM" ran into the marks (2026-11-01, later) */
+  #rpop .rev { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; padding: 4px 6px 4px 0; border-radius: var(--r-3); }
   #rpop .rev.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
   #rpop .rev .t { padding-top: 1px; text-align: right; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
   #rpop .rev .x { min-width: 0; }
@@ -2192,11 +2227,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .top .repo, :root[data-layout="sidebar"][data-sidebar="glass"][data-frame="dark"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
-  /* the matrix on the solid colour (2026-11-01): the number white as the rest, each square a white hairline round it —
-     an open PR's green on a green project's row is otherwise gone —, the ring and a stack's line white */
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxs { box-shadow: 0 0 0 1px rgb(255 255 255 / .85); }
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxs[data-state="draft"] { box-shadow: inset 0 0 0 1.5px var(--prc), 0 0 0 1px rgb(255 255 255 / .85); }
-  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxs.lead { outline-color: #fff; }
+  /* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
+     an open PR's green on a green project's row is otherwise gone; one ground under them all, nothing round each
+     (2026-11-01, later) —, a stack's line white */
+  :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxg { background: rgb(0 0 0 / .2); border-radius: var(--r-1); }
   :root[data-layout="sidebar"]:is([data-sidebar="ring"], [data-sidebar="tinted"]) #slist .card.active .tmx .mxc > s { background: rgb(255 255 255 / .6); }
   /* At work, watching and asking, the card's own ring and sonar give way to each style's (the board's ring is a square
      under a cover in the card's ground, which a row has none of): .rg, a box of the card's own (cardHtml), carries
@@ -2728,7 +2762,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .card .tmx .mxn, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .card .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -2766,7 +2800,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
     :root[data-layout="sidebar"] #slist .card { border: 1px solid CanvasText; } :root[data-layout="sidebar"] #slist .card.active { outline: 2px solid Highlight; }   /* the sidebar's rows */
-    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .card .trow .drift, .card .tmx .mxs, #rpop .rsq) { forced-color-adjust: none; }
+    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .card .trow .drift, .card .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
 
@@ -2886,6 +2920,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
     .card .top .faces > * { transition: none; }   /* the pile spreads at once */
+    .card .tmx .mxs { transition: filter var(--t-hover); } .card .tmx .mxs:is(:hover, .hot) { scale: none; }   /* a square under the pointer brightens, no lift */
+    #mxtip, #mxtip.on { transform: none; transition: opacity .12s var(--ease-out); } #mxtip.on::after { transition: none; }   /* a PR's card fades in where it stands */
     /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
@@ -4169,7 +4205,8 @@ const toolName = n => {
 };
   const rel = ts => { if (!ts) return ''; const d = (Date.now() - new Date(ts)) / 1000; if (d < 60) return `${Math.max(0, d | 0)}s`; if (d < 3600) return `${(d / 60) | 0}m`; if (d < 86400) return `${(d / 3600) | 0}h`; return `${(d / 86400) | 0}d`; };
   // A chat with a PR is titled by it, which is a title the user never wrote and Claude never chose —
-  // hover says which PR it is and keeps Claude's own title reachable rather than losing it.
+  // hover says which PR it is and keeps Claude's own title reachable rather than losing it: the header's tooltip, and
+  // on a card the rounds' popover's first line (2026-11-01, later; rpopHtml — the card's tooltip before).
   function titleTip(s) {
     if (!s.prTitle || s.title !== s.prTitle) return '';
     const pr = s.prs?.find(p => p.title === s.prTitle);
@@ -4338,9 +4375,9 @@ const toolName = n => {
   // them when the list's width moved; every read, then every write.
   function fadeSoon() { if (!fadeSoon.f) fadeSoon.f = requestAnimationFrame(() => { fadeSoon.f = 0; fadeOver(); }); }
   // …and a card's PR matrix (2026-11-01): `.over` where its squares run past their box, the end with more past it faded
-  // (.ofl .ofr, mxEdges — again on a scroll of it); a box drawn anew is scrolled the least that brings its ringed square
-  // clear of the fade (MX_FADE, the CSS's --fl), the ring's own room (MX_RING) with it. A box read before keeps its scroll.
-  const MX_FADE = 12, MX_RING = 3;
+  // (.ofl .ofr, mxEdges — again on a scroll of it); a box drawn anew is scrolled the least that brings its numbered
+  // square clear of the fade (MX_FADE, the CSS's --fl), its lift's room (MX_LIFT) with it. A box read before keeps its scroll.
+  const MX_FADE = 12, MX_LIFT = 3;
   function fadeOver(all = false) {
     const els = [...document.querySelectorAll(`#shead h2 .t, .ptabs .purl, #slist > .card .title${all ? '' : ':not(.ovr)'}`)];   // the header's and the strip's are few: read every time
     const mxs = [...document.querySelectorAll(`#slist > .card .tmx .mxg${all ? '' : ':not(.ovr)'}`)];
@@ -4351,7 +4388,7 @@ const toolName = n => {
       const m = mx[i]; let x = m.x;
       if (!m.w) return;   // not laid out (the PRs left off the cards, the list hidden): read once it is
       if (m.l >= 0 && m.sw > m.w) {
-        const lo = m.l - MX_RING - MX_FADE, hi = m.l + m.rw + MX_RING + MX_FADE;
+        const lo = m.l - MX_LIFT - MX_FADE, hi = m.l + m.rw + MX_LIFT + MX_FADE;
         x = Math.max(0, Math.min(m.sw - m.w, lo < x ? lo : hi > x + m.w ? hi - m.w : x));
         if (x !== m.x) g.scrollLeft = x;
       }
@@ -5802,6 +5839,7 @@ const toolName = n => {
   }
   const RPOP_MAX = 12;   // the matrix's rows at most (2026-11-01): a chat holds up to 40 PRs, the popover one window's height
   function rpopHtml(s) {
+    if (!s.prs?.length) return '';
     const K = { you: 0, let: 1, ok: 2, them: 3 }, rows = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r).sort((a, b) => K[a.r.k] - K[b.r.k]);   // as the marks go
     const log = prlogOf(s, () => { if (rpop.sid === s.id) rpopShow(); });
     const byUrl = new Map((s.prs || []).map(p => [p.url, p])), faces = new Map((s.prs || []).flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
@@ -5845,7 +5883,9 @@ const toolName = n => {
       const live = opens && !opens.end && pr.turn?.you;
       return `<div class="rev${live ? ' live' : ''}"><span class="t">${esc(when(e.a))}</span>${evMark(e, faces)}<div class="x">${pchip(s, pr)} <b>${e.w === '' || e.k === 'chat' || e.k === 'board' ? 'you' : esc(e.w || 'someone')}</b> ${esc(EV_SAY(e))}${e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : ''}${opens ? `<div class="rr">${RTAG.you}</div>` : ''}${closes ? `<div class="rr ok">✓ answers ${esc(closes.why)}</div>` : ''}</div></div>`;
     }).join('');
-    return `<div class="rph">this chat’s PRs${mx ? ` · ${prs.length}` : ''}</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">${mx ? 'click a square: its PR · ' : ''}click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
+    if (!now && !lat) return '';
+    const named = s.prTitle && s.title === s.prTitle && prs.find(p => p.title === s.prTitle), own = named && (s.aiTitle || s.lastPrompt);   // titled by its PR: which, and the chat's own (titleTip's)
+    return `${named ? `<div class="rtt">titled by ${pchip(s, named)}${own ? ` · the chat’s own: <span>${esc(own)}</span>` : ''}</div>` : ''}<div class="rph">this chat’s PRs${mx ? ` · ${prs.length}` : ''}</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">${mx ? 'click a square: its PR · ' : ''}click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
   }
   const rpop = { el: null, sid: null, anchor: null, timer: 0 };
   /** The pane's pages over the chat column, as last posted: a popover there would be under them. */
@@ -5855,7 +5895,8 @@ const toolName = n => {
     if (!s || !a?.isConnected) return rpopHide();
     const el = rpop.el ||= Object.assign(document.createElement('div'), { id: 'rpop', role: 'tooltip' });
     if (!el.isConnected) document.body.append(el);
-    const html = rpopHtml(s); if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
+    const html = rpopHtml(s); if (!html) return rpopHide();
+    if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
     const card = a.closest('.card').getBoundingClientRect(), W = 390, gap = 10;
     const beside = { left: card.right + gap, width: W };
     el.style.width = `${W}px`;
@@ -5871,23 +5912,31 @@ const toolName = n => {
     el.classList.add('on');
   }
   function rpopHide() { clearTimeout(rpop.timer); rpop.sid = rpop.anchor = null; rpop.el?.classList.remove('on'); }
-  const RPOP_AT = '.card .top .tprs, .card .top .tmx, .card .state.prmove, .card .state.prans, .card .prpips';
-  $('#slist').addEventListener('pointerover', e => {
-    const a = e.target.closest(RPOP_AT);
-    if (!a) return;
-    if (a === rpop.anchor) return;
-    const id = a.closest('.card').dataset.id;
-    if (rpop.sid === id && rpop.el?.classList.contains('on')) { rpop.anchor = a; return; }   // another of the same card's PRs: it stays
-    rpopHide(); rpop.anchor = a; rpop.sid = id;
-    rpop.timer = setTimeout(rpopShow, 350);
+  // The pointer at rest on a card brings them up (2026-11-01, later; on the card's PRs and its move line, 350 ms, before):
+  // REST_MS still — moves under REST_PX are no move — anywhere on it but a PR's square or number (its own card, #mxtip)
+  // and a part with a tooltip of its own, so one thing shows at a time. Up, they stay while the pointer is on that card,
+  // and go when it leaves, comes onto such a part, presses or scrolls the list.
+  const REST_MS = 600, REST_PX = 4;
+  const rest = { id: null, x: 0, y: 0, timer: 0 };
+  const restOff = () => { clearTimeout(rest.timer); rest.id = null; };
+  $('#slist').addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
+    const c = e.target.closest('#slist > .card'), own = c && (e.target.closest(MX_AT) || c.contains(e.target.closest('[title]')));
+    if (!c || own) { restOff(); if (rpop.sid) rpopHide(); return; }
+    const id = c.dataset.id;
+    if (rpop.sid === id && rpop.el?.classList.contains('on')) { rpop.anchor = c; return; }
+    if (rpop.sid && rpop.sid !== id) rpopHide();
+    if (rest.id === id && Math.abs(e.clientX - rest.x) + Math.abs(e.clientY - rest.y) < REST_PX) return;
+    clearTimeout(rest.timer); Object.assign(rest, { id, x: e.clientX, y: e.clientY });
+    rest.timer = setTimeout(() => {
+      const el = cardNodes.get(id)?.el; rest.id = null;
+      if (!el?.isConnected || !el.matches(':hover')) return;
+      rpop.anchor = el; rpop.sid = id; rpopShow();
+    }, REST_MS);
   });
-  $('#slist').addEventListener('pointerout', e => {
-    if (!rpop.anchor || rpop.anchor.contains(e.relatedTarget)) return;
-    const to = e.relatedTarget?.closest?.(RPOP_AT);
-    if (to && to.closest('.card')?.dataset.id === rpop.sid) return;   // on to the card's other PRs
-    rpopHide();
-  });
-  $('#slist').addEventListener('scroll', rpopHide, { passive: true });
+  $('#slist').addEventListener('pointerleave', () => { restOff(); rpopHide(); mxtHide(); });
+  $('#slist').addEventListener('pointerdown', () => { restOff(); rpopHide(); mxtHide(); });
+  $('#slist').addEventListener('scroll', () => { rpopHide(); mxtHide(); }, { passive: true });
   /** The chat header's: the tag, then the newest move's PR and reason, the others counted — right of the title. */
   function headMove(s) {
     const prs = movedPrs(s); if (!prs.length) return '';
@@ -5955,13 +6004,12 @@ const toolName = n => {
    *  above, the faces with it): a square a PR in its state's colour, in stack order — the PRs that chain base to head in
    *  one repo (GitHub's stacks, read off each PR's refs) together, base first, joined by a line; a PR on its own apart.
    *  Before them one number: the newest move's PR, in the accent, when one waits on you — else the one GitHub updated
-   *  last, in ink; its square ringed. Past MX_COMPACT PRs the squares are smaller; past the row's room they scroll in
-   *  their box, the number put, the ringed one brought into sight (fadeOver). Each square is a link to its PR, as a chip
-   *  is (its click, its right-click menu), its tooltip its title, state, CI and whose move; the pointer on the matrix
-   *  shows every PR (#rpop). */
-  const MX_COMPACT = 8;   // 7 px squares a PR, 12 px with the gap: eight are ~130 px with the number, a third of the row
-  const MX_PX = { q: 7, c: 4, g: 5 }, MX_CMP = { q: 5, c: 3, g: 3 };   // a square, a stack's line, the gap: the CSS's --q --c --g
-  const MX_PAD = 3;   // the box's padding, the ring's room
+   *  last, in ink. One size however many (2026-11-01, later); past the row's room they scroll in their box, the number
+   *  put, its square brought into sight (fadeOver). Each square is a link to its PR, as a chip is (its click, its
+   *  right-click menu); under the pointer it springs up and its PR's card comes (#mxtip) — no tooltip of the system's
+   *  besides —, the number's the PR it names. The pointer at rest on the card shows every PR (#rpop). */
+  const MX_PX = { q: 9, c: 4, g: 4 };   // a square, a stack's line, the gap: the CSS's --q --c --g
+  const MX_PAD = 3;   // the box's padding, a square's lift's room
   const CK_SAID = { pass: 'checks passed', fail: 'checks failing', pending: 'checks running' };
   function prChipsOf() { return prefs.prChips === 'all' ? 'all' : 'matrix'; }   // a declaration: the settings ask before this line has run
   const prRepo = pr => (pr.url || '').match(/github\.com\/([^/]+\/[^/]+)\/pull\//)?.[1] || '';
@@ -5995,17 +6043,65 @@ const toolName = n => {
     return { pr, you: false };
   }
   const prNum = pr => pr.number != null ? `#${pr.number}` : pr.label;
-  /** A PR in words, as a square's tooltip says it: its number and title, its state and CI, its place in a stack, whose move. */
-  const mxTip = (pr, g) => `${prNum(pr)}${pr.title ? ` · ${pr.title}` : ''}\n${pr.state || 'not heard from GitHub yet'}${prCk(pr) ? ` · ${CK_SAID[prCk(pr)]}` : ''}${g.length > 1 ? ` · ${g.indexOf(pr) + 1} of a stack of ${g.length}, base first` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`;
   function cardMatrix(s) {
     const prs = s.prs || []; if (!prs.length) return '';
-    const groups = prGroups(prs), lead = mxLead(s), cmp = prs.length > MX_COMPACT, px = cmp ? MX_CMP : MX_PX;
+    const groups = prGroups(prs), lead = mxLead(s), px = MX_PX;
     const wide = groups.reduce((w, g) => w + g.length * px.q + (g.length - 1) * px.c, 0) + (groups.length - 1) * px.g;   // the squares' own width
     const least = Math.min(wide, 3 * px.q + 2 * px.g) + 2 * MX_PAD, num = prNum(lead.pr);
-    const sq = (pr, g) => `<a class="mxs${pr === lead.pr ? ` lead${lead.you ? ' you' : ''}` : ''}" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(mxTip(pr, g))}"><span class="vh">${esc(prNum(pr))} ${esc(pr.state || 'not known yet')}${prCk(pr) ? `, ${CK_SAID[prCk(pr)]}` : ''}${pr.turn?.you ? ', your move' : ''}</span></a>`;
-    return `<span class="tmx${cmp ? ' cmp' : ''}" style="--nw:${Math.min(num.length, 9)}ch;--mn:${least}px"><a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}" title="${esc(mxTip(lead.pr, groups.find(g => g.includes(lead.pr))))}">${esc(num)}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${prs.length} PR${prs.length === 1 ? '' : 's'}: </span></a>`
-      + `<span class="mxg">${groups.map(g => `<span class="mxc">${g.map(pr => sq(pr, g)).join('<s></s>')}</span>`).join('')}</span></span>`;
+    const sq = pr => `<a class="mxs${pr === lead.pr ? ' lead' : ''}" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"><span class="vh">${esc(prNum(pr))}${pr.title ? ` ${esc(pr.title)}` : ''}, ${esc(pr.state || 'not known yet')}${prCk(pr) ? `, ${CK_SAID[prCk(pr)]}` : ''}${pr.turn?.you ? ', your move' : ''}</span></a>`;
+    return `<span class="tmx" style="--nw:${Math.min(num.length, 9)}ch;--mn:${least}px"><a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}">${esc(num)}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${prs.length} PR${prs.length === 1 ? '' : 's'}: </span></a>`
+      + `<span class="mxg">${groups.map(g => `<span class="mxc">${g.map(sq).join('<s></s>')}</span>`).join('')}</span></span>`;
   }
+  /** A PR's card (2026-11-01, later; #mxtip): what a square's tooltip said, drawn — the repo and its state, the number
+   *  and title, its CI and its place in a stack (the stack's squares, its own lit), whose move and why, who had a hand
+   *  in it (its faces, the newest first) and when GitHub last updated it. */
+  const MX_STATE = { open: 'Open', draft: 'Draft', merged: 'Merged', closed: 'Closed' };
+  function mxCardHtml(pr, g) {
+    const ck = prCk(pr), t = pr.turn, people = (pr.people || []).slice(0, 4), at = pr.updated || '';
+    const move = t?.you ? `<div class="mtm you">${RTAG.you}<span>${esc(t.why)}</span></div>`
+      : t?.waived ? `<div class="mtm">${RTAG.let}<span>${esc(t.why)}</span></div>`
+      : t?.why ? `<div class="mtm"><span>${esc(t.why)}</span></div>` : '';
+    const stack = g.length > 1 ? `<span class="mtk"><span class="mtc">${g.map(p => `<i class="rsq${p === pr ? ' on' : ''}" data-state="${esc(p.state || '')}"></i>`).join('<s></s>')}</span>${g.indexOf(pr) + 1} of ${g.length} in a stack</span>` : '';
+    const who = people.length ? `<span class="mtp">${people.map(p => faceHtml(p)).join('')}</span><span class="mtw">${esc(people.map(p => p.login).join(', '))}</span>` : '';
+    return `<div class="mth"><span class="mtr">${esc(prRepo(pr) || pr.label)}</span><span class="mts" data-state="${esc(pr.state || '')}">${esc(MX_STATE[pr.state] || 'Not heard from GitHub')}</span></div>`
+      + `<div class="mtt"><b>${esc(prNum(pr))}</b>${pr.title ? esc(pr.title) : '<i>its title on its way from GitHub…</i>'}</div>`
+      + (ck || stack ? `<div class="mtx">${ck ? `<span class="mtck" data-ck="${ck}"><i></i>${CK_SAID[ck]}</span>` : ''}${stack}</div>` : '')
+      + move + (who || at ? `<div class="mtf">${who}${at ? `<span class="mtu">updated <span data-at="${esc(at)}"></span> ago</span>` : ''}</div>` : '');
+  }
+  // The pointer on a square or the number (2026-11-01, later): its PR's card after MXT_IN, at once from one square to
+  // the next while a card is up; off them MXT_OUT, it goes. The square it is for is lifted (.hot) — the number's too.
+  const MX_AT = '.card .tmx [data-url]', MXT_IN = 120, MXT_OUT = 140, MXT_W = 290;
+  const mxt = { el: null, a: null, sq: null, timer: 0, out: 0 };
+  function mxtShow() {
+    const a = mxt.a, c = a?.isConnected && a.closest('#slist > .card'), s = c && state.sessions.get(c.dataset.id);
+    const pr = s?.prs?.find(p => p.url === a.dataset.url); if (!pr) return mxtHide();
+    rpopHide(); restOff();
+    const el = mxt.el ||= Object.assign(document.createElement('div'), { id: 'mxtip', role: 'tooltip' });
+    if (!el.isConnected) document.body.append(el);
+    const html = mxCardHtml(pr, prGroups(s.prs).find(g => g.includes(pr)) || [pr]);
+    if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
+    const sq = a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
+    if (mxt.sq !== sq) { mxt.sq?.classList.remove('hot'); sq?.classList.add('hot'); mxt.sq = sq; }
+    const r = a.getBoundingClientRect(), list = $('#sessions').getBoundingClientRect(), w = Math.min(MXT_W, list.width - 12);
+    el.style.setProperty('--w', `${w}px`);
+    const h = el.offsetHeight, cx = r.left + r.width / 2, left = Math.max(list.left + 6, Math.min(cx - w / 2, list.right - 6 - w));
+    const above = r.top - 10 - h >= 8;
+    el.classList.toggle('below', !above);
+    el.style.setProperty('--ax', `${Math.round(Math.max(14, Math.min(w - 14, cx - left)))}px`);
+    Object.assign(el.style, { left: `${Math.round(left)}px`, top: `${Math.round(above ? r.top - 10 - h : r.bottom + 10)}px` });
+    if (!el.classList.contains('on')) { void el.offsetWidth; el.classList.add('on'); }   // where it stands first, then the spring
+  }
+  function mxtHide() { clearTimeout(mxt.timer); clearTimeout(mxt.out); mxt.a = null; mxt.sq?.classList.remove('hot'); mxt.sq = null; mxt.el?.classList.remove('on'); }
+  $('#slist').addEventListener('pointerover', e => {
+    const a = e.target.closest?.(MX_AT); if (!a || e.pointerType === 'touch') return;
+    clearTimeout(mxt.out); if (a === mxt.a) return;
+    mxt.a = a; clearTimeout(mxt.timer);
+    if (mxt.el?.classList.contains('on')) mxtShow(); else mxt.timer = setTimeout(mxtShow, MXT_IN);
+  });
+  $('#slist').addEventListener('pointerout', e => {
+    const a = e.target.closest?.(MX_AT); if (!a || a.contains(e.relatedTarget) || e.relatedTarget?.closest?.(MX_AT)) return;
+    clearTimeout(mxt.timer); mxt.out = setTimeout(mxtHide, MXT_OUT);
+  });
   /** The card's Jira tickets (2026-10-08): chips in their status category's colour, the first — the branch's, else the
    *  last one named — on top; a stack as the PRs are since 2026-10-11 (a chip and a count before). */
   const ticketTip = t => `${t.key} — ${t.summary}\n${t.status}${t.type ? ` · ${t.type}` : ''}${t.assignee ? ` · ${t.assignee.me ? 'yours' : t.assignee.name}` : ' · unassigned'}${t.branch ? '\nthe chat\'s branch' : ''}`;
@@ -6029,7 +6125,6 @@ const toolName = n => {
     // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
     // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
-    const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
     // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23); a CLI elsewhere — a
     // terminal's mark since 2026-10-12, its tooltip saying where and that ⌥⌘C takes it over; *CLI* before —, VS
@@ -6040,7 +6135,7 @@ const toolName = n => {
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
+      <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${teamSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
@@ -7472,7 +7567,7 @@ const toolName = n => {
     const t = e.target.closest('.card .tmx'); if (!t || t._wheel) return;
     t._wheel = true; t.addEventListener('wheel', mxWheel, { passive: false });
   });
-  $('#slist').addEventListener('scroll', e => { if (e.target.classList?.contains('mxg')) mxEdges(e.target); }, { capture: true, passive: true });
+  $('#slist').addEventListener('scroll', e => { if (e.target.classList?.contains('mxg')) { mxEdges(e.target); mxtHide(); } }, { capture: true, passive: true });
   // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — in one motion since
   // 2026-11-01, the head staying put and the list under it sliding over the lane's cards or off them (foldRun, openRun)
   function foldLane(g, byKey = false) {

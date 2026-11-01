@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, later still — the matrix: one size, nothing round it, a PR's card
+
+Ricardo, on the matrix: *"make the PR squares a bit bigger and consistent, even when there are many PRs. Also, remove the
+extra circles around the squares, let's focus a clean astetic. also, seems like we have 2 things appearing when hovering
+- we should make the timeline stuff show when hovering the chat in general, but a bit a delay and when the mouse
+rests/stops. hovering the PR squase should show a pretty info about it, with a little bit of nounce also"*
+
+* **9 px, however many** (`MX_PX`; `MX_COMPACT` and `.cmp` gone): eight squares and the number are about 135 px now;
+  past the row's room they scroll as before. 4 px between PRs and along a stack's line.
+* **Nothing round a square**: the numbered one's ring is gone — the number alone says which, and its square lifts when
+  the number is hovered (`.hot`). On the open row of Ring and Tinted the white hairline round each square gave way to one
+  ground under them all, the project tag's black .2 there (`.mxg`): an open PR's green on a green row still reads.
+* **One thing at a time on hover.** Two came at once: the system's tooltip on a square and the rounds' popover on the
+  matrix. Now a square, or the number, has no tooltip of the system's but its PR's card (`#mxtip`, `mxCardHtml`,
+  `mxtShow`): the repo and the state as a pill, the number and title, CI, the stack's squares with its own lit, whose
+  move (the round's tag) and why, the faces and when GitHub last updated it. Over the square, its arrow on it, kept in
+  the list (under it at the list's top); 120 ms in, then at once from square to square, gliding; it comes on the spring
+  (`--spring`, from a little below and .86 its size: a small overshoot) and the square springs up 1.3 with it. Under
+  reduced motion, a fade and a brighter square.
+* **The rounds' popover comes with the pointer at rest on the card** (`REST_MS` 600, moves under `REST_PX` no move),
+  anywhere but a square or the number, or a part with a tooltip of its own (the ✓, the project's tag, a chip — *All*'s
+  PR chips keep theirs): before, 350 ms on the PRs or the move line. Up, it stays while the pointer is on that card;
+  leaving it, a press, a scroll or a square close it. A chat with nothing to show (no PRs; on *All* none in play and
+  nothing lately) brings none. The card's title lost its tooltip for that: a PR-titled chat's — which PR, and the chat's
+  own title — is the popover's first line now (`titleTip` stays the header's).
+* The popover's *latest* times are one column as wide as the widest (a subgrid): "Yesterday 9:41 AM" ran into the marks.
+
 ## Decisions of 2026-11-01, later — a lane folds in one motion
 
 Ricardo: *"toggling show/hide of a status in the cards does some janky animation like showing the card folding and then

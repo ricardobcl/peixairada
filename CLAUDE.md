@@ -423,7 +423,8 @@ npm run map                         # rewrite the section maps at the top of ser
   ticked — **a card counts nothing**; hovered, the move's age, `.mt`: `turn.at`, else `movedAt`), the header's
   (`headMove`, `.hmove`). A new tag slides in (`moveMoments`, `#shead[data-sid]`). **Each PR's round** (2026-10-15;
   `roundOf`): `.prround` under its `#prlist` row (the round before, Let go · Ask Claude · Undo; `.why` hidden); on the card each PR in play (`pipsHtml`, `pchip` in `prHue`; not at same height),
-  `answeredHtml` for `ANSWERED_MS`, `#rpop` beside it on its PRs (a pane page there, under). → `pr-rounds.mjs`.
+  `answeredHtml` for `ANSWERED_MS`, `#rpop` beside it with the pointer at rest on the card (2026-11-01, later; `REST_MS`,
+  not on a part with a tooltip of its own; a pane page there, under; a PR-titled chat's `titleTip` its first line). → `pr-rounds.mjs`.
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
   chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
   a non-passive listener added on `pointerover`). CSS only (a right-to-left grid, `--d`, `--i`, `--under`, `--span`),
@@ -431,8 +432,9 @@ npm run map                         # rewrite the section maps at the top of ser
   `CARD_FACES`, spread under the pointer); the tests' fake gh hands `data:` faces. **That is *All*; the default is the
   matrix** (2026-11-01, Settings › Chat list › A card's PRs, `prefs.prChips`; `cardMatrix`, `.tmx`, markup by the pref): a
   square a PR in stack order (`prGroups`, `prChain` on `pr.refs`), the number your move's, else the newest `pr.updated`
-  (`mxLead`); past `MX_COMPACT` smaller, past the row's room `.mxg` scrolls (`mxWheel`; `fadeOver` brings the ring into
-  sight); `#rpop` lists every PR, no faces. The harness starts on *All*. → `card-pr-matrix.mjs`.
+  (`mxLead`); one size, nothing round a square; past the row's room `.mxg` scrolls (`mxWheel`; `fadeOver` brings the
+  numbered one into sight); no tooltips: a square's or the number's PR card (`#mxtip`, `mxtShow`, `mxCardHtml`), on a
+  spring, the square lifted (`.hot`); `#rpop` lists every PR, no faces. The harness starts on *All*. → `card-pr-matrix.mjs`.
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
   GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving

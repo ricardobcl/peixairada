@@ -23,9 +23,11 @@ setup file, and how the pictures are made.
   count the chats asking you and those with a new reply; the menu lists them, your PRs' moves and what is clauding.
 - 🐙 **PRs** — on a card, a small square for each, in its state's colour (a draft hollow); PRs stacked on each other on
   GitHub sit together, joined by a line, base first. The number before them is the PR at your move, in the accent —
-  else the one updated last —, its square ringed. Many PRs make the squares smaller, and past the row's room they
-  scroll under the pointer. Hover a square for its number, title, state, CI and whose move; click it for the PR; rest
-  on them for every PR the chat has. Settings › Chat list › *A card's PRs: All* puts every chip back, stacked and
+  else the one updated last. The squares keep their size however many there are; past the row's room they scroll
+  under the pointer. Hover a square (or the number) and it lifts, with a card about its PR: the repo and state, its
+  number and title, CI, its place in a stack, whose move and why, who's on it and when it last changed; click it for
+  the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. Settings › Chat
+  list › *A card's PRs: All* puts every chip back, stacked and
   fanned out under the pointer, with the faces of the people on them. ⌥-click the ✓ to tick a chat done for good: its
   PRs won't bring it back. Take a PR off a chat from its square's or chip's right-click menu (or ⌥-click a chip) —
   until you name it there yourself.

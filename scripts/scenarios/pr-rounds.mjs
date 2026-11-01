@@ -3,8 +3,8 @@
 // row under the header says its round (since when, unanswered) with Let go and Ask Claude; Let go on #13 lets that one
 // go alone — #12 stays at your move — and Undo takes it back; your word on #12 closes its round: the row says answered,
 // and with nothing left at your move the card says "answered" in the move line's place and marks each PR in play; the
-// pointer on that line shows the rounds and the latest events; rui's next comment opens a new round, whose row names the
-// one before.
+// pointer at rest on that line shows the rounds and the latest events, on the card anywhere but a chip; rui's next
+// comment opens a new round, whose row names the one before.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,12 +80,17 @@ export default async function (ctx) {
   ctx.assert.match(out.pop.foot, /click “your move” or a PR’s mark: its timeline, at the move \(⌥⌘J\) · ⌥-click: let every round go/);
   ctx.assert.ok(out.pop.beside, 'beside the card, over the chat');
   await ctx.shot('2-answered-card', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 20), width: Math.min(innerWidth, r.right + 420), height: 420 }))(${card}.getBoundingClientRect())`));
-  // the card's PR chips show the same
+  // the pointer at rest anywhere on the card shows the same (2026-11-01, later) — but on a PR chip, which has a
+  // tooltip of its own: one thing at a time
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 600 });
   await ctx.waitFor(`!document.querySelector('#rpop.on')`, { what: 'gone with the pointer' });
-  const chips = await centre(`#slist > .card[data-id="${two.id}"] .top .tprs`);
+  const chips = await centre(`#slist > .card[data-id="${two.id}"] .top .tprs .cpr`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: chips.x, y: chips.y });
-  await ctx.waitFor(`document.querySelector('#rpop.on .rpr')`, { what: 'the rounds on the PR chips' });
+  await ctx.sleep(1000);
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#rpop.on')`), false, 'not over a chip');
+  const title = await centre(`#slist > .card[data-id="${two.id}"] .title`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: title.x, y: title.y });
+  await ctx.waitFor(`document.querySelector('#rpop.on .rpr')`, { what: 'the rounds with the pointer at rest on the card' });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 600 });
   await ctx.waitFor(`!document.querySelector('#rpop.on')`, { what: 'gone with the pointer' });
 
