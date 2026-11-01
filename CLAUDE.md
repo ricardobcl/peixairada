@@ -89,7 +89,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` |
 | Reply finished | an assistant line whose `stop_reason` is in `TURN_ENDS` (`end_turn`, `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal`; tool calls are `tool_use`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`: `/compact` ends with no assistant line) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl` whose last line is not a turn's end, nor its `SubagentHandback` result, nor an interrupt, written within `AGENT_STALE_MS` (`scanAgents()`; a dead chat counts none). A background agent ends the main turn at once; this keeps the card clauding. A teammate (meta `in_process_teammate`) is a row under its lead (`noteTeam`, 2026-10-31) |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed`, `permission prompt`, …) — `waitingOn()` / `statusOf()`; any live process waiting is the chat waiting, and it beats the agents; **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer* — only the fallback for a claude that reports no status (`s.ask`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
-| Work behind the turn | `Monitor` and a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines carry its events and its end. `s.tasks` → `tasks`; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`) or with the chat's process (`pruneTasks`, on the poll). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (held open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved |
+| Work behind the turn | `Monitor` and a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines carry its events and its end. `s.tasks` → `tasks`; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`) or with the chat's process (`pruneTasks`, on the poll). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (held open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved. **Wake-ups** (2026-10-31): `ScheduleWakeup`, `CronCreate` → `wake` (`nextWake`, `cronNext`); a stopped turn → `stopped` (`stopOf`). → `test/watch-lane.test.mjs`, `stopped-reason.mjs` |
 | Chats talking | (2026-10-31) a meta `user` line or `queued_command` attachment with `origin.kind: "peer"`, no `senderTaskId`; queued, a `queue-operation` envelope (`peerOf`). **Never your word**; sender by `msg_id`, pid, name (`peerSender`) → `peers.test.mjs` |
 | Titles | board title (state file) › `custom-title` › its own PR, merged too — the first pr-link's, else the first you named (`linked`, `named`; 2026-10-27) › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model` |
@@ -452,17 +452,18 @@ npm run map                         # rewrite the section maps at the top of ser
   them a word, so the start, `statusOf`'s `idle` and the *(no messages yet)* title go by `!s.lastActivity`.
   `openSession` on a chat the snapshot lacks renders from its fetch. Ticked, an empty chat is gone (`visible()`), and
   the column moves on (`tickDone`) or leaves (`leaveChat()`). → `new-chat-card.mjs`, `drawer-clear.mjs`.
-* **The order** (`RANK` / `rankOf`): asking, clauding, **Ready** (a last word from today or the `IDLE_DAYS` before),
+* **The order** (`RANK` / `rankOf`): asking, clauding, **Watching** (2026-10-31, `inWatch`: a live task or `wake`, any age;
+  a turn its task woke stays, `woken`), **Ready** (a last word from today or the `IDLE_DAYS` before),
   **Idle** (older), **Done** — inside each by the last word (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a
   tool call is not a word, **a PR come round to you is**, at `turn.movedAt` — `movedAt(s)`, both copies), newest first;
-  a project ranks by its newest chat. Every count goes by `bucket()`, where an asking chat is a ready one — only the
-  order knows. **Each group has a lane head** (`laneHtml`, `.gsep.lane.<group>`, its count at the right; none under a
-  query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
+  a project ranks by its newest chat. Every count goes by `bucket()` — only the order knows asking and watching.
+  **Each group has a lane head** (`laneHtml`: a still glyph; sticky, `--stick` and `.covered` from
+  `drawEdges`; none under a query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
   today's** (2026-10-14). **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
   Ready goes; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies are the funnel's filters,
   never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its newest cards and a
-  `.gsep.more` line for the rest, which shows them until a reload (`laneMore`); the open chat's card whatever its place;
-  a query or a filter every match. → `lanes.mjs`, `day-separator.mjs`, `long-lanes.mjs`.
+  `.gsep.more` line for the rest, shown till a reload (`laneMore`); the open chat's card whatever its place; a query or
+  a filter every match. → `lanes.mjs`, `lane-heads.mjs`, `day-separator.mjs`, `long-lanes.mjs`.
 * **The list's filter is the funnel** (2026-10-12; `#fBtn`, `FILTERS`, `prefs.listFilter`; its menu through
   `ctxShow`, counted by `fCounts`): *Every chat* · *Your move* (`yourMove`: a PR waiting on you, not done for good) ·
   *New replies* (`replied`: a ready chat whose last word is Claude's and came after the board last showed it —
@@ -478,8 +479,9 @@ npm run map                         # rewrite the section maps at the top of ser
   tick's move.
 * **Ticking the open chat moves on** (`tickDone` — the card's ✓ and ↩, the chats step's ✓): to the card below as
   shown, else above, over done cards; a chat ticked while another is open moves nothing. **The move is made at the
-  click**, not on the server's answer, after `TICK_MS` for
-  the ✓'s own draw (`.act.tk`; a second click does nothing; at once under reduced motion). → `tick-next.mjs`.
+  click**, after `TICK_MS` for the ✓'s own draw (`.act.tk`; a second click does nothing;
+  at once under reduced motion). **A watching chat's asks once more, naming what it ends** (`tickGate`). →
+  `tick-next.mjs`, `watch-lane.mjs`.
 * **The list's frame reads its geometry once** (`listChanged()`, once a frame): `listGeom()` first, then
   `drawEdges(g)`, `drawTimeline(g)` — keep the reads at the top. **It follows the list's motion**: while a slide or a
   fold runs (`follow()`, `sliding`) it draws every frame and once after, and the open card's size is watched

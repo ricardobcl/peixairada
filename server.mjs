@@ -27,6 +27,7 @@
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
 //      · an agent team: its teammates, under their lead (2026-10-31)
 //      · background tasks: a monitor, or a command left running
+//      · wake-ups: a chat that set itself to wake (2026-10-31, round XIII's I8)
 //  Live-session registry (~/.claude/sessions/<pid>.json)
 //  Notifications + SSE fan-out
 //  Replying into a session

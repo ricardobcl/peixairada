@@ -5,6 +5,54 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-31, near midnight — Watching, wake-ups, stopped, and the heads L1 (round XIII)
+
+Round XIII drew the lane heads seven ways over the made-up board, a status set, an order and a name, with the research
+behind them (no agent dashboard surveyed has a state for work that outlives the turn; two Claude Code issues ask for
+it). Ricardo's pick: *"Lanes: heads L1, set S4, Watching after Clauding, tiles too."* — and the report's I8, wake-ups
+counted in Watching.
+
+* **Watching is a rank, not a bucket** (`inWatch`, `RANK` asking 0 · working 1 · watching 2 · ready 3 · idle 4 ·
+  done 5): a live claude with a monitor or a command running behind the turn looked finished, in Ready, a slow light the
+  only sign. `bucket()` is as it was, so the counts, the funnel's filters, the Dock's badge and the menu bar are too (a
+  watching chat's new reply is a New reply). Any age — a live task means the chat is live now —, never folded at first,
+  never held back. A question beats a watch and so does work, the ring's own order; after Clauding, so a woken chat hops
+  one lane. The overview's columns go by the same rank. *Watching* was already the board's word (the overview, the
+  card's spoken state, `--watch`).
+* **No ping-pong**: a monitor wakes Claude for a short turn on each event. A turn begun by the chat's own
+  `<task-notification>` between turns is `woken` (cleared by your word, an answer, an interrupt, the turn's end) and stays
+  in Watching, its clauding ring lit; the last task ending moves it to Clauding. Sub-agents in it are work.
+* **✓ says what it ends** (`tickGate`): Done SIGTERMs the chat's processes, the monitor with them, and one click did it
+  silently. The first tick of a watching chat arms it for five seconds — the card's ✓ in the attention colour saying
+  *ends monitor · the deploy run*; from the chats step, a menu or a notification's Done a note says it (the notification
+  opens the chat) — and a second ticks. The gate stands in front of the one way to end a chat; no other was added.
+* **Wake-ups** (I8), as read off this Mac's transcripts, names and keys only: ScheduleWakeup `{delaySeconds, prompt,
+  reason, noop}` or `{stop: true}`, its result's `toolUseResult` `{scheduledFor (ms), clampedDelaySeconds, wasClamped}`
+  (`{stopped, cancelledWakeups}` for a stop); its fire a user line `isMeta`, `promptSource: "system"`, `turnOrigin:
+  "scheduled"` (a task notice's is `task_notification`). CronCreate `{cron, prompt, recurring, durable}` is Claude Code's
+  own tool text — never used here, so its result's fields were not seen: the id and next run come from `toolUseResult`
+  when it has them, else from its words and the cron's next match in local time (`cronNext`). Watching until its turn
+  comes, or five minutes past its time (`WAKE_GRACE_MS`: a fire waits for an idle claude); a recurring job moves on to
+  its next match, seven days at most; a wake-up dies with the claude that set it. The card says *wakes at 14:30 · in 52
+  min* on its live line at every card size — it is why the card is there.
+* **S4, stopped is a reason**: an API error after its retries — a `<synthetic>` line, `isApiErrorMessage`, `error` a kind
+  (`server_error`, `authentication_failed`, `invalid_request` seen), stop_reason `stop_sequence`, its words *API Error: …*
+  —, a reply the token limit cut, a refusal: the card says *stopped* and why, in `--needs` (AA in both themes) and in
+  words, at every size but one height's (its spoken words then). No lane (S1, S3 had one); your next word clears it.
+* **L1, tiles too**: a still glyph a lane in its colour, as Linear draws its states — asking a dot with a halo, clauding
+  a half-filled ring, watching a dashed ring round a dot, ready a ring round a dot, idle a dotted ring, done filled —,
+  the name in ink, the count bare; the tiles' in small caps, the sidebar's in sentence case. Clauding's pixels and the
+  shimmer on its name go (they stay on the transcript's presence line; All caught up keeps its mark and Zé). **Sticky**,
+  on the list's ground and over its padding: the list is flat — no section to push a head out —, so the heads stuck
+  under the last are hidden (`.covered`, from the list's frame); in Glass a head has no band at rest and a solid one
+  stuck (the glass as it reads there): its own backdrop blur, inside the list's, left the rows legible through it. The
+  list's top end counts the cards under the stuck head; its fog and a scroll's padding start below it (`--stick`). At
+  the notch a head sticks below the strip the list pads down by, and covers the strip with its ground while stuck.
+* **Not built**: the asking card's kind (a permission or a question), a quiet tint on a watch silent for long, a folded
+  head saying its newest event — the report's other suggestions.
+* Checked: `test/watch-lane.test.mjs`; `watch-lane.mjs`, `stopped-reason.mjs`, `lane-heads.mjs` (both layouts, dark and
+  light); `card-signals.mjs`, `reduced-motion.mjs`, `sidebar-layout.mjs`, `project-colors.mjs` follow the glyphs.
+
 ## Decisions of 2026-10-31, late — chats that talk (round XIV)
 
 Round XIV asked whether the board can merge chats or let them talk, after a research pass on what Claude Code offers

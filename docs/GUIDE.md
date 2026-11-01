@@ -8,9 +8,12 @@ setup file, and how the pictures are made.
 
 ## The board
 
-- 🚦 **Sorted by who owes whom** — in lanes: asking you, clauding, then the rest by their last word — ready, and idle
-  (untouched for more than four days). *Done* is a tick you give; Idle and Done start folded, and a click on any lane's
-  head folds or opens it. **The funnel** beside the search shows only the chats with a PR at your move, or only those
+- 🚦 **Sorted by who owes whom** — in lanes: asking you, clauding, watching (Claude will come back by itself: a
+  monitor or a command still running, or a wake-up it set — *wakes at 14:30 · in 52 min*), then the rest by their last
+  word — ready, and idle (untouched for more than four days). Each lane's head wears its state's glyph and stays at the
+  top while its lane scrolls under it. A turn that ended on an API error, the token limit or a refusal says *stopped*
+  and why on its card. *Done* is a tick you give — on a watching chat it says what it would end and asks once more;
+  Idle and Done start folded, and a click on any lane's head folds or opens it. **The funnel** beside the search shows only the chats with a PR at your move, or only those
   Claude answered since you last looked. Cards are compact unless you'd rather — or large only for the chats that want
   you.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
