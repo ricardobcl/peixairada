@@ -934,6 +934,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     rebuildStatusMenu()
   }
 
+  // The fish's menu from anywhere (2026-11-01, round XIX's M2). Probed on 27.2: popUp opens it where it is told, with the
+  // menu bar hidden and with the app behind, no activation and no Space changed; the button's performClick opens it off the
+  // top of the screen once the bar is hidden, so never that. Under the housing, a fixed place you learn. A Carbon hot key
+  // needs no permission dialog. The same key again, the menu open, closes it.
+  private var summonRef: EventHotKeyRef?
+  private var summonInstalled = false
+  private static let macKeyCode: [String: UInt32] = ["KeyA": 0, "KeyS": 1, "KeyD": 2, "KeyF": 3, "KeyH": 4, "KeyG": 5, "KeyZ": 6, "KeyX": 7, "KeyC": 8, "KeyV": 9, "KeyB": 11, "KeyQ": 12, "KeyW": 13, "KeyE": 14, "KeyR": 15, "KeyY": 16, "KeyT": 17, "Digit1": 18, "Digit2": 19, "Digit3": 20, "Digit4": 21, "Digit6": 22, "Digit5": 23, "Equal": 24, "Digit9": 25, "Digit7": 26, "Minus": 27, "Digit8": 28, "Digit0": 29, "BracketRight": 30, "KeyO": 31, "KeyU": 32, "BracketLeft": 33, "KeyI": 34, "KeyP": 35, "Enter": 36, "KeyL": 37, "KeyJ": 38, "Quote": 39, "KeyK": 40, "Semicolon": 41, "Backslash": 42, "Comma": 43, "Slash": 44, "KeyN": 45, "KeyM": 46, "Period": 47, "Tab": 48, "Space": 49, "Backquote": 50, "F1": 122, "F2": 120, "F3": 99, "F4": 118, "F5": 96, "F6": 97, "F7": 98, "F8": 100, "F9": 101, "F10": 109, "F11": 103, "F12": 111, "F13": 105, "F14": 107, "F15": 113, "F16": 106, "F17": 64, "F18": 79, "F19": 80, "F20": 90]
+  private func setSummonKey(code: String, mods: [String]) {
+    if let ref = summonRef { UnregisterEventHotKey(ref); summonRef = nil }
+    guard !code.isEmpty else { logLine("summon: no key"); return }
+    guard let key = Self.macKeyCode[code] else { logLine("summon: no key code for \(code)"); return }
+    if !summonInstalled {
+      summonInstalled = true
+      var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))
+      InstallEventHandler(GetApplicationEventTarget(), { _, _, me in
+        Unmanaged<AppDelegate>.fromOpaque(me!).takeUnretainedValue().summonMenu(); return noErr
+      }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), nil)
+    }
+    var carbon: UInt32 = 0
+    if mods.contains("cmd") { carbon |= UInt32(cmdKey) }; if mods.contains("alt") { carbon |= UInt32(optionKey) }
+    if mods.contains("ctrl") { carbon |= UInt32(controlKey) }; if mods.contains("shift") { carbon |= UInt32(shiftKey) }
+    let st = RegisterEventHotKey(key, carbon, EventHotKeyID(signature: OSType(0x50454958), id: 1), GetEventDispatcherTarget(), 0, &summonRef)
+    logLine("summon: \(code) \(mods.joined(separator: "+")) status=\(st)")
+  }
+  fileprivate func summonMenu() {
+    if statusMenuOpen { statusMenu.cancelTracking(); return }
+    let mouse = NSEvent.mouseLocation
+    guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main else { return }
+    rebuildStatusMenu()
+    let top = max(screen.safeAreaInsets.top, NSApp.mainMenu?.menuBarHeight ?? 0)
+    let at = NSPoint(x: screen.frame.midX - statusMenu.size.width / 2, y: screen.frame.maxY - top - 6)
+    logLine("summon: opened, app \(NSApp.isActive ? "in front" : "behind")")
+    statusMenu.popUp(positioning: nil, at: at, in: nil)
+  }
+
   /// The fish as drawn: the system's, a template. Belly-up it hangs under a line, the water's surface: `fish.fill` has a fin
   /// above and below, so turned over alone it reads as the same fish at this size (rendered and looked at, 2026-11-01).
   private func fishFace(bellyUp: Bool, slashed: Bool) -> NSImage? {
@@ -1647,6 +1682,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       setPane(chat: body["id"] as? String, keys: body["keys"] as? [String] ?? [], places: places, focus: body["focus"] as? String)
     case "nav":
       paneNav(body["what"] as? String ?? "", key: body["key"] as? String, url: body["url"] as? String)
+    case "summon":   // Settings › General's key for the fish's menu (2026-11-01, round XIX's M2)
+      setSummonKey(code: body["code"] as? String ?? "", mods: body["mods"] as? [String] ?? [])
     case "fullscreen":   // Settings › Look's full screen (2026-10-14): the fill, or the system's in a Space of its own
       setSpaceMode(body["space"] as? Bool ?? false)
     case "key":   // the lock's *Read the key again*, a new key made on the board (2026-10-16)
