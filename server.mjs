@@ -911,7 +911,7 @@ function notePr(s, url, ts, by, ref = null) {
   s.prsHeard.delete(clean);
   if (at < 0) {   // what GitHub has said of it since, a PR put aside included
     const i = prStatus.get(clean);
-    Object.assign(pr, { state: i?.state ?? null, title: i?.title ?? null, turn: i?.turn ?? null, people: i?.people ?? null, checks: i?.checks ?? null, refs: i?.refs ?? null, rounds: roundsOf(clean), logged: loggedOf(clean) });
+    Object.assign(pr, { state: i?.state ?? null, title: i?.title ?? null, turn: i?.turn ?? null, people: i?.people ?? null, checks: i?.checks ?? null, refs: i?.refs ?? null, updated: i?.updated ?? null, rounds: roundsOf(clean), logged: loggedOf(clean) });
   }
   if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
@@ -1163,7 +1163,7 @@ function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 /** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us — `missing`, whose
  *  state and title are what was known before (2026-10-03: they were wiped, and the card's title fell back to Claude's
  *  over an SSO prompt or one field GitHub would not resolve), asked again an hour later. */
-function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null, checks = null, refs = null) {
+function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null, checks = null, refs = null, updated = null) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from, released } = moveTurn(url, found, now);
@@ -1172,11 +1172,12 @@ function setPrInfo(url, state, title, found, now = Date.now(), people, missing =
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
   if (missing) { state = known?.state ?? null; title = known?.title ?? null; checks = known?.checks ?? null; }
   refs ??= known?.refs ?? null;   // a PR we could not see keeps the branches we knew
-  prStatus.set(url, { state, title, turn, people, checks, refs, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
+  updated ??= known?.updated ?? null;   // GitHub's updatedAt (2026-11-01): the card's matrix numbers the PR updated last
+  prStatus.set(url, { state, title, turn, people, checks, refs, updated, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
   const rounds = roundsOf(url), logged = loggedOf(url), same = JSON.stringify(turn), faces = JSON.stringify(people), branches = JSON.stringify(refs), rs = JSON.stringify(rounds);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr.state !== state || pr.title !== title || pr.checks !== checks || pr.logged !== logged || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches || JSON.stringify(pr.rounds ?? null) !== rs) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; pr.rounds = rounds; pr.logged = logged; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || pr.checks !== checks || pr.logged !== logged || (pr.updated ?? null) !== updated || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches || JSON.stringify(pr.rounds ?? null) !== rs) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; pr.updated = updated; pr.rounds = rounds; pr.logged = logged; schedulePush(s); }
   }
   for (const s of chats) if (s.prActs.some(a => !a.url)) takeActs(s);   // a push to its branch, now that GitHub has named the branch
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it, or the next move after
@@ -1241,7 +1242,7 @@ function drainPrQueue() {
         const evs = prEvents(pr, me, url), ci = ciEvent(prStatus.get(url), prChecks(pr), pr.headRefOid);
         logEvents(url, ci ? [...evs, ci] : evs);
       }
-      setPrInfo(url, state, pr?.title || null, turn, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
+      setPrInfo(url, state, pr?.title || null, turn, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr), pr?.updatedAt || null);
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size || prSplit.length) drainPrQueue();
@@ -1256,7 +1257,7 @@ function drainPrQueue() {
 const WHO = 'login __typename avatarUrl(size: 48)';
 const WINDOWS = { reviews: 20, comments: 20, pushes: 5, asks: 10, marks: 10 };   // how far back each look reaches (prEvents' `edge`)
 const ACTOR = 'actor { login __typename }';
-const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
+const PR_FIELDS = `title state isDraft createdAt updatedAt headRefOid author { ${WHO} }`   // updatedAt (2026-11-01): a scalar, the card's matrix
   + ' headRefName baseRefName baseRefOid isCrossRepository headRepository { nameWithOwner }'   // where its branch is (2026-10-13): scalars, no cost
   + ' viewerLatestReview { submittedAt commit { oid } }'
   + ' reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }'
