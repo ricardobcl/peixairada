@@ -8844,6 +8844,7 @@ const toolName = n => {
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
+    alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
     ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
@@ -12640,8 +12641,13 @@ const toolName = n => {
     g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .006); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
     o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + dur + .02);
   }
+  const CHIME_GAP_MS = 1200;
   function chime(kind) {
     if (!prefs.sounds || !audio?.ran) return;
+    // one voice at a time (S6): a burst of landings is one tick; a question is always heard
+    const now = performance.now(), asks = kind === 'needs-input' || kind === 'drift';
+    if (!asks && now - (chime.at || 0) < CHIME_GAP_MS) return;
+    chime.at = now;
     const play = () => {
       noteMotion(null, 'sound:' + kind);
       const t = audio.currentTime + .02;
@@ -12657,7 +12663,7 @@ const toolName = n => {
     if (a.kind === 'chat') return chatAlert(a);   // the chat's (2026-10-17): its own rules
     if (a.kind === 'lunch') return lunchAlert(a);   // lunch's (2026-10-18)
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
-    if (document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown
+    if (!viewing && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
     if (viewing && a.kind === 'reply') markSeen(a.sessionId);
     renderBoard();

@@ -210,6 +210,19 @@ export default async function (ctx) {
   await ctx.server.post('api/test-notify', {});
   await ctx.waitFor(`window.peix.motion().filter(m => m.at >= ${m25}).some(m => m.kind === 'sound:reply')`, { what: 'the alert heard', timeout: 4000 });
   await ctx.waitFor(`window.peix.state().audio === 'suspended'`, { what: 'and at rest again', timeout: 4000 });
+  // sound manners (2026-11-01, round XIX's S6): none for the chat you are looking at, a burst of landings is one tick, a question is always heard
+  const heard = kind => `window.peix.motion().filter(m => m.at >= window.__m && m.kind === 'sound:${kind}').length`;
+  await ctx.openChat(two.id);
+  await ctx.evaluate(`window.__m = Math.round(performance.now()); window.peix.alert({ kind: 'reply', sessionId: '${two.id}', project: 'p', title: 't', snippet: '', quiet: true })`);
+  await ctx.sleep(500);
+  ctx.assert.equal(await ctx.evaluate(heard('reply')), 0, 'no tick for the chat in view');
+  await ctx.sleep(1000);
+  await ctx.evaluate(`window.__m = Math.round(performance.now()); for (const i of [1, 2, 3]) window.peix.alert({ kind: 'reply', sessionId: '${one.id}', project: 'p', title: 't', snippet: '', quiet: true })`);
+  await ctx.waitFor(`${heard('reply')} > 0`, { what: 'the first landing heard', timeout: 3000 });
+  await ctx.sleep(400);
+  ctx.assert.equal(await ctx.evaluate(heard('reply')), 1, 'three landings at once, one tick');
+  await ctx.evaluate(`window.peix.alert({ kind: 'needs-input', sessionId: '${one.id}', project: 'p', title: 't', snippet: '', quiet: true })`);
+  await ctx.waitFor(`${heard('needs-input')} === 1`, { what: 'a question heard through the gap', timeout: 3000 });
 
   // ---- 28 · fade, not …: a title too long for the card fades out at its last line's end; a short one is left alone ----
   const long = 'A title long enough to run past three lines of a card in the list, so that its end has to go somewhere — and it fades rather than ending in an ellipsis, the way the tabs of a browser do it';
