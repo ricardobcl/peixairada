@@ -13047,7 +13047,7 @@ const toolName = n => {
   function zeTick(now) {
     ze.raf = 0;
     const dt = ze.at ? Math.min(.05, (now - ze.at) / 1000) : 0; ze.at = now;
-    ze.dt = dt; zeStep(dt); zeWeather(dt); zeDraw(); ze.frames++;
+    ze.dt = dt; zeStep(dt); zeWeather(dt); zeRoom(ze.g); zeDraw(); ze.frames++;
     if ($('#zeGame').open && ze.g.phase !== 'pause' && ze.g.phase !== 'call') ze.raf = requestAnimationFrame(zeTick);
   }
   /** The canvas's pixels are its box's at the screen's density; the logic is ZE_W × ZE_H whatever they are. */
@@ -14878,6 +14878,31 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     if (R.wet > .5) for (let n = dt * 70 + Math.random() | 0; n > 0; n--) zg.splash.push({ x: Math.random() * 720, y: ZE_TERRACE + Math.random() * 66, t: 0 });
     for (const s of zg.splash) s.t += dt;
     zg.splash = zg.splash.filter(s => s.t < .18);
+  }
+  // ---- the room: the band in the air of each sky, its rain, its thunder. All of it on the game's own context, closed with it.
+  const ZE_ROOM = [1.5, 2.3, 1.1, .8, 1.9];
+  function zeRoom(g) {
+    const m = ze.music; if (!m || g.demo) return; const ac = m.ac; if (ac.state === 'closed') return;
+    if (!m.room) {
+      const conv = ac.createConvolver(), wet = ac.createGain(), rain = ac.createBufferSource(), rainF = ac.createBiquadFilter(), rainG = ac.createGain();
+      wet.gain.value = 0; m.crush.connect(conv); conv.connect(wet); wet.connect(ac.destination);
+      rain.buffer = m.noise; rain.loop = true; rainF.type = 'highpass'; rainF.frequency.value = 1400; rainG.gain.value = 0; rain.connect(rainF); rainF.connect(rainG); rainG.connect(ac.destination); rain.start();
+      m.room = { conv, wet, rainG, sky: -1, bolt: null };
+    }
+    const R = m.room, sky = zeSkyOf(g);
+    if (R.sky !== sky) {   // a room of its own: a burst of noise dying away, as long as the sky is wide
+      R.sky = sky; const len = Math.round(ac.sampleRate * ZE_ROOM[sky]), b = ac.createBuffer(2, len, ac.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) { const t = i / len; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3.2) * (i < 400 ? i / 400 : 1); } }
+      R.conv.buffer = b;
+    }
+    const wet = g.phase === 'play' || g.phase === 'over' ? (sky === 3 ? .1 : .2) : 0, rain = g.phase === 'play' && ZE_SKIES[sky].rain ? .022 : 0;   // the rain's room is a small one
+    if (R.wetV !== wet) { R.wetV = wet; R.wet.gain.setTargetAtTime(wet, ac.currentTime, .08); }
+    if (R.rainV !== rain) { R.rainV = rain; R.rainG.gain.setTargetAtTime(rain, ac.currentTime, .3); }
+    if (g.bolt && g.bolt !== R.bolt) {   // thunder, a moment after the bolt
+      const s = ac.createBufferSource(), f = ac.createBiquadFilter(), v = ac.createGain(), t = ac.currentTime + .12; s.buffer = m.noise; s.loop = true; f.type = 'lowpass'; f.frequency.value = 170;
+      v.gain.setValueAtTime(0, t); v.gain.linearRampToValueAtTime(.5, t + .05); v.gain.exponentialRampToValueAtTime(.001, t + 1.6); s.connect(f); f.connect(v); v.connect(ac.destination); s.start(t); s.stop(t + 1.7);
+    }
+    R.bolt = g.bolt;
   }
   function zgPoints(L, mode) {
     const gl = zg.gl; if (!L.n) return;

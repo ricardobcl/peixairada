@@ -57,6 +57,7 @@ export default async function (ctx) {
   // space: a round, the vira playing
   await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().music?.ac.state === 'running' && window.peix.ze().music.track === 'band'`, { what: 'the round and its music' });
+  await ctx.waitFor(`window.peix.ze().music.room?.wetV === .2 && window.peix.ze().music.room.conv.buffer?.duration === 1.5`, { what: 'the band in the air of the sunset' });
   const s0 = await ctx.evaluate(`window.peix.ze().music.step`); await ctx.sleep(600);
   ctx.assert.ok(await ctx.evaluate(`window.peix.ze().music.step`) > s0, 'the vira\'s quavers planned');
   await press('KeyT', 't', 84);
