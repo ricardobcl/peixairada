@@ -158,7 +158,7 @@ export function makeFixture(dir, chats) {
     if (c.live) writeFileSync(join(sessDir, `${c.live.pid}.json`), JSON.stringify({
       pid: c.live.pid, ...procStart && { procStart }, sessionId: id, cwd: c.cwd, startedAt: c.live.startedAt ?? Date.now() - 3600_000,
       version: 'fixture', kind: 'interactive', entrypoint: c.live.entrypoint || 'cli', pidDomain: process.platform,
-      ...c.live.status && { status: c.live.status, statusUpdatedAt: Date.now() }, ...c.live.waitingFor && { waitingFor: c.live.waitingFor },
+      ...c.live.status && { status: c.live.status, statusUpdatedAt: c.live.statusAt ?? Date.now() }, ...c.live.waitingFor && { waitingFor: c.live.waitingFor },
       ...c.live.name && { name: c.live.name, nameSource: 'derived', messagingSocketPath: `/tmp/cc-socks/${c.live.pid}.sock` },   // the name another chat's SendMessage reaches it by (2026-10-31)
     }));
     made.push({ id, cwd: c.cwd, file, title: c.title || null, pid: c.live?.pid || null });

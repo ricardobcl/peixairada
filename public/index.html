@@ -4547,6 +4547,7 @@ const toolName = n => {
     if (!state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length;
     const ask = n(s => asking(s));
+    const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(s => asking(s)).map(askedAt))) : '';   // the longest wait (2026-11-01, round XIX's S4)
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     // the connection is the fish alone (2026-10-27; *connected* beside it before), its colour the state: green on the
     // stream, amber belly-up while it tries again, red when the server turned it away (the lock's) — the words out of sight
@@ -4555,7 +4556,7 @@ const toolName = n => {
       // the live chats and the drawers and shells went (2026-10-11, later); what waits on you and what is watching stay,
       // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before); what is
       // watching is the card's mark and its count (2026-10-27), the word out of sight
-      ...(ask ? [`<button class="seg ask" title="chats waiting on your answer — click for the next one">${`<em>${rn('asking', ask)} asking you</em>`}</button>`] : []),
+      ...(ask ? [`<button class="seg ask" title="chats waiting on your answer${askWait ? `, the longest ${askWait}` : ''} — click for the next one, longest wait first">${`<em>${rn('asking', ask)} asking${askWait ? ` · ${askWait}` : ''}</em>`}</button>`] : []),
       ...muteSeg(),
       ...(mons ? [`<span class="seg mons" title="${mons} monitor${mons > 1 ? 's' : ''} and background commands running">${ICON.watch}${rn('mons', mons)}<span class="vh"> watching</span></span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
@@ -4848,10 +4849,15 @@ const toolName = n => {
   // alerts that came while the app was in the back, the menu bar the questions): the chats asking you and the ones with
   // a new reply — the menu lists them.
   // what asks is what the list and the bar call asking (2026-10-14; any live claude waiting before, a chat ticked done too)
+  // How long a chat has been asking: the registry's moment, else the status's. Questions are served longest wait first
+  // (2026-11-01, round XIX's S4; newest first before, which favours whoever pinged last), and the bar says the longest.
+  const askedAt = s => (s.live?.status === 'waiting' && s.live.statusAt) || Date.parse(s.statusSince || wordAt(s) || '') || Date.now();
+  const byWait = (a, b) => askedAt(a) - askedAt(b);
+  const waitWord = ms => { const m = Math.floor(ms / 60_000); return m < 1 ? '' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`; };
   const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && asking(s)), replied: all.filter(s => visible(s) && !s.done && !asking(s) && replied(s)).sort(byWord) }; };
   function postState() {
     const w = wanting(), brief = s => ({ id: s.id, project: s.project, title: s.title });
-    const needs = w.needs.map(brief), replies = w.replied.map(brief);
+    const needs = [...w.needs].sort(byWait).map(s => ({ ...brief(s), since: String(askedAt(s)) })), replies = w.replied.map(brief);
     // …and for the status menu alone (2026-10-12, P2): the PRs at your move, by chat, and what is clauding
     const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
     const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}` }));
@@ -4860,9 +4866,9 @@ const toolName = n => {
     const sig = JSON.stringify([needs, replies, moves, working, muted]); if (sig === postState.last) return; postState.last = sig;
     post({ type: 'state', needs, replied: replies, moves, working, muted });
   }
-  // The chats asking you, one after another from the one open (the status bar's count, 2026-10-12)
+  // The chats asking you, one after another from the one open, longest wait first (the status bar's count, 2026-10-12)
   function nextAsking() {
-    const list = [...state.sessions.values()].filter(s => visible(s) && asking(s)).sort(byWord); if (!list.length) return;
+    const list = [...state.sessions.values()].filter(s => visible(s) && asking(s)).sort(byWait); if (!list.length) return;
     const i = list.findIndex(s => s.id === state.current);
     openSession(list[(i + 1) % list.length].id, { locate: true });
   }
