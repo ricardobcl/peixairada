@@ -886,6 +886,19 @@
   .card .state.live { perspective: 160px; }
   .card .state.live b { flex: none; font: 600 var(--fs-xs)/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
   #sessions[data-cards="compact"] .card .state.live { display: none; }
+  /* An agent team's teammates under their lead (2026-10-31, fillTeam): a row each — a dot, its name, at work or done in
+     words, its last line —, at every size but compact's same height. The dot: at work's colour, done's, a ring if only
+     the roster knows it yet. */
+  .card .team { display: grid; gap: 1px; margin-top: 5px; font-size: var(--fs-xs); line-height: 16px; }
+  .card .team .tm { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; color: var(--muted); }
+  .card .team .tmd { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); }
+  .card .team .tm[data-state="work"] .tmd { background: var(--working); }
+  .card .team .tm[data-state="joined"] .tmd { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
+  .card .team .tm > b { flex: none; color: var(--ink); font-weight: 600; }
+  .card .team .ts { flex: none; font-size: var(--fs-2xs); }
+  .card .team .tl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .card .team .tl b { font-weight: 600; color: var(--ink); }
+  #sessions[data-even] .card .team { display: none; }
   /* …unless cards go by lane (2026-10-12, data-bylane, prefs.cardsByLane): a card in a lane that wants you is large. */
   #sessions[data-bylane] .card.roomy .snip { display: -webkit-box; }
   #sessions[data-bylane] .card.roomy .state.live:not(:empty) { display: grid; }
@@ -4862,7 +4875,7 @@ const toolName = n => {
     // now and then (the bar's own interval), nothing else moving.
     const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
     const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
-    fillAges($('#slist')); fillLive($('#slist')); fadeSoon();
+    fillAges($('#slist')); fillLive($('#slist')); fillTeam($('#slist')); fadeSoon();
     caughtUp(zero);
     drawFilter(p, narrow);
     if (drawn) phaseAnims();
@@ -5623,7 +5636,7 @@ const toolName = n => {
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardLead(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
-      ${liveSlot(s)}
+      ${liveSlot(s)}${teamSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
@@ -5634,6 +5647,17 @@ const toolName = n => {
   // and what for (the server's `doing`), flipping to the next like a split-flap board. Else a monitor's: its newest
   // event, rolled in, the watching light blipping once per event.
   const liveSlot = s => s.alive && !s.done && (s.status === 'working' || watching(s)) ? '<div class="state live"></div>' : '';
+  // An agent team's teammates under their lead (2026-10-31): a row each — its name, at work or done, its last line —,
+  // filled after the render as the live line is, so a teammate's step keeps the card's node. None for a team of the lead alone.
+  const teamSlot = s => s.alive && s.team?.length ? '<div class="team"></div>' : '';
+  const TEAM_SAID = { work: 'at work', done: 'done', joined: 'joined' };
+  const teamHtml = s => `<span class="vh">Its team: </span>` + (s.team || []).map(m => `<div class="tm" data-state="${esc(m.state)}"><i class="tmd" aria-hidden="true"></i><b>${esc(m.name)}</b><span class="ts">${esc(TEAM_SAID[m.state] || m.state)}</span>${m.last ? `<span class="tl">${m.last.kind === 'tool' ? `<b>${esc(toolName(m.last.name))}</b> ${esc(pathTail(m.last.text, s.cwd))}` : ticks(esc(m.last.text))}</span>` : ''}</div>`).join('');
+  function fillTeam(root) {
+    for (const el of root.querySelectorAll('.card .team')) {
+      const s = state.sessions.get(el.closest('.card').dataset.id); if (!s) continue;
+      const html = teamHtml(s); if (el._html !== html) { el._html = html; el.innerHTML = html; }
+    }
+  }
   const liveSeen = new Map();   // chat id → { text, n }: what its line said last, and how many events
   function liveOf(s) {
     const ts = s.alive ? s.tasks || [] : [], n = ts.reduce((a, t) => a + (t.events || 0), 0);

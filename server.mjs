@@ -25,6 +25,7 @@
 //      · the branch moved under a chat (2026-10-13)
 //      · messages between chats (2026-10-31)
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
+//      · an agent team: its teammates, under their lead (2026-10-31)
 //      · background tasks: a monitor, or a command left running
 //  Live-session registry (~/.claude/sessions/<pid>.json)
 //  Notifications + SSE fan-out
@@ -685,6 +686,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
     peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
+    team: s.alive ? s.team || null : null,   // its agent team's teammates, while its claude runs (noteTeam, 2026-10-31)
     doing: status === 'working' ? doingOf(s) : null,   // the turn's newest tool call: the card's live line (2026-10-11)
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
@@ -2288,7 +2290,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'headNow', 'headOk', 'peers', 'tasksGone']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'team', 'teamJson', 'headNow', 'headOk', 'peers', 'tasksGone']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
@@ -2501,8 +2503,74 @@ function scanAgents(s) {
   const dir = agentsDir(s); let names = [];
   if (dir) try { names = readdirSync(dir); } catch {}
   const since = Math.min(...[s.live, ...(s.rivals || [])].map(l => Number(l?.startedAt) || 0));   // the oldest claude on the chat: an agent from before it died with the one before
-  const running = names.filter(n => n.endsWith('.jsonl') && agentRunning(join(dir, n), Date.now(), since)).length;
+  const work = new Map(names.filter(n => n.endsWith('.jsonl')).map(n => [n, agentRunning(join(dir, n), Date.now(), since)]));
+  const running = [...work.values()].filter(Boolean).length;
   if (running !== (s.agentsRunning || 0)) { s.agentsRunning = running; schedulePush(s); }
+  if (noteTeam(s, dir, names, work, since)) schedulePush(s);   // which of them are its team's (2026-10-31)
+}
+
+// ---- an agent team: its teammates, under their lead (2026-10-31) --------------------------------------------------------
+// Claude Code's agent teams (experimental): a lead and teammates, each a context of its own. Every interactive chat has its
+// team here — `teams/session-<id8>/config.json`, gone when the chat ends, its `members` the lead alone (`team-lead`) until
+// it names one —; an in-process teammate is a sub-agent file of the lead's whose .meta.json says `taskKind:
+// "in_process_teammate"` and `teamName`, with its `name`, and whose first prompt is the lead's `<teammate-message
+// teammate_id="team-lead" summary="…">`. Read, never written (its mailboxes are files under ~/.claude, Claude Code's). A
+// teammate is at work as any sub-agent is (agentRunning), done once its turn ended; its last line is what it said or
+// called last. It dies with the lead's claude (`since`), and a team that is only the lead is none.
+const TEAMS_DIR = join(CLAUDE_DIR, 'teams');
+const jsonSeen = new Map();   // a meta or a team's config → { mtimeMs, size, v }: read once per change
+function jsonOnce(file, shape) {
+  let st; try { st = statSync(file); } catch { jsonSeen.delete(file); return null; }
+  const hit = jsonSeen.get(file); if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.v;
+  let v = null; try { v = shape(JSON.parse(readFileSync(file, 'utf8'))); } catch {}
+  if (jsonSeen.size > 4000) jsonSeen.clear();
+  jsonSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, v });
+  return v;
+}
+const mateOf = m => m && typeof m === 'object' && (m.taskKind === 'in_process_teammate' || pstr(m.teamName)) && (pstr(m.name) || pstr(m.agentType)) ? { name: pstr(m.name) || pstr(m.agentType) } : null;
+const isLead = m => m.agentType === 'team-lead' || m.name === 'team-lead' || String(m.agentId || '').startsWith('team-lead@');
+/** The roster beyond its lead, as Claude Code keeps it while the chat runs: what a teammate with no file yet is known by. */
+const rosterOf = s => jsonOnce(join(TEAMS_DIR, `session-${s.id.slice(0, 8)}`, 'config.json'), c => (c?.leadSessionId && c.leadSessionId !== s.id) || !Array.isArray(c?.members) ? []
+  : c.members.filter(m => m && typeof m === 'object' && pstr(m.name) && !isLead(m)).map(m => ({ name: m.name }))) || [];
+const TM_SUMMARY = /^\s*<teammate-message\b[^>]*\bsummary="([^"]*)"/;
+const mateSeen = new Map();   // a teammate's transcript → { mtimeMs, size, last }
+/** A teammate's last line: the last thing it said or called, else what the lead last asked of it. */
+function mateLast(file, st) {
+  const hit = mateSeen.get(file); if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.last;
+  const len = Math.min(st.size, 65536), buf = Buffer.alloc(len);
+  try { const fd = openSync(file, 'r'); try { readSync(fd, buf, 0, len, st.size - len); } finally { closeSync(fd); } } catch { return hit?.last ?? null; }
+  let last = null;
+  for (const raw of buf.toString('utf8').split('\n').reverse()) {
+    let l; try { l = JSON.parse(raw); } catch { continue; }
+    const c = l?.message?.content;
+    if (l?.type === 'assistant') {
+      const b = (Array.isArray(c) ? c : []).findLast(x => (x?.type === 'text' && x.text?.trim()) || x?.type === 'tool_use'); if (!b) continue;
+      last = b.type === 'text' ? { kind: 'text', text: plainSnippet(b.text, 140) } : { kind: 'tool', name: pstr(b.name) || 'tool', text: snippet(summarizeToolInput(b.name, b.input), 120) };
+      break;
+    }
+    const m = l?.type === 'user' && TM_SUMMARY.exec(textOf(c));
+    if (m) { last = { kind: 'asked', text: snippet(unXml(m[1]), 140) }; break; }
+  }
+  if (mateSeen.size > 2000) mateSeen.clear();
+  mateSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, last });
+  return last;
+}
+/** The chat's teammates — each its name, at work or done, its last line —, or none; true when that changed. */
+function noteTeam(s, dir, names, work, since) {
+  const mates = new Map();
+  for (const m of rosterOf(s)) mates.set(m.name, { name: m.name, state: 'joined', last: null, ms: 0 });
+  for (const n of names) {
+    if (!n.endsWith('.meta.json')) continue;
+    const base = n.slice(0, -'.meta.json'.length) + '.jsonl'; if (!work.has(base)) continue;
+    const mate = jsonOnce(join(dir, n), mateOf); if (!mate) continue;
+    let st; try { st = statSync(join(dir, base)); } catch { continue; }
+    if (st.mtimeMs < since || mates.get(mate.name)?.ms > st.mtimeMs) continue;   // the claude before this one's; one name twice: the newest
+    mates.set(mate.name, { name: mate.name, state: work.get(base) ? 'work' : 'done', last: mateLast(join(dir, base), st), ms: st.mtimeMs });
+  }
+  const team = [...mates.values()].map(({ ms, ...m }) => m).sort((a, b) => a.name.localeCompare(b.name)), j = team.length ? JSON.stringify(team) : null;
+  if (j === (s.teamJson ?? null)) return false;
+  s.team = team.length ? team : null; s.teamJson = j;
+  return true;
 }
 
 // ---- background tasks: a monitor, or a command left running -------------------------------------------------

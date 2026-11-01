@@ -40,6 +40,19 @@ This entry is I2 (*see chats talk*); the others are built beside it.
 * Checked: `test/peers.test.mjs` (delivered, absorbed, queued and taken off, the agents' handbacks left out, unknown
   fields, never your word, the sender by pid, name and `msg_id` through a server), `chats-talk.mjs` (the mark, the row,
   the queue, both links; tiles and the sidebar, dark and light).
+* **I9, teams under their lead** (`noteTeam` from `scanAgents` → the summary's `team`; `teamSlot`, `fillTeam`): a lead's
+  teammates as rows under its card — the name, *at work* · *done* · *joined*, the last line (the tool it calls, what it
+  said, else the lead's ask). What this Mac shows (keys only): every interactive chat has `teams/session-<id8>/config.json`
+  (`name`, `createdAt`, `leadAgentId`, `leadSessionId`, `leadProcess`, `members[]` of `agentId`, `name`, `agentType`,
+  `joinedAt`, `tmuxPaneId`, `cwd`, `subscriptions`, `backendType`) with the lead alone — seven here, none with a
+  teammate —; 55 teammate files under leads' `subagents/`, each `.meta.json` with `taskKind: "in_process_teammate"`,
+  `teamName`, `name`, `color`, its first prompt `<teammate-message teammate_id="team-lead" summary=…>`. So the rows come
+  from the metas — they outlive the config, which goes with the chat — and from the roster, whose teammate entries are
+  a guess (none seen) read defensively: a name not the lead's. A teammate is at work as any sub-agent (`agentRunning`;
+  it still counts in the agents chip), dies with the lead's claude (`since`), and shows only while the lead runs. A team
+  of the lead alone is none, so no card changes on a Mac without teams. Filled after the render, as the live line is: a
+  teammate's step keeps the card's node. Read-only — the mailboxes are files under `~/.claude`, and stay Claude Code's.
+  Checked: `test/team.test.mjs`, `team-rows.mjs`.
 
 ## Decisions of 2026-10-31, at night — a card's PRs as one (round XII)
 

@@ -95,6 +95,38 @@ export function peerLines({ from, to, fromName, toName, pid, body, msgId = rando
   };
 }
 
+/** An agent team under a lead chat (2026-10-31), as Claude Code's experimental teams write it and this Mac showed it
+ *  (keys as read there): `teams/session-<id8>/config.json` with the lead and, when `roster`, its teammates (their
+ *  member shape is a guess: none was on this Mac); each teammate a sub-agent file of the lead's, its .meta.json an
+ *  in-process teammate's, its first prompt the lead's `<teammate-message>`, then at work on a tool call (`work`) or done
+ *  with a last word. `plain`: a background sub-agent of the lead's beside them, no teammate; `also`: names on the roster
+ *  with no file of their own yet. */
+export function teamFiles({ dir, lead, mates = [], roster = true, plain = false, also = [], at = new Date() }) {
+  const id8 = lead.id.slice(0, 8), team = `session-${id8}`, ts = ms => new Date(at.getTime() + ms).toISOString();
+  const sub = join(dir, 'projects', slugOf(lead.cwd), lead.id, 'subagents'); mkdirSync(sub, { recursive: true });
+  const base = { isSidechain: true, userType: 'external', entrypoint: 'cli', cwd: lead.cwd, sessionId: lead.id, version: 'fixture', gitBranch: 'main' };
+  const agent = (name, meta, ls) => {
+    const hash = randomUUID().replace(/-/g, '').slice(0, 16), agentId = `a${name}-${hash}`;
+    writeFileSync(join(sub, `agent-${agentId}.meta.json`), JSON.stringify(meta));
+    writeFileSync(join(sub, `agent-${agentId}.jsonl`), ls.map(l => JSON.stringify({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...l })).join('\n') + '\n');
+  };
+  const said = (text, i) => ({ type: 'assistant', timestamp: ts(i), message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } });
+  for (const m of mates) agent(m.name, { agentType: m.name, color: m.color || 'blue', description: m.summary, model: 'fixture-1', name: m.name, permissionMode: 'auto', planModeRequired: false,
+    requestNonInteractive: false, requestShape: 'background', spawnDepth: 1, taskKind: 'in_process_teammate', teamName: team }, [
+    { type: 'user', timestamp: ts(0), promptId: randomUUID(), message: { role: 'user', content: `<teammate-message teammate_id="team-lead" summary="${m.summary}">\n${m.ask || m.summary}\n</teammate-message>` } },
+    m.work ? { type: 'assistant', timestamp: ts(1000), message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant',
+      content: [{ type: 'tool_use', id: 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20), name: 'Bash', input: { command: 'npm test', description: m.work } }], stop_reason: 'tool_use' } } : said(m.said || 'Done.', 1000),
+  ]);
+  if (plain) agent('explore', { agentType: 'Explore', description: 'look around', requestNonInteractive: false, requestShape: 'background', spawnDepth: 1, toolUseId: 'toolu_x' }, [
+    { type: 'user', timestamp: ts(0), message: { role: 'user', content: 'look around' } }, said('Looked.', 500)]);
+  const tdir = join(dir, 'teams', team); mkdirSync(tdir, { recursive: true });
+  const member = (name, extra) => ({ agentId: `${name}@${team}`, name, agentType: name, joinedAt: at.getTime(), tmuxPaneId: '', cwd: lead.cwd, subscriptions: [], backendType: 'in-process', ...extra });
+  writeFileSync(join(tdir, 'config.json'), JSON.stringify({ name: team, createdAt: at.getTime(), leadAgentId: `team-lead@${team}`, leadSessionId: lead.id,
+    leadProcess: { pid: lead.pid || 0, pidSpace: 'fixture-host', claimedAt: at.getTime() },
+    members: [member('team-lead', { agentType: 'team-lead', tmuxPaneId: 'leader' }), ...(roster ? mates.map(m => member(m.name, { color: m.color || 'blue' })) : []), ...also.map(name => member(name, { color: 'cyan' }))] }));
+  return { sub, team };
+}
+
 /** A running process's start as `ps` gives it in UTC and the C locale — the registry's procStart — or null. */
 export function procStartOf(pid) {
   try { process.kill(pid, 0); return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim() || null; } catch { return null; }

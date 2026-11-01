@@ -26,6 +26,8 @@ setup file, and how the pictures are made.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
   *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat
   is at work —, the sender a click away; the sender's SendMessage links back. A message is never counted as yours.
+  A chat that leads an agent team (Claude Code's experimental teams) lists its teammates under its card: each one's
+  name, whether it is at work or done, and its last line.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders, or named sets of folders, each in a colour of your choosing.
