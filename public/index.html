@@ -541,6 +541,9 @@
   .gsep.lane.done > i { background: var(--lanec); }
   .gsep.lane.away { cursor: pointer; color: var(--needs); opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
   #sbar .seg.ask { cursor: pointer; }
+  #sbar .seg.nx.none { color: var(--muted); } #sbar .seg.nx .nxw { color: var(--ink); font-weight: 600; max-width: 220px; overflow: hidden; }
+  #sbar .seg.nx .nxw.over { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
+  #sbar .seg.nx.ask .nxw { color: var(--needs); } #sbar .seg.nx.move .nxw { color: var(--spend); }
   #sbar .seg.mute { color: var(--working-ink); font-weight: 600; } #sbar .seg.mute .ic { width: 13px; height: 13px; }
   /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
      down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
@@ -4547,7 +4550,7 @@ const toolName = n => {
     if (!state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length;
     const ask = n(s => asking(s));
-    const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(s => asking(s)).map(askedAt))) : '';   // the longest wait (2026-11-01, round XIX's S4)
+    const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(s => asking(s)).map(askedAt))) : '', nx = nextQueue()[0];   // the longest wait (2026-11-01, round XIX's S4)
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     // the connection is the fish alone (2026-10-27; *connected* beside it before), its colour the state: green on the
     // stream, amber belly-up while it tries again, red when the server turned it away (the lock's) — the words out of sight
@@ -4556,7 +4559,7 @@ const toolName = n => {
       // the live chats and the drawers and shells went (2026-10-11, later); what waits on you and what is watching stay,
       // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before); what is
       // watching is the card's mark and its count (2026-10-27), the word out of sight
-      ...(ask ? [`<button class="seg ask" title="chats waiting on your answer${askWait ? `, the longest ${askWait}` : ''} — click for the next one, longest wait first">${`<em>${rn('asking', ask)} asking${askWait ? ` · ${askWait}` : ''}</em>`}</button>`] : []),
+      nextSeg(nx, ask, askWait),
       ...muteSeg(),
       ...(mons ? [`<span class="seg mons" title="${mons} monitor${mons > 1 ? 's' : ''} and background commands running">${ICON.watch}${rn('mons', mons)}<span class="vh"> watching</span></span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
@@ -4602,7 +4605,7 @@ const toolName = n => {
     if (e.target.closest('.conn')) { aboutOpen(); return; }
     if (e.target.closest('#sbChat')) { chatSegClick(); return; }
     if (e.target.closest('.seg.mute')) { setNotify(true); return; }
-    if (e.target.closest('.seg.ask')) { nextAsking(); return; }   // (2026-10-12) the count opens the chats it counts, one after another
+    if (e.target.closest('.seg.nx')) { hotNext(); return; }   // (2026-10-12) the count opens the chats it counts, one after another
     const upg = e.target.closest('.seg.upg'); if (upg) { if (reload.want && reload.why !== 'server') location.reload(); else if (upg.dataset.take) updNow(); else updatesOpen(); return; }
     const aw = e.target.closest('#sbAwake'); if (aw) { setAwake({ awake: !state.awake.awake }, aw); return; }
     const lid = e.target.closest('#sbLid'); if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
@@ -4869,15 +4872,37 @@ const toolName = n => {
     const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
     const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
     const watching = live.filter(s => inWatch(s) && bucket(s) !== 'working').sort(byWord).map(brief);
-    const muted = !state.notifications, plan = planLine();
-    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan]); if (sig === postState.last) return; postState.last = sig;
-    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan });
+    const muted = !state.notifications, plan = planLine(), nx = nextQueue()[0];
+    const next = nx ? { id: nx.s.id, verb: `${NEXT_VERB[nx.k]}${nx.k === 'ask' ? ' ' : ': '}${nextName(nx)}`, sub: nx.k === 'ask' ? nx.s.title : nx.k === 'move' ? `${nx.s.project} · ${movedPrs(nx.s)[0]?.turn?.why || ''}` : nx.s.project, since: nx.k === 'ask' ? String(askedAt(nx.s)) : '' } : null;
+    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan, next]); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan, next });
   }
-  // The chats asking you, one after another from the one open, longest wait first (the status bar's count, 2026-10-12)
-  function nextAsking() {
-    const list = [...state.sessions.values()].filter(s => visible(s) && asking(s)).sort(byWait); if (!list.length) return;
-    const i = list.findIndex(s => s.id === state.current);
-    openSession(list[(i + 1) % list.length].id, { locate: true });
+  // Next (2026-11-01, round XIX's M1; StarCraft's idle-worker key, Civ's turn button): one key that always arrives, in a
+  // fixed, stated order. The question waiting longest, then a PR at your move, the one that came round first, then what to
+  // read, the oldest first. It never moves you by itself, only on a press, and from a chat in the queue it goes on to the
+  // one after it, so pressing it again walks them and comes round. Moves and replies stay filters of the list: never lanes.
+  function nextQueue() {
+    const all = [...state.sessions.values()].filter(visible), seen = new Set(), once = k => s => seen.has(s.id) ? null : (seen.add(s.id), { s, k });
+    const by = at => (a, b) => String(at(a)).localeCompare(String(at(b)));
+    return [...all.filter(asking).sort(byWait).map(once('ask')),
+      ...all.filter(s => !s.done && yourMove(s)).sort(by(movedAt)).map(once('move')),
+      ...wanting().replied.slice().sort(by(s => s.lastReplyAt)).map(once('read'))].filter(Boolean);
+  }
+  const NEXT_VERB = { ask: 'Answer', move: 'Your move', read: 'Read' };
+  const nextName = ({ s, k }) => k === 'ask' ? s.project : k === 'move' ? movedPrs(s)[0]?.label || s.title : s.title;
+  function hotNext() {
+    const q = nextQueue();
+    if (!q.length) { note($('#sbLeft .nx') || $('#sbar'), 'Caught up: nothing wants you'); return true; }
+    const i = q.findIndex(x => x.s.id === state.current);
+    if (q.length === 1 && i === 0) { note($('#sbLeft .nx') || $('#sbar'), 'This is the only thing left'); return true; }
+    openSession(q[(i + 1) % q.length].s.id, { locate: true });
+    return true;
+  }
+  /** The bar's half of it: what Next would do, and the questions' count and longest wait while any. */
+  function nextSeg(nx, ask, wait) {
+    if (!nx) return `<span class="seg nx none" title="Nothing is asking you, no PR is at your move, nothing new to read">caught up</span>`;
+    const name = nextName(nx), tip = `${NEXT_VERB[nx.k]}: ${nx.s.title} · ${nx.s.project}. ⌥⌘⏎ or a click goes there; again, the one after`;
+    return `<button class="seg nx ${nx.k}${ask ? ' ask' : ''}" title="${esc(tip)}">${ask ? `<em>${rn('asking', ask)} asking${wait ? ` · ${wait}` : ''}</em>` : ''}<span class="nxw${name.length > 26 ? ' over' : ''}">▸ ${esc(NEXT_VERB[nx.k])} ${esc(name)}</span></button>`;
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   // Claude's mark in pixels (2026-09-27; a school of ><> from
@@ -6520,6 +6545,7 @@ const toolName = n => {
   const actionRows = () => {
     const s = state.sessions.get(state.current), of = s ? ` — ${s.title}` : '';
     return [
+      ...(nextQueue().length ? [{ name: `Next: ${NEXT_VERB[nextQueue()[0].k]} ${nextName(nextQueue()[0])}`, hint: '⌥⌘⏎', fn: hotNext }] : []),
       { name: 'New chat', hint: '⌥⌘N', fn: () => pickOpen('new'), stay: true },
       { name: 'Send to a chat…', sub: ' — a message of yours, as its prompt', fn: sendPick, stay: true },   // chats that talk (2026-10-31)
       { name: 'Merge chats into a new one…', sub: ' — where each stands, its first prompt', fn: () => mergePick(state.current ? [state.current] : [], 'launch'), stay: true },
@@ -6660,6 +6686,7 @@ const toolName = n => {
     ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
+    ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['⌥⌘M', 'Go to', 'lunch — today\'s menus, on a chalkboard', 'the places you go, read each morning · Going and In 15 min at lunch time · again closes it · Settings › Lunch sets it up', ['alt:KeyM']],
@@ -6736,7 +6763,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other

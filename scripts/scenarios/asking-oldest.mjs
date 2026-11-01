@@ -18,7 +18,7 @@ export default async function (ctx) {
     const asks = [['Waiting five minutes', 5, 90], ['Waiting ninety minutes', 90, 1], ['Waiting forty minutes', 40, 50]];
     makeFixture(ctx.fixture.dir, asks.map(([title, wait, word], i) => ({ cwd, title, prompt: 'go', reply: 'one question', at: new Date(ago(word)), live: { pid: sleeps[i].pid, startedAt: ago(120), status: 'waiting', waitingFor: 'input needed', statusAt: ago(wait) } })));
     await ctx.waitFor(`document.querySelector('#sbar .seg.ask')?.textContent.includes('3 asking')`, { what: 'the three questions counted', timeout: 15000 });
-    const said = await ctx.evaluate(`document.querySelector('#sbar .seg.ask').textContent.trim()`);
+    const said = await ctx.evaluate(`document.querySelector('#sbar .seg.ask em').textContent.trim()`);
     ctx.assert.equal(said, '3 asking · 1h', 'the count and the longest wait');
     const walk = [];
     for (let i = 0; i < 4; i++) {

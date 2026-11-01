@@ -54,18 +54,18 @@ if (file.endsWith('public/index.html')) {
       for (const l of fwd) if (!hot.includes('Key' + l.toUpperCase())) fail(`main.swift forwards ⌥⌘${l.toUpperCase()} (boardKeys), which HOTKEYS does not answer`);
       for (const l of cmdFwd) if (!cmd.includes((/\d/.test(l) ? 'Digit' : 'Key') + l.toUpperCase())) fail(`main.swift forwards ⌘${l.toUpperCase()} (cmdKeys), which CMDKEYS does not answer`);
     }
-    // The ⌥⌘ digits and arrows the forwarder matches by key code (⌥ composes a symbol over them): each code the Mac's
+    // The ⌥⌘ digits, arrows and Return the forwarder matches by key code (⌥ composes a symbol over them): each code the Mac's
     // own (kVK_ANSI_1 is 18…), each answered by HOTKEYS, and every digit and arrow HOTKEYS has, forwarded.
-    const KVK = { 18: 'Digit1', 19: 'Digit2', 20: 'Digit3', 21: 'Digit4', 23: 'Digit5', 22: 'Digit6', 26: 'Digit7', 28: 'Digit8', 25: 'Digit9', 29: 'Digit0', 123: 'ArrowLeft', 124: 'ArrowRight', 125: 'ArrowDown', 126: 'ArrowUp' };
+    const KVK = { 18: 'Digit1', 19: 'Digit2', 20: 'Digit3', 21: 'Digit4', 23: 'Digit5', 22: 'Digit6', 26: 'Digit7', 28: 'Digit8', 25: 'Digit9', 29: 'Digit0', 123: 'ArrowLeft', 124: 'ArrowRight', 125: 'ArrowDown', 126: 'ArrowUp', 36: 'Enter' };
     const fn = src.match(/static func hotkeyCode\([\s\S]*?\n  \}\n/)?.[0];
     if (!fn) fail('main.swift: hotkeyCode not found');
     else {
       const byCode = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "altcmd"\) \}/g)].map(([, n, c]) => [+n, c]);
       for (const [n, c] of byCode) {
-        if (KVK[n] !== c) fail(`main.swift's hotkeyCode sends key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit nor an arrow'}`);
+        if (KVK[n] !== c) fail(`main.swift's hotkeyCode sends key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit, an arrow nor Return'}`);
         if (!hot.includes(c)) fail(`main.swift forwards ⌥⌘ ${c} (key code ${n}), which HOTKEYS does not answer`);
       }
-      for (const c of hot.filter(c => /^(Digit\d|Arrow\w+)$/.test(c))) if (!byCode.some(([, x]) => x === c)) fail(`⌥⌘ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
+      for (const c of hot.filter(c => /^(Digit\d|Arrow\w+|Enter)$/.test(c))) if (!byCode.some(([, x]) => x === c)) fail(`⌥⌘ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
     }
     if (!process.exitCode) console.log(`${file}: ${hot.length} ⌥⌘ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`);
   }

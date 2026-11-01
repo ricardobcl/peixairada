@@ -276,6 +276,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var newReplies: [[String: String]] = []
   var muted = false                       // notifications off: the fish wears a slash, the menu says so (round XIX's S7)
   var watching: [[String: String]] = [], plan = ""   // the status menu's: what watches behind a turn, the plan in a line (S5)
+  var nextUp: [String: String] = [:]      // what ⌥⌘⏎ would do, the menu's first row (M1)
   let statusMenu = NSMenu()
   var statusMenuOpen = false
   var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
@@ -283,7 +284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // `zoom` points — what the page and the shell say of places (the pane's rects, the housing, the pane's edge) is
   // turned between the two here.
   var zoom: CGFloat = 1
-  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], watching: [[String: String]], plan: String, muted: Bool) = ([], [], [], [], [], "", false)   // what the badge and the status menu last showed
+  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], watching: [[String: String]], plan: String, muted: Bool, next: [String: String]) = ([], [], [], [], [], "", false, [:])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again
@@ -842,7 +843,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       return nil
     }
   }
-  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ↑ ↓ for
+  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ⏎ Next, ↑ ↓ for
   // the chat above or below, ← → for the tab beside, 1 and 2 for the top and bottom halves of a stacked chat column
   // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout), W to close the tab the
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to hide the chat
@@ -860,6 +861,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
     let ch = e.charactersIgnoringModifiers?.lowercased()
     if held == [.command, .option] {
+      if e.keyCode == 36 { return ("Enter", "altcmd") }   // ⌥⌘⏎, Next (2026-11-01)
       if e.keyCode == 126 { return ("ArrowUp", "altcmd") }
       if e.keyCode == 125 { return ("ArrowDown", "altcmd") }
       if e.keyCode == 123 { return ("ArrowLeft", "altcmd") }
@@ -983,19 +985,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     // what wants you, a section each (2026-10-12), in the menu's own clothes (2026-11-01, round XIX's S5): real headers with
     // their counts, the project and how long under each row, a row saying what did not fit, the work you cannot act on
     // folded into submenus, the plan in a line. Asks come longest wait first, as the page sorts them.
-    if needsInput.isEmpty && yourMoves.isEmpty && newReplies.isEmpty {
-      menu.addItem(withTitle: "Nothing wants you", action: nil, keyEquivalent: "").isEnabled = false
-    }
     let waited: ([String: String]) -> String = { s in
       guard let since = Double(s["since"] ?? ""), since > 0 else { return "" }
       let m = Int((Date().timeIntervalSince1970 * 1000 - since) / 60_000)
       return m < 1 ? "just now" : m < 60 ? "waited \(m) min" : "waited \(m / 60) h"
     }
+    if needsInput.isEmpty && yourMoves.isEmpty && newReplies.isEmpty {
+      menu.addItem(withTitle: "Caught up", action: nil, keyEquivalent: "").isEnabled = false
+    }
+    // Next, first (M1): what ⌥⌘⏎ would do, so the menu answers "what now" before it lists; below, the rest.
+    let nextId = nextUp["id"] ?? ""
+    if !nextId.isEmpty {
+      let waitedSoFar = waited(nextUp), sub = [nextUp["sub"] ?? "", waitedSoFar].filter { !$0.isEmpty }.joined(separator: " · ")
+      let item = NSMenuItem(title: nextUp["verb"] ?? "Next", action: #selector(openFromMenu(_:)), keyEquivalent: "\r")
+      item.keyEquivalentModifierMask = [.option, .command]; item.target = self; item.representedObject = nextId
+      if #available(macOS 14.4, *) { item.subtitle = sub } else { item.title += "  ·  \(sub)" }
+      menu.addItem(item); menu.addItem(.separator())
+    }
     let sections: [(heading: String, chats: [[String: String]], room: Int, sub: ([String: String]) -> String)] = [
       ("Asking you", needsInput, 12, waited), ("Your move", yourMoves, 6, { $0["why"] ?? "" }), ("New replies", newReplies, 5, { _ in "" })]
     for section in sections where !section.chats.isEmpty {
       menu.addItem(sectionHeading(section.heading, section.chats.count))
-      for s in section.chats.prefix(section.room) {
+      let rows = section.chats.filter { $0["id"] != nextId }
+      for s in rows.prefix(section.room) {
         menu.addItem(chatRow(s, sub: section.sub(s)))
         // Hold ⌥ and a reply's row marks it read (2026-11-01, S8): reading is most of what the fish asks of you, and this
         // triages it from where you are. isAlternate reads no event, so 27's empty currentEvent flags do not touch it.
@@ -1005,7 +1017,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
           menu.addItem(read)
         }
       }
-      let more = section.chats.count - section.room
+      let more = rows.count - section.room
       if more > 0 {
         let item = NSMenuItem(title: "+\(more) more…", action: #selector(overviewFromMenu(_:)), keyEquivalent: ""); item.target = self
         menu.addItem(item)
@@ -1549,8 +1561,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   }
 
   private func refreshBadges() {
-    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.watching != watching || badged.plan != plan || badged.muted != muted else { return }   // the status menu was rebuilt per message before (2026-09-27)
-    badged = (needsInput, newReplies, yourMoves, clauding, watching, plan, muted)
+    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.watching != watching || badged.plan != plan || badged.muted != muted || badged.next != nextUp else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (needsInput, newReplies, yourMoves, clauding, watching, plan, muted, nextUp)
     let wanting = needsInput.count + newReplies.count
     NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
     drawFish()
@@ -1603,6 +1615,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       watching = (body["watching"] as? [[String: Any]] ?? []).map(brief)
       muted = body["muted"] as? Bool ?? false
       plan = body["plan"] as? String ?? ""
+      nextUp = (body["next"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,
