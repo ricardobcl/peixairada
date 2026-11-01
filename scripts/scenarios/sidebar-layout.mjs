@@ -37,7 +37,7 @@ const read = ctx => ctx.evaluate(`(() => {
     rgStart: ring ? ring.startTime : null, mask: rg ? getComputedStyle(rg).maskImage.split('linear-gradient').length - 1 : null,
     radius: cs(w).borderTopLeftRadius,
     sonar: cs(a, '::before').animationName, sonarEdge: cs(a, '::before').borderTopWidth, sonarRound: cs(a, '::before').borderTopLeftRadius,
-    pix: cs('.gsep.lane.working .pix')?.display, laneCase: cs('.gsep.lane').textTransform,
+    pix: cs('.gsep.lane.working > i')?.backgroundImage.includes('conic-gradient'), laneCase: cs('.gsep.lane').textTransform,
     head: [cs('#shead').marginTop, cs('#shead').borderTopLeftRadius, cs('#shead', '::after').display].join(' '), headGlass: cs('#shead').backdropFilter,
   };
 })()`);
@@ -89,7 +89,7 @@ export default async function (ctx) {
     ctx.assert.equal(sb.radius, '7px', 'a row, rounded');
     ctx.assert.deepEqual([sb.sonar, sb.sonarRound], ['sonar', '7px'], 'the question’s sonar round the row');
     ctx.assert.match(sb.sonarEdge, /^1(\.5)?px$/, 'its edge the row’s hairline (1.5 px; a whole device pixel at 1×)');
-    ctx.assert.deepEqual([sb.pix, sb.laneCase], ['none', 'none'], 'the lanes plain');
+    ctx.assert.deepEqual([sb.pix, sb.laneCase], [true, 'none'], 'the lanes as the tiles\' (2026-10-31): the glyph, in sentence case');
     ctx.assert.equal(sb.head, '0px 0px none', 'the header a toolbar: the top, square, no black');
     ctx.assert.match(sb.headGlass, /blur\(18px\)/, 'of glass');
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 200, y: 300 });
@@ -130,7 +130,7 @@ export default async function (ctx) {
         workRg: cs('${W} > .rg').display, workRun: cs('${W} > .rg', '::before').animationName, runTurn: run ? run.effect.getKeyframes().map(k => k.transform).join() : null, runStart: run ? run.startTime : null,
         askBefore: cs('${A}', '::before').content, askAfter: cs('${A}', '::after').animationName,
         dot: cs('${R} .top .repo', '::before').content, tag: [cs('${R} .top .repo').backgroundColor, cs('${R} .top .repo').paddingLeft], openTag: cs('${W} .top .repo').backgroundColor, spinner: cs('${W} .trow', '::after').animationName, askDot: cs('${A} .trow', '::after').animationName,
-        sel: cs('${W}').backgroundColor, selInk: cs('${W} .title').color, pix: cs('.gsep.lane.working .pix').display,
+        sel: cs('${W}').backgroundColor, selInk: cs('${W} .title').color, pix: cs('.gsep.lane.working > i').backgroundImage.includes('conic-gradient'),
         list: [cs('#sessions').backdropFilter, cs('#wall').display].join(' '), head: cs('#shead').backdropFilter }; })()`;
     await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings for the styles' });
@@ -157,7 +157,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.ring.workRun, 'ring', 'Ring: the ring');
     ctx.assert.ok(hueOf(out.ring.sel) > 120 && hueOf(out.ring.sel) < 200, `the open row in its project’s green, not the system’s blue: ${out.ring.sel}`);
     ctx.assert.equal(out.ring.selInk, 'rgb(255, 255, 255)', 'white on it');
-    ctx.assert.deepEqual([out.ring.pix, out.ring.dot, out.ring.tag[1]], ['block', 'none', '6px'], 'the lanes’ marks; the project a tag, no dot');
+    ctx.assert.deepEqual([out.ring.pix, out.ring.dot, out.ring.tag[1]], [true, 'none', '6px'], 'the lanes’ glyphs; the project a tag, no dot');
     ctx.assert.ok(hueOf(out.ring.tag[0]) > 120 && hueOf(out.ring.tag[0]) < 200, `the tag a tint of its project’s green: ${out.ring.tag[0]}`);
     ctx.assert.equal(out.ring.openTag, 'rgba(0, 0, 0, 0.2)', 'on the open row a shade');
     out.tinted = await style('tinted');

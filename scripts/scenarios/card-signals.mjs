@@ -177,10 +177,10 @@ export default async function (ctx) {
     const firstAsk = await titleOf();
     await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`); await ctx.sleep(300);
     ctx.assert.deepEqual([firstAsk, await titleOf()].sort(), ['Blocked on a prompt', 'Waiting on you'], 'the two asking chats, one click each');
-    // Claude's mark in pixels heads the clauding lane, its frames and its hop on the document clock (2026-09-27 as the
-    // divider between the clauding and the ready cards; a school of fish before, then the smooth starburst for an evening)
-    out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), dots: d.querySelectorAll('i').length, anims: d.getAnimations({ subtree: true }).map(a => a.animationName + '@' + a.startTime).sort() }))(document.querySelector('#slist .gsep.lane.working')))`).then(JSON.parse);
-    ctx.assert.deepEqual(out.divider, { svg: true, dots: 0, anims: ['pix@0', 'pixhop@0', 'shimi@0', 'shimw@0'] }, "the clauding lane's mark is Claude's, in pixels, its frames and hop on the document clock — and its name shimmers in step (2026-10-11)");
+    // the clauding lane's head is a half-filled ring, still (2026-10-31, L1 — Linear's states; Claude's mark in pixels
+    // and a shimmer on its name before, since 2026-09-27 as the divider between the clauding and the ready cards)
+    out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), glyph: /conic-gradient/.test(getComputedStyle(d.querySelector(':scope > i')).backgroundImage), anims: d.getAnimations({ subtree: true }).length }))(document.querySelector('#slist .gsep.lane.working')))`).then(JSON.parse);
+    ctx.assert.deepEqual(out.divider, { svg: false, glyph: true, anims: 0 }, "the clauding lane's mark is a half-filled ring, still");
     await ctx.key('KeyK');   // the chat picker goes by the same rank
     await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`, { what: 'the chat picker' });
     out.picker = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].slice(0, 3).map(r => r.querySelector('.n').textContent.replace('current', '') + ' / ' + r.querySelector('.st').textContent)`);

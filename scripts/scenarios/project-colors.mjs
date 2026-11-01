@@ -69,7 +69,7 @@ export default async function (ctx) {
         open: __chroma(cs(plain, 'background-image')), head: __chroma(cs(document.querySelector('.shead'), '--hbg-eased')),   // the header's own eased copy (2026-10-13)
         lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
         pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'background-color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'background-color')),
-        dots: [...document.querySelectorAll('#slist > .gsep.lane.working')].map(l => __chroma(cs(l, 'color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
+        dots: [...document.querySelectorAll('#slist > .gsep.lane.working > i')].map(i => __chroma(cs(i, 'border-top-color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
         face: cs(plain.querySelector('.faces img'), 'filter'), you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),
       };

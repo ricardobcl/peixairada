@@ -11,15 +11,17 @@ export const meta = { server: true, fixture: 'auto' };
 
 const reduce = (ctx, on) => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: on ? 'reduce' : '' }] });
 const read = ctx => ctx.evaluate(`JSON.stringify((() => {
-  const w = document.querySelector('#slist > .card.working'), a = document.querySelector('#slist > .card.asking'), pix = document.querySelector('.gsep.lane.working .pix svg');
+  const w = document.querySelector('#slist > .card.working'), a = document.querySelector('#slist > .card.asking'), pix = document.querySelector('#log > .presence .pix svg');
   const anim = (el, pseudo) => el ? getComputedStyle(el, pseudo).animationName : null;
   return {
     matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
     ring: anim(w, '::before'), ringBg: w ? getComputedStyle(w, '::before').backgroundImage : null,
     blink: anim(a, '::before'), border: a ? getComputedStyle(a).borderTopColor : null,
     pix: anim(pix), dialog: getComputedStyle(document.querySelector('#pick')).transform,
-    // the small motions of 2026-10-11 that say a state: the shimmer on clauding, the status bar's fish wagging
-    shim: (e => e ? getComputedStyle(e).display : null)(document.querySelector('.gsep.lane.working .shim > .sw')), wag: anim(document.querySelector('#sbSwim .ft')),
+    // the small motions of 2026-10-11 that say a state: the shimmer on clauding, the status bar's fish wagging — the
+    // spinner and the shimmer the open chat's presence line's (the lane heads' glyphs are still since 2026-10-31)
+    shim: (e => e ? getComputedStyle(e).display : null)(document.querySelector('#log > .presence .shim > .sw')), wag: anim(document.querySelector('#sbSwim .ft')),
+    heads: [...document.querySelectorAll('#slist > .gsep.lane')].reduce((n, h) => n + h.getAnimations({ subtree: true }).filter(x => x.effect?.getComputedTiming().iterations === Infinity).length, 0),   // a count's roll is a moment, not a state
   };
 })())`).then(JSON.parse);
 
@@ -36,6 +38,8 @@ export default async function (ctx) {
       { cwd, title: 'Ready two', prompt: 'and this?', reply: 'also done', at: new Date(now - 7200_000) },
     ]);
     await ctx.waitFor(`document.querySelector('#slist > .card.working') && document.querySelector('#slist > .card.asking') && document.querySelectorAll('#slist > .card').length === 6`, { what: 'a clauding card, an asking one and the rest' });
+    await ctx.openChat(chats[0].id);
+    await ctx.waitFor(`document.querySelector('#log > .presence .pix')`, { what: 'the clauding chat open, its presence line' });
 
     // as it is: the ring turns, the question blinks, the spinner runs
     out.full = await read(ctx);
@@ -43,7 +47,8 @@ export default async function (ctx) {
     ctx.assert.equal(out.full.ring, 'ring', 'the clauding card runs its ring');
     ctx.assert.equal(out.full.blink, 'sonar', 'the asking card pings (2026-10-09; it blinked before)');
     ctx.assert.equal(out.full.pix, 'pix', 'the spinner steps its frames');
-    ctx.assert.deepEqual([out.full.shim, out.full.wag], ['block', 'wag'], 'a light runs across Clauding, the fish wags its tail');
+    ctx.assert.deepEqual([out.full.shim, out.full.wag], ['block', 'wag'], 'a light runs across clauding…, the fish wags its tail');
+    ctx.assert.equal(out.full.heads, 0, 'the lanes\' heads move nothing (2026-10-31): their glyphs are still');
 
     // reduced: the same readings, still
     await reduce(ctx, true);
@@ -55,7 +60,8 @@ export default async function (ctx) {
     ctx.assert.match(out.reduced.border, /^rgb\(197, 53, 53\)|^rgb\(239, 96, 96\)/, 'and holds the red border');   // the reds of 2026-10-12, light and dark
     ctx.assert.equal(out.reduced.pix, 'none', 'the spinner holds its frame');
     ctx.assert.equal(out.reduced.dialog, 'none', 'a closed dialog has no offset to rise from');
-    ctx.assert.deepEqual([out.reduced.shim, out.reduced.wag], ['none', 'none'], 'no light across Clauding, the fish still');
+    ctx.assert.deepEqual([out.reduced.shim, out.reduced.wag], ['none', 'none'], 'no light across clauding…, the fish still');
+    ctx.assert.equal(out.reduced.heads, 0, 'nor the heads');
     await ctx.shot('reduced');
 
     // the list puts a card in place rather than sliding it: Ready one ticked done moves without a move recorded

@@ -344,7 +344,6 @@
   #stitle { grid-row: 2; grid-column: 1 / -1; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
   main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
-  main.notch #sessions.npad .sedge.up { padding-top: calc(5px + var(--notch-top, 0px)); }
   /* The list hidden (⌥⌘B, the status bar's first button — 2026-10-25; folded to a rail of squares from 2026-09-22):
      it and its splitter out of the layout, the chat the whole width. display: none, so nothing on a card is drawn or
      runs while it is away — no ring turns, no ping goes out. Its width stays the splitter's, inline. */
@@ -485,7 +484,7 @@
 
   /* ---- sessions of the selected project ---- */
   /* no room above the first card (2026-09-29): its top is the chat header's */
-  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
+  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; scroll-padding-top: var(--stick, 0px); }   /* positioned: the cards' offsetTop is the list's; a card scrolled to stops under the stuck lane head */
   /* …and a stacking context of its own (2026-10-13): WebKit scrolls the list on the compositor, and a card — positioned,
      its own stacking context — in a scroller that is not one has to be a layer of its own to scroll with it, each with
      a clip layer the list's size: 1,325 CALayers for 400 cards, 117 with this, and every frame that restyles walks them
@@ -512,33 +511,41 @@
      and a walk of every layer each frame, ~2.5 % of a core for as long as anything is clauding; held pairs it composites,
      and they show the same frames. */
   .gsep { margin: 2px 10px; font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); white-space: nowrap; overflow: hidden; user-select: none; }
-  /* A lane's head (2026-10-09): its mark, its name in small caps, its count at the right end — the first thing in the
-     list, so the list's top keeps its padding over it; the mark is a dot in the state's colour (asking ringed, ready
-     hollow), and Claude's in pixels for the clauding. */
-  .gsep.lane { display: flex; align-items: center; gap: 8px; margin: 10px 2px 1px 4px; font: 750 var(--fs-xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); overflow: visible; }
-  .gsep.lane:first-child { margin-top: 4px; }
-  .gsep.lane > i { width: 10px; height: 10px; flex: none; margin: 0 4px; border-radius: 50%; box-sizing: border-box; }
-  .gsep.lane b { margin-left: auto; padding: 0 7px; border-radius: var(--r-4); background: var(--ctl-hi); color: var(--ink); font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0; line-height: 16px; }
-  .gsep.lane.asking { color: var(--needs); } .gsep.lane.asking > i { background: var(--needs); box-shadow: 0 0 0 3px color-mix(in srgb, var(--needs) 25%, transparent); }
-  .gsep.lane.working { color: color-mix(in srgb, var(--working) 55%, var(--ink)); }
-  .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
-  .gsep.lane.done > i { background: var(--ended); }
-  .gsep.lane.idle > i { border: 2px solid var(--ended); }
-  .gsep.lane.away { cursor: pointer; opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
+  /* A lane's head (2026-10-09; L1 since 2026-10-31, round XIII — Linear's states): a status glyph in the lane's colour —
+     asking a filled dot with a halo, clauding a half-filled ring, watching a dashed ring round a dot, ready a ring round
+     a dot, idle a dotted ring, done filled —, the name in ink, the count bare. Still glyphs: no lane's mark moves (the
+     clauding one was Claude's in pixels, its name shimmering). Sticky at the list's top while its lane scrolls under
+     it, on the list's own ground, reaching over the list's padding; a later head slides over it. The tiles' in small
+     caps, the sidebar's in sentence case. */
+  .gsep.lane { --lanec: var(--muted); display: flex; align-items: center; gap: 8px; margin: 6px -8px 1px; padding: 5px 10px 4px 12px; font: 750 var(--fs-xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--ink); overflow: visible; }
+  .gsep.lane[data-lane] { position: sticky; top: 0; z-index: 4; background: var(--bg); }
+  .gsep.lane.covered { visibility: hidden; }   /* stuck under a later one (drawEdges) */
+  #sessions.npad .gsep.lane.stuck::before { content: ''; position: absolute; inset: auto 0 100%; height: var(--lpad, 0px); background: inherit; }   /* stuck under the notch's strip: its ground over the strip too */
+  .gsep.lane:first-child { margin-top: 0; }
+  .gsep.lane > i { width: 12px; height: 12px; flex: none; margin: 0 3px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--lanec); }
+  .gsep.lane b { margin-left: auto; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0; line-height: 16px; }
+  .gsep.lane.asking { --lanec: var(--needs); } .gsep.lane.working { --lanec: var(--working); } .gsep.lane.watching { --lanec: var(--watch); } .gsep.lane.ready { --lanec: var(--idle); }
+  .gsep.lane.asking > i { background: var(--lanec); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lanec) 22%, transparent); }
+  .gsep.lane.working > i { padding: 2px; background: conic-gradient(var(--lanec) 0 50%, transparent 0) content-box; }
+  .gsep.lane.watching > i { border-style: dashed; background: radial-gradient(var(--lanec) 30%, transparent 36%); }
+  .gsep.lane.ready > i { background: radial-gradient(var(--lanec) 32%, transparent 38%); }
+  .gsep.lane.idle > i { border-style: dotted; }
+  .gsep.lane.done > i { background: var(--lanec); }
+  .gsep.lane.away { cursor: pointer; color: var(--needs); opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
   #sbar .seg.ask { cursor: pointer; }
   /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
      down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
-  .gsep.lane[data-lane] { cursor: pointer; user-select: none; border-radius: var(--r-2); }
+  .gsep.lane[data-lane] { cursor: pointer; user-select: none; }
   /* the rest of a long lane, held back (renderSessionList, LANE_CAP; 2026-10-13): a quiet line, a click shows it */
   .gsep.more { margin: 4px 10px 2px; padding: 3px 0; text-align: center; cursor: pointer; border-radius: var(--r-2); }
   .gsep.more:hover { color: var(--ink); background: var(--ctl); }
   .gsep.more .ms { display: none; }
-  .gsep.lane[data-lane]:hover .ln { color: var(--ink); }
-  .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
+  .gsep.lane[data-lane]:hover .lc { opacity: 1; }
+  .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
   .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
-  .gsep.lane.shut { opacity: .7; }
-  .gsep.lane.shut:hover { opacity: 1; }
-  .gsep.lane.still { cursor: default; } .gsep.lane.still .lc { display: none; } .gsep.lane.still:hover .ln { color: inherit; }   /* under a filter: every match shown, nothing to fold */
+  .gsep.lane.shut > :is(i, .ln, b) { opacity: .7; }   /* the head's ground stays whole: cards pass under it */
+  .gsep.lane.shut:hover > :is(i, .ln, b) { opacity: 1; }
+  .gsep.lane.still { cursor: default; } .gsep.lane.still .lc { display: none; }   /* under a filter: every match shown, nothing to fold */
   /* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
      and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
      stays over it. Phased with the rings (phaseAnims). */
@@ -631,7 +638,7 @@
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
   .sedge { grid-row: 1; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
-  .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
+  .sedge.up { align-self: start; align-items: flex-start; margin-top: var(--stick, 0px); padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }   /* under the stuck lane head */
   /* the lower one at the right, on a shorter fog (2026-10-12): centred, it sat on the last card's your-move line — the
      line that card most had to say, and left-aligned, so the right is where a card's last line is most often empty */
   .sedge.down { align-self: end; align-items: flex-end; justify-content: flex-end; height: 24px; padding: 0 14px 4px 0; background: linear-gradient(transparent, var(--bg) 80%); }
@@ -2120,16 +2127,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     background: color-mix(in srgb, var(--prc) 12%, var(--side)); border-color: color-mix(in srgb, var(--prc) 34%, var(--side)); color: var(--prc); }
   :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"], .tk[data-cat]) { background: color-mix(in srgb, var(--prc) 12%, var(--panel)); border-color: color-mix(in srgb, var(--prc) 34%, var(--panel)); }
   :root[data-layout="sidebar"] #chat .shead .hpr .ck { background: transparent; }
-  /* the lanes: the name in sentence case and the list's grey, the count bare — and plain, no marks and no shimmer, but
-     in Ring, whose lanes are the board's (the asking and clauding names in their colours too); all caught up keeps its
-     still mark, where its sparks start */
-  :root[data-layout="sidebar"] .gsep.lane { margin: 10px 4px 2px 8px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; color: var(--muted); }
-  :root[data-layout="sidebar"] .gsep.lane:first-child { margin-top: 6px; }
-  :root[data-layout="sidebar"] .gsep.lane b { background: none; color: var(--muted); font-weight: 500; }
-  :root[data-layout="sidebar"]:not([data-sidebar="ring"]) :is(.gsep.lane > i, .gsep.lane:not(.zero) .pix, .gsep.lane .shim > .sw) { display: none; }
+  /* the lanes as the tiles' (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
+     sidebar's ground (Glass's glass); all caught up keeps its still mark, where its sparks start */
+  :root[data-layout="sidebar"] .gsep.lane { margin: 6px -8px 2px; padding: 7px 12px 5px 16px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; }
+  :root[data-layout="sidebar"] .gsep.lane[data-lane] { background: var(--side); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] .gsep.lane[data-lane] { background: none; }   /* on the list's glass, no band of its own… */
+  /* …but stuck, over the rows, the glass as it reads there, solid: the list's grey over the open chat's colour (a head's
+     own backdrop blur, inside the list's, left the rows legible through it) */
+  :root[data-layout="sidebar"][data-sidebar="glass"] .gsep.lane.stuck { background: color-mix(in srgb, var(--side) 62%, color-mix(in srgb, var(--tile-edge, var(--nocolor)) 16%, var(--bg))); }
+  :root[data-layout="sidebar"][data-sidebar="glass"] .gsep.lane.pushed { visibility: hidden; }
+  :root[data-layout="sidebar"] .gsep.lane:first-child { margin-top: 0; }
+  :root[data-layout="sidebar"] .gsep.lane > i { width: 13px; height: 13px; margin: 0 1px; }
+  :root[data-layout="sidebar"] .gsep.lane b { font-size: var(--fs-sm); font-weight: 500; }
   :root[data-layout="sidebar"] .gsep.lane.zero { color: var(--idle); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] .gsep.lane.working { color: color-mix(in srgb, var(--working) 60%, var(--ink)); }
-  :root[data-layout="sidebar"][data-sidebar="ring"] .gsep.lane.asking { color: var(--needs); }
   /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer (spotSoon rests), a grey
      under the pointer; the project a tag, its name in its colour on a tint of it (2026-10-31, round XI: a dot read as one
      more light) — but in Edge, where the edge is */
@@ -2643,15 +2653,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
   @media (prefers-reduced-transparency: reduce) {
     #ov, .sedge, .tl-glass { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
     #ov { background: var(--bg); }
-    :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar, #chat > #shead) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }   /* the sidebar layout's glass */
-    :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar) { background: var(--side) !important; }
+    :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar, #chat > #shead, #slist > .gsep.lane) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }   /* the sidebar layout's glass */
+    :root[data-layout="sidebar"] :is(#sessions, main.tiles ~ #sbar, #slist > .gsep.lane[data-lane]) { background: var(--side) !important; }
     :root[data-layout="sidebar"]:is([data-sidebar="edge"], [data-sidebar="ring"]) #chat > #shead { background: var(--panel) !important; }
     :root[data-layout="sidebar"][data-sidebar="glass"] #chat > #shead { background: color-mix(in srgb, var(--hbg-eased) 14%, var(--panel)) !important; }
   }
@@ -4696,8 +4706,8 @@ const toolName = n => {
   // phaseAnims() does that for the mark now, so it is plain markup — then the smooth starburst for an evening). The
   // sheet below is the strip itself, frame beside frame, 9 × 9 each: one path, a run of # per subpath, drawn once;
   // CSS shows one frame at a time (`pix`, `pixhop`, the numbers there are these frames'). It stood alone between the
-  // clauding cards and the ready ones until 2026-10-09; since, it is the Clauding lane's mark (laneHtml), and the
-  // transcript's presence line's.
+  // clauding cards and the ready ones until 2026-10-09, then was the Clauding lane's mark until 2026-10-31 (a glyph
+  // since); the transcript's presence line's, and All caught up's at rest.
   const PIX_SHEET = [
     // 0 ·      1 +       2 ◆       3 ✳       4 ✶       5 ✽       6 twinkle 7 twinkle
     '......... ......... ......... ......... ......... #...#...# ....#.... #.......#',
@@ -4713,9 +4723,10 @@ const toolName = n => {
   const PIX = `<span class="pix"><svg viewBox="0 0 ${PIX_SHEET[0].length} 9" shape-rendering="crispEdges" aria-hidden="true"><path d="${
     PIX_SHEET.flatMap((row, y) => [...row.matchAll(/#+/g)].map(m => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('')}"/></svg></span>`;
   // Lanes (2026-10-09, the studies' C — Paseo's grouped sidebar; one divider between the clauding and the ready cards
-  // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Idle · Done — with its mark and
-  // how many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match,
-  // none; under a filter, which shows every match, a head that does not fold (`still`).
+  // before): a head over each group the list ranks by — Asking you · Clauding · Watching · Ready · Idle · Done — with its
+  // glyph (Linear's states since 2026-10-31; Claude's mark in pixels was the Clauding head's) and how many cards it
+  // holds. Under a query, which ranks by the match, none; under a filter, which shows every match, a head that does not
+  // fold (`still`).
   const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running, or a wake-up it set'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
   // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
@@ -4727,7 +4738,7 @@ const toolName = n => {
   // query and a filter show every match.
   const LANE_CAP = 30, CAPPED = new Set(['idle', 'done']), laneMore = new Set();
   const moreHtml = (g, n) => `<div class="gsep more" data-more="${g}" role="button" tabindex="0" title="Show the other ${n} ${LANES[g][1]}"><span class="mn">${n} more ${LANES[g][0].toLowerCase()} chat${n === 1 ? '' : 's'}</span><span class="ms">+${n}</span></div>`;
-  const laneHtml = (g, n, shut = false, still = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
+  const laneHtml = (g, n, shut = false, still = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}"><i aria-hidden="true"></i><span class="ln">${LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
   const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no question, no chat ready">${PIX}<span class="ln">All caught up</span><span class="zewalk"><span class="zw"><i title="Zé — his game, ⌥⌘Z"></i><i title="Zé — his game, ⌥⌘Z"></i></span></span></div>`;
@@ -5119,15 +5130,26 @@ const toolName = n => {
     for (const c of list.children) if (c.classList.contains('card')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
     const H = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
     const open = cards.find(c => c.el.classList.contains('active'));
-    return { list, rail, cards, open, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
-      tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null,
-      box: list.getBoundingClientRect() };
+    // the lanes' heads, sticky (2026-10-31): where each stands — which are stuck at the list's top, under its padding (the
+    // notch's strip) — and how far down the stuck one reaches
+    const box = list.getBoundingClientRect(), pad = parseFloat(getComputedStyle(list).paddingTop) || 0;
+    const heads = [...list.querySelectorAll(':scope > .gsep.lane[data-lane]')], rects = heads.map(h => h.getBoundingClientRect());
+    const stuck = rects.map(r => list.scrollTop > 0 && r.top <= box.top + pad + .5);
+    return { list, rail, cards, open, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H, pad, stick: pad + (heads[0]?.offsetHeight || 0), heads, rects, stuck,
+      tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null, box };
   }
   function drawEdges(g) {
-    const bottom = g.top + g.ch;
+    // the sticky head covers the list's top, under its padding: a card under it is out of sight, and the ends' fog and
+    // the scroll's padding start below it (--stick; the padding alone with no heads — under the notch's strip)
+    if (drawEdges.stick !== g.stick) { drawEdges.stick = g.stick; $('#sessions').style.setProperty('--stick', g.stick + 'px'); $('#sessions').style.setProperty('--lpad', g.pad + 'px'); }
+    // the head stuck on top (.stuck), the ones stuck under it (.covered), and it while the next pushes in (.pushed): a
+    // head of glass (the sidebar's Glass) is a ground only stuck, and would show what is under it
+    const last = g.stuck.lastIndexOf(true), pushed = last >= 0 && g.rects[last + 1] && g.rects[last + 1].top < g.rects[last].bottom;
+    g.heads.forEach((h, i) => { h.classList.toggle('covered', g.stuck[i] && i < last); h.classList.toggle('stuck', i === last && !pushed); h.classList.toggle('pushed', i === last && !!pushed); });
+    const bottom = g.top + g.ch, under = g.top > 0 ? g.stick : 0;
     const out = [{ n: 0, ask: 0, work: 0 }, { n: 0, ask: 0, work: 0 }];
     for (const { el: c, top, h } of g.cards) {
-      const mid = top + h / 2, o = mid < g.top ? out[0] : mid > bottom ? out[1] : null;
+      const mid = top + h / 2, o = mid < g.top + under ? out[0] : mid > bottom ? out[1] : null;
       if (!o) continue;
       o.n++;
       if (c.classList.contains('asking')) o.ask++;

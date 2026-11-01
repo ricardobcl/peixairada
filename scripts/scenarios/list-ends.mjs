@@ -11,9 +11,11 @@ import { makeFixture, toolLines } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 // What the pills say, and what the cards' rectangles say they should: a card is out of sight above when its middle is
-// above the list's visible top, below when under its visible bottom.
+// above the list's visible top — under the lane head stuck there since 2026-10-31 —, below when under its visible bottom.
 const ends = ctx => ctx.evaluate(`(() => {
-  const l = document.querySelector('#slist'), r = l.getBoundingClientRect(), top = r.top + l.clientTop, bottom = top + l.clientHeight;
+  const l = document.querySelector('#slist'), r = l.getBoundingClientRect(), edge = r.top + l.clientTop, bottom = edge + l.clientHeight;
+  const head = [...l.querySelectorAll(':scope > .gsep.lane[data-lane]')].filter(h => l.scrollTop > 0 && Math.abs(h.getBoundingClientRect().top - edge) < 1 && getComputedStyle(h).visibility !== 'hidden').pop();
+  const top = head ? head.getBoundingClientRect().bottom : edge;
   const cards = [...l.querySelectorAll(':scope > .card')].map(c => { const b = c.getBoundingClientRect(); return (b.top + b.bottom) / 2; });
   // an end that is off keeps its last words while it fades out: what it says counts only while it is on
   const pill = id => { const e = document.querySelector(id), on = e.classList.contains('on'); return { on, n: on ? +(e.querySelector('b')?.textContent || 0) : 0, dot: on ? e.querySelector('i')?.className || null : null, text: on ? e.textContent.trim() : '' }; };
