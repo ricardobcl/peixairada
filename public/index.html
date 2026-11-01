@@ -30,21 +30,21 @@
      status bar, the tiles' wallpaper (--frame) — and the chat a sheet laid in it a step lighter; nothing in light above
      L* 95, the whites gone, and in dark a near-black frame with the chat a step up. */
   :root {
-    --bg: #f1f0ec; --panel: #f5f4f0; --ink: #21211e; --muted: #5c5b54; --line: #d6d5cd; --accent: #b05232; --frame: #dedcd6; --bar: var(--frame);
-    --working: #d9a82a; --idle: #237a48; --needs: #b42e2e; --ended: #a1a19a; --unread: #9c4426;
-    --watch: #0a7474;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
+    --bg: #f1f0ec; --panel: #f5f4f0; --ink: #21211e; --muted: #5c5b54; --line: #d6d5cd; --accent: #ad5030; --frame: #dedcd6; --bar: var(--frame);
+    --working: #d9a82a; --working-ink: #795b01; --idle: #116e3d; --needs: #a61e22; --ended: #a1a19a; --unread: #9c4426;   /* --working is a fill; set as text, its ink */
+    --watch: #066b6b;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
     --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
     --prg: 28%;          /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
     --user-bg: #e5e3db; --tool-bg: #e9e8e2; --code-bg: #e7e5de; --code-line: #d5d3ca;
-    --code-ink: #9e3f1f; --inline-bg: rgb(40 38 30 / .07);
-    --you: #21756a; --snip-claude: #42413b; --vscode: #0066b8;
-    --pr-open: #1a6c3b; --pr-merged: #6634c0; --pr-closed: #b42e2e; --pr-draft: #5c5c56;
-    --tk-todo: #4f5b6c; --tk-doing: #1556ad; --tk-done: #156b48;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper */
-    --term-bg: #eae8e2; --term-sel: rgba(176, 82, 50, .28);   /* the accent, as ::selection is */
+    --code-ink: #9b3d1c; --inline-bg: rgb(40 38 30 / .07);
+    --you: #116a60; --snip-claude: #42413b; --vscode: #0060ae;
+    --pr-open: #086231; --pr-merged: #6533bf; --pr-closed: #a31b20; --pr-draft: #55554f;
+    --tk-todo: #4a5566; --tk-doing: #0f51a8; --tk-done: #00613e;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper */
+    --term-bg: #eae8e2; --term-sel: rgba(173, 80, 48, .28);   /* the accent, as ::selection is */
     --nocolor: #b3b3ac;   /* light gray: a project without a colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
-    --hl-com: #5f5e57; --hl-key: #9c27a0; --hl-str: #3c7832; --hl-num: #82560f;
-    --hl-fn: #2560be; --hl-cls: #8a6310; --hl-var: #b83c2e; --hl-meta: #6b7f9e;
+    --hl-com: #5f5e57; --hl-key: #9c27a0; --hl-str: #36722c; --hl-num: #82560f;
+    --hl-fn: #2560be; --hl-cls: #855e06; --hl-var: #b5392c; --hl-meta: #536684;
     /* Motion (2026-10-11): one ease out for what settles, and a spring for what arrives with a touch of overshoot — a
        linear() curve of a damped oscillator (damping .6) sampled at 40 stops; --t-hover the small controls' ease. The
        script reads the spring from here (SPRING), so the curve is written once. */
@@ -64,10 +64,10 @@
     --user-bg: #2a2a27; --tool-bg: #242422; --code-bg: #131312; --code-line: #30302c; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
-    --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --needs: #ef6060; --pr-draft: #8b8b85;
+    --pr-open: #3fb950; --pr-merged: #ae81ff; --pr-closed: #ff6258; --needs: #f36464; --pr-draft: #9a9a93; --working-ink: #d9a82a; --idle: #2f9e5b;
     --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97;
     --term-bg: #121211; --term-sel: rgba(224, 138, 104, .32);
-    --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
+    --hl-com: #808078; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   }
   * { box-sizing: border-box; }
@@ -846,7 +846,7 @@
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
   .card .trow .badge { margin-top: 2px; }
-  .card .trow .chip.agents { margin-top: 3px; color: var(--working); background: color-mix(in srgb, var(--working) 16%, transparent); }
+  .card .trow .chip.agents { margin-top: 3px; color: var(--working-ink); background: color-mix(in srgb, var(--working) 16%, transparent); }
   /* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
      radar mark — it says *something is running here*, next to the agents chip that says *Claude is* */
   .chip.watch { display: inline-flex; align-items: center; gap: 4px; color: var(--watch); background: color-mix(in srgb, var(--watch) 16%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1212,7 +1212,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbar #people button.pgh { height: 20px; }
   #sbRight .seg { border-right: 0; border-left: 1px solid var(--line); }
   #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
-  #sbar .w { color: var(--working); font-weight: 600; } #sbar em { font-style: normal; color: var(--needs); font-weight: 650; }
+  #sbar .w { color: var(--working-ink); font-weight: 600; } #sbar em { font-style: normal; color: var(--needs); font-weight: 650; }
   #sbar .m { display: inline-flex; align-items: center; gap: 5px; } #sbar .m + .m { margin-left: 11px; } #sbar .m b { color: var(--ink); font-weight: 650; }
   /* a meter is a pie (2026-10-11, later; a 40 px bar before): what is spent in its colour, from twelve o'clock, on the
      track — the label, the pie, the percent, as concise as the menu bar's own */
@@ -1462,7 +1462,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #prlist .prline > .prrow { flex: 1 1 auto; }
   #prlist .prwhere { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
   #prlist .prwhere .ic { width: 11px; height: 11px; fill: currentColor; }
-  #prlist .prwhere.here { color: var(--pr-open); } #prlist .prwhere.wt { color: var(--working); }
+  #prlist .prwhere.here { color: var(--pr-open); } #prlist .prwhere.wt { color: var(--working-ink); }
   #prlist .practs { flex: none; display: inline-flex; gap: 4px; align-self: center; }
   #prlist .pract { font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; }
   #prlist .pract:hover { background: var(--ctl-hi); color: var(--ink); }
@@ -1859,7 +1859,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chg .cfiles { overflow-y: auto; border-right: 1px solid var(--line); padding: 6px 0; display: grid; align-content: start; }
   #chg .cf { display: flex; align-items: center; gap: 7px; padding: 4px 12px; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; min-width: 0; }
   #chg .cf:hover { background: var(--ctl); } #chg .cf.on { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 2px 0 var(--accent); }
-  #chg .cf b { font: 700 var(--fs-2xs) ui-monospace, monospace; color: var(--working); width: 10px; flex: none; } #chg .cf b.a { color: var(--pr-open); } #chg .cf b.d { color: var(--pr-closed); }
+  #chg .cf b { font: 700 var(--fs-2xs) ui-monospace, monospace; color: var(--working-ink); width: 10px; flex: none; } #chg .cf b.a { color: var(--pr-open); } #chg .cf b.d { color: var(--pr-closed); }
   #chg .cf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; min-width: 0; flex: 1; }
   #chg .cf .nm .dir { color: var(--muted); }
   #chg .cf em { font-style: normal; flex: none; }
@@ -1952,7 +1952,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tv .tvr.you .bub { min-width: 0; background: var(--user-bg); border-radius: 10px 10px 3px 10px; padding: 1px 8px; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
   #tv .tvr.cl { cursor: pointer; }
   #tv .tvr.cl .rep { flex-basis: 100%; min-width: 0; color: var(--muted); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #tv .tvr.cl .sum .tvat { color: var(--working); }
+  #tv .tvr.cl .sum .tvat { color: var(--working-ink); }
   #tv .tvr.cl .tools { flex-basis: 100%; display: grid; gap: 1px; font: var(--fs-xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
   #tv .tvr.cl .tools span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #tv .tvr.cl .rep.all { white-space: normal; }
@@ -1990,7 +1990,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .home .hkeys { margin-top: 12px; color: var(--muted); font-size: var(--fs-sm); max-width: 46ch; } .home .hkeys s { text-decoration: none; opacity: .6; }
   .home .hkeys kbd { font: inherit; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 0 5px; }
   .home .hkv > div > b { flex: none; width: 9ch; color: var(--accent); font-weight: 700; }
-  .home .hkv em { font-style: normal; color: var(--needs); font-weight: 600; } .home .hkv u { text-decoration: none; color: var(--working); } .home .hkv s { text-decoration: none; color: var(--muted); }
+  .home .hkv em { font-style: normal; color: var(--needs); font-weight: 600; } .home .hkv u { text-decoration: none; color: var(--working-ink); } .home .hkv s { text-decoration: none; color: var(--muted); }
   .home .hkv strong { font-weight: 700; }
   .home .hblocks { display: flex; margin-top: 10px; } .home .hblocks i { width: 24px; height: 13px; }
   .home .hday h3 { margin: 0 0 12px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: var(--fs-sm); letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
@@ -2241,13 +2241,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark;
     --bg: #1e1e1c; --panel: #262624; --ink: #ebe9e2; --muted: #a3a197; --line: #333330; --accent: #e08a68; --user-bg: #2c2c29; --tool-bg: #262624; --inline-bg: rgb(255 255 255 / .08);
     --code-bg: #141413; --code-ink: #e0a284; --snip-claude: #cfcdc3; --nocolor: #6a6a63; --ended: #605f5a; --prg: 44%;
-    --needs: #ef6060; --watch: #45c8c8; --working: #d9a82a; --idle: #2f9e5b; --you: #4fb8a8; --spend: #f28a3c; --vscode: #4aa5f0;
-    --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85; --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97; }
+    --needs: #f96968; --watch: #45c8c8; --working: #d9a82a; --working-ink: #d9a82a; --idle: #32a15d; --you: #4fb8a8; --spend: #f28a3c; --vscode: #4aa5f0;
+    --pr-open: #3fb950; --pr-merged: #b186ff; --pr-closed: #fe6e63; --pr-draft: #9e9e98; --tk-todo: #91a0b0; --tk-doing: #5a9efe; --tk-done: #4bce97; }
   :root[data-theme="dark"][data-frame="light"] :is(#sessions, #sbar) { color-scheme: light;
-    --bg: #e9e4d9; --panel: #f1ede4; --ink: #29251e; --muted: #615848; --line: #d6ceba; --accent: #a64a28; --user-bg: #ded7c8; --tool-bg: #e4ded2; --inline-bg: rgb(90 60 10 / .08);
-    --code-bg: #e2dccf; --code-ink: #963b1e; --snip-claude: #4a4337; --nocolor: #b2a893; --ended: #a29884; --prg: 28%;
-    --needs: #b42e2e; --watch: #0a7474; --working: #d9a82a; --idle: #237a48; --you: #21756a; --spend: #e8782a; --vscode: #0066b8;
-    --pr-open: #1a6c3b; --pr-merged: #6634c0; --pr-closed: #b42e2e; --pr-draft: #5c5c56; --tk-todo: #4f5b6c; --tk-doing: #1556ad; --tk-done: #156b48; }
+    --bg: #e9e4d9; --panel: #f1ede4; --ink: #29251e; --muted: #615848; --line: #d6ceba; --accent: #a54927; --user-bg: #ded7c8; --tool-bg: #e4ded2; --inline-bg: rgb(90 60 10 / .08);
+    --code-bg: #e2dccf; --code-ink: #92371a; --snip-claude: #4a4337; --nocolor: #b2a893; --ended: #a29884; --prg: 28%;
+    --needs: #ae2829; --watch: #007071; --working: #d9a82a; --working-ink: #806002; --idle: #197341; --you: #1a7065; --spend: #e8782a; --vscode: #0066b8;
+    --pr-open: #136737; --pr-merged: #6634c0; --pr-closed: #aa2326; --pr-draft: #5b5b55; --tk-todo: #4f5b6c; --tk-doing: #1556ad; --tk-done: #0d6644; }
   :root:is([data-theme="light"][data-frame="dark"], [data-theme="dark"][data-frame="light"]) :is(#sessions, #sbar) { --side: var(--bg); --bar: var(--bg);
     --side-glass: color-mix(in srgb, var(--side) 60%, transparent); --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
     --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
@@ -2262,7 +2262,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--r-4); background: var(--ctl); color: var(--ink); font-weight: 600; font-size: var(--fs-sm); }
   #ov .chips i, #ov .oc h2 i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--muted)); }
   #ov .chips span.nil { color: var(--muted); font-weight: 500; } #ov .chips span.nil i { background: var(--muted); opacity: .5; }   /* a zero says nothing in colour (2026-10-12) */
-  #ov .ask { --c: var(--needs); } #ov .work { --c: var(--working); } #ov .watch { --c: var(--watch); } #ov .ready { --c: var(--idle); }
+  #ov .ask { --c: var(--needs); } #ov .work { --c: var(--working-ink); } #ov .watch { --c: var(--watch); } #ov .ready { --c: var(--idle); }
   #ov .keys { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: var(--fs-sm); }
   #ov kbd { font: 600 var(--fs-xs) ui-monospace, monospace; color: var(--ink); background: var(--ctl-hi); padding: 1px 5px; border-radius: var(--r-2); margin-right: 4px; }
   #ov .ovclose { font: inherit; font-size: var(--fs-xl); line-height: 1; padding: 2px 8px; border: 0; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
@@ -2296,12 +2296,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .tl b { color: var(--ink); font-weight: 600; }
   #ov .tl span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   #ov .tl em { margin-left: auto; font-style: normal; color: var(--muted); padding-left: 8px; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
-  #ov .tl.run em { color: var(--working); }
+  #ov .tl.run em { color: var(--working-ink); }
   #ov .say { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: var(--fs-sm); color: var(--ink); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   #ov .say.none { color: var(--muted); }
   #ov .you { color: var(--you); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #ov .ot > .tl { font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  #ov .ag { font-size: var(--fs-sm); color: var(--working); font-weight: 600; }
+  #ov .ag { font-size: var(--fs-sm); color: var(--working-ink); font-weight: 600; }
   #ov .q { font-size: var(--fs-md); color: var(--ink); font-weight: 600; }
   #ov .ans { display: flex; flex-wrap: wrap; gap: 6px; }
   #ov .ans button { font: inherit; font-size: var(--fs-sm); padding: 4px 9px; border: 0; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
@@ -2374,7 +2374,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .pkrow.lx .num kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); }
   .pkrow.lx .t { color: var(--muted); font-size: var(--fs-sm); min-width: 14px; text-align: right; }
   .pkrow.lx .st { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
-  .pkrow.lx .st[data-state="asking"] { color: var(--needs); } .pkrow.lx .st[data-state="clauding"] { color: var(--working); } .pkrow.lx .st[data-state="ready"] { color: var(--idle); }
+  .pkrow.lx .st[data-state="asking"] { color: var(--needs); } .pkrow.lx .st[data-state="clauding"] { color: var(--working-ink); } .pkrow.lx .st[data-state="ready"] { color: var(--idle); }
   .pkrow.lx .ac { font: 700 var(--fs-sm) ui-monospace, monospace; color: var(--accent); }
   .pkrow.lx .lpr { font: 700 var(--fs-xs)/15px -apple-system, sans-serif; padding: 0 4px; border-radius: var(--r-2); color: var(--bg); background: var(--pr-open); }
   .pkrow.lx .lpr[data-state="merged"] { background: var(--pr-merged); } .pkrow.lx .lpr[data-state="closed"] { background: var(--pr-closed); } .pkrow.lx .lpr[data-state="draft"] { background: var(--pr-draft); } .pkrow.lx .lpr[data-state=""] { background: var(--muted); }
@@ -2546,7 +2546,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .pkrow.clone .n { color: var(--accent); }
   .pkrow.clone .n .cur { color: var(--muted); }
   .pkrow.env .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .pkrow.chat[data-state="clauding"] .st { color: var(--working); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
+  .pkrow.chat[data-state="clauding"] .st { color: var(--working-ink); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
   .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: var(--fs-2xs); letter-spacing: .5px; color: var(--muted); }
   .pkrow .num { color: var(--muted); font-size: var(--fs-xs); }
   .pkrow .n.pending { font-weight: 400; color: var(--muted); font-style: italic; }
@@ -3751,7 +3751,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       working: '#d9a82a', idle: '#237a48', needs: '#b42e2e', watch: '#0a7474', spend: '#e8782a', code: '#e7e5de',
       hl: ['#5f5e57', '#9c27a0', '#3c7832', '#82560f', '#2560be', '#8a6310', '#b83c2e', '#6b7f9e'], proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
       tok: { '--tool-bg': '#e9e8e2', '--code-line': '#d5d3ca', '--inline-bg': 'rgb(40 38 30 / .07)', '--snip-claude': '#42413b', '--nocolor': '#b1b0a8', '--ended': '#9f9e96',
-        '--term-bg': '#eae8e2', '--code-ink': '#9e3f1f', '--unread': '#9c4426', '--you': '#21756a', '--side': '#e3e2dc' } },
+        '--term-bg': '#eae8e2', '--unread': '#9c4426', '--side': '#e3e2dc' }, codeInk: '#9e3f1f', you: '#21756a' },
     'catppuccin-latte': { name: 'Catppuccin Latte', dark: false, bg: '#eff1f5', panel: '#ffffff', raise: '#e6e9ef', crust: '#dce0e8', ink: '#4c4f69', muted: '#6c6f85', line: '#ccd0da', accent: '#8839ef',
       working: '#df8e1d', idle: '#40a02b', needs: '#d20f39', watch: '#179299', spend: '#fe640b', code: '#e6e9ef',
       hl: ['#9ca0b0', '#8839ef', '#40a02b', '#fe640b', '#1e66f5', '#df8e1d', '#d20f39', '#179299'], proj: ['#1e66f5', '#8839ef', '#40a02b', '#fe640b', '#d20f39', '#179299', '#df8e1d'],
@@ -3763,20 +3763,69 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   };
   // the board's own, as a tile in the picker draws them (the tokens themselves are :root's)
   const OWN_SKINS = {
-    dark: { name: 'peixAIrada', dark: true, bg: '#1c1c1a', panel: '#22221f', crust: '#000000', ink: '#e6e4dc', muted: '#9d9c92', line: '#2e2e2b', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#ef6060', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
-    light: { name: 'peixAIrada', dark: false, bg: '#f1f0ec', panel: '#f5f4f0', crust: '#000000', ink: '#21211e', muted: '#5c5b54', line: '#d6d5cd', accent: '#b05232', working: '#d9a82a', idle: '#237a48', needs: '#b42e2e', watch: '#0a7474', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+    dark: { name: 'peixAIrada', dark: true, bg: '#1c1c1a', panel: '#22221f', crust: '#000000', ink: '#e6e4dc', muted: '#9d9c92', line: '#2e2e2b', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#f36464', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+    light: { name: 'peixAIrada', dark: false, bg: '#f1f0ec', panel: '#f5f4f0', crust: '#000000', ink: '#21211e', muted: '#5c5b54', line: '#d6d5cd', accent: '#ad5030', working: '#d9a82a', idle: '#116e3d', needs: '#a61e22', watch: '#066b6b', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
   };
   const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'];
+  // Inks fitted (2026-11-01, round XV): a theme's small-text colours hold 4.5:1 on the grounds they are set on — each
+  // moved in OKLCH lightness, its hue and chroma kept (chroma cut only where sRGB ends), away from its grounds until it
+  // holds INK_MIN, a margin for grounds composited. The board's own are fitted in the CSS (the same rule, run once); a
+  // theme's here, as its block is written: its own inks, and for what it has none of — the PR and ticket states, VS
+  // Code's blue — the board's of its appearance, before their fit. A ground is a colour, or the ink itself at a tint
+  // over one (a chip's wash, the asking red's). → test/inks.test.mjs
+  const INK_MIN = 4.6;
+  const INK_BASE = {
+    light: { 'pr-open': '#1a6c3b', 'pr-merged': '#6634c0', 'pr-closed': '#b42e2e', 'pr-draft': '#5c5c56', 'tk-todo': '#4f5b6c', 'tk-doing': '#1556ad', 'tk-done': '#156b48', vscode: '#0066b8' },
+    dark: { 'pr-open': '#3fb950', 'pr-merged': '#a371f7', 'pr-closed': '#f85149', 'pr-draft': '#8b8b85', 'tk-todo': '#8c9bab', 'tk-doing': '#579dff', 'tk-done': '#4bce97', vscode: '#4aa5f0' },
+  };
+  const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const hexOf = c => '#' + c.map(v => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
+  const linOf = v => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4;
+  const gamOf = v => 255 * (v <= .0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - .055);
+  const lumOf = c => .2126 * linOf(c[0]) + .7152 * linOf(c[1]) + .0722 * linOf(c[2]);
+  const contrastOf = (a, b) => { const x = lumOf(a), y = lumOf(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  const mixOf = (a, b, t) => a.map((v, i) => v * t + b[i] * (1 - t));
+  const oklchOf = c => {
+    const [r, g, b] = c.map(linOf), l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+    const A = 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, B = .0259040371 * l + .7827717662 * m - .808675766 * s;
+    return [.2104542553 * l + .793617785 * m - .0040720468 * s, Math.hypot(A, B), Math.atan2(B, A)];
+  };
+  const fromOklch = (L, C, h) => { for (let c = C; ; c -= .002) {
+    const a = Math.max(0, c) * Math.cos(h), b = Math.max(0, c) * Math.sin(h);
+    const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+    const v = [4.0767416621 * l - 3.3077115913 * m + .2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - .3413193965 * s, -.0041960863 * l - .7034186147 * m + 1.707614701 * s];
+    if (c <= 0 || v.every(x => x >= -1e-4 && x <= 1.0001)) return v.map(x => gamOf(Math.min(1, Math.max(0, x)))); } };
+  const worstOn = (c, grounds) => Math.min(...grounds.map(g => contrastOf(c, Array.isArray(g) ? g : mixOf(c, g.over, g.tint))));
+  function fitInk(h, grounds, dark) {
+    let c = rgbOf(h); if (worstOn(c, grounds) >= INK_MIN) return h;
+    const [L0, C, hue] = oklchOf(c);
+    for (let L = L0, i = 0; i < 160 && worstOn(c, grounds) < INK_MIN; i++) { L = Math.min(1, Math.max(0, L + (dark ? .004 : -.004))); c = rgbOf(hexOf(fromOklch(L, C, hue))); }
+    return hexOf(c);
+  }
+  /** A theme's inks, each fitted to where it is set as small text: the chat, the header, the sidebar's grey and the status
+   *  bar (flat); muted on a bubble and a tool row too; the accent on the chat and the header; inline code on its tint;
+   *  a PR's or a ticket's state on its chip's wash, the asking red on its own; syntax on the code block. */
+  function themeInks(t) {
+    const g = h => rgbOf(h), m = (a, b, p) => mixOf(g(a), g(b), p), ink = g(t.ink);
+    const bg = g(t.bg), panel = g(t.panel), raise = g(t.raise), side = t.tok?.['--side'] ? g(t.tok['--side']) : m(t.ink, t.bg, t.dark ? .06 : .05), bar = g(t.crust);
+    const tool = t.tok?.['--tool-bg'] ? g(t.tok['--tool-bg']) : m(t.raise, t.panel, .6), flat = [bg, panel, side, bar], chips = [bg, panel, side];
+    const [com, key, str, num, fn, cls, vr, meta] = t.hl;
+    const base = { muted: t.muted, accent: t.accent, 'code-ink': t.codeInk || num, needs: t.needs, watch: t.watch, idle: t.idle, you: t.you || t.watch, 'working-ink': t.working,
+      ...INK_BASE[t.dark ? 'dark' : 'light'], 'hl-com': com, 'hl-key': key, 'hl-str': str, 'hl-num': num, 'hl-fn': fn, 'hl-cls': cls, 'hl-var': vr, 'hl-meta': meta };
+    const on = k => k === 'muted' ? [...flat, raise, tool] : k === 'accent' ? [bg, panel] : k === 'code-ink' ? [bg, panel, raise].map(x => mixOf(ink, x, .08))
+      : k.startsWith('hl-') ? [g(t.code)] : /^(pr|tk)-/.test(k) ? [...chips, ...chips.map(over => ({ tint: .12, over }))]
+      : k === 'needs' ? [...flat, ...chips.map(over => ({ tint: .09, over }))] : flat;
+    return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, fitInk(v, on(k), t.dark)]));
+  }
   // Each theme a block of tokens under its own data-skin, set only beside its own appearance's data-theme (applySkin).
   // Three classes deep, so it wins over :root and the dark block's two.
   const skinCss = (k, t) => {
-    const [com, key, str, num, fn, cls, vr, meta] = t.hl, at = `:root:root[data-skin="${k}"]`;
-    return `${at} { --bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${t.muted}; --line: ${t.line}; --accent: ${t.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
+    const f = themeInks(t), at = `:root:root[data-skin="${k}"]`;
+    return `${at} { --bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${f.muted}; --line: ${t.line}; --accent: ${f.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
     --user-bg: ${t.raise}; --tool-bg: color-mix(in srgb, ${t.raise} 60%, ${t.panel}); --code-bg: ${t.code}; --code-line: ${t.line}; --inline-bg: color-mix(in srgb, ${t.ink} 8%, transparent);
     --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: color-mix(in srgb, ${t.accent} 30%, transparent);
-    --crust: ${t.crust}; --bar: ${t.crust}; --hd-ink: ${t.ink}; --hd-muted: ${t.muted}; --hd-line: ${t.line}; --hd-panel: ${t.panel}; --hd-inline: color-mix(in srgb, ${t.ink} 8%, transparent);
-    --working: ${t.working}; --idle: ${t.idle}; --needs: ${t.needs}; --watch: ${t.watch}; --spend: ${t.spend}; --you: ${t.watch}; --code-ink: ${num};
-    --hl-com: ${com}; --hl-key: ${key}; --hl-str: ${str}; --hl-num: ${num}; --hl-fn: ${fn}; --hl-cls: ${cls}; --hl-var: ${vr}; --hl-meta: ${meta};
+    --crust: ${t.crust}; --bar: ${t.crust}; --hd-ink: ${t.ink}; --hd-muted: ${f.muted}; --hd-line: ${t.line}; --hd-panel: ${t.panel}; --hd-inline: color-mix(in srgb, ${t.ink} 8%, transparent);
+    --working: ${t.working}; --idle: ${f.idle}; --spend: ${t.spend}; ${Object.entries(f).filter(([n]) => !['muted', 'accent', 'idle'].includes(n)).map(([n, v]) => `--${n}: ${v};`).join(' ')}
     ${Object.entries(t.tok || {}).map(([n, v]) => `${n}: ${v};`).join(' ')} }`;   // a theme's own where the rule above would guess (Softened's)
   };
   document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
@@ -8592,6 +8641,7 @@ const toolName = n => {
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
+    skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
     ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
     // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
