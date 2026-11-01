@@ -80,8 +80,8 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.ze().g.score === 20`, { what: 'the carrot kicked' });
   ctx.assert.ok((await game()).words.some(w => w === 'WATAAA!' || w === 'KRAV MAGA!'));
 
-  // three meats in a row: the Ford Focus — faster, space its horn; its time up, it drives off
-  await eat('meat', '🍗', 3);
+  // six meats in a row: the Ford Focus — faster, space its horn; its time up, it drives off
+  await ctx.evaluate(`window.peix.ze().g.streak = 3`); await eat('meat', '🍗', 3);
   out.focus = await game();
   ctx.assert.equal(out.focus.ride, 'focus'); ctx.assert.equal(out.focus.banner, 'FORD FOCUS!'); ctx.assert.ok(out.focus.engine, 'its engine');
   ctx.assert.equal(out.focus.mass, 9);
@@ -98,7 +98,7 @@ export default async function (ctx) {
   await ctx.waitFor(`!window.peix.ze().g.ride && window.peix.ze().g.leaving?.kind === 'focus' && !window.peix.ze().music.engine`, { what: 'the Focus driving off' });
 
   // two more in a row: COMBO ×2 (five)
-  await eat('meat', '🥓', 2);
+  await ctx.evaluate(`Object.assign(window.peix.ze().g, { streak: 3, mult: 1 })`); await eat('meat', '🥓', 2);
   out.combo = await game();
   ctx.assert.equal(out.combo.mult, 2); ctx.assert.ok(out.combo.words.includes('COMBO ×2!'));
 
@@ -118,7 +118,7 @@ export default async function (ctx) {
   await ctx.sleep(400); await ctx.shot('4-moose');
 
   // the briefcase: AGENT ZÉ
-  await eat('case', '💼');
+  await ctx.evaluate(`window.peix.ze().g.next = 1e9`); await eat('case', '💼');   // its hundred must bring no level, whose banner it would lose to
   out.agent = await game();
   ctx.assert.equal(out.agent.agent, true); ctx.assert.equal(out.agent.banner, 'AGENT ZÉ');
 

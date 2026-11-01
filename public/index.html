@@ -12859,7 +12859,7 @@ const toolName = n => {
   // Zé, the Bruce Lee of Barcelos, in pixels (ZE_FACE: the hair, the round gold glasses, the beard; his body, zeBuild): meat falls
   // and he eats it and grows — broader, his arms thicker, pecs and biceps —; vegetables make him thinner, down to his
   // ribs and then his bones, the K.O. — unless he dodges them or kicks them out of the sky; some lunch that looks safe
-  // has a leaf in it. Three meats in a row bring a Ford Focus, ZE_RIDE seconds of speed; three greens a Mercedes A-Class,
+  // has a leaf in it. Six meats in a row bring a Ford Focus, ZE_RIDE seconds of speed; three greens a Mercedes A-Class,
   // ZE_RIDE slow ones. ← → (A D, or the pointer over the picture) run, ↑ jumps, space kicks (honks, in a car), P pauses,
   // M the sound, T the music — Barcelos' own vira (the default since 2026-10-30, prefs.zeBand), the malhão or the funk; esc or ⌥⌘Z
   // again closes. The golden rooster, Barcelos'
@@ -12945,7 +12945,7 @@ const toolName = n => {
   // his bulk: a meat adds one (to ZE_MASS_MAX), a green takes one; none left is his bones, and the K.O.
   const ZE_MASS0 = 6, ZE_MASS_MAX = 12;
   // the cars, ZE_RIDE s each: three meats in a row bring the Focus, three greens the A-Class
-  const ZE_RIDE = 5, ZE_CARS = { focus: { name: 'FORD FOCUS', speed: 1.8, c: '#5b8ff0' }, aclass: { name: 'MERCEDES A-CLASS', speed: .5, c: '#c8ccd2' } };
+  const ZE_RIDE = 5, ZE_FOCUS_ROW = 6, ZE_FOCUS_GAP = 20, ZE_CARS = { focus: { name: 'FORD FOCUS', speed: 1.8, c: '#5b8ff0' }, aclass: { name: 'MERCEDES A-CLASS', speed: .5, c: '#c8ccd2' } };
   // the music, two bars of bass and one of horns: step → [midi note, sixteenths, popped]
   const ZE_BASS = [{ 0: [40, 2], 2: [52, 1, 1], 3: [40, 1], 6: [43, 2], 8: [45, 1], 10: [52, 1, 1], 11: [50, 1], 14: [47, 2] },
     { 0: [40, 2], 2: [52, 1, 1], 3: [40, 1], 5: [43, 1], 7: [45, 1], 9: [46, 1], 10: [47, 2], 12: [50, 1], 14: [52, 1, 1], 15: [50, 1] }];
@@ -13019,7 +13019,7 @@ const toolName = n => {
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: phase === 'title' ? Infinity : zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], lunch: [], sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
-    lightT: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
+    lightT: 0, focusAt: -99, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
   const ze = { tap: null, typed: '', mossad: false, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
@@ -13469,7 +13469,7 @@ const toolName = n => {
     if (it.place) zeWord(g, it.place, it.x, it.y - 2, '#d9c7e8');
     zeChunks(g, mx, my, it.kind === 'veg' ? 'veg' : 'meat', g.dragon ? 12 : 7);
     zeScore(g, pts);
-    if (it.kind === 'meat' && g.streak % 3 === 0 && g.ride?.kind !== 'focus') zeRide(g, 'focus');
+    if (it.kind === 'meat' && g.streak % ZE_FOCUS_ROW === 0 && g.ride?.kind !== 'focus' && g.t - g.focusAt >= ZE_FOCUS_GAP) { g.focusAt = g.t; zeRide(g, 'focus'); }   // an event (2026-11-01): he was in it for up to 46 % of a round, and in a car he cannot kick
   }
   function zeStep(dt) {
     const g = ze.g;
@@ -13971,7 +13971,7 @@ const toolName = n => {
       zeText(cx, `${ZE_NUN} kicks fill the nunchaku: hold space, let go — every green swept`, mid, y0 + 162, 12, '#d9c7e8', 'center', 600);
       zeText(cx, 'the awning and the sign hold him — ↓ drops through', mid, y0 + 184, 12, '#d9c7e8', 'center', 600);
     } else if (shown === 2) {
-      zeText(cx, '3 MEATS IN A ROW: A FORD FOCUS — FASTER', mid, y0 + 64, 15, ZE_CARS.focus.c, 'center');
+      zeText(cx, `${ZE_FOCUS_ROW} MEATS IN A ROW: A FORD FOCUS — FASTER`, mid, y0 + 64, 15, ZE_CARS.focus.c, 'center');
       zeText(cx, '3 GREENS IN A ROW: A MERCEDES A-CLASS — SLOWER', mid, y0 + 92, 15, ZE_CARS.aclass.c, 'center');
       zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL}: ENTER THE DRAGON`, mid, y0 + 124, 16, '#ff7a2a', 'center');
       zeText(cx, `EVERY ${ZE_AVO_EVERY}TH LEVEL: THE AVÓ DA HORTA — KICK HER COUVES BACK`, mid, y0 + 152, 14, '#9be15d', 'center');
@@ -14991,7 +14991,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
   }
 
   // the harness's hands: a round the bot plays, and what brings a moment on
-  ze.lab = { zeDragon, zeRide, zeAvo, zeDrop, draw: () => zeDraw(), demo() { const g = zeRound('play'); Object.assign(g, { demo: true, next: Infinity, lunch: [] }); ze.g = g; zeGo(); return g; } };
+  ze.lab = { zeDragon, zeRide, zeAvo, zeDrop, zeStep, zeBot, ZE_DIFFS, round: () => zeRound('play'), draw: () => zeDraw(), demo() { const g = zeRound('play'); Object.assign(g, { demo: true, next: Infinity, lunch: [] }); ze.g = g; zeGo(); return g; } };
 
   // ---- the sound: a funk band of oscillators, and what the round does to it
   /** The context, made by a press that starts a round (a page may not start sound by itself). */

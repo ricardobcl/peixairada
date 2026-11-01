@@ -74,7 +74,7 @@ export default async function (ctx) {
   await ctx.sleep(1500);
 
   // ---- the cars: the Focus a tone up and quicker, afterimages; the A-Class behind glass, black smoke
-  await g(`g.mass = 6; g.streak = 0;`); await eat({ kind: 'meat', e: '🍗' }, 3);
+  await g(`g.mass = 6; g.streak = 3;`); await eat({ kind: 'meat', e: '🍗' }, 3);
   await ctx.waitFor(`window.peix.ze().g.ride?.kind === 'focus'`, { what: 'the Focus' });
   ctx.assert.equal(await ctx.evaluate(`window.peix.ze().music.mode`), 'focus', 'the band hears the Focus');
   await down('ArrowRight', 'ArrowRight', 39); await ctx.sleep(500);

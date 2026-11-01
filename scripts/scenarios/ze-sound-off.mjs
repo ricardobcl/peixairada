@@ -51,7 +51,7 @@ export default async function (ctx) {
   // esc in the Focus: the band and the engine
   await round();
   out.osPlaying = os();
-  for (let i = 0; i < 3; i++) { await drop('meat', '🥩'); await ctx.sleep(120); }
+  await ctx.evaluate(`window.peix.ze().g.streak = 3`); for (let i = 0; i < 3; i++) { await drop('meat', '🥩'); await ctx.sleep(120); }
   await ctx.waitFor(`window.peix.ze().music.engine && window.peix.ze().g.ride?.kind === 'focus'`, { what: 'the Focus, its engine' });
   await press('Escape', 'Escape', 27);
   out.esc = await silent('esc in the Focus');
