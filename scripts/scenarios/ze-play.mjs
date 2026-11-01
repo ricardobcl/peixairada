@@ -135,6 +135,16 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await g(`return [g.items.filter(i => i.out).length, g.nun, g.banner?.s]`), [3, 0, 'NUNCHAKU!'], 'every green swept');
   await g(`g.items.length = 0`);
 
+  // ---- controls that forgive: a jump just before he lands fires as he lands, a jump just off the awning still works, a kick in its cooldown comes when it is over
+  await g(`g.items.length = 0; g.spawn = 1e9; g.x = 300; g.vx = 0; g.y = 842 - 40; g.vy = 500; g.gy = 842; g.coyote = 0; g.jumps = 1;`);
+  await press('ArrowUp', 'ArrowUp', 38); await ctx.waitFor(`window.peix.ze().g.vy < -300`, { timeout: 3000, what: 'the jump pressed in the air, fired on landing' });
+  await ctx.waitFor(`window.peix.ze().g.y === 842`, { what: 'down again' });
+  await g(`g.kick = 0; g.cool = .05;`); await press('Space', ' ', 32); await ctx.waitFor(`window.peix.ze().g.kick > 0`, { timeout: 3000, what: 'the kick pressed in its cooldown' });
+  await ctx.waitFor(`window.peix.ze().g.cool === 0`, { what: 'the kick over' });
+  ctx.assert.equal(await g(`g.y = 700; g.vy = 40; g.gy = 842; g.coyote = .1; g.jumps = 0; window.__j = 0; return g.coyote > 0`), true);
+  await press('ArrowUp', 'ArrowUp', 38); await ctx.waitFor(`window.peix.ze().g.vy < -300`, { timeout: 3000, what: 'the jump just off an edge' });
+  await ctx.waitFor(`window.peix.ze().g.y === 842`, { what: 'down again' });
+
   // ---- the height: the awning, the sign (a trophy), down again; the double jump; a dash through a green
   await g(`g.x = 560; g.vx = 0; g.mass = 6;`);
   await press('ArrowUp', 'ArrowUp', 38); await ctx.waitFor(`window.peix.ze().g.y === 728 && window.peix.ze().g.vy === 0`, { what: 'on the awning' });

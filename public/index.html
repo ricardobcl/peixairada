@@ -13024,7 +13024,7 @@ const toolName = n => {
   const zeRound = (phase, day = phase === 'play' && `${zeToday()}|${zeDiff().id}`) => ({ phase, rnd: day ? zeSeed(day) : Math.random, bagRnd: day ? zeSeed(day + '|bag') : Math.random, t: 0, score: 0, mass: ZE_MASS0, streak: 0, greens: 0, mult: 1, level: 1, next: phase === 'title' ? Infinity : zeDiff().step,
     x: phase === 'title' ? 570 : ZE_W / 2, y: ZE_FLOOR, gy: ZE_FLOOR, jumps: 0, drop: 0, dash: 0, dashF: 0, dashCool: 0, vx: 0, vy: 0, f: phase === 'title' ? -1 : 1, run: 0, kick: 0, cool: 0, hurt: 0, chomp: 0, pump: 0,
     gape: false, spawn: .9, shake: 0, flash: 0, red: 0, gold: 0, power: null, nun: 0, holdAt: null, sweep: 0, avo: null, trophy: null, chouricos: 0, call: null, news: [], lunch: [], sq: null, freeze: 0, punch: 0, trail: [], trailT: 0, smoke: [], smokeT: 0, flex: 0, monAt: -99, items: [], bits: [], words: [], flames: [], bag: [], banner: null, dragon: 0, bolt: null,
-    lightT: 0, focusAt: -99, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
+    lightT: 0, focusAt: -99, jumpBuf: 0, kickBuf: 0, coyote: 0, ride: null, leaving: null, agent: false, cased: false, sel: 0, overT: 0, best: false, ko: '', demo: phase === 'title', card: 0, cardT: .5 });
   const ze = { tap: null, typed: '', mossad: false, keys2: { l: 0, r: 0 }, g: zeRound('title'), raf: 0, at: 0, frames: 0, glyphs: new Map(), sprites: new Map(), scene: null, was: null, drops: [], keys: { l: 0, r: 0 }, aim: null, music: null };
   const zeCalm = () => REDUCED.matches;
   const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0;   // a blink, or steady under reduced motion
@@ -13092,7 +13092,7 @@ const toolName = n => {
     const m = ze.music; if (m) m.rest = setTimeout(() => m.ac.suspend().catch(() => {}), 2600);   // after the trombone
   }
   function zeKick(g) {
-    if (g.cool > 0) return;
+    if (g.cool > 0) { g.kickBuf = ZE_FORGIVE; return; }
     g.cool = .48;
     if (!g.ride) { g.kick = .34; zeSfx('whoosh'); return; }
     const focus = g.ride.kind === 'focus';   // in a car the key is its horn
@@ -13114,13 +13114,15 @@ const toolName = n => {
     zeSfx('whoosh'); zeSfx('smash'); zeScore(g, greens.length * 5); if (greens.length >= 5) zeTrophy(g, 'nunchaku');
     return greens.length;
   }
+  // controls that forgive (2026-11-01, as Celeste's do): a press in the moment before it can happen is kept; off an edge he can still jump for a moment
+  const ZE_FORGIVE = .12, ZE_COYOTE = .1;
   /** ↑: a jump from what he stands on, high enough for Trota's awning (2026-10-30, the next round) — and at his full
    *  bulk, a second one in the air. ↓ drops him through the awning or the sign. */
   function zeJump(g) {
     if ((g.phase !== 'play' && !g.demo) || g.ride) return;
-    if (g.y >= g.gy - .5) { g.vy = -640; g.jumps = 1; }
+    if (g.y >= g.gy - .5 || g.coyote > 0) { g.vy = -640; g.jumps = 1; g.coyote = 0; g.jumpBuf = 0; }
     else if (g.mass >= ZE_MASS_MAX && g.jumps < 2) { g.vy = -580; g.jumps = 2; zeWord(g, 'DOUBLE!', g.x, g.y - 190 * zeSz(g), '#fff3c4'); }
-    else return;
+    else { g.jumpBuf = ZE_FORGIVE; return; }
     zeSquash(g, 'jump', .16); zeSfx('jump');
   }
   /** A dash (2026-10-30, the next round): ← or → twice within ZE_TAP s — quick, leaving afterimages, through a green
@@ -13515,8 +13517,10 @@ const toolName = n => {
     // what he stands on: the floor, or the awning or the sign come down on from above (G4, 2026-10-30, the next round)
     const wasY = g.y, gy = g.drop > 1e-6 || g.ride || g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, wasY), aloft = wasY < gy - .5;
     g.drop = Math.max(0, g.drop - dt); g.vy += 1500 * dt; g.y += g.vy * dt;
-    if (g.y >= gy) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.y = gy; g.vy = 0; g.jumps = 0; if (gy === ZE_PLATS[1].y) zeTrophy(g, 'telhado'); }
+    if (g.y >= gy) { if (aloft && g.vy > 200) zeSquash(g, 'land', .2); g.y = gy; g.vy = 0; g.jumps = 0; if (gy === ZE_PLATS[1].y) zeTrophy(g, 'telhado'); if (g.jumpBuf > 0) zeJump(g); }
     g.gy = g.vy < 0 ? ZE_FLOOR : zePlatform(g.x, g.y);
+    g.jumpBuf = Math.max(0, g.jumpBuf - dt); g.coyote = g.y >= g.gy - .5 ? ZE_COYOTE : g.vy < 0 || g.drop > 0 ? 0 : Math.max(0, g.coyote - dt);
+    if (g.kickBuf > 0) { g.kickBuf = Math.max(0, g.kickBuf - dt); if (g.cool <= 0 && g.kickBuf > 0) { g.kickBuf = 0; zeKick(g); } }
     g.run += Math.abs(g.vx) * dt * .05; g.cool = Math.max(0, g.cool - dt); g.hurt = Math.max(0, g.hurt - dt);
     if (g.ride) {   // the car: its wheels, its pitch as it pulls away or brakes (the A-Class's the more), its engine, its time
       const r = g.ride, pitch = Math.max(-.3, Math.min(.3, -(g.vx - r.vx) / Math.max(dt, .001) * .00012)) * (r.kind === 'aclass' ? 1.6 : .5);
