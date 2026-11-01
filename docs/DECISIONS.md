@@ -5,6 +5,68 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, near midnight — Zé in HD-2D, and rounds that end
+
+Ricardo: *"make some reserch on how to improve the ZE game, maybe give the HD-2D treatment"*. The page was a playable
+prototype of the real game cut out of the board (https://claude.ai/artifact/TsR1wbTQpQjnBoRwzuy8Ur), and the picks: *"Zé:
+HD-2D H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13; fixes F1, F2, F3, F4, F6, F9, B3; ship outright."* One commit
+each. Not picked: H14 (emoji cut to pixels), F5 (a jump you can shape), F7 (the Avó less often), F8 (Hardcore's cliff), V4
+(pixels for the food), B5 (the Zés Pereiras).
+
+**What HD-2D meant here.** Its makers keep the characters as pixel art and put the work into *"lighting mixed with pixels"*
+(Asano), starting from the art and building up rather than shrinking something realistic, and warn against just thickening
+the pixels. So his sprites are untouched and the stage has the depth. Dragon Quest III's remake kept a loud palette and
+used no pixel art in its backgrounds: so does this. A review of it complains of bloom glaring off the party: here bloom and
+rays are masked off what moves.
+
+**A stage, and three traps the prototype measured.**
+1. *Tilt-shift by screen height*, as the tutorials have it, blurs the food at the top, which is what must be read first. Blur
+goes by layer, baked once a sky.
+2. *A canvas handed to WebGL each frame* cost 7 ms in WebKit at any size (half-size 6.7, OffscreenCanvas 15.6, a CPU-side
+canvas 10): 55 fps, a 95th percentile of 30 ms, a sync with its GPU process that Chrome does not show. So the game's drawing code
+runs unchanged on `zgBatch`, an object shaped like a 2D context; a sprite goes up once. A car is too much path for that, so it
+is a sprite a wheel's phase (`zgCar`). The prototype then held 60 fps at 1440 × 1800 on an M4 Pro: 0.32 ms of JS a frame against
+the 2D canvas's 0.29, about 3.3 ms of GPU, 63 MB more; no one ingredient moved the GPU's time by more than the noise.
+3. *Normals*: a sprite's come from its own alpha blurred once a frame, so no map is drawn for any of them, emoji included.
+
+The 2D canvas stays as the fallback, for no WebGL2 or a lost context; `ze-game`, `ze-play` and `ze-sound-off` run on it (headless
+Chrome has no WebGL unless asked, `meta.gl`) and `ze-stage` on the stage.
+
+**Rounds that end (F1).** Two bots through real rounds, a script (`zeBot`) and the same with a person's limits (it looks four
+times a second, and does nothing on one look in six), 30 rounds a way, cut at ten minutes:
+
+| Limited bot, before | round | level | in the Focus | Avó out | ended |
+|---|---|---|---|---|---|
+| Easy | 10:00+ | 35 | 28 % | 20 % | 4 of 30 |
+| Normal | 10:00+ | 35 | 15 % | 24 % | 15 of 30 |
+| Hard | 6:12 | 30 | 9 % | 30 % | 25 of 30 |
+| Hardcore | 0:54 | 2 | 1 % | 10 % | 30 of 30 |
+
+The script never lost on the first three. The card said to cap his speed and make each level cost more: **that made rounds longer**,
+and falling faster did nothing, because meat and greens stay level with each other at any speed. What ends a round is a green biting one more
+every five levels (`zeBite`), which was not on the card and is said by the level's banner. Now the limited bot's rounds are 5:08, 4:37,
+3:10 and 0:43, the script's 9:33, 6:14, 4:27 and 1:53, the Focus 2–3 % for the limited bot on Normal, the Avó 10–14 %. `ze-pace.mjs`
+holds the shape with wide bounds. Bots are not people: this wants playing. A fuller table is in the page.
+
+**Found on the way:** at frames of 50 ms a drop from the sign fell through the awning (the drop's time ran out to a rounding error above
+zero), which is what made `ze-play` fail now and then under load. Fixed.
+
+**What WebKit found in the build** (the first run of it there, none of it visible in Chrome's software GL but the first):
+- The mist was black: its colour was four numbers for a `vec3`, a GL error every frame and the uniform left at zero. `ze-stage` now asks
+  `getError()` after every moment.
+- Every other opening was on the 2D canvas. `zgFree` loses the context, WebKit says so a little later, and the handler for a real loss then
+  turned the stage off for the next opening. The close's own loss is now no loss.
+- About 200 MB stayed after each close, for good as far as three openings could tell: a lost context there keeps its textures until a
+  collection, and they count in the web process's *graphics*. Everything the context made is deleted by hand (`zgKeep`), each canvas let go
+  once uploaded (`zgLetGo`). `/usr/bin/footprint` on the web process split it. `ze-webkit.mjs` holds the openings and the memory.
+
+**The build's numbers**, WKWebView, M4 Pro, 1444 × 1805: 60 fps, a 95th percentile of 18 ms and a worst frame of 18–23 ms on every sky, in the
+dragon, in the Focus and after a reopening; none of the prototype's 42–76 ms frames in any sample. Opening costs a hitch: 290 ms on the key
+(shaders and the first sky), then three frames of 40–65 ms until the skies are baked. Memory is more than the prototype's page said: the board's 290 MB, **600–710 MB
+while the game is open**, back to 275–330 MB closed, with a peak of about 1.1 GB for the quarter of a second the skies bake.
+
+**Open:** that peak, not looked into; it goes away by itself and the game is opened by hand. No slower Mac has run this.
+
 ## Decisions of 2026-11-01, later at night — Ring is the sidebar's one style
 
 Ricardo: *"ring is the only mode, remove the sidebar style and the code for "glass""*

@@ -528,18 +528,18 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
-* **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live): a 720 × 900 canvas, its frames only while
-  open and not paused or called; its own Web Audio (the vira, the malhão or the funk — `prefs.zeBand`; the cars' and his
-  bulk's band, `zeMode`; MOSSAD's radio, `zeRadio`), made by the press that starts a round, suspended by a pause, closed
-  with the dialog or by M. He is pixels in the code, face and body (`ZE_FACE`, `zeBuild`), no picture and no setting;
-  bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon (`ZE_DIFFS`, `zeDragon`); a sky
-  a level (`ZE_SKIES`, `ze.scene`, let go on close). **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it
-  uses); the title's demo (`g.demo`) takes chance's, makes no sound and wins nothing. **It hears the board**: a chat
-  that starts asking stops it on a card (`zeHeard` from the session event; the page's Esc asks `zeCallEnd` first),
-  today's lunch falls (`zeLunch`), the room gets a score only by a K.O. button (`zePost`, `zePoll`), Zé walks across All
-  caught up (`ZERO_HTML`'s `.zewalk`). Nothing shaking, flashing or blinking under reduced motion (`zeCalm`). **No sound
-  outlives it**: every way out closes its context (`zeHush` on `close`). → `ze-game.mjs`, `ze-play.mjs`, `ze-board.mjs`,
-  `ze-sound-off.mjs`.
+* **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live, its `.lab` the harness's): a 720 × 900 picture, its frames
+  only while open and not paused or called; its own Web Audio (`prefs.zeBand`, `zeMode`, `zeRadio`, a room a sky `zeRoom`), made by the press that
+  starts a round, suspended by a pause, closed with the dialog or by M. He is pixels in the code (`ZE_FACE`, `zeBuild`), no picture and no setting;
+  bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon (`ZE_DIFFS`, `zeDragon`); rounds of a few minutes (`ZE_PACE`,
+  `zeBite`); a sky every `ZE_SKY_LEVELS`. **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it uses); the title's demo (`g.demo`) takes
+  chance's, makes no sound and wins nothing. **It hears the board**: a chat that starts asking stops it on a card (`zeHeard`; the page's Esc asks
+  `zeCallEnd` first), today's lunch falls (`zeLunch`), the room gets a score only by a K.O. button (`zePost`, `zePoll`), Zé walks across All caught up
+  (`.zewalk`). **The picture is a stage on the GPU** (2026-11-01, HD-2D; `zg`, `zgOn`, `zgDraw`, `zgFree`): WebGL2 made with the dialog and let go with
+  it **by hand** (`zgKeep`, `zgLetGo`: WebKit's lost context holds its textures until a collection, and tells of it late); none or lost, the 2D canvas (`zeDraw`). The set baked a sky (`zgScene`, `ZE_RIGS`), what moves `zeActors` on a 2D-shaped batcher (`zgBatch`) —
+  **never a canvas handed to WebGL a frame**: 7 ms in WebKit at any size —, `zeUi` the top canvas. **Blur by layer, never by screen height**: what falls
+  stays sharp. Nothing shaking, flashing or blinking under reduced motion (`zeCalm`); **no sound outlives it** (`zeHush` on `close`). → `ze-game.mjs`,
+  `ze-play.mjs`, `ze-stage.mjs`, `ze-webkit.mjs`, `ze-pace.mjs`, `ze-board.mjs`, `ze-sound-off.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   ticks, titles, pins, PR turns… — whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
@@ -1012,7 +1012,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `sample`'s stacks, `--prefs '<json>'` another look (`'{"look":"light","skinFollow":false}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
-  (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every
+  (`server`, `fake`, `fixture`, `env`, `key: false`, `gl` a software WebGL, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen, every page in the board, every PR on a card**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up on any way out (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits

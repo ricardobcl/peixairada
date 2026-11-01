@@ -183,12 +183,14 @@ than your own: one that watches stories on a schedule can be challenged.
 
 **⌥⌘Z** is a break: Zé, the Bruce Lee of Barcelos, eats the meat that falls and gets buff; every vegetable makes him
 thinner, and when only his bones are left it's over — dodge them, or kick them out of the sky. Mind the burger: it has
-lettuce. Three meats in a row bring a Ford Focus (five fast seconds); three greens, a Mercedes A-Class (five slow
+lettuce. Six meats in a row bring a Ford Focus (five fast seconds); three greens, a Mercedes A-Class (five slow
 ones). ← → run, ↑ jumps, space kicks (or honks), P pauses, M turns the sound off and on, T switches the music between a
 vira from Barcelos and the funk; esc or ⌥⌘Z again closes it. The golden rooster is muscle, five in a row is a combo,
 and level 3 is **ENTER THE DRAGON**: Zé twice his size and on fire, eating everything for sixteen seconds. Pick the
-way to play on the title — EASY, NORMAL, HARD or HARDCORE (five meats in every fifty) — each with its own best. Keep
-an eye out for a briefcase.
+way to play on the title — EASY, NORMAL, HARD or HARDCORE (five meats in every fifty) — each with its own best. Every
+five levels the greens bite harder, so a round lasts a few minutes; let one pass very close and it pays: RASPÃO! Keep
+an eye out for a briefcase. It plays on a lit terrace over the Cávado, with Barcelos out of focus across the water, a new
+sky every three levels and fireworks at a level-up, wherever the Mac has WebGL2.
 
 ## Keys
 
