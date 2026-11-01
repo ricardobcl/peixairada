@@ -2,8 +2,68 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-31. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-01 — the chat laid in a frame, Ink and Stage, Softened, the inks fitted (round XV)
+
+Round XV laid nine ways to do the themes over the made-up board (Sidebar Ring, a blue project open, each measured on
+the page as drawn): today's light was white on white — the chat at L* 97, the toolbar, the resume bar and the dialogs
+white, the sidebar 1.10:1 against the chat — and failed small text (the watching teal 3.50, the link 3.60, the PR
+chips' inks 3.71–4.34, the asking red 3.94, muted on the sidebar 4.49); today's dark was sound but one surface, its PR
+inks 3.99–4.18; Gruvbox's 3.15–4.12. Ricardo's pick: *"Themes: T3, T5, T6 and T9 as settings, inks fitted."* — the
+page's line: the first id the pick, the rest offered as settings; *inks fitted* its box "Fit the small inks in every
+theme, today's light and dark and the picker's included, so each holds 4.5:1 on its grounds"; *keep today's* not ticked.
+
+* **The board's own light and dark are T3, Inset**: a frame — the window's ground, the tiles' wallpaper, the sidebar,
+  the status bar (`--frame`, `--bar`) — and the chat a step lighter in it. Light: nothing above L* 95, the chat
+  #f1f0ec, the header and dialogs #f5f4f0, the frame #dedcd6 (1.20:1 against the chat). Dark: a near-black frame
+  #0e0e0d, the chat a step up at #1c1c1a. In the sidebar layout the chat is a sheet — 8 px in, 12 px round, a hairline
+  and a soft shadow; at the notch its corner there is 10 px, concentric with the screen's as the tiles' are, and the cut
+  round the housing is as before. Tiles keep their square panels; the wallpaper is the frame. The window's ground in
+  main.swift follows `--frame` now (#dedcd6, #0e0e0d): **the app needs `mac/build.sh install`** for its first frame.
+* **A theme of the picker stays flat**: its palette was made without a frame (Black's would be black on black). The
+  inset's rules are `:root:not([data-skin])`.
+* **Frame: Matching · Ink · Stage** (T5 and T6, as settings — Settings › Appearance, under the theme rows): Ink a
+  graphite frame round the light chat, Stage a paper one round the dark chat; each changes its own appearance (the
+  study showed Ink only in light, Stage only in dark), so Ink in dark and Stage in light are Matching, and the row's
+  words say so. Off, with why, under a theme of the picker. **The sheet's appearance is the root's in every look, so
+  only what sits on the frame moved**: `<html data-frame>` is the frame's appearance, the list and the status bar wear
+  the frame's tokens (its derived ones — `--ctl`, `--side-glass`, `--tile-line` — set again beside them), and the seven
+  rules for them that read `data-theme` read `data-frame` (the card's lift and spot, its project's name in both layouts,
+  the ALL card's white ring, the status bar's ground). No `@scope`: the study counted ~14 dark-reading rules, but the
+  header's, the tour's and the tabs' sit on the sheet. Increase Contrast reaches the frame's tokens; a watching card's
+  blip reads the card's teal, not the root's.
+* **Softened** (T9, as a setting): the board's light as it was before the frame, softened — flat, the whites gone, the
+  grounds two steps apart (#efeee9, #f5f4f0, the sidebar and status bar #e3e2dc) — a theme of the picker, second in the
+  light row after the board's own, its projects' colours kept (`asSet`). For whoever wants a light with no frame.
+* **The inks fitted**: each small ink moves in OKLCH lightness, its hue and chroma kept, away from its grounds until it
+  holds 4.6 (a margin for grounds composited) on the chat, the header, the sidebar's grey and the status bar; muted on a
+  bubble and a tool row too; the accent on the chat and the header; inline code on its tint; a PR's or a ticket's state
+  on its chip's wash; the asking red on its own; syntax on the code block. The board's own (light, dark, Ink's and
+  Stage's frames) are fitted in the CSS from the study's deeper values (light) and today's (dark); a theme of the
+  picker by `themeInks` as `skinCss` writes it (6 ms for all fifteen) — its own inks, and the board's PR, ticket and VS
+  Code colours of its appearance, which it used to inherit unfitted. The clauding amber stays a fill (the rings, the
+  dots); set as text it is `--working-ink`. Measured in the page by `lib/inkcheck.mjs`: 2268 pairs in 18 looks, the
+  lowest 4.58. Where a theme kept its small text faint by design it moves most: Nord's asking red to a pink
+  (#bf616a → #ffa8ae), its PR inks lighter; Catppuccin Latte's comments darker (#9ca0b0 → #636776), its orange inline
+  code to a brown; Everforest's and Kanagawa's muted lighter. The light's semantic colours are darker — the asking red
+  #a61e22, the ready green #116e3d, the watching teal #066b6b — so the fills that share them (the sonar, the lane
+  glyphs, the monitor's light) are too.
+* **Not built**: T1 Paper, T2 Stone, T4 Dim, T7 the frame in the project's tint, T8 the light themes in pairs (not
+  picked); today's light and dark as choices (not ticked). A page in the pane — a native view over the chat column — is
+  square at the sheet's two lower corners: rounding it is the shell's (a corner radius on the pane's views), not done.
+  The unread badge is white on a fill, not an ink on a ground: not fitted (a solid chip's number, the ground on its
+  state's colour, is the same pair as its ink on the ground, so it is).
+* Checked: `frame-themes.mjs` (new: the frame in light, tiles and sidebar; Ink graphite round the light chat, the cards
+  as on dark, kept over a reload and in the head's first paint; Ink in dark Matching; Stage paper round the dark chat in
+  both layouts; the row off under Softened, the board flat; the inks), `test/inks.test.mjs` (new: every look's inks),
+  `themes.mjs` (sixteen tiles now), `project-colors.mjs` and `reduced-motion.mjs` (the new panel, ink and reds),
+  `sidebar-layout.mjs` (the sheet's corner at the notch), `tiles.mjs`, `head-menu.mjs`, `notch.mjs`,
+  `split-halves.mjs`, `pane-tabs.mjs`, `settings-panes.mjs` passing; `head-float.mjs` fails as it did before (the words
+  34 px under the header, not 35). The made-up board shot in every look, both layouts, Ring and Glass, and the sheet in
+  WebKit's own frame. `npm run perf`: tiles rest 3.3 % of a core, the pointer 8.2, a scroll 16.0, home 14.1, a chat
+  opened 117 ms, 244 layers; the sidebar's Glass 3.1 / 4.4 / 15.1 / 13.7, 116 ms, 265 layers; no rule broken.
 
 ## Decisions of 2026-11-01 — the fill's menu bar hidden beside the housing too
 

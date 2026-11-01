@@ -344,8 +344,13 @@ npm run map                         # rewrite the section maps at the top of ser
   `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
   `repoColor`; none under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
   **Black** (2026-10-30) is the board's own dark on true black: its grounds black by rules of its own
-  (`:root[data-skin="black"]` — the wallpaper without glow or grain, `wallOn`; no wash on the transcript).  **A colour that reads no token is one no theme
-  reaches.** → `themes.mjs`.
+  (`:root[data-skin="black"]` — the wallpaper without glow or grain, `wallOn`; no wash on the transcript). **The board's
+  own lay the chat in a frame** (2026-11-01; a theme is flat): `--frame` the window's ground, the wallpaper, the sidebar
+  and the status bar, the chat a sheet in it in the sidebar (`:root:not([data-skin])`). **`data-frame` is the frame's
+  appearance** (`prefs.frame`: Ink, Stage), which what sits on it — `#sessions`, `#sbar`, wearing the frame's tokens —
+  reads, never `data-theme`. **Every small ink holds 4.5:1 on its grounds**: the own fitted in the CSS, a theme's by
+  `themeInks`; the amber as text is `--working-ink`. **A colour that reads no token is one no theme reaches.**
+  → `themes.mjs`, `frame-themes.mjs`, `test/inks.test.mjs`.
 * **The header floats** (2026-10-09; `<html data-head="float">` in the markup, never toggled): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of
   `#chat` placed in column 1: two overlapping items, one auto-placed, take two columns). A half with a strip pads down
@@ -977,8 +982,8 @@ npm run map                         # rewrite the section maps at the top of ser
   /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
   page's `Notification`, the server's osascript) skip it. A new poster reads `quiet` — and `heading`, the server's
   title for an alert that is not Claude's. → `notifications.mjs`.
-* **A change to `:root`'s `--bg` moves the two hex pairs in main.swift's `buildWindow` with it**: the board's web view
-  draws no ground, the window's colours are the page's `--bg` per appearance.
+* **A change to `:root`'s `--frame` moves the two hex pairs in main.swift's `buildWindow` with it**: the board's web view
+  draws no ground, the window's colours are the page's `--frame` per appearance.
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
 * `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or their `--test-state` dir).
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust in the browser profile. → Findings: *VS Code Web*.

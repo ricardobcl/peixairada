@@ -102,9 +102,13 @@ the PR list under the header is as tall as you drag its foot.
 ## Make it yours
 
 Every look is in Settings › Appearance and Chat list (⌘,), or a key: the chat list hidden and the chat the whole width
-(⌥⌘B, or the first button in the status bar, whose mark says which), Black — the board's own colours on true black —
-and Omarchy's twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one of each following it; your projects
-keep their hue in the theme's shades. The layout is tiles — panels over a wallpaper, each edged in its project's
+(⌥⌘B, or the first button in the status bar, whose mark says which). The board's own light and dark lay the chat in a
+frame a step darker — the window, the list and the status bar — and under *Frame* that frame can be the other
+appearance's: *Ink*, a graphite frame round the light chat, or *Stage*, a paper one round the dark chat. Beside them are
+Softened — the board's light, flat, with no white in it —, Black — the board's own colours on true black — and
+Omarchy's twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows,
+or one of each following it; your projects keep their hue in the theme's shades, and in every theme the small text
+reads at 4.5:1 or better. The layout is tiles — panels over a wallpaper, each edged in its project's
 colour — or a Mac sidebar, the chats as rows, in one of four styles (Settings › Appearance › Layout): *Glass*, frosted
 over the open chat's colour with the board's ring round a chat at work and its sonar round a question; *Ring*, the same
 lights on a plain sidebar, the open chat solid in its project's colour; *Edge*, the project's colour an edge down each row with a
@@ -252,7 +256,7 @@ or *key* to find a setting wherever it is):
 
 - **General** — notifications and sounds, which editor a file path opens in, and (in the app) which full screen ⌃⌘F is.
 - **Appearance** — Auto, Dark or Light (Auto follows macOS), a theme for each as tiles (⌥⌘Y shows them all on the
-  board), the layout (tiles, or a sidebar in one of four styles), the text size, and what else the status bar shows (a right-click on the bar
+  board), the frame round the chat (Matching, Ink or Stage), the layout (tiles, or a sidebar in one of four styles), the text size, and what else the status bar shows (a right-click on the bar
   picks that too).
 - **Chat list** — card size (compact, or larger only where a chat needs you).
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
