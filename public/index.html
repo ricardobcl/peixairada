@@ -12941,6 +12941,11 @@ const toolName = n => {
     { id: 'normal', name: 'NORMAL', c: '#ffd23f', say: 'the classic', speed: 1, spawn: 1, veg: [.34, .03, .55], reach: 1, step: 150, drift: 4 },
     { id: 'hard', name: 'HARD', c: '#ff5a64', say: 'faster, and greener', speed: 1.3, spawn: .78, veg: [.42, .03, .62], reach: .85, step: 120, drift: 2 },
     { id: 'hardcore', name: 'HARDCORE', c: '#c77dff', say: 'five meats in every fifty', speed: 1.25, spawn: .7, bag: [5, 50], reach: .85, step: 60, drift: 3 }];
+  // a round of 3 to 5 minutes (2026-11-01; ze-pace.mjs): two bots never ended one on Normal in ten. His speed stops growing at
+  // level 1 + cap, each level costs up × more than the last, and every bite levels a green takes one more: meat and greens
+  // kept level with each other at any speed of falling, so that last one is what ends a round
+  const ZE_PACE = { cap: 10, up: .2, bite: 5 };
+  const zeBite = g => 1 + Math.floor((g.level - 1) / ZE_PACE.bite);
   const ZE_DRAGON_LEVEL = 3, ZE_DRAGON = 16, ZE_DRAGON_IN = 1.2, ZE_DRAGON_OUT = .8;
   // his bulk: a meat adds one (to ZE_MASS_MAX), a green takes one; none left is his bones, and the K.O.
   const ZE_MASS0 = 6, ZE_MASS_MAX = 12;
@@ -13337,10 +13342,10 @@ const toolName = n => {
   function zeScore(g, n) {
     g.score += n;
     if (g.dragon || g.avo || g.score < g.next) return;
-    g.level++; g.next += zeDiff().step;
+    g.level++; g.next += zeDiff().step * (1 + (g.level - 2) * ZE_PACE.up);
     if (g.level === ZE_DRAGON_LEVEL) zeDragon(g, true);
     else if (g.level % ZE_AVO_EVERY === 0) zeAvo(g);
-    else { zeBanner(g, `LEVEL ${g.level}!`); zeSfx('level'); }
+    else { zeBanner(g, `LEVEL ${g.level}!`, g.level % ZE_PACE.bite === 1 ? `THE GREENS BITE ${zeBite(g)} NOW` : ''); zeSfx('level'); }
   }
   function zeDragon(g, on) {
     g.streak = 0; g.mult = 1;
@@ -13452,7 +13457,7 @@ const toolName = n => {
       return zeScore(g, it.pts);
     }
     if (it.kind === 'veg' && !g.dragon) {
-      Object.assign(g, { mass: g.mass - 1, streak: 0, mult: 1, hurt: 1.4, red: .2, shake: .35, pump: -.3, greens: g.greens + 1 });
+      Object.assign(g, { mass: g.mass - zeBite(g), streak: 0, mult: 1, hurt: 1.4, red: .2, shake: .35, pump: -.3, greens: g.greens + 1 });
       zeWord(g, it.say, it.x, it.y - 24, '#9be15d', true); zeChunks(g, it.x, it.y, 'veg', 10); zeSfx('bleh');
       if (g.demo) g.mass = Math.max(g.mass, 3);   // the demo never ends
       else if (g.mass <= 0) return zeOver(g);
@@ -13501,7 +13506,7 @@ const toolName = n => {
     const D = zeDiff(), k = zeSz(g), car = g.ride && ZE_CARS[g.ride.kind];
     // Zé: runs where the keys or the pointer say — quicker each level, as the dragon, in the Focus; slower in the A-Class
     const aim = ze.aim == null || Math.abs(ze.aim - g.x) < 10 ? 0 : Math.sign(ze.aim - g.x), want = g.demo ? zeBot(g) : ze.keys.r - ze.keys.l || aim;
-    g.vx += (want * (380 + (g.level - 1) * 12) * (g.dragon ? 1.15 : 1) * (car ? car.speed : 1) - g.vx) * Math.min(1, dt * (car ? 6 : 12));   // a car takes its time
+    g.vx += (want * (380 + Math.min(g.level - 1, ZE_PACE.cap) * 12) * (g.dragon ? 1.15 : 1) * (car ? car.speed : 1) - g.vx) * Math.min(1, dt * (car ? 6 : 12));   // a car takes its time
     if (want) g.f = want;
     g.dashCool = Math.max(0, g.dashCool - dt);
     if (g.dash > 0) { g.dash = Math.max(0, g.dash - dt); g.vx = g.dashF * 1150; g.f = g.dashF; }
@@ -13975,7 +13980,7 @@ const toolName = n => {
       zeText(cx, '3 GREENS IN A ROW: A MERCEDES A-CLASS — SLOWER', mid, y0 + 92, 15, ZE_CARS.aclass.c, 'center');
       zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL}: ENTER THE DRAGON`, mid, y0 + 124, 16, '#ff7a2a', 'center');
       zeText(cx, `EVERY ${ZE_AVO_EVERY}TH LEVEL: THE AVÓ DA HORTA — KICK HER COUVES BACK`, mid, y0 + 152, 14, '#9be15d', 'center');
-      zeText(cx, 'a new sky every 3 levels · the same falls for everyone today', mid, y0 + 182, 12, '#d9c7e8', 'center', 600);
+      zeText(cx, `a new sky every ${ZE_SKY_LEVELS} levels · every ${ZE_PACE.bite} the greens bite harder · the same falls for all today`, mid, y0 + 182, 12, '#d9c7e8', 'center', 600);
     } else {
       const won = zeTrophies().won;
       ZE_TROPHIES.forEach(([id, e, name, how], j) => {
@@ -14991,7 +14996,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
   }
 
   // the harness's hands: a round the bot plays, and what brings a moment on
-  ze.lab = { zeDragon, zeRide, zeAvo, zeDrop, zeStep, zeBot, ZE_DIFFS, round: () => zeRound('play'), draw: () => zeDraw(), demo() { const g = zeRound('play'); Object.assign(g, { demo: true, next: Infinity, lunch: [] }); ze.g = g; zeGo(); return g; } };
+  ze.lab = { zeDragon, zeRide, zeAvo, zeDrop, zeStep, zeBot, round: () => zeRound('play'), draw: () => zeDraw(), demo() { const g = zeRound('play'); Object.assign(g, { demo: true, next: Infinity, lunch: [] }); ze.g = g; zeGo(); return g; } };
 
   // ---- the sound: a funk band of oscillators, and what the round does to it
   /** The context, made by a press that starts a round (a page may not start sound by itself). */
