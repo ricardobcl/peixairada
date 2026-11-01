@@ -88,8 +88,8 @@ export default async function (ctx) {
   ctx.assert.equal(out.aclass.mode, 'aclass'); ctx.assert.ok(out.aclass.lp < 1500, `behind glass: ${out.aclass.lp} Hz`); ctx.assert.ok(out.aclass.smoke > 0, 'black smoke');
   await g(`g.ride.t = .05`); await ctx.waitFor(`!window.peix.ze().g.ride`, { what: 'the A-Class gone' });
 
-  // ---- level 2's sky
-  await g(`g.level = 2`);
+  // ---- the next sky
+  await g(`g.level = 4`);
   await ctx.waitFor(`window.peix.ze().scene?.i === 1`, { what: 'the blue hour' });
   await ctx.sleep(1500); await ctx.shot('2-blue-hour', await canvas());
   await g(`g.level = 1; g.next = 1e9; g.items.length = 0; g.mass = 6; g.hurt = 0; g.streak = 0;`);   // no level comes by itself from here: no dragon

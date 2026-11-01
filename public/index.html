@@ -13975,7 +13975,7 @@ const toolName = n => {
       zeText(cx, '3 GREENS IN A ROW: A MERCEDES A-CLASS — SLOWER', mid, y0 + 92, 15, ZE_CARS.aclass.c, 'center');
       zeText(cx, `LEVEL ${ZE_DRAGON_LEVEL}: ENTER THE DRAGON`, mid, y0 + 124, 16, '#ff7a2a', 'center');
       zeText(cx, `EVERY ${ZE_AVO_EVERY}TH LEVEL: THE AVÓ DA HORTA — KICK HER COUVES BACK`, mid, y0 + 152, 14, '#9be15d', 'center');
-      zeText(cx, 'a sky a level · the same falls for everyone today', mid, y0 + 182, 12, '#d9c7e8', 'center', 600);
+      zeText(cx, 'a new sky every 3 levels · the same falls for everyone today', mid, y0 + 182, 12, '#d9c7e8', 'center', 600);
     } else {
       const won = zeTrophies().won;
       ZE_TROPHIES.forEach(([id, e, name, how], j) => {
@@ -14179,8 +14179,8 @@ const toolName = n => {
    *  a striped sun going down —, Barcelos on the horizon (zeTown, each frame, shifting a little against his run), then
    *  the Minho's hills, Trota's and the rooster on its plinth, and a floor of azulejos from ZE_FRONT down. The sky and
    *  the front are drawn once per size and sky (ze.scene), each in a canvas of its own; a new sky fades in over the last
-   *  (ze.was). A sky a level (2026-10-30, the next round, ZE_SKIES): 1 the sunset, 2 the blue hour under a full moon, 3
-   *  the dragon's storm, 4 Minho rain, 5 dawn, then round again — the hills', the town's colours, its windows lit after
+   *  (ze.was). A sky every three levels (2026-11-01; ZE_SKIES, ZE_SKY_LEVELS): first the sunset, then the blue hour under a full moon, then
+   *  the dragon's storm, Minho rain, dawn, then round again — the hills', the town's colours, its windows lit after
    *  dark, a tint over the front. */
   const ZE_FRONT = 636;
   const ZE_SKIES = [
@@ -14190,7 +14190,8 @@ const toolName = n => {
     { name: 'rain', stops: ['#0b1220', '#1b2638', '#334259', '#4d5b70'], hills: ['#26303f', '#18202c'], town: '#1d2633', lit: .8, stars: 0, rain: true, clouds: true, tint: 'rgba(15, 25, 45, .45)' },
     { name: 'dawn', stops: ['#243a6a', '#5f74ae', '#e7a2a0', '#ffe0a0'], hills: ['#6f5a8c', '#46386a'], town: '#5c4a7c', lit: .2, stars: 20, moon: 'faint', tint: 'rgba(255, 200, 180, .08)', sun: { x: 540, y: 820, r: 110, a: '#fff2b0', b: '#ffb08a' } }];
   const ZE_CLOUDS = [[120, 90, 160, 40, '#1f2a3c'], [420, 60, 220, 46, '#1a2433'], [650, 120, 150, 36, '#222e41'], [260, 180, 170, 30, '#28344a'], [560, 230, 190, 28, '#2a374d']];
-  const zeSkyOf = g => g.phase === 'title' ? 0 : (g.level - 1) % ZE_SKIES.length;
+  const ZE_SKY_LEVELS = 3;   // a sky lasts three levels (2026-11-01): the bots' levels came every 17 s, too quick for a whole rig of light
+  const zeSkyOf = g => g.phase === 'title' ? 0 : Math.floor((g.level - 1) / ZE_SKY_LEVELS) % ZE_SKIES.length;
   function zeScene(c, i) {
     if (ze.scene?.w === c.width && ze.scene.i === i) return ze.scene;
     if (ze.scene?.w === c.width) ze.was = { scene: ze.scene, a: 1 };   // the last sky, fading out over the new
