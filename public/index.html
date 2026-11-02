@@ -1895,7 +1895,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .tool .tst.err::before, .tool .tst.err::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; margin: -1px 0 0 -5px; border-radius: var(--r-1); background: var(--needs); rotate: 45deg; }
   .tool .tst.err::after { rotate: -45deg; }
   :is(.tool, .toolgroup > summary) .tst.run { border: 1.5px solid var(--line); }
-  #log.working :is(.tool, .toolgroup > summary) .tst.run { border-color: var(--working); border-right-color: transparent; animation: ring .8s linear infinite; }
+  :is(#log, #agv).working :is(.tool, .toolgroup > summary) .tst.run { border-color: var(--working); border-right-color: transparent; animation: ring .8s linear infinite; }
   .tool.err { color: var(--needs); }
   .sysline { margin: 10px auto; text-align: center; font-size: var(--fs-xs); color: var(--muted); }
   .sysline.day { margin: 14px auto 12px; }
@@ -2003,6 +2003,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
   /* ---- the timeline tab: the chat and its PRs in one order (2026-10-17) ---- */
+  /* An agent's tab (2026-11-02): its transcript, read-only, a tab of the chat (placeAgent) */
+  #agv { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); }
+  #agv[hidden] { display: none; }
+  #agv .agvh { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 8px 18px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+  #agv .agvh .ic { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  #agv .agvh b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
+  #agv .agvh .say { flex: none; margin-left: auto; }
+  #agv .agvh .say.fail { color: var(--needs); }
+  #agv .agvx { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; }
+  #agv .agvx:hover { background: var(--ctl-hi); color: var(--ink); }
+  #agv .agvlog { overflow-y: auto; padding: 16px 18px 40px; overscroll-behavior: contain; zoom: var(--chat-zoom, 1); isolation: isolate; }
   #tv { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); container: tv / inline-size; }
   #tv[hidden] { display: none; }
   #tv .tvbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); min-width: 0; }
@@ -2949,6 +2960,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         <div class="gbody haslog" id="gbody">
           <div id="chg" hidden></div>
           <div id="tv" hidden></div>
+          <div id="agv" hidden></div>
           <div id="log"><div class="empty"></div></div>
           <div class="gterm" id="term" hidden><div class="tbody" id="termBody"></div></div>
         </div>
@@ -3219,6 +3231,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · the changes tab: what this chat changed in its folder (2026-10-10)
 //   js  · a review of the diff (2026-10-28)
 //   js  · the timeline tab: the chat and its PRs in one order (2026-10-17)
+//   js  · an agent's tab (2026-11-02, round XX): its transcript, read-only, beside the chat
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
 //   js  · tiles: the board's panels laid out as Hyprland's (2026-10-10)
 //   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
@@ -4252,6 +4265,7 @@ const toolName = n => {
     folder: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     // ± in a square: a chat's changes, its diff (2026-10-10)
+    lock: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>',   // read-only: an agent's tab (2026-11-02)
     timeline: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5v13M7.5 4.5h6M7.5 11.5h4"/><circle cx="4.5" cy="4.5" r="1.75"/><circle cx="4.5" cy="11.5" r="1.75"/></svg>',   // the timeline tab (2026-10-17)
     stop: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2.5"/></svg>',   // a turn that stopped short (2026-10-31)
     wake: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5.75V8.5l2 1.25M3 3.25 4.75 1.75M13 3.25l-1.75-1.5"/></svg>',   // a wake-up the chat set itself (2026-10-31)
@@ -7904,6 +7918,8 @@ const toolName = n => {
     if (agc && !agEven()) { e.stopPropagation(); agSwitch(card.dataset.id, 'fold'); renderBoard(); return; }
     const agx = e.target.closest('.agr[data-k="_more"], .agr[data-k="_done"], .agr[data-k="_sum"]');
     if (agx) { e.stopPropagation(); agSwitch(card.dataset.id, agx.dataset.k === '_more' ? 'more' : 'done'); fillAgents(); return; }
+    const agr = e.target.closest('.agr[data-ag]');
+    if (agr) { const cs = state.sessions.get(card.dataset.id), r = cs?.agentRows?.find(x => x.id === agr.dataset.ag); if (r) { e.stopPropagation(); agOpen(cs, r); return; } }
     const cpr = e.target.closest('.cpr, .tmx [data-url]');   // a chip, or the matrix's square or number (2026-11-01)
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const ctk = e.target.closest('.ctk');
@@ -8058,7 +8074,7 @@ const toolName = n => {
   // The copy button on a code block (2026-09-27, night): the block's text to the clipboard — the async API, else the
   // selection and execCommand (a page that is not a secure context, an old engine) — and "copied" on the button for a
   // second. The button itself is what says whether it worked; there is no toast.
-  $('#log').addEventListener('click', async e => {
+  for (const box of [$('#log'), $('#agv')]) box.addEventListener('click', async e => {
     const b = e.target.closest('.codebox .copy'); if (!b) return;
     const pre = b.closest('.codebox').querySelector('pre'), text = (pre.querySelector('code') || pre).textContent;
     let ok = false;
@@ -9474,7 +9490,7 @@ const toolName = n => {
   let blankSeq = 0;
   const isBlankTab = k => /^new:/.test(k || '');
   const blankOf = (s, k) => (s && blanks.get(s.id) || []).find(b => 'new:' + b.n === k) || null;
-  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...(s && timelineOpen.has(s.id) ? ['timeline'] : []), ...paneKeys(s), ...(s && blanks.get(s.id) || []).map(b => 'new:' + b.n)];
+  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...(s && timelineOpen.has(s.id) ? ['timeline'] : []), ...(s ? (agentTabs.get(s.id) || []).map(a => 'agent:' + a.id) : []), ...paneKeys(s), ...(s && blanks.get(s.id) || []).map(b => 'new:' + b.n)];
   const tabOf = s => placeOf(s)[focusG];
   /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
       There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
@@ -9539,7 +9555,7 @@ const toolName = n => {
       if (want) { if (tm.id !== want.id || tm.lost) attachTerm(tm, want); }
       else if (tm.id) { detachTerm(tm); showDrawer(tm, false); }
     }
-    placeLog(s, p); placeChanges(s, p); placeTimeline(s, p);
+    placeLog(s, p); placeChanges(s, p); placeTimeline(s, p); placeAgent(s, p);
     renderTabs(s, p); placeBlanks(s, p); postPane(s, p);
     keepTabsSoon();   // the tabs as they stand outlive a reload (2026-10-16)
   }
@@ -9602,6 +9618,7 @@ const toolName = n => {
         : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
         : k === 'timeline' ? tab(k, 'timeline', 'This chat and its PRs in the order things happened · ⌥⌘J', 'Close the timeline', ICON.timeline)
+        : isAgentTab(k) ? tab(k, agTabName(s, k), `${agTabName(s, k, true)} · an agent of this chat's, read-only`, 'Close this tab — the agent carries on', ICON.lock)
         : isPageTab(k) ? tab(k, paneLabel(paneUrl(k)), GH_PR.test(paneUrl(k)) ? `${paneUrl(k)} · ⌥⌘G` : paneUrl(k), 'Close this page', GH_PR.test(paneUrl(k)) ? ICON.pr : ICON.globe)
         : isBlankTab(k) ? tab(k, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
         : ideLabel(k) ? tab(k, ideLabel(k), `${ideName(pageUrl(k))} — a worktree — in VS Code Web`, 'Close the editor', ICON.vscode)
@@ -10003,6 +10020,7 @@ const toolName = n => {
     if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); syncTerm(s); return; }
     if (k === 'changes') changesOpen.delete(s.id);
     else if (k === 'timeline') timelineOpen.delete(s.id);
+    else if (isAgentTab(k)) { const l = (agentTabs.get(s.id) || []).filter(a => 'agent:' + a.id !== k); if (l.length) agentTabs.set(s.id, l); else agentTabs.delete(s.id); }
     else if (isPageTab(k)) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(x => x !== k));
     else if (isBlankTab(k)) blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k));
     else if ((state.paneWt.get(s.id) || []).includes(pageUrl(k))) state.paneWt.set(s.id, state.paneWt.get(s.id).filter(u => u !== pageUrl(k)));
@@ -11018,6 +11036,86 @@ const toolName = n => {
     syncTerm(s); focusBoard();
   }
   function hotTimelineKey() { return zoomAgain(k => k === 'timeline') || hotTimeline(); }
+
+  // ---- an agent's tab (2026-11-02, round XX): its transcript, read-only, beside the chat -----------------------------------
+  // A row of a card's, clicked. Claude's own view of what it did, drawn as the chat's is (entryHtml, the tool rows), read a piece
+  // at a time from GET …/agents/:id?after=n while the tab shows and the agent works. One element, moved into its half, as the
+  // timeline's is. Nothing is typed from here: an agent reports to its chat, and the board drives a chat only through Claude.
+  const agentTabs = new Map();   // chat id → [{ id, asked }]: the tabs, kept across a reload (keepTabs)
+  const AGV_POLL_MS = 2500;
+  const agv = { key: null, sid: null, id: null, n: 0, run: [], group: null, drawnRun: 0, timer: 0, gen: 0, asking: 0 };
+  const isAgentTab = k => /^agent:/.test(k || '');
+  const agTabName = (s, k, whole) => { const t = agentTabs.get(s.id)?.find(a => 'agent:' + a.id === k)?.asked || 'An agent'; return whole || t.length <= 28 ? t : t.slice(0, 27).trimEnd() + '…'; };
+  function agOpen(s, r) {
+    if (state.current !== s.id) openSession(s.id);
+    const k = 'agent:' + r.id, l = agentTabs.get(s.id) || [];
+    if (l.some(a => a.id === r.id)) setTab(s, k);
+    else { l.push({ id: r.id, asked: r.name || r.asked || 'An agent' }); agentTabs.set(s.id, l); openNewTab(s, k); }
+    syncTerm(s);
+  }
+  function agvHead(s) {
+    const el = $('#agv'), r = s.agentRows?.find(x => x.id === agv.id), name = agTabName(s, 'agent:' + agv.id, true);
+    const st = r ? (agQuiet(r) ? 'quiet' : r.st) : 'done', at = st === 'run' || st === 'quiet' || st === 'wait';
+    el.classList.toggle('working', at);
+    const html = `${ICON.lock}<b>${esc(name)}</b><span class="say${st === 'fail' ? ' fail' : ''}">${at ? `${esc(AG_SAID[st])} · read-only, it reports to the chat when it ends` : st === 'fail' ? esc(r?.why || 'It ended on an error') : `${esc(AG_SAID[st] || 'done')} · read-only`}</span><button type="button" class="agvx" title="Close this tab — the agent carries on · ⌘W">${ICON.close}</button>`;
+    const h = el.querySelector('.agvh'); if (h && h._h !== html) { h._h = html; h.innerHTML = html; }
+    return at;
+  }
+  function agvAdd(entries, s) {
+    const log = $('#agv .agvlog'), stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80, cwd = s.cwd;
+    for (const e of entries) if (e.kind === 'tool_result' && e.toolUseId) {
+      toolRes.set(e.toolUseId, !!e.isError);
+      const m = log.querySelector(`.tst[data-tu="${CSS.escape(e.toolUseId)}"]`); if (m) m.className = 'tst ' + toolMark(e.toolUseId);
+    }
+    const group = () => {
+      if (!agv.run.length || agv.drawnRun === agv.run.length) return;
+      if (!agv.group) { const f = htmlNodes(toolGroupHtml(agv.run), cwd); agv.group = f.firstElementChild; log.append(f); }
+      else { agv.group.append(htmlNodes(agv.run.slice(agv.drawnRun).map(entryHtml).join(''), cwd)); agv.group.querySelector(':scope > summary').innerHTML = toolSummaryHtml(agv.run); }
+      agv.drawnRun = agv.run.length;
+    };
+    for (const e of entries) {
+      if (e.kind === 'tool_use' || e.kind === 'tool_result') { agv.run.push(e); continue; }
+      group(); agv.run = []; agv.group = null; agv.drawnRun = 0;
+      const f = htmlNodes(entryHtml(e), cwd);
+      if (e.role === 'user') { const w = f.querySelector('.who span'); if (w) w.textContent = 'The chat asked'; }   // not your words: Claude's, to its agent
+      log.append(f);
+    }
+    group();
+    agv.n += entries.length;
+    if (stick) log.scrollTop = log.scrollHeight;
+  }
+  async function agvPoll() {
+    clearTimeout(agv.timer); agv.timer = 0;
+    const { sid, id, gen, n } = agv, s = state.sessions.get(sid); if (!s || $('#agv').hidden || agv.asking === gen) return;   // one ask at a time: two would draw it twice
+    let at = agvHead(s);
+    if (!document.hidden) {
+      agv.asking = gen;
+      try {
+        const d = await api('GET', `/api/sessions/${sid}/agents/${id}?after=${n}`);
+        if (gen !== agv.gen) return;   // another agent's by now
+        if (d.entries?.length) agvAdd(d.entries, s);
+      } catch (e) { if (gen === agv.gen && e.status === 404) { $('#agv .agvlog').textContent = 'Its transcript is gone.'; return; } }
+      finally { if (agv.asking === gen) agv.asking = 0; }
+    }
+    if (gen !== agv.gen) return;
+    at = agvHead(state.sessions.get(sid) || s);
+    if (at || !agv.n) agv.timer = setTimeout(agvPoll, AGV_POLL_MS);
+  }
+  function placeAgent(s, p) {
+    const el = $('#agv'), g = s ? p.findIndex(isAgentTab) : -1;
+    if (g < 0) { el.hidden = true; clearTimeout(agv.timer); return; }
+    const host = $(GEL[g].body); if (el.parentElement !== host) { const top = el.querySelector('.agvlog')?.scrollTop; host.insertBefore(el, host.firstChild); if (top != null) el.querySelector('.agvlog').scrollTop = top; }
+    const was = el.hidden; el.hidden = false;
+    const id = p[g].slice('agent:'.length), key = `${s.id}:${id}`;
+    if (agv.key !== key) {
+      Object.assign(agv, { key, sid: s.id, id, n: 0, run: [], group: null, drawnRun: 0, gen: agv.gen + 1 });
+      el.innerHTML = '<div class="agvh"></div><div class="agvlog"></div>';
+      agvPoll();
+    } else if (was) agvPoll();
+    else { agvHead(s); if (el.classList.contains('working') && !agv.timer) agvPoll(); }
+  }
+
+  $('#agv').addEventListener('click', e => { if (e.target.closest('.agvx')) { const s = state.sessions.get(agv.sid); if (s) closeTab(s, 'agent:' + agv.id); } });   // alone in its half it has no strip
 
   // ---- live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10) --------------
   // What the overview (⌥⌘A) shows of a chat that is not the open one (and the stack beside the chat, until 2026-10-14).
@@ -15770,7 +15868,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     clearTimeout(keepTabs.t); keepTabs.t = null;
     const v = JSON.stringify({ gh: [...state.paneGh], ide: [...state.paneIde], wt: [...state.paneWt], labels: [...ideLabels], urls: [...paneUrls],
       tabs: [...tabs], homes: [...homes].map(([id, m]) => [id, [...m]]), splits: [...splits], auto: [...autoSplit], stacked: [...stacked], zoomed: [...zoomed],
-      changes: [...changesOpen], timeline: [...timelineOpen], narrow: [...tvNarrow], prs: [...changes.pr], blanks: [...blanks], reviews: [...reviews], focus: focusG });
+      changes: [...changesOpen], timeline: [...timelineOpen], agents: [...agentTabs], narrow: [...tvNarrow], prs: [...changes.pr], blanks: [...blanks], reviews: [...reviews], focus: focusG });
     if (v === keepTabs.was) return;
     try { sessionStorage.setItem(TABS_STORE, v); keepTabs.was = v; } catch {}   // storage refused: the tabs last as long as the page, as before
   }
@@ -15778,7 +15876,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
   try {
     const v = sessionStorage.getItem(TABS_STORE), k = v && JSON.parse(v);
     if (k) {
-      for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks], [tvNarrow, k.narrow], [reviews, k.reviews]]) for (const [a, b] of l || []) m.set(a, b);
+      for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks], [tvNarrow, k.narrow], [reviews, k.reviews], [agentTabs, k.agents]]) for (const [a, b] of l || []) m.set(a, b);
       for (const [id, l] of k.homes || []) homes.set(id, new Map(l));
       for (const [m, l] of [[splits, k.splits], [autoSplit, k.auto], [stacked, k.stacked], [changesOpen, k.changes], [timelineOpen, k.timeline]]) for (const id of l || []) m.add(id);
       blankSeq = Math.max(blankSeq, ...[...blanks.values()].flat().map(b => b.n));
@@ -15861,7 +15959,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews, agentTabs]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);
       for (const id of Object.keys(prefs.agentCards)) if (!state.sessions.has(id)) delete prefs.agentCards[id];   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
@@ -15925,7 +16023,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     // tab, its /focus — the per-chat page state, keyed by the chat it left, moved to the one it runs now; not onto a
     // chat that has a layout of its own (a /resume into a chat the board has shown), and never its unread count.
     function carryChat(from, to) {
-      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr, tvNarrow, reviews], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
+      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr, tvNarrow, reviews, agentTabs], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
       if (![...maps, ...sets].some(m => m.has(from)) || [...maps, ...sets].some(m => m.has(to))) return;
       for (const m of maps) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
       for (const m of sets) if (m.has(from)) { m.add(to); m.delete(from); }
