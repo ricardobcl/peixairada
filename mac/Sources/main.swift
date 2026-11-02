@@ -275,6 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var needsInput: [[String: String]] = []
   var newReplies: [[String: String]] = []
   var muted = false                       // notifications off: the fish wears a slash, the menu says so (round XIX's S7)
+  var mutedChats = Set<String>()          // the chats muted (2026-11-02): what the system still holds for one goes when it joins
   var watching: [[String: String]] = [], plan = ""   // the status menu's: what watches behind a turn, the plan in a line (S5)
   var nextUp: [String: String] = [:]      // what ⌥⌘⏎ would do, the menu's first row (M1)
   var fishingUntil = ""                   // gone fishing till this time (M4): a slash on the fish, a row in the menu
@@ -1661,6 +1662,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       plan = body["plan"] as? String ?? ""
       nextUp = (body["next"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
       fishingUntil = body["fishing"] as? String ?? ""
+      let mutes = Set(body["mutes"] as? [String] ?? [])
+      let newlyMuted = mutes.subtracting(mutedChats)
+      mutedChats = mutes
+      if useUN, !newlyMuted.isEmpty {   // a snooze would ring in spite of it: it is the system's timer, and the alert's quiet never reaches it
+        let ids = newlyMuted.flatMap { [$0, $0 + "-later"] }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
+      }
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,
@@ -1746,14 +1755,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     center.delegate = self
     // What an alert can be answered with where it shows (2026-10-12): a reply — written into the chat's Claude when its
     // drawer runs here —, done (the card's ✓), or later (the same alert again in 15 minutes). A question is opened, or
-    // put off; a ✓ is not offered on it, since a tick ends the chat's processes and a question is Claude waiting.
+    // put off; a ✓ is not offered on it, since a tick ends the chat's processes and a question is Claude waiting. Any of
+    // them can mute the chat that sent it (2026-11-02).
     let later = UNNotificationAction(identifier: "snooze", title: "In 15 minutes", options: [])
     let done = UNNotificationAction(identifier: "done", title: "Done", options: [])
+    let mute = UNNotificationAction(identifier: "mute", title: "Mute this chat", options: [])
     let reply = UNTextInputNotificationAction(identifier: "reply", title: "Reply…", options: [], textInputButtonTitle: "Send", textInputPlaceholder: "to Claude, in its drawer")
     center.setNotificationCategories([
-      UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, later], intentIdentifiers: [], options: []),
-      UNNotificationCategory(identifier: "reply", actions: [done, later], intentIdentifiers: [], options: []),
-      UNNotificationCategory(identifier: "later", actions: [later], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, later, mute], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "reply", actions: [done, later, mute], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "later", actions: [later, mute], intentIdentifiers: [], options: []),
       // lunch time (2026-10-18): the menus (the board in front, ⌥⌘M's chalkboard), Going, or the reminder again in 15
       // minutes — the server's In 15 min, so every page's sign agrees, and its alert comes back by itself
       UNNotificationCategory(identifier: "lunch", actions: [
@@ -1827,6 +1838,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     case "done" where !id.isEmpty:
       logLine("notify: done \(id.prefix(8))")
       web.evaluateJavaScript("window.peixDone?.(\(jsLit(id)))", completionHandler: nil)
+    case "mute" where !id.isEmpty:
+      logLine("notify: mute \(id.prefix(8))")
+      web.evaluateJavaScript("window.peixMute?.(\(jsLit(id)))", completionHandler: nil)
     case "snooze":
       let again = UNNotificationRequest(identifier: (id.isEmpty ? UUID().uuidString : id) + "-later", content: response.notification.request.content,
                                         trigger: UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false))
