@@ -277,6 +277,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var muted = false                       // notifications off: the fish wears a slash, the menu says so (round XIX's S7)
   var watching: [[String: String]] = [], plan = ""   // the status menu's: what watches behind a turn, the plan in a line (S5)
   var nextUp: [String: String] = [:]      // what ⌥⌘⏎ would do, the menu's first row (M1)
+  var fishingUntil = ""                   // gone fishing till this time (M4): a slash on the fish, a row in the menu
   let statusMenu = NSMenu()
   var statusMenuOpen = false
   var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
@@ -284,7 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // `zoom` points — what the page and the shell say of places (the pane's rects, the housing, the pane's edge) is
   // turned between the two here.
   var zoom: CGFloat = 1
-  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], watching: [[String: String]], plan: String, muted: Bool, next: [String: String]) = ([], [], [], [], [], "", false, [:])   // what the badge and the status menu last showed
+  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], watching: [[String: String]], plan: String, muted: Bool, next: [String: String], fishing: String) = ([], [], [], [], [], "", false, [:], "")   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again
@@ -1004,6 +1005,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   private func rebuildStatusMenu() {
     let menu = statusMenu
     menu.removeAllItems()
+    if !fishingUntil.isEmpty && !serverDown {   // a quiet you chose (M4): it shows, and comes back in one click
+      menu.addItem(withTitle: "Gone fishing till \(fishingUntil) · Come Back", action: #selector(fishingFromMenu(_:)), keyEquivalent: "").target = self
+      menu.addItem(.separator())
+    }
     if muted && !serverDown {   // an inhibit shows, and undoes in one click (S7)
       menu.addItem(withTitle: "Notifications are off · Turn On", action: #selector(notificationsOn(_:)), keyEquivalent: "").target = self
       menu.addItem(.separator())
@@ -1077,6 +1082,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     }
     menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
     menu.addItem(alt("Reload Board", #selector(reloadBoard(_:))))
+    if fishingUntil.isEmpty { menu.addItem(withTitle: "Go Fishing, 25 min", action: #selector(fishingFromMenu(_:)), keyEquivalent: "").target = self }
     menu.addItem(withTitle: "Settings…", action: #selector(settingsFromMenu(_:)), keyEquivalent: "").target = self
     menu.addItem(alt("Restart Server", #selector(restartServer(_:))))
     // ⌃⌘F's way out where the menu bar shows it (2026-10-13): filled, the View menu is behind the auto-hidden menu bar, and
@@ -1580,6 +1586,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     }
   }
   @objc func notificationsOn(_ sender: Any?) { web.evaluateJavaScript("window.peixNotifyOn?.()", completionHandler: nil) }
+  @objc func fishingFromMenu(_ sender: Any?) { web.evaluateJavaScript("window.peixFishing?.(\(fishingUntil.isEmpty))", completionHandler: nil) }
   @objc func markReadFromMenu(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
     web.evaluateJavaScript("window.peixMarkRead?.(\(jsLit(id)))", completionHandler: nil)
@@ -1597,8 +1604,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   }
 
   private func refreshBadges() {
-    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.watching != watching || badged.plan != plan || badged.muted != muted || badged.next != nextUp else { return }   // the status menu was rebuilt per message before (2026-09-27)
-    badged = (needsInput, newReplies, yourMoves, clauding, watching, plan, muted, nextUp)
+    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding || badged.watching != watching || badged.plan != plan || badged.muted != muted || badged.next != nextUp || badged.fishing != fishingUntil else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (needsInput, newReplies, yourMoves, clauding, watching, plan, muted, nextUp, fishingUntil)
     let wanting = needsInput.count + newReplies.count
     NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
     drawFish()
@@ -1613,7 +1620,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // like a quiet one. The watchdog says so, not the page, whose view hides whenever the screen locks.
   private func drawFish() {
     guard let b = statusItem.button else { return }
-    b.image = fishFace(bellyUp: serverDown, slashed: muted)
+    b.image = fishFace(bellyUp: serverDown, slashed: muted || !fishingUntil.isEmpty)
     if serverDown {
       b.title = ""; b.appearsDisabled = true
       b.toolTip = "peixAIrada: the server isn't answering"; b.setAccessibilityLabel(b.toolTip)
@@ -1627,6 +1634,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     if moves > 0 { said.append("\(moves) at your move") }
     if replies > 0 { said.append("\(replies) new \(replies == 1 ? "reply" : "replies")") }
     if muted { said.append("notifications off") }
+    if !fishingUntil.isEmpty { said.append("gone fishing till \(fishingUntil)") }
     b.toolTip = said.isEmpty ? "peixAIrada: nothing wants you" : "peixAIrada: " + said.joined(separator: ", ")
     b.setAccessibilityLabel(b.toolTip)
   }
@@ -1652,6 +1660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       muted = body["muted"] as? Bool ?? false
       plan = body["plan"] as? String ?? ""
       nextUp = (body["next"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
+      fishingUntil = body["fishing"] as? String ?? ""
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,

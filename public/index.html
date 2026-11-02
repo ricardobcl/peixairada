@@ -2740,12 +2740,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbSwim .lnews:hover { background: var(--ctl); }
   @keyframes lnewsin { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
   #sbSwim.out .swimmer { visibility: hidden; }
+  #sbSwim .fsign { position: absolute; top: 0; left: 58%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 0; }
   #sbSwim .lsign { position: absolute; top: 0; left: 38%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 0; }
-  #sbSwim .lsign .lswing { display: block; position: relative; padding-top: 4px; transform-origin: 50% 0; }
-  #sbSwim .lsign .lswing::before, #sbSwim .lsign .lswing::after { content: ''; position: absolute; top: 0; width: 1px; height: 4px; background: var(--muted); }
-  #sbSwim .lsign .lswing::before { left: 22%; } #sbSwim .lsign .lswing::after { right: 22%; }
-  #sbSwim .lsign b { display: block; padding: 2px 5px; border-radius: 2px; background: var(--accent); color: var(--bar, var(--panel)); font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; }
-  #sbSwim .lsign:focus-visible { outline: none; } #sbSwim .lsign:focus-visible b { outline: 2px solid var(--ink); outline-offset: 1px; }
+  #sbSwim :is(.lsign, .fsign) .lswing { display: block; position: relative; padding-top: 4px; transform-origin: 50% 0; }
+  #sbSwim :is(.lsign, .fsign) .lswing::before, #sbSwim :is(.lsign, .fsign) .lswing::after { content: ''; position: absolute; top: 0; width: 1px; height: 4px; background: var(--muted); }
+  #sbSwim :is(.lsign, .fsign) .lswing::before { left: 22%; } #sbSwim :is(.lsign, .fsign) .lswing::after { right: 22%; }
+  #sbSwim :is(.lsign, .fsign) b { display: block; padding: 2px 5px; border-radius: 2px; background: var(--accent); color: var(--bar, var(--panel)); font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; }
+  #sbSwim :is(.lsign, .fsign):focus-visible { outline: none; } #sbSwim :is(.lsign, .fsign):focus-visible b { outline: 2px solid var(--ink); outline-offset: 1px; }
   #sbSwim .ltick { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; display: flex; align-items: center; white-space: nowrap; font-size: var(--fs-2xs); color: var(--muted); cursor: pointer;
     animation: ltick var(--dur, 60s) linear infinite; will-change: transform; }
   #sbSwim .ltick span { padding-right: 16px; } #sbSwim .ltick b { margin-right: 4px; color: var(--ink); font-weight: 600; }
@@ -4595,8 +4596,8 @@ const toolName = n => {
     right.push(`<span class="seg clock" title="${esc(now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}">${esc(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))}</span>`);
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
-    swimAt(all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));
-    lunchBar();
+    swimAt(fishing.until ? 0 : all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));
+    lunchBar(); fishingBar();
     setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
     rollSoon();
   }
@@ -4881,10 +4882,10 @@ const toolName = n => {
     const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
     const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
     const watching = live.filter(s => inWatch(s) && bucket(s) !== 'working').sort(byWord).map(brief);
-    const muted = !state.notifications, plan = planLine(), nx = nextQueue()[0];
+    const muted = !state.notifications, plan = planLine(), nx = nextQueue()[0], gone = fishing.until ? new Date(fishing.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : '';
     const next = nx ? { id: nx.s.id, verb: `${NEXT_VERB[nx.k]}${nx.k === 'ask' ? ' ' : ': '}${nextName(nx)}`, sub: nx.k === 'ask' ? nx.s.title : nx.k === 'move' ? `${nx.s.project} · ${movedPrs(nx.s)[0]?.turn?.why || ''}` : nx.s.project, since: nx.k === 'ask' ? String(askedAt(nx.s)) : '' } : null;
-    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan, next]); if (sig === postState.last) return; postState.last = sig;
-    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan, next });
+    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan, next, gone]); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan, next, fishing: gone });
   }
   // Next (2026-11-01, round XIX's M1; StarCraft's idle-worker key, Civ's turn button): one key that always arrives, in a
   // fixed, stated order. The question waiting longest, then a PR at your move, the one that came round first, then what to
@@ -4913,12 +4914,50 @@ const toolName = n => {
   // hidden tab), one line says what changed, counted from the board's own state with no model involved. Resuming is the
   // costly moment, and this answers "what did I miss" before you go hunting. Nothing changed, nothing is said.
   const OUT_MS = 10 * 60_000;
-  const fishing = { until: 0 };
+  // Gone fishing (2026-11-01, round XIX's M4): a quiet you choose. A sign in the lane for FISH_MIN or till you say; questions
+  // still ring; replies and PR moves come in with their counts and no banner or chime, and the catch arrives as one line,
+  // and one banner if the app is behind. It is the safe way to try batching, the deciding being yours, and a mute that
+  // wears a sign cannot be forgotten. The fish's own menu has the same rows, and its fish a slash.
+  const FISH_MIN = 25;
+  const fishing = { since: prefs.fishing?.since || 0, until: prefs.fishing?.until || 0, t: 0 };
+  function goFishing(min = FISH_MIN) {
+    Object.assign(fishing, { since: Date.now(), until: Date.now() + min * 60_000 });
+    prefs.fishing = { since: fishing.since, until: fishing.until }; savePrefs();
+    fishingBar(); renderBar(); postState();
+  }
+  function backFromFishing() {
+    if (!fishing.until) return;
+    const since = fishing.since; clearTimeout(fishing.t); Object.assign(fishing, { since: 0, until: 0 });
+    delete prefs.fishing; savePrefs();
+    fishingBar(); renderBar(); postState();
+    const line = outLine(since); if (!line) return;
+    laneNews(`<b>The catch:</b>${line}`); chime('reply');
+    const plain = line.replace(/<i>·<\/i>/g, ' · ').replace(/<[^>]+>/g, '');
+    if (inApp && state.notifications) post({ type: 'alert', kind: 'reply', heading: 'The catch', project: '', title: plain, snippet: '', sessionId: '', hash: '' });
+  }
+  function fishingBar() {
+    const lane = $('#sbSwim'); if (!lane?.firstChild) return;
+    let el = lane.querySelector('.fsign');
+    clearTimeout(fishing.t);
+    if (!fishing.until) { el?.remove(); return; }
+    if (Date.now() >= fishing.until) { backFromFishing(); return; }
+    fishing.t = setTimeout(backFromFishing, Math.min(fishing.until - Date.now(), 2 ** 31 - 1));
+    const back = new Date(fishing.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    if (!el) {
+      el = document.createElement('button'); el.type = 'button'; el.className = 'fsign';
+      el.innerHTML = '<span class="lswing"><b>GONE FISHING</b></span>';
+      el.addEventListener('click', e => { e.stopPropagation(); backFromFishing(); });
+      lane.append(el); noteMotion(null, 'fishing:sign', 'on');
+      if (!REDUCED.matches) el.animate([{ transform: 'translateY(-28px)' }, { transform: 'none' }], { duration: 650, easing: SPRING });
+    }
+    el.title = `Quiet till ${back}: questions still ring, the rest waits and arrives as one. A click comes back now`;
+  }
+  window.peixFishing = (on, min) => { if (on) goFishing(min); else backFromFishing(); };   // the fish's menu
   const outUi = { at: 0 };
   function wentOut(at = Date.now()) { if (!outUi.at) outUi.at = at; }
   function cameBack() {
     const since = outUi.at; outUi.at = 0;
-    if (!since || Date.now() - since < OUT_MS || fishing.until) return;
+    if (!since || Date.now() - since < OUT_MS || fishing.until) return;   // fishing, the catch will say it
     setTimeout(() => { const line = outLine(since); if (line) laneNews(line); }, 400);   // the stream's news of the moment first
   }
   function outLine(since) {
@@ -6590,6 +6629,7 @@ const toolName = n => {
     const s = state.sessions.get(state.current), of = s ? ` — ${s.title}` : '';
     return [
       ...(nextQueue().length ? [{ name: `Next: ${NEXT_VERB[nextQueue()[0].k]} ${nextName(nextQueue()[0])}`, hint: '⌥⌘⏎', fn: hotNext }] : []),
+      fishing.until ? { name: 'Come back from fishing', fn: backFromFishing } : { name: `Go fishing, ${FISH_MIN} min`, sub: ' — questions still ring, the rest waits', fn: () => goFishing() },
       { name: 'New chat', hint: '⌥⌘N', fn: () => pickOpen('new'), stay: true },
       { name: 'Send to a chat…', sub: ' — a message of yours, as its prompt', fn: sendPick, stay: true },   // chats that talk (2026-10-31)
       { name: 'Merge chats into a new one…', sub: ' — where each stands, its first prompt', fn: () => mergePick(state.current ? [state.current] : [], 'launch'), stay: true },
@@ -8227,6 +8267,7 @@ const toolName = n => {
     if (e.target.closest('#sbar')) {
       const has = k => (prefs.barStats || []).includes(k);
       return [...BAR_STATS.map(([k, t]) => ({ t, on: has(k), check: true, fn: () => setBarStats(has(k) ? prefs.barStats.filter(x => x !== k) : [...prefs.barStats || [], k]) })),
+        { hr: true }, fishing.until ? { t: 'Come back from fishing', fn: backFromFishing } : { t: `Go fishing, ${FISH_MIN} min`, sub: 'Questions still ring, the rest waits', fn: () => goFishing() },
         { hr: true }, { t: 'Status bar settings…', fn: () => settingsAt('look', '#sbarStats') }];
     }
     const tvc = e.target.closest('#tv .tvc[data-url]'), tvw = e.target.closest('#tv .tvc[data-k="you"], #tv .tvc[data-k="claude"]');   // a chip in the timeline (2026-10-17): alone, in or out, a PR's page
@@ -12764,7 +12805,8 @@ const toolName = n => {
     if (a.kind === 'chat') return chatAlert(a);   // the chat's (2026-10-17): its own rules
     if (a.kind === 'lunch') return lunchAlert(a);   // lunch's (2026-10-18)
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
-    if (!viewing && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
+    if (fishing.until && (a.kind === 'reply' || a.kind === 'pr')) a = { ...a, quiet: true, held: true };   // gone fishing (M4): it counts, and says nothing yet
+    if (!viewing && !a.held && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
     if (viewing && a.kind === 'reply') markSeen(a.sessionId);
     renderBoard();

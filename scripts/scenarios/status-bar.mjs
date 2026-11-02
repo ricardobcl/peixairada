@@ -79,7 +79,7 @@ export default async function (ctx) {
   await rightClick();
   await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the bar\'s menu' });
   out.barMenu = await menu();
-  ctx.assert.deepEqual(out.barMenu, ['✓ CPU', '✓ Memory', '✓ Claude’s memory', 'Status bar settings…']);
+  ctx.assert.deepEqual(out.barMenu, ['✓ CPU', '✓ Memory', '✓ Claude’s memory', 'Go fishing, 25 minQuestions still ring, the rest waits', 'Status bar settings…']);
   await ctx.settle(); await ctx.shot('3-right-click', { x: 900, y: 700, width: 800, height: 300 });
   await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => /Claude/.test(b.textContent)).click()`);
   ctx.assert.deepEqual([await ctx.peix('prefs().barStats'), await ctx.evaluate(`document.querySelector('#sbarStats [data-stat="claude"]').checked`)], [['cpu', 'mem'], false], 'off, here and in Settings');
