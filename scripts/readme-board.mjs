@@ -16,7 +16,7 @@ import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeFixture, prLinkLine, replyLines, taskNoteLine, toolLines } from './fixture.mjs';
+import { agentFiles, makeFixture, prLinkLine, replyLines, taskNoteLine, toolLines } from './fixture.mjs';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const OUT = join(ROOT, 'docs', 'shots');
@@ -207,9 +207,11 @@ export const { chats } = makeFixture(claudeDir, [
 ]);
 export const chat = t => chats.find(c => c.title === t);
 const agents = chat('Review the staging VPC plan');
-const agentDir = join(dirname(agents.file), agents.id, 'subagents');
-mkdirSync(agentDir, { recursive: true });
-for (const n of [1, 2, 3]) writeFileSync(join(agentDir, `agent-${n}.jsonl`), JSON.stringify({ isSidechain: true, type: 'user', message: { role: 'user', content: 'go' } }) + '\n');
+agentFiles({ dir: claudeDir, lead: agents, agents: [
+  { id: 'sec', asked: 'Review the plan for security', ago: 9 * 60_000, steps: ['Read the plan', 'List groups wider than a /16'], prompt: 'Review the terraform plan for the staging VPC for security. Flag anything wider than it needs to be.' },
+  { id: 'cost', asked: 'Price the NAT gateways', ago: 8 * 60_000, steps: ['Count the gateways by zone'], prompt: 'Price what the plan adds. Start with the NAT gateways.' },
+  { id: 'blast', asked: 'Map the blast radius of the peering', ago: 6 * 60_000, steps: ['Diff the route tables against prod'], prompt: 'Map what a bad apply of the peering change could reach.' },
+] });
 
 // Claude Code in the drawer, for the open chat resumed there: the screen the fake draws (it wraps it to its width).
 const O = '\x1b[38;2;215;119;87m', B = '\x1b[1m', D = '\x1b[2m', R = '\x1b[0m', OK = '\x1b[38;2;78;186;101m', U = '\x1b[38;5;247m', C = '\x1b[38;2;177;185;249m';

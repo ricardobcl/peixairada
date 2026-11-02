@@ -87,7 +87,8 @@ npm run map                         # rewrite the section maps at the top of ser
 | Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, `fs.watch(recursive)`, started before the boot's scan; a live chat's file stat'ed on the poll too (2026-10-14). Boot reads the last `TAIL_BYTES` of each and the PRs in its first `HEAD_BYTES` (`headPrs`); opening one reads it whole, a chunk at a time (`readLines`) |
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` and, given a `procStart`, that pid's start (`procAlive`, `LC_ALL=C TZ=UTC ps -o lstart=`, 2026-10-14); watched *and* polled every 10 s (pids die silently) |
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` |
-| Reply finished | an assistant line whose `stop_reason` is in `TURN_ENDS` (`end_turn`, `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal`; tool calls are `tool_use`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`: `/compact` ends with no assistant line) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl` whose last line is not a turn's end, nor its `SubagentHandback` result, nor an interrupt, written within `AGENT_STALE_MS` (`scanAgents()`; a dead chat counts none). A background agent ends the main turn at once; this keeps the card clauding. A teammate (meta `in_process_teammate`) is a row under its lead (`noteTeam`, 2026-10-31) |
+| Reply finished | an assistant line whose `stop_reason` is in `TURN_ENDS` (`end_turn`, `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal`; tool calls are `tool_use`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`: `/compact` ends with no assistant line) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl` whose last line is not a turn's end, nor its `SubagentHandback` result, nor an interrupt, written within `AGENT_STALE_MS` (`scanAgents()`; a dead chat counts none). A background agent ends the main turn at once; this keeps the card clauding |
+| An agent's row | (2026-11-02) `subagents/agent-*.meta.json`, its transcript's first line (`agentBorn`) and last (`mateLast`), and the notice it sends the chat (`noteAgentNotices`, by `toolUseId`: `status`, why it failed, `waiting on its own background work`) → `s.agentRows` (`noteAgents`): the last round (one starting after all before ended), a failure from before kept (`old`); words hold `AGENT_WORDS_MS`; `finished` and nothing written since ends one (`agentFinished`); a teammate is one, a roster's name with no file `joined`. `…/agents/:id`: totals, `?after=n` its transcript, read when asked (`agentLog`). A failed notice alerts once. → `test/agent-rows.test.mjs`, `team.test.mjs` |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed`, `permission prompt`, …) — `waitingOn()` / `statusOf()`; any live process waiting is the chat waiting, and it beats the agents; **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer* — only the fallback for a claude that reports no status (`s.ask`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
 | Work behind the turn | `Monitor` and a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines carry its events and its end. `s.tasks` → `tasks`; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`) or with the chat's process (`pruneTasks`, on the poll). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (held open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved. **Wake-ups** (2026-10-31): `ScheduleWakeup`, `CronCreate` → `wake` (`nextWake`, `cronNext`); a stopped turn → `stopped` (`stopOf`). → `test/watch-lane.test.mjs`, `stopped-reason.mjs` |
 | Chats talking | (2026-10-31) a meta `user` line or `queued_command` attachment with `origin.kind: "peer"`, no `senderTaskId`; queued, a `queue-operation` envelope (`peerOf`). **Never your word**; sender by `msg_id`, pid, name (`peerSender`) → `peers.test.mjs` |
@@ -142,7 +143,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The open chat's entries are numbered on the wire**: `/messages` and every `entries` event carry `gen` (which
   reading of the file, `newSession` numbering each) and `upto` (`entryCount`); the page keeps only what is past what it holds, and another `gen`
   or a gap is a fetch (see *The transcript*).
-* **The holder socket is `setEncoding('utf8')` on both ends** — a glyph split across chunks decodes whole.
+* **The holder socket is `setEncoding('utf8')` on both ends.**
 * **Keeping the Mac awake is two switches, and only one is the board's** (2026-10-08, `keepAwake`, `setLid`,
   `/api/awake`, an `awake` event): *awake* is a `caffeinate -i -w <server pid>` held while `awake` is on in the state
   file (one that ends on its own turns the switch off); *lid closed* is `/usr/bin/pmset -a disablesleep 1|0` as root (`lidRuns`) — through
@@ -311,6 +312,7 @@ npm run map                         # rewrite the section maps at the top of ser
   clock, by its `currentTime`, then its `startTime` — only when something new may have started: a render queues it when
   `drawCards` says the list changed, `renderBoardSoon` runs a queued one at once, a run at once clears the queued one
   (2026-10-13). → `card-signals.mjs`.
+* **A card opens to its agents while they work** (2026-11-02, round XX; `fillAgents`, `agPlan`, `agPaint`, `.agl`, `.agr[data-ag]`): what each was asked, does (`agNow`) and its age (`agLabel`, frozen once ended), `AG_SHOW` rows then `+N`; one ended ticks (`AG_TICK_MS`), then a done row whose click lists the results; a failure first, the chip red, until the chat is opened (`seenAt`), with a summary once the last ended; `quiet` past `AG_QUIET_MS`; nothing leaves under the pointer (`agHover`). **Chip, rows and `--lights` are out of the markup**: a new node filled before `drawCards` measures it (`agFresh`), a step keeps every node. The chip folds them (`prefs.agentCards`), the live line then naming who stepped last (`.agwho`); same height and `data-hide~="agents"` show none. The arc is `ring`, phased. A row's card is `#mxtip`'s (`agCardHtml`), its menu `agMenu` (a stop typed unsent); the rows too under the transcript (`renderPresence`) and on ⌥⌘A's tile. → `agent-rows.mjs`, `agent-menu.mjs`, `team-rows.mjs`.
 * **Hidden (⌥⌘B, `#sbList` first in the status bar), the list is out of the layout** (2026-10-25; `prefs.listHidden` →
   `main.lhide`, `applyList`): `#sessions` and `#splitter` `display: none` — no card runs a thing —, the chat the whole
   width. **What only narrows the list shows it** (`showList`: the magnifier, a filter, a face, a project); shown, its
@@ -703,9 +705,8 @@ npm run map                         # rewrite the section maps at the top of ser
   **a page's, clicked, is a box** (2026-10-27, `addrEditAt`: ⏎ nav `go` in that view, esc `keys`) —, `.pcopy` copies it
   (`copyPaneUrl`, said in the address, `addrSay` — a `note()` there is under the page, 2026-10-20), each navigation told
   as `peixPaneUrl(key, url)` (`paneUrls`).
-* **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
-  (`SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing a run; in a browser, `haptic:<kind>` in
-  `motion()`.
+* **The trackpad bumps** (`haptic(kind)`): a splitter snapping (`SNAP_PX`), a tab dropped across, the timeline's thumb
+  crossing a run; in a browser, `haptic:<kind>` in `motion()`.
 * **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply on a chat
   with a drawer here *Reply… · Done · In 15 minutes*, elsewhere *Done · In 15 minutes*, a question or a PR's turn the
   snooze alone. Reply… and Done go to the page
@@ -796,6 +797,7 @@ npm run map                         # rewrite the section maps at the top of ser
   (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert,
   a PR row's Timeline, the menus; the move gone to once both are in (`tv.lit`). Its word
   (`tvHint`) till seen (`prefs.tvSeen`). Its tracks (`tvTracksHtml`, its alone) hold times for `fillTracks`. → `timeline-tab.mjs`.
+* **An agent's tab** (2026-11-02; `agentTabs`, `agOpen`, `placeAgent`, `#agv`): `agent:<id>`, a row clicked; `#agv` moved into its half, read-only (`ICON.lock`), by `entryHtml` from `…/agents/:id?after=n` every `AGV_POLL_MS` while it shows and works, one ask at a time. Alone in a half, no strip: `.agvx` closes it. → `agent-tab.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
@@ -831,7 +833,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `ok`, `err` — from the open chat's entries; a result for a row already drawn sets its mark in place, and a folded
   run's summary turns while any call is out.
 * **The transcript reads as a conversation** (2026-10-08): your words a bubble on the right (`.msg.user`); Claude's
-  prose stops at 80ch, its code, tables and images take the width they need; **one who-line a turn** (a text after
+  prose stops at 80ch; **one who-line a turn** (a text after
   another of the same turn is `.cont`; `logView.lastWho`, reset by a turn's end, an interrupt, a compaction); the
   reply that ends a turn has a footer — *copy* (`.tcopy`, by `data-ts`) and *worked for …* (the server's `turnEnd` and
   `worked` from `s.turnStart`). → `transcript-turns.mjs`.
@@ -985,14 +987,12 @@ npm run map                         # rewrite the section maps at the top of ser
 * **A change to `:root`'s `--frame` moves the two hex pairs in main.swift's `buildWindow` with it**: the board's web view
   draws no ground, the window's colours are the page's `--frame` per appearance.
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
-* `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or their `--test-state` dir).
+* `pkill -f server.mjs` also kills the app's own server: stop test servers **by port**.
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust in the browser profile. → Findings: *VS Code Web*.
-* Ink redraws only its live region on a resize, earlier lines at the old width: Claude Code's, not ours.
 * xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight
   after a `write()`.
 * **`openSession` sets the address before it fetches, and takes only its newest ask's answer.**
-* The harness's Chrome runs with background throttling off (`launchChrome`), yet a listener left for a
-  `setTimeout(0)` to remove can outlive the next CDP step (the drag's click swallow is `once` for that).
+* A listener left for a `setTimeout(0)` to remove can outlive the next CDP step (the drag's click swallow is `once`).
 
 ## Verifying changes
 
@@ -1051,8 +1051,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — a headless page's
   `focus()` is no focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and **every re-attach that
   moves the drawer resizes it** — the clean re-attach is a reload of the page, then `openChat`.
-* **The fake claude scrolls before it repaints on a shrink** (`drawLive`) and after a grow draws at the bottom, as a
-  terminal app would. A red drawer scenario can be the fake's geometry, not the drawer's.
+* **The fake claude scrolls before it repaints on a shrink** (`drawLive`): a red drawer scenario can be its geometry.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`, `motion()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea`
   types.

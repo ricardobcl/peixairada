@@ -2,8 +2,47 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-02 — a card opens to its agents (round XX)
+
+Ricardo: *"when there are agents working on a chat, we should expand de card to show the agents, what their are doing,
+status, etc. investigate how to design this, looking at similar apps, best pratices etc."* The study ran the real card on
+the board's real CSS with scripted agents; he picked what it suggested: *S1 open while they work; R3 both, two lines; V1
+turning arc; L3 joins a done row; M1 three then +N; folded G1 G2; rules H1–H6; way in A1 A3 A4; beyond the card P1 P2 P5.*
+Round I had set this aside (*a tooltip's worth*); what changed it was measuring.
+
+* **What this Mac's transcripts said** (21 days, 247 agents in 67 chats, first line to last): a run is 12.5 minutes at the
+  median, 68 at p90, so a row is up for a long time and has to be calm; one chat has agents 92 % of agent time, two 7 %,
+  three 0.5 %, so opening the card is affordable and no budget for the list's height is wanted; three or fewer at once 80 %,
+  six to nine 11 %; a tool call every 6.6 s (p99 114 s), so words hold 15 s and three minutes' silence is worth a word; 98 % of
+  agents' Bash calls carry a description (median 41 characters), an agent's own is 32 (at most 52), so a row is a sentence and
+  two lines say both; no plan or to-do calls, so no progress bar; 84 % of calls are Bash, so no colour per tool; 2 of 247
+  ran two levels down, so a flat list; 59 of 76 recent calls `general-purpose`, so no grouping by kind.
+* **Others** (their docs, November 2026): Claude Code's panel drops a success at once and keeps a failure 30 s, its teammates
+  fold idle rows past three but never working, failed or viewed ones, and 2.1.316 fixed keys hitting the wrong agent when
+  rows moved — hence nothing leaves under the pointer; its VS Code cards went to one status line (2.1.304); Agent View
+  changes its words at most every 15 s and freezes an age at the run's length; VS Code's sub-agent chats are read-only with a
+  lock; Codex's Done list has a one-line result; Warp's docs warn a parent can read fine with a child failed — hence the chip;
+  a study of 16 developers (arXiv 2609.33113) found awareness up, control not — hence a way in from every row.
+* **What the board reads.** `.meta.json`: `description`, `name`, `agentType`, `toolUseId`, `finished`, `stoppedByUser`,
+  `worktreeBranch`, `worktreePath`. The chat's `<task-notification>` for an agent: `tool-use-id`, `status`, a summary with the
+  reason, usage at the end (`subagent_tokens` is the context at its last call, which the last usage gives while it runs).
+  One comes each time it stops with nothing of its own running, so the last speaks; delivered mid-turn it is never a line (28
+  of 248 here), so `finished` ends the row then, as *done*. Which agent is behind a permission prompt is not on disk: the
+  chat's red card says it. A file is 2 MB at the median and 28 MB at most, mostly API requests: rows read the tail, the totals
+  and the tab read the rest only when asked, from where they stopped.
+* **`finished` ends an agent**: one ended by an API error writes no end, and counted as at work for `AGENT_STALE_MS`, the
+  card clauding and its reply unalerted. Nothing written after the meta is the test: a resumed one writes on.
+* **Chip, rows and lights left the card's markup**: every count changed the html, and every change a new node. A new node is
+  filled before `drawCards` measures it, or what is under it slid to the wrong place.
+* **A row's end is its notice's or its meta's when later than its last line** (found by the scenario): an API error writes
+  no line, and a failure read as older than your last look at the chat was hidden unseen. The rounds still go by the last line.
+* **Teammates are rows like any other**: `.team`, `noteTeam` and the summary's `team` went. An idle one joins the done row.
+* **Not built, from the same page**: S2–S5, R1/R2/R4/R5, V2/V3, L1/L2/L4, M2/M3, G3/G4, A2, P3 (the school), P4 (a lane in the
+  timeline). No switch: it was not asked for. `docs/shots/` still shows the old chip: the made-up board has
+  real agents now, so the next `readme-shots` run brings them in.
 
 ## Decisions of 2026-11-02 — round XIX: the menu bar, researched, picked and built
 

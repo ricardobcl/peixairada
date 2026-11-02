@@ -42,8 +42,12 @@ setup file, and how the pictures are made.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
   *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat
   is at work —, the sender a click away; the sender's SendMessage links back. A message is never counted as yours.
-  A chat that leads an agent team (Claude Code's experimental teams) lists its teammates under its card: each one's
-  name, whether it is at work or done, and its last line.
+- 🤿 **Its agents, on its card** — while a chat's sub-agents or teammates work, its card opens to a row each: what it was
+  asked, what it is doing, how long it has been at it, and *quiet 4m* when it has gone silent. Three show, then *+N more*.
+  One that finishes goes into a *done* row, whose click lists what each found; one that fails stays until you open the
+  chat, turns the chip red and sends an alert. Click a row for its transcript, in a read-only tab beside the chat; hover
+  for its worktree and totals; right-click to ask Claude to stop it. The *3 agents* chip folds the rows, and the card
+  remembers. The same rows sit under the transcript of the chat you are reading.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders, or named sets of folders, each in a colour of your choosing.
