@@ -67,6 +67,8 @@ export default async function (ctx) {
   out.card = await ctx.evaluate(`JSON.stringify({ line: ${card}.querySelector('.state.prans .q').textContent, move: !!${card}.querySelector('.state.prmove'), pips: [...${card}.querySelectorAll('.prpips .pp')].map(p => p.dataset.k + ' ' + p.textContent) })`).then(JSON.parse);
   ctx.assert.match(out.card.line, /^#12 · you answered, \d+m ago$/, out.card.line);
   ctx.assert.deepEqual({ ...out.card, line: null }, { line: null, move: false, pips: ['let #13let go', 'ok #12answered'] });
+  const even = await ctx.evaluate(`(l => { const was = l.dataset.cards; l.dataset.cards = 'compact'; l.toggleAttribute('data-even', true); const hs = [...new Set([...document.querySelectorAll('#slist > .card')].map(c => c.getBoundingClientRect().height))]; l.dataset.cards = was; l.toggleAttribute('data-even', false); return hs; })(document.querySelector('#sessions'))`);
+  ctx.assert.equal(even.length, 1, `at compact's same height, as tall as a card with none, to the fraction: ${even}`);
   // the pointer on that line: the rounds, and the latest on them
   await ctx.settle();   // the card moves down its lane: no move of yours on it now
   const at = await centre(`#slist > .card[data-id="${two.id}"] .state.prans`);

@@ -439,8 +439,7 @@ npm run map                         # rewrite the section maps at the top of ser
   Claude's last reply —, *medium* the last word, *compact* neither. `cardHtml` always writes both `.snip`s (the older
   `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane*
   (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height***
-  (`prefs.cardsEven` → `#sessions[data-even]`): one title line, the question left to the red edge, and the move line or
-  `.moveslot` — an invisible line of its metrics, never `.prmove`, which the harness reads. → `card-sizes.mjs`. **Its PRs,
+  (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. → `card-sizes.mjs`. **Its PRs,
   rounds, tickets and faces each optional** (2026-10-21, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone). → `card-parts.mjs`.
 * **A card's title row reads title · chips · time · F ·
   unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age (`.trow .time`) shows under the

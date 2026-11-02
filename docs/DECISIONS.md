@@ -135,6 +135,15 @@ Ricardo: *"we should update the readme screenshots"*
 * **The PR-status clip unfolds the rows by the caret**: `#prToggle`'s middle is a chip now, and a chip opens its PR.
 * The README's words follow the pictures: a card is *tagged* in its project's colour, and Watching is a lane.
 
+## Decisions of 2026-11-02 — same height is the rows', not their parts'
+
+Ricardo, shown that same-height cards differed by up to 1.9 px: *"do it all"*. Measured in WebKit on his board, 74.31 px a card:
+the watching chip (16.5 px, 3 px down an 18 px row) made it 75.81, and the `answered` line (15.94 against the move line's 16.31)
+73.94; both, 75.44. So a chat starting a monitor moved every card under it by 1.5 px. The move line's own height came from
+baseline-aligning a tag and words, so matching each part would have been a chase: the rows now have the height, 18, 18 and 16.
+The chip is also as tall as the agents' chip at every size. `card-sizes.mjs` had rounded its heights to whole pixels and had
+neither part; it reads the fraction now, and `pr-rounds.mjs` checks the `answered` line.
+
 ## Decisions of 2026-11-02 — a finished agent's way back
 
 Ricardo, told that an agent's line leaves the card once the chat is seen and nothing on the board reached its transcript then,

@@ -864,7 +864,7 @@
   .chip.watch { display: inline-flex; align-items: center; gap: 4px; color: var(--watch); background: color-mix(in srgb, var(--watch) 16%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip.watch .ic { width: 11px; height: 11px; flex: none; }
   /* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
-  .card .trow .chip.watch { margin-top: 3px; max-width: 50%; }
+  .card .trow .chip.watch { margin-top: 3px; max-width: 50%; line-height: 12px; }   /* as tall as the agents' chip: inside the title's row */
   .shead .chip.watch { flex: 1 1 0; min-width: 64px; max-width: max-content; }   /* as the move's line: room left, never a second row */
   .card .repo { font-weight: 800; font-size: var(--fs-md); letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* The letters the magnifier's query landed on (2026-09-25), as ⌥⌘K bolds them — underlined here as well, because
@@ -972,6 +972,9 @@
   #sessions[data-even] .card .state.needs-input { display: none; }
   #sessions[data-even] .card .state.stopped { display: none; }   /* one height: the words in the card's .vh */
   #sessions[data-even] .card .state.moveslot { display: flex; visibility: hidden; }
+  /* the rows hold the height, not what is in them (2026-11-02): a chip or a line with metrics of its own moved a card and all under it */
+  #sessions[data-even] .card :is(.top, .trow) { height: 18px; }
+  #sessions[data-even] .card .state:is(.prmove, .prans, .moveslot) { height: 16px; }
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
      prompt that produced it recedes. */
