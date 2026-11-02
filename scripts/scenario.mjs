@@ -91,7 +91,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
 // split — so `ROWS(0)` is what every scenario written before the split already asked for.
 const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
 const ctx = {
-  url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep, tz,
+  url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep, tz, profile: cdp.profile,
   // The board moves (2026-09-27, night): a card that arrived or changed rank slides for up to 220 ms, a dialog rises
   // as it opens, and a rectangle read meanwhile is mid-move — the pointer then lands on the neighbour, a box measures
   // off-centre. Measure after this: it waits for every finite animation to end — the named slides (flip · enter ·

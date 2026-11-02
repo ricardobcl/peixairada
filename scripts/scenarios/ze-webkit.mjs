@@ -8,7 +8,7 @@ export const meta = { server: true };
 export default async function (ctx) {
   const { assert } = ctx;
   const body = `
-    const mb = async () => Math.round((await footprint()).now), z = window.peix.ze(), st = z.stage, out = { closed: [], opened: [] };
+    const mb = async () => Math.round((await footprint()).now), z = window.peix.ze(), st = z.stage, out = { closed: [], opened: [], muted: await muted() };
     await sleep(1500); out.board = await mb();
     for (let i = 0; i < 3; i++) {
       peixKey('KeyZ'); await until(() => st.frames > 3, 6000, 'the stage at opening ' + (i + 1));
@@ -24,6 +24,7 @@ export default async function (ctx) {
   const line = r.stdout.split('\n').find(l => l.startsWith('"{'));
   assert.ok(line, `an answer from WebKit: ${(r.stderr + r.stdout).slice(-600)}`);
   const out = JSON.parse(JSON.parse(line));
+  assert.equal(out.muted, true, 'the harness makes no sound');
   for (const [i, o] of out.opened.entries()) {
     assert.ok(o.gl && !o.off, `the stage at opening ${i + 1}: ${JSON.stringify(o)}`);
     assert.ok(o.baked, `every sky baked ahead at opening ${i + 1}`);

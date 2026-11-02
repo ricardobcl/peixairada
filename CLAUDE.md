@@ -1022,6 +1022,8 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `ls scripts/scenarios/`: one file per feature, as the bullets name them.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
+* **The harness makes no sound** (2026-11-01): a headless Chrome never opens the audio device (`--disable-audio-output`,
+  `launchChrome`; an `AudioContext` still runs), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs` asks coreaudiod, `ze-webkit.mjs`.
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it
   is noon now (`meta.tz` another or `false`; `ctx.tz`).
 * **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp

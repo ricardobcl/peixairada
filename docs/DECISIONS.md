@@ -5,6 +5,17 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-01, midnight — the harness makes no sound
+
+Ricardo: *"please make the music/sound effects stop when running tests/suites"*. A headless Chrome plays to the Mac's output as any
+other: every scenario that starts a round of Zé's game played its band aloud, whichever session ran it. `--mute-audio` is the switch
+everyone reaches for, and it still holds the device open (coreaudiod's assertion names the Chrome's helper; measured with an oscillator
+through a gain of nothing, so no sound was made to find this out). `--disable-audio-output` never opens the device, while an
+`AudioContext` stays `running` with its clock moving, so the game's audio code is still what the tests exercise. Both are on every
+headless launch, which takes in lunch's Instagram; the one window with a head, its login, is left alone. `ze-sound-off` now asserts it
+from the OS's side with the band running. The WebKit harness is muted by `_setPageMuted:`: there silence is by WebKit's muting of Web
+Audio's destination, read back by `muted()`, and not seen from the OS's side.
+
 ## Decisions of 2026-11-01, near midnight — Zé in HD-2D, and rounds that end
 
 Ricardo: *"make some reserch on how to improve the ZE game, maybe give the HD-2D treatment"*. The page was a playable

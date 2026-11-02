@@ -26,7 +26,7 @@ let tools = """
   const until = async (fn, ms = 10000, what = String(fn)) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v;
     if (Date.now() - t0 > ms) throw new Error('timed out waiting for ' + what); await sleep(50); } };
   const ask = what => window.webkit.messageHandlers.wk.postMessage(what);
-  const layers = () => ask('layers'), footprint = () => ask('footprint'), say = line => ask('say:' + line);
+  const layers = () => ask('layers'), footprint = () => ask('footprint'), muted = () => ask('muted'), say = line => ask('say:' + line);
   """
 let ready = """
   if (document.visibilityState === 'hidden') throw new Error('the page is hidden (the screen locked, or asleep?): WebKit runs no frames then');
@@ -87,6 +87,7 @@ final class Asks: NSObject, WKScriptMessageHandlerWithReply {
     }
     switch what {
     case "layers": replyHandler((wv.perform(Selector(("_caLayerTreeAsText")))?.takeUnretainedValue() as? String) ?? "", nil)
+    case "muted": replyHandler((wv.value(forKey: "_mediaMutedState") as? NSNumber)?.intValue == 1, nil)
     case "footprint":
       guard let pid = (wv.value(forKey: "_webProcessIdentifier") as? NSNumber)?.int32Value else { return replyHandler(nil, "no web process") }
       var info = rusage_info_current()
@@ -144,6 +145,11 @@ final class Loaded: NSObject, WKNavigationDelegate {
     if let f = env["WK_PIDFILE"], let pid = webView.value(forKey: "_webProcessIdentifier") as? NSNumber {
       try? "\(pid.intValue)".write(toFile: f, atomically: true, encoding: .utf8)
     }
+    // No sound from the harness (2026-11-01), by a private setter as the preferences above: _WKMediaAudioMuted, which WebKit
+    // hands on to Web Audio's destination.
+    let mute = Selector(("_setPageMuted:"))
+    if wv.responds(to: mute) { typealias Set = @convention(c) (AnyObject, Selector, UInt) -> Void; unsafeBitCast(wv.method(for: mute), to: Set.self)(wv, mute, 1) }
+    else { FileHandle.standardError.write("this WebKit has no _setPageMuted:, the page can make a sound\n".data(using: .utf8)!) }
     run(tools + ready + body, ["HASH": env["WK_HASH"] ?? ""]) { out in
       print(out)
       if shotPath.isEmpty && then.isEmpty { return finish() }

@@ -2,7 +2,8 @@
 // node made on one. The board makes none, nor the game's title; a round makes one — and every way out closes it, whatever
 // is playing: esc in a car (its engine humming), ⌥⌘Z as the dragon, the backdrop at the K.O.'s trombone (its timer to
 // rest gone with it), esc while paused, M in a round (the round goes on, silent). After each, no node is made and no
-// frame drawn. The window losing the keys mid-round suspends it. The OS's view is logged: coreaudiod's assertions.
+// frame drawn. The window losing the keys mid-round suspends it. The OS's view is coreaudiod's assertions: the harness's
+// Chrome holds no audio output even with the band running (2026-11-01), so a test run makes no sound.
 import { execFileSync } from 'node:child_process';
 
 export const meta = { server: true };
@@ -51,6 +52,12 @@ export default async function (ctx) {
   // esc in the Focus: the band and the engine
   await round();
   out.osPlaying = os();
+  { // who holds the output, said by coreaudiod, against every process of this Chrome
+    const lines = execFileSync('pmset', ['-g', 'assertions'], { encoding: 'utf8' }).split('\n'), holders = lines.flatMap((l, i) => /com\.apple\.audio/.test(l) ? [(lines[i + 1] || '').match(/Created for PID: (\d+)/)?.[1]] : []);
+    const mine = execFileSync('/usr/bin/pgrep', ['-f', ctx.profile], { encoding: 'utf8' }).trim().split('\n');
+    ctx.assert.ok(mine.length > 1, 'this Chrome found');
+    ctx.assert.deepEqual(holders.filter(p => mine.includes(p)), [], 'the band plays to no device: a test run makes no sound');
+  }
   await ctx.evaluate(`window.peix.ze().g.streak = 3`); for (let i = 0; i < 3; i++) { await drop('meat', '🥩'); await ctx.sleep(120); }
   await ctx.waitFor(`window.peix.ze().music.engine && window.peix.ze().g.ride?.kind === 'focus'`, { what: 'the Focus, its engine' });
   await press('Escape', 'Escape', 27);
