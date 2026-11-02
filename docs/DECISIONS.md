@@ -135,6 +135,23 @@ Ricardo: *"we should update the readme screenshots"*
 * **The PR-status clip unfolds the rows by the caret**: `#prToggle`'s middle is a chip now, and a chip opens its PR.
 * The README's words follow the pictures: a card is *tagged* in its project's colour, and Watching is a lane.
 
+## Decisions of 2026-11-02 — a finished agent's way back
+
+Ricardo, told that an agent's line leaves the card once the chat is seen and nothing on the board reached its transcript then,
+and that its call in the chat could: *"Finished agents -> do it"*.
+
+* **The tie is on the call's result, not the meta.** A meta's `toolUseId` tied 108 of 158 agents here, since a forked skill has
+  none: 29 of the 56 without one were `code-review`. `toolUseResult.agentId` tied all of them: 174 `Agent` results and 38 `Skill`
+  (`status`: `async_launched`, `teammate_spawned`, `forked`), each on a line with one result, read as the chat is (`agentNamed`).
+  So nothing about agents is read until the tab asks, a chat with no claude works alike, and a file gone says so.
+* **A line of its own, out of the fold.** Most folds are closed, and an agent's report is the turn's point. An Agent call is a line
+  from its start and its result ties it in place. A Skill is an agent only if its result says so, so its call stays in its run
+  and that result is the line. A call that failed stays a line and opens nothing, its error the tooltip.
+* **Its dot is the call, in grey, not the agent.** A background agent's call returns at launch, so a green dot would read as done
+  beside one still at work; the rows say how it stands, and the line is only the way in.
+* **Found on the way**: an agent's tab drew a `0 tool calls` fold at its end, the result of the `SubagentHandback` whose call is
+  shown as words. Unseen while the tab was mostly opened on one at work.
+
 ## Decisions of 2026-11-02 — a same-height card names its agents
 
 Ricardo, on round XX's rows below: *"seems like when there only 1 agent running, nothing changed. is it on purpose? it would be

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
-import { agentFiles, agentNoteLine, makeFixture } from '../scripts/fixture.mjs';
+import { agentFiles, agentNoteLine, makeFixture, toolLines } from '../scripts/fixture.mjs';
 
 const standIn = () => spawn('sleep', ['120'], { stdio: 'ignore' });
 const MIN = 60_000;
@@ -93,7 +93,7 @@ test('one agent on demand: what it was asked, its totals, its transcript a piece
     assert.deepEqual([a.prompt, a.tools, a.tokens], ['Look at the plan closely.', 3, 1030], 'totals: its calls, the context at its last call');
     assert.equal(a.entries, undefined, 'no transcript unless asked');
     const b = (await srv.api(`api/sessions/${chat.id}/agents/one?after=0`)).body;
-    assert.deepEqual(b.entries.map(e => e.kind), ['text', 'tool_use', 'tool_result', 'tool_use', 'tool_result', 'text', 'tool_result']);
+    assert.deepEqual(b.entries.map(e => e.kind), ['text', 'tool_use', 'tool_result', 'tool_use', 'tool_result', 'text'], 'its report, and nothing of the call that handed it back');
     assert.equal(b.entries[5].text, '## Found two\n\nDetails.', 'its report is words');
     assert.equal(b.upto, b.entries.length);
     appendFileSync(files.one, JSON.stringify({ isSidechain: true, type: 'assistant', timestamp: new Date().toISOString(), message: { role: 'assistant', content: [{ type: 'text', text: 'And one more thing.' }], stop_reason: 'end_turn' } }) + '\n');
@@ -118,6 +118,24 @@ async function alerts(url, key) {
   });
   return { seen, stop: () => ac.abort() };
 }
+
+test('a result that names an agent says which, on its entry: an Agent call\u2019s, a forked Skill\u2019s; nothing else does', { timeout: 30_000 }, async () => {
+  const dir = tmpDir('peix-fx-'), cwd = '/tmp/acme/infra';
+  const fx = makeFixture(dir, [{ cwd, title: 'Its calls', prompt: 'go', reply: 'Done.', at: new Date(Date.now() - 30 * MIN), lines: id => [
+    ...toolLines({ id, cwd, name: 'Agent', input: { description: 'Look at it', name: 'looker', prompt: 'go' }, result: 'launched', toolUseResult: { status: 'async_launched', agentId: 'abc-1', description: 'Look at it' } }),
+    ...toolLines({ id, cwd, name: 'Skill', input: { skill: 'code-review' }, result: 'launched', toolUseResult: { status: 'forked', commandName: 'code-review', agentId: 'abc-2' } }),
+    ...toolLines({ id, cwd, name: 'Agent', input: { description: 'A bad id' }, result: 'launched', toolUseResult: { agentId: '../../etc' } }),
+    ...toolLines({ id, cwd, name: 'Bash', input: { command: 'ls' }, result: 'a file', toolUseResult: { stdout: 'a file' } }),
+  ] }]);
+  const srv = await startTestServer({ claudeDir: dir });
+  try {
+    const { entries } = (await srv.api(`api/sessions/${fx.chats[0].id}/messages`)).body;
+    const results = entries.filter(e => e.kind === 'tool_result');
+    assert.deepEqual(results.map(e => e.agent ?? null), [{ id: 'abc-1', name: null, asked: 'Look at it' }, { id: 'abc-2', name: 'code-review', asked: null }, null, null]);
+    assert.equal(entries.find(e => e.kind === 'tool_use' && e.name === 'Agent').who, 'looker', 'the name the call gave it');
+    assert.equal(entries.filter(e => e.kind === 'tool_use' && e.who).length, 1, 'no name, no word');
+  } finally { await srv.stop(); }
+});
 
 test('an agent that fails is an alert, once, with what it was asked and why; one that finishes is none', { timeout: 30_000 }, async () => {
   const { p, fx, chat } = setup([

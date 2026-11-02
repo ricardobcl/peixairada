@@ -52,7 +52,8 @@ setup file, and how the pictures are made.
   for its worktree and totals; right-click to ask Claude to stop it. The *3 agents* chip folds the rows, and the card
   remembers. The same rows sit under the transcript of the chat you are reading. With *Same height* on, a card keeps its
   height and has one line instead: the agent's name, what it is doing and its age. Click it for its transcript; with
-  several, the chip lists them. A PR at your move keeps that line, and the chip names the agent.
+  several, the chip lists them. A PR at your move keeps that line, and the chip names the agent. Once it has ended and left
+  the card, the agent's call stays in the chat as a line of its own: *its transcript ›* still opens it.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders, or named sets of folders, each in a colour of your choosing.

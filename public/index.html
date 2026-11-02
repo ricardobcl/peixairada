@@ -1917,6 +1917,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :is(.tool, .toolgroup > summary) .tst.run { border: 1.5px solid var(--line); }
   :is(#log, #agv).working :is(.tool, .toolgroup > summary) .tst.run { border-color: var(--working); border-right-color: transparent; animation: ring .8s linear infinite; }
   .tool.err { color: var(--needs); }
+  /* an agent's call (2026-11-02; agCallHtml): a line of its own, out of the fold; the fold's look, and a click is its transcript. Its dot says the call went out, not that the agent ended */
+  .tool.agcall { width: 100%; box-sizing: border-box; margin-bottom: 6px; border: 1px solid transparent; font-size: var(--fs-sm); text-align: left; cursor: default; }
+  .tool.agcall[data-ag] { cursor: pointer; }
+  .tool.agcall[data-ag]:hover { color: var(--ink); border-color: var(--accent); }
+  .tool.agcall .tst.ok { background: var(--muted); }
+  .tool.agcall > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tool.agcall .go { display: none; flex: none; margin-left: auto; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  .tool.agcall[data-ag] .go { display: inline; }
   .sysline { margin: 10px auto; text-align: center; font-size: var(--fs-xs); color: var(--muted); }
   .sysline.day { margin: 14px auto 12px; }
   .sysline.day b { font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
@@ -8218,7 +8226,9 @@ const toolName = n => {
     clearTimeout(b.timer); b.timer = setTimeout(() => { w.textContent = 'copy'; b.classList.remove('did'); }, 1200);
   });
   // a message's sender, or where a SendMessage went (2026-10-31): that chat, its card located
-  $('#log').addEventListener('click', e => {   // an agent's row under the transcript, as on its card (2026-11-02)
+  $('#log').addEventListener('click', e => {   // an agent's row under the transcript, as on its card, or its call in it (2026-11-02)
+    const c = e.target.closest('.agcall[data-ag]'), cs = c && state.sessions.get(state.current);
+    if (cs) { agOpen(cs, { id: c.dataset.ag, asked: c.dataset.asked }); return; }
     const b = e.target.closest('.presence .agr'), s = b && state.sessions.get(state.current); if (!s) return;
     const k = b.dataset.k;
     if (k === '_more' || k === '_done' || k === '_sum') { agSwitch(s.id, k === '_more' ? 'more' : 'done'); fillAgents(); renderPresence(); return; }
@@ -8347,7 +8357,7 @@ const toolName = n => {
   /** Anchors for the paths and pages in the text of a rendered transcript — the text nodes outside anchors. */
   function linkify(root, cwd) {
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [];
-    for (let n; (n = w.nextNode());) if (/[\/:]/.test(n.data) && !n.parentElement.closest('a, summary, .who')) nodes.push(n);
+    for (let n; (n = w.nextNode());) if (/[\/:]/.test(n.data) && !n.parentElement.closest('a, summary, .who, .agcall')) nodes.push(n);
     for (const n of nodes) {
       const t = n.data, links = chatLinks(t, cwd); if (!links.length) continue;
       const frag = document.createDocumentFragment(); let at = 0;
@@ -12844,13 +12854,26 @@ const toolName = n => {
     return `${pending ? '<i class="tst run" aria-hidden="true"></i>' : ''}${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}`;
   }
   const toolGroupHtml = run => `<details class="toolgroup"><summary>${toolSummaryHtml(run)}</summary>${run.map(entryHtml).join('')}</details>`;
+  /** An agent's call (2026-11-02): a line of its own, out of the fold, the way back to its transcript long after its row has left the
+   *  card. An Agent call has it from the start and the result ties it (agCallTie); a forked Skill's call stays in its run, and its
+   *  result, the first to say an agent was started, is the line. `said`: what the call says it is for. */
+  function agCallHtml(e, said) {
+    const a = e.agent, who = a?.name || e.who, words = a?.asked || said || '';
+    return `<button type="button" class="tool agcall" title="Its transcript, read-only, beside the chat" data-asked="${esc(who || words || 'An agent')}"${a ? ` data-ag="${esc(a.id)}"` : ' disabled'}><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" aria-hidden="true"></i><b>${esc(who || 'Agent')}</b><span>${esc(words)}</span><span class="go">its transcript ›</span></button>`;
+  }
+  function agCallTie(el, e) {
+    if (e.isError) el.title = e.text || '';
+    if (e.isError || !e.agent) return;
+    el.dataset.ag = e.agent.id; el.disabled = false;
+    if (e.agent.name) { el.querySelector('b').textContent = e.agent.name; el.dataset.asked = e.agent.name; }
+  }
   // The transcript is appended to, not rewritten (2026-09-27): every `entries` event rebuilt the whole log — each
   // markdown body through marked, DOMPurify and highlight.js, then linkify over every text node — several times a
   // second while the open chat was clauding. Only what arrived is rendered now: a new entry is appended, and a run of
   // tool calls still growing at the end has its new rows appended and its summary written again (2026-10-03; the whole
   // <details> was drawn again on every push before, a turn's worth of rows parsed and linkified per push), its open
   // state kept. Another chat, or another list (a fetch hands the page a new array), starts the log over.
-  const logView = { arr: null, n: 0, run: [], group: null, drawnRun: 0 };
+  const logView = { arr: null, n: 0, run: [], group: null, drawnRun: 0, agCalls: new Map() };
   const REVEAL_GAP = 45;
   function reveal(msg) {
     const parts = [...msg.querySelectorAll('.text > *, .turnfoot')].slice(0, 12);
@@ -12878,7 +12901,7 @@ const toolName = n => {
       const m = log.querySelector(`.tst[data-tu="${CSS.escape(e.toolUseId)}"]`);
       if (m) { m.className = 'tst ' + toolMark(e.toolUseId); if (!REDUCED.matches) m.animate([{ scale: .2, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 320, easing: SPRING, id: 'tst' }); }
     }
-    if (resetting) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, drawnRun: 0, fresh: 0, dayKey: new Date().toDateString(), lastWho: null }); }
+    if (resetting) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, drawnRun: 0, agCalls: new Map(), fresh: 0, dayKey: new Date().toDateString(), lastWho: null }); }
     // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
     // the presence line and the new-reply pill, which stay last.
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
@@ -12900,9 +12923,14 @@ const toolName = n => {
       else { logView.group.append(htmlNodes(run.slice(logView.drawnRun).map(entryHtml).join(''), cwd)); logView.group.querySelector(':scope > summary').innerHTML = toolSummaryHtml(run); }
       logView.drawnRun = run.length;
     };
+    const runEnds = () => { group(); logView.run = []; logView.group = null; logView.drawnRun = 0; };
     for (const e of state.entries.slice(logView.n)) {
+      if (e.kind === 'tool_use' && e.name === 'Agent') { runEnds(); const f = htmlNodes(agCallHtml(e, e.text), cwd); logView.agCalls.set(e.toolUseId, f.firstElementChild); add(f); continue; }
+      const call = e.kind === 'tool_result' && logView.agCalls.get(e.toolUseId);
+      if (call) { agCallTie(call, e); continue; }
+      if (e.kind === 'tool_result' && e.agent) { const said = logView.run.find(u => u.toolUseId === e.toolUseId)?.args; runEnds(); add(htmlNodes(agCallHtml(e, said), cwd)); continue; }
       if (e.kind === 'tool_use' || e.kind === 'tool_result') { logView.run.push(e); continue; }
-      group(); logView.run = []; logView.group = null; logView.drawnRun = 0;
+      runEnds();
       // a line where the day changes, as the list has (2026-09-27, night): none for today's messages at the top, a
       // date where the transcript goes to another day, "today" where it comes back — by the date itself (2026-10-03: by
       // its label, and a chat open across midnight had no line between yesterday's words and today's)

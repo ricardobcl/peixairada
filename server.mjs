@@ -2262,7 +2262,7 @@ function fold(s, line) {
       if (toolResults.length) {
         for (const b of toolResults) {
           startTask(s, b, ts); if (s.wakeCalls?.size) startWake(s, b, line.toolUseResult, ts);
-          pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
+          pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts, ...toolResults.length === 1 && agentNamed(line.toolUseResult) });
           if (s.actsWait.size) noteActsDone(s, b);
           if (s.opening.size) noteOpened(s, b);
           if (s.sends?.size) noteSent(s, b, line.toolUseResult, ts);
@@ -2328,6 +2328,8 @@ function fold(s, line) {
         else if (b.type === 'tool_use') {
           const e = { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts };
           if (b.name === 'SendMessage') noteSend(s, e, b);
+          if (b.name === 'Agent' && pstr(b.input?.name)) e.who = b.input.name;
+          if (b.name === 'Skill' && pstr(b.input?.args)) e.args = snippet(b.input.args, 140);   // a fork's words: which PR this review is of
           pushEntry(s, e);
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
           if (NEEDS_INPUT_TOOLS.has(b.name)) { const opts = b.input?.questions?.[0]?.options, list = Array.isArray(opts) ? opts : [];   // a model's own input: options as a string once (2026-10-14)
@@ -2694,6 +2696,8 @@ function mateLast(file, st) {
 // from a round before stays with it (`old`), for the page to keep until the chat is opened (seenAt). Words hold AGENT_WORDS_MS:
 // a tool call every 6.6 s here (the median over 247 agents) would flicker, and a new one must not push for each step.
 const AGENT_WORDS_MS = Number(process.env.AGENT_WORDS_MS ?? 15_000), AGENT_FILES = 40;
+/** The agent a tool's result names (2026-11-02): an Agent call's, a forked Skill's. How the transcript gets back to it, whatever became of its row. */
+const agentNamed = t => typeof t?.agentId === 'string' && /^[\w-]+$/.test(t.agentId) ? { agent: { id: t.agentId, name: pstr(t.name) || pstr(t.commandName), asked: pstr(t.description) } } : null;
 const agentMetaOf = m => !m || typeof m !== 'object' ? {} : { name: pstr(m.name), asked: pstr(m.description), kind: pstr(m.agentType), mate: m.taskKind === 'in_process_teammate' || !!pstr(m.teamName),
   model: pstr(m.model), branch: pstr(m.worktreeBranch), tree: pstr(m.worktreePath), tool: pstr(m.toolUseId), finished: m.finished === true, stopped: m.stoppedByUser === true };
 const metaFile = (dir, n) => join(dir, n.slice(0, -'.jsonl'.length) + '.meta.json');
@@ -2786,13 +2790,13 @@ function agentFold(log, raw) {
       if (b?.type === 'text' && b.text?.trim()) log.entries.push({ role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id });
       else if (b?.type === 'tool_use') {
         log.tools++;
-        if (b.name === 'SubagentHandback') { const t = String(b.input?.message || '').trim(); if (t) log.entries.push({ role: 'assistant', kind: 'text', text: t, ts, msgId: m.id }); }   // its report: words, not a call
+        if (b.name === 'SubagentHandback') { (log.handed ||= new Set()).add(b.id); const t = String(b.input?.message || '').trim(); if (t) log.entries.push({ role: 'assistant', kind: 'text', text: t, ts, msgId: m.id }); }   // its report: words, not a call, and its result nothing
         else log.entries.push({ role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
       }
     }
   } else if (l.type === 'user' && !l.isMeta && !l.isCompactSummary) {
     const results = blocks.filter(b => b?.type === 'tool_result');
-    if (results.length) { for (const b of results) log.entries.push({ role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts }); return; }
+    if (results.length) { for (const b of results) if (!log.handed?.has(b.tool_use_id)) log.entries.push({ role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts }); return; }
     const text = agentPrompt(textOf(c));
     if (!text || TASK_NOTE_RE.test(text) || SYNTHETIC_RE.test(text)) return;
     log.prompt ??= text;
