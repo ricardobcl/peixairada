@@ -924,6 +924,9 @@
   #sessions[data-even] .chip.agents .agcar { display: none; }
   .agl { display: grid; gap: 5px; margin-top: 7px; min-width: 0; }
   .agl[hidden] { display: none; }
+  .presence > .agl { flex: 0 0 100%; margin: 2px 0 0; padding-left: 28px; box-sizing: border-box; }
+  .presence > .agl > .agr { max-width: 64ch; }
+  #ov .ot .agl { margin-top: 6px; }
   #sessions[data-even] .card .agl, #sessions[data-hide~="agents"] .card .agl { display: none; }
   .agr { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 6px; align-items: baseline; font-size: var(--fs-xs); line-height: 15px; color: var(--ink); min-width: 0; cursor: pointer; }
   .agr .agd { grid-column: 1; align-self: center; display: block; position: relative; width: 10px; height: 10px; }
@@ -1910,7 +1913,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
      only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
      red and the card's own markup (askHtml). renderPresence keeps it the last thing in the log. */
-  .presence { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px 2px; min-height: 18px; font-size: var(--fs-sm); color: var(--muted); }
+  .presence { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 6px 2px; min-height: 18px; font-size: var(--fs-sm); color: var(--muted); }
   .presence .pix { flex: none; }
   .presence .w { font-weight: 600; }
   .presence .w em { font-style: normal; font-weight: 400; }
@@ -2339,7 +2342,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .say.none { color: var(--muted); }
   #ov .you { color: var(--you); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #ov .ot > .tl { font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  #ov .ag { font-size: var(--fs-sm); color: var(--working-ink); font-weight: 600; }
   #ov .q { font-size: var(--fs-md); color: var(--ink); font-weight: 600; }
   #ov .ans { display: flex; flex-wrap: wrap; gap: 6px; }
   #ov .ans button { font: inherit; font-size: var(--fs-sm); padding: 4px 9px; border: 0; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
@@ -6446,6 +6448,7 @@ const toolName = n => {
     for (const r of p.opened) out.push({ ...agItem(r, s, thin), k: `${r.id}_d` });
     return out;
   }
+  const agRowHtml = it => `<div class="agr${it.cls || ''}" data-k="${esc(it.k)}" data-st="${esc(it.st)}"${it.ag ? ` data-ag="${esc(it.ag)}"` : ''}><i class="agd" aria-hidden="true"></i><span class="aga">${it.a}</span><span class="agt">${it.t}</span><span class="agn">${it.n || ''}</span></div>`;
   /** Rows into a box, keyed: a row keeps its node, so a step changes only its words. True when one was made. */
   function agDraw(box, items, soft) {
     const had = new Map([...box.children].map(e => [e.dataset.k, e])); let at = box.firstElementChild, made = false;
@@ -8134,6 +8137,12 @@ const toolName = n => {
     clearTimeout(b.timer); b.timer = setTimeout(() => { w.textContent = 'copy'; b.classList.remove('did'); }, 1200);
   });
   // a message's sender, or where a SendMessage went (2026-10-31): that chat, its card located
+  $('#log').addEventListener('click', e => {   // an agent's row under the transcript, as on its card (2026-11-02)
+    const b = e.target.closest('.presence .agr'), s = b && state.sessions.get(state.current); if (!s) return;
+    const k = b.dataset.k;
+    if (k === '_more' || k === '_done' || k === '_sum') { agSwitch(s.id, k === '_more' ? 'more' : 'done'); fillAgents(); renderPresence(); return; }
+    const r = s.agentRows?.find(x => x.id === b.dataset.ag); if (r) agOpen(s, r);
+  });
   $('#log').addEventListener('click', e => {
     const b = e.target.closest('.peerlink[data-sid]'); if (!b) return;
     if (state.sessions.has(b.dataset.sid)) openSession(b.dataset.sid, { locate: true }); else note(b, 'That chat is not on the board');
@@ -11302,7 +11311,7 @@ const toolName = n => {
     const age = asking(s) ? `<span class="wait">waiting on you <span data-at="${esc(s.statusSince || '')}"></span></span>` : `<span data-at="${esc(wordAt(s))}"></span>${(state.unread.get(s.id) || 0) ? `<b class="un">${state.unread.get(s.id)}</b>` : ''}`;
     const ask = asking(s) && s.ask ? `<div class="q">${esc(s.ask.text || `waiting for ${s.ask.waitingFor || 'you'}`)}</div>${s.ask.labels?.length ? `<div class="ans">${s.ask.labels.map((l, i) => `<button data-ans="${i + 1}"${d ? '' : ' disabled'} title="${d ? `Opens the chat and types ${i + 1} into its drawer` : 'Not in a drawer here — answer it where it runs'}"><b>${i + 1}</b>${esc(l)}</button>`).join('')}</div>` : ''}` : '';
     const tasks = (s.tasks || []).map(t => `<div class="tl watch"><i></i><b>${t.kind === 'monitor' ? 'Monitor' : 'Bash'}</b><span>${esc(t.what)}</span><em>${esc(t.last || `${t.events} events`)}</em></div>`).join('');
-    const agents = s.agents ? `<div class="ag">${s.agents} agent${s.agents === 1 ? '' : 's'} at work</div>` : '';
+    const agents = agOn(s) && s.agentRows?.length ? `<div class="agl">${agItems(agPlan(s, false), s, true).map(agRowHtml).join('')}</div>` : '';   // a line each (2026-11-02)
     return `<article class="ot ${asking(s) ? 'ask' : bucket(s) === 'working' ? 'work' : ''}${sel ? ' sel' : ''}" data-id="${esc(s.id)}" style="${repoStyle(repoColor(s.cwd))}">
       <header>${n <= 9 ? `<kbd>${n}</kbd>` : ''}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="age">${age}</span></header>
       <h3>${ticks(esc(s.title))}</h3>
@@ -12769,6 +12778,14 @@ const toolName = n => {
     const place = n => pill ? log.insertBefore(n, pill) : log.append(n);   // last, but for the new-reply pill
     if (!el || el.dataset.html !== html) { const n = html2el(html); n.dataset.html = html; if (el) el.replaceWith(n); else place(n); el = n; phaseAnims(); }
     if (el.nextElementSibling && el.nextElementSibling !== pill) place(el);
+    // the same rows as its card's (2026-11-02), for the chat you are reading, whatever its card has folded
+    const on = s.status === 'working' && agOn(s), had = el.querySelector(':scope > .agl');
+    if (on) {
+      agNote(s);
+      const box = had || el.appendChild(html2el('<div class="agl"></div>')), items = agItems({ ...agPlan(s, false), folded: false }, s);
+      if (agDraw(box, items, true)) phaseAnims();
+      box.hidden = !items.length;
+    } else had?.remove();
     if (stick) log.scrollTop = log.scrollHeight;
   }
 

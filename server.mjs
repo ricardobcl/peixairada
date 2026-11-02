@@ -2741,12 +2741,14 @@ function noteAgents(s, dir, work, since, now) {
     if (state === 'run' && was?.st === 'run' && was.last && now - (said.get(id) || 0) < AGENT_WORDS_MS) last = was.last;   // it holds its words
     else if (JSON.stringify(last) !== JSON.stringify(was?.last ?? null)) said.set(id, now);
     rows.push({ id, name: m.name, asked: m.asked || snippet(born.prompt, 80) || null, kind: m.kind && m.kind !== 'general-purpose' ? m.kind : null, mate: !!m.mate, st: state, last,
-      at: born.at, end: state === 'run' || state === 'wait' ? null : new Date(st.mtimeMs).toISOString(), lastAt: new Date(st.mtimeMs).toISOString(), why: state === 'fail' ? end?.why || null : null,
+      // when it ended: not its last line alone — an API error writes none, and you may have opened the chat since that line (the page keeps a failure until then)
+      at: born.at, end: state === 'run' || state === 'wait' ? null : new Date(Math.max(st.mtimeMs, Date.parse(end?.ts) || 0, m.finished ? jsonSeen.get(metaFile(dir, n))?.mtimeMs || 0 : 0)).toISOString(),
+      lastAt: new Date(st.mtimeMs).toISOString(), why: state === 'fail' ? end?.why || null : null,
       branch: m.branch, tree: m.tree, tool: m.tool });
   }
   rows.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   let cut = 0, far = -Infinity;   // the last round: where one starts after every one before it had ended
-  rows.forEach((r, i) => { const from = Date.parse(r.at); if (i && from > far) cut = i; far = Math.max(far, r.end ? Date.parse(r.end) : Infinity); });
+  rows.forEach((r, i) => { const from = Date.parse(r.at); if (i && from > far) cut = i; far = Math.max(far, r.end ? Date.parse(r.lastAt) : Infinity); });
   const kept = [...rows.slice(0, cut).filter(r => r.st === 'fail').slice(-3).map(r => ({ ...r, old: true })), ...rows.slice(cut)];
   for (const m of rosterOf(s)) if (!names.has(m.name)) kept.push({ id: `mate-${m.name}`, name: m.name, asked: null, kind: null, mate: true, st: 'joined', last: null, at: null, end: null, lastAt: null, why: null, branch: null, tree: null, tool: null });   // named, no file of its own yet
   // what changed: `lastAt` only by the minute, or every line of every agent would push the card

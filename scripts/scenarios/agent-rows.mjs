@@ -44,6 +44,23 @@ export default async function (ctx) {
     ctx.assert.equal(await chip(other.id), undefined, 'a chat with no agents has no chip');
     await ctx.shot('agent-rows-dark');
 
+    // under the transcript of the chat you are reading, whatever its card has folded; and on the overview's tile, a line each
+    await ctx.openChat(lead.id);
+    await ctx.waitFor(`document.querySelectorAll('#log > .presence .agl .agr[data-ag]').length === 3`, { what: 'the rows under the transcript' });
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#log > .presence [data-k="cost"] .agn').textContent`), 'Count the gateways by zone');
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#log').lastElementChild.matches('.presence') || document.querySelector('#log').lastElementChild.matches('.lognew')`), true, 'still the log\u2019s tail');
+    await ctx.settle();
+    await ctx.shot('agent-rows-presence');
+    await ctx.evaluate(`document.querySelector('#log > .presence [data-k="cost"]').click()`);
+    await ctx.waitFor(`!document.querySelector('#agv').hidden`, { what: 'its tab, from there too' });
+    await ctx.evaluate(`document.querySelector('#agv .agvx').click()`);
+    await ctx.waitFor(`document.querySelector('#agv').hidden`, { what: 'the tab closed' });
+    await ctx.key('KeyA');
+    await ctx.waitFor(`document.querySelector('#ov').open && document.querySelectorAll('#ov .ot[data-id="${lead.id}"] .agr[data-ag]').length === 3`, { what: 'the tile\u2019s rows' });
+    ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#ov .ot[data-id="${lead.id}"] .agr[data-ag]')].map(r => [r.querySelector('.aga').textContent, r.querySelector('.agn').textContent])`), [['Review the plan for security', ''], ['Price the NAT gateways', ''], ['Map the blast radius', '']], 'one line each');
+    await ctx.evaluate(`document.querySelector('#ov').close()`);
+    await ctx.openChat(other.id);
+
     // a step: the row's words change, the card's node and the row's stay
     await ctx.evaluate(`(() => { const c = document.querySelector('${card(lead.id)}'); c._mark = 1; c.querySelector('[data-k="sec"]')._mark = 1; })()`);
     step(files.sec, 'List groups wider than a /16');
