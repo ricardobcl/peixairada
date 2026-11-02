@@ -14,19 +14,30 @@ const at = '2026-10-12T04:59:59.688Z';
 
 test('a Max plan: the rolling windows and a model\'s own week', () => {
   const { windows, other } = usageWindows({
-    five_hour: { utilization: 7.4, resets_at: at }, seven_day: { utilization: 22, resets_at: at }, seven_day_opus: null,
+    seven_day: { utilization: 22, resets_at: at }, seven_day_opus: null,
     extra_usage: { is_enabled: false, monthly_limit: null, used_credits: null, utilization: null },
-    limits: [{ kind: 'session', percent: 7, resets_at: at }, { kind: 'weekly_scoped', percent: 8, resets_at: at, scope: { model: { display_name: 'Fable' } } }],
+    limits: [{ kind: 'weekly_scoped', percent: 8, resets_at: at, scope: { model: { display_name: 'Fable' } } }],
     nimbus_quill: { utilization: 0, resets_at: null },
   });
-  assert.deepEqual(windows.map(w => [w.key, w.percent]), [['five_hour', 7], ['seven_day', 22], ['limits:weekly_scoped:Fable', 8]]);
+  assert.deepEqual(windows.map(w => [w.key, w.percent]), [['seven_day', 22], ['limits:weekly_scoped:Fable', 8]]);
   assert.ok(windows.every(w => !('limit' in w)), 'no money on a plan of windows');
   assert.deepEqual(other, ['nimbus_quill']);
 });
 
+test('the five-hour window is gone: a field or a row still naming it is no window (2026-11-02)', () => {
+  for (const utilization of [42, 0, null]) {
+    const { windows, other } = usageWindows({
+      five_hour: { utilization, resets_at: at }, seven_day: { utilization: 22, resets_at: at },
+      limits: [{ kind: 'session', percent: utilization, resets_at: at, label: 'Session' }],
+    });
+    assert.deepEqual(windows.map(w => w.key), ['seven_day']);
+    assert.deepEqual(other, []);
+  }
+});
+
 test('a monthly spend cap: one window, its dollars from extra_usage, in whole units', () => {
   const { windows } = usageWindows({
-    five_hour: null, seven_day: null,
+    seven_day: null,
     extra_usage: { is_enabled: true, monthly_limit: 50000, used_credits: 27140, utilization: 54, currency: 'usd' },
     limits: [{ kind: 'spend', group: 'monthly', percent: 54, resets_at: '2026-11-01T00:00:00.000Z', severity: 'normal', is_active: true }],
   });
@@ -46,10 +57,10 @@ test('several caps: the dollars go with the active one only', () => {
 
 test('extra usage on a plan of windows, with no spend row: a window of its own', () => {
   const { windows } = usageWindows({
-    five_hour: { utilization: 100, resets_at: at },
+    seven_day: { utilization: 100, resets_at: at },
     extra_usage: { is_enabled: true, monthly_limit: 10000, used_credits: 2500, utilization: null, currency: 'EUR' },
   });
-  assert.deepEqual(windows.map(w => w.key), ['five_hour', 'extra_usage']);
+  assert.deepEqual(windows.map(w => w.key), ['seven_day', 'extra_usage']);
   assert.deepEqual(windows[1], { key: 'extra_usage', label: 'extra usage · this month', percent: 25, resetsAt: null, period: 'monthly', used: 25, limit: 100, currency: 'EUR' });
 });
 

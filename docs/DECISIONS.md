@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-02, later still — no five-hour limit
+
+Ricardo: *"the 5H limit was removed from claude, update code/docs/screenshots"*
+
+* **The plan's meters are its weeks now** (`1W`, a model's own week; a cap in money and a grant as before). The usage
+  endpoint had already stopped answering the window: `/api/usage` on this Mac said `seven_day` and
+  `limits:weekly_scoped:Fable` before anything changed, so the meter had gone by itself and what was left was its name.
+  `named`, `USAGE_SHORT` and `uSpan` no longer know it.
+* **`five_hour` is ignored, not just unnamed**: out of `named`, a field with numbers in it would fall through to the
+  codename buckets and show as *five hour*, its tag `F`, Fable's. So `usageWindows` drops it, and a `limits[]` row of
+  kind `session` as before, whatever they say. → `test/usage.test.mjs`.
+* **The scenarios' made-up answers lost it too**: `usage-bar.mjs` keeps its third meter and its hours-and-minutes reset
+  with a day's spend window (`T`, 12 h left, the clock half way); `status-bar.mjs`, `bar-one-red.mjs` and
+  `fish-menu.mjs` take Fable's week beside `1W`.
+* **The README's pictures** re-shot on the made-up board, whose answer lost it as well: every clip, and every still
+  with the status bar. `cards-dark`, `timeline-dark` and `launcher-dark` are crops without it, and stay. The README and
+  the guide never named the window (*your plan's limits … as small pies*), so their words stand; older entries here
+  keep theirs, as history.
+
 ## Decisions of 2026-11-02, later — the README's pictures on the sidebar
 
 Ricardo: *"we should update the readme screenshots"*

@@ -4,7 +4,7 @@
 export const meta = { server: true, fixture: 'auto' };
 
 const HOT = `(() => { const real = window.fetch, soon = h => new Date(Date.now() + h * 3600e3).toISOString(), json = o => Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } }));
-  window.fetch = (u, o) => String(u).includes('/api/usage') ? json({ windows: [{ key: 'five_hour', label: 'session · 5 h', percent: 42, resetsAt: soon(2.5) }, { key: 'seven_day', label: 'week · all models', percent: 93, resetsAt: soon(84) }], other: [], fetchedAt: new Date().toISOString() })
+  window.fetch = (u, o) => String(u).includes('/api/usage') ? json({ windows: [{ key: 'seven_day', label: 'week · all models', percent: 93, resetsAt: soon(84) }, { key: 'limits:weekly_scoped:Fable', label: 'week · Fable', percent: 42, resetsAt: soon(84) }], other: [], fetchedAt: new Date().toISOString() })
     : String(u).includes('/api/stats') ? json({ cpu: 96, mem: { used: 95, total: 100 }, claude: { rss: 1e9, n: 2 } }) : real(u, o); })()`;
 
 export default async function (ctx) {

@@ -322,7 +322,6 @@ export const meta = {
 // snapshot's word on who and where (the home's user@host, the About box): made up, as the rest is.
 const inMin = m => new Date(now + m * 60_000).toISOString();
 const USAGE = { fetchedAt: new Date(now).toISOString(), windows: [
-  { key: 'five_hour', label: 'session · 5 h', percent: 34, resetsAt: inMin(130) },
   { key: 'seven_day', label: 'week · all models', percent: 58, resetsAt: inMin(3 * DAY + 200) },
   { key: 'limits:weekly_scoped:Fable', label: 'week · Fable', percent: 71, resetsAt: inMin(3 * DAY + 200) },
 ] };

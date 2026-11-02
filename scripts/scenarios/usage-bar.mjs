@@ -1,5 +1,5 @@
 // The plan usage (2026-09-24; the status bar's since 2026-10-09, and only there since 2026-10-14 — the list's foot had
-// its tags and rings): a pie and a percent per limit in the bar, "5H 42%  1W 75%  F 95%", and over it, on a click, a row
+// its tags and rings): a pie and a percent per limit in the bar, "T 42%  1W 75%  F 95%", and over it, on a click, a row
 // per window with its bar, the tick of the window's clock, the percent and the time to reset — and for a cap in money
 // (2026-10-08) what is spent of it. What this checks is the page's half against a faked /api/usage (the test server
 // runs with USAGE=off, which is the first thing checked: no usage in the bar at all): the meters, the rows and their
@@ -21,7 +21,7 @@ const STUB = `(() => {
       { key: 'spend:monthly', label: 'spend · this month', percent: 54, resetsAt: soon(24 * 15), period: 'monthly', used: 271.4, limit: 500, currency: 'USD' },
     ], other: [], fetchedAt: new Date().toISOString() });
     return answer({ windows: [
-      { key: 'five_hour', label: 'session · 5 h', percent: 42, resetsAt: soon(2.5) },
+      { key: 'spend:daily', label: 'spend · today', percent: 42, resetsAt: soon(12), period: 'daily' },
       { key: 'seven_day', label: 'week · all models', percent: 75, resetsAt: soon(84) },
       { key: 'limits:weekly_scoped:Fable', label: 'week · Fable', percent: 95, resetsAt: soon(84) },
       { key: 'cinder_cove', label: 'Claude Code & Cowork credit', percent: 12, resetsAt: null },
@@ -55,7 +55,7 @@ export default async function (ctx) {
   await ctx.reload(); await board();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 3`, { what: 'the meters' });
   out.rest = await bar(ctx);
-  ctx.assert.deepEqual(out.rest.meters, ['5H42%', '1W75%', 'F!95%'], 'a tag and a percent for each limit — the credit grant only in the rows');
+  ctx.assert.deepEqual(out.rest.meters, ['T42%', '1W75%', 'F!95%'], 'a tag and a percent for each limit — the credit grant only in the rows');
   ctx.assert.equal(out.rest.open, false, 'the rows out of sight');
 
   // A click: the rows over the bar; again, or a click elsewhere, and they go
@@ -64,9 +64,9 @@ export default async function (ctx) {
   out.rows = await bar(ctx);
   ctx.assert.deepEqual(out.rows.rows.map(r => r.pct), ['42%', '75%', '95%', '12%']);
   ctx.assert.deepEqual(out.rows.rows.map(r => r.colour), ['var(--spend)', 'var(--spend)', 'var(--ink)', 'var(--spend)'], 'orange, the ink from 90: red is for asking (round XIX\'s S3)');
-  // 2 h 30 m left of five hours, 3 d 12 h of seven days: both clocks stand half way; a credit grant has no clock
+  // 12 h left of a day, 3 d 12 h of seven days: both clocks stand half way; a credit grant has no clock
   ctx.assert.deepEqual(out.rows.rows.map(r => r.tick), [50, 50, 50, null], 'a tick where the clock stands, where the window has one');
-  ctx.assert.deepEqual(out.rows.rows.map(r => r.reset), ['2h 30m', '3d 12h', '3d 12h', '']);
+  ctx.assert.deepEqual(out.rows.rows.map(r => r.reset), ['12h 0m', '3d 12h', '3d 12h', '']);
   ctx.assert.ok(await ctx.evaluate(`document.querySelector('#sbar .sbpanel').getBoundingClientRect().bottom <= document.querySelector('#sbar').getBoundingClientRect().top`), 'over the bar');
   await ctx.shot('1-rows', await ctx.evaluate(`(r => ({ x: Math.max(0, r.right - 520), y: Math.max(0, r.top - 240), width: 520, height: 280 }))(document.querySelector('#sbar').getBoundingClientRect())`));
   await click();

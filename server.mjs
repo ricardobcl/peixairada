@@ -3296,14 +3296,16 @@ async function oauthToken() {
     return token ? { token } : { why: 'the keychain item holds no OAuth token — API-key logins have no plan usage' };
   } catch (err) { return { why: /could not be found/i.test(String(err.message || err)) ? 'no Claude Code login in the keychain' : 'keychain access refused (allow `security` when asked)' }; }
 }
-// What the usage endpoint answers, as far as the 2.1.278 binary shows: top-level windows — five_hour,
-// seven_day, seven_day_sonnet/opus ({utilization: 0–100, resets_at}) — plus codename buckets of the same
+// What the usage endpoint answers, as far as the 2.1.278 binary shows: top-level windows — seven_day,
+// seven_day_sonnet/opus ({utilization: 0–100, resets_at}) — plus codename buckets of the same
 // shape (cinder_cove is the CLI's "Claude Code and Cowork credit", a one-time grant; nimbus_quill turned up
 // at 0 % on 2026-09-20 and this CLI has no label for it, so it never shows there) and limits[]: the server's
 // own rows, {kind: session | weekly_all | weekly_scoped, percent, resets_at, scope: {model: {display_name}}}.
 // The CLI draws the known windows and adds "Current week (<model>)" from the weekly_scoped rows behind an
 // allowlist; here every scoped row shows — a per-model allowance (Fable's) is exactly what you want apart.
 // Codename buckets show only once they are non-zero; the zero ones come back under `other`.
+// No five-hour window (2026-11-02): Claude's plans dropped it, so a `five_hour` field, or a limits[] row of kind
+// `session`, is no window whatever it says — and no codename bucket either, whose tag would read F like Fable's.
 // A plan capped in money (2026-10-08, read off the 2.1.295 binary — an enterprise seat with a monthly $ cap had no
 // rolling windows at all, and the bar said nothing): `extra_usage` {is_enabled, monthly_limit, used_credits — cents of
 // `currency` —, utilization 0–100} and one limits[] row per cap, {kind: 'spend', group: 'monthly' | …, percent,
@@ -3314,7 +3316,7 @@ const SPEND_PERIOD = { daily: 'today', weekly: 'this week', monthly: 'this month
 function usageWindows(d) {
   const windows = [], other = [];
   const add = (key, label, percent, resetsAt, more) => { if (typeof percent === 'number' && !windows.some(x => x.key === key)) windows.push({ key, label, percent: Math.round(percent), resetsAt: resetsAt || null, ...more }); };
-  const named = { five_hour: 'session · 5 h', seven_day: 'week · all models', seven_day_opus: 'week · Opus', seven_day_sonnet: 'week · Sonnet' };
+  const named = { seven_day: 'week · all models', seven_day_opus: 'week · Opus', seven_day_sonnet: 'week · Sonnet' };
   const buckets = { cinder_cove: 'Claude Code & Cowork credit' };
   const ex = d.extra_usage && typeof d.extra_usage === 'object' ? d.extra_usage : null;
   const cents = n => typeof n === 'number' && Number.isFinite(n) ? n / 100 : null;
@@ -3330,7 +3332,7 @@ function usageWindows(d) {
       continue;
     }
     const who = row.scope?.model?.display_name || row.scope?.surface?.display_name || row.scope?.display_name || row.label;
-    if (!who || row.kind === 'session' || row.kind === 'weekly_all') continue;   // those are the windows above
+    if (!who || row.kind === 'session' || row.kind === 'weekly_all') continue;   // the week's is the window above; the session's is gone
     add(`limits:${row.kind}:${who}`, `${row.kind === 'weekly_scoped' ? 'week' : String(row.kind).replace(/_/g, ' ')} · ${who}`, row.percent, row.resets_at);
   }
   // Extra usage switched on, and no spend row to hang it on: its own window, the month's (the field's name; no reset given)
@@ -3340,7 +3342,7 @@ function usageWindows(d) {
     add('wattle_ember', typeof we.label === 'string' && we.label.trim() ? we.label.trim() : 'credit', we.utilization, we.resets_at,
       typeof we.limit_dollars === 'number' ? { used: typeof we.used_dollars === 'number' ? we.used_dollars : null, limit: we.limit_dollars, currency: 'USD' } : {});
   for (const [k, w] of Object.entries(d)) {
-    if (k in named || k === 'limits' || k === 'extra_usage' || k === 'wattle_ember' || !w || typeof w !== 'object' || typeof w.utilization !== 'number') continue;
+    if (k in named || k === 'five_hour' || k === 'limits' || k === 'extra_usage' || k === 'wattle_ember' || !w || typeof w !== 'object' || typeof w.utilization !== 'number') continue;
     if (w.utilization > 0) add(k, buckets[k] || k.replace(/_/g, ' '), w.utilization, w.resets_at); else other.push(k);
   }
   return { windows, other };
