@@ -103,3 +103,44 @@ test('one agent on demand: what it was asked, its totals, its transcript a piece
     assert.equal((await srv.api(`api/sessions/${chat.id}/agents/..%2Fx`)).status, 404, 'an id is a name, never a path');
   } finally { await srv.stop(); p.kill(); }
 });
+
+/** The `alert` events of a server's stream, from its snapshot on (as drift.test reads them). */
+async function alerts(url, key) {
+  const seen = [], ac = new AbortController();
+  await new Promise((resolve, reject) => {
+    fetch(`${url}events`, { signal: ac.signal, headers: { 'x-peix-key': key } }).then(async res => {
+      let buf = '';
+      for await (const chunk of res.body) {
+        buf += Buffer.from(chunk).toString();
+        let i; while ((i = buf.indexOf('\n\n')) >= 0) { const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i)); buf = buf.slice(i + 2); if (m?.[1] === 'snapshot') resolve(); if (m?.[1] === 'alert') seen.push(JSON.parse(m[2])); }
+      }
+    }).catch(e => { if (!ac.signal.aborted) reject(e); });
+  });
+  return { seen, stop: () => ac.abort() };
+}
+
+test('an agent that fails is an alert, once, with what it was asked and why; one that finishes is none', { timeout: 30_000 }, async () => {
+  const { p, fx, chat } = setup([
+    { id: 'a', asked: 'Price the gateways', ago: 5 * MIN, tool: 'toolu_a', steps: ['Count them'] },
+    { id: 'b', asked: 'Check flow logs', ago: 4 * MIN, tool: 'toolu_b', steps: ['Read the logs'] },
+    { id: 'gone', asked: 'From before', ago: 9 * MIN, tool: 'toolu_gone', steps: ['Look'] },
+  ], [{ tool: 'toolu_gone', asked: 'From before', status: 'failed', said: 'failed: Agent terminated early due to an API error' }]);
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  let a;
+  try {
+    await waitFor(async () => (await rowsOf(srv, chat.id))?.length, { what: 'the rows' });
+    a = await alerts(srv.url, srv.key);
+    const note = n => appendFileSync(chat.file, JSON.stringify(agentNoteLine({ id: chat.id, cwd: chat.cwd, ...n })) + '\n');
+    note({ tool: 'toolu_a', asked: 'Price the gateways' });
+    await new Promise(res => setTimeout(res, 900));
+    assert.deepEqual(a.seen.filter(x => x.kind === 'agent-failed'), [], 'one that finished: no word');
+    note({ tool: 'toolu_b', asked: 'Check flow logs', status: 'failed', said: 'failed: Agent terminated early due to an API error' });
+    await waitFor(() => a.seen.some(x => x.kind === 'agent-failed'), { what: 'the alert' });
+    const f = a.seen.find(x => x.kind === 'agent-failed');
+    assert.deepEqual([f.sessionId, f.heading, f.snippet], [chat.id, 'An agent failed · infra', 'Check flow logs: Agent terminated early due to an API error']);
+    note({ tool: 'toolu_b', asked: 'Check flow logs', status: 'failed', said: 'failed: Agent terminated early due to an API error' });   // a notice again
+    await srv.api(`api/sessions/${chat.id}/messages`);   // and a re-read of the chat
+    await new Promise(res => setTimeout(res, 900));
+    assert.equal(a.seen.filter(x => x.kind === 'agent-failed').length, 1, 'said once; the failure before the server came up, never');
+  } finally { a?.stop(); await srv.stop(); p.kill(); }
+});

@@ -924,7 +924,7 @@
   #sessions[data-even] .chip.agents .agcar { display: none; }
   .agl { display: grid; gap: 5px; margin-top: 7px; min-width: 0; }
   .agl[hidden] { display: none; }
-  .presence > .agl { flex: 0 0 100%; margin: 2px 0 0; padding-left: 28px; box-sizing: border-box; }
+  .presence > .agl { flex: 0 0 100%; margin: 2px 0 0; padding-left: 28px; box-sizing: border-box; --glow: var(--working-ink); --lift: var(--working-ink); }
   .presence > .agl > .agr { max-width: 64ch; }
   #ov .ot .agl { margin-top: 6px; }
   #sessions[data-even] .card .agl, #sessions[data-hide~="agents"] .card .agl { display: none; }
@@ -13243,7 +13243,7 @@ const toolName = n => {
     const play = () => {
       noteMotion(null, 'sound:' + kind);
       const t = audio.currentTime + .02;
-      if (kind === 'needs-input' || kind === 'drift') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
+      if (kind === 'needs-input' || kind === 'drift' || kind === 'agent-failed') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
       else { tone(1318.5, t, .18, 'sine', .08); tone(659.3, t, .26, 'sine', .05); }
       audioRest();
     };

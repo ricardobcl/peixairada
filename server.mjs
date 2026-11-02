@@ -2717,8 +2717,10 @@ function noteAgentNotices(s, text, ts) {
   let any = false;
   for (const [, b] of text.matchAll(/<task-notification>([\s\S]*?)<\/task-notification>/g)) {
     const tool = /<tool-use-id>([^<]+)</.exec(b)?.[1], sum = AGENT_NOTE.exec(b); if (!tool || !sum) continue;
-    const status = /<status>([^<]+)</.exec(b)?.[1] || null, said = sum[2].trim();
-    (s.agentEnds ||= new Map()).set(tool, { status, waiting: /waiting on its own/i.test(said), why: status === 'failed' ? snippet(said.replace(/^failed:\s*/i, ''), 120) : null, ts });
+    const status = /<status>([^<]+)</.exec(b)?.[1] || null, said = sum[2].trim(), why = status === 'failed' ? snippet(said.replace(/^failed:\s*/i, ''), 120) : null;
+    const was = s.agentEnds?.get(tool);
+    (s.agentEnds ||= new Map()).set(tool, { status, waiting: /waiting on its own/i.test(said), why, ts });
+    if (status === 'failed' && was?.status !== 'failed') { s.agentFail = { what: sum[1], why }; queueNotify(s, 'agent-failed'); }   // the one word of an agent's that is news: one done is not, the chat's reply is
     any = true;
   }
   if (any) agentsSoon(s);
@@ -3191,6 +3193,7 @@ function fireNotify(s) {
 function alertOf(s, kind) {
   if (kind === 'needs-input' && statusOf(s) !== 'needs-input') return;   // answered within the debounce: nothing to say
   if (kind === 'drift') return driftNotify(s);
+  if (kind === 'agent-failed') return agentFailNotify(s);
   const sum = summary(s);
   const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
   const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
@@ -3205,6 +3208,14 @@ function driftNotify(s) {
   const snippet = `${d.to} now · was ${d.from}${n ? ` — ${n} other chat${n === 1 ? ' runs' : 's run'} in this checkout` : ''}`;
   broadcast('alert', { kind: 'drift', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet, ts: new Date().toISOString(), quiet: !notificationsOn });
   if (notificationsOn) nativeNotify(heading, sum.title, snippet);
+}
+
+/** An agent of a chat's failed (2026-11-02): said with a heading of its own, as a moved branch is. */
+function agentFailNotify(s) {
+  const f = s.agentFail; if (!f) return; s.agentFail = null;
+  const sum = summary(s), heading = `An agent failed · ${sum.project}`, text = f.why ? `${f.what}: ${f.why}` : f.what;
+  broadcast('alert', { kind: 'agent-failed', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet: text, ts: new Date().toISOString(), quiet: !notificationsOn });
+  if (notificationsOn) nativeNotify(heading, sum.title, text);
 }
 
 function schedulePush(s) {
