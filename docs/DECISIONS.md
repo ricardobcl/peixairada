@@ -21,21 +21,25 @@ by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-1
   screen, in the fill and with the board in front alike. With the app behind, on a normal Space, `popUp` opens on screen with
   no activation and no Space changed. In another app's full-screen Space the first sample found no menu window on screen;
   unresolved. Activating a windowless regular app took over a second and a `MenuBarAgent` panel of 367×154 appeared centred
-  under the housing, unidentified. **Not known**: whether arrow keys reach a menu popped from behind (macOS refuses posted
-  events without Accessibility, so the real hot key and its keys want a hand). M2 stands; if the keys fail, activate first.
-* **P2, what 27.2 says of the item: partly.** `button.window` is still an `NSStatusBarWindow` with a real frame at level 25
+  under the housing, unidentified. **By hand, with a guided probe**: the real Carbon key fires with another app in front, a
+  menu popped from behind opens without taking the front, and the keys chose a row in it. It chose the third row for ↓ ↓ ⏎,
+  where the second was expected, perhaps the pointer lighting the first as it opened; one run. M2 stands as built.
+* **P2, what 27.2 says of the item.** `button.window` is still an `NSStatusBarWindow` with a real frame at level 25
   (CGWindowList lists no such window; `MenuBarAgent` owns the bar). `occlusionState` carried the visible bit on a desktop with
   the bar out and not in the fill or a full-screen Space, in the few samples taken: a hopeful sign the fish can tell it is
-  hidden, not yet a rule. `appearsDisabled` sets. **Click routing was not run**: left, right and ⌥ need a hand for the same
-  reason. Nothing built leans on it (S8 is `isAlternate`).
+  hidden, not yet a rule. `appearsDisabled` sets. **By hand**: with `sendAction(on:)` for both buttons and no menu, left,
+  right and ⌥ all reach the action, and `isAlternate` swaps its row and fires. **`NSApp.currentEvent` cannot be trusted**:
+  its flags were empty with ⌥ held, while `NSEvent.modifierFlags` had it, and its type read rightMouseUp for the left click
+  and leftMouseUp for the right, `buttonNumber` 0 for both (one run; the Mac's swap setting not set). Nothing built leans on
+  either; a left/right split later would have to find another way to tell them.
 * **P3, are questions undercounted: no sign of it.** Against the transcripts' own `AskUserQuestion` calls, whole months:
   September 58 alerts to 3 calls, October 28 to 18, and of the days compared one call with no alert (2026-10-12, the app
   perhaps not running). The alerts beyond them are permission prompts and the like. `claude agents --json` turns out to be the
   registry with less in it (no `waitingFor`, `shell` reported as busy), so it is no second opinion: the registry is what
   there is. What the transcripts cannot show, a permission prompt that never alerted, goes to `scripts/ask-audit.mjs`, a week's
   log of the registry's flips that takes itself off launchd; `--report` holds them against the app log. A session may not start
-  it (the auto-mode classifier refuses the launchd job as persistence), so it waits for a hand: the command is at its head.
-  M6 and M8 stay unpicked.
+  it (the auto-mode classifier refuses the launchd job as persistence), so Ricardo started it, 2026-11-02 00:29 UTC: read it
+  from 2026-11-09. M6 and M8 stay unpicked.
 * **Built, a commit each**: S3 one red (`hotInk`, also the lid's switch and the usage past 90 %). S1 and V1 the fish's number
   and dimming. S2 belly-up, drawn **under a waterline** because `fish.fill` has a fin above and below, so turned over alone it
   read as the same fish when rendered at size. S7 a mute's mark, slash and row. S4 longest wait first. S5 the menu's own
