@@ -75,7 +75,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fake*.mjs` | `gh`, Jira (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew`, lunch's Instagram and reader, vim — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
 | `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP) → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -88,7 +88,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` and, given a `procStart`, that pid's start (`procAlive`, `LC_ALL=C TZ=UTC ps -o lstart=`, 2026-10-14); watched *and* polled every 10 s (pids die silently) |
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` |
 | Reply finished | an assistant line whose `stop_reason` is in `TURN_ENDS` (`end_turn`, `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal`; tool calls are `tool_use`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`: `/compact` ends with no assistant line) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl` whose last line is not a turn's end, nor its `SubagentHandback` result, nor an interrupt, written within `AGENT_STALE_MS` (`scanAgents()`; a dead chat counts none). A background agent ends the main turn at once; this keeps the card clauding |
-| An agent's row | (2026-11-02) `subagents/agent-*.meta.json`, its transcript's first line (`agentBorn`) and last (`mateLast`), and the notice it sends the chat (`noteAgentNotices`, by `toolUseId`: `status`, why it failed, `waiting on its own background work`) → `s.agentRows` (`noteAgents`): the last round (one starting after all before ended), a failure from before kept (`old`); words hold `AGENT_WORDS_MS`; `finished` and nothing written since ends one (`agentFinished`); a teammate is one, a roster's name with no file `joined`. `…/agents/:id`: totals, `?after=n` its transcript, read when asked (`agentLog`). A failed notice alerts once. → `test/agent-rows.test.mjs`, `team.test.mjs` |
+| An agent's row | (2026-11-02) its `.meta.json`, its transcript's first line (`agentBorn`) and last (`mateLast`), its notice to the chat (`noteAgentNotices`, by `toolUseId`: `status`, why it failed, waiting) → `s.agentRows` (`noteAgents`): the last round (one starting after all before ended), an older failure kept (`old`); words hold `AGENT_WORDS_MS`; `finished` with nothing written since ends one (`agentFinished`); a roster's name with no file is `joined`. `…/agents/:id`: totals, `?after=n` its transcript, read when asked (`agentLog`). A failed notice alerts once. → `test/agent-rows.test.mjs`, `team.test.mjs` |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed`, `permission prompt`, …) — `waitingOn()` / `statusOf()`; any live process waiting is the chat waiting, and it beats the agents; **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer* — only the fallback for a claude that reports no status (`s.ask`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
 | Work behind the turn | `Monitor` and a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines carry its events and its end. `s.tasks` → `tasks`; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`) or with the chat's process (`pruneTasks`, on the poll). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (held open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved. **Wake-ups** (2026-10-31): `ScheduleWakeup`, `CronCreate` → `wake` (`nextWake`, `cronNext`); a stopped turn → `stopped` (`stopOf`). → `test/watch-lane.test.mjs`, `stopped-reason.mjs` |
 | Chats talking | (2026-10-31) a meta `user` line or `queued_command` attachment with `origin.kind: "peer"`, no `senderTaskId`; queued, a `queue-operation` envelope (`peerOf`). **Never your word**; sender by `msg_id`, pid, name (`peerSender`) → `peers.test.mjs` |
@@ -147,8 +147,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Keeping the Mac awake is two switches, and only one is the board's** (2026-10-08, `keepAwake`, `setLid`,
   `/api/awake`, an `awake` event): *awake* is a `caffeinate -i -w <server pid>` held while `awake` is on in the state
   file (one that ends on its own turns the switch off); *lid closed* is `/usr/bin/pmset -a disablesleep 1|0` as root (`lidRuns`) — through
-  `sudo` first (Touch ID or a NOPASSWD rule), then osascript's
-  administrator dialog (a cancel is a 409, `cancelled`); `AWAKE_ADMIN` is `sudo` · `osascript` · `none` (the tests).
+  `sudo` first, then osascript's dialog (a cancel is a 409); `AWAKE_ADMIN` is `sudo` · `osascript` · `none` (the tests).
   **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` every minute (`POWER_POLL_MS`),
   with the idle sleep in use and the power source (`idleSleep`, `power`); the cup is muted while it has nothing to hold
   off (`cupMoot`, `cupTip`).  → `test/awake.test.mjs`, `keep-awake.mjs`.
@@ -312,7 +311,7 @@ npm run map                         # rewrite the section maps at the top of ser
   clock, by its `currentTime`, then its `startTime` — only when something new may have started: a render queues it when
   `drawCards` says the list changed, `renderBoardSoon` runs a queued one at once, a run at once clears the queued one
   (2026-10-13). → `card-signals.mjs`.
-* **A card opens to its agents while they work** (2026-11-02, round XX; `fillAgents`, `agPlan`, `agPaint`, `.agl`, `.agr[data-ag]`): what each was asked, does (`agNow`) and its age (`agLabel`, frozen once ended), `AG_SHOW` rows then `+N`; one ended ticks (`AG_TICK_MS`), then a done row whose click lists the results; a failure first, the chip red, until the chat is opened (`seenAt`), with a summary once the last ended; `quiet` past `AG_QUIET_MS`; nothing leaves under the pointer (`agHover`). **Chip, rows and `--lights` are out of the markup**: a new node filled before `drawCards` measures it (`agFresh`), a step keeps every node. The chip folds them (`prefs.agentCards`), the live line then naming who stepped last (`.agwho`); same height and `data-hide~="agents"` show none. The arc is `ring`, phased. A row's card is `#mxtip`'s (`agCardHtml`), its menu `agMenu` (a stop typed unsent); the rows too under the transcript (`renderPresence`) and on ⌥⌘A's tile. → `agent-rows.mjs`, `agent-menu.mjs`, `team-rows.mjs`.
+* **A card opens to its agents while they work** (2026-11-02, round XX; `fillAgents`, `agPlan`, `agPaint`, `.agl`, `.agr[data-ag]`): asked, doing (`agNow`), age (`agLabel`), `AG_SHOW` rows then `+N`; one ended ticks (`AG_TICK_MS`), then a done row listing the results; a failure first, the chip red, until the chat is opened (`seenAt`), with a summary once the last ended; nothing leaves under the pointer (`agHover`). **Chip, rows and `--lights` are out of the markup**: a new node is filled before `drawCards` measures it (`agFresh`). The chip folds them (`prefs.agentCards`), the live line then naming who stepped last (`.agwho`); same height and `data-hide~="agents"` show none. The arc is `ring`, phased. A row's card is `#mxtip`'s (`agCardHtml`), its menu `agMenu` (a stop typed unsent); the rows too under the transcript (`renderPresence`) and on ⌥⌘A's tile. → `agent-rows.mjs`, `agent-menu.mjs`.
 * **Hidden (⌥⌘B, `#sbList` first in the status bar), the list is out of the layout** (2026-10-25; `prefs.listHidden` →
   `main.lhide`, `applyList`): `#sessions` and `#splitter` `display: none` — no card runs a thing —, the chat the whole
   width. **What only narrows the list shows it** (`showList`: the magnifier, a filter, a face, a project); shown, its
@@ -342,8 +341,7 @@ npm run map                         # rewrite the section maps at the top of ser
   remembered as `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read
   `--crust`, `--bar`, `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; none
   under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
-  **Black** (2026-10-30) is the board's own dark on true black: its grounds black by rules of its own
-  (`:root[data-skin="black"]` — no wash on the transcript). **Every theme lays the
+  **Black** is the board's own dark on true black (`:root[data-skin="black"]`). **Every theme lays the
   chat in a frame** (2026-11-01; round XVII's C1): `--frame` (the board's own in `:root` — in dark Settings' grey, its list's inks lifted for it, round XVIII —, a theme's its `crust`) the
   window's ground, the sidebar (`--side`) and the status bar, the chat a sheet in it. **`data-frame` is
   the frame's appearance** — dark round a light chat under Settings' *Dark frame* (`prefs.darkFrame`, light only; a
@@ -427,9 +425,8 @@ npm run map                         # rewrite the section maps at the top of ser
   not on a part with a tooltip of its own; a pane page there, under; a PR-titled chat's `titleTip` its first line). → `pr-rounds.mjs`.
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
   chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
-  a non-passive listener added on `pointerover`). CSS only (a right-to-left grid, `--d`, `--i`, `--under`, `--span`),
-  the box `flex: 999 0 0` between `min-content` and `max-content`: the row's free room, not the folder's. → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
-  `CARD_FACES`, spread under the pointer); the tests' fake gh hands `data:` faces. **That is *All*; the default is the
+  a non-passive listener added on `pointerover`). CSS only. → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
+  `CARD_FACES`, spread under the pointer). **That is *All*; the default is the
   matrix** (2026-11-01, Settings › Chat list › A card's PRs, `prefs.prChips`; `cardMatrix`, `.tmx`, markup by the pref): a
   square a PR in stack order (`prGroups`, `prChain` on `pr.refs`), the number your move's, else the newest `pr.updated`
   (`mxLead`); one size, nothing round a square; past the row's room `.mxg` scrolls (`mxWheel`; `fadeOver` brings the
@@ -541,15 +538,13 @@ npm run map                         # rewrite the section maps at the top of ser
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live, its `.lab` the harness's): a 720 × 900 picture, its frames
   only while open and not paused or called; its own Web Audio (`prefs.zeBand`, `zeMode`, `zeRadio`, a room a sky `zeRoom`), made by the press that
   starts a round, suspended by a pause, closed with the dialog or by M. He is pixels in the code (`ZE_FACE`, `zeBuild`), no picture and no setting;
-  bulk, not lives (`g.mass`, `zeSz`); the cars (`zeRide`); Trota's four ways and dragon (`ZE_DIFFS`, `zeDragon`); rounds of a few minutes (`ZE_PACE`,
-  `zeBite`); a sky every `ZE_SKY_LEVELS`. **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it uses); the title's demo (`g.demo`) takes
+  bulk, not lives (`g.mass`); the cars (`zeRide`); Trota's ways (`ZE_DIFFS`); rounds of a few minutes (`ZE_PACE`). **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it uses); the title's demo (`g.demo`) takes
   chance's, makes no sound and wins nothing. **It hears the board**: a chat that starts asking stops it on a card (`zeHeard`; the page's Esc asks
   `zeCallEnd` first), today's lunch falls (`zeLunch`), the room gets a score only by a K.O. button (`zePost`, `zePoll`), Zé walks across All caught up
   (`.zewalk`). **The picture is a stage on the GPU** (2026-11-01, HD-2D; `zg`, `zgOn`, `zgDraw`, `zgFree`): WebGL2 made with the dialog and let go with
-  it **by hand** (`zgKeep`, `zgLetGo`: WebKit's lost context holds its textures until a collection, and tells of it late); none or lost, the 2D canvas (`zeDraw`). The set baked a sky (`zgScene`, `ZE_RIGS`), what moves `zeActors` on a 2D-shaped batcher (`zgBatch`) —
-  **never a canvas handed to WebGL a frame**: 7 ms in WebKit at any size —, `zeUi` the top canvas. **Blur by layer, never by screen height**: what falls
-  stays sharp. Nothing shaking, flashing or blinking under reduced motion (`zeCalm`); **no sound outlives it** (`zeHush` on `close`). → `ze-game.mjs`,
-  `ze-play.mjs`, `ze-stage.mjs`, `ze-webkit.mjs`, `ze-pace.mjs`, `ze-board.mjs`, `ze-sound-off.mjs`.
+  it **by hand** (`zgKeep`, `zgLetGo`); none or lost, the 2D canvas (`zeDraw`). The set baked a sky (`zgScene`, `ZE_RIGS`), what moves `zeActors` on a 2D-shaped batcher (`zgBatch`) —
+  **never a canvas handed to WebGL a frame** —, `zeUi` the top canvas. **Blur by layer, never by screen height**: what falls
+  stays sharp. Nothing shaking, flashing or blinking under reduced motion (`zeCalm`); **no sound outlives it** (`zeHush` on `close`). → `ze-*.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   ticks, titles, pins, PR turns… — whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
@@ -731,8 +726,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The sidebar is the one layout** (2026-10-30, round X; Tiles gone 2026-11-01): `<html data-layout="sidebar">` in the
   markup, never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the
   panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` for a split's halves,
-  `tileNotch`'s cut round the housing). **Ring is its one style** (round X's D2; Edge, Tinted and Glass — the list
-  frosted over a wallpaper, `#wall` — gone 2026-11-01, no setting). The shell: no gaps or edges (no `.ncut`); the list
+  `tileNotch`'s cut round the housing). **Ring is its one style** (2026-11-01, no setting). The shell: no gaps or edges (no `.ncut`); the list
   and the status bar flat on `--side` (the frame); the header a flush toolbar of glass, no black, the theme's inks
   (`--hd-*`), lowered at the notch by padding; cards are rows — no ground, edge or light under the pointer, the open
   one solid in its project's colour (`--selc`), white on it; the project a tag on a row, in the toolbar a capsule; PR
@@ -797,7 +791,7 @@ npm run map                         # rewrite the section maps at the top of ser
   (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert,
   a PR row's Timeline, the menus; the move gone to once both are in (`tv.lit`). Its word
   (`tvHint`) till seen (`prefs.tvSeen`). Its tracks (`tvTracksHtml`, its alone) hold times for `fillTracks`. → `timeline-tab.mjs`.
-* **An agent's tab** (2026-11-02; `agentTabs`, `agOpen`, `placeAgent`, `#agv`): `agent:<id>`, a row clicked; `#agv` moved into its half, read-only (`ICON.lock`), by `entryHtml` from `…/agents/:id?after=n` every `AGV_POLL_MS` while it shows and works, one ask at a time. Alone in a half, no strip: `.agvx` closes it. → `agent-tab.mjs`.
+* **An agent's tab** (2026-11-02; `agentTabs`, `placeAgent`, `#agv`): `agent:<id>`, a row clicked, read-only, by `entryHtml` from `…/agents/:id?after=n` while it shows and works. Alone in a half, no strip: `.agvx` closes it. → `agent-tab.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
@@ -913,8 +907,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `toggleFocusView()` sends it, then reads the newest `Focus view enabled|disabled` off the screen (`focusSaid()`) and
   lights `#viewBtn` from that; every attach reads it too (`readFocusFromScreen()`). The fake claude answers alike.
   → `focus-view.mjs`.
-* **Paths and pages in the chat are links**: a file path in the transcript or a drawer's line — `/absolute` (under a
-  root, or with an extension), `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens
+* **Paths and pages in the chat are links**: a file path in the transcript or a drawer's line — `/absolute`, `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens
   in the editor at that line (`fileUrl`, relative to the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not
   after a `+` or an in-word `@`, or it is quadratic); a web URL opens in the pane on a tab of the chat
   (`openExternal(url, { ide, s })`). The transcript is linkified as rendered (`linkify`); the drawer has a link
@@ -925,7 +918,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `#inEdPick`: VS Code Web or vim) is ⌥⌘E, `#webBtn`, Editor ▾. A switch redraws the transcript (`logView.arr = null`), so its links
   follow; the drawer's are read on hover. → `chat-links.mjs`. **Picking Zed without it installs it** (`wantZed` →
   `POST /api/editors/zed/install` → `installZed`: `brew install --cask zed`, one at a time, then `lsregister -f`);
-  `zedApp()` looks in `APP_DIRS`; `editor` events and `editors` in the snapshot draw `#edSay`; until it is there
+  until it is there
   `#zedBtn` and a `zed:` link say so (`zedNote`). → `test/editors.test.mjs`, `zed-install.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
@@ -1055,13 +1048,11 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`, `motion()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea`
   types.
-* Server logic without a browser: `npm test` (the terminals test is the reference for driving the API and the
-  socket); or a fixture tree `CLAUDE_DIR=/tmp/fix` and assertions on `/api/sessions`.
+* Server logic without a browser: `npm test` (the terminals test is the reference for the API and the socket).
 * The app logs to `~/Library/Logs/peixairada-app.log` (alerts, badges, pane opens, drops); the agent's server to
   `~/Library/Logs/peixairada.log` (spawns, adoptions, snapshots; each line stamped in UTC, 2026-10-21). Read those before guessing.
 
 ## Deliberately not done
-
 
 * **The title bar as one surface with the head row** — round the traffic lights, with something to drag the window
   by: a design for in front of the app. → Decisions 2026-09-27.
