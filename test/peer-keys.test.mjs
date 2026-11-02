@@ -33,7 +33,7 @@ test('the peer keys, the shell snapshots, the prompt history and the team mailbo
   const srv = await startTestServer({ claudeDir: fx.dir });
   try {
     const sum = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
-    await waitFor(async () => (await sum())?.alive && (await sum())?.team, { what: 'the chat alive, read from the .json beside the key, and its team' });
+    await waitFor(async () => (await sum())?.alive && (await sum())?.agentRows, { what: 'the chat alive, read from the .json beside the key, and its team' });
     // the registry read on an event as well as on the poll: another file beside them
     writeFileSync(join(dir, 'sessions', '1.json'), JSON.stringify({ pid: 1, sessionId: 'nobody', cwd: '/tmp' }));
     await (await srv.api(`api/sessions/${chat.id}/messages`));

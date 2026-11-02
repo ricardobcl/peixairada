@@ -30,7 +30,7 @@ export default async function (ctx) {
     node: c === window.__card }))(document.querySelector('${card}')))`).then(JSON.parse);
   await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
   out.on = await look();
-  a.deepEqual(out.on, { boxes: ['prs:true', 'rounds:true', 'tickets:true', 'faces:true'], hide: '', prs: true, faces: true, node: true }, 'everything shown by default');
+  a.deepEqual(out.on, { boxes: ['prs:true', 'rounds:true', 'tickets:true', 'faces:true', 'agents:true'], hide: '', prs: true, faces: true, node: true }, 'everything shown by default');
   await ctx.shot('1-all', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('${card}').getBoundingClientRect())`));
 
   // each box off hides its part, the card's node kept

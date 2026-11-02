@@ -1,6 +1,7 @@
-// An agent team under its lead (2026-10-31): the lead chat's teammates — its sub-agent files whose meta says an
-// in-process teammate, and the roster in teams/session-<id8>/config.json — each with its name, at work or done, and its
-// last line; nothing for a team that is only the lead, nor for a lead whose claude has ended. Through a throwaway server.
+// An agent team under its lead (2026-10-31; rows like any agent's since 2026-11-02): the lead chat's teammates — its
+// sub-agent files whose meta says an in-process teammate, and the roster in teams/session-<id8>/config.json — each with its
+// name, at work or done, and its last line; nothing for a team that is only the lead, nor for a lead whose claude has ended.
+// Through a throwaway server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -33,26 +34,28 @@ test('a lead\'s teammates: name, at work or done, last line — the roster\'s to
   const srv = await startTestServer({ claudeDir: fx.dir });
   try {
     const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
-    const team = await waitFor(async () => (await chat(lead.id))?.team, { what: 'the lead\'s team' });
-    assert.deepEqual(team.map(m => [m.name, m.state]), [['old-hand', 'joined'], ['reviewer', 'work'], ['scribe', 'joined'], ['tester', 'done']],
+    const mates = rows => rows.filter(m => m.mate).sort((a, b) => a.name.localeCompare(b.name));
+    const team = mates(await waitFor(async () => (await chat(lead.id))?.agentRows, { what: 'the lead\'s rows' }));
+    assert.deepEqual(team.map(m => [m.name, m.st]), [['old-hand', 'joined'], ['reviewer', 'run'], ['scribe', 'joined'], ['tester', 'done']],
       'by name; the old hand\'s file left out (the roster still names it), the explore agent no teammate');
     assert.deepEqual(team[1].last, { kind: 'tool', name: 'Bash', text: 'Run the payment tests' }, 'at work: what it is calling');
     assert.deepEqual(team[3].last, { kind: 'text', text: 'All 12 retry tests pass.' }, 'done: what it said last, as a sentence');
-    assert.deepEqual(team[2], { name: 'scribe', state: 'joined', last: null }, 'on the roster with no file yet: joined');
+    assert.deepEqual([team[2].name, team[2].st, team[2].last], ['scribe', 'joined', null], 'on the roster with no file yet: joined');
+    assert.equal((await chat(lead.id)).agentRows.filter(m => !m.mate).length, 1, 'the explore agent, a row of its own');
     assert.equal((await chat(lead.id)).agents, 1, 'the one at work still counts as a sub-agent at work');
-    assert.equal((await chat(alone.id)).team, null, 'a team of the lead alone is none');
-    assert.equal((await chat(ended.id)).team, null, 'a lead with no claude has no team');
+    assert.equal((await chat(alone.id)).agentRows, null, 'a team of the lead alone is none');
+    assert.equal((await chat(ended.id)).agentRows, null, 'a lead with no claude has no team');
     // the teammate at work finishes: done, its last word
     const rf = readdirSync(sub).find(n => n.includes('areviewer-') && n.endsWith('.jsonl'));
     appendFileSync(join(sub, rf), JSON.stringify({ isSidechain: true, type: 'assistant', timestamp: new Date().toISOString(), message: { role: 'assistant', content: [{ type: 'text', text: 'Approved with one nit.' }], stop_reason: 'end_turn' } }) + '\n');
-    const after = await waitFor(async () => { const t = (await chat(lead.id))?.team; return t?.find(m => m.name === 'reviewer')?.state === 'done' && t; }, { what: 'the reviewer done' });
+    const after = await waitFor(async () => { const t = (await chat(lead.id))?.agentRows; return t?.find(m => m.name === 'reviewer')?.st === 'done' && t; }, { what: 'the reviewer done' });
     assert.deepEqual(after.find(m => m.name === 'reviewer').last, { kind: 'text', text: 'Approved with one nit.' });
     // a re-read of the lead (opening it) keeps its team
-    assert.ok((await srv.api(`api/sessions/${lead.id}/messages`)).body.session.team?.length, 'kept over a re-read');
+    assert.ok((await srv.api(`api/sessions/${lead.id}/messages`)).body.session.agentRows?.length, 'kept over a re-read');
     // the lead's claude ends: no team on its card
     p1.kill();
     await waitFor(async () => !(await chat(lead.id)).alive, { what: 'the lead gone' });
-    assert.equal((await chat(lead.id)).team, null);
+    assert.equal((await chat(lead.id)).agentRows, null);
   } finally { await srv.stop(); p1.kill(); p2.kill(); }
 });
 
@@ -64,7 +67,7 @@ test('a teammate\'s first prompt is its last line until it says or calls somethi
   writeFileSync(join(sub, f), readFileSync(join(sub, f), 'utf8').split('\n')[0] + '\n');   // the lead's ask alone
   const srv = await startTestServer({ claudeDir: fx.dir });
   try {
-    const team = await waitFor(async () => (await srv.api('api/sessions')).body.sessions[0]?.team, { what: 'the team' });
-    assert.deepEqual(team[0], { name: 'reader', state: 'work', last: { kind: 'asked', text: 'Read the "old" client' } });
+    const team = await waitFor(async () => (await srv.api('api/sessions')).body.sessions[0]?.agentRows, { what: 'the team' });
+    assert.deepEqual([team[0].name, team[0].st, team[0].last], ['reader', 'run', { kind: 'asked', text: 'Read the "old" client' }]);
   } finally { await srv.stop(); p.kill(); }
 });

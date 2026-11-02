@@ -907,21 +907,49 @@
   .card .state.live b { flex: none; font: 600 var(--fs-xs)/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
   #sessions[data-cards="compact"] .card .state.live:not(.wake) { display: none; }   /* a wake-up is the reason it is Watching: at every size (2026-10-31) */
   #sessions[data-even] .card .state.live.wake { display: none; }
+  #sessions[data-cards="compact"]:not([data-even], [data-hide~="agents"]) .card .state.live.agwho:not(:empty) { display: grid; }   /* a card whose agents are folded: who stepped last, at every size (2026-11-02) */
+  .card .state.live.agwho b:first-child { flex: 0 1 auto; max-width: 48%; overflow: hidden; text-overflow: ellipsis; }
   .card .state.live.wake .ll > span b { font: inherit; font-weight: 700; color: var(--watch); }
   .card .state.live .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  /* An agent team's teammates under their lead (2026-10-31, fillTeam): a row each — a dot, its name, at work or done in
-     words, its last line —, at every size but compact's same height. The dot: at work's colour, done's, a ring if only
-     the roster knows it yet. */
-  .card .team { display: grid; gap: 1px; margin-top: 5px; font-size: var(--fs-xs); line-height: 16px; }
-  .card .team .tm { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; color: var(--muted); }
-  .card .team .tmd { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); }
-  .card .team .tm[data-state="work"] .tmd { background: var(--working); }
-  .card .team .tm[data-state="joined"] .tmd { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
-  .card .team .tm > b { flex: none; color: var(--ink); font-weight: 600; }
-  .card .team .ts { flex: none; font-size: var(--fs-2xs); }
-  .card .team .tl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .card .team .tl b { font-weight: 600; color: var(--ink); }
-  #sessions[data-even] .card .team { display: none; }
+  /* A chat's agents on its card (2026-11-02, round XX; fillAgents): a row each, what it was asked and what it does now, its age
+     on the right — filled after the render, so a step keeps the card's node. A shape for each state, colour on top; the arc
+     turns on the ring's clock (`ring`, phased), and only while at work. Same-height cards, and a card told not to, show none. */
+  .card .trow .chip.agents { display: inline-flex; align-items: center; gap: 2px; flex: none; max-width: none; font-family: inherit; cursor: pointer; }
+  .card .trow .chip.agents[hidden] { display: none; }
+  .card .trow .chip.agents:hover { background: color-mix(in srgb, var(--working) 28%, transparent); }
+  .card .trow .chip.agents.bad { color: var(--needs); background: color-mix(in srgb, var(--needs) 16%, transparent); }
+  #sessions[data-even] .card .trow .chip.agents { cursor: inherit; }
+  .agcar { width: 10px; height: 10px; flex: none; transition: transform .18s var(--ease-out); transform: rotate(-90deg); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .chip.agents.on .agcar, .agr.open .agcar { transform: none; }
+  #sessions[data-even] .chip.agents .agcar { display: none; }
+  .agl { display: grid; gap: 5px; margin-top: 7px; min-width: 0; }
+  .agl[hidden] { display: none; }
+  #sessions[data-even] .card .agl, #sessions[data-hide~="agents"] .card .agl { display: none; }
+  .agr { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 6px; align-items: baseline; font-size: var(--fs-xs); line-height: 15px; color: var(--ink); min-width: 0; cursor: pointer; }
+  .agr .agd { grid-column: 1; align-self: center; display: block; position: relative; width: 10px; height: 10px; }
+  .aga { grid-column: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .aga b { font-weight: 650; }
+  .agr:hover .aga { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; }
+  .agt { grid-column: 3; font-size: var(--fs-2xs); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .agn { grid-column: 2 / -1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agn:empty { display: none; }
+  .agn b { color: var(--ink); font-weight: 600; opacity: .85; }
+  .agr[data-k^="_"], .agr[data-st="done"] .aga, .agr[data-st="stop"] .aga, .agr[data-st="joined"] .aga { color: var(--muted); font-weight: 400; }
+  .agr[data-st="quiet"] .agt { color: var(--working-ink); font-weight: 600; }
+  .agr[data-st="wait"] .agt { color: var(--watch); }
+  .agr[data-st="fail"] :is(.agt, .agn) { color: var(--needs); font-weight: 500; }
+  .agbad { color: var(--needs); font-weight: 600; }
+  .agr[data-st="more"] .agd { visibility: hidden; }
+  .agd::before, .agd::after { content: ''; position: absolute; inset: 0; }
+  .agr[data-st="run"] > .agd::before { border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--lift, var(--working)) 22%, transparent); border-top-color: var(--glow, var(--working)); animation: ring 1.4s linear infinite; }
+  .agr[data-st="quiet"] > .agd::before { border-radius: 50%; border: 1.5px dotted var(--working-ink); }
+  .agr[data-st="wait"] > .agd::before { border-radius: 50%; border: 1.5px dashed var(--watch); }
+  .agr[data-st="joined"] > .agd::before { inset: 2px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); }
+  .agr[data-st="done"] > .agd::before { inset: 1px 0 0 1px; border: solid var(--idle); border-width: 0 0 1.6px 1.6px; width: 8px; height: 4px; transform: rotate(-45deg) translate(1px, 0); }
+  .agr[data-st="fail"] > .agd::before, .agr[data-st="fail"] > .agd::after { inset: auto; left: 0; top: 4.2px; width: 10px; height: 1.6px; background: var(--needs); transform: rotate(45deg); }
+  .agr[data-st="fail"] > .agd::after { transform: rotate(-45deg); }
+  .agr[data-st="stop"] > .agd::before { inset: 2px; background: var(--muted); }
+  :root[data-frame="light"] #slist .card .agd { --glow: var(--lift); }   /* the ring's light is near white: on a light frame, the colour */
   /* …unless cards go by lane (2026-10-12, data-bylane, prefs.cardsByLane): a card in a lane that wants you is large. */
   #sessions[data-bylane] .card.roomy .snip { display: -webkit-box; }
   #sessions[data-bylane] .card.roomy .state.live:not(:empty) { display: grid; }
@@ -2188,7 +2216,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
   :root[data-layout="sidebar"] #slist .card.active { background: var(--selc); }
   :root[data-layout="sidebar"] #slist .card.active :is(*, .top .repo) { color: #fff; }
-  :root[data-layout="sidebar"] #slist .card.active :is(.snip, .state.live) { color: rgb(255 255 255 / .84); }
+  :root[data-layout="sidebar"] #slist .card.active :is(.snip, .state.live, .agt, .agn, .agn b, .agr[data-k^="_"]) { color: rgb(255 255 255 / .84); }
+  :root[data-layout="sidebar"] #slist .card.active .agl { --lift: #fff; --glow: #fff; --working-ink: #fff; --watch: #fff; --idle: #fff; --needs: #fff; --muted: rgb(255 255 255 / .84); }
+  :root[data-layout="sidebar"] #slist .card.active .chip.agents { background: rgb(0 0 0 / .2); }
   :root[data-layout="sidebar"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
   :root[data-layout="sidebar"] #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
   /* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
@@ -2726,7 +2756,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
     :root[data-layout="sidebar"] #slist .card { border: 1px solid CanvasText; } :root[data-layout="sidebar"] #slist .card.active { outline: 2px solid Highlight; }   /* the sidebar's rows */
-    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .card .trow .drift, .card .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
+    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .agd, .card .trow .drift, .card .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
 
@@ -2836,6 +2866,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
     .gsep.lane .lc { transition: none; }   /* a lane's caret turns at once (its head kept since 2026-11-01; the lane itself folds at once: drawCards reads REDUCED) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
+    .agr[data-st="run"] > .agd::before { animation: none; border-color: var(--glow, var(--working)); }   /* an agent's arc: a whole circle, still */
+    .agcar { transition: none; }
     :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
@@ -2932,6 +2964,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="resume" hidden></div>
   </section>
 </main>
+<span class="vh" role="status" id="agSay"></span>
 <footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-labelledby="spTitle" tabindex="-1">
   <aside class="snav">
@@ -2996,7 +3029,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="card size cards density large medium compact"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
           <div class="srow set sub" id="laneRow" data-kw="card size larger lane needs you asking"><label class="sl" for="cardsByLane"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></label><input type="checkbox" class="sw" role="switch" id="cardsByLane"></div>
           <div class="srow set sub" id="evenRow" data-kw="card size same height even uniform compact"><label class="sl" for="cardsEven"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></label><input type="checkbox" class="sw" role="switch" id="cardsEven"></div>
-          <div class="srow set" data-kw="card busy faces avatars people github tickets jira prs pull requests rounds chips show hide" id="cardPartsRow"><span class="sl"><b>Show on a card</b><small>Its PRs, their rounds, its tickets and the faces on its PRs</small></span><span class="schecks"><label><input type="checkbox" data-part="prs"> PRs</label><label><input type="checkbox" data-part="rounds"> Rounds</label><label><input type="checkbox" data-part="tickets"> Tickets</label><label><input type="checkbox" data-part="faces"> Faces</label></span></div>
+          <div class="srow set" data-kw="card busy faces avatars people github tickets jira prs pull requests rounds chips agents sub-agents teammates show hide" id="cardPartsRow"><span class="sl"><b>Show on a card</b><small>Its PRs, their rounds, its tickets, the faces on its PRs and its agents</small></span><span class="schecks"><label><input type="checkbox" data-part="prs"> PRs</label><label><input type="checkbox" data-part="rounds"> Rounds</label><label><input type="checkbox" data-part="tickets"> Tickets</label><label><input type="checkbox" data-part="faces"> Faces</label><label><input type="checkbox" data-part="agents"> Agents</label></span></div>
           <div class="srow set sub" id="prChipsRow" data-kw="card prs pull requests chips stack matrix squares number your move updated faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="matrix">Matrix</button><button type="button" role="radio" data-pc="all">All</button></span></div>
         </div></section>
       </div>
@@ -3164,6 +3197,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · the people row: everyone in the PRs of the chats in view
 //   js  · the list's ends: how many cards are out of sight
 //   js  · the chat list's timeline: its days, down the left edge
+//   js  · a chat's agents on its card (2026-11-02, round XX)
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the roots' folders, and cloning one that is not here yet (2026-09-21)
@@ -3236,7 +3270,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
+  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3271,6 +3305,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // a card's PRs (2026-11-01): round XII's one chip gave way to round XVI's matrix, the default — a board saved on it is on the matrix
   if (prefs.prChips === 'one') prefs.prChips = 'matrix';
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
+  if (Array.isArray(prefs.cardParts) && !prefs.cardPartsSeen) prefs.cardParts.push('agents');   // a card's parts chosen before it had agents to show (2026-11-02)
+  prefs.cardPartsSeen = 1;
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   // ---- the board's key (2026-10-16) -----------------------------------------------------------------------------------
   // Every ask of the server carries it (the server's keyWant): `x-peix-key` from api(), `?key=` on the stream and a
@@ -3662,7 +3698,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // word and CSS hides by the list's data-cards, so the slider re-renders nothing. A pending question is not a word of
   // either: it stays at every size, the one line on a card that asks you to act.
   const CARD_SIZES = ['large', 'medium', 'compact'];
-  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces'];
+  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces', 'agents'];
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
     const v = CARD_SIZES.indexOf(prefs.cards);
@@ -5315,7 +5351,7 @@ const toolName = n => {
     // now and then (the bar's own interval), nothing else moving.
     const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
     const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
-    fillLive($('#slist')); fillAges($('#slist')); fillTeam($('#slist')); fadeSoon();   // the live line first: a wake-up's is an age to fill
+    fillLive($('#slist')); fillAges($('#slist')); fillAgents(); fadeSoon();   // the live line first: a wake-up's is an age to fill
     const o = drawCards.opening; drawCards.opening = null; if (o) openRun($('#slist'), o.g, o.lr, o.gap);   // a lane opened, its cards filled in
     caughtUp(zero);
     drawFilter(p, narrow);
@@ -5400,7 +5436,7 @@ const toolName = n => {
       let c = cardNodes.get(it.id);
       if (!c) fresh.add(it.id);
       if (!c || c.html !== it.html) {
-        const el = html2el(it.html);
+        const el = html2el(it.html), sess = state.sessions.get(it.id); if (sess) agFresh(el, sess);
         if (c) redrawn.push([c.el, el]);   // the card redrawn: it starts where its old node stood
         c = { html: it.html, el }; cardNodes.set(it.id, c);
       }
@@ -6263,10 +6299,10 @@ const toolName = n => {
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
-      <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
-      ${liveSlot(s)}${teamSlot(s)}
+    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
+      <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
+      ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
       ${stopHtml(s)}${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
@@ -6279,21 +6315,163 @@ const toolName = n => {
   // A wake-up is the line's when nothing else says more — no tool at work, no event — and then at every card size, as
   // the reason the chat is Watching (2026-10-31, round XIII): `wakes at 14:30 · in 52 min`.
   const wakeSaid = s => !!s.wake && !(s.status === 'working' && s.doing) && !(s.tasks || []).some(t => t.last);
-  const liveSlot = s => s.alive && !s.done && (s.status === 'working' || watching(s) || s.wake) ? `<div class="state live${wakeSaid(s) ? ' wake' : ''}"></div>` : '';
-  // An agent team's teammates under their lead (2026-10-31): a row each — its name, at work or done, its last line —,
-  // filled after the render as the live line is, so a teammate's step keeps the card's node. None for a team of the lead alone.
-  const teamSlot = s => s.alive && s.team?.length ? '<div class="team"></div>' : '';
-  const TEAM_SAID = { work: 'at work', done: 'done', joined: 'joined' };
-  const teamHtml = s => `<span class="vh">Its team: </span>` + (s.team || []).map(m => `<div class="tm" data-state="${esc(m.state)}"><i class="tmd" aria-hidden="true"></i><b>${esc(m.name)}</b><span class="ts">${esc(TEAM_SAID[m.state] || m.state)}</span>${m.last ? `<span class="tl">${m.last.kind === 'tool' ? `<b>${esc(toolName(m.last.name))}</b> ${esc(pathTail(m.last.text, s.cwd))}` : ticks(esc(m.last.text))}</span>` : ''}</div>`).join('');
-  function fillTeam(root) {
-    for (const el of root.querySelectorAll('.card .team')) {
-      const s = state.sessions.get(el.closest('.card').dataset.id); if (!s) continue;
-      const html = teamHtml(s); if (el._html !== html) { el._html = html; el.innerHTML = html; }
+  const liveSlot = s => s.alive && !s.done && (s.status === 'working' || watching(s) || s.wake) ? `<div class="state live${wakeSaid(s) ? ' wake' : ''}${agWhoOn(s) ? ' agwho' : ''}"></div>` : '';
+  // ---- a chat's agents on its card (2026-11-02, round XX) ----------------------------------------------------------------
+  // The summary's `agentRows`, a row each: what it was asked, what it does now, its age. Open while they work, three at most
+  // and then +N; a finished one ticks, then goes into a done row, whose click lists them with their one-line results; a failure
+  // stays until the chat is opened (seenAt), first in the list, and turns the chip red; the last one ended, a summary stays as
+  // long. Nothing leaves while the pointer is in the list (agHover). The chip folds a card's rows, remembered per chat
+  // (prefs.agentCards), and a folded card's live line says who stepped last. Filled after the render, as the live line is:
+  // the rows and the chip are out of the card's markup, so a step or a count keeps its node and its ring.
+  const AG_SHOW = 3, AG_TICK_MS = 1600, AG_QUIET_MS = 3 * 60_000;
+  const AG_SAID = { run: 'at work', wait: 'waiting', quiet: 'quiet', done: 'done', fail: 'failed', stop: 'stopped', joined: 'joined' };
+  const agOn = s => !!s.alive && !s.done && (s.agents > 0 || s.agentRows?.length > 0);
+  const agEven = () => prefs.cards === 'compact' && !!prefs.cardsEven;
+  const agUi = id => prefs.agentCards[id] || {};
+  const agFolded = s => agEven() || !!agUi(s.id).fold;
+  const agWhoOn = s => agOn(s) && s.agents > 0 && agFolded(s);
+  const agDur = ms => { const t = Math.max(1, Math.round(ms / 1000)); return t < 60 ? `${t}s` : t < 3600 ? `${Math.round(t / 60)}m` : `${Math.round(t / 3600)}h`; };
+  const agQuiet = r => r.st === 'run' && !!r.lastAt && Date.now() - Date.parse(r.lastAt) > AG_QUIET_MS;
+  const agTick = new Map(), agStates = new Map(), agShown = new Map();   // chat:agent → until when it ticks; → the state it had; chat → the rows drawn
+  let agHover = false;
+  function agSwitch(id, k) {
+    const u = prefs.agentCards[id] ||= {};
+    if (u[k]) delete u[k]; else u[k] = true;
+    if (!Object.keys(u).length) delete prefs.agentCards[id];
+    savePrefs();
+  }
+  /** A row's state as it stands, once: what moved from at work to ended ticks a moment; a failure is said once. */
+  function agNote(s) {
+    for (const r of s.agentRows || []) {
+      const k = `${s.id}:${r.id}`, was = agStates.get(k); if (was === r.st) continue;
+      if (agStates.size > 2000) agStates.clear();
+      agStates.set(k, r.st);
+      if ((was === 'run' || was === 'wait') && (r.st === 'done' || r.st === 'stop')) agTick.set(k, performance.now() + AG_TICK_MS);
+      if (was && r.st === 'fail') $('#agSay').textContent = `An agent failed on ${s.title}: ${r.asked || r.name || ''}`;
     }
   }
+  /** What a card shows of its agents, now. */
+  function agPlan(s, pointer) {
+    const rows = s.agentRows || [], seen = s.seenAt || '', open = s.id === state.current, ui = agUi(s.id), now = performance.now();
+    const round = rows.filter(r => !r.old && r.st !== 'joined'), fails = rows.filter(r => r.st === 'fail' && (open || String(r.end || '') > seen));
+    const run = round.filter(r => r.st === 'run' || r.st === 'wait'), oks = round.filter(r => r.st === 'done' || r.st === 'stop');
+    const ticks = oks.filter(r => agTick.get(`${s.id}:${r.id}`) > now), over = !run.length && round.length > 0;
+    const lastEnd = round.reduce((m, r) => String(r.end || '') > m ? String(r.end) : m, ''), failed = round.filter(r => r.st === 'fail').length;
+    const sum = over && !ticks.length && (open || lastEnd > seen) ? { n: round.length, ms: Date.parse(lastEnd) - Math.min(...round.map(r => Date.parse(r.at))), failed } : null;
+    let list = [...run, ...ticks, ...fails, ...rows.filter(r => r.st === 'joined')], done = over ? 0 : oks.length - ticks.length;
+    if (pointer) for (const r of oks) if (agShown.get(s.id)?.has(r.id) && !list.includes(r)) { list.push(r); if (done) done--; }
+    list.sort((a, b) => (b.st === 'fail') - (a.st === 'fail') || String(a.at).localeCompare(String(b.at)));
+    let more = 0; if (!ui.more && list.length > AG_SHOW) { more = list.length - AG_SHOW; list = list.slice(0, AG_SHOW); }
+    const opened = ui.done && (done || sum) ? oks.filter(r => !list.includes(r)) : [], folded = agFolded(s);
+    return { rows: list, more, done, sum, opened, folded, run: run.length, total: round.length, oks: oks.length, fails: fails.length,
+      key: [folded, list.map(r => r.id), more, done > 0, !!sum, opened.length].join('|') };
+  }
+  const agAsked = r => (r.name ? `<b>${esc(r.name)}</b> ` : '') + esc(r.asked || (r.name ? '' : 'An agent'));
+  /** What it is doing, or what it came to. A Bash call's description says it: the word Bash adds nothing. */
+  function agNow(r, s) {
+    if (r.st === 'fail') return esc(r.why || 'It ended on an error');
+    if (r.st === 'wait') return 'On its own background work';
+    const l = r.last; if (!l) return '';
+    if (l.kind !== 'tool') return ticks(esc(l.text || ''));
+    return (l.name === 'Bash' ? '' : `<b>${esc(toolName(l.name))}</b> `) + esc(pathTail(l.text, s.cwd));
+  }
+  function agLabel(r) {
+    if (r.st === 'run') return agQuiet(r) ? `quiet ${agDur(Date.now() - Date.parse(r.lastAt))}` : `<span class="vh">at work, </span>${agDur(Date.now() - Date.parse(r.at))}`;
+    if (r.st === 'done') return `<span class="vh">done, </span>${agDur(Date.parse(r.end) - Date.parse(r.at))}`;   // frozen at how long it took
+    return AG_SAID[r.st] || '';
+  }
+  const AG_CARET = '<svg class="agcar" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.200 3.700 5 6.500l2.800-2.800"/></svg>';
+  const agItem = (r, s, thin) => ({ k: r.id, ag: r.id, st: agQuiet(r) ? 'quiet' : r.st, a: agAsked(r), t: agLabel(r), n: thin ? '' : agNow(r, s) });
+  function agSumItem(p, caret = true) {
+    return { k: '_sum', cls: p.opened.length ? ' open' : '', st: p.sum.failed ? 'more' : 'done', a: `${p.sum.n} agent${p.sum.n === 1 ? '' : 's'} · ${agDur(p.sum.ms)}${p.sum.failed ? ` · <b class="agbad">${p.sum.failed} failed</b>` : ''}`, t: caret ? AG_CARET : '', n: '' };
+  }
+  function agItems(p, s, thin) {
+    const out = p.rows.map(r => agItem(r, s, thin));
+    if (p.more) out.push({ k: '_more', st: 'more', a: `+${p.more} more`, t: '', n: '' });
+    if (p.done) out.push({ k: '_done', cls: p.opened.length ? ' open' : '', st: 'done', a: `${p.oks} done`, t: AG_CARET, n: '' });
+    if (p.sum) out.push(agSumItem(p));
+    for (const r of p.opened) out.push({ ...agItem(r, s, thin), k: `${r.id}_d` });
+    return out;
+  }
+  /** Rows into a box, keyed: a row keeps its node, so a step changes only its words. True when one was made. */
+  function agDraw(box, items, soft) {
+    const had = new Map([...box.children].map(e => [e.dataset.k, e])); let at = box.firstElementChild, made = false;
+    const put = (el, html, ease) => {
+      if (el._h === html) return; const was = el._h; el._h = html; el.innerHTML = html;
+      if (ease && was && !REDUCED.matches) el.animate([{ opacity: .15, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE_OUT, id: 'agstep' });
+    };
+    for (const it of items) {
+      let el = had.get(it.k);
+      if (!el) {
+        el = document.createElement('div'); el.dataset.k = it.k; made = true;
+        el.innerHTML = '<i class="agd" aria-hidden="true"></i><span class="aga"></span><span class="agt"></span><span class="agn"></span>';
+        if (soft && !REDUCED.matches) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out', id: 'agrow' });
+      }
+      had.delete(it.k);
+      if (el !== at) box.insertBefore(el, at); else at = at.nextElementSibling;
+      const cls = 'agr' + (it.cls || ''); if (el.className !== cls) el.className = cls;
+      if (el.dataset.st !== it.st) el.dataset.st = it.st;
+      if (it.ag) el.dataset.ag = it.ag;
+      put(el.children[1], it.a); put(el.children[2], it.t); put(el.children[3], it.n, soft);
+    }
+    for (const e of had.values()) e.remove();
+    return made;
+  }
+  /** The chip, the lights and the rows of one card, as its plan says. True when a row was made. */
+  function agPaint(card, s, p, soft) {
+    const n = Math.min(5, s.agents || 0), lights = n ? String(n) : '';
+    if (card.style.getPropertyValue('--lights') !== lights) { if (n) card.style.setProperty('--lights', lights); else card.style.removeProperty('--lights'); }
+    const chip = card.querySelector('.trow .chip.agents'), even = agEven();
+    if (chip) {
+      const show = p.run > 0 || (p.fails > 0 && (even || !p.sum)), some = p.total > p.run, html = !show ? '' : `${some ? `${rn('agd:' + s.id, p.oks)}/${p.total}` : rn('ag:' + s.id, p.run)} agent${(some ? p.total : p.run) === 1 ? '' : 's'}${p.fails ? ` · ${p.fails} failed` : ''}${even ? '' : AG_CARET}`;
+      if (chip._h !== html) { chip._h = html; chip.innerHTML = html; rollSoon(); }
+      if (chip.hidden === show) chip.hidden = !show;
+      chip.classList.toggle('bad', p.fails > 0); chip.classList.toggle('on', !p.folded);
+      const tip = even ? 'Sub-agents at work: the chat stays clauding until they are done, and the card runs a light for each' : `Sub-agents at work: the chat stays clauding until they are done, and the card runs a light for each. Click to ${p.folded ? 'show' : 'fold'} them`;
+      if (chip.title !== tip) { chip.title = tip; chip.setAttribute('aria-expanded', String(!p.folded)); }
+    }
+    const box = card.querySelector(':scope > .agl'); if (!box) return false;
+    const items = !p.folded ? agItems(p, s) : p.sum ? [agSumItem(p, false)] : [];
+    const made = agDraw(box, items, soft);
+    box.hidden = !items.length;
+    card._agKey = p.key;
+    agShown.set(s.id, new Set(p.folded ? [] : p.rows.map(r => r.id)));
+    return made;
+  }
+  /** A card made anew, before drawCards measures it: as tall as it will be. */
+  function agFresh(card, s) { if (agOn(s)) { agNote(s); agPaint(card, s, agPlan(s, agHover), false); } }
+  function fillAgents() {
+    const list = $('#slist'), work = [];
+    for (const card of list.querySelectorAll(':scope > .card')) {
+      const s = state.sessions.get(card.dataset.id); if (!s || !agOn(s)) continue;
+      agNote(s); work.push([card, s, agPlan(s, agHover)]);
+    }
+    // what moves under a card that grew or shrank slides there: every read first, then the writes, then the slides
+    const move = drawCards.drawn && !REDUCED.matches && !prefs.listHidden && work.some(([c, , p]) => c._agKey !== undefined && c._agKey !== p.key);
+    const before = move ? new Map([...list.children].map(e => [e, e.offsetTop])) : null;
+    let made = false;
+    for (const [c, s, p] of work) if (agPaint(c, s, p, c._agKey !== undefined)) made = true;
+    if (before) {
+      for (const a of [...sliding]) if (a.id === 'flip') a.cancel();
+      const top = list.scrollTop, end = top + list.clientHeight, slides = [];
+      for (const e of list.children) { const was = before.get(e), at = e.offsetTop; if (was == null || at === was || at > end || at + e.offsetHeight < top) continue; slides.push([e, was - at]); }
+      for (const [e, dy] of slides) slide(e, 'flip', [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(dy));
+    }
+    if (made) phaseAnims();
+    // a tick's time up: the row goes into the done row
+    clearTimeout(fillAgents.t); const soon = Math.min(...[...agTick.values()].filter(t => t > performance.now()));
+    if (Number.isFinite(soon)) fillAgents.t = setTimeout(fillAgents, soon - performance.now() + 20);
+    else if (agTick.size) agTick.clear();
+  }
+  $('#slist').addEventListener('pointerenter', () => { agHover = true; });
+  $('#slist').addEventListener('pointerleave', () => { agHover = false; fillAgents(); });
   const liveSeen = new Map();   // chat id → { text, n }: what its line said last, and how many events
   function liveOf(s) {
     const ts = s.alive ? s.tasks || [] : [], n = ts.reduce((a, t) => a + (t.events || 0), 0);
+    if (agWhoOn(s)) {   // folded: who stepped last, and what it does (2026-11-02)
+      const r = (s.agentRows || []).filter(x => x.st === 'run').sort((a, b) => String(b.lastAt).localeCompare(String(a.lastAt)))[0];
+      if (r) return { html: `<b>${esc(r.name || r.asked || 'An agent')}</b><span>${agNow(r, s)}</span>`, n, flap: true, at: r.id };
+    }
     if (s.status === 'working' && s.doing) return { html: `<b>${esc(toolName(s.doing.name))}</b><span>${esc(pathTail(s.doing.text, s.cwd))}</span>`, n, flap: true, at: s.doing.ts };
     const ev = ts.filter(t => t.last).sort((a, b) => String(b.lastEventAt || '').localeCompare(String(a.lastEventAt || '')))[0];
     if (!ev && s.wake) return { html: `${ICON.wake}<span title="${esc(`Claude set itself to wake at ${hhmm(s.wake.at)}${s.wake.recurring ? ', and again after' : ''}${s.wake.what ? ` — ${s.wake.what}` : ''}`)}"><b>wakes</b> at ${hhmm(s.wake.at)} · <span data-in="${esc(s.wake.at)}"></span>${s.wake.recurring ? ' · again after' : ''}</span>`, n };
@@ -7721,6 +7899,11 @@ const toolName = n => {
     const card = e.target.closest('.card'); if (!card) return;
     const pin = e.target.closest('.peerin[data-sid]');
     if (pin && state.sessions.has(pin.dataset.sid)) { e.stopPropagation(); openSession(pin.dataset.sid, { locate: true }); return; }   // the chat that sent it (2026-10-31)
+    // a card's agents (2026-11-02): the chip folds them, +N and the done row open
+    const agc = e.target.closest('.chip.agents');
+    if (agc && !agEven()) { e.stopPropagation(); agSwitch(card.dataset.id, 'fold'); renderBoard(); return; }
+    const agx = e.target.closest('.agr[data-k="_more"], .agr[data-k="_done"], .agr[data-k="_sum"]');
+    if (agx) { e.stopPropagation(); agSwitch(card.dataset.id, agx.dataset.k === '_more' ? 'more' : 'done'); fillAgents(); return; }
     const cpr = e.target.closest('.cpr, .tmx [data-url]');   // a chip, or the matrix's square or number (2026-11-01)
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const ctk = e.target.closest('.ctk');
@@ -15678,7 +15861,8 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);
+      for (const id of Object.keys(prefs.agentCards)) if (!state.sessions.has(id)) delete prefs.agentCards[id];   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();

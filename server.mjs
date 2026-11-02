@@ -768,7 +768,6 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
     peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
-    team: s.alive ? s.team || null : null,   // its agent team's teammates, while its claude runs (noteTeam, 2026-10-31)
     agentRows: s.alive ? s.agentRows || null : null,   // a row per sub-agent of its last round, while its claude runs (noteAgents, 2026-11-02)
     // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you; the next
     // wake-up it set itself; and how its last turn stopped short, while nothing runs
@@ -2403,7 +2402,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'team', 'teamJson', 'agentRows', 'agentSig', 'agentSaid', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'agentRows', 'agentSig', 'agentSaid', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
@@ -2622,7 +2621,6 @@ function scanAgents(s) {
   const work = new Map(names.filter(n => n.endsWith('.jsonl')).map(n => [n, agentRunning(join(dir, n), now, since) && !agentFinished(dir, n)]));
   const running = [...work.values()].filter(Boolean).length;
   if (running !== (s.agentsRunning || 0)) { s.agentsRunning = running; schedulePush(s); }
-  if (noteTeam(s, dir, names, work, since)) schedulePush(s);   // which of them are its team's (2026-10-31)
   if (noteAgents(s, dir, work, since, now)) schedulePush(s);   // a row each (2026-11-02)
 }
 
@@ -2632,8 +2630,8 @@ function scanAgents(s) {
 // it names one —; an in-process teammate is a sub-agent file of the lead's whose .meta.json says `taskKind:
 // "in_process_teammate"` and `teamName`, with its `name`, and whose first prompt is the lead's `<teammate-message
 // teammate_id="team-lead" summary="…">`. Read, never written (its mailboxes are files under ~/.claude, Claude Code's). A
-// teammate is at work as any sub-agent is (agentRunning), done once its turn ended; its last line is what it said or
-// called last. It dies with the lead's claude (`since`), and a team that is only the lead is none.
+// teammate is a row like any sub-agent (noteAgents), with its name; one only the roster names yet is `joined`. It dies with
+// the lead's claude (`since`), and a team that is only the lead is none.
 const TEAMS_DIR = join(CLAUDE_DIR, 'teams');
 const jsonSeen = new Map();   // a meta or a team's config → { mtimeMs, size, v }: read once per change
 function jsonOnce(file, shape) {
@@ -2644,7 +2642,6 @@ function jsonOnce(file, shape) {
   jsonSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, v });
   return v;
 }
-const mateOf = m => m?.mate && (m.name || m.kind) ? { name: m.name || m.kind } : null;
 const isLead = m => m.agentType === 'team-lead' || m.name === 'team-lead' || String(m.agentId || '').startsWith('team-lead@');
 /** The roster beyond its lead, as Claude Code keeps it while the chat runs: what a teammate with no file yet is known by. */
 const rosterOf = s => jsonOnce(join(TEAMS_DIR, `session-${s.id.slice(0, 8)}`, 'config.json'), c => (c?.leadSessionId && c.leadSessionId !== s.id) || !Array.isArray(c?.members) ? []
@@ -2675,24 +2672,6 @@ function mateLast(file, st) {
   mateSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, last });
   return last;
 }
-/** The chat's teammates — each its name, at work or done, its last line —, or none; true when that changed. */
-function noteTeam(s, dir, names, work, since) {
-  const mates = new Map();
-  for (const m of rosterOf(s)) mates.set(m.name, { name: m.name, state: 'joined', last: null, ms: 0 });
-  for (const n of names) {
-    if (!n.endsWith('.meta.json')) continue;
-    const base = n.slice(0, -'.meta.json'.length) + '.jsonl'; if (!work.has(base)) continue;
-    const mate = mateOf(jsonOnce(join(dir, n), agentMetaOf)); if (!mate) continue;
-    let st; try { st = statSync(join(dir, base)); } catch { continue; }
-    if (st.mtimeMs < since || mates.get(mate.name)?.ms > st.mtimeMs) continue;   // the claude before this one's; one name twice: the newest
-    mates.set(mate.name, { name: mate.name, state: work.get(base) ? 'work' : 'done', last: mateLast(join(dir, base), st), ms: st.mtimeMs });
-  }
-  const team = [...mates.values()].map(({ ms, ...m }) => m).sort((a, b) => a.name.localeCompare(b.name)), j = team.length ? JSON.stringify(team) : null;
-  if (j === (s.teamJson ?? null)) return false;
-  s.team = team.length ? team : null; s.teamJson = j;
-  return true;
-}
-
 // ---- its agents: a row each (2026-11-02, round XX) ------------------------------------------------------------------
 // What a card says of a chat's sub-agents, teammates among them: what each was asked, what it does now, how it ended. Read
 // from what Claude Code writes beside the chat: the .meta.json (`description`, `name`, `agentType`, `toolUseId`, `finished`,
