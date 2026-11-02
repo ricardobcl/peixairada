@@ -23,6 +23,9 @@ setup file, and how the pictures are made.
   you and those with a new reply. The fish in the menu bar is dim when nothing wants you and full when something does, and
   its number is the questions alone; it floats belly-up if the server dies. Its menu leads with what to do next; hold ⌥
   and a reply's row marks it read. Settings › General can give it a key that works in any app.
+- 🔕 **A chat muted** — its card's right-click, ··· in its header, the launcher, or *Mute this chat* on its notification: no
+  banner, sound or count from it, its questions included, until you unmute it. Its card says *muted* beside the project and
+  keeps showing what the chat does; a click on the word unmutes it.
 - ▶️ **Next** — ⌥⌘⏎, or the button on the status bar: the question waiting longest, then a PR at your move, then what to
   read, always in that order. Back after a while, a line over the fish says what changed while you were out.
 - 🎣 **Gone fishing** — a quiet you choose, from the status bar's right-click or the fish's menu: questions still ring, the

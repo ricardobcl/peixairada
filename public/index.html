@@ -826,6 +826,10 @@
   /* a chat in a worktree of its project's repo (2026-10-13): its branch, beside the project's name */
   .card .top .chip.wtb { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--muted); background: none; padding-left: 0; font-weight: 600; text-transform: none; letter-spacing: 0; }
   .card .top .chip.wtb .ic { width: 10px; height: 10px; fill: currentColor; flex: none; }
+  /* a chat muted (2026-11-02, muteChip): the word on the top row, whatever the card's size; a click unmutes */
+  .card .top .chip.cmute { display: inline-flex; align-items: center; gap: 3px; flex: none; max-width: none; padding: 0 5px 0 3px; font-family: inherit; font-weight: 600; cursor: pointer; color: color-mix(in srgb, var(--working-ink) 80%, var(--ink)); background: color-mix(in srgb, var(--working) 14%, var(--panel)); }   /* its own ground: 4.5:1 in every theme, and on a card asking (chat-mute.mjs) */
+  .card .top .chip.cmute:hover { background: color-mix(in srgb, var(--working) 24%, var(--panel)); }
+  .card .top .chip.cmute .ic { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .card .top .chip.elsewhere { display: inline-flex; align-items: center; padding: 0 4px; } .card .top .chip.elsewhere .ic { width: 11px; height: 11px; }
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
@@ -1263,11 +1267,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .act.armed .tk { flex: none; }
   .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .cpr, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1411,6 +1415,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ctxm button:disabled .csub { color: var(--needs); }
   #ctxm.wide { max-width: 380px; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
+  #hmenu #muteBtn .ic { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
   #hmenu .hmi .gl { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); font-weight: 700; letter-spacing: -1px; justify-self: center; }
@@ -2246,7 +2251,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card.active .agl { --lift: #fff; --glow: #fff; --working-ink: #fff; --watch: #fff; --idle: #fff; --needs: #fff; --muted: rgb(255 255 255 / .84); }
   :root[data-layout="sidebar"] #slist .card.active .chip.agents { background: rgb(0 0 0 / .2); }
   :root[data-layout="sidebar"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
-  :root[data-layout="sidebar"] #slist .card.active :is(.cpr, .ctk) { background: rgb(255 255 255 / .2); border-color: transparent; }
+  :root[data-layout="sidebar"] #slist .card.active :is(.cpr, .ctk, .top .chip.cmute) { background: rgb(255 255 255 / .2); border-color: transparent; }
   /* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
      an open PR's green on a green project's row is otherwise gone; one ground under them all, nothing round each
      (2026-11-01, later) —, a stack's line white */
@@ -2950,7 +2955,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
     .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
-    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -4755,8 +4760,8 @@ const toolName = n => {
   function renderBar() {
     if (!state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length;
-    const ask = n(s => asking(s));
-    const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(s => asking(s)).map(askedAt))) : '', nx = nextQueue()[0];   // the longest wait (2026-11-01, round XIX's S4)
+    const ask = n(askingLoud);
+    const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(askingLoud).map(askedAt))) : '', nx = nextQueue()[0];   // the longest wait (2026-11-01, round XIX's S4)
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     // the connection is the fish alone (2026-10-27; *connected* beside it before), its colour the state: green on the
     // stream, amber belly-up while it tries again, red when the server turned it away (the lock's) — the words out of sight
@@ -4931,6 +4936,9 @@ const toolName = n => {
   // The two states that live *inside* a bucket and the card draws its edge from: a question waiting on your answer
   // (still a ready chat — the filters see 'ready'), and a monitor or background command of its own still running.
   const asking = s => s.alive && !s.done && s.status === 'needs-input';
+  // A muted chat keeps its card's truth, the red edge too, and calls you on nothing else (2026-11-02): not the Dock, the
+  // title, the menu bar, Next, the bar's red, the lines of news or Zé's game.
+  const askingLoud = s => asking(s) && !s.muted;
   // The model Claude last answered with is the one the chat runs on: `claude-fable-5-1`, `claude-fable-5[1m]`… mark
   // the card (2026-09-27).
   const onFable = s => /fable/i.test(s.model || '');
@@ -5064,7 +5072,7 @@ const toolName = n => {
   const askedAt = s => (s.live?.status === 'waiting' && s.live.statusAt) || Date.parse(s.statusSince || wordAt(s) || '') || Date.now();
   const byWait = (a, b) => askedAt(a) - askedAt(b);
   const waitWord = ms => { const m = Math.floor(ms / 60_000); return m < 1 ? '' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`; };
-  const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && asking(s)), replied: all.filter(s => visible(s) && !s.done && !asking(s) && replied(s)).sort(byWord) }; };
+  const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && askingLoud(s)), replied: all.filter(s => visible(s) && !s.done && !s.muted && !asking(s) && replied(s)).sort(byWord) }; };
   // The plan usage in a line, for the fish's menu (2026-11-01, round XIX's S5): each window's tag and percent, the next reset
   function planLine() {
     const ws = (usage.data?.windows || []).filter(w => !uGrant(w)); if (usage.off || !ws.length) return '';
@@ -5076,13 +5084,14 @@ const toolName = n => {
     const needs = [...w.needs].sort(byWait).map(s => ({ ...brief(s), since: String(askedAt(s)) })), replies = w.replied.map(brief);
     // …and for the status menu alone (2026-10-12, P2): the PRs at your move, by chat, and what is clauding
     const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
-    const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
+    const moves = live.filter(s => !asking(s) && !s.muted && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
     const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
     const watching = live.filter(s => inWatch(s) && bucket(s) !== 'working').sort(byWord).map(brief);
     const muted = !state.notifications, plan = planLine(), nx = nextQueue()[0], gone = fishing.until ? new Date(fishing.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : '';
     const next = nx ? { id: nx.s.id, verb: `${NEXT_VERB[nx.k]}${nx.k === 'ask' ? ' ' : ': '}${nextName(nx)}`, sub: nx.k === 'ask' ? nx.s.title : nx.k === 'move' ? `${nx.s.project} · ${movedPrs(nx.s)[0]?.turn?.why || ''}` : nx.s.project, since: nx.k === 'ask' ? String(askedAt(nx.s)) : '' } : null;
-    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan, next, gone]); if (sig === postState.last) return; postState.last = sig;
-    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan, next, fishing: gone });
+    const mutes = [...state.sessions.values()].filter(s => s.muted).map(s => s.id);   // the app takes back what it still holds for one (a snooze)
+    const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan, next, gone, mutes]); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan, next, fishing: gone, mutes });
   }
   // Next (2026-11-01, round XIX's M1; StarCraft's idle-worker key, Civ's turn button): one key that always arrives, in a
   // fixed, stated order. The question waiting longest, then a PR at your move, the one that came round first, then what to
@@ -5091,8 +5100,8 @@ const toolName = n => {
   function nextQueue() {
     const all = [...state.sessions.values()].filter(visible), seen = new Set(), once = k => s => seen.has(s.id) ? null : (seen.add(s.id), { s, k });
     const by = at => (a, b) => String(at(a)).localeCompare(String(at(b)));
-    return [...all.filter(asking).sort(byWait).map(once('ask')),
-      ...all.filter(s => !s.done && yourMove(s)).sort(by(movedAt)).map(once('move')),
+    return [...all.filter(askingLoud).sort(byWait).map(once('ask')),
+      ...all.filter(s => !s.done && !s.muted && yourMove(s)).sort(by(movedAt)).map(once('move')),
       ...wanting().replied.slice().sort(by(s => s.lastReplyAt)).map(once('read'))].filter(Boolean);
   }
   // A line over the lane (round XIX's M3, M4): news for a few seconds, and a click is Next. Under the pointer it stays.
@@ -5158,7 +5167,7 @@ const toolName = n => {
     setTimeout(() => { const line = outLine(since); if (line) laneNews(line); }, 400);   // the stream's news of the moment first
   }
   function outLine(since) {
-    const iso = new Date(since).toISOString(), all = [...state.sessions.values()].filter(s => visible(s) && !s.done);
+    const iso = new Date(since).toISOString(), all = [...state.sessions.values()].filter(s => visible(s) && !s.done && !s.muted);
     const landed = all.filter(s => !asking(s) && s.status !== 'working' && (s.lastReplyAt || '') > iso).length;
     const moved = all.filter(s => yourMove(s) && movedAt(s) > iso), asks = all.filter(asking).length;
     if (!landed && !moved.length && !asks) return '';
@@ -5386,7 +5395,7 @@ const toolName = n => {
     const zero = !q && !flt && !ordered.some(s => ['asking', 'ready'].includes(rankOf(s))) && ordered.length > 0;
     const items = [];
     // chats asking you outside the project in view (2026-10-12): a line over the lanes says how many, a click is ALL
-    const away = p.key === ALL || q ? 0 : [...state.sessions.values()].filter(s => visible(s) && asking(s) && !inProject(s, p)).length;
+    const away = p.key === ALL || q ? 0 : [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && !inProject(s, p)).length;
     if (away) items.push({ html: `<div class="gsep lane asking away" data-away role="button" tabindex="0" title="Every project again (ALL), to see them"><i></i><span class="ln">${away} asking you in other projects</span></div>` });
     if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, p, q) }));
     else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
@@ -6170,6 +6179,7 @@ const toolName = n => {
       + '\nClick once you know — it shows again when the branch moves again.';
   }
   const driftChip = s => s.drift ? `<button class="hdrift" id="driftBtn" title="${esc(driftTip(s))}"><span class="vh">The branch moved under this chat: </span>${ICON.branch}<span class="n"><b>${esc(s.drift.to)}</b> now</span><span class="q">· was ${esc(s.drift.from)}</span></button>` : '';
+  const muteChip = s => s.muted ? `<button type="button" class="chip cmute" title="Muted: no banner, sound or count from this chat, questions too. It still shows here. Click to unmute">${ICON.bellOff}muted</button>` : '';   // 2026-11-02
   const driftMark = s => s.drift ? `<span class="drift" title="${esc(`The branch moved under it: ${s.drift.to} now, was ${s.drift.from}`)}">${ICON.branch}<span class="vh">, its branch moved</span></span>` : '';
   /** Another chat messaged this one (2026-10-31): ← from <that chat>, while one waits for its turn to end, or for
    *  PEER_MARK_MS after one came and before your next word in it; a click opens the chat that sent it. */
@@ -6353,7 +6363,7 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
       <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -7053,6 +7063,7 @@ const toolName = n => {
         ...(s.cwd ? [{ name: `Its folder in ${editor().name} — its own window`, sub: of, hint: '⌥⌘V', fn: hotEditorApp }] : []),
         ...(canTick(s) ? [{ name: watchEnds(s) ? `Tick it done — ends its watch: ${watchEnds(s)}` : 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
+        { name: s.muted ? 'Unmute it' : 'Mute it — no banner, sound or count, questions too', sub: of, fn: () => setMuted(s.id, !s.muted) },
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
         ...(!foldFromWhy(s) ? [{ name: 'Fold it into another chat…', sub: of, fn: () => foldPick(s, 'launch'), stay: true }] : []),   // 2026-10-31
@@ -8021,6 +8032,7 @@ const toolName = n => {
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const ctk = e.target.closest('.ctk');
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
+    if (e.target.closest('.chip.cmute')) { e.stopPropagation(); setMuted(card.dataset.id, false); return; }
     const act = e.target.closest('.act');
     if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act, e.altKey); return; }
     const mv = e.altKey && e.target.closest('.prmove');
@@ -8466,6 +8478,7 @@ const toolName = n => {
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${zshsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
+      `<button class="hmi${s.muted ? ' on' : ''}" id="muteBtn" aria-pressed="${!!s.muted}" title="No banner, sound or count from this chat, questions too, till you unmute it — its card says so and still shows what it does">${ICON.bellOff}<span>mute notifications</span><span class="k">${s.muted ? 'on' : 'off'}</span></button>`,
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
@@ -8530,6 +8543,7 @@ const toolName = n => {
     $('#settingsBtn').onclick = () => settingsOpen(true);
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
+    $('#muteBtn').onclick = () => setMuted(s.id, !state.sessions.get(s.id)?.muted);   // a toggle: the menu stays up
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === projDir(s.cwd) ? ALL : projDir(s.cwd)); };   // a toggle (2026-10-08)
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
@@ -8712,6 +8726,7 @@ const toolName = n => {
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
+      s.muted ? { t: 'Unmute', fn: () => setMuted(s.id, false) } : { t: 'Mute', sub: 'no banner, sound or count, questions too', fn: () => setMuted(s.id, true) },
       ...((s.prs || []).length ? [{ hr: true }, ...(s.prs || []).slice(0, 6).map(pr => ({ t: `Take ${pr.label.replace(/^.*?#/, '#')} off this chat`, fn: () => unlinkUrl(s, pr.url) }))] : []),
       { hr: true }, { t: 'Copy its link', fn: () => copyText(`${location.origin}/#${s.id}`).then(ok => note(card, ok ? 'Link copied' : 'Could not copy it', !ok)) },
     ];
@@ -12357,6 +12372,13 @@ const toolName = n => {
   // A notification answered where it shows (the app's, 2026-10-12): Done is the card's ✓ (offered only where the card
   // offers it), a reply is typed into the chat's Claude in its drawer here — over the page's own socket to it when the
   // chat is open, else one opened for the reply and closed after it, which sends no size, so the drawer is not resized.
+  // A chat muted, or back (2026-11-02): the server's word, for every page and poster, shown at once and taken back if refused.
+  function setMuted(id, on) {
+    const show = v => { const s = state.sessions.get(id); if (!s) return; s.muted = v; renderBoard(); if (id === state.current) renderHead(s); };
+    show(on);
+    api('POST', `/api/sessions/${id}/mute`, { on }).catch(e => { show(!on); note($('#shead'), `Could not ${on ? 'mute' : 'unmute'} it: ${e.message}`, true); });
+  }
+  window.peixMute = id => setMuted(id, true);   // the banner's *Mute this chat*
   window.peixDone = id => { const s = state.sessions.get(id); if (!s || s.done || !canTick(s)) return; if (watchEnds(s) && !armedOn(id)) openSession(id, { locate: true }); tickDone(id, true, $('#shead')); };   // a watching chat's: shown, and asked once more
   window.peixReply = async (id, text) => { const s = state.sessions.get(id); return !!s && drawerType(s, text, true); };
   /** Words typed into the chat's Claude in its drawer here, as you would type them — newlines as Claude Code's own
@@ -13425,7 +13447,7 @@ const toolName = n => {
     if (a.kind === 'lunch') return lunchAlert(a);   // lunch's (2026-10-18)
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
     if (fishing.until && (a.kind === 'reply' || a.kind === 'pr')) a = { ...a, quiet: true, held: true };   // gone fishing (M4): it counts, and says nothing yet
-    if (!viewing && !a.held && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
+    if (!viewing && !a.held && !a.muted && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
     if (viewing && a.kind === 'reply') markSeen(a.sessionId);
     renderBoard();
@@ -13979,7 +14001,7 @@ const toolName = n => {
    *  card — who asks, and what; ⏎ goes to the chat, esc (or space) plays on. What landed or asked during a round is
    *  kept for the K.O. (g.news). From the stream's session events. */
   function zeHeard(s, was, landed) {
-    if (!$('#zeGame').open) return;
+    if (!$('#zeGame').open || s.muted) return;
     const g = ze.g, now = asking(s) && visible(s) && !(was && asking(was));
     if (now) zeCall(g, s);
     if ((landed || now) && !g.demo) { g.news = g.news.filter(n => n.id !== s.id); g.news.push({ id: s.id, project: s.project, title: s.title, asks: !landed }); }

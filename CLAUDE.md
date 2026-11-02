@@ -62,12 +62,11 @@ npm run map                         # rewrite the section maps at the top of ser
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/instagram.mjs` | Lunch's Instagram, in Chrome: a profile, the stories, the login |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup, `waitFor`, `post` |
-| `lib/refit.mjs` | Resizing a terminal so a grow pulls the scrollback back down (the holder's copy; the page keeps its own) |
+| `lib/refit.mjs` | A terminal's refit, the holder's copy |
 | `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since; the server's per HEAD, build.sh's into the app |
 | `public/index.html` | The frontend, one file, no build step. A section map at the top of its script |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
-| `mac/CLAUDE.md` | The shell's own notes: what only main.swift and build.sh need |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version `lib/version.mjs`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/worktree.sh` | A worktree per piece of parallel work: made from main, removed only with its work on main, never forced |
@@ -674,7 +673,7 @@ npm run map                         # rewrite the section maps at the top of ser
   posts only a message that differs. Esc pressed in a pane page is forwarded (`hotEscape()`: a dialog closes first, else the
   chat tab comes back); one on the board reaches the page, whose capture-phase handler closes a dialog or popover and,
   the pane up, does hotEscape's outside a terminal or a box (2026-10-14). The pane's `focus` is null unless the keys' half shows a page.
-* **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, moves, working, watching, muted, plan, next, fishing}` from
+* **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, moves, working, watching, muted, plan, next, fishing, mutes}` from
   `renderBoard` when what wants you changes (`postState`, `wanting()`: the chats asking and the new replies — **the
   Dock's badge and the page's title are their number**, the fish's the questions alone (2026-11-01); the status menu lists
   them with the PRs at your move and what is clauding), each alert with `serverNotify` and `quiet`, the pane's places, and
@@ -705,7 +704,7 @@ npm run map                         # rewrite the section maps at the top of ser
   with a drawer here *Reply… · Done · In 15 minutes*, elsewhere *Done · In 15 minutes*, a question or a PR's turn the
   snooze alone. Reply… and Done go to the page
   (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
-  `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`. → `notify-actions.mjs`.
+  `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`; *Mute this chat* on any, `peixMute`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
   `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.
@@ -929,7 +928,7 @@ npm run map                         # rewrite the section maps at the top of ser
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.
 * **Take-over**: a chat live in iTerm or VS Code can be resumed here — SIGTERM the other processes, wait, spawn.
-  Nothing respawns a CLI claude; VS Code's tab goes dead and does not follow. → Findings: *VS Code chats can be taken over*.
+  Nothing respawns a CLI claude; VS Code's tab goes dead. → Findings: *VS Code chats can be taken over*.
 * **Live chats are never written to** from the board (a second writer on one transcript); stale ones are resumed in
   a drawer.
 * **A chat whose claude has ended is its transcript with the resume bar under it** (2026-10-07; `#resume`, row 5,
@@ -969,14 +968,15 @@ npm run map                         # rewrite the section maps at the top of ser
   shown name (`projCfg`) — never a map in the code.
 * **The small controls' hover ease is an `:is()` with ids in it, so it weighs an id**: a `transition` of its own on a
   `.cpr`, `.btn`, `.act`… needs an id in its selector, or it is the ease's, silently — ask `getAnimations()` mid-move.
-* **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`; the
-  usage's messages wear `.unote`, since `.note` is `note()`'s popup.
+* **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`, `.note`
+  is `note()`'s popup.
 * **No in-page toasts**: alerts are the badge plus a system notification (the app sets `NOTIFY=off` on its own
   server); with the board in front an alert can be heard instead (`chime`, `prefs.sounds`, off; none for the chat in view, `CHIME_GAP_MS`; Web Audio made on a
   press, `audioUp`, suspended between sounds, `audioRest`). **The notifications switch is the server's** (`notifications` in the state file, `PUT
   /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
   page's `Notification`, the server's osascript) skip it. A new poster reads `quiet` — and `heading`, the server's
   title for an alert that is not Claude's. → `notifications.mjs`.
+* **A chat muted** (2026-11-02; `mutedChats`, `…/mute`, `hushOf`, `setMuted`, `.chip.cmute` on its top row): its alerts `quiet` and `muted`, questions too; a PR's goes to another chat (`prAlertChat`); nothing that calls you counts it (`askingLoud`, `wanting`), its card still does. → `mute-chat.test.mjs`, `chat-mute.mjs`.
 * **A change to `:root`'s `--frame` moves the two hex pairs in main.swift's `buildWindow` with it**: the board's web view
   draws no ground, the window's colours are the page's `--frame` per appearance.
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
@@ -1020,7 +1020,6 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
   (`#log[data-sid]`). **A rectangle is read after `ctx.settle()`**: cards slide after they arrive or move, dialogs rise;
   `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`.
-  `ls scripts/scenarios/`: one file per feature, as the bullets name them.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
 * **The harness makes no sound** (2026-11-01): a headless Chrome never opens the audio device (`--disable-audio-output`,
@@ -1048,9 +1047,9 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`, `motion()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea`
   types.
-* Server logic without a browser: `npm test` (the terminals test is the reference for the API and the socket).
+* The terminals test is the reference for the API and the socket.
 * The app logs to `~/Library/Logs/peixairada-app.log` (alerts, badges, pane opens, drops); the agent's server to
-  `~/Library/Logs/peixairada.log` (spawns, adoptions, snapshots; each line stamped in UTC, 2026-10-21). Read those before guessing.
+  `~/Library/Logs/peixairada.log` (spawns, adoptions, snapshots; each line stamped in UTC, 2026-10-21).
 
 ## Deliberately not done
 

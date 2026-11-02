@@ -157,6 +157,10 @@ let seen = {}, seenSince = null;
 // The branch moved under a chat, and you said you know (2026-10-13): sessionId -> the move (`from→to`) — the header's chip
 // clicked. It lasts until that move is gone (driftNews): the next one shows again.
 let driftAcks = {};
+// Chats you muted (2026-11-02): sessionId -> when. An alert of one still reaches every page, for its card's own count, but
+// `quiet` and `muted`: no banner, no sound, and nothing that calls you counts it. Questions too, till you unmute it. By
+// the chat's id, so a /clear or a branch starts loud: that is another chat.
+let mutedChats = {};
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
@@ -244,6 +248,7 @@ function loadState() {
     unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
     seen = st.seen && typeof st.seen === 'object' ? st.seen : {}; seenSince = typeof st.seenSince === 'string' ? st.seenSince : null;
     driftAcks = st.driftAcks && typeof st.driftAcks === 'object' ? st.driftAcks : {};
+    mutedChats = st.mutedChats && typeof st.mutedChats === 'object' ? st.mutedChats : {};
     projects = st.projects || {};
     titles = st.titles || {};
     pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
@@ -282,7 +287,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, mutedChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
@@ -785,6 +790,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
+    muted: !!mutedChats[s.id],   // no banner, sound or count from it, till you unmute it (2026-11-02)
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
     ...linksOf(s.id) && { links: linksOf(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
     // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
@@ -1736,14 +1742,19 @@ function pushRounds(url) {
   for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr && (pr.logged !== logged || JSON.stringify(pr.rounds ?? null) !== rs)) { pr.rounds = rounds; pr.logged = logged; schedulePush(s); } }
 }
 
-/** A PR come round to you: one alert, on the chat touched last of those that mention it. */
+/** Who says a PR's alert: the chat touched last of those that mention it, a muted one only when all are (2026-11-02). */
+function prAlertChat(chats) {
+  const loud = chats.filter(s => !mutedChats[s.id]);
+  return (loud.length ? loud : chats).reduce((a, b) => (!a || touchedAt(b) > touchedAt(a) ? b : a), null);
+}
+/** A PR come round to you: one alert, on the chat `prAlertChat` picks. */
 function notifyPr(url, turn, chats) {
-  const s = chats.reduce((a, b) => (!a || touchedAt(b) > touchedAt(a) ? b : a), null);
+  const s = prAlertChat(chats);
   if (!s || indexing) return;
   const sum = summary(s), heading = `Your move · ${s.prs.find(p => p.url === url)?.label || url}`;
-  const evt = { kind: 'pr', sessionId: s.id, project: sum.project, title: sum.title, heading, snippet: turn.why, url, ts: new Date().toISOString(), quiet: !notificationsOn };
+  const evt = { kind: 'pr', sessionId: s.id, project: sum.project, title: sum.title, heading, snippet: turn.why, url, ts: new Date().toISOString(), ...hushOf(s) };
   broadcast('alert', evt);
-  if (notificationsOn) nativeNotify(heading, sum.title, turn.why);
+  if (!evt.quiet) nativeNotify(heading, sum.title, turn.why);
 }
 
 // ---- Jira tickets named in the chat (2026-10-08) -----------------------------------------------------------------------
@@ -3177,6 +3188,9 @@ function nativeNotify(title, subtitle, body) {
   ], () => {});
 }
 
+/** What an alert of this chat says of itself (2026-11-02): off for every chat (the cog), or this chat muted. */
+const hushOf = s => ({ quiet: !notificationsOn || !!mutedChats[s.id], muted: !!mutedChats[s.id] });
+
 function queueNotify(s, kind) {
   if (indexing || s.silent) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news
   if (s.forkAt && String(s.lastActivity || '') < s.forkAt) return;   // a branch's copied past, however its lines come in (2026-10-31)
@@ -3196,9 +3210,9 @@ function alertOf(s, kind) {
   if (kind === 'agent-failed') return agentFailNotify(s);
   const sum = summary(s);
   const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
-  const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
+  const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), ...hushOf(s) };
   broadcast('alert', evt);
-  if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude is asking you · ${sum.project}`, sum.title, evt.snippet || '');
+  if (!evt.quiet) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude is asking you · ${sum.project}`, sum.title, evt.snippet || '');
 }
 
 /** The branch moved under a chat at work (2026-10-13): said with a heading of its own, as a PR's turn is. */
@@ -3206,16 +3220,18 @@ function driftNotify(s) {
   const d = driftOf(s); if (!d) return;   // gone, or said you know, within the debounce
   const sum = summary(s), heading = `Branch moved · ${sum.project}`, n = (s.peers || []).length;
   const snippet = `${d.to} now · was ${d.from}${n ? ` — ${n} other chat${n === 1 ? ' runs' : 's run'} in this checkout` : ''}`;
-  broadcast('alert', { kind: 'drift', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet, ts: new Date().toISOString(), quiet: !notificationsOn });
-  if (notificationsOn) nativeNotify(heading, sum.title, snippet);
+  const evt = { kind: 'drift', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet, ts: new Date().toISOString(), ...hushOf(s) };
+  broadcast('alert', evt);
+  if (!evt.quiet) nativeNotify(heading, sum.title, snippet);
 }
 
 /** An agent of a chat's failed (2026-11-02): said with a heading of its own, as a moved branch is. */
 function agentFailNotify(s) {
   const f = s.agentFail; if (!f) return; s.agentFail = null;
   const sum = summary(s), heading = `An agent failed · ${sum.project}`, text = f.why ? `${f.what}: ${f.why}` : f.what;
-  broadcast('alert', { kind: 'agent-failed', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet: text, ts: new Date().toISOString(), quiet: !notificationsOn });
-  if (notificationsOn) nativeNotify(heading, sum.title, text);
+  const evt = { kind: 'agent-failed', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet: text, ts: new Date().toISOString(), ...hushOf(s) };
+  broadcast('alert', evt);
+  if (!evt.quiet) nativeNotify(heading, sum.title, text);
 }
 
 function schedulePush(s) {
@@ -6387,6 +6403,16 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, acked: driftAcks[s.id] });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/mute$/))) {   // this chat's alerts silent, or back (2026-11-02)
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const body = await jsonBody(req);
+      if (typeof body.on !== 'boolean') return json(res, 400, { error: 'expected {on: true|false}' });
+      if (body.on) mutedChats[s.id] = new Date().toISOString(); else delete mutedChats[s.id];
+      for (const id of Object.keys(mutedChats)) if (!sessions.has(id)) delete mutedChats[id];
+      saveState(); schedulePush(s);
+      return json(res, 200, { ok: true, muted: !!mutedChats[s.id] });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/waive$/))) {   // the chat's PRs at your move, let go this round (2026-10-12)
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -6598,7 +6624,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { cronNext, nextWake, pruneWakes, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cronNext, nextWake, pruneWakes, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, prAlertChat, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 export { handoffText };   // chats that talk (2026-10-31)
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

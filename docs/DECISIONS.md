@@ -5,6 +5,38 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-02, later again — one chat muted
+
+Ricardo: *"explore how best to build a feature that allows me to mute a particular chat from notifications"*; then, on whether a
+muted chat's question should still ring, *"no"*; on lasting until unmuted, *"yes"*; and *"make sure it's visible in the card that the
+chat is muted"*.
+
+* **What calls you goes quiet; the card keeps the truth.** Gone: the banner of all five kinds (a reply, a question, a branch moved,
+  an agent failed, a PR's move), the sound, the Dock's number and bounce, the title's count, the menu bar's lists, Next, the bar's
+  red, the lines of news, Zé's game stopping, and *N asking you in other projects*. Staying: the lane and its rank, the red edge and
+  the question, the card's unread count, its chips, the funnel and ⌥⌘A. It is not *done for good*: a PR's move still un-ticks the
+  chat and lifts it.
+* **A question is silent too.** As the global switch had it (2026-09-23): a question with no banner is still a blinking card.
+  Gone fishing lets questions ring because it is a spell you come back from; a mute asked for by name that sometimes rings could
+  not be trusted. The price: a muted chat can sit blocked till you look at the board.
+* **Until you unmute it**: no timer, and a word of yours in it does not end it. A timed one is easy to add if it is ever wanted.
+* **Through the flag there was.** It is the server's word (`mutedChats`, in the state file), for the reason the switch is: three
+  posters. `quiet` already stops all three, so a board on an older app honours a mute with no rebuild. `muted` rides beside it for the
+  sound, which `quiet` never stopped. The filters are the page's (`askingLoud`, `wanting`), so the Dock and the menu bar follow with
+  no Swift either.
+* **By the chat's id.** A /clear is a new id and usually new work, so it starts loud, as a branch does; a resume keeps it.
+* **A PR's alert goes to a chat that can say it** (`prAlertChat`): the chat touched last, as ever, but a muted one only when every
+  chat naming the PR is. Otherwise a mute on one chat would have swallowed the alert of another.
+* **The word, not a glyph.** `.chip.cmute`, *muted* beside the project on the top row, which every card has at every size and whose
+  parts Settings cannot hide; a click on it unmutes, opening nothing. Its colours were measured: `--working-ink` on a 16 % wash of
+  `--working` is 4.28:1 in the board's light and 3.98:1 in Tokyo Day, so it stands on its own ground, 14 % of the amber in `--panel`:
+  6.2 in the own dark, 6.4 in the own light, 4.58 at worst over every theme, and the same on a card asking.
+* **In the app** (a rebuild): *Mute this chat* on every banner of a chat; and `mutes` in the `state` message, since *In 15 minutes* is
+  the system's own timer, which no `quiet` reaches: a chat joining the list has its pending and delivered banners taken back.
+  **Only typechecked, not seen**: a drawer cannot watch a banner.
+* **Open**: `.chip.agents` wears the same pair that measured 4.28:1 here, and the inks' test does not hold a chip's wash of another
+  colour. Left as it is.
+
 ## Decisions of 2026-11-02, evening — a card dragged onto another (round XIV's I5)
 
 Round XIV's I5 left out the drag: *"Drag a card onto another was not built"*. Ricardo: *"this would be really cool. make
@@ -43,6 +75,7 @@ sure the UX is nice and we prompt for confirmation before merging"*
   the ghost, the lit row, the flight into the card, the box. Not by a real hand in the app: a synthetic event has no
   capture to hold, so the release off the window and a drag crossing the pane's native view are unproven there.
 
+||||||| parent of 082e042 (A chat can be muted)
 ## Decisions of 2026-11-02, later still — no five-hour limit
 
 Ricardo: *"the 5H limit was removed from claude, update code/docs/screenshots"*
