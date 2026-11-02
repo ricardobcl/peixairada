@@ -2735,6 +2735,21 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      both on two strings — dropped in, swung once, its word turned over. A chalkboard is a chalkboard in every theme:
      its colours are its own tokens. */
   #sbSwim .swimmer { z-index: 2; }
+  #sbSwim.school .swimmer { visibility: hidden; } #sbSwim.school .swimmer .ft { animation: none; }
+  #sbSwim .schoolbox { position: absolute; inset: 0; z-index: 2; }
+  #sbSwim .sf { position: absolute; top: 0; bottom: 0; width: 32px; margin-left: -16px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--r-2); background: none; cursor: pointer; transition: left .45s var(--ease-out); }
+  #sbSwim .sf:hover { background: var(--ctl); }
+  #sbSwim .sf .sfw { display: flex; transform: scale(.72); } #sbSwim .sf .fw { display: flex; }
+  #sbSwim .sf :is(.b, .b.m) { fill: var(--c); } #sbSwim .sf .s { fill: color-mix(in srgb, var(--c) 60%, #000); }
+  #sbSwim .sf .ft { animation: none; }
+  #sbSwim .sf.s-work .fw { animation: sfswim 1.7s ease-in-out infinite alternate; } #sbSwim .sf.s-work .ft { animation: wag .26s ease-in-out infinite alternate; }
+  #sbSwim .sf.s-watch .fw { animation: sfswim 4.6s ease-in-out infinite alternate; }
+  #sbSwim .sf.s-ready .sfw { opacity: .45; }
+  #sbSwim .sf.s-ask { --c: var(--needs) !important; }
+  #sbSwim .sf.s-ask::before { content: ''; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; border-radius: 50%; border: 1.5px solid var(--needs); animation: sfping 1.9s ease-out infinite; pointer-events: none; }
+  #sbSwim .sfmore { position: absolute; right: 5px; top: 50%; translate: 0 -50%; font-size: var(--fs-2xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+  @keyframes sfswim { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
+  @keyframes sfping { from { transform: scale(.45); opacity: .9; } to { transform: scale(1.2); opacity: 0; } }
   #sbSwim .lnews { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; border: 0; background: var(--bar, var(--panel)); color: var(--muted); font: inherit; white-space: nowrap; overflow: hidden; cursor: pointer; animation: lnewsin .32s var(--ease-out) both; }
   #sbSwim .lnews b { color: var(--ink); font-weight: 650; } #sbSwim .lnews b.y { color: var(--spend); } #sbSwim .lnews i { font-style: normal; opacity: .6; } #sbSwim .lnews em { font-style: normal; color: var(--needs); font-weight: 650; }
   #sbSwim .lnews:hover { background: var(--ctl); }
@@ -2814,6 +2829,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-reduced-motion: reduce) {
     .zewalk .zw, .zewalk .zw i { animation: none; } .zewalk .zw i { left: auto; right: 8px; } .zewalk .zw i + i { opacity: 0; }   /* Zé stands at the end of All caught up */
     #sbSwim .lnews { animation: none; }
+    #sbSwim .sf .fw, #sbSwim .sf .ft, #sbSwim .sf::before { animation: none !important; } #sbSwim .sf { transition: none; }
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
@@ -2968,6 +2984,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
         </div></section>
         <section class="sgrp"><h6 class="sgh" id="sgBar">Status bar</h6><div class="slist" role="group" aria-labelledby="sgBar">
+          <div class="srow set" data-kw="status bar lane fish school minimap chats one each"><label class="sl" for="laneSchool"><b>A fish per chat</b><small>In the lane, each in its place: swimming at work, still and red when it asks. A click opens it</small></label><input type="checkbox" class="sw" role="switch" id="laneSchool"></div>
+          <div class="srow set" data-kw="status bar lane seabed day floor activity"><label class="sl" for="laneBed"><b>The seabed</b><small>The lane's floor is your day: how many chats were at work, with red where one waited on you</small></label><input type="checkbox" class="sw" role="switch" id="laneBed"></div>
           <div class="srow set" data-kw="status bar meters cpu memory ram claude" id="sbarStats"><span class="sl"><b>Show in the status bar</b><small>Also from a right-click on the status bar</small></span><span class="schecks"><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> Memory</label><label><input type="checkbox" data-stat="claude"> Claude’s memory</label></span></div>
         </div></section>
       </div>
@@ -3217,7 +3235,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
+  const prefs = { mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -4449,6 +4467,45 @@ const toolName = n => {
     if (!swim.anim) { swim.anim = f.animate(swimFrames(w), { duration: swimMs(w), iterations: Infinity, id: 'swim' }); swim.anim.currentTime = swimMs(w) / 4; swim.w = w; }   // from the lane's middle, heading left
     swimPaceTo(); noteMotion(null, 'swim', n);
   }
+  // The lane is the minimap (2026-11-01, round XIX's W1; a switch, off by default): a fish per live chat in its project's
+  // colour, each holding its own place, so you learn where a chat lives. At work it swims on the spot, watching slowly, ready
+  // it rests dimmed, and asking it stops dead, red, with a ping. A click opens it. Past LANE_MAX the ones that want you stay
+  // and a count stands for the rest. Places go by when each chat started, and a fish keeps its node, so nothing restarts.
+  const LANE_MAX = 12;
+  function schoolOf() {
+    const live = [...state.sessions.values()].filter(s => visible(s) && s.alive && !s.done);
+    const rank = s => asking(s) ? 0 : s.status === 'working' ? 1 : inWatch(s) ? 2 : 3;
+    const kept = live.length > LANE_MAX ? [...live].sort((a, b) => rank(a) - rank(b) || byWord(a, b)).slice(0, LANE_MAX - 1) : live;
+    return { kept: [...kept].sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt)) || a.id.localeCompare(b.id)), more: live.length - kept.length, rank };
+  }
+  function schoolBar() {
+    const lane = $('#sbSwim'); if (!lane?.firstChild) return;
+    const on = !!prefs.laneSchool;
+    lane.classList.toggle('school', on);
+    let box = lane.querySelector('.schoolbox');
+    if (!on) { if (box) { box.remove(); if (!swim.out) swim.anim?.play(); } return; }
+    if (swim.anim?.playState === 'running') swim.anim.pause();
+    if (!box) {
+      box = document.createElement('div'); box.className = 'schoolbox'; lane.append(box);
+      box.addEventListener('click', e => { const b = e.target.closest('.sf'); if (!b) return; e.stopPropagation(); openSession(b.dataset.id, { locate: true }); });
+    }
+    const { kept, more, rank } = schoolOf(), slots = kept.length + (more ? 1 : 0), have = new Map([...box.querySelectorAll('.sf')].map(b => [b.dataset.id, b]));
+    const STATE = ['s-ask', 's-work', 's-watch', 's-ready'], SAID = ['asking you', 'at work', 'watching', 'ready'];
+    kept.forEach((s, i) => {
+      let b = have.get(s.id); have.delete(s.id);
+      if (!b) { b = document.createElement('button'); b.type = 'button'; b.dataset.id = s.id; b.innerHTML = SWIM_FISH.replace('"swimmer"', '"sfw"'); box.append(b); }
+      const r = rank(s), said = `${s.project} · ${s.title} · ${SAID[r]}`, left = `${(i + .5) / slots * 100}%`, color = repoColor(s.cwd) || 'var(--muted)';
+      if (b.className !== `sf ${STATE[r]}`) b.className = `sf ${STATE[r]}`;
+      if (b.style.left !== left) b.style.left = left;
+      if (b.style.getPropertyValue('--c') !== color) b.style.setProperty('--c', color);
+      if (b.title !== said) { b.title = said; b.setAttribute('aria-label', said); }
+    });
+    for (const b of have.values()) b.remove();
+    let m = box.querySelector('.sfmore');
+    if (more) { if (!m) { m = document.createElement('span'); m.className = 'sfmore'; box.append(m); } m.textContent = `+${more}`; m.title = `${more} more, ready: a click on the lane shows every agent`; } else m?.remove();
+  }
+  $('#laneSchool').checked = !!prefs.laneSchool;
+  $('#laneSchool').addEventListener('change', e => { prefs.laneSchool = e.target.checked; savePrefs(); renderBar(); });
   // It eats (2026-10-11, late night): now and then it blurps a bubble or three out ahead of it and swims after them — its
   // mouth open for the last few pixels, darting the last DART_PX at DART times its pace — and gulps each one it reaches,
   // the bubble drawn into its mouth and its body swelling; every third one gulped, a burp rises. One it turned away from
@@ -4461,7 +4518,7 @@ const toolName = n => {
   const mouthOf = f => f.x + (f.dir < 0 ? 1 : 25);   // its lips' front pixel, whichever way it faces
   const swimPace = () => swimRate(Math.max(0, swim.n)) * (swim.dart ? DART : 1);
   function blurp(n = 1 + (Math.random() < .35) + (Math.random() < .12)) {
-    const lane = $('#sbSwim'); if (!swim.anim || swim.food.length || !lane || swim.out) return false;
+    const lane = $('#sbSwim'); if (!swim.anim || swim.food.length || !lane || swim.out || prefs.laneSchool) return false;
     const f = fishAt(), m = mouthOf(f), room = f.dir < 0 ? m - SWIM_PAD - 1 : swimEnd(swim.w) + 25 - m, d0 = 16 + Math.random() * 12;
     const at = []; for (let i = 0; i < n; i++) { const d = Math.min(d0 + i * 8, room - 4); if (d < 8 || at.includes(m + f.dir * d)) break; at.push(m + f.dir * d); }
     if (!at.length) return false;
@@ -4597,7 +4654,7 @@ const toolName = n => {
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
     swimAt(fishing.until ? 0 : all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));
-    lunchBar(); fishingBar();
+    lunchBar(); fishingBar(); schoolBar();
     setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
     rollSoon();
   }
@@ -6617,7 +6674,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
-    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
