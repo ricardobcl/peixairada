@@ -2736,6 +2736,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      its colours are its own tokens. */
   #sbSwim .swimmer { z-index: 2; }
   #sbSwim.school .swimmer { visibility: hidden; } #sbSwim.school .swimmer .ft { animation: none; }
+  #sbSwim canvas.bed { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
   #sbSwim .schoolbox { position: absolute; inset: 0; z-index: 2; }
   #sbSwim .sf { position: absolute; top: 0; bottom: 0; width: 32px; margin-left: -16px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--r-2); background: none; cursor: pointer; transition: left .45s var(--ease-out); }
   #sbSwim .sf:hover { background: var(--ctl); }
@@ -4506,6 +4507,59 @@ const toolName = n => {
   }
   $('#laneSchool').checked = !!prefs.laneSchool;
   $('#laneSchool').addEventListener('change', e => { prefs.laneSchool = e.target.checked; savePrefs(); renderBar(); });
+  // The seabed (2026-11-01, round XIX's W2; a switch, off by default): the lane's floor is your day, from the first turn to
+  // the end of a working day or now. Its height is how many chats were at work in each five minutes, red flecks along the
+  // top where one sat waiting on you. Change-blind by design: drawn once a minute, one canvas, nothing moves, and nothing
+  // in it asks for your eye. Hover says the hour in the lane's tooltip. Blocked minutes are never made a score.
+  const BED_STEP = 5 * 60_000, BED_SPAN = 8 * 3600e3, BED_EVERY_MS = 60_000;
+  const bed = { day: null, at: 0, busy: false, cols: null };
+  async function bedLoad(force) {
+    if (!prefs.laneBed) { if (bed.cols) bedDraw(); return; }
+    if (bed.busy || document.hidden || (!force && Date.now() - bed.at < BED_EVERY_MS)) return;
+    bed.busy = true;
+    try { bed.day = await api('GET', `/api/today?since=${new Date().setHours(0, 0, 0, 0)}`); bed.at = Date.now(); } catch {} finally { bed.busy = false; }
+    bedDraw();
+  }
+  function bedCols() {
+    const spans = (bed.day?.chats || []).flatMap(c => c.spans || []).filter(x => x.from), now = Date.now();
+    if (!spans.length) return null;
+    const hour = 3600e3, midnight = new Date().setHours(0, 0, 0, 0), first = Math.max(midnight, Math.min(...spans.map(x => Date.parse(x.from))));
+    const start = Math.floor(first / hour) * hour, end = Math.max(start + BED_SPAN, now + hour / 2), n = Math.ceil((end - start) / BED_STEP);
+    const cols = Array.from({ length: n }, () => ({ w: 0, a: 0 }));
+    for (const c of bed.day.chats) for (const k of ['w', 'a']) {   // a chat counts once in a column, however many spans it had there
+      const hit = new Set();
+      for (const x of c.spans || []) if (x.k === k && x.from) {
+        const a = Math.max(start, Date.parse(x.from)), b = x.to ? Date.parse(x.to) : now;
+        for (let i = Math.floor((a - start) / BED_STEP); i <= Math.min(n - 1, Math.floor((b - 1 - start) / BED_STEP)); i++) if (i >= 0) hit.add(i);
+      }
+      for (const i of hit) cols[i][k]++;
+    }
+    return { start, end, n, cols };
+  }
+  function bedDraw() {
+    const lane = $('#sbSwim'); if (!lane?.firstChild) return;
+    let c = lane.querySelector('canvas.bed');
+    if (!prefs.laneBed) { c?.remove(); bed.cols = null; lane.onpointermove = null; return; }
+    bed.cols = bedCols();
+    if (!c) {
+      c = document.createElement('canvas'); c.className = 'bed'; c.setAttribute('aria-hidden', 'true'); lane.prepend(c);
+      lane.onpointermove = e => { if (!bed.cols || !prefs.laneBed) return; const i = Math.floor(e.offsetX / bed.w * bed.cols.n), col = bed.cols.cols[i]; if (!col || e.target !== lane && e.target !== c) return; lane.title = `${new Date(bed.cols.start + i * BED_STEP).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}: ${col.w} at work${col.a ? `, ${col.a} waiting on you` : ''}`; };
+    }
+    const w = bed.w = lane.clientWidth, h = lane.clientHeight, dpr = devicePixelRatio || 1;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    const x = c.getContext('2d'); x.scale(dpr, dpr); x.clearRect(0, 0, w, h);
+    if (!bed.cols) return;
+    const css = getComputedStyle(lane), bw = w / bed.cols.n;
+    x.fillStyle = css.getPropertyValue('--muted'); x.globalAlpha = .3;
+    bed.cols.cols.forEach((col, i) => { const b = Math.min(h - 3, col.w * 3.2); if (b) x.fillRect(i * bw, h - b, Math.max(1, bw - .5), b); });
+    x.globalAlpha = 1; x.fillStyle = css.getPropertyValue('--needs');
+    bed.cols.cols.forEach((col, i) => { if (col.a) x.fillRect(i * bw, 0, Math.max(1.5, bw - .5), 2); });
+    noteMotion(null, 'bed:draw', bed.cols.n);
+  }
+  $('#laneBed').checked = !!prefs.laneBed;
+  $('#laneBed').addEventListener('change', e => { prefs.laneBed = e.target.checked; savePrefs(); bedDraw(); bedLoad(true); });
+  new ResizeObserver(() => { if (prefs.laneBed && bed.cols) bedDraw(); }).observe($('#sbSwim'));
+  new MutationObserver(() => { if (prefs.laneBed && bed.cols) bedDraw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-skin', 'data-frame'] });
   // It eats (2026-10-11, late night): now and then it blurps a bubble or three out ahead of it and swims after them — its
   // mouth open for the last few pixels, darting the last DART_PX at DART times its pace — and gulps each one it reaches,
   // the bubble drawn into its mouth and its body swelling; every third one gulped, a burp rises. One it turned away from
@@ -4654,7 +4708,7 @@ const toolName = n => {
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
     swimAt(fishing.until ? 0 : all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));
-    lunchBar(); fishingBar(); schoolBar();
+    lunchBar(); fishingBar(); schoolBar(); bedLoad();
     setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
     rollSoon();
   }
