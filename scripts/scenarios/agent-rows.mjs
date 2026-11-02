@@ -2,7 +2,7 @@
 // a step keeps the card's node and the row's; one ended ticks and goes into the done row, its click the list with the results;
 // nothing leaves under the pointer; a failure comes first, the chip red, and stays until the chat is opened, with the summary;
 // the chip folds, remembered, and a folded card's live line says who stepped last; past three, +N; quiet after three minutes;
-// same-height cards and a card told not to show none. Shots dark and light.
+// a card told not to shows none (a same-height card's one line is agent-line.mjs). Shots dark and light.
 import { spawn } from 'node:child_process';
 import { appendFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -138,13 +138,7 @@ export default async function (ctx) {
     // light, then what hides them
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await ctx.settle();
     await ctx.shot('agent-rows-light');
-    await ctx.evaluate(`document.querySelector('#cardsEven') && 0`);
-    await ctx.evaluate(`(() => { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k)); p.cardsEven = true; localStorage.setItem(k, JSON.stringify(p)); })()`);
-    await ctx.reload();
-    await ctx.waitFor(`!!document.querySelector('${card(other.id)} .chip.agents:not([hidden])')`, { what: 'the card back' });
-    ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('${card(other.id)} .agl')).display`), 'none', 'same height: none');
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('${card(other.id)} .chip.agents .agcar')`), null, 'and nothing to fold');
-    await ctx.evaluate(`(() => { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k)); p.cardsEven = false; p.cardParts = ['prs', 'rounds', 'tickets', 'faces']; localStorage.setItem(k, JSON.stringify(p)); })()`);
+    await ctx.evaluate(`(() => { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k)); p.cardParts = ['prs', 'rounds', 'tickets', 'faces']; localStorage.setItem(k, JSON.stringify(p)); })()`);
     await ctx.reload();
     await ctx.waitFor(`!!document.querySelector('${card(other.id)} .chip.agents:not([hidden])')`, { what: 'the card back' });
     ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('${card(other.id)} .agl')).display`), 'none', 'a card told not to: none');

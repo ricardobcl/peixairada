@@ -913,12 +913,11 @@
   .card .state.live .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   /* A chat's agents on its card (2026-11-02, round XX; fillAgents): a row each, what it was asked and what it does now, its age
      on the right — filled after the render, so a step keeps the card's node. A shape for each state, colour on top; the arc
-     turns on the ring's clock (`ring`, phased), and only while at work. Same-height cards, and a card told not to, show none. */
+     turns on the ring's clock (`ring`, phased), and only while at work. A same-height card has one line (below), a card told not to none. */
   .card .trow .chip.agents { display: inline-flex; align-items: center; gap: 2px; flex: none; max-width: none; font-family: inherit; cursor: pointer; }
   .card .trow .chip.agents[hidden] { display: none; }
   .card .trow .chip.agents:hover { background: color-mix(in srgb, var(--working) 28%, transparent); }
   .card .trow .chip.agents.bad { color: var(--needs); background: color-mix(in srgb, var(--needs) 16%, transparent); }
-  #sessions[data-even] .card .trow .chip.agents { cursor: inherit; }
   .agcar { width: 10px; height: 10px; flex: none; transition: transform .18s var(--ease-out); transform: rotate(-90deg); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .chip.agents.on .agcar, .agr.open .agcar { transform: none; }
   #sessions[data-even] .chip.agents .agcar { display: none; }
@@ -927,7 +926,16 @@
   .presence > .agl { flex: 0 0 100%; margin: 2px 0 0; padding-left: 28px; box-sizing: border-box; --glow: var(--working-ink); --lift: var(--working-ink); }
   .presence > .agl > .agr { max-width: 64ch; }
   #ov .ot .agl { margin-top: 6px; }
-  #sessions[data-even] .card .agl, #sessions[data-hide~="agents"] .card .agl { display: none; }
+  #sessions[data-hide~="agents"] .card .agl { display: none; }
+  /* same height: one line, over the place .moveslot holds (agLine, 2026-11-02): of no height itself, so no card can grow */
+  #sessions[data-even] .card .agl { position: relative; top: 4px; height: 0; margin-top: 0; }
+  #sessions[data-even] .card .agr { display: flex; gap: 6px; }
+  #sessions[data-even] .card .agr .agd { flex: none; }
+  #sessions[data-even] .card .aga { flex: 0 1 auto; }
+  #sessions[data-even] .card .agn { flex: 1 1 0; min-width: 38%; }
+  #sessions[data-even] .card .agt { order: 1; flex: none; }
+  .card .trow .chip.agents.named { max-width: 40%; }   /* the move has the line: the chip names the one at work */
+  .chip.agents .agcn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .agr { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 6px; align-items: baseline; font-size: var(--fs-xs); line-height: 15px; color: var(--ink); min-width: 0; cursor: pointer; }
   .agr .agd { grid-column: 1; align-self: center; display: block; position: relative; width: 10px; height: 10px; }
   .aga { grid-column: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
@@ -3767,16 +3775,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     }
     listChanged(); fadeSoon();   // the cards changed height under the same scroll position; a PR matrix shown again is read (fadeOver)
   }
-  const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); };
+  const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); renderBoard(); };   // a redraw for a card's agents, filled after the render; only what changed
   const PRCHIPS_SAY = { matrix: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', all: 'Every PR, stacked, and the faces of the people on them' };
   $('#prChipsPick').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b || b.disabled) return; prefs.prChips = b.dataset.pc; savePrefs(); applyCards(); renderBoard(); });
-  for (const c of $('#cardPartsRow').querySelectorAll('input')) c.addEventListener('change', () => { prefs.cardParts = [...$('#cardPartsRow').querySelectorAll('input:checked')].map(x => x.dataset.part); savePrefs(); applyCards(); });
+  for (const c of $('#cardPartsRow').querySelectorAll('input')) c.addEventListener('change', () => { prefs.cardParts = [...$('#cardPartsRow').querySelectorAll('input:checked')].map(x => x.dataset.part); savePrefs(); applyCards(); renderBoard(); });
   // …and by lane (2026-10-12, a switch, off): the lanes that want you — a question, a PR at your move, Claude at work, a
   // new reply — large whatever the slider says, the rest at its size. cardHtml marks those cards .roomy; the list's
   // data-bylane lets the mark count, so the switch, like the slider, re-renders nothing.
   $('#cardsByLane').addEventListener('change', e => { prefs.cardsByLane = e.target.checked; savePrefs(); applyCards(); });
   $('#cardsSize').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
-  $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); });
+  $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); renderBoard(); });
   applyCards();
   // A theme's colours are drawn again on the list and the open chat's header.
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
@@ -6373,7 +6381,7 @@ const toolName = n => {
   const agOn = s => !!s.alive && !s.done && (s.agents > 0 || s.agentRows?.length > 0);
   const agEven = () => prefs.cards === 'compact' && !!prefs.cardsEven;
   const agUi = id => prefs.agentCards[id] || {};
-  const agFolded = s => agEven() || !!agUi(s.id).fold;
+  const agFolded = s => !agEven() && !!agUi(s.id).fold;
   const agWhoOn = s => agOn(s) && s.agents > 0 && agFolded(s);
   const agDur = ms => { const t = Math.max(1, Math.round(ms / 1000)); return t < 60 ? `${t}s` : t < 3600 ? `${Math.round(t / 60)}m` : `${Math.round(t / 3600)}h`; };
   const agQuiet = r => r.st === 'run' && !!r.lastAt && Date.now() - Date.parse(r.lastAt) > AG_QUIET_MS;
@@ -6408,7 +6416,7 @@ const toolName = n => {
     list.sort((a, b) => (b.st === 'fail') - (a.st === 'fail') || String(a.at).localeCompare(String(b.at)));
     let more = 0; if (!ui.more && list.length > AG_SHOW) { more = list.length - AG_SHOW; list = list.slice(0, AG_SHOW); }
     const opened = ui.done && (done || sum) ? oks.filter(r => !list.includes(r)) : [], folded = agFolded(s);
-    return { rows: list, more, done, sum, opened, folded, run: run.length, total: round.length, oks: oks.length, fails: fails.length,
+    return { rows: list, more, done, sum, one: sum && round.length === 1 ? round[0] : null, opened, folded, run: run.length, total: round.length, oks: oks.length, fails: fails.length,
       key: [folded, list.map(r => r.id), more, done > 0, !!sum, opened.length].join('|') };
   }
   const agAsked = r => (r.name ? `<b>${esc(r.name)}</b> ` : '') + esc(r.asked || (r.name ? '' : 'An agent'));
@@ -6435,9 +6443,12 @@ const toolName = n => {
     if (agInfo.size > 60) agInfo.delete(agInfo.keys().next().value);
   }
   const agTok = n => n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
+  function agSaid(r) {
+    const st = agQuiet(r) ? 'quiet' : r.st;
+    return st === 'run' ? `at work ${agDur(Date.now() - Date.parse(r.at))}` : st === 'quiet' ? `quiet ${agDur(Date.now() - Date.parse(r.lastAt))}` : st === 'done' ? `done in ${agDur(Date.parse(r.end) - Date.parse(r.at))}` : AG_SAID[st] || '';
+  }
   function agCardHtml(r, s) {
-    const d = agInfo.get(`${s.id}:${r.id}`)?.d, st = agQuiet(r) ? 'quiet' : r.st, ended = !!r.end;
-    const said = st === 'run' ? `at work ${agDur(Date.now() - Date.parse(r.at))}` : st === 'quiet' ? `quiet ${agDur(Date.now() - Date.parse(r.lastAt))}` : st === 'done' ? `done in ${agDur(Date.parse(r.end) - Date.parse(r.at))}` : AG_SAID[st] || '';
+    const d = agInfo.get(`${s.id}:${r.id}`)?.d, st = agQuiet(r) ? 'quiet' : r.st, ended = !!r.end, said = agSaid(r);
     const kv = [r.kind && ['Kind', r.kind], d?.model && ['Model', d.model], r.branch && ['Worktree', r.branch], d && [ended ? 'In all' : 'So far', `${d.tools} tool call${d.tools === 1 ? '' : 's'}${d.tokens ? ` · ${agTok(d.tokens)} tokens` : ''}`]].filter(Boolean);
     return `<div class="mth"><span class="mtr">${esc(r.name || (r.mate ? 'A teammate' : 'An agent'))}</span><span class="mts" data-state="${esc(st)}">${esc(said)}</span></div>`
       + `<div class="mtt">${esc(r.asked || 'What it was asked is on its way…')}</div>`
@@ -6457,6 +6468,21 @@ const toolName = n => {
         : !drawer ? { t: 'Ask Claude to stop it', sub: s.alive ? 'its chat runs outside the board, out of its reach' : 'no claude runs on its chat', off: true }
         : { t: 'Ask Claude to stop it', sub: 'typed into the chat\u2019s drawer, ⏎ is yours', fn: async () => { if (state.current !== s.id) await openSession(s.id); showChat(s); syncTerm(s); const ok = await drawerType(s, `Stop the agent “${r.name || r.asked || r.id}”.`, false); if (!ok) note(at, 'Its drawer did not answer', true); } },
     ];
+  }
+  /** Same height (2026-11-02): one line, in the move line's place when it has none — a move is yours to make, and stays. A failure,
+   *  else the first at work, the same one until it ends so that a click lands on what was read, else what the round came to. */
+  function agLine(p, s, card) {
+    if (!card.querySelector(':scope > .moveslot')) return null;
+    const r = p.rows[0] || p.one;
+    return r ? { ...agItem(r, s), a: r.name ? `<b>${esc(r.name)}</b>` : esc(r.asked || 'An agent') } : p.sum ? agSumItem(p, false) : null;
+  }
+  /** …and the chip and a summary reach what one line cannot: one agent straight to its tab, several by a menu. */
+  function agPick(s, at) {
+    const m = $('#ctxm'), live = r => r.st === 'run' || r.st === 'wait', b = at.getBoundingClientRect();
+    if (m._from === 'agents' && performance.now() - (m._shut || 0) < 400) return;   // the press that closed it
+    const rows = (s.agentRows || []).filter(r => r.st !== 'joined').sort((x, y) => (y.st === 'fail') - (x.st === 'fail') || live(y) - live(x) || String(x.at).localeCompare(String(y.at)));
+    if (rows.length === 1) return agOpen(s, rows[0]);
+    if (rows.length) ctxShow(rows.map(r => ({ t: r.name || r.asked || 'An agent', sub: [agSaid(r), r.st === 'fail' ? r.why : r.last?.kind === 'tool' ? pathTail(r.last.text, s.cwd) : r.last?.text].filter(Boolean).join(' · '), fn: () => agOpen(s, r) })), b.left, b.bottom + 4, 'agents');
   }
   const AG_CARET = '<svg class="agcar" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.200 3.700 5 6.500l2.800-2.800"/></svg>';
   const agItem = (r, s, thin) => ({ k: r.id, ag: r.id, st: agQuiet(r) ? 'quiet' : r.st, a: agAsked(r), t: agLabel(r), n: thin ? '' : agNow(r, s) });
@@ -6501,21 +6527,23 @@ const toolName = n => {
   function agPaint(card, s, p, soft) {
     const n = Math.min(5, s.agents || 0), lights = n ? String(n) : '';
     if (card.style.getPropertyValue('--lights') !== lights) { if (n) card.style.setProperty('--lights', lights); else card.style.removeProperty('--lights'); }
-    const chip = card.querySelector('.trow .chip.agents'), even = agEven();
+    const chip = card.querySelector('.trow .chip.agents'), even = agEven(), told = even && !$('#sessions').matches('[data-hide~="agents"]');
+    const line = told ? agLine(p, s, card) : null, solo = p.total <= 1 && p.rows.length <= 1, named = told && !line && solo ? p.rows[0] : null;
     if (chip) {
-      const run = Math.max(p.run, s.agents || 0), show = run > 0 || (p.fails > 0 && (even || !p.sum)), some = p.total > p.run, html = !show ? '' : `${some ? `${rn('agd:' + s.id, p.oks)}/${p.total}` : rn('ag:' + s.id, run)} agent${(some ? p.total : run) === 1 ? '' : 's'}${p.fails ? ` · ${p.fails} failed` : ''}${even ? '' : AG_CARET}`;
+      const run = Math.max(p.run, s.agents || 0), show = !(line && solo) && (run > 0 || (p.fails > 0 && (even || !p.sum))), some = p.total > p.run;
+      const html = !show ? '' : named ? `<span class="agcn">${esc(named.name || named.asked || 'An agent')}</span>` : `${some ? `${rn('agd:' + s.id, p.oks)}/${p.total}` : rn('ag:' + s.id, run)} agent${(some ? p.total : run) === 1 ? '' : 's'}${p.fails ? ` · ${p.fails} failed` : ''}${even ? '' : AG_CARET}`;
       if (chip._h !== html) { chip._h = html; chip.innerHTML = html; rollSoon(); }
       if (chip.hidden === show) chip.hidden = !show;
-      chip.classList.toggle('bad', p.fails > 0); chip.classList.toggle('on', !p.folded);
-      const tip = even ? 'Sub-agents at work: the chat stays clauding until they are done, and the card runs a light for each' : `Sub-agents at work: the chat stays clauding until they are done, and the card runs a light for each. Click to ${p.folded ? 'show' : 'fold'} them`;
-      if (chip.title !== tip) { chip.title = tip; chip.setAttribute('aria-expanded', String(!p.folded)); }
+      chip.classList.toggle('bad', p.fails > 0); chip.classList.toggle('on', !p.folded); chip.classList.toggle('named', !!named);
+      const tip = `Sub-agents at work: the chat stays clauding until they are done, and the card runs a light for each. ${even ? `Click for ${solo ? 'its transcript' : 'the list'}` : `Click to ${p.folded ? 'show' : 'fold'} them`}`;
+      if (chip.title !== tip) { chip.title = tip; if (even) chip.removeAttribute('aria-expanded'); else chip.setAttribute('aria-expanded', String(!p.folded)); }
     }
     const box = card.querySelector(':scope > .agl'); if (!box) return false;
-    const items = !p.folded ? agItems(p, s) : p.sum ? [agSumItem(p, false)] : [];
+    const items = even ? (line ? [line] : []) : !p.folded ? agItems(p, s) : p.sum ? [agSumItem(p, false)] : [];
     const made = agDraw(box, items, soft);
     box.hidden = !items.length;
     card._agKey = p.key;
-    agShown.set(s.id, new Set(p.folded ? [] : p.rows.map(r => r.id)));
+    agShown.set(s.id, new Set(even ? line?.ag ? [line.ag] : [] : p.folded ? [] : p.rows.map(r => r.id)));
     return made;
   }
   /** A card made anew, before drawCards measures it: as tall as it will be. */
@@ -6527,7 +6555,7 @@ const toolName = n => {
       agNote(s); work.push([card, s, agPlan(s, agHover)]);
     }
     // what moves under a card that grew or shrank slides there: every read first, then the writes, then the slides
-    const move = drawCards.drawn && !REDUCED.matches && !prefs.listHidden && work.some(([c, , p]) => c._agKey !== undefined && c._agKey !== p.key);
+    const move = drawCards.drawn && !REDUCED.matches && !prefs.listHidden && !agEven() && work.some(([c, , p]) => c._agKey !== undefined && c._agKey !== p.key);
     const before = move ? new Map([...list.children].map(e => [e, e.offsetTop])) : null;
     let made = false;
     for (const [c, s, p] of work) if (agPaint(c, s, p, c._agKey !== undefined)) made = true;
@@ -7982,8 +8010,10 @@ const toolName = n => {
     if (pin && state.sessions.has(pin.dataset.sid)) { e.stopPropagation(); openSession(pin.dataset.sid, { locate: true }); return; }   // the chat that sent it (2026-10-31)
     // a card's agents (2026-11-02): the chip folds them, +N and the done row open
     const agc = e.target.closest('.chip.agents');
-    if (agc && !agEven()) { e.stopPropagation(); agSwitch(card.dataset.id, 'fold'); renderBoard(); return; }
+    if (agc && agEven()) { e.stopPropagation(); agPick(state.sessions.get(card.dataset.id), agc); return; }
+    if (agc) { e.stopPropagation(); agSwitch(card.dataset.id, 'fold'); renderBoard(); return; }
     const agx = e.target.closest('.agr[data-k="_more"], .agr[data-k="_done"], .agr[data-k="_sum"]');
+    if (agx && agEven()) { e.stopPropagation(); agPick(state.sessions.get(card.dataset.id), agx); return; }
     if (agx) { e.stopPropagation(); agSwitch(card.dataset.id, agx.dataset.k === '_more' ? 'more' : 'done'); fillAgents(); return; }
     const agr = e.target.closest('.agr[data-ag]');
     if (agr) { const cs = state.sessions.get(card.dataset.id), r = cs?.agentRows?.find(x => x.id === agr.dataset.ag); if (r) { e.stopPropagation(); agOpen(cs, r); return; } }

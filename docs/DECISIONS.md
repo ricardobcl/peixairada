@@ -79,6 +79,22 @@ Ricardo: *"we should update the readme screenshots"*
 * **The PR-status clip unfolds the rows by the caret**: `#prToggle`'s middle is a chip now, and a chip opens its PR.
 * The README's words follow the pictures: a card is *tagged* in its project's colour, and Watching is a lane.
 
+## Decisions of 2026-11-02 — a same-height card names its agents
+
+Ricardo, on round XX's rows below: *"seems like when there only 1 agent running, nothing changed. is it on purpose? it would be
+cool to see the name on the card, be able to click it to see that sub-agente chat/activity"*. It was not about one agent. His
+board has compact's same height on, and round XX had ruled that a same-height card shows no rows, so nothing changed there for
+any number of agents; the scenarios ran on other prefs. Read off the app's own storage, not guessed.
+
+* **One line, of no height, over the place `.moveslot` holds.** `.agl` is `height: 0` there and its row overflows into the slot,
+  so a card cannot grow whatever the fonts do. Hiding the slot and matching its metrics was tried first: 74 px against 74.44.
+* **Which agent**: a failure, else the oldest at work, not the last to step. A tool call comes every 6.6 s, and a line that swaps
+  its subject moves the click under the pointer. Once they ended, one agent keeps its row and result until the chat is seen,
+  several a summary.
+* **A PR at your move keeps the line** (the same-height rule of 2026-09-29 asked for it by name). The chip then names a lone agent.
+* **The chip was inert at same height; it is now the way to the rest**: one agent its tab, several a menu with what each does
+  (`agPick`), which a summary opens too, since opening a list in place would grow the card. A lone agent with its line has no chip.
+
 ## Decisions of 2026-11-02 — a card opens to its agents (round XX)
 
 Ricardo: *"when there are agents working on a chat, we should expand de card to show the agents, what their are doing,
