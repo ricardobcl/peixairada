@@ -10,7 +10,7 @@
 // (`waiting` + `permission prompt` is a chat blocked on a prompt the transcript knows nothing of). A pid that is running
 // gets its `procStart` as Claude Code writes it (2026-10-14), one made up none; `live.procStart` says it outright.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -104,6 +104,46 @@ export function peerLines({ from, to, fromName, toName, pid, body, msgId = rando
     absorbed: [{ ...rb, parentUuid: null, type: 'attachment', uuid: randomUUID(), timestamp: ts(9000),
       attachment: { type: 'queued_command', prompt: `Another Claude session sent a message:\n${envelope}`, commandMode: 'prompt', isMeta: true, origin, delivery_id: randomUUID(), source_uuid: randomUUID(), reminderId: randomUUID(), timestamp: ts(9000) } }],
   };
+}
+
+/** Sub-agents of a chat (2026-11-02), as Claude Code writes them beside its transcript: each `agent-<id>.jsonl` and its
+ *  .meta.json. An agent: `id`, `asked` (the meta's description), `name`, `kind`, `tool` (the call that started it), `ago` (how
+ *  many ms before `at` it began), `steps` (Bash descriptions, in order) and then what it ended on — `report` (its
+ *  SubagentHandback), `said` (a last word), or nothing, at work; `finished`, `stopped`, `branch`, `tree` as the meta has
+ *  them; `quiet`: its file last written that many ms before `at`. */
+export function agentFiles({ dir, lead, agents = [], at = new Date() }) {
+  const sub = join(dir, 'projects', slugOf(lead.cwd), lead.id, 'subagents'); mkdirSync(sub, { recursive: true });
+  const base = { isSidechain: true, userType: 'external', entrypoint: 'cli', cwd: lead.cwd, sessionId: lead.id, version: 'fixture', gitBranch: 'main' };
+  const msg = (content, stop) => ({ model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content, stop_reason: stop, usage: { input_tokens: 10, cache_read_input_tokens: 1000, output_tokens: 20 } });
+  const files = {};
+  for (const a of agents) {
+    const from = at.getTime() - (a.ago || 0), step = i => new Date(from + 1000 * (i + 1)).toISOString(), agentId = a.id, ls = [];
+    const line = o => ls.push({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...o });
+    line({ type: 'user', timestamp: new Date(from).toISOString(), message: { role: 'user', content: a.prompt || a.asked || 'go' } });
+    (a.steps || []).forEach((d, i) => {
+      const id = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+      line({ type: 'assistant', timestamp: step(i), message: msg([{ type: 'tool_use', id, name: 'Bash', input: { command: 'true', description: d } }], 'tool_use') });
+      if (i < a.steps.length - 1 || a.report || a.said) line({ type: 'user', timestamp: step(i), message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] } });
+    });
+    const tail = (a.steps || []).length;
+    if (a.report) {
+      const id = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+      line({ type: 'assistant', timestamp: step(tail), message: msg([{ type: 'tool_use', id, name: 'SubagentHandback', input: { message: a.report } }], 'tool_use') });
+      line({ type: 'user', timestamp: step(tail), message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'Handed back.' }] } });
+    } else if (a.said) line({ type: 'assistant', timestamp: step(tail), message: msg([{ type: 'text', text: a.said }], 'end_turn') });
+    const f = join(sub, `agent-${agentId}.jsonl`);
+    writeFileSync(f, ls.map(l => JSON.stringify(l)).join('\n') + '\n');
+    writeFileSync(join(sub, `agent-${agentId}.meta.json`), JSON.stringify({ agentType: a.kind || 'general-purpose', isBuiltIn: true, description: a.asked, spawnDepth: 1, requestShape: 'background', requestNonInteractive: false,
+      ...(a.tool ? { toolUseId: a.tool } : {}), ...(a.name ? { name: a.name } : {}), ...(a.finished ? { finished: true } : {}), ...(a.stopped ? { stoppedByUser: true } : {}), ...(a.branch ? { worktreeBranch: a.branch } : {}), ...(a.tree ? { worktreePath: a.tree, spawnedWithWorktree: true } : {}) }));
+    if (a.quiet != null) { const t = new Date(at.getTime() - a.quiet); utimesSync(f, t, t); utimesSync(join(sub, `agent-${agentId}.meta.json`), t, t); }
+    files[agentId] = f;
+  }
+  return { sub, files };
+}
+/** An agent's notice in its chat's transcript (2026-11-02): how it stopped, as Claude Code tells the chat. */
+export function agentNoteLine({ id, cwd, tool, asked, status = 'completed', said = 'finished', at }) {
+  return { type: 'user', uuid: randomUUID(), parentUuid: null, isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: id, version: 'fixture', gitBranch: 'main', timestamp: at || new Date().toISOString(),
+    message: { role: 'user', content: `<task-notification>\n<task-id>a${tool}</task-id>\n<tool-use-id>${tool}</tool-use-id>\n<status>${status}</status>\n<summary>Agent "${asked}" ${said}</summary>\n</task-notification>` } };
 }
 
 /** An agent team under a lead chat (2026-10-31), as Claude Code's experimental teams write it and this Mac showed it

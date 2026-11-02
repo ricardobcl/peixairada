@@ -27,6 +27,7 @@
 //      · messages between chats (2026-10-31)
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
 //      · an agent team: its teammates, under their lead (2026-10-31)
+//      · its agents: a row each (2026-11-02, round XX)
 //      · background tasks: a monitor, or a command left running
 //      · wake-ups: a chat that set itself to wake (2026-10-31, round XIII's I8)
 //  Live-session registry (~/.claude/sessions/<pid>.json)
@@ -768,6 +769,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
     peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
     team: s.alive ? s.team || null : null,   // its agent team's teammates, while its claude runs (noteTeam, 2026-10-31)
+    agentRows: s.alive ? s.agentRows || null : null,   // a row per sub-agent of its last round, while its claude runs (noteAgents, 2026-11-02)
     // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you; the next
     // wake-up it set itself; and how its last turn stopped short, while nothing runs
     woken: status === 'working' && !!s.woke, wake: nextWake(s), stopped: status === 'working' || status === 'needs-input' ? null : s.stopped,
@@ -2280,7 +2282,8 @@ function fold(s, line) {
       if (TASK_NOTE_RE.test(text)) {   // a monitor's event, or the end of one
         // …and, between turns, what wakes the next one (2026-10-31): a turn begun by the chat's own task stays Watching
         const was = s.woke; if (!s.turnStart) s.woke = ts;
-        return noteTaskEvent(s, text, ts) || was !== s.woke;
+        const ended = noteAgentNotices(s, text, ts);   // an agent's: how it ended (2026-11-02)
+        return noteTaskEvent(s, text, ts) || was !== s.woke || ended;
       }
       if (CLEAR_RE.test(text)) { s.clearedAt = ts; tickCleared(s); }   // a chat born of /clear: the one it left is done
       if (text.startsWith('<bash-input>')) noteGitCmd(s.gitCmds, /<bash-input>([\s\S]*?)<\/bash-input>/.exec(text)?.[1], ts);   // a `!` command of yours: the chat's own
@@ -2400,7 +2403,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'team', 'teamJson', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'team', 'teamJson', 'agentRows', 'agentSig', 'agentSaid', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
@@ -2418,6 +2421,7 @@ function indexFile(file, { full = false } = {}) {
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
   if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks;   // a tail re-read has not seen the calls that started them
   if (!s.wakes && prev?.wakes?.size) s.wakes = prev.wakes;   // …nor the wake-ups it set (2026-10-31)
+  if (prev?.agentEnds?.size) s.agentEnds = new Map([...prev.agentEnds, ...(s.agentEnds || [])]);   // …nor how its agents ended, past the tail (2026-11-02)
   if (prev) { s.diskDrift = prev.diskDrift; s.diskSeen = prev.diskSeen; s.linesIn = prev.linesIn; }   // the disk's word, not the transcript's: a re-read's old prompts do not clear it
   settleDrift(s);
   delete s.silent;
@@ -2614,10 +2618,12 @@ function scanAgents(s) {
   const dir = agentsDir(s); let names = [];
   if (dir) try { names = readdirSync(dir); } catch {}
   const since = Math.min(...[s.live, ...(s.rivals || [])].map(l => Number(l?.startedAt) || 0));   // the oldest claude on the chat: an agent from before it died with the one before
-  const work = new Map(names.filter(n => n.endsWith('.jsonl')).map(n => [n, agentRunning(join(dir, n), Date.now(), since)]));
+  const now = Date.now();
+  const work = new Map(names.filter(n => n.endsWith('.jsonl')).map(n => [n, agentRunning(join(dir, n), now, since) && !agentFinished(dir, n)]));
   const running = [...work.values()].filter(Boolean).length;
   if (running !== (s.agentsRunning || 0)) { s.agentsRunning = running; schedulePush(s); }
   if (noteTeam(s, dir, names, work, since)) schedulePush(s);   // which of them are its team's (2026-10-31)
+  if (noteAgents(s, dir, work, since, now)) schedulePush(s);   // a row each (2026-11-02)
 }
 
 // ---- an agent team: its teammates, under their lead (2026-10-31) --------------------------------------------------------
@@ -2638,7 +2644,7 @@ function jsonOnce(file, shape) {
   jsonSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, v });
   return v;
 }
-const mateOf = m => m && typeof m === 'object' && (m.taskKind === 'in_process_teammate' || pstr(m.teamName)) && (pstr(m.name) || pstr(m.agentType)) ? { name: pstr(m.name) || pstr(m.agentType) } : null;
+const mateOf = m => m?.mate && (m.name || m.kind) ? { name: m.name || m.kind } : null;
 const isLead = m => m.agentType === 'team-lead' || m.name === 'team-lead' || String(m.agentId || '').startsWith('team-lead@');
 /** The roster beyond its lead, as Claude Code keeps it while the chat runs: what a teammate with no file yet is known by. */
 const rosterOf = s => jsonOnce(join(TEAMS_DIR, `session-${s.id.slice(0, 8)}`, 'config.json'), c => (c?.leadSessionId && c.leadSessionId !== s.id) || !Array.isArray(c?.members) ? []
@@ -2656,12 +2662,15 @@ function mateLast(file, st) {
     const c = l?.message?.content;
     if (l?.type === 'assistant') {
       const b = (Array.isArray(c) ? c : []).findLast(x => (x?.type === 'text' && x.text?.trim()) || x?.type === 'tool_use'); if (!b) continue;
-      last = b.type === 'text' ? { kind: 'text', text: plainSnippet(b.text, 140) } : { kind: 'tool', name: pstr(b.name) || 'tool', text: snippet(summarizeToolInput(b.name, b.input), 120) };
+      last = b.type === 'text' ? { kind: 'text', text: plainSnippet(b.text, 140) }
+        : b.name === 'SubagentHandback' ? { kind: 'report', text: plainSnippet(String(b.input?.message || '').trim().split('\n')[0], 140) }   // its report's first line: what it found
+        : { kind: 'tool', name: pstr(b.name) || 'tool', text: snippet(summarizeToolInput(b.name, b.input), 120) };
       break;
     }
     const m = l?.type === 'user' && TM_SUMMARY.exec(textOf(c));
     if (m) { last = { kind: 'asked', text: snippet(unXml(m[1]), 140) }; break; }
   }
+  last ??= hit?.last ?? null;   // a tail that is one long tool result, cut: nothing to read in it (2026-11-02)
   if (mateSeen.size > 2000) mateSeen.clear();
   mateSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, last });
   return last;
@@ -2673,7 +2682,7 @@ function noteTeam(s, dir, names, work, since) {
   for (const n of names) {
     if (!n.endsWith('.meta.json')) continue;
     const base = n.slice(0, -'.meta.json'.length) + '.jsonl'; if (!work.has(base)) continue;
-    const mate = jsonOnce(join(dir, n), mateOf); if (!mate) continue;
+    const mate = mateOf(jsonOnce(join(dir, n), agentMetaOf)); if (!mate) continue;
     let st; try { st = statSync(join(dir, base)); } catch { continue; }
     if (st.mtimeMs < since || mates.get(mate.name)?.ms > st.mtimeMs) continue;   // the claude before this one's; one name twice: the newest
     mates.set(mate.name, { name: mate.name, state: work.get(base) ? 'work' : 'done', last: mateLast(join(dir, base), st), ms: st.mtimeMs });
@@ -2682,6 +2691,137 @@ function noteTeam(s, dir, names, work, since) {
   if (j === (s.teamJson ?? null)) return false;
   s.team = team.length ? team : null; s.teamJson = j;
   return true;
+}
+
+// ---- its agents: a row each (2026-11-02, round XX) ------------------------------------------------------------------
+// What a card says of a chat's sub-agents, teammates among them: what each was asked, what it does now, how it ended. Read
+// from what Claude Code writes beside the chat: the .meta.json (`description`, `name`, `agentType`, `toolUseId`, `finished`,
+// `stoppedByUser`, `worktreeBranch`, `worktreePath`, `model`), the transcript's last lines (mateLast) and first (agentBorn),
+// and, for how one ended, the `<task-notification>` it sends the chat (noteAgentNotices): its `status`, and in its summary
+// the reason a `failed` one gives, or that it `is waiting on its own background work`. One delivered mid-turn never becomes a
+// line (as a task's, sweepTasks), so `finished` in the meta is what ends it then, and a row says done.
+// Only the last round shows: the agents out at one time, a new round being one that starts after all before it ended. A failure
+// from a round before stays with it (`old`), for the page to keep until the chat is opened (seenAt). Words hold AGENT_WORDS_MS:
+// a tool call every 6.6 s here (the median over 247 agents) would flicker, and a new one must not push for each step.
+const AGENT_WORDS_MS = Number(process.env.AGENT_WORDS_MS ?? 15_000), AGENT_FILES = 40;
+const agentMetaOf = m => !m || typeof m !== 'object' ? {} : { name: pstr(m.name), asked: pstr(m.description), kind: pstr(m.agentType), mate: m.taskKind === 'in_process_teammate' || !!pstr(m.teamName),
+  model: pstr(m.model), branch: pstr(m.worktreeBranch), tree: pstr(m.worktreePath), tool: pstr(m.toolUseId), finished: m.finished === true, stopped: m.stoppedByUser === true };
+const metaFile = (dir, n) => join(dir, n.slice(0, -'.jsonl'.length) + '.meta.json');
+/** Its meta says it finished, and nothing was written since: an agent ended by an API error writes no end of its own, and
+ *  counted as at work for AGENT_STALE_MS. A resumed one writes on, and is at work again. */
+function agentFinished(dir, n) {
+  const mf = metaFile(dir, n); if (!jsonOnce(mf, agentMetaOf)?.finished) return false;
+  try { return jsonSeen.get(mf).mtimeMs >= statSync(join(dir, n)).mtimeMs - 1500; } catch { return false; }
+}
+const TM_BODY = /<teammate-message\b[^>]*>\s*([\s\S]*?)\s*<\/teammate-message>/;
+const agentPrompt = text => { const t = cleanPrompt(String(text || '')); return TM_BODY.exec(t)?.[1] ?? t; };
+const bornSeen = new Map();   // an agent's transcript → { at, prompt }: its first line, read once
+/** When it began and what it was asked: its first line's. Past the first 64 KB, its file's birth. */
+function agentBorn(file, st) {
+  const hit = bornSeen.get(file); if (hit) return hit;
+  let at = null, prompt = null;
+  try {
+    const fd = openSync(file, 'r'), buf = Buffer.alloc(Math.min(st.size, 65536));
+    try { readSync(fd, buf, 0, buf.length, 0); } finally { closeSync(fd); }
+    const l = JSON.parse(buf.toString('utf8').split('\n')[0]);
+    at = pstr(l.timestamp); prompt = agentPrompt(textOf(l.message?.content));
+  } catch {}
+  const v = { at: at || new Date(st.birthtimeMs || st.mtimeMs).toISOString(), prompt };
+  if (bornSeen.size > 2000) bornSeen.clear();
+  bornSeen.set(file, v);
+  return v;
+}
+/** How an agent's notices in the chat's own transcript say it ended, by the call that started it. A notice comes each time it
+ *  stops with nothing of its own running, so the last one speaks. */
+const AGENT_NOTE = /<summary>Agent "([^"]*)"\s*([\s\S]*?)<\/summary>/;
+function noteAgentNotices(s, text, ts) {
+  let any = false;
+  for (const [, b] of text.matchAll(/<task-notification>([\s\S]*?)<\/task-notification>/g)) {
+    const tool = /<tool-use-id>([^<]+)</.exec(b)?.[1], sum = AGENT_NOTE.exec(b); if (!tool || !sum) continue;
+    const status = /<status>([^<]+)</.exec(b)?.[1] || null, said = sum[2].trim();
+    (s.agentEnds ||= new Map()).set(tool, { status, waiting: /waiting on its own/i.test(said), why: status === 'failed' ? snippet(said.replace(/^failed:\s*/i, ''), 120) : null, ts });
+    any = true;
+  }
+  if (any) agentsSoon(s);
+  return any;
+}
+/** The chat's rows as they stand; true when they changed. */
+function noteAgents(s, dir, work, since, now) {
+  const files = [];
+  for (const [n, on] of work) { let st; try { st = statSync(join(dir, n)); } catch { continue; } if (st.size && st.mtimeMs >= since) files.push({ n, on, st }); }
+  files.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
+  const had = new Map((s.agentRows || []).map(r => [r.id, r])), said = s.agentSaid ||= new Map(), names = new Set(), rows = [];
+  for (const { n, on, st } of files.slice(0, AGENT_FILES)) {
+    const m = jsonOnce(metaFile(dir, n), agentMetaOf) || {}, file = join(dir, n), id = n.slice(0, -'.jsonl'.length).replace(/^agent-/, '');
+    if (m.mate && m.name) { if (names.has(m.name)) continue; names.add(m.name); }   // one name twice: the newest
+    const end = m.tool ? s.agentEnds?.get(m.tool) : null, born = agentBorn(file, st);
+    const state = on ? 'run' : end?.status === 'failed' ? 'fail' : m.stopped || end?.status === 'stopped' || end?.status === 'killed' ? 'stop'
+      : end?.waiting && now - st.mtimeMs < TASK_MAX_MS ? 'wait' : 'done';
+    let last = mateLast(file, st);
+    const was = had.get(id);
+    if (state === 'run' && was?.st === 'run' && was.last && now - (said.get(id) || 0) < AGENT_WORDS_MS) last = was.last;   // it holds its words
+    else if (JSON.stringify(last) !== JSON.stringify(was?.last ?? null)) said.set(id, now);
+    rows.push({ id, name: m.name, asked: m.asked || snippet(born.prompt, 80) || null, kind: m.kind && m.kind !== 'general-purpose' ? m.kind : null, mate: !!m.mate, st: state, last,
+      at: born.at, end: state === 'run' || state === 'wait' ? null : new Date(st.mtimeMs).toISOString(), lastAt: new Date(st.mtimeMs).toISOString(), why: state === 'fail' ? end?.why || null : null,
+      branch: m.branch, tree: m.tree, tool: m.tool });
+  }
+  rows.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  let cut = 0, far = -Infinity;   // the last round: where one starts after every one before it had ended
+  rows.forEach((r, i) => { const from = Date.parse(r.at); if (i && from > far) cut = i; far = Math.max(far, r.end ? Date.parse(r.end) : Infinity); });
+  const kept = [...rows.slice(0, cut).filter(r => r.st === 'fail').slice(-3).map(r => ({ ...r, old: true })), ...rows.slice(cut)];
+  for (const m of rosterOf(s)) if (!names.has(m.name)) kept.push({ id: `mate-${m.name}`, name: m.name, asked: null, kind: null, mate: true, st: 'joined', last: null, at: null, end: null, lastAt: null, why: null, branch: null, tree: null, tool: null });   // named, no file of its own yet
+  // what changed: `lastAt` only by the minute, or every line of every agent would push the card
+  const sig = JSON.stringify(kept.map(({ lastAt, ...r }) => [r, Math.floor(Date.parse(lastAt) / 60_000)]));
+  if (sig === (s.agentSig ?? null) || (!kept.length && !s.agentRows)) return false;
+  s.agentRows = kept.length ? kept : null; s.agentSig = sig;
+  return true;
+}
+// What the page asks of one agent, on demand (2026-11-02): the hover card's totals and the tab's transcript, read a piece at a
+// time from where the last read stopped. A file is 2 MB at the median and 28 MB at most here (API requests in it), so only what
+// is looked at is read, and six at most are held.
+const agentLogs = new Map(), AGENT_LOGS = 6;
+function agentFold(log, raw) {
+  if (!raw.includes('"type":"assistant"') && !raw.includes('"type":"user"')) return;   // an API request's lines: the bulk of the file
+  let l; try { l = JSON.parse(raw); } catch { return; }
+  const ts = l.timestamp || null, c = l.message?.content, blocks = Array.isArray(c) ? c : [];
+  if (l.type === 'assistant') {
+    const m = l.message || {};
+    if (m.model && m.model !== '<synthetic>') log.model = m.model;
+    const u = m.usage; if (u) log.tokens = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.output_tokens || 0);   // as its notice counts them: the context at its last call
+    for (const b of blocks) {
+      if (b?.type === 'text' && b.text?.trim()) log.entries.push({ role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id });
+      else if (b?.type === 'tool_use') {
+        log.tools++;
+        if (b.name === 'SubagentHandback') { const t = String(b.input?.message || '').trim(); if (t) log.entries.push({ role: 'assistant', kind: 'text', text: t, ts, msgId: m.id }); }   // its report: words, not a call
+        else log.entries.push({ role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
+      }
+    }
+  } else if (l.type === 'user' && !l.isMeta && !l.isCompactSummary) {
+    const results = blocks.filter(b => b?.type === 'tool_result');
+    if (results.length) { for (const b of results) log.entries.push({ role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts }); return; }
+    const text = agentPrompt(textOf(c));
+    if (!text || TASK_NOTE_RE.test(text) || SYNTHETIC_RE.test(text)) return;
+    log.prompt ??= text;
+    log.entries.push({ role: 'user', kind: 'text', text, ts });
+  }
+}
+function agentLog(s, id) {
+  const dir = agentsDir(s); if (!dir || !/^[\w-]+$/.test(id)) return null;
+  const file = join(dir, `agent-${id}.jsonl`); let st, fd;
+  try { fd = openSync(file, 'r'); st = fstatSync(fd); } catch { if (fd != null) closeSync(fd); return null; }
+  let log = agentLogs.get(file);
+  if (!log || st.size < log.offset) log = { offset: 0, rest: '', dec: new StringDecoder('utf8'), entries: [], tools: 0, tokens: 0, model: null, prompt: null };
+  try {
+    if (st.size > log.offset) {
+      let lead = log.rest;   // a line the last read cut: what came of it now
+      log.rest = readLines(fd, log.offset, st.size, raw => { agentFold(log, lead + raw); lead = ''; }, log.dec);
+      if (lead) log.rest = lead + log.rest;   // no newline since
+      log.offset = st.size;
+    }
+  } finally { closeSync(fd); }
+  agentLogs.delete(file); agentLogs.set(file, log);
+  if (agentLogs.size > AGENT_LOGS) agentLogs.delete(agentLogs.keys().next().value);
+  return log;
 }
 
 // ---- background tasks: a monitor, or a command left running -------------------------------------------------
@@ -5294,7 +5434,7 @@ function termEnv() {
 // added to the server joins the list (terminals.test reads the server for them).
 const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
   'MAX_ENTRIES', 'TAIL_BYTES', 'HEAD_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
-  'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
+  'AGENT_STALE_MS', 'AGENT_WORDS_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
   'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN',
   ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'open'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
@@ -6065,6 +6205,13 @@ const server = createServer(async (req, res) => {
       for (const t of cur.tickets) if (ticketWanted(t.key) && Date.now() >= jiraPauseUntil) queueTicket(t.key);   // …and its tickets
       return json(res, 200, { session: summary(cur), entries: cur.entries, gen: cur.gen, upto: cur.entryCount });   // the entries end at upto
     }
+    // one agent of a chat's (2026-11-02): the hover card's totals; `after`, its transcript's entries past that many
+    if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/agents\/([\w-]+)$/))) {
+      const s = sessions.get(m[1]), log = s && agentLog(s, m[2]);
+      if (!log) return json(res, 404, { error: 'no such agent' });
+      const after = url.searchParams.get('after');
+      return json(res, 200, { prompt: log.prompt, tools: log.tools, tokens: log.tokens, model: log.model, upto: log.entries.length, ...(after === null ? {} : { entries: log.entries.slice(Number(after) || 0) }) });
+    }
     // the home's day (2026-10-10): every chat's spans since the page's midnight
     if (req.method === 'GET' && p === '/api/today') {
       const since = Number(url.searchParams.get('since')) || new Date().setHours(0, 0, 0, 0);
@@ -6491,13 +6638,17 @@ loadConfig();
 // The transcripts are watched before they are read (2026-10-14): FSEvents tells only of what comes after the watch
 // starts, and a reply written while the scan or the adoption ran stayed unread until the file's next line.
 const pendingFiles = new Map(), pendingAgents = new Map();
+function agentsSoon(s) {
+  if (indexing || s.silent) return;   // the boot's scan, a re-read: its own scan follows
+  clearTimeout(pendingAgents.get(s.id));
+  pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
+}
 function onFsEvent(_ev, rel) {
   if (!rel) return;
   const parts = String(rel).split('/');
   if (parts.length === 4 && parts[2] === 'subagents' && parts[3].endsWith('.jsonl')) {   // <slug>/<id>/subagents/agent-*.jsonl
     const s = sessions.get(parts[1]); if (!s) return;
-    clearTimeout(pendingAgents.get(s.id));
-    pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
+    agentsSoon(s);
     return;
   }
   if (parts.length !== 2 || !parts[1].endsWith('.jsonl')) return; // ignore memory/, <id>/subagents/*.meta.json, etc.
