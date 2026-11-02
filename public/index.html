@@ -4180,7 +4180,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#main').classList.toggle('lhide', hide);
     list.style.width = prefs.sessionsWidth + 'px';
     if (hide && list.classList.contains('kf')) { list.classList.remove('kf'); $('#chat').classList.add('kf'); }   // the keys' border on what is left
-    if (!hide && applyList.top != null) { $('#slist').scrollTop = applyList.top; applyList.top = null; phaseAnims(); }
+    if (!hide && applyList.top != null) { $('#slist').scrollTop = applyList.top; applyList.top = null; followCard(); phaseAnims(); }
     b.setAttribute('aria-pressed', String(!hide)); b.title = `${hide ? 'Show' : 'Hide'} the chat list (⌥⌘B)`;
   }
   function setList(show) { if (show === !prefs.listHidden) return; prefs.listHidden = !show; savePrefs(); applyList(); }
@@ -5508,7 +5508,7 @@ const toolName = n => {
     // made every line anew): the list is left as it is, and nothing is read.
     let i = 0, same = true;
     for (const c of list.children) { if (c.classList.contains('leaving')) continue; if (c !== nodes[i++]) { same = false; break; } }
-    if (same && i === nodes.length) { flareLanded(); return false; }   // …and nothing new to phase
+    if (same && i === nodes.length) { flareLanded(); followCard(); return false; }   // …and nothing new to phase
     const lr = move ? list.getBoundingClientRect() : null, before = new Map();
     if (move) {
       for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
@@ -5528,8 +5528,9 @@ const toolName = n => {
     skip();
     for (const el of gone) leaveCard(el, lr, gap);
     flareLanded();
-    if (!move) return true;
+    if (!move) { followCard(); return true; }
     for (const a of [...sliding]) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
+    const far = followCard() ? lr.height : Infinity;   // gone to the card: the card rises from where it stood, the rest come in from a screen away at most, not from a long way up the list
     // a lane opened is uncovered once its cards are filled in (openRun, from renderSessionList: a card's age and live line
     // set after this can make it taller); what is under a lane folded or opened moves with it, by the room it makes —
     // no enter, no FLIP (a card past the window's foot was put just below it at once: a FLIP from there would leave the
@@ -5545,7 +5546,7 @@ const toolName = n => {
       if (!nearList(r, lr)) continue;
       const was = before.get(el);
       if (!was) { if (fresh.has(id)) moves.push([el, 'enter', getComputedStyle(el).opacity]); continue; }   // to its own opacity: a done card is dimmed
-      const dy = was.top - r.top;
+      const dy = Math.max(-far, Math.min(far, was.top - r.top));
       if (Math.abs(dy) > 1) moves.push([el, 'flip', dy]);
     }
     for (const [el, kind, v] of moves) {
@@ -5553,6 +5554,19 @@ const toolName = n => {
       else slide(el, 'flip', [{ transform: `translateY(${v}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(v));
     }
     return true;
+  }
+  // Your word takes the list to the card (2026-11-02): a word in the open chat moves its card up its lane, or up to
+  // Clauding from far down the list, and the list went on showing where it had been. The session handler marks it and
+  // the next draw goes — at once, as a located card does, only when the card is out of sight: to the list's top if the
+  // card is on its first screen, so the lanes over it show, else just far enough. Only your word: a reply landing or a
+  // PR's move leaves a list you may be reading where it is. Hidden, it waits for the list to show (applyList).
+  function followCard() {
+    const id = followCard.id; if (!id || prefs.listHidden) return false;
+    followCard.id = null;
+    const list = $('#slist'), el = id === state.current ? cardNodes.get(id)?.el : null; if (!el?.isConnected) return false;
+    const was = list.scrollTop; el.scrollIntoView({ block: 'nearest' });
+    if (list.scrollTop !== was && el.offsetTop + el.offsetHeight <= list.clientHeight) list.scrollTop = 0;
+    return list.scrollTop !== was;
   }
   // The card is wrapped in a `div.leaving` that folds shut around it (height, opacity and the list's gap to nothing —
   // read off the list, 2026-11-01: a 7 written here pulled the sidebar's rows, 2 px apart, 5 px a card too far up, and
@@ -16238,6 +16252,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       const heard = was && asking(was) && !asking(s) && s.alive && !s.done;
       if (heard) { heardAt.set(s.id, performance.now()); noteMotion(s.id, 'heard'); }   // the question answered: its card hears it (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
+      if (s.id === state.current && String(s.lastUserAt || '') > String(was?.lastUserAt || '')) followCard.id = s.id;   // your word: the next draw takes the list to its card
       if (landed || heard) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
       zeHeard(s, was, landed);   // Zé's game, if it is up: a question pauses it
       ovSoon();   // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up

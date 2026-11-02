@@ -476,10 +476,11 @@ npm run map                         # rewrite the section maps at the top of ser
   chat never shown). Done chats never. On, the list is narrowed before anything counts it, every match shows (the
   heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. The Dock's
   badge and the menu bar read `replied` too. → `test/seen.test.mjs`, `lanes.mjs`, `pr-turn.mjs`.
-* **A chat opened from elsewhere is located** (`openSession(id, { locate:
-  true })`, `locateCard`): scrolled to, and a band of light sweeps
+* **A chat opened from elsewhere is located** (`locate`, `locateCard`): scrolled to, and a band of light sweeps
   across it (`.card > .loc`, a box of its own: the pseudo-elements are the ring's). Not a click on the card, ⌥⌘↑↓ or a
   tick's move.
+* **Your word takes the list to the open chat's card** (2026-11-02; `followCard`): at once; the top if it is on the first
+  screen; no slide past a screen (`far`). No reply or other chat's word. → `list-follows-word.mjs`.
 * **Ticking the open chat moves on** (`tickDone` — the card's ✓ and ↩, the chats step's ✓): to the card below as
   shown, else above, over done cards; a chat ticked while another is open moves nothing. **The move is made at the
   click**, after `TICK_MS` for the ✓'s own draw (`.act.tk`; a second click does nothing;
@@ -1022,8 +1023,8 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
-* **The harness makes no sound** (2026-11-01): a headless Chrome never opens the audio device (`--disable-audio-output`,
-  `launchChrome`; an `AudioContext` still runs), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs` asks coreaudiod, `ze-webkit.mjs`.
+* **The harness makes no sound** (2026-11-01): headless Chrome has no audio device (`--disable-audio-output`; an
+  `AudioContext` still runs), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs`, `ze-webkit.mjs`.
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it
   is noon now (`meta.tz` another or `false`; `ctx.tz`).
 * **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp
@@ -1045,11 +1046,10 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   moves the drawer resizes it** — the clean re-attach is a reload of the page, then `openChat`.
 * **The fake claude scrolls before it repaints on a shrink** (`drawLive`): a red drawer scenario can be its geometry.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
-  `term()`, `screen()`, `motion()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea`
-  types.
+  `term()`, `screen()`, `motion()`) or the DOM.
 * The terminals test is the reference for the API and the socket.
-* The app logs to `~/Library/Logs/peixairada-app.log` (alerts, badges, pane opens, drops); the agent's server to
-  `~/Library/Logs/peixairada.log` (spawns, adoptions, snapshots; each line stamped in UTC, 2026-10-21).
+* The app logs to `~/Library/Logs/peixairada-app.log`; the agent's server to
+  `~/Library/Logs/peixairada.log` (in UTC).
 
 ## Deliberately not done
 

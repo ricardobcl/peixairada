@@ -5,6 +5,29 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-02, late — your word takes the list to the card
+
+Ricardo: *"when I go to old chats well down in the list, then I resume the conversation and write something, the chat
+list on the left does not go to the top, where the chat card is now"*
+
+* **The card moved and the list stayed**: a word makes the chat clauding, so its card goes to the top, and nothing moved
+  `#slist`'s scroll. The FLIP slid the card off the top of the window, and what you had been looking at stayed.
+* **Only your word** (`followCard`: the `session` handler marks a newer `lastUserAt` on the open chat, the next draw
+  goes). A rule of "the open card stays in sight" would have followed a reply landing or a PR's move too, and pulled
+  away a list you may be reading; a word is something you just did, in that chat. So the word brings the list back even
+  from a card you had scrolled away from, and a reply never does.
+* **Out of sight only, and at once**, as a located card is: a card still in sight moves no list. To the list's very top
+  when the card is on its first screen, so the lanes over it show (`scrollIntoView` alone stops under the stuck head,
+  the Asking lane above it out of sight); else just far enough.
+* **The slide stays**: the card rises from where it stood. The other cards in the window would have come from thousands
+  of pixels up, so a slide is held to a screen (`far`) when the list went: they come in together, as a scroll does. A
+  short trip is the natural one, unchanged. Reduced motion: the jump alone.
+* **Hidden** (⌥⌘B), it waits: `applyList` goes on show, after putting the old scroll back.
+* **A folded Clauding lane has no card to go to**, so the list stays.
+* Checked: `list-follows-word.mjs`, the real way through (the card clicked, Resume, the drawer's keyboard): at the top
+  with the card in sight, in WebKit too; red with the mark taken out (the list stayed at 2449). A resume alone, a reply
+  and another chat's word leave it where it is.
+
 ## Decisions of 2026-11-02, later again — one chat muted
 
 Ricardo: *"explore how best to build a feature that allows me to mute a particular chat from notifications"*; then, on whether a
