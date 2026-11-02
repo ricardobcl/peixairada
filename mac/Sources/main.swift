@@ -344,8 +344,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   func applicationWillTerminate(_ note: Notification) { server.stop() }
   /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
-  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; lightsUp("the app in the back") }
+  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; lightsUp("the app in the back"); web?.evaluateJavaScript("window.peixFront?.(false)", completionHandler: nil) }
   func applicationDidBecomeActive(_ note: Notification) {
+    web?.evaluateJavaScript("window.peixFront?.(true)", completionHandler: nil)   // While you were out (2026-11-01, round XIX's M3)
     if fillSaved != nil && fillTick == nil && !window.isMiniaturized { startDockTick() }; tuckMenuBarSoon()   // down in the Dock, it waits for the window (windowDidDeminiaturize)
     if !away.isEmpty { away.removeAll(); showAway() }   // in front again: someone is looking, whatever was missed
     // In front with the keys nowhere (2026-10-28): ⌘-Tab to the board now and then left typing going nowhere, or to the

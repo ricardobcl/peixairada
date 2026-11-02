@@ -2735,6 +2735,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      both on two strings — dropped in, swung once, its word turned over. A chalkboard is a chalkboard in every theme:
      its colours are its own tokens. */
   #sbSwim .swimmer { z-index: 2; }
+  #sbSwim .lnews { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; border: 0; background: var(--bar, var(--panel)); color: var(--muted); font: inherit; white-space: nowrap; overflow: hidden; cursor: pointer; animation: lnewsin .32s var(--ease-out) both; }
+  #sbSwim .lnews b { color: var(--ink); font-weight: 650; } #sbSwim .lnews b.y { color: var(--spend); } #sbSwim .lnews i { font-style: normal; opacity: .6; } #sbSwim .lnews em { font-style: normal; color: var(--needs); font-weight: 650; }
+  #sbSwim .lnews:hover { background: var(--ctl); }
+  @keyframes lnewsin { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
   #sbSwim.out .swimmer { visibility: hidden; }
   #sbSwim .lsign { position: absolute; top: 0; left: 38%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 0; }
   #sbSwim .lsign .lswing { display: block; position: relative; padding-top: 4px; transform-origin: 50% 0; }
@@ -2808,6 +2812,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #settings .sseg.ldays button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
   @media (prefers-reduced-motion: reduce) {
     .zewalk .zw, .zewalk .zw i { animation: none; } .zewalk .zw i { left: auto; right: 8px; } .zewalk .zw i + i { opacity: 0; }   /* Zé stands at the end of All caught up */
+    #sbSwim .lnews { animation: none; }
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
@@ -4892,6 +4897,41 @@ const toolName = n => {
       ...all.filter(s => !s.done && yourMove(s)).sort(by(movedAt)).map(once('move')),
       ...wanting().replied.slice().sort(by(s => s.lastReplyAt)).map(once('read'))].filter(Boolean);
   }
+  // A line over the lane (round XIX's M3, M4): news for a few seconds, and a click is Next. Under the pointer it stays.
+  const LANE_NEWS_MS = 9000;
+  function laneNews(html) {
+    const lane = $('#sbSwim'); if (!lane?.firstChild) return;
+    lane.querySelector('.lnews')?.remove();
+    const el = document.createElement('button'), go = () => { if (REDUCED.matches) el.remove(); else el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, easing: EASE_OUT, fill: 'forwards' }).onfinish = () => el.remove(); };
+    el.type = 'button'; el.className = 'lnews'; el.title = 'A click, or ⌥⌘⏎, goes to the first of them'; el.innerHTML = html;
+    el.addEventListener('click', e => { e.stopPropagation(); el.remove(); hotNext(); });
+    let t = setTimeout(go, LANE_NEWS_MS);
+    el.addEventListener('pointerenter', () => clearTimeout(t)); el.addEventListener('pointerleave', () => { t = setTimeout(go, 2500); });
+    lane.append(el); noteMotion(null, 'lane:news', el.textContent);
+  }
+  // While you were out (2026-11-01, round XIX's M3): back after OUT_MS away from the board (another app in front, a lock, a
+  // hidden tab), one line says what changed, counted from the board's own state with no model involved. Resuming is the
+  // costly moment, and this answers "what did I miss" before you go hunting. Nothing changed, nothing is said.
+  const OUT_MS = 10 * 60_000;
+  const fishing = { until: 0 };
+  const outUi = { at: 0 };
+  function wentOut(at = Date.now()) { if (!outUi.at) outUi.at = at; }
+  function cameBack() {
+    const since = outUi.at; outUi.at = 0;
+    if (!since || Date.now() - since < OUT_MS || fishing.until) return;
+    setTimeout(() => { const line = outLine(since); if (line) laneNews(line); }, 400);   // the stream's news of the moment first
+  }
+  function outLine(since) {
+    const iso = new Date(since).toISOString(), all = [...state.sessions.values()].filter(s => visible(s) && !s.done);
+    const landed = all.filter(s => !asking(s) && s.status !== 'working' && (s.lastReplyAt || '') > iso).length;
+    const moved = all.filter(s => yourMove(s) && movedAt(s) > iso), asks = all.filter(asking).length;
+    if (!landed && !moved.length && !asks) return '';
+    const bits = [landed ? `<b>${landed} landed</b>` : '', moved.length === 1 ? `<b class="y">${esc(movedPrs(moved[0])[0]?.label || 'a PR')} is yours</b>` : moved.length ? `<b class="y">${moved.length} PRs are yours</b>` : '', asks ? `<em>${asks} asking</em>` : '<span>nothing asked</span>'];
+    return bits.filter(Boolean).join('<i>·</i>');
+  }
+  window.peixFront = (on, at) => { if (on) cameBack(); else wentOut(at); };   // the app's: it came forward or went behind (at: the harness's clock)
+  addEventListener('blur', () => { if (!inApp) wentOut(); });
+  addEventListener('focus', () => { if (!inApp) cameBack(); });
   const NEXT_VERB = { ask: 'Answer', move: 'Your move', read: 'Read' };
   const nextName = ({ s, k }) => k === 'ask' ? s.project : k === 'move' ? movedPrs(s)[0]?.label || s.title : s.title;
   function hotNext() {
@@ -12823,8 +12863,8 @@ const toolName = n => {
     if (l?.on && ((l.went && !l.back && Date.now() - l.went >= LUNCH_AWAY_MS) || (at && Date.now() - since >= LUNCH_AWAY_MS))) lunchFed(Math.min(l.went || Infinity, since || Infinity));
     else lunchBar();
   }
-  window.peixAway = away => lunchAway(!!away);   // the app's: the screen locked or asleep, the screen saver, the session switched away
-  document.addEventListener('visibilitychange', () => { if (!inApp) lunchAway(document.hidden); });
+  window.peixAway = away => { lunchAway(!!away); if (away) wentOut(); else cameBack(); };   // the app's: the screen locked or asleep, the screen saver, the session switched away
+  document.addEventListener('visibilitychange', () => { if (inApp) return; lunchAway(document.hidden); if (document.hidden) wentOut(); else cameBack(); });
   // Going, and you never locked it: the first move of yours LUNCH_AWAY_MS on is you back
   const lunchStir = () => { const l = state.lunch; if (l?.on && l.went && !l.back && !lunchUi.away && !lunchUi.returning && Date.now() - l.went >= LUNCH_AWAY_MS) lunchFed(l.went); };
   document.addEventListener('pointermove', lunchStir, { passive: true }); document.addEventListener('keydown', lunchStir, true);
