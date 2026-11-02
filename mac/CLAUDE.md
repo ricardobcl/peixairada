@@ -55,6 +55,13 @@ server.mjs, build.sh's `SOURCE`).
   judge (`PaneDelegate.linkOut` → `peixLinkOut`).
 * **The badge and the Dock**: the page's `{type: 'state'}` is their number; `refreshBadges` redraws only on a change
   (`badged`); a newly asking chat, the app behind, bounces the Dock once.
+* **The fish in the menu bar** (2026-11-01, round XIX; `drawFish`, `fishFace`): dim, nothing wants you (`appearsDisabled`);
+  full, something does; its number the questions alone, the Dock's what wants you; a slash while muted or fishing; belly-up
+  under a waterline with no number once the watchdog's 15 s pass (`setServerDown`). **Its menu is one `statusMenu`, drawn as
+  it opens** (`menuNeedsUpdate`), never while open: Next first, `sectionHeader`s, `subtitle`s, `+n more`, submenus for what
+  works, each behind `#available`; ⌥ rows are `isAlternate`, which reads no event. **Its key is `popUp`, never
+  `performClick`** (`setSummonKey`, `summonMenu`; Carbon): on 27.2 performClick opens off the top of the screen with the
+  bar hidden. Logged `fish:`, `summon:`.
 * **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
   front, a view has the keys (`keysBack`, logged `focus:`).
 * **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display

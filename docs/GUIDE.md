@@ -19,8 +19,16 @@ setup file, and how the pictures are made.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
   while Claude works, one per sub-agent, slower for a monitor; a question pings out in red.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you, answered where it shows in the app: *Reply…*
-  (straight into the chat's Claude, when it runs here), *Done*, or *In 15 minutes*. The Dock badge and the menu bar
-  count the chats asking you and those with a new reply; the menu lists them, your PRs' moves and what is clauding.
+  (straight into the chat's Claude, when it runs here), *Done*, or *In 15 minutes*. The Dock badge counts the chats asking
+  you and those with a new reply. The fish in the menu bar is dim when nothing wants you and full when something does, and
+  its number is the questions alone; it floats belly-up if the server dies. Its menu leads with what to do next; hold ⌥
+  and a reply's row marks it read. Settings › General can give it a key that works in any app.
+- ▶️ **Next** — ⌥⌘⏎, or the button on the status bar: the question waiting longest, then a PR at your move, then what to
+  read, always in that order. Back after a while, a line over the fish says what changed while you were out.
+- 🎣 **Gone fishing** — a quiet you choose, from the status bar's right-click or the fish's menu: questions still ring, the
+  rest waits 25 minutes and arrives as one. Red on the status bar only ever means a chat is asking you, and with
+  notifications off a mark says so. Settings › Appearance has two trials for the fish's lane: a fish per chat, and your
+  day as the seabed.
 - 🐙 **PRs** — on a card, a small square for each, in its state's colour (a draft hollow); PRs stacked on each other on
   GitHub sit together, joined by a line, base first. The number before them is the PR at your move, in the accent —
   else the one updated last. The squares keep their size however many there are; past the row's room they scroll

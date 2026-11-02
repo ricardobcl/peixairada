@@ -5,6 +5,46 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-01. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-02 — round XIX: the menu bar, researched, picked and built
+
+* **The ask**: "I need more great ideas for the menu bar, from small improvements, to wild ideas, etc. do deep research and
+  come up with great features and UI/UX in an artifact", in a worktree named `status-bar`, so the page covered both bars,
+  tagged Fish and Foot. Five research passes (agent monitors, native craft, notch and attention, status bars, playful
+  precedents) and a page of 55 ideas: https://claude.ai/artifact/NtB8vc8YJhP9SKCqwipvL8. **The picks**: "Round XIX: first run
+  P1, P2, P3; build S1, S2, S3, S4, S5, S6, S7, S8, M1, M2, M3, M4; as switches W1, W2; the fish's face V1."
+* **What changed the question**: the app's own log. Since 2026-10-27, of about 1,090 alerts, 75 % were replies, 22 % PR moves
+  and 0.7 % questions (all-time 83, 14 and 1.7), at about 13 per active hour. So replies are the noise and a question can go
+  at once: the fish's number should not add them, and anything held back should be replies and moves. Other monitors race
+  to answer prompts faster, which is not this board's load.
+* **P1, a menu from a key with the bar hidden: it works, by `popUp`.** A throwaway app on 27.2, the fill's options set:
+  `NSMenu.popUp` opens where it is told and the bar stays hidden; `button.performClick` opens with its top 41 pt above the
+  screen, in the fill and with the board in front alike. With the app behind, on a normal Space, `popUp` opens on screen with
+  no activation and no Space changed. In another app's full-screen Space the first sample found no menu window on screen;
+  unresolved. Activating a windowless regular app took over a second and a `MenuBarAgent` panel of 367×154 appeared centred
+  under the housing, unidentified. **Not known**: whether arrow keys reach a menu popped from behind (macOS refuses posted
+  events without Accessibility, so the real hot key and its keys want a hand). M2 stands; if the keys fail, activate first.
+* **P2, what 27.2 says of the item: partly.** `button.window` is still an `NSStatusBarWindow` with a real frame at level 25
+  (CGWindowList lists no such window; `MenuBarAgent` owns the bar). `occlusionState` carried the visible bit on a desktop with
+  the bar out and not in the fill or a full-screen Space, in the few samples taken: a hopeful sign the fish can tell it is
+  hidden, not yet a rule. `appearsDisabled` sets. **Click routing was not run**: left, right and ⌥ need a hand for the same
+  reason. Nothing built leans on it (S8 is `isAlternate`).
+* **P3, are questions undercounted: no sign of it.** Against the transcripts' own `AskUserQuestion` calls, whole months:
+  September 58 alerts to 3 calls, October 28 to 18, and of the days compared one call with no alert (2026-10-12, the app
+  perhaps not running). The alerts beyond them are permission prompts and the like. `claude agents --json` turns out to be the
+  registry with less in it (no `waitingFor`, `shell` reported as busy), so it is no second opinion: the registry is what
+  there is. What the transcripts cannot show, a permission prompt that never alerted, goes to `scripts/ask-audit.mjs`, a week's
+  log of the registry's flips that takes itself off launchd; `--report` holds them against the app log. M6 and M8 stay unpicked.
+* **Built, a commit each**: S3 one red (`hotInk`, also the lid's switch and the usage past 90 %). S1 and V1 the fish's number
+  and dimming. S2 belly-up, drawn **under a waterline** because `fish.fill` has a fin above and below, so turned over alone it
+  read as the same fish when rendered at size. S7 a mute's mark, slash and row. S4 longest wait first. S5 the menu's own
+  clothes. S6 sound manners. S8 ⌥ rows: AppKit swaps a row for its alternate only, so each recovery row sits under one you use
+  (Show Board, a new Settings…, Quit, which gives up its ⌘Q label). M1 Next, with a Return key code the check learnt. M2 the
+  key, unbound by default. M3 while you were out, counted, and with no model. M4 gone fishing. W1 and W2 as switches, off.
+* **Only typechecked, not seen**: every native change. The fish's faces on the glass bar, `appearsDisabled` over a wallpaper,
+  the section headers and subtitles, the alternates. From a drawer there is no screen capture, so these are the first things
+  to look at in the app.
+* **Not picked**: the rest stay on the page, S9–S17, M5–M20, B1–B5, W3–W13 in its numbering.
+
 ## Decisions of 2026-11-01, midnight — the harness makes no sound
 
 Ricardo: *"please make the music/sound effects stop when running tests/suites"*. A headless Chrome plays to the Mac's output as any

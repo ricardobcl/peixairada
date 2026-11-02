@@ -509,14 +509,22 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#sbList`, `#filters`), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light — alone, its colour the state (`bar.lost`, 2026-10-27), belly-up
-  while down —, its click the About box; the asking and
-  monitor counts while any (`ICON.watch`); the chat, `chatSeg`; the update, `updSeg`),
+  while down —, its click the About box; Next (`nextSeg`), a mute's mark (`muteSeg`), the
+  monitors while any (`ICON.watch`); the chat, `chatSeg`; the update, `updSeg`),
   `#sbPeople` (`#people`), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`; `GET /api/stats?want=…`
   every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pies (`sbMeter`, `uGrant`) — a click lifts its rows (`usageRows`, `uPace`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (`clockTick`). `#sbLeft` and
   `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`): one `swim` animation whose pace is its length (`swimPaceTo`, never
   `updatePlaybackRate`); two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups**; `fishAt` reads the swim's clock, never a rect,
   and `feed` is a frame loop only while a bubble is out; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
+* **Next is the queue** (2026-11-01, round XIX; ⌥⌘⏎, `.seg.nx`, `nextQueue`, `hotNext`): questions by longest wait
+  (`askedAt`, `byWait`), then PRs at your move, then what to read, oldest first: a fixed order, only on a press, never a
+  lane. **Red on the bar means asking**: a meter past 90 % is the ink and a `!` (`hotInk`, `hotMark`). **A mute shows**
+  (`muteSeg`, `setNotify`). → `next-verb.mjs`, `asking-oldest.mjs`, `bar-one-red.mjs`, `mute-shows.mjs`.
+* **The lane's news and switches** (2026-11-01): `laneNews`, a line whose click is Next: *while you were out* (`wentOut`,
+  `cameBack`, `outLine`, `OUT_MS`; `peixFront`, `peixAway`) and *gone fishing*'s catch (`fishing`, `prefs.fishing`,
+  `goFishing`, `backFromFishing`; `onAlert` holds reply and pr). Off by default: a fish per chat (`prefs.laneSchool`,
+  `schoolBar`, `.sf`) and the seabed (`prefs.laneBed`, `bedDraw`). → `while-out.mjs`, `gone-fishing.mjs`, `lane-school.mjs`, `lane-seabed.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` leaves it out of
   the bar. → `usage-bar.mjs`.
@@ -670,10 +678,10 @@ npm run map                         # rewrite the section maps at the top of ser
   posts only a message that differs. Esc pressed in a pane page is forwarded (`hotEscape()`: a dialog closes first, else the
   chat tab comes back); one on the board reaches the page, whose capture-phase handler closes a dialog or popover and,
   the pane up, does hotEscape's outside a terminal or a box (2026-10-14). The pane's `focus` is null unless the keys' half shows a page.
-* **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, moves, working}` from
+* **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, moves, working, watching, muted, plan, next, fishing}` from
   `renderBoard` when what wants you changes (`postState`, `wanting()`: the chats asking and the new replies — **the
-  Dock's badge and the menu bar's count are their number**, the page's title too; the status menu lists them with the
-  PRs at your move and what is clauding), each alert with `serverNotify` and `quiet`, the pane's places, and
+  Dock's badge and the page's title are their number**, the fish's the questions alone (2026-11-01); the status menu lists
+  them with the PRs at your move and what is clauding), each alert with `serverNotify` and `quiet`, the pane's places, and
   `{type: 'chat', project, title, cwd}` from `renderHead` and `leaveChat` (`postChat`: the window's title and
   `representedURL`).
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while it runs here), `shell:<id>` per live zsh or vim
@@ -969,7 +977,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`; the
   usage's messages wear `.unote`, since `.note` is `note()`'s popup.
 * **No in-page toasts**: alerts are the badge plus a system notification (the app sets `NOTIFY=off` on its own
-  server); with the board in front an alert can be heard instead (`chime`, `prefs.sounds`, off; Web Audio made on a
+  server); with the board in front an alert can be heard instead (`chime`, `prefs.sounds`, off; none for the chat in view, `CHIME_GAP_MS`; Web Audio made on a
   press, `audioUp`, suspended between sounds, `audioRest`). **The notifications switch is the server's** (`notifications` in the state file, `PUT
   /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
   page's `Notification`, the server's osascript) skip it. A new poster reads `quiet` — and `heading`, the server's
