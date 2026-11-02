@@ -33,7 +33,9 @@ by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-1
   perhaps not running). The alerts beyond them are permission prompts and the like. `claude agents --json` turns out to be the
   registry with less in it (no `waitingFor`, `shell` reported as busy), so it is no second opinion: the registry is what
   there is. What the transcripts cannot show, a permission prompt that never alerted, goes to `scripts/ask-audit.mjs`, a week's
-  log of the registry's flips that takes itself off launchd; `--report` holds them against the app log. M6 and M8 stay unpicked.
+  log of the registry's flips that takes itself off launchd; `--report` holds them against the app log. A session may not start
+  it (the auto-mode classifier refuses the launchd job as persistence), so it waits for a hand: the command is at its head.
+  M6 and M8 stay unpicked.
 * **Built, a commit each**: S3 one red (`hotInk`, also the lid's switch and the usage past 90 %). S1 and V1 the fish's number
   and dimming. S2 belly-up, drawn **under a waterline** because `fish.fill` has a fin above and below, so turned over alone it
   read as the same fish when rendered at size. S7 a mute's mark, slash and row. S4 longest wait first. S5 the menu's own
