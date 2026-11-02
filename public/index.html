@@ -6448,6 +6448,7 @@ const toolName = n => {
     for (const r of p.opened) out.push({ ...agItem(r, s, thin), k: `${r.id}_d` });
     return out;
   }
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.agr[tabindex]')) { e.preventDefault(); e.target.click(); } });
   const agRowHtml = it => `<div class="agr${it.cls || ''}" data-k="${esc(it.k)}" data-st="${esc(it.st)}"${it.ag ? ` data-ag="${esc(it.ag)}"` : ''}><i class="agd" aria-hidden="true"></i><span class="aga">${it.a}</span><span class="agt">${it.t}</span><span class="agn">${it.n || ''}</span></div>`;
   /** Rows into a box, keyed: a row keeps its node, so a step changes only its words. True when one was made. */
   function agDraw(box, items, soft) {
@@ -6459,7 +6460,7 @@ const toolName = n => {
     for (const it of items) {
       let el = had.get(it.k);
       if (!el) {
-        el = document.createElement('div'); el.dataset.k = it.k; made = true;
+        el = document.createElement('div'); el.dataset.k = it.k; el.tabIndex = 0; el.setAttribute('role', 'button'); made = true;
         el.innerHTML = '<i class="agd" aria-hidden="true"></i><span class="aga"></span><span class="agt"></span><span class="agn"></span>';
         if (soft && !REDUCED.matches) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out', id: 'agrow' });
       }
@@ -6479,7 +6480,7 @@ const toolName = n => {
     if (card.style.getPropertyValue('--lights') !== lights) { if (n) card.style.setProperty('--lights', lights); else card.style.removeProperty('--lights'); }
     const chip = card.querySelector('.trow .chip.agents'), even = agEven();
     if (chip) {
-      const show = p.run > 0 || (p.fails > 0 && (even || !p.sum)), some = p.total > p.run, html = !show ? '' : `${some ? `${rn('agd:' + s.id, p.oks)}/${p.total}` : rn('ag:' + s.id, p.run)} agent${(some ? p.total : p.run) === 1 ? '' : 's'}${p.fails ? ` · ${p.fails} failed` : ''}${even ? '' : AG_CARET}`;
+      const run = Math.max(p.run, s.agents || 0), show = run > 0 || (p.fails > 0 && (even || !p.sum)), some = p.total > p.run, html = !show ? '' : `${some ? `${rn('agd:' + s.id, p.oks)}/${p.total}` : rn('ag:' + s.id, run)} agent${(some ? p.total : run) === 1 ? '' : 's'}${p.fails ? ` · ${p.fails} failed` : ''}${even ? '' : AG_CARET}`;
       if (chip._h !== html) { chip._h = html; chip.innerHTML = html; rollSoon(); }
       if (chip.hidden === show) chip.hidden = !show;
       chip.classList.toggle('bad', p.fails > 0); chip.classList.toggle('on', !p.folded);
@@ -11119,7 +11120,7 @@ const toolName = n => {
     }
     const group = () => {
       if (!agv.run.length || agv.drawnRun === agv.run.length) return;
-      if (!agv.group) { const f = htmlNodes(toolGroupHtml(agv.run), cwd); agv.group = f.firstElementChild; log.append(f); }
+      if (!agv.group) { const f = htmlNodes(toolGroupHtml(agv.run), cwd); agv.group = f.firstElementChild; agv.group.open = true; log.append(f); }   // nearly all it does: open, unlike the chat's
       else { agv.group.append(htmlNodes(agv.run.slice(agv.drawnRun).map(entryHtml).join(''), cwd)); agv.group.querySelector(':scope > summary').innerHTML = toolSummaryHtml(agv.run); }
       agv.drawnRun = agv.run.length;
     };
@@ -11312,6 +11313,7 @@ const toolName = n => {
     const ask = asking(s) && s.ask ? `<div class="q">${esc(s.ask.text || `waiting for ${s.ask.waitingFor || 'you'}`)}</div>${s.ask.labels?.length ? `<div class="ans">${s.ask.labels.map((l, i) => `<button data-ans="${i + 1}"${d ? '' : ' disabled'} title="${d ? `Opens the chat and types ${i + 1} into its drawer` : 'Not in a drawer here — answer it where it runs'}"><b>${i + 1}</b>${esc(l)}</button>`).join('')}</div>` : ''}` : '';
     const tasks = (s.tasks || []).map(t => `<div class="tl watch"><i></i><b>${t.kind === 'monitor' ? 'Monitor' : 'Bash'}</b><span>${esc(t.what)}</span><em>${esc(t.last || `${t.events} events`)}</em></div>`).join('');
     const agents = agOn(s) && s.agentRows?.length ? `<div class="agl">${agItems(agPlan(s, false), s, true).map(agRowHtml).join('')}</div>` : '';   // a line each (2026-11-02)
+    if (agents) phaseAnims();
     return `<article class="ot ${asking(s) ? 'ask' : bucket(s) === 'working' ? 'work' : ''}${sel ? ' sel' : ''}" data-id="${esc(s.id)}" style="${repoStyle(repoColor(s.cwd))}">
       <header>${n <= 9 ? `<kbd>${n}</kbd>` : ''}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="age">${age}</span></header>
       <h3>${ticks(esc(s.title))}</h3>

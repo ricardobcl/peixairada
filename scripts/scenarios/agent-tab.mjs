@@ -20,13 +20,16 @@ export default async function (ctx) {
       { id: 'cost', asked: 'Price the NAT gateways', ago: 8 * MIN, steps: ['Count the gateways'] },
     ] });
     await ctx.waitFor(`!!document.querySelector('${card} [data-k="sec"]')`, { what: 'the row', timeout: 20000 });
-    await ctx.evaluate(`document.querySelector('${card} [data-k="sec"]').click()`);
+    await ctx.evaluate(`document.querySelector('${card} [data-k="sec"]').focus()`);   // by the keyboard: a row is a button
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await ctx.waitFor(`!document.querySelector('#agv').hidden && document.querySelectorAll('#agv .tool').length >= 2`, { what: 'its transcript' });
     ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#agv .agvh .ic.st rect')`), true, 'alone in its half: no strip, the lock on its head');
     ctx.assert.equal(await ctx.evaluate(`window.peix.state().current`), lead.id, 'its chat open');
     ctx.assert.match(await ctx.evaluate(`document.querySelector('#agv .msg.user .bubble').textContent`), /Flag anything wider/, 'what the chat asked it');
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#agv .msg.user .who span').textContent`), 'The chat asked', 'not your words');
     ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#agv .msg.user').length`), 1, 'drawn once');
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#agv .toolgroup').open`), true, 'its calls are the story: open');
     ctx.assert.match(await ctx.evaluate(`document.querySelector('#agv .agvh').textContent`), /Review the plan for security.*at work · read-only/, 'says it is read-only');
     ctx.assert.equal(await ctx.evaluate(`!document.querySelector('#log').hidden && document.querySelector('#log').parentElement !== document.querySelector('#agv').parentElement`), true, 'the chat beside it, in the other half');
     await ctx.settle();
