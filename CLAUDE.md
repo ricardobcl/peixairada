@@ -443,12 +443,11 @@ npm run map                         # rewrite the section maps at the top of ser
   (`prefs.cardsEven` → `#sessions[data-even]`): one title line, the question left to the red edge, and the move line or
   `.moveslot` — an invisible line of its metrics, never `.prmove`, which the harness reads. → `card-sizes.mjs`. **Its PRs,
   rounds, tickets and faces each optional** (2026-10-21, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone). → `card-parts.mjs`.
-* **A card is square** (`border-radius: 0`, the ring's too). **Its title row reads title · chips · time · F ·
+* **A card's title row reads title · chips · time · F ·
   unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age (`.trow .time`) shows under the
   pointer only, by `opacity`, keeping its room. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
   → `card-marks.mjs`.
-* **Only the open card and a clauding one wear the colour round their border**; the rest have the lit left edge alone
-  (`background-origin: border-box` under a transparent border). **ALL** (`key: 'all'`) is `BLACK` through
+* **ALL** (`key: 'all'`) is `BLACK` through
   `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. `#splitter`
   is the line between the list and the chat, dragged to size the list.
 * **A new chat has a card before its first word**: `visible()` shows a live chat with no transcript (not VS Code's);
@@ -924,7 +923,8 @@ npm run map                         # rewrite the section maps at the top of ser
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **Chats that talk** (2026-10-31; `#handoff`): Send to… types into the drawer (`drawerType`), else the resume takes the
   words after `--` (`spawnTerm`'s `prompt`, never logged); a merge or a branch (`fork`) gets the board's id (`newId`);
-  `links` ties chats (`addLink`). → `handoffs.test.mjs`.
+  `links` ties chats (`addLink`). → `handoffs.test.mjs`. **A card dragged onto another** (2026-11-02; `cdLift`, `cdHit`, `cdEnd`, `#cdghost`) is Fold
+  into…: the list held still (`renderBoard.held`), and the box asks. → `card-drag-fold.mjs`.
 * **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.

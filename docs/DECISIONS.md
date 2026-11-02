@@ -5,6 +5,44 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-02, evening — a card dragged onto another (round XIV's I5)
+
+Round XIV's I5 left out the drag: *"Drag a card onto another was not built"*. Ricardo: *"this would be really cool. make
+sure the UX is nice and we prompt for confirmation before merging"*
+
+* **Letting go asks; it folds nothing.** A drop on a chat that can take it opens the box Fold into… always had — both
+  chats named, what happens to each, the handoff to read and change — and only its Fold does anything. Cancel, Esc or a
+  click away leave both chats as they were (no drawer, no tick, no tie). The title is a question now, and Fold stays grey
+  until the handoff has come: nothing to confirm before there is something to read. ⏎ in the box is a new line, so a
+  key cannot answer it by accident; ⌘⏎ is Fold.
+* **A fold, not a merge**: a drop names a chat, which is what a fold wants. A merge makes a third chat and asks its
+  folder, and stays on the menu and ⌥⌘L.
+* **The ghost says what letting go would do** (`cdLift`, `cdHit`, `#cdghost`): the chat's project and title, and under
+  them *Fold into “…”*, or *Not here — …* in `sendWhy`'s own words, or the hint. A small panel by the pointer, not a copy
+  of the card: a row's look is `#slist .card`, so a copy outside the list is not the row, and a copy inside it is one
+  more `#slist > .card` to everything that counts them. It covers less of what it is dropped on, too. The chats it cannot
+  go into fade, the one under the pointer lights in the accent (white on the open row's solid colour). A bump at the lift,
+  on a chat and on the drop.
+* **The list stands still under the hand** (`renderBoard.held`, `owed`): the 10-31 entry's objection, a drag fighting the
+  list's slides. A chat landing would slide another card under the pointer just before a release. What came meanwhile is
+  drawn on the way out; the marks and what the ghost says still follow it (`cdMark`), and both chats are asked again at
+  the drop. Any end of the drag lets go of the hold: Esc, a release anywhere, `pointercancel`, the window's `blur`, or a
+  move with no button down (a release unheard), so it cannot stay held.
+* **A card's other objection, its click**: a press under `CD_PX` (6) is still a click; past it the release's click is
+  swallowed, `once`, as a tab's drag does. Pointer capture on the list, so the release is heard off the window and no
+  card under the hand lights, fans or brings up its rounds. Pointer events, not the system's drag, which would give the
+  ghost and the hit test away. A press on a control (`CD_CONTROLS`) is that control's. **So a drag on a card no longer
+  selects its words**: `selectstart` is refused while a press could become a drag.
+* **Getting to a chat out of sight**: the list's ends scroll it (`cdScroll`, `CD_EDGE`, a frame at a time, stopping at its
+  end), and a shut lane's head held on `CD_SPRING_MS` opens (`cdSpring`, through `foldLane`, so it stays open as a click
+  leaves it); Idle and Done start shut, and their chats are chats to drop on.
+* **A chat that cannot be folded does not come up** (at work, or empty): a note on the card says why, and the release
+  opens nothing. Coming up with nowhere to go is worse than saying so at once.
+* **Checked**: `card-drag-fold.mjs` (real mouse events in Chrome, each step above, then Fold through to the handoff unsent
+  in the other chat's prompt); in WebKit, on a throwaway server, synthetic pointer events and the compositor's own frame:
+  the ghost, the lit row, the flight into the card, the box. Not by a real hand in the app: a synthetic event has no
+  capture to hold, so the release off the window and a drag crossing the pane's native view are unproven there.
+
 ## Decisions of 2026-11-02, later still — no five-hour limit
 
 Ricardo: *"the 5H limit was removed from claude, update code/docs/screenshots"*

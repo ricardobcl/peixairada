@@ -67,7 +67,8 @@ setup file, and how the pictures are made.
   VS Code is out of reach, and says so. *Merge with…* takes two or more chats into a new one: the board writes where
   each stands — Claude Code's own recap where it has one —, you read and change it, pick the folder, and Start opens
   the new chat with it as its first prompt; the old ones stay, each marked *merged*. *Fold into…* types one chat's
-  handoff into another's Claude — not sent, for you to read and send — and ticks the first one done. *Branch from
+  handoff into another's Claude — not sent, for you to read and send — and ticks the first one done; or drag its card
+  onto the other: the chat it would go into lights, Esc puts it back, and letting go asks before anything happens. *Branch from
   here* (a card's menu, or the chat's ···) opens a copy of the chat in a drawer of its own, to try another way while
   the first goes on as it was.
 

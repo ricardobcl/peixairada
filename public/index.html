@@ -2262,6 +2262,23 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, transparent); }
   :root[data-layout="sidebar"] #slist .card.asking::before, :root[data-layout="sidebar"] #slist .card.asking::after { inset: 0; border-width: 1.5px; border-radius: inherit; }
 
+  /* ---- a card in the hand (2026-11-02, round XIV's I5): dragged onto another to fold it in (cdLift) ----
+     The ghost by the pointer says what letting go would do; the card it came from and the chats it cannot go into fade; the
+     one under the pointer lights in the accent and comes up a little, on the card's own scale spring. */
+  body.carddrag, body.carddrag * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+  body.carddrag.cdno, body.carddrag.cdno * { cursor: not-allowed !important; }
+  #slist .card:is(.cdfrom, .cdoff) { opacity: .4; }
+  #slist .card.cdfrom { scale: .98; }
+  :root[data-layout="sidebar"] #slist .card.cdover { z-index: 1; scale: 1.015; box-shadow: inset 0 0 0 2px var(--accent); }
+  :root[data-layout="sidebar"] #slist .card.cdover:not(.active) { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  :root[data-layout="sidebar"] #slist .card.active.cdover { box-shadow: inset 0 0 0 2px #fff; }   /* on the open row's solid colour, white as all on it */
+  :root[data-layout="sidebar"] .gsep.lane.cdhold[data-lane] { background: color-mix(in srgb, var(--accent) 18%, var(--side)); }   /* a shut lane's head, held on: it is about to open */
+  #cdghost { position: fixed; left: 0; top: 0; z-index: 70; box-sizing: border-box; width: min(320px, calc(100vw - 16px)); padding: 8px 11px; display: grid; gap: 4px; pointer-events: none;
+    color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-4); box-shadow: 0 10px 28px rgb(0 0 0 / .3); transform-origin: 0 0; will-change: translate; transition: border-color var(--t-hover); }
+  #cdghost.go { border-color: var(--accent); }
+  #cdghost .cdsay { font-size: var(--fs-sm); line-height: 1.35; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  #cdghost.go .cdsay { color: var(--ink); font-weight: 600; }
+
   /* ---- the inset (2026-11-01, round XV's T3; every theme's, round XVII's C1): the chat laid in a frame — the window's
      ground, the wallpaper, the sidebar and the status bar in --frame (the board's own: the window's own ground,
      main.swift's; a theme's, its crust) —, the chat a sheet, rounded, 8 px in from the frame's edges, a hairline and a
@@ -2631,10 +2648,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      chats it goes to or from, each its project's square, name and title; what ⏎ will do under it, in words. */
   #handoff { width: min(640px, 92vw); }
   #handoff .hochats { display: grid; gap: 4px; margin: 0 0 10px; }
-  #handoff .hochat { display: flex; gap: 8px; align-items: center; min-width: 0; font-size: var(--fs-md); }
-  #handoff .hochat .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); flex: none; }
-  #handoff .hochat b { flex: none; font-weight: 700; }
-  #handoff .hochat .ht { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :is(#handoff, #cdghost) .hochat { display: flex; gap: 8px; align-items: center; min-width: 0; font-size: var(--fs-md); }
+  :is(#handoff, #cdghost) .hochat .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); flex: none; }
+  :is(#handoff, #cdghost) .hochat b { flex: none; font-weight: 700; }
+  :is(#handoff, #cdghost) .hochat .ht { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #handoff .hochat .hx { margin-left: auto; flex: none; font-size: var(--fs-xs); color: var(--muted); }
   #handoff .howhere { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: var(--fs-sm); color: var(--muted); }
   #handoff .howhere[hidden] { display: none; }
@@ -2774,6 +2791,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
     :root[data-layout="sidebar"] #slist .card { border: 1px solid CanvasText; } :root[data-layout="sidebar"] #slist .card.active { outline: 2px solid Highlight; }   /* the sidebar's rows */
     :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .agd, .card .trow .drift, .card .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
+    :root[data-layout="sidebar"] #slist .card.cdover { outline: 2px solid Highlight; } #cdghost { border: 1px solid CanvasText; }   /* a card in the hand: its shadows are gone here */
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
 
@@ -2885,6 +2903,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     .agr[data-st="run"] > .agd::before { animation: none; border-color: var(--glow, var(--working)); }   /* an agent's arc: a whole circle, still */
     .agcar { transition: none; }
+    #slist .card.cdfrom, :root[data-layout="sidebar"] #slist .card.cdover { scale: none; } #cdghost { transition: none; }   /* a card in the hand: nothing comes up (cdLift and cdEnd read REDUCED) */
     :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
@@ -3251,6 +3270,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · merged, folded, branched: the chats tied to one, by your hand (2026-10-31)
 //   js  · Merge with…: a new chat from several, its first prompt where each stands (2026-10-31)
 //   js  · Fold into…: one chat's handoff typed into another's drawer, unsent; the first ticked done (2026-10-31)
+//   js  · a card dragged onto another: Fold into… by hand (2026-11-02, round XIV's I5)
 //   js  · Branch from here: a copy of the chat in a drawer of its own (2026-10-31)
 //   js  · a second claude on this chat
 //   js  · transcript rendering
@@ -4122,6 +4142,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // outside a terminal or a box — which keep their own — it is hotEscape()'s as well: the chat tab back.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (renderBoard.held) { cdEnd(false); e.preventDefault(); e.stopPropagation(); return; }   // a card in the hand goes back first (2026-11-02)
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg?.id === 'settings' && e.target === $('#sq') && $('#sq').value) { $('#sq').value = ''; settingsFind(); took = true; }   // a search let go first
@@ -5008,6 +5029,7 @@ const toolName = n => {
   }
   function renderBoard() {
     cancelAnimationFrame(renderBoardSoon.raf); clearTimeout(renderBoardSoon.t); renderBoardSoon.t = 0;
+    if (renderBoard.held) { renderBoard.owed = true; cdMark(); return; }   // a card in the hand (2026-11-02): the list stands still under it, drawn once it is let go
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
@@ -5863,6 +5885,7 @@ const toolName = n => {
       if (on) drawTimeline();
     };
     document.addEventListener('pointermove', e => {
+      if (renderBoard.held) return;   // a card in the hand, along the window's edge (2026-11-02)
       if ($('#sessions').classList.contains('tlshow')) {
         if (tl.press || e.target.closest?.('#tline')) { clearTimeout(away); away = 0; }
         else if (!away) away = setTimeout(() => { away = 0; if (!tl.press) show(false); }, TL_HIDE_MS);
@@ -7323,6 +7346,7 @@ const toolName = n => {
   // closes first.
   // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
   function hotEscape() {
+    if (renderBoard.held) { cdEnd(false); return true; }   // a card in the hand goes back first (2026-11-02)
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
     const s = state.sessions.get(state.current);
     if (s && isBlankTab(tabOf(s))) { blankEscape(s, tabOf(s)); return true; }   // the keys on the board but not in its box, which has its own esc
@@ -12391,10 +12415,10 @@ const toolName = n => {
   }
   /** The handoff the server writes for the box's chats, into the box — unless the box was opened anew meanwhile. */
   async function hoFill(gen, kind) {
-    const t = $('#hoText');
+    const t = $('#hoText'); $('#hoGo').disabled = true;   // nothing to confirm until it is there to read (2026-11-02)
     try { const d = await api('GET', `/api/handoff?kind=${kind}&ids=${ho.ids.slice(0, kind === 'fold' ? 1 : 12).map(encodeURIComponent).join(',')}`); if (gen === ho.gen) t.value = d.text; }
     catch (e) { if (gen === ho.gen) hoSay(`Could not read where ${kind === 'fold' ? 'it stands' : 'they stand'}: ${e.message}`, true); }
-    finally { if (gen === ho.gen) { t.disabled = false; t.placeholder = 'The handoff'; t.focus(); t.setSelectionRange(0, 0); t.scrollTop = 0; } }
+    finally { if (gen === ho.gen) { $('#hoGo').disabled = false; t.disabled = false; t.placeholder = 'The handoff'; t.focus(); t.setSelectionRange(0, 0); t.scrollTop = 0; } }
   }
   // ---- Fold into…: one chat's handoff typed into another's drawer, unsent; the first ticked done (2026-10-31) --------
   // From a card's menu, or the launcher for the open chat: the chat it goes into from the picker (where Send to… could
@@ -12406,7 +12430,7 @@ const toolName = n => {
   async function foldOpen(a, b) {
     const no = foldFromWhy(a) || sendWhy(b); if (no) return note($('#shead'), `Not folded: ${no}`, true);
     const gen = ++ho.gen; Object.assign(ho, { mode: 'fold', ids: [a.id, b.id] });
-    $('#hoTitle').textContent = 'Fold one chat into another';
+    $('#hoTitle').textContent = 'Fold one chat into another?';
     $('#hoChats').innerHTML = hoChat(a, '<span class="hx">then done</span>') + hoChat(b, '<span class="hx">gets it, unsent</span>');
     const t = $('#hoText'); t.value = ''; t.rows = 12; t.placeholder = 'Reading where it stands…'; t.disabled = true;
     $('#hoWhere').hidden = true;
@@ -12427,6 +12451,119 @@ const toolName = n => {
     await api('POST', `/api/sessions/${a.id}/fold`, { into: b.id });
     tickDone(a.id, true, $('#shead'));
   }
+  // ---- a card dragged onto another: Fold into… by hand (2026-11-02, round XIV's I5) ----------------------------------
+  // A press on a card, off its controls, moved CD_PX: the chat comes up in the hand, a small ghost by the pointer saying
+  // what letting go would do, and the list stands still under it (renderBoard.held: a chat landing would slide another
+  // card under the pointer; what came meanwhile is drawn on the way out). Chats it cannot go into fade, the one under the
+  // pointer lights, a shut lane's head held on opens, and the list scrolls at its ends. Let go on a chat that can take it,
+  // nothing is folded yet: the ghost goes into the card and foldOpen's box asks, the handoff in it, Fold or Cancel. Esc,
+  // letting go anywhere else or the window losing the keys puts it back. A chat that cannot be folded does not come up: a
+  // note says why. The menu's Fold into… stays the way there without a pointer.
+  const CD_PX = 6, CD_EDGE = 44, CD_SPEED = 18, CD_SPRING_MS = 600, CD_IN_MS = 170, CD_BACK_MS = 180;
+  const CD_CONTROLS = 'button, a, input, .act, .cpr, .ctk, .tmx, .tprs, .faces, .chip.agents, .agr, .prmove, .prpips, .peerin';
+  const CD_HINT = 'Drop it on another chat to fold it in · esc puts it back';
+  const cd = { press: null, on: false, from: null, over: null, x: 0, y: 0, ghost: null, was: null, raf: 0, lane: null, springT: 0 };
+  function cdPlace(measure) {
+    const g = cd.ghost; if (measure) { g._w = g.offsetWidth; g._h = g.offsetHeight; }
+    const x = Math.max(8, Math.min(innerWidth - g._w - 8, cd.x + 14)), y = cd.y + 16 + g._h > innerHeight - 8 ? cd.y - g._h - 10 : cd.y + 16;
+    g.style.translate = `${x}px ${y}px`;
+  }
+  /** What is under the pointer, as the list stands: the card lit, the ghost's words. */
+  function cdHit() {
+    const el = document.elementFromPoint(cd.x, cd.y), id = el?.closest('#slist > .card')?.dataset.id, head = el?.closest('#slist > .gsep.lane.shut:not(.still)');
+    cdSpring(head);
+    const other = id && id !== cd.from ? state.sessions.get(id) : null, why = other ? sendWhy(other) : null, over = other && !why ? id : null;
+    if (over !== cd.over) {
+      cardNodes.get(cd.over)?.el.classList.remove('cdover'); cardNodes.get(over)?.el.classList.add('cdover');
+      cd.over = over; if (over) haptic();
+    }
+    const say = over ? `Fold into “${other.title}”` : why ? `Not here — ${why}` : head ? `Hold to open ${LANES[head.dataset.lane][0]}` : CD_HINT, g = cd.ghost;
+    if (g._say === say) return;
+    g._say = say; g.classList.toggle('go', !!over); document.body.classList.toggle('cdno', !!why);
+    g.querySelector('.cdsay').textContent = say; cdPlace(true);
+  }
+  /** The marks on the cards — from renderBoard too while it holds: a chat may have come to take it, or stopped. */
+  function cdMark() {
+    for (const [id, c] of cardNodes) { const cl = c.el.classList; cl.toggle('cdfrom', id === cd.from); cl.toggle('cdoff', id !== cd.from && !!sendWhy(state.sessions.get(id))); cl.toggle('cdover', id === cd.over); }
+    cdHit();
+  }
+  /** A shut lane's head held on opens — its chats are chats to drop on. */
+  function cdSpring(head) {
+    const g = head?.dataset.lane || null; if (g === cd.lane) return;
+    document.querySelector('#slist > .gsep.cdhold')?.classList.remove('cdhold'); clearTimeout(cd.springT); cd.lane = g;
+    if (!head) return;
+    head.classList.add('cdhold');
+    cd.springT = setTimeout(() => {
+      if (!cd.on) return;
+      renderBoard.held = false; foldLane(g); renderBoard.held = true; renderBoard.owed = false;   // a draw of its own: what was held comes with it
+      cd.lane = null; cdMark();
+    }, CD_SPRING_MS);
+  }
+  /** The list's ends scroll it while the pointer is at one, faster the further in; a frame at a time, stopping at its end. */
+  function cdScroll() {
+    cd.raf = 0; if (!cd.on) return;
+    const list = $('#slist'), r = list.getBoundingClientRect();
+    const v = cd.x < r.left || cd.x > r.right ? 0 : cd.y < r.top + CD_EDGE ? cd.y - r.top - CD_EDGE : cd.y > r.bottom - CD_EDGE ? cd.y - r.bottom + CD_EDGE : 0;
+    if (!v) return;
+    const was = list.scrollTop; list.scrollTop = was + Math.sign(v) * Math.min(CD_SPEED, Math.ceil(Math.abs(v) * .3));
+    if (list.scrollTop === was) return;
+    cdHit(); cd.raf = requestAnimationFrame(cdScroll);
+  }
+  function cdLift(p, e) {
+    const a = state.sessions.get(p.id), no = foldFromWhy(a);
+    if (no) return note(p.card, `Not folded: ${no}`);
+    Object.assign(cd, { on: true, from: p.id, over: null, x: e.clientX, y: e.clientY, lane: null });
+    renderBoard.held = true; renderBoard.owed = false;
+    getSelection()?.removeAllRanges();
+    try { $('#slist').setPointerCapture(p.pid); } catch {}   // its release is heard off the window too, and no card under it lights or fans
+    document.body.classList.add('carddrag');
+    const g = cd.ghost = document.body.appendChild(html2el(`<div id="cdghost" aria-hidden="true">${hoChat(a)}<div class="cdsay"></div></div>`));
+    cdMark(); noteMotion(p.id, 'cardlift'); haptic('generic');
+    if (!REDUCED.matches) g.animate([{ opacity: 0, scale: .92 }, { opacity: 1, scale: 1 }], { duration: 160, easing: SPRING, id: 'cardlift' });
+  }
+  /** Let go: `drop` on what is under the pointer — the box, if that can take it — else back where it came from. */
+  function cdEnd(drop) {
+    if (!cd.on) return;
+    const { from, over, ghost: g, was } = cd, a = state.sessions.get(from), b = drop && over ? state.sessions.get(over) : null;
+    const no = b ? foldFromWhy(a) || sendWhy(b) : null, into = b && !no;   // it may have changed while the list stood still
+    const el = cardNodes.get(into ? over : from)?.el, r = el?.getBoundingClientRect(), lr = $('#slist').getBoundingClientRect(), gr = g.getBoundingClientRect();
+    cd.on = false; cancelAnimationFrame(cd.raf); cd.raf = 0; cdSpring(null);
+    for (const c of cardNodes.values()) c.el.classList.remove('cdfrom', 'cdoff', 'cdover');
+    document.body.classList.remove('carddrag', 'cdno');
+    renderBoard.held = false; if (renderBoard.owed) { renderBoard.owed = false; renderBoard(); }
+    noteMotion(from, into ? 'cardfold' : 'cardback'); if (into) haptic('levelChange');
+    if (was?.isConnected) was.focus({ preventScroll: true });   // the press took the keys from a drawer; the box gives them back to it on its way out
+    let over2 = false;
+    const then = () => { if (over2) return; over2 = true; g.remove(); if (into) foldOpen(a, b); else if (no) note(el || $('#shead'), `Not folded: ${no}`, true); };
+    if (REDUCED.matches) return then();
+    const seen = r && r.bottom > lr.top && r.top < lr.bottom, to = !seen ? g.style.translate : into ? `${r.left + r.width / 2 - gr.width * .15}px ${r.top + r.height / 2 - gr.height * .15}px` : `${r.left}px ${r.top}px`;
+    const ms = into ? CD_IN_MS : CD_BACK_MS, fly = g.animate([{ translate: g.style.translate, scale: 1, opacity: 1 }, { translate: to, scale: into ? .3 : .96, opacity: 0 }], { duration: ms, easing: into ? 'ease-in' : EASE_OUT, fill: 'forwards', id: into ? 'cardfold' : 'cardback' });
+    fly.onfinish = fly.oncancel = then; setTimeout(then, ms + 150);   // a window out of sight may never finish it
+  }
+  $('#slist').addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.pointerType === 'touch') return;
+    const card = e.target.closest('#slist > .card'); if (!card || e.target.closest(CD_CONTROLS)) return;
+    cd.press = { id: card.dataset.id, card, x: e.clientX, y: e.clientY, pid: e.pointerId, moved: false }; cd.was = document.activeElement;
+  });
+  // a press that may become a drag selects nothing, and no picture in a card goes off on the system's own drag
+  for (const ev of ['selectstart', 'dragstart']) $('#slist').addEventListener(ev, e => { if (cd.press) e.preventDefault(); });
+  addEventListener('pointermove', e => {
+    const p = cd.press; if (!p) return;
+    if (!e.buttons) { cd.press = null; return cdEnd(false); }   // its release went unheard
+    if (!p.moved) { if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < CD_PX) return; p.moved = true; cdLift(p, e); }
+    if (!cd.on) return;
+    cd.x = e.clientX; cd.y = e.clientY; cdHit(); cdPlace();
+    cd.raf ||= requestAnimationFrame(cdScroll);
+  }, { passive: true });
+  addEventListener('pointerup', () => {
+    const p = cd.press; if (!p) return; cd.press = null;
+    if (!p.moved) return;
+    // the click this release makes, if it makes one — once, as a tab's drag does: a swallow left for the timeout alone ate the next real click
+    const swallow = ev => { ev.stopPropagation(); ev.preventDefault(); };
+    addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 0);
+    cdEnd(true);
+  });
+  for (const ev of ['pointercancel', 'blur']) addEventListener(ev, () => { cd.press = null; cdEnd(false); });
   // ---- Branch from here: a copy of the chat in a drawer of its own (2026-10-31) --------------------------------------
   // A card's menu, the header's ···, the launcher: the server starts `claude --resume <id> --fork-session --session-id
   // <new>` in the chat's folder, the new id its own, and the column opens on the copy, its drawer attached; the chat it
@@ -12442,7 +12579,7 @@ const toolName = n => {
   function hoShow() { const dlg = $('#handoff'); if (!dlg.open) { if (inApp) post({ type: 'focus' }); dlg.showModal(); repostPane(); } $('#hoText').focus(); }
   function sendOpen(s) {
     const why = sendWhy(s); if (why) return note($('#shead'), `Not to ${s.title}: ${why}`, true);
-    ho.gen++; Object.assign(ho, { mode: 'send', ids: [s.id] }); $('#hoText').disabled = false;
+    ho.gen++; Object.assign(ho, { mode: 'send', ids: [s.id] }); $('#hoText').disabled = false; $('#hoGo').disabled = false;
     $('#hoTitle').textContent = 'Send to'; $('#hoChats').innerHTML = hoChat(s);
     const t = $('#hoText'); t.value = ''; t.rows = 4; t.placeholder = 'For its Claude — what you would type in its drawer';
     $('#hoWhere').hidden = true; hoSay(sendSay(s));
