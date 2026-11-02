@@ -1055,6 +1055,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #mxtip::after { content: ''; position: absolute; left: calc(var(--ax, 50%) - 5px); bottom: -5.5px; width: 9px; height: 9px; box-sizing: border-box; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; rotate: 45deg; }
   #mxtip.below::after { top: -5.5px; bottom: auto; border-width: 1px 0 0 1px; }
   #mxtip.on::after { transition: left .2s var(--ease-out); }
+  #mxtip .mts[data-state="run"] { --prc: var(--working-ink); } #mxtip .mts[data-state="quiet"] { --prc: var(--working-ink); } #mxtip .mts[data-state="wait"] { --prc: var(--watch); } #mxtip .mts[data-state="done"] { --prc: var(--idle); } #mxtip .mts[data-state="fail"] { --prc: var(--needs); }
+  #mxtip .agi { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 9px; margin: 0; font-size: var(--fs-xs); }
+  #mxtip .agi dt { color: var(--muted); } #mxtip .agi dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  #mxtip .agp { margin: 0; padding-top: 7px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
   #mxtip .mth { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); color: var(--muted); }
   #mxtip .mtr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #mxtip .mts { --prc: var(--muted); margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 7px; border-radius: 999px; font-weight: 600; line-height: 1.2;
@@ -6250,17 +6254,19 @@ const toolName = n => {
   }
   // The pointer on a square or the number (2026-11-01, later): its PR's card after MXT_IN, at once from one square to
   // the next while a card is up; off them MXT_OUT, it goes. The square it is for is lifted (.hot) — the number's too.
-  const MX_AT = '.card .tmx [data-url]', MXT_IN = 120, MXT_OUT = 140, MXT_W = 290;
+  const MX_AT = '.card .tmx [data-url], .card .agr[data-ag]', MXT_IN = 120, MXT_OUT = 140, MXT_W = 290;
   const mxt = { el: null, a: null, sq: null, timer: 0, out: 0 };
   function mxtShow() {
     const a = mxt.a, c = a?.isConnected && a.closest('#slist > .card'), s = c && state.sessions.get(c.dataset.id);
-    const pr = s?.prs?.find(p => p.url === a.dataset.url); if (!pr) return mxtHide();
+    const ag = a?.dataset.ag && s?.agentRows?.find(r => r.id === a.dataset.ag);   // a row of its agents': that one's card (2026-11-02)
+    const pr = !ag && s?.prs?.find(p => p.url === a.dataset.url); if (!pr && !ag) return mxtHide();
     rpopHide(); restOff();
     const el = mxt.el ||= Object.assign(document.createElement('div'), { id: 'mxtip', role: 'tooltip' });
     if (!el.isConnected) document.body.append(el);
-    const html = mxCardHtml(pr, prGroups(s.prs).find(g => g.includes(pr)) || [pr]);
+    if (ag) agInfoSoon(s, ag, a);
+    const html = ag ? agCardHtml(ag, s) : mxCardHtml(pr, prGroups(s.prs).find(g => g.includes(pr)) || [pr]);
     if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
-    const sq = a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
+    const sq = ag ? null : a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
     if (mxt.sq !== sq) { mxt.sq?.classList.remove('hot'); sq?.classList.add('hot'); mxt.sq = sq; }
     const r = a.getBoundingClientRect(), list = $('#sessions').getBoundingClientRect(), w = Math.min(MXT_W, list.width - 12);
     el.style.setProperty('--w', `${w}px`);
@@ -6393,6 +6399,39 @@ const toolName = n => {
     if (r.st === 'run') return agQuiet(r) ? `quiet ${agDur(Date.now() - Date.parse(r.lastAt))}` : `<span class="vh">at work, </span>${agDur(Date.now() - Date.parse(r.at))}`;
     if (r.st === 'done') return `<span class="vh">done, </span>${agDur(Date.parse(r.end) - Date.parse(r.at))}`;   // frozen at how long it took
     return AG_SAID[r.st] || '';
+  }
+  // A row under the pointer (2026-11-02): one card, the PR card's place and manner — what it was asked in full, its kind, model
+  // and worktree, its totals, asked of the server when wanted (a transcript is read only when looked at).
+  const agInfo = new Map(), AG_INFO_MS = 4000;
+  function agInfoSoon(s, r, a) {
+    const k = `${s.id}:${r.id}`, had = agInfo.get(k); if (had && performance.now() - had.at < AG_INFO_MS) return;
+    agInfo.set(k, { at: performance.now(), d: had?.d || null });
+    api('GET', `/api/sessions/${s.id}/agents/${r.id}`).then(d => { agInfo.set(k, { at: performance.now(), d }); if (mxt.a === a) mxtShow(); }).catch(() => {});
+    if (agInfo.size > 60) agInfo.delete(agInfo.keys().next().value);
+  }
+  const agTok = n => n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
+  function agCardHtml(r, s) {
+    const d = agInfo.get(`${s.id}:${r.id}`)?.d, st = agQuiet(r) ? 'quiet' : r.st, ended = !!r.end;
+    const said = st === 'run' ? `at work ${agDur(Date.now() - Date.parse(r.at))}` : st === 'quiet' ? `quiet ${agDur(Date.now() - Date.parse(r.lastAt))}` : st === 'done' ? `done in ${agDur(Date.parse(r.end) - Date.parse(r.at))}` : AG_SAID[st] || '';
+    const kv = [r.kind && ['Kind', r.kind], d?.model && ['Model', d.model], r.branch && ['Worktree', r.branch], d && [ended ? 'In all' : 'So far', `${d.tools} tool call${d.tools === 1 ? '' : 's'}${d.tokens ? ` · ${agTok(d.tokens)} tokens` : ''}`]].filter(Boolean);
+    return `<div class="mth"><span class="mtr">${esc(r.name || (r.mate ? 'A teammate' : 'An agent'))}</span><span class="mts" data-state="${esc(st)}">${esc(said)}</span></div>`
+      + `<div class="mtt">${esc(r.asked || 'What it was asked is on its way…')}</div>`
+      + (r.st === 'fail' && r.why ? `<div class="mtm"><span>${esc(r.why)}</span></div>` : '')
+      + (kv.length ? `<dl class="agi">${kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : '')
+      + (d?.prompt && d.prompt !== r.asked ? `<p class="agp">${esc(d.prompt.slice(0, 400))}</p>` : '');
+  }
+  /** A row's menu (2026-11-02). Stopping one is asked of Claude, typed into its drawer with ⏎ left to you: the board drives a chat only through Claude. */
+  function agMenu(s, r, at) {
+    const live = r.st === 'run' || r.st === 'wait', drawer = !!drawerOf(s);
+    return [
+      { t: 'Open its transcript', fn: () => agOpen(s, r) },
+      r.tree ? { t: 'Open its worktree', sub: r.branch || r.tree, fn: () => { if (state.current !== s.id) openSession(s.id); openEditorAt(s, r.tree, r.branch || null, at); } } : { t: 'Open its worktree', sub: 'it works in the chat\u2019s own folder', off: true },
+      { t: 'Copy what it was asked', fn: async () => { let text = r.asked || ''; try { text = (await api('GET', `/api/sessions/${s.id}/agents/${r.id}`)).prompt || text; } catch {} const ok = await copyText(text); note(at, ok ? 'Copied' : 'Could not copy it', !ok); } },
+      { hr: true },
+      !live ? { t: 'Ask Claude to stop it', sub: 'it has ended', off: true }
+        : !drawer ? { t: 'Ask Claude to stop it', sub: s.alive ? 'its chat runs outside the board, out of its reach' : 'no claude runs on its chat', off: true }
+        : { t: 'Ask Claude to stop it', sub: 'typed into the chat\u2019s drawer, ⏎ is yours', fn: async () => { if (state.current !== s.id) await openSession(s.id); showChat(s); syncTerm(s); const ok = await drawerType(s, `Stop the agent “${r.name || r.asked || r.id}”.`, false); if (!ok) note(at, 'Its drawer did not answer', true); } },
+    ];
   }
   const AG_CARET = '<svg class="agcar" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.200 3.700 5 6.500l2.800-2.800"/></svg>';
   const agItem = (r, s, thin) => ({ k: r.id, ag: r.id, st: agQuiet(r) ? 'quiet' : r.st, a: agAsked(r), t: agLabel(r), n: thin ? '' : agNow(r, s) });
@@ -8589,6 +8628,8 @@ const toolName = n => {
       const s = state.sessions.get(state.current), url = tvc.dataset.url, sc = s && tvScope(s, tvModel(s)); if (!s) return null;
       return [{ t: sc.solo === url ? 'Everything in play again' : 'Only this one', fn: () => tvSolo(s, url) }, { t: sc.on.has(url) ? 'Leave it out' : 'Bring it in', fn: () => tvToggle(s, url) }, { hr: true }, { t: 'Open it on GitHub', fn: () => openExternal(url, { s }) }];
     }
+    const agRow = e.target.closest('.agr[data-ag]');
+    if (agRow) { const s = state.sessions.get(agRow.closest('.card, .ot')?.dataset.id || state.current), r = s?.agentRows?.find(x => x.id === agRow.dataset.ag); return r ? agMenu(s, r, agRow) : null; }
     const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .tmx [data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
