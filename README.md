@@ -14,7 +14,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/shots/board-dark.webp">
-  <img src="docs/shots/board-light.webp" alt="The board: chat cards coloured by project on the left, in lanes — asking you, clauding, ready — and the open chat on the right">
+  <img src="docs/shots/board-light.webp" alt="The board: the chats on the left, each tagged with its project, in lanes — asking you, clauding, watching, ready — and the open chat on the right">
 </picture>
 
 Each chat is a card, sorted by who owes whom. Open one and everything it needs is beside it — Claude Code itself, a
@@ -40,10 +40,10 @@ couple of minutes. Updating, removing, the optional extras and every setting: **
 
 ## 🚦 One board for every chat
 
-Every chat on the Mac — run from the board, iTerm or VS Code — is a card in its project's colour, in lanes: **asking
-you** (a red ping and the question on the card), **clauding** (a light runs round it, one per sub-agent), then the
-rest by their last word. A chat that lands moves up to Ready; tick it ✓ when it's done and it folds away until
-something new happens in it. The Dock badge and a notification say when one needs you.
+Every chat on the Mac — run from the board, iTerm or VS Code — is a card tagged in its project's colour, in lanes:
+**asking you** (a red ping and the question on the card), **clauding** (a light runs round it, one per sub-agent),
+then the rest by their last word. A chat that lands moves up to Ready; tick it ✓ when it's done and it folds away
+until something new happens in it. The Dock badge and a notification say when one needs you.
 
 <img src="docs/shots/clip-board.webp" alt="A chat lands and moves from Clauding to Ready, a chat is ticked done and folds away, and the one asking a question is opened">
 

@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-02, later — the README's pictures on the sidebar
+
+Ricardo: *"we should update the readme screenshots"*
+
+* **Every still and clip re-shot** on the made-up board as it stands: the sidebar in Ring on its frame, Watching a lane,
+  a card open to its three agents, the PRs as the matrix. The last ones were Tiles.
+* **`readme-shots.mjs` takes the list from its top**: opening the chat scrolls its card into view, and with the agents'
+  card the list is taller than the window, so the asking card went under its lane's head. **The home from its top**
+  too: it takes `#log`'s place, which was scrolled to the chat's end.
+* **The clips are near-lossless** (`img2webp -near_lossless 60`, was `-lossy -q 68`): a lossy frame keeps the pixels
+  before it wherever the new ones are within a few levels (libwebp's anim encoder; 6 at q 68, 3 at q 90), so the
+  launcher closed over the flat dark chat stayed on as a ghost of its rows (the old clips, over Tiles' washed chat,
+  showed only a few faint marks).
+  Near-lossless is lossy's size (the launcher's clip 799 KB against 715), every pixel within a level or two.
+* **The PR-status clip unfolds the rows by the caret**: `#prToggle`'s middle is a chip now, and a chip opens its PR.
+* The README's words follow the pictures: a card is *tagged* in its project's colour, and Watching is a lane.
+
 ## Decisions of 2026-11-02 — a card opens to its agents (round XX)
 
 Ricardo: *"when there are agents working on a chat, we should expand de card to show the agents, what their are doing,

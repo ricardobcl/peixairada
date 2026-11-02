@@ -108,8 +108,11 @@ export default async function (ctx) {
     }
     kept.at(-1).ms = HOLD;
     const dir = join(work, name); mkdirSync(dir, { recursive: true });
-    const args = ['-loop', '0'];   // -min_size and -m 6 took a minute or more a clip for a tenth less
-    kept.forEach((f, i) => { const file = join(dir, `${String(i).padStart(4, '0')}.png`); writeFileSync(file, Buffer.from(f.data, 'base64')); args.push('-d', String(Math.max(20, Math.round(f.ms))), '-lossy', '-q', '68', '-m', '4', file); });
+    // near-lossless (2026-11-02): a lossy frame keeps the frame before's pixels wherever the new ones are within a few
+    // levels of them, so a dialog closed over the flat dark chat stayed on as a ghost; near-lossless is about lossy's
+    // size, every pixel within a level or two. -min_size and -m 6 took a minute or more a clip for a tenth less
+    const args = ['-loop', '0'];
+    kept.forEach((f, i) => { const file = join(dir, `${String(i).padStart(4, '0')}.png`); writeFileSync(file, Buffer.from(f.data, 'base64')); args.push('-d', String(Math.max(20, Math.round(f.ms))), '-near_lossless', '60', '-m', '4', file); });
     const out = join(OUT, `clip-${name}.webp`);
     writeFileSync(join(dir, 'args'), [...args, '-o', out].join('\n'));
     execFileSync(IMG2WEBP, [join(dir, 'args')], { stdio: 'ignore' });
@@ -234,7 +237,7 @@ export default async function (ctx) {
       await start(chat('Bump Node to 22').id);
       await record('pr-status', async () => {
         await sleep(600);
-        await click('#prToggle'); await sleep(1500);
+        await click('#prToggle > :is(.hcaret, .hpr.more):not([hidden])'); await sleep(1500);   // the caret: a chip opens its PR
         // GitHub moves: #92's CI goes green, polled within seconds here
         PRS['acme/infra#92'].commits = { nodes: [{ commit: { statusCheckRollup: { state: 'SUCCESS' } } }] };
         writeFileSync(prsFile, JSON.stringify(PRS));

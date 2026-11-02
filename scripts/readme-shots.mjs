@@ -15,6 +15,9 @@ export default async function (ctx) {
     const f = join(OUT, `${name}.webp`); writeFileSync(f, Buffer.from(r.result.data, 'base64')); shots.push(f); ctx.log(`→ ${f}`);
   };
   const { theme, scale, rect, grid, board } = kit(ctx);
+  // the list from its top: opening the chat scrolls its card into view, which tucks the first card under its lane's
+  // head (2026-11-02)
+  const top = async () => { await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`); await ctx.settle(); };
   const VSC = `127.0.0.1:${VS.port}`;
   try {
     mkdirSync(OUT, { recursive: true });
@@ -24,6 +27,7 @@ export default async function (ctx) {
     await board();
     await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.done.shut')`, { what: 'Done folded into its lane', timeout: 15000 });
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, { what: 'the three sub-agents', timeout: 20000 });
+    await top();
 
     // 1 · the board: a project's chats, the chat, both themes
     for (const dark of [true, false]) { await theme(dark); await snap(`board-${dark ? 'dark' : 'light'}`); }
@@ -61,15 +65,18 @@ export default async function (ctx) {
       ['look-latte', { theme: 'catppuccin' }, false],
     ];
     for (const [name, prefs, dark] of looks) {
-      await theme(dark); await board(prefs);
+      await theme(dark); await board(prefs); await top();
       await ctx.sleep(500); await snap(name);
     }
-    await scale(2); await theme(true); await board({ theme: 'own' });
+    await scale(2); await theme(true); await board({ theme: 'own' }); await top();
 
     // 7 · home, ⌥⌘0: the board at a glance and the day
     await ctx.key('Digit0'); await ctx.waitFor(`document.querySelector('#home .hh')`, { what: 'the home' });
+    // the day drawn, and the home from its top: it takes #log's place, scrolled to the chat's end
+    await ctx.waitFor(`document.querySelector('#home .hgrid')`, { what: 'the day' });
+    await ctx.evaluate(`document.querySelector('#log').scrollTop = 0`);
     await ctx.sleep(800); await snap('home-dark');
-    await board();
+    await board(); await top();
 
     // 8 · in the chat: Claude in the drawer on the left; a zsh, the PR and VS Code Web on tabs on the right
     await ctx.key('KeyT'); await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('shell:'))`, { what: 'the zsh tab', timeout: 15000 });
