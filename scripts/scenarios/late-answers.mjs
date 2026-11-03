@@ -14,7 +14,7 @@ export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPat
 export default async function (ctx) {
   const out = {}, [two, plain] = ctx.fixture.chats;   // the first names repo-a#12 and #13
   const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
-  await ctx.waitFor(`${card(two.id)}?.querySelectorAll('.cpr[data-url]').length === 2`, { timeout: 10_000, what: 'the card with its two PRs' });
+  await ctx.waitFor(`${card(two.id)}?.querySelectorAll('.mxs[data-url]').length === 2`, { timeout: 10_000, what: 'the card with its two PRs' });
   await ctx.openChat(plain.id);
   // the first chat's transcript held on its way until let go; a page opened in a browser is window.open, counted
   await ctx.evaluate(`(() => {

@@ -20,7 +20,7 @@ writeFileSync(file, JSON.stringify({ 'acme/moved#12': {
   reviews: { nodes: [{ author: user('me'), state: 'CHANGES_REQUESTED', submittedAt: ago(60) }] }, comments: { nodes: [] }, pushes: { nodes: [{ __typename: 'PullRequestCommit', commit: { committedDate: ago(30), author: { user: { login: 'ana' } } } }] }, asks: { nodes: [] },
 } }));
 
-export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact', cardsEven: true, prChips: 'matrix', lanesShut: [] },
+export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact', cardsEven: true, lanesShut: [] },
   env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' } };
 
 export default async function (ctx) {

@@ -1,4 +1,4 @@
-// A card's PRs as a matrix (2026-11-01, round XVI's M5), the board's default: Settings › Chat list › A card's PRs. GitHub
+// A card's PRs as a matrix (2026-11-01, round XVI's M5; the one way since 2026-11-03). GitHub
 // is the fake gh. Four chats: one on a stack of three PRs in one repo (#11 › #12 › #13, each based on the one before) and
 // a merged PR elsewhere that GitHub updated last, #12 at your move; one on a lone open PR; one on a merged, a closed and
 // an open PR named in another order than GitHub updated them; one on thirty. What this checks: a square a PR in its
@@ -9,8 +9,7 @@
 // system's, but a square's card under the pointer (its repo and state, number and title, CI, place in the stack, whose
 // move), coming on a spring with the square lifted, going from square to square, the number's its PR's; a square's
 // click (its PR) and its right-click menu; the pointer at rest on the card bringing up every PR with its title, a
-// stack's rows together — not at once, and gone for a square's card. Then the setting: Matrix and All, the faces' box
-// off beside the matrix, the row off with the PRs left off the cards; and a board saved on round XII's *One* on the matrix.
+// stack's rows together — not at once, and gone for a square's card. And none with the PRs left off the cards.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,7 +35,7 @@ writeFileSync(file, JSON.stringify({
   ...Object.fromEntries(MANY.map(n => [`acme/app#${n}`, pr({ state: n % 7 ? 'OPEN' : 'MERGED', title: `Part ${n}`, baseRefName: 'main', headRefName: `part-${n}`, createdAt: ago(2000), updatedAt: ago(n === 70 ? 2 : 1000 - n) })])),
 }));
 
-export const meta = { server: true, fixture: 'auto', prefs: { prChips: 'matrix', sessionsWidth: 320 },
+export const meta = { server: true, fixture: 'auto', prefs: { sessionsWidth: 320 },
   env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
 
 const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
@@ -69,7 +68,7 @@ export default async function (ctx) {
       box: g && { w: g.clientWidth, sw: g.scrollWidth, x: Math.round(g.scrollLeft), ofl: g.classList.contains('ofl'), ofr: g.classList.contains('ofr'), mask: cs(g).maskImage || cs(g).webkitMaskImage },
       leadIn: lead && g && (r => (b => r.left >= b.left && r.right <= b.right)(rect(g)))(rect(lead)),
       nx: n && Math.round(rect(n).left), repo: (r => r && { w: r.clientWidth, sw: r.scrollWidth })(c.querySelector('.top .repo')),
-      faces: !!c.querySelector('.top .faces'), chips: c.querySelectorAll('.top .cpr').length, shown: m ? rect(m).width > 0 : false };
+      shown: m ? rect(m).width > 0 : false };
   })(${card(id)}))`).then(JSON.parse);
   const accent = await ctx.evaluate(`(e => { e.style.color = 'var(--mxyou)'; document.querySelector('#slist .tmx').append(e); const c = getComputedStyle(e).color; e.remove(); return c; })(document.createElement('i'))`);   // the accent towards the ink (--mxyou)
   const ink = await ctx.evaluate(`getComputedStyle(document.body).color`);
@@ -81,7 +80,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual([out.stack.num, out.stack.you, out.stack.ink], ['#12', true, accent], 'the number follows your move, in the accent — not #5, which GitHub updated last');
   ctx.assert.deepEqual([out.stack.round, out.stack.tips], [[], 0], 'nothing round any square, the numbered one either; no tooltip of the system’s');
   ctx.assert.ok(/rgba\(0, 0, 0, 0\)|transparent/.test(out.stack.draft.bg) && /inset/.test(out.stack.draft.shadow), `a draft hollow: ${JSON.stringify(out.stack.draft)}`);
-  ctx.assert.deepEqual([out.stack.size, out.stack.faces, out.stack.chips], [9, false, 0], '9 px squares, no faces, no chips');
+  ctx.assert.equal(out.stack.size, 9, '9 px squares');
   out.lone = await look(lone.id);
   ctx.assert.deepEqual([out.lone.num, out.lone.you, out.lone.ink, out.lone.squares], ['#21', false, ink, ['#21:open*']], 'a lone PR: its number in ink');
   out.upd = await look(upd.id);
@@ -161,32 +160,15 @@ export default async function (ctx) {
   await ctx.waitFor(`!document.querySelector('#rpop.on') && document.querySelector('#mxtip.on')`, { what: 'a square’s card in its place' });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
 
-  // Settings › Chat list: Matrix, no faces on the card there; All the stack again; with no PRs on cards, off and why
+  // with no PRs on cards, the matrix hidden
   await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
-  const row = `JSON.stringify({ picked: document.querySelector('#prChipsPick [aria-checked="true"]')?.dataset.pc, words: [...document.querySelectorAll('#prChipsPick [data-pc]')].map(b => b.textContent), say: document.querySelector('#prChipsSay').textContent,
-    off: document.querySelector('#prChipsRow').classList.contains('off'), faces: !document.querySelector('#cardLab [data-part="faces"]') })`;
-  out.row = await ctx.evaluate(row).then(JSON.parse);
-  ctx.assert.deepEqual(out.row, { picked: 'matrix', words: ['Matrix', 'All'], say: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', off: false, faces: true }, 'Matrix picked, no faces on the card in the pane');
-  await ctx.evaluate(`document.querySelector('#prChipsPick [data-pc="all"]').click()`);
-  await ctx.waitFor(`${card(stack.id)}?.querySelectorAll('.tprs:not(.ttks) > .cpr').length === 4 && !${card(stack.id)}.querySelector('.tmx')`, { what: 'every PR stacked' });
-  ctx.assert.equal(await ctx.evaluate(`JSON.parse(localStorage.getItem('peixairada-prefs')).prChips`), 'all', 'kept in the prefs');
-  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#cardLab [data-part="faces"]')`), true, 'the faces there with every PR');
-  await ctx.evaluate(`document.querySelector('#prChipsPick [data-pc="matrix"]').click()`);
-  await ctx.waitFor(`${card(stack.id)}?.querySelector('.tmx .mxs') && !${card(stack.id)}.querySelector('.tprs:not(.ttks)')`, { what: 'the matrix again' });
+  await ctx.waitFor(`document.querySelector('#cardLab [data-part="prs"]')`, { what: 'the card in the pane' });
   await ctx.evaluate(`document.querySelector('#cardLab [data-part="prs"]').click()`);
-  out.hidden = await ctx.evaluate(row).then(JSON.parse);
-  ctx.assert.deepEqual([out.hidden.off, out.hidden.say], [true, 'Only with PRs shown on a card'], 'no PRs on cards: the row off, and why');
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prChipsPick [data-pc="all"]').disabled`), true, 'its buttons too');
   await ctx.evaluate(`document.querySelector('#settings').close()`);
   await ctx.settle();
   ctx.assert.equal((await look(stack.id)).shown, false, 'the matrix hidden with the PRs');
 
-  // a board saved on round XII's One is on the matrix
-  await ctx.evaluate(`(k => { const p = JSON.parse(localStorage.getItem(k)); p.prChips = 'one'; p.cardParts = ['prs', 'rounds', 'tickets', 'faces']; localStorage.setItem(k, JSON.stringify(p)); })('peixairada-prefs')`);
-  await ctx.reload();
-  await ctx.waitFor(`${card(stack.id)}?.querySelector('.tmx .mxn.you')`, { what: 'the matrix after a reload on One' });
-  ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().prChips`), 'matrix', 'One is the matrix now');
   return out;
 }

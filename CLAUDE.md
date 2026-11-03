@@ -385,7 +385,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **A PR's CI is said in the chat header only** (2026-10-09): `statusCheckRollup` in `PR_FIELDS` → `prChecks` →
   `checks` (pass · fail · pending) → `.ck` on `.hpr`, for open and draft PRs. **A change is seen** (`prMoments`, keyed
   by `data-url` and place, `prShown`): a first sight plays nothing. → `pr-checks.mjs`.
-* **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card a stack (`cardTickets`, `chipStack`,
+* **A chat's Jira tickets are chips** (2026-10-08): on the card a stack that fans out (`cardTickets`, `chipStack`, `fanWheel`,
   `.tprs.ttks`, `.ctk[data-cat]`), the branch's first; in the header `.hpr.tk` after the PRs (`fitHeadPrs` folds them
   first), `.prrow.tk` in `#prlist`. Setup's Jira section (`jiraSetup`): site and email into the setup file, the token
   write-only into the keychain (`PUT /api/jira/token`). → `jira-tickets.mjs`.
@@ -400,21 +400,17 @@ npm run map                         # rewrite the section maps at the top of ser
   dragging the foot sizes it (`prefs.prsHeight`). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
-  `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
+  `.mxs`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
   ticked — **a card counts nothing**; hovered, the move's age, `.mt`: `turn.at`, else `movedAt`), the header's
   (`headMove`, `.hmove`). A new tag slides in (`moveMoments`, `#shead[data-sid]`). **Each PR's round** (2026-10-15;
   `roundOf`): `.prround` under its `#prlist` row (the round before, Let go · Ask Claude · Undo; `.why` hidden); on the card each PR in play (`pipsHtml`, `pchip` in `prHue`; not at same height),
   `answeredHtml` for `ANSWERED_MS`, `#rpop` beside it with the pointer at rest on the card (2026-11-01, later; `REST_MS`,
   not on a part with a tooltip of its own; a pane page there, under; a PR-titled chat's `titleTip` its first line). → `pr-rounds.mjs`.
-* **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
-  chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
-  a non-passive listener added on `pointerover`). → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
-  `CARD_FACES`, spread under the pointer). **That is *All*; the default is the
-  matrix** (2026-11-01, Settings › Chat list › A card's PRs, `prefs.prChips`; `cardMatrix`, `.tmx`, markup by the pref): a
+* **A card's PRs are a matrix, ending its top row** (2026-11-01, round XVI; the one way 2026-11-03; `cardMatrix`, `.tmx`): a
   square a PR in stack order (`prGroups`, `prChain` on `pr.refs`), the number your move's, else the newest `pr.updated`
   (`mxLead`); one size, nothing round a square; past the row's room `.mxg` scrolls (`mxWheel`; `fadeOver` brings the
   numbered one into sight); no tooltips: a square's or the number's PR card (`#mxtip`, `mxtShow`, `mxCardHtml`), on a
-  spring, the square lifted (`.hot`); `#rpop` lists every PR, no faces. → `card-pr-matrix.mjs`.
+  spring, the square lifted (`.hot`); `#rpop` lists every PR. → `card-pr-matrix.mjs`.
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
   GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving
@@ -949,7 +945,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written. It, and a folder's colour, read the setup by the
   shown name (`projCfg`) — never a map in the code.
 * **The small controls' hover ease is an `:is()` with ids in it, so it weighs an id**: a `transition` of its own on a
-  `.cpr`, `.btn`, `.act`… needs an id in its selector, or it is the ease's, silently — ask `getAnimations()` mid-move.
+  `.btn`, `.act`… needs an id in its selector, or it is the ease's, silently — ask `getAnimations()` mid-move.
 * **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`, `.note`
   is `note()`'s popup.
 * **No in-page toasts**: alerts are the badge plus a system notification (the app sets `NOTIFY=off` on its own
@@ -996,7 +992,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `gl` a software WebGL, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen, every page in the board, every PR on a card**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen, every page in the board**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up on any way out (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log

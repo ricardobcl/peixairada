@@ -59,7 +59,7 @@ export default async function (ctx) {
     const [busy, asking, onPr] = chats;
     await ctx.evaluate(`window.__chroma = ${chroma.toString()}`);
     await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${busy.id}"]')?.style.getPropertyValue('--repo') === '${COLOR}'`, { what: "the project's colour, from the setup", timeout: 10000 });
-    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${onPr.id}"] .cpr[data-state="open"]') && document.querySelector('#slist > .card[data-id="${onPr.id}"] .faces img')`, { what: 'the PR answered, with its face', timeout: 20000 });
+    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${onPr.id}"] .mxs[data-state="open"]')`, { what: 'the PR answered', timeout: 20000 });
     await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${asking.id}"]')?.classList.contains('asking')`, { what: 'the question on its card' });
     await ctx.openChat(onPr.id);
     await ctx.waitFor(`document.querySelector('#log .hljs-keyword')`, { what: 'the code, highlighted' });
@@ -75,10 +75,10 @@ export default async function (ctx) {
         card: __chroma(cs(card(${JSON.stringify(asking.id)}).querySelector('.top .repo'), 'background-color')),   // a row's project tag
         open: __chroma(cs(plain, 'background-color')), head: __chroma(cs(document.querySelector('.shead'), '--hbg-eased')),   // the header's own eased copy (2026-10-13)
         lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
-        pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'color')),   // the sidebar's chips a tint, their ink the state's
+        pr: __chroma(cs(plain.querySelector('.mxs[data-state="open"]'), 'background-color')), num: __chroma(cs(plain.querySelector('.mxn'), 'color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'color')),   // the sidebar's chips a tint, their ink the state's
         dots: [...document.querySelectorAll('#slist > .gsep.lane.working > i')].map(i => __chroma(cs(i, 'border-top-color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
-        face: cs(plain.querySelector('.faces img'), 'filter'), you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),
+        you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),
       };
     })())`).then(JSON.parse);
 
@@ -89,13 +89,13 @@ export default async function (ctx) {
     ctx.assert.equal(out.full.tinted, true, 'the chat header is tinted');
     for (const k of ['card', 'open', 'head', 'lit', 'hpr']) ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
     ctx.assert.ok(out.full.dots.some(c => c > 40) && out.full.code.every(c => c > 40), `the lanes' marks and the code in colour: ${JSON.stringify(out.full)}`);
-    ctx.assert.equal(out.full.face, 'none', 'a face in its colours');
-    ctx.assert.deepEqual([out.full.pr, out.full.you], [0, 0], 'on the open row, its project’s colour solid, the chip and your mark white (2026-11-01)');
+    ctx.assert.deepEqual([out.full.num, out.full.you], [0, 0], 'on the open row, its project’s colour solid, the number and your mark white (2026-11-01)');
+    ctx.assert.ok(out.full.pr > 40, 'its square its state\'s colour there too');
     await ctx.shot('full');
-    // …and on the row when another chat is open: the chip its state's green, your mark its colour
+    // …and on the row when another chat is open: the square its state's green, your mark its colour
     await ctx.openChat(busy.id); await ctx.settle();
     out.rest = await look();
-    ctx.assert.ok(out.rest.pr > 40 && out.rest.you > 40, `the PR chip and your mark in their colours off the open row: ${JSON.stringify(out.rest)}`);
+    ctx.assert.ok(out.rest.pr > 40 && out.rest.you > 40, `the PR's square and your mark in their colours off the open row: ${JSON.stringify(out.rest)}`);
     await ctx.openChat(onPr.id); await ctx.waitFor(`document.querySelector('#log .hljs-keyword')`, { what: 'the code again' }); await ctx.settle();
 
     // 2 · the setup is where a colour is set: its square shows it

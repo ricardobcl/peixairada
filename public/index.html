@@ -717,7 +717,7 @@
   /* A press is felt (2026-10-11): the card dips to 99 % while held and springs back — the scale property, so the
      FLIP's transform and the ring's are left alone — but not while the press is on a control inside it, which dips
      itself. */
-  .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { scale: .99; transition-duration: .06s; transition-timing-function: ease-out; }
+  .card:active:not(:has(:is(button, a, .ctk):active)) { scale: .99; transition-duration: .06s; transition-timing-function: ease-out; }
   /* Hover is that light — the edge's glow stays as it is at rest (it grew across the card until 2026-10-09); the open
      card and the magnifier's mark keep theirs. */
   .card:hover { --spot: 55%; }
@@ -865,7 +865,7 @@
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
   .card.done { filter: saturate(.45); } .card.done :is(.title, .snip) { color: var(--muted); }   /* dimmed by colour, not opacity (2026-10-12: its snippet read 2.15 to 1) */
   /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
-  .card.forgood :is(.tprs:not(.ttks), .tmx) { filter: grayscale(1); }
+  .card.forgood .tmx { filter: grayscale(1); }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   #slist > .leaving { pointer-events: none; overflow: hidden; display: flex; flex-direction: column; gap: inherit; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it — or a lane's, all in one (foldRun, 2026-11-01), laid out as they stood */
   #slist > .leaving > * { flex: none; }   /* never squashed as the box closes */
@@ -1011,8 +1011,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* Only needs-input gets a status line: the dot says stale / working / your turn, this is the one
      state worth a word. Entrypoint, session name and branch live in the chat header. */
   .card .state { font-size: var(--fs-xs); font-weight: 600; margin-top: 4px; }
-  /* the PRs it mentions: number and GitHub's state colour, nothing more; a click opens that PR. Last in the top row
-     (cardPrs), and a stack since 2026-10-04: the first on top at the row's end, three under it 5 px further left
+  /* A card's tickets, a stack (2026-10-04, then the PRs' too, whose matrix came later): the first on top at the row's end, three under it 5 px further left
      each, so a sliver of their colour shows, and every other one under the third; the pointer on the stack fans them
      all out side by side, the row makes room, and past the room the fan scrolls (fanWheel).
      Every chip is in the grid's first column — the right one: the grid runs right to left, so what overflows it does
@@ -1020,7 +1019,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      that spaces the fan out; a transform places each, 5 px a step of depth stacked (--d) and its own width and the
      margin a step of its place fanned (--i). The columns after it are empty, one per sliver (--under): 0fr stacked,
      nothing but their gaps, which the slivers fill; --span fanned, that many chips' width each, the gaps gone — so the
-     grid's own width follows the fan, on the same curve, and the faces and the ✓ slide with it. Its box takes what
+     grid's own width follows the fan, on the same curve, and the ✓ slides with it. Its box takes what
      the row has free (a basis of 0 and all the grow, up to its content), never less than the stack, so a tight row
      takes the folder's name down first and a fan wider than the row scrolls rather than push it. The margin's 5 px
      past the deepest sliver go under the row's gap. A lone chip has no --under: the template is invalid, the grid
@@ -1029,8 +1028,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     overflow-x: auto; scrollbar-width: none; transition: grid-template-columns .3s var(--spring), column-gap .3s var(--spring); }
   .card .top .tprs::-webkit-scrollbar { display: none; }
   /* what a card leaves out (2026-10-21, Settings › Chat list › Show on a card) */
-  #sessions[data-hide~="prs"] .card .top :is(.tprs:not(.ttks), .tmx), #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
-  #sessions[data-hide~="faces"] .card .top .faces, #sessions[data-hide~="rounds"] .card .prpips { display: none; }
+  #sessions[data-hide~="prs"] .card .top .tmx, #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
+  #sessions[data-hide~="rounds"] .card .prpips { display: none; }
   /* …and the rest of it (2026-11-03, round XXII; a click on the card in Settings › Chat list). Same height keeps a hidden move's row. */
   #sessions[data-hide~="tab"] .card .top .repo, #sessions[data-hide~="branch"] .card .top .chip.wtb, #sessions[data-hide~="where"] .card .top .chip:is(.elsewhere, .vsc), #sessions[data-hide~="watch"] .card .trow .chip.watch,
   #sessions[data-hide~="fable"] .card .trow .fable, #sessions[data-hide~="unread"] .card .trow .badge, #sessions[data-hide~="move"] .card .state:is(.prmove, .prans), #sessions[data-hide~="live"] .card .state.live:not(.agwho) { display: none; }
@@ -1042,21 +1041,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* #slist: the small controls' one hover ease (below) is an :is() with ids in it, so it weighs an id. */
   #slist .card .top .tprs > * { transition: transform .3s var(--spring), clip-path 0s .3s, color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), box-shadow var(--t-hover), scale .25s var(--spring); }
   #slist .card .top .tprs:hover > * { transition-delay: 0s; }
-  /* Stacked, a chip over another has an edge of the panel's colour on its left, as the faces are ringed; one under
+  /* Stacked, a chip over another has an edge of the panel's colour on its left, so an overlap reads; one under
      another shows its sliver and no number (a chip still in outline is see-through), and is clipped to the sliver
      and its radius for the same reason — not until it has slid back under, and no longer from the moment it fans. */
   .card .top .tprs:not(:hover) > :not(:last-child) { box-shadow: -1px 0 0 var(--panel); }
   .card .top .tprs > :not(:first-child) { clip-path: inset(0 0 0 -2px); }
   .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; clip-path: inset(0 calc(100% - 9px) 0 -2px); }
-  /* The people in the chat's PRs, before the chips (cardFaces, 2026-09-29): GitHub's faces, each ringed in the panel's
-     colour so an overlap reads; one without a face is its initial. A pile since 2026-10-11, late afternoon (three
-     overlapping a little and a count before): the newest on top at its right end, by the chips, each other one under
-     the one before and 4 px of it showing to its left — the pointer on the pile spreads them side by side, whole. */
-  .card .top .faces { display: inline-flex; flex-direction: row-reverse; align-items: center; flex: none; padding-left: 4px; }
-  .card .top .faces > :is(img, .face) { position: relative; z-index: calc(99 - var(--i, 0)); width: 16px; height: 16px; flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); transition: margin .3s var(--spring); }
-  .card .top .faces > :not(:first-child) { margin-right: -12px; }
-  .card .top .faces:hover > :not(:first-child) { margin-right: 2px; }
-  .card .top .faces .face { display: grid; place-items: center; font-size: var(--fs-2xs); font-weight: 700; color: var(--ink); text-transform: uppercase; }
   /* The card's PRs as a matrix (2026-11-01, round XVI's M5; cardMatrix): a square a PR in its state's colour, a draft
      hollow, one GitHub has not answered for a faint grey; a stack's squares joined by a line (<s>), base first. One size
      however many, nothing round them (2026-11-01, later: 9 px). The number before them stays put while the squares
@@ -1142,16 +1132,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #people.on button:not(.on):hover { opacity: .8; }
   #people button.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
-  :is(.card .cpr, .shead .hpr) { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; color: var(--muted); background: var(--ctl); }
-  :is(.card .cpr, .shead .hpr)[data-state="open"] { --prc: var(--pr-open); }
-  :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); }
-  :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); }
-  :is(.card .cpr, .shead .hpr)[data-state="draft"] { --prc: var(--pr-draft); }
+  .shead .hpr { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; color: var(--muted); background: var(--ctl); }
+  .shead .hpr[data-state="open"] { --prc: var(--pr-open); }
+  .shead .hpr[data-state="merged"] { --prc: var(--pr-merged); }
+  .shead .hpr[data-state="closed"] { --prc: var(--pr-closed); }
+  .shead .hpr[data-state="draft"] { --prc: var(--pr-draft); }
   /* Solid in its state's colour, every chip GitHub has answered for (2026-09-28): the ink is the page's ground, the
      edge the fill. One whose state is not known yet stays an outline in the muted ink. Which one is at your move, the
      card's line and the header say by name. */
-  :is(.card .cpr, .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]) { background: var(--prc); border-color: var(--prc); color: var(--bg); }
-  .card .cpr:hover { filter: brightness(1.12); }
+  .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]) { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — on the card a stack of
      its own as the PRs are (.tprs.ttks, 2026-10-11; the first ticket and a count before), the branch's, else the last
      named, on top; in the header among the PRs, last, so they fold first */
@@ -1294,11 +1283,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .act.armed .tk { flex: none; }
   .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .cpr, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1520,8 +1509,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead .hpr .ck.now path { stroke-dasharray: 16; animation: ckdraw .26s ease-out .08s both; }
   @keyframes ckdraw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
   /* A PR merged, seen (prMoments): a sheen sweeps across its chip as it turns, once — a strip moved by a transform. */
-  :is(.shead .hpr, #slist .cpr).sheen { position: relative; overflow: hidden; }
-  :is(.shead .hpr, #slist .cpr).sheen::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 60%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .6), transparent); animation: sheen .6s ease-in-out .1s both; }
+  .shead .hpr.sheen { position: relative; overflow: hidden; }
+  .shead .hpr.sheen::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 60%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .6), transparent); animation: sheen .6s ease-in-out .1s both; }
   @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
   .shead .hpr[data-checks="fail"] { box-shadow: 0 0 0 1.5px var(--pr-closed); }   /* a failing PR is seen from across the room */
   /* ⌥ held over a PR's chip, or its row under the header (2026-10-11): an ✕, white on red, over its number — ⌥-click
@@ -2256,7 +2245,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
   /* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
      the toolbar's ground, opaque: the card's chips overlap */
-  :root[data-layout="sidebar"] :is(#slist .card .cpr, #chat .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]), :root[data-layout="sidebar"] :is(#slist .card .ctk, #chat .shead .hpr.tk)[data-cat] {
+  :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]), :root[data-layout="sidebar"] :is(#slist .card .ctk, #chat .shead .hpr.tk)[data-cat] {
     background: color-mix(in srgb, var(--prc) 12%, var(--side)); border-color: color-mix(in srgb, var(--prc) 34%, var(--side)); color: var(--prc); }
   :root[data-layout="sidebar"] #slist .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; }   /* a stack's slivers carry no number (the tint's ink beat the stack's rule, 2026-11-01) */
   :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"], .tk[data-cat]) { background: color-mix(in srgb, var(--prc) 12%, var(--panel)); border-color: color-mix(in srgb, var(--prc) 34%, var(--panel)); }
@@ -2301,7 +2290,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #sessions:not([data-hide~="age"]) #slist .card:not(:hover) .trow .time { display: inline; opacity: .8; }
   :root[data-layout="sidebar"] #sessions:not([data-hide~="tick"]) #slist .card:not(:hover) .top .act:not(.armed, .tk) { width: 22px; margin-left: 0; opacity: .7; }
   /* Every chip the toolbar's corner (2026-11-03, round XXI) */
-  :root[data-layout="sidebar"] :is(#slist .card, #chat .shead) :is(.ymove, .chip, .cpr, .ctk) { border-radius: var(--r-3); }
+  :root[data-layout="sidebar"] :is(#slist .card, #chat .shead) :is(.ymove, .chip, .ctk) { border-radius: var(--r-3); }
   /* The open row: its project's colour, solid — darkened till white reads on it (2026-10-31: the system's blue
      before) —, all on it white, a question on it too (its red line and pings say it) */
   :root[data-layout="sidebar"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
@@ -2311,7 +2300,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card.active .agl { --lift: #fff; --glow: #fff; --working-ink: #fff; --watch: #fff; --idle: #fff; --needs: #fff; --muted: rgb(255 255 255 / .84); }
   :root[data-layout="sidebar"] #slist .card.active .chip.agents { background: rgb(0 0 0 / .2); }
   :root[data-layout="sidebar"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
-  :root[data-layout="sidebar"] #slist .card.active :is(.cpr, .ctk, .top .chip.cmute) { background: rgb(255 255 255 / .2); border-color: transparent; }
+  :root[data-layout="sidebar"] #slist .card.active :is(.ctk, .top .chip.cmute) { background: rgb(255 255 255 / .2); border-color: transparent; }
   /* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
      an open PR's green on a green project's row is otherwise gone; one ground under them all, nothing round each
      (2026-11-01, later) —, a stack's line white */
@@ -2346,7 +2335,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #sessions #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs), var(--lo); }
   :root[data-layout="sidebar"] #sessions #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, var(--step)); }
   :root[data-layout="sidebar"] #sessions #slist .card.qsel:not(.active) { background: color-mix(in srgb, var(--ink) 8%, var(--step)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent), var(--lo); }
-  :root[data-layout="sidebar"] #sessions #slist .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { transition-duration: .28s, .18s, .06s; transition-timing-function: var(--spring), var(--ease-out), ease-out; }
+  :root[data-layout="sidebar"] #sessions #slist .card:active:not(:has(:is(button, a, .ctk):active)) { transition-duration: .28s, .18s, .06s; transition-timing-function: var(--spring), var(--ease-out), ease-out; }
   /* under the pointer; a question keeps still, its pings leave from where it is */
   :root[data-layout="sidebar"] #sessions #slist .card:hover { z-index: 1; box-shadow: 0 0 0 1px var(--sheet-edge), var(--hi); }
   :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover { translate: 0 -1px; }
@@ -2854,7 +2843,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .card .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, .shead .hpr, .card .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -3020,7 +3009,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .shim > .sw { display: none; }   /* no light runs across clauding */
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
     #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
-    .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
+    .shead .hpr .ck.now path, .shead .hpr.sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
     :is(#fillHint, #tvHint), :is(#fillHint, #tvHint).out { translate: -50% 0; } @starting-style { :is(#fillHint, #tvHint) { translate: -50% 0; } }   /* the fill's word and the timeline's fade, in place */
     #tour :is(.thole, .tcard) { transition: outline-color .2s; } #tour .tin.in { animation: none; }   /* the tour jumps from part to part */
@@ -3035,14 +3024,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card .top .tprs { transition: none; }   /* the stack fans at once */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
-    .card .top .faces > * { transition: none; }   /* the pile spreads at once */
     .card .tmx .mxs { transition: filter var(--t-hover); } .card .tmx .mxs:is(:hover, .hot) { scale: none; }   /* a square under the pointer brightens, no lift */
     #mxtip, #mxtip.on { transform: none; transition: opacity .12s var(--ease-out); } #mxtip.on::after { transition: none; }   /* a PR's card fades in where it stands */
     /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
     .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
-    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .ptl, .nav, .cpr, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -3172,7 +3160,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
               <label class="csub" id="laneRow"><span class="sl"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></span><input type="checkbox" class="sw" role="switch" id="cardsByLane"></label>
             </div>
           </div>
-          <div class="srow set" id="prChipsRow" data-kw="card prs pull requests chips stack matrix squares number your move updated faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="matrix">Matrix</button><button type="button" role="radio" data-pc="all">All</button></span></div>
         </div></section>
       </div>
       <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
@@ -3446,8 +3433,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
-  // a card's PRs (2026-11-01): round XII's one chip gave way to round XVI's matrix, the default — a board saved on it is on the matrix
-  if (prefs.prChips === 'one') prefs.prChips = 'matrix';
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
   // a card's parts chosen before it had agents to show (2026-11-02), and before every part was one (2026-11-03: shown, as they were)
   if (Array.isArray(prefs.cardParts)) { if (!prefs.cardPartsSeen) prefs.cardParts.push('agents'); if (prefs.cardPartsSeen < 2) prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'); }
@@ -3850,10 +3835,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // Every part of a card (2026-11-03, round XXII): shown, or left out by CSS through data-hide; the age and the ✓ at rest, which come only
   // under the pointer when left out. On this list, what the card in Settings › Chat list says of each: where it is, its name, what off means.
   const CARD_PART = { tab: ['.top .repo', 'The project'], branch: ['.top .chip.wtb', 'Its branch'], where: ['.top .chip.elsewhere', 'Running elsewhere'], tick: ['.top .act', '✓', 'only under the pointer'], tickets: ['.top .ttks', 'Tickets'],
-    prs: ['.top :is(.tmx, .tprs:not(.ttks))', 'PRs'], faces: ['.top .faces', 'Faces'], watch: ['.trow .chip.watch', 'What it watches'], age: ['.trow .time', 'Its age', 'only under the pointer'], fable: ['.trow .fable', 'The F for Fable'], unread: ['.trow .badge', 'Unread count'],
+    prs: ['.top .tmx', 'PRs'], watch: ['.trow .chip.watch', 'What it watches'], age: ['.trow .time', 'Its age', 'only under the pointer'], fable: ['.trow .fable', 'The F for Fable'], unread: ['.trow .badge', 'Unread count'],
     agents: [':is(.trow .chip.agents, .agl)', 'Agents'], live: ['.state.live', 'What it is doing'], move: ['.state.prmove', 'Your move'], rounds: ['.prpips', 'Rounds'] };
-  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick'];
-  const clab = { on: false, pc: null };
+  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick'];
+  const clab = { on: false, made: false };
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
     const v = CARD_SIZES.indexOf(prefs.cards), line = prefs.cards === 'line';
@@ -3865,13 +3850,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     // the same, so a change redraws no card
     const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => k !== 'age' && k !== 'tick');
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
-    // a card's PRs (2026-10-31; the matrix 2026-11-01): a square each, or all of them stacked with their faces — the
-    // faces' box off beside the matrix, and the row off, with why, when no PR shows; a change redraws the cards (the two
-    // are other markup: both, every PR twice)
-    const pc = prChipsOf(), noPrs = !parts.includes('prs');
-    for (const b of document.querySelectorAll('#prChipsPick [data-pc]')) { b.setAttribute('aria-checked', String(b.dataset.pc === pc)); b.disabled = noPrs; }
-    $('#prChipsRow').classList.toggle('off', noPrs);
-    $('#prChipsSay').textContent = noPrs ? 'Only with PRs shown on a card' : PRCHIPS_SAY[pc];
     $('#cardsEven').checked = !!prefs.cardsEven;
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
     for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
@@ -3884,8 +3862,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     listChanged(); fadeSoon();   // the cards changed height under the same scroll position; a PR matrix shown again is read (fadeOver)
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); renderBoard(); };   // a folded card's line is in its markup (liveSlot); only what changed is redrawn
-  const PRCHIPS_SAY = { matrix: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', all: 'Every PR, stacked, and the faces of the people on them' };
-  $('#prChipsPick').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b || b.disabled) return; prefs.prChips = b.dataset.pc; savePrefs(); applyCards(); renderBoard(); });
   // ---- a card you click (2026-11-03, round XXII's T2): Settings › Chat list holds one real card, cardHtml's on a chat of words about itself, with
   // every part on it at once, which no real card has. A click on a part leaves it out of every card, and a click on it here, faint, brings it back.
   // The board's rules for the list reach it through a copy of them that lives while the pane shows: every rule naming #slist or #sessions,
@@ -3918,8 +3894,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return c;
   }
   function cardLabDraw() {
-    const box = $('#cardLab'), pc = prChipsOf(), on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
-    if (clab.pc !== pc) { clab.pc = pc; box.firstElementChild.replaceChildren(cardLabMake()); }
+    const box = $('#cardLab'), on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
+    if (!clab.made) { clab.made = true; box.firstElementChild.replaceChildren(cardLabMake()); }
     for (const el of box.querySelectorAll('[data-part]')) {
       const k = el.dataset.part, [, name, off] = CARD_PART[k], here = on.includes(k);
       el.classList.toggle('cpoff', !here); el.setAttribute('aria-checked', String(here));
@@ -3930,7 +3906,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   }
   function cardLabShow(on) {
     if (on === clab.on) return;
-    clab.on = on; clab.pc = null;
+    clab.on = on; clab.made = false;
     $('#clabCss')?.remove();
     if (!on) { $('#cardLab').firstElementChild.replaceChildren(); return; }
     document.head.append(Object.assign(document.createElement('style'), { id: 'clabCss', textContent: clabCss() }));
@@ -4618,7 +4594,7 @@ const toolName = n => {
   }
   function prMoments() {
     moveMoments();
-    for (const el of document.querySelectorAll(':is(.shead .hpr, #slist .cpr)[data-url]:not(.pm)')) {
+    for (const el of document.querySelectorAll('.shead .hpr[data-url]:not(.pm)')) {
       el.classList.add('pm');
       const key = `${el.closest('.card')?.dataset.id || 'head'}|${el.dataset.url}`, now = { st: el.dataset.state || '', ck: el.dataset.checks || '' }, was = prShown.get(key);
       prShown.set(key, now);
@@ -6253,7 +6229,6 @@ const toolName = n => {
   const RPOP_MAX = 12;   // the matrix's rows at most (2026-11-01): a chat holds up to 40 PRs, the popover one window's height
   function rpopHtml(s) {
     if (!s.prs?.length) return '';
-    const K = { you: 0, let: 1, ok: 2, them: 3 }, rows = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r).sort((a, b) => K[a.r.k] - K[b.r.k]);   // as the marks go
     const log = prlogOf(s, () => { if (rpop.sid === s.id) rpopShow(); });
     const byUrl = new Map((s.prs || []).map(p => [p.url, p])), faces = new Map((s.prs || []).flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
     const round = (pr, r) => ({
@@ -6261,27 +6236,21 @@ const toolName = n => {
         : r.k === 'let' ? `${r.cur ? `${when(r.cur.from)} · ` : ''}let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''} · nothing since`
         : r.k === 'ok' ? `${when(r.cur.end)} · <span data-at="${esc(r.cur.end)}"></span> ago${r.cur.by ? ` · from ${r.cur.by.c === s.id ? 'this chat' : 'another chat'}` : ''} · ${esc(pr.turn.why)}` : '',
       head: r.k === 'ok' ? `you ${r.cur.by ? BY[r.cur.by.x] || 'answered' : 'answered'}` : pr.turn.why });
-    // With the matrix on the cards (2026-11-01): every PR, in the matrix's order — a stack's rows joined by a line, base
-    // first —, each its square, number and title, its state and CI, and a PR in play its round as the rows below say it;
-    // past RPOP_MAX the ones in play and the numbered one first. Else the PRs in play alone.
-    const mx = prChipsOf() === 'matrix', prs = s.prs || [];
+    // Every PR, in the matrix's order (2026-11-01) — a stack's rows joined by a line, base first —, each its square, number and
+    // title, its state and CI, and a PR in play its round as the rows below say it; past RPOP_MAX the ones in play and the
+    // numbered one first.
+    const prs = s.prs || [];
     const mxRow = pr => {
       const r = roundOf(pr), b = r && round(pr, r), ck = prCk(pr);
       return `<div class="rpr mx" data-k="${r?.k || ''}"><i class="rsq" data-state="${esc(pr.state || '')}"></i>${pchip(s, pr)}<span class="h${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>`
         + `<span class="s"><span class="st" data-state="${esc(pr.state || '')}">${esc(pr.state || 'not heard from GitHub yet')}</span>${ck ? ` · ${CK_SAID[ck]}` : ''}`
         + `${r ? `<br>${RTAG[r.k] || ''}<b class="rh">${esc(b.head)}</b>${b.sub ? ` · ${b.sub}` : ''}${r.prev ? `<br>round before: ${esc(prevWords(r.prev, s))}` : ''}` : ''}</span></div>`;
     };
-    let now;
-    if (mx) {
-      const groups = prGroups(prs), lead = mxLead(s).pr, order = groups.flat();
-      const keep = order.length > RPOP_MAX ? new Set(order.filter(p => p === lead || roundOf(p)).slice(0, RPOP_MAX)) : null;
-      if (keep) for (const p of order) { if (keep.size >= RPOP_MAX) break; keep.add(p); }
-      now = groups.map(g => { const rs = g.filter(p => !keep || keep.has(p)).map(mxRow).join(''); return g.length > 1 && rs ? `<div class="rstk">${rs}</div>` : rs; }).join('')
-        + (keep ? `<div class="rmore">+${order.length - keep.size} more — every one in the chat header’s PR list</div>` : '');
-    } else now = rows.map(({ pr, r }) => {
-      const { sub, head } = round(pr, r);
-      return `<div class="rpr" data-k="${r.k}">${pchip(s, pr)}${RTAG[r.k] || ''}<span class="h">${esc(head)}</span>${sub || r.prev ? `<span class="s">${sub}${sub && r.prev ? '<br>' : ''}${r.prev ? `round before: ${esc(prevWords(r.prev, s))}` : ''}</span>` : ''}</div>`;
-    }).join('');
+    const groups = prGroups(prs), lead = mxLead(s).pr, order = groups.flat();
+    const keep = order.length > RPOP_MAX ? new Set(order.filter(p => p === lead || roundOf(p)).slice(0, RPOP_MAX)) : null;
+    if (keep) for (const p of order) { if (keep.size >= RPOP_MAX) break; keep.add(p); }
+    const now = groups.map(g => { const rs = g.filter(p => !keep || keep.has(p)).map(mxRow).join(''); return g.length > 1 && rs ? `<div class="rstk">${rs}</div>` : rs; }).join('')
+      + (keep ? `<div class="rmore">+${order.length - keep.size} more — every one in the chat header’s PR list</div>` : '');
     // the latest: GitHub's events, the chat's own, the board's, and your words naming a PR — the newest five, in order
     // a word of yours GitHub has and this chat's own act on the same PR within two minutes are one: the chat's says where from
     const chatAt = (log?.prs || []).flatMap(p => p.ev.filter(e => e.k === 'chat').map(e => [p.url, Date.parse(e.a)]));
@@ -6298,7 +6267,7 @@ const toolName = n => {
     }).join('');
     if (!now && !lat) return '';
     const named = s.prTitle && s.title === s.prTitle && prs.find(p => p.title === s.prTitle), own = named && (s.aiTitle || s.lastPrompt);   // titled by its PR: which, and the chat's own (titleTip's)
-    return `${named ? `<div class="rtt">titled by ${pchip(s, named)}${own ? ` · the chat’s own: <span>${esc(own)}</span>` : ''}</div>` : ''}<div class="rph">this chat’s PRs${mx ? ` · ${prs.length}` : ''}</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">${mx ? 'click a square: its PR · ' : ''}click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
+    return `${named ? `<div class="rtt">titled by ${pchip(s, named)}${own ? ` · the chat’s own: <span>${esc(own)}</span>` : ''}</div>` : ''}<div class="rph">this chat’s PRs · ${prs.length}</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">click a square: its PR · click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
   }
   const rpop = { el: null, sid: null, anchor: null, timer: 0 };
   /** The pane's pages over the chat column, as last posted: a popover there would be under them. */
@@ -6389,33 +6358,11 @@ const toolName = n => {
     const under = Math.min(items.length - 1, STACK_SLIVERS);
     return `<span class="tprs${cls}"${under ? ` style="--under:${under};--span:${+((items.length - 1) / under).toFixed(3)}fr"` : ''}>${items.map((x, i) => chip(x, i ? ` style="--i:${i};--d:${Math.min(i, under)}"` : '')).join('')}</span>`;
   }
-  /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
-   *  `people`, you left out — as GitHub's faces, the newest first (2026-09-29): a pile since 2026-10-11, late
-   *  afternoon, the pointer spreading it, and no count — the first CARD_FACES. The tooltip says what each did, PR by PR. */
-  const CARD_FACES = 8;
   /** A person's GitHub face — their avatar, or their initial when GitHub gave none. */
   const faceHtml = (p, tip = '', attrs = '') => p.avatar
     ? `<img src="${esc(p.avatar)}" alt="${esc(p.login)}"${tip ? ` title="${esc(tip)}"` : ''}${attrs} loading="lazy" decoding="async" referrerpolicy="no-referrer">`
     : `<span class="face"${tip ? ` title="${esc(tip)}"` : ''}${attrs}>${esc(p.login[0])}</span>`;
-  function cardFaces(s) {
-    const by = new Map();
-    for (const pr of s.prs || []) for (const p of pr.people || []) {
-      const had = by.get(p.login) || { login: p.login, avatar: p.avatar, at: '', what: [] };
-      had.avatar ||= p.avatar;
-      if (String(p.at) > had.at) had.at = String(p.at);
-      had.what.push(`${pr.label.replace(/^.*?#/, '#')} ${p.did.join(', ')}`);
-      by.set(p.login, had);
-    }
-    const all = [...by.values()].sort((a, b) => b.at.localeCompare(a.at)); if (!all.length) return '';
-    return `<span class="faces">${all.slice(0, CARD_FACES).map((p, i) => faceHtml(p, `${p.login} — ${p.what.join(' · ')}`, i ? ` style="--i:${i}"` : '')).join('')}</span>`;
-  }
-  function cardPrs(s) {
-    const prs = s.prs || []; if (!prs.length) return '';
-    const top = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, STACK_SLIVERS + 1));
-    return chipStack([...prs.filter(p => top.has(p)), ...prs.filter(p => !top.has(p))], (pr, style) => `<a class="cpr"${style} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
-  }
-  /** The card's PRs as a matrix (2026-11-01, round XVI's M5; prefs.prChips 'matrix', the default — 'all' is the stack
-   *  above, the faces with it): a square a PR in its state's colour, in stack order — the PRs that chain base to head in
+  /** The card's PRs as a matrix (2026-11-01, round XVI's M5; the one way since 2026-11-03): a square a PR in its state's colour, in stack order — the PRs that chain base to head in
    *  one repo (GitHub's stacks, read off each PR's refs) together, base first, joined by a line; a PR on its own apart.
    *  Before them one number: the newest move's PR, in the accent, when one waits on you — else the one GitHub updated
    *  last, in ink. One size however many (2026-11-01, later); past the row's room they scroll in their box, the number
@@ -6425,7 +6372,6 @@ const toolName = n => {
   const MX_PX = { q: 9, c: 4, g: 4 };   // a square, a stack's line, the gap: the CSS's --q --c --g
   const MX_PAD = 3;   // the box's padding, a square's lift's room
   const CK_SAID = { pass: 'checks passed', fail: 'checks failing', pending: 'checks running' };
-  function prChipsOf() { return prefs.prChips === 'all' ? 'all' : 'matrix'; }   // a declaration: the settings ask before this line has run
   const prRepo = pr => (pr.url || '').match(/github\.com\/([^/]+\/[^/]+)\/pull\//)?.[1] || '';
   /** A PR's stack among the chat's PRs, base first: each the one whose head is the next one's base, in one repo, no fork's. */
   function prChain(prs, pr) {
@@ -6551,7 +6497,7 @@ const toolName = n => {
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     const moveLine = moveHtml(s) || answeredHtml(s);
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top${showRepo ? ' hastab' : ''}"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
+      <div class="top${showRepo ? ' hastab' : ''}"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
       <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -8013,7 +7959,7 @@ const toolName = n => {
     { id: 'split', at: () => state.current ? $('#groups') : null, title: 'Two halves, side by side or stacked',
       text: () => '<kbd>⌘2</kbd> splits the chat column side by side, <kbd>⌥⌘2</kbd> one over the other: the digit is the half, the modifier the layout, so <kbd>⌘1</kbd> <kbd>⌘2</kbd> or <kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> move between the halves, turning the split. A new tab opens in the second half; drag a tab across to move it; <kbd>⌘0</kbd> closes the other half.',
       pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
-    { id: 'prs', side: () => state.current ? 'below' : 'right', at: () => (state.current && onScreen($('#prToggle'))) || [...document.querySelectorAll('#slist > .card :is(.tprs, .tmx)')].find(t => t.querySelector(':scope > .cpr, .mxs') && onScreen(t)) || null,
+    { id: 'prs', side: () => state.current ? 'below' : 'right', at: () => (state.current && onScreen($('#prToggle'))) || [...document.querySelectorAll('#slist > .card .tmx')].find(onScreen) || null,
       title: 'PRs and tickets link themselves',
       text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A chip says its state and CI — on a card a square, its tooltip the rest; a click on the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
       pic: () => `<div class="tlink"><span class="tq">“…#12 is the base, and acme/widgets#13 depends on it”</span><span class="tto">→ <span class="tchip" data-state="open">#12</span><span class="tchip" data-state="draft">#13</span><span class="tchip tk">PAY-311</span></span></div>` },
@@ -8217,7 +8163,7 @@ const toolName = n => {
     if (agx) { e.stopPropagation(); agSwitch(card.dataset.id, agx.dataset.k === '_more' ? 'more' : 'done'); fillAgents(); return; }
     const agr = e.target.closest('.agr[data-ag]');
     if (agr) { const cs = state.sessions.get(card.dataset.id), r = cs?.agentRows?.find(x => x.id === agr.dataset.ag); if (r) { e.stopPropagation(); agOpen(cs, r); return; } }
-    const cpr = e.target.closest('.cpr, .tmx [data-url]');   // a chip, or the matrix's square or number (2026-11-01)
+    const cpr = e.target.closest('.tmx [data-url]');   // the matrix's square or number (2026-11-01)
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const ctk = e.target.closest('.ctk');
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
@@ -8899,7 +8845,7 @@ const toolName = n => {
     }
     const agRow = e.target.closest('.agr[data-ag]');
     if (agRow) { const s = state.sessions.get(agRow.closest('.card, .ot')?.dataset.id || state.current), r = s?.agentRows?.find(x => x.id === agRow.dataset.ag); return r ? agMenu(s, r, agRow) : null; }
-    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .tmx [data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
+    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.tmx [data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
       return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Copy its link', fn: () => copyText(url).then(ok => note(chip, ok ? 'Link copied' : 'Could not copy it', !ok)) }, { t: 'Its timeline', sub: 'its events and the turns about it · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, url); } }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
@@ -12703,7 +12649,7 @@ const toolName = n => {
   // letting go anywhere else or the window losing the keys puts it back. A chat that cannot be folded does not come up: a
   // note says why. The menu's Fold into… stays the way there without a pointer.
   const CD_PX = 6, CD_EDGE = 44, CD_SPEED = 18, CD_SPRING_MS = 600, CD_IN_MS = 170, CD_BACK_MS = 180;
-  const CD_CONTROLS = 'button, a, input, .act, .cpr, .ctk, .tmx, .tprs, .faces, .chip.agents, .agr, .prmove, .prpips, .peerin';
+  const CD_CONTROLS = 'button, a, input, .act, .ctk, .tmx, .tprs, .chip.agents, .agr, .prmove, .prpips, .peerin';
   const CD_HINT = 'Drop it on another chat to fold it in · esc puts it back';
   const cd = { press: null, on: false, from: null, over: null, x: 0, y: 0, ghost: null, was: null, raf: 0, lane: null, springT: 0 };
   function cdPlace(measure) {

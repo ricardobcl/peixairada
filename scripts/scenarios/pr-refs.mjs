@@ -36,11 +36,11 @@ export default async function (ctx) {
   const { chats: [c] } = makeFixture(ctx.fixture.dir, [{ cwd, prompt: 'Is #12 ready to merge?', at: new Date(now - 60_000),
     reply: 'Almost. It needs lib#7, lib #8 and #9, and other/thing#3. Also #404. Point #5 is a nit; `#13` is in code.' }]);
   const card = `document.querySelector('#slist > .card[data-id="${c.id}"]')`;
-  const chips = () => ctx.evaluate(`JSON.stringify([...(${card}?.querySelectorAll('.tprs > .cpr') || [])].map(e => [e.dataset.url, e.dataset.state, e.textContent]))`).then(JSON.parse);
+  const chips = () => ctx.evaluate(`JSON.stringify([...(${card}?.querySelectorAll('.tmx .mxs') || [])].map(e => [e.dataset.url, e.dataset.state, e.textContent]))`).then(JSON.parse);
   const want = [[pull('acme/app', 12), 'open'], [pull('acme/lib', 7), 'open'], [pull('acme/lib', 8), 'merged'], [pull('acme/lib', 9), 'closed'], [pull('other/thing', 3), 'draft']];
   const sorted = list => list.map(([u, st]) => `${u} ${st}`).sort();
 
-  await ctx.waitFor(`${card}?.querySelectorAll('.tprs > .cpr').length === ${want.length}`, { timeout: 20_000, what: 'the short references GitHub found, on the card' });
+  await ctx.waitFor(`${card}?.querySelectorAll('.tmx .mxs').length === ${want.length}`, { timeout: 20_000, what: 'the short references GitHub found, on the card' });
   await ctx.sleep(1500);   // and nothing more after: #404, #5 and #13 have been asked about (or never were) by now
   out.card = await chips();
   ctx.assert.deepEqual(sorted(out.card), sorted(want), `exactly the PRs meant, each in its state: ${JSON.stringify(out.card)}`);
@@ -56,10 +56,10 @@ export default async function (ctx) {
   ctx.assert.ok(out.rows.every(r => r[1] && r[2] && !/on its way/.test(r[2])), 'each with its state and title');
 
   appendFileSync(c.file, replyLines({ id: c.id, cwd, text: 'And #20 landed meanwhile.', at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
-  await ctx.waitFor(`!!${card}?.querySelector('.tprs > .cpr[data-url="${pull('acme/app', 20)}"][data-state="open"]')`, { timeout: 15_000, what: '#20, said live, on the card' });
+  await ctx.waitFor(`!!${card}?.querySelector('.tmx .mxs[data-url="${pull('acme/app', 20)}"][data-state="open"]')`, { timeout: 15_000, what: '#20, said live, on the card' });
   out.live = await chips();
   ctx.assert.equal(out.live.length, want.length + 1, 'one more');
-  ctx.assert.equal(out.live[0][0], pull('acme/app', 20), 'and first: the most recently said');
+  ctx.assert.equal(await ctx.evaluate(`window.peix.session('${c.id}').prs[0].url`), pull('acme/app', 20), 'and first in the chat\'s order: the most recently said');
   await ctx.settle();
   await ctx.shot('header', { x: 380, y: 0, width: 1300, height: 140 });
   return out;

@@ -23,7 +23,7 @@ export default async function (ctx) {
   const [widgets, gadgets] = chats;
   const key = k => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true }))`);
   const rows = () => ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => ({ kind: [...r.classList].find(c => ['menu', 'chat', 'project', 'pr', 'ticket', 'action', 'toggle'].includes(c)), text: r.querySelector('.n').textContent, sel: r.classList.contains('sel') }))`);
-  await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${widgets.id}"] .cpr[data-state="open"]')`, { what: 'the PR answered', timeout: 20000 });
+  await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${widgets.id}"] .mxs[data-state="open"]')`, { what: 'the PR answered', timeout: 20000 });
 
   // ⌥⌘L: the menu
   await ctx.key('KeyL');

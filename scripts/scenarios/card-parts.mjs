@@ -2,7 +2,7 @@
 // every part on it, and a click on a part leaves it out of every card: left out is hidden by CSS (`#sessions[data-hide]`), the cards' markup the
 // same, so a change redraws none. A part left out stays on that card, faint, to be clicked back. The age and the ✓ are off by default, and on keep
 // themselves at rest. What this checks: the defaults; the card in the pane is the one real card, its rules a copy that goes with the pane; the PR
-// chips and the faces shown; each click hides its part on every card, no card redrawn; a stand-in of each new part hidden; same height keeps a
+// matrix shown; each click hides its part on every card, no card redrawn; a stand-in of each new part hidden; same height keeps a
 // hidden move's row, and one line gives it to the word; the age and the ✓ at rest; the keyboard reaches a part; the choice outlives a reload;
 // an older prefs' parts stay as they were, the new ones shown.
 import { writeFileSync } from 'node:fs';
@@ -22,7 +22,7 @@ export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact' }
 export default async function (ctx) {
   const [two] = ctx.fixture.chats, out = {}, a = ctx.assert, card = `#slist > .card[data-id="${two.id}"]`;
   await ctx.openChat(two.id);
-  await ctx.waitFor(`document.querySelector('${card} .top .faces img') && document.querySelector('${card} .top .tprs .cpr')`, { timeout: 15_000, what: 'the card\'s PR chips and faces' });
+  await ctx.waitFor(`document.querySelector('${card} .top .tmx .mxs')`, { timeout: 15_000, what: 'the card\'s PRs' });
   await ctx.settle();
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
@@ -31,29 +31,25 @@ export default async function (ctx) {
   await ctx.settle();
   const look = () => ctx.evaluate(`JSON.stringify((c => ({
     hide: document.querySelector('#sessions').dataset.hide,
-    prs: getComputedStyle(c.querySelector('.top .tprs:not(.ttks)')).display !== 'none',
-    faces: getComputedStyle(c.querySelector('.top .faces')).display !== 'none',
+    prs: getComputedStyle(c.querySelector('.top .tmx')).display !== 'none',
     node: c === window.__card }))(document.querySelector('${card}')))`).then(JSON.parse);
   const flip = async k => { await ctx.evaluate(`document.querySelector('#cardLab [data-part="${k}"]').click()`); await ctx.settle(); };
   await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
 
   // by default all but the age and the ✓ at rest; the card in the pane has every part, and its rules are a copy that goes with the pane
   out.on = await look();
-  a.deepEqual(out.on, { hide: 'age tick', prs: true, faces: true, node: true }, 'everything shown by default');
+  a.deepEqual(out.on, { hide: 'age tick', prs: true, node: true }, 'everything shown by default');
   const parts = await ctx.evaluate(`[...new Set([...document.querySelectorAll('#cardLab [data-part]')].map(e => e.dataset.part))].sort().join(' ')`);
-  a.equal(parts, 'age agents branch fable faces live move prs rounds tab tick tickets unread watch where', 'every part on it (with every PR: the faces)');
+  a.equal(parts, 'age agents branch fable live move prs rounds tab tick tickets unread watch where', 'every part on it');
   a.deepEqual(await ctx.evaluate(`JSON.stringify((c => [getComputedStyle(c.querySelector('.top .repo')).fontWeight, c.querySelector('[data-part="age"]').classList.contains('cpoff'), c.querySelector('[data-part="age"]').getAttribute('aria-checked'), document.querySelectorAll('#slist > .card[data-id="cardlab"]').length])(document.querySelector('#cardLab .card')))`).then(JSON.parse), ['700', true, 'false', 0], 'the board\'s rules reach it; the age faint; nothing of it in the list');
   await ctx.shot('1-pane', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
 
   // each click hides its part, the card's node kept
-  await flip('faces');
-  out.noFaces = await look();
-  a.deepEqual([out.noFaces.hide, out.noFaces.prs, out.noFaces.faces, out.noFaces.node], ['faces age tick', true, false, true], 'the faces gone, the chips kept, no card redrawn');
   await flip('prs');
   out.bare = await look();
-  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.faces, out.bare.node], ['prs faces age tick', false, false, true], 'the PRs gone too');
+  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.node], ['prs age tick', false, true], 'the PRs gone, no card redrawn');
   a.deepEqual(await ctx.evaluate(`JSON.stringify((e => [e.classList.contains('cpoff'), e.getAttribute('aria-checked'), +getComputedStyle(e).opacity < .5])(document.querySelector('#cardLab [data-part="prs"]')))`).then(JSON.parse), [true, 'false', true], 'faint on the card in the pane, to be clicked back');
-  a.match(await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`), /Hidden: PRs, Faces\./, 'and named under it');
+  a.match(await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`), /Hidden: PRs\./, 'and named under it');
 
   // the rest by the same rule: a stand-in of each on a real card, hidden while it is left out
   const standIns = { tickets: ['.top', 'span', 'tprs ttks'], rounds: ['', 'div', 'prpips'], tab: ['.top', 'span', 'repo'], branch: ['.top', 'span', 'chip wtb'], where: ['.top', 'span', 'chip elsewhere'], watch: ['.trow', 'span', 'chip watch'], fable: ['.trow', 'span', 'fable'], unread: ['.trow', 'span', 'badge'], move: ['', 'div', 'state prmove'], live: ['', 'div', 'state live wake'] };
@@ -102,7 +98,7 @@ export default async function (ctx) {
 
   // a pref: the same after a reload
   const hidden = await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
-  a.equal(hidden, 'prs faces', 'the age and the ✓ kept, the PRs and faces left out');
+  a.equal(hidden, 'prs', 'the age and the ✓ kept, the PRs left out');
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
   a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), hidden, 'kept across a reload');
@@ -111,6 +107,6 @@ export default async function (ctx) {
   await ctx.evaluate(`(p => { p.cardParts = ['prs', 'agents']; p.cardPartsSeen = 1; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`);
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
-  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets faces age tick', 'older prefs: their choice, the rest of the parts shown');
+  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets age tick', 'older prefs: their choice, the rest of the parts shown');
   return out;
 }

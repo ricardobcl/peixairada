@@ -79,7 +79,7 @@ export const meta = {
 
 export default async function (ctx) {
   const out = {}, a = ctx.assert;
-  const turn = n => `document.querySelector('#slist > .card[data-id="${id}"] .cpr[data-url$="/${n}"]')?.dataset.turn`;
+  const turn = n => `document.querySelector('#slist > .card[data-id="${id}"] .mxs[data-url$="/${n}"]')?.dataset.turn`;
   const T = (expr, what) => ctx.waitFor(expr, { timeout: 25_000, what });
   const round = (n, k) => `(window.peix.session('${id}')?.prs || []).find(p => p.url.endsWith('/${n}'))?.rounds?.at(-1)?.${k}`;
   const rows = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvl .tvr')].map(r => ({ k: r.className.replace('tvr ', ''), t: [...r.querySelector('.ct').childNodes].map(n => n.textContent).join(' ').replace(/\\s+/g, ' ').trim(), ms: +r.dataset.ms || 0, lanes: r.querySelectorAll('.ln').length, em: [...r.querySelectorAll('.ln em')].map(e => e.className) })))`).then(JSON.parse);

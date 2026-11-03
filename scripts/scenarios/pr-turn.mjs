@@ -42,9 +42,9 @@ export default async function (ctx) {
   try {
     const [two] = ctx.fixture.chats;
     const card = `document.querySelector('#slist > .card[data-id="${two.id}"]')`;
-    const chip = n => `${card}?.querySelector('.cpr[data-url$="/pull/${n}"]')`;
+    const chip = n => `${card}?.querySelector('.mxs[data-url$="/pull/${n}"]')`;
     const look = () => ctx.evaluate(`JSON.stringify({ done: window.peix.session('${two.id}').done, cls: ${card}?.className.trim().split(/\\s+/),
-      turn12: ${chip(12)}?.dataset.turn, turn13: ${chip(13)}?.dataset.turn, tip12: ${chip(12)}?.title, bg12: ${chip(12)} && getComputedStyle(${chip(12)}).backgroundColor,
+      turn12: ${chip(12)}?.dataset.turn, turn13: ${chip(13)}?.dataset.turn, tip12: window.peix.session('${two.id}').prs.find(p => p.url.endsWith('/pull/12'))?.turn?.why, bg12: ${chip(12)} && getComputedStyle(${chip(12)}).backgroundColor,
       badge: ${card}?.querySelector('.badge')?.textContent || null, move: ${card}?.querySelector('.state.prmove .q')?.textContent ?? null, last: ${card}?.querySelector('.top')?.lastElementChild?.className ?? null,
       rank: [...document.querySelectorAll('#slist > .card')].findIndex(c => c.dataset.id === '${two.id}') })`).then(JSON.parse);
     const tick = done => ctx.server.post(`api/sessions/${two.id}/done`, { done });
@@ -52,16 +52,14 @@ export default async function (ctx) {
     await ctx.waitFor(`${chip(12)}?.dataset.turn === 'them'`, { timeout: 10_000, what: 'the reviewed PR waiting on its author' });
     out.waiting = await look();
     ctx.assert.equal(out.waiting.turn13, '', 'a PR nobody here touched has no turn');
-    ctx.assert.match(out.waiting.tip12, /waiting on ana/, 'the tooltip says whom it waits on');
-    ctx.assert.notEqual(out.waiting.bg12, 'rgba(0, 0, 0, 0)', 'a solid chip, whoever\'s move it is');
-    ctx.assert.equal(out.waiting.last, 'tprs', 'the chips end the top row');
+    ctx.assert.match(out.waiting.tip12, /waiting on ana/, 'the turn says whom it waits on');
+    ctx.assert.notEqual(out.waiting.bg12, 'rgba(0, 0, 0, 0)', 'a solid square, whoever\'s move it is');
+    ctx.assert.equal(out.waiting.last, 'tmx', 'the matrix ends the top row');
     ctx.assert.equal(out.waiting.move, null, '…and no line on the card');
     ctx.assert.equal(out.waiting.rank, 1, 'the fixture\'s other chat, a second newer, ranks above it');
-    // the faces of who else is in its PRs (2026-09-29): ana wrote both and pushed to #12; you are not among them — once
-    // the image has loaded, which a data: one does a frame or two after the card is drawn
-    await ctx.waitFor(`[...${card}.querySelectorAll('.top .faces img')].every(i => i.complete && i.naturalWidth > 0)`, { what: 'the faces loaded' });
-    out.faces = await ctx.evaluate(`JSON.stringify([...${card}.querySelectorAll('.top .faces > *')].map(f => [f.tagName, f.getAttribute('alt'), f.title, f.complete && f.naturalWidth > 0]))`).then(JSON.parse);
-    ctx.assert.deepEqual(out.faces, [['IMG', 'ana', 'ana — #13 opened it · #12 opened it, pushed', true]], `one face, ana's, before the chips: ${JSON.stringify(out.faces)}`);
+    // who else is in its PRs (2026-09-29): ana wrote both and pushed to #12; you are not among them
+    out.faces = await ctx.evaluate(`JSON.stringify(window.peix.session('${two.id}').prs.map(p => [p.number, (p.people || []).map(x => [x.login, x.did.join(', ')])]).sort((a, b) => a[0] - b[0]))`).then(JSON.parse);
+    ctx.assert.deepEqual(out.faces, [[12, [['ana', 'opened it, pushed']]], [13, [['ana', 'opened it']]]], `ana alone on each: ${JSON.stringify(out.faces)}`);
 
     // a browser that has granted notifications, faked so the banners are counted; a second listener sees every alert
     const listen = async () => {
@@ -89,8 +87,8 @@ export default async function (ctx) {
     out.alerts = await ctx.evaluate(`JSON.stringify(window.__alerts)`).then(JSON.parse);
     out.banners = await ctx.evaluate(`JSON.stringify(window.__banners)`).then(JSON.parse);
     ctx.assert.ok(!out.moved.cls.includes('done'), 'the card is not done any more');
-    ctx.assert.match(out.moved.tip12, /your move — pushed since your review/);
-    ctx.assert.equal(out.moved.bg12, out.waiting.bg12, 'the chip as it was: the line says which');
+    ctx.assert.match(out.moved.tip12, /pushed since your review/);
+    ctx.assert.equal(out.moved.bg12, out.waiting.bg12, 'the square as it was: the line says which');
     ctx.assert.equal(out.alerts.length, 1, 'one alert');
     ctx.assert.deepEqual([out.alerts[0].kind, out.alerts[0].heading, out.alerts[0].snippet, out.alerts[0].sessionId], ['pr', 'Your move · repo-a#12', 'pushed since your review', two.id]);
     ctx.assert.equal(out.banners[0]?.title, 'Your move · repo-a#12', 'the banner wears the server\'s heading');
@@ -228,10 +226,10 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`${card}?.querySelector('.act.tk.fg') ? 'fg' : null`), 'fg', 'the ✕ is what fills');
     await ctx.waitFor(`window.peix.session('${two.id}').forGood === true && window.peix.session('${two.id}').done === true`, { what: 'the chat done for good' });
     await ctx.settle();
-    out.forGood = await ctx.evaluate(`JSON.stringify({ cls: ${card}.className, undo: ${card}.querySelector('.act[data-act="reopen"]').title, filter: getComputedStyle(${card}.querySelector('.tprs')).filter })`).then(JSON.parse);
+    out.forGood = await ctx.evaluate(`JSON.stringify({ cls: ${card}.className, undo: ${card}.querySelector('.act[data-act="reopen"]').title, filter: getComputedStyle(${card}.querySelector('.tmx')).filter })`).then(JSON.parse);
     ctx.assert.match(out.forGood.cls, /\bdone forgood\b/);
     ctx.assert.match(out.forGood.undo, /^Done for good/, '↩ says it');
-    ctx.assert.equal(out.forGood.filter, 'grayscale(1)', 'its PR chips in grey');
+    ctx.assert.equal(out.forGood.filter, 'grayscale(1)', 'its PRs in grey');
     await ctx.shot('4-for-good', await list());
     write({ headRefOid: 'C', pushes: { nodes: [commit(ago(120), 'ana'), commit(ago(0), 'ana')] }, comments: { nodes: [{ author: user('me'), createdAt: ago(1) }] } });
     await ctx.sleep(3000);   // the watch is half a second: asked for anyone, it would have seen the push by now

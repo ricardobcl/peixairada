@@ -95,7 +95,7 @@ export default async function (ctx) {
   ctx.assert.ok(by('new').shut && by('new').pic.includes('＋ new chat on a new branch'), 'a new chat: no part, a picker drawn small');
   ctx.assert.ok(by('open').shut && (by('open').pic.match(/<kbd>⌥⌘[CTGED]<\/kbd>/g) || []).length === 5, 'no chat open: the keys to its terminal, GitHub, editor and diff, as rows');
   ctx.assert.ok(by('split').shut && (by('split').pic.match(/<figure>/g) || []).length === 2, 'no chat open: the two splits drawn');
-  ctx.assert.ok(by('prs').parts[0]?.endsWith(' .tprs') && by('prs').card.l >= by('prs').hole.r && by('prs').pic.includes('tchip'), `a card's PR chips, the card to their right ${JSON.stringify(by('prs').parts)}`);
+  ctx.assert.ok(by('prs').parts[0]?.endsWith(' .tmx') && by('prs').card.l >= by('prs').hole.r && by('prs').pic.includes('tchip'), `a card's PR matrix, the card to its right ${JSON.stringify(by('prs').parts)}`);
   ctx.assert.ok(by('move').parts[0]?.endsWith(' .state.prmove') && by('move').pic.includes('ymove'), `the your-move line on its card ${JSON.stringify(by('move').parts)}`);
   ctx.assert.deepEqual([out.first.at(-1).step, out.first.at(-1).skip], ['bye', false], 'the last: Done, no Skip');
   await arrow('ArrowRight'); await ctx.sleep(200);

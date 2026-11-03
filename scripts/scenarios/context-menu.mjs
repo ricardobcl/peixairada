@@ -14,7 +14,7 @@ export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPat
 export default async function (ctx) {
   const out = {}, [two] = ctx.fixture.chats;   // the fixture's first: the one naming repo-a#12 and #13
   const card = `document.querySelector('#slist > .card[data-id="${two.id}"]')`;
-  await ctx.waitFor(`${card}?.querySelectorAll('.cpr[data-url]').length === 2`, { timeout: 10_000, what: 'the card with its two PRs' });
+  await ctx.waitFor(`${card}?.querySelectorAll('.mxs[data-url]').length === 2`, { timeout: 10_000, what: 'the card with its two PRs' });
   const right = sel => ctx.evaluate(`(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(${sel})`);
   const rows = () => ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].map(b => b.textContent)`);
   await right(`${card}.querySelector('.title')`);
@@ -37,7 +37,7 @@ export default async function (ctx) {
   out.blurred = await ctx.evaluate(`JSON.stringify((s => ({ board: s.boardTitle ?? null, title: s.title }))(window.peix.session(${JSON.stringify(two.id)})))`).then(JSON.parse);
   ctx.assert.equal(out.blurred.board, null, `a blur with nothing changed saved nothing: ${JSON.stringify(out.blurred)}`);
   // a PR chip's own menu
-  await right(`${card}.querySelector('.cpr[data-url$="/pull/13"]')`);
+  await right(`${card}.querySelector('.mxs[data-url$="/pull/13"]')`);
   out.chip = await rows();
   ctx.assert.deepEqual(out.chip, ['Open the PR', 'Copy its link', 'Its timelineits events and the turns about it · ⌥⌘J', 'Take it off this chat']);   // its link (2026-10-21)
   await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent === 'Take it off this chat').click()`);

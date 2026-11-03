@@ -11,7 +11,7 @@ export default async function (ctx) {
   await ctx.reload();
   await ctx.openChat(two.id);
   const [a, b] = await ctx.peix(`session(${JSON.stringify(two.id)}).prs.map(p => p.url)`);
-  const chip = url => ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(two.id)}] .cpr[data-url=${JSON.stringify(url)}]').click()`);
+  const chip = url => ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(two.id)}] .mxs[data-url=${JSON.stringify(url)}]').click()`);
   const lastPane = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop() || null)`).then(JSON.parse);
   const column = () => ctx.evaluate(`JSON.stringify((st => ({ strips: st.strips, halves: st.halves, split: st.split, stacked: st.stacked, focusG: st.focusG,
     drawn: ['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(e => e.dataset.tab)),

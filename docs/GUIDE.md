@@ -37,10 +37,8 @@ setup file, and how the pictures are made.
   else the one updated last. The squares keep their size however many there are; past the row's room they scroll
   under the pointer. Hover a square (or the number) and it lifts, with a card about its PR: the repo and state, its
   number and title, CI, its place in a stack, whose move and why, who's on it and when it last changed; click it for
-  the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. Settings › Chat
-  list › *A card's PRs: All* puts every chip back, stacked and
-  fanned out under the pointer, with the faces of the people on them. ⌥-click the ✓ to tick a chat done for good: its
-  PRs won't bring it back. Take a PR off a chat from its square's or chip's right-click menu (or ⌥-click a chip) —
+  the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. ⌥-click the ✓ to tick a chat done for good: its
+  PRs won't bring it back. Take a PR off a chat from its square's right-click menu —
   until you name it there yourself.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
   *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat

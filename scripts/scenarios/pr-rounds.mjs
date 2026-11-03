@@ -67,7 +67,7 @@ export default async function (ctx) {
   out.card = await ctx.evaluate(`JSON.stringify({ line: ${card}.querySelector('.state.prans .q').textContent, move: !!${card}.querySelector('.state.prmove'), pips: [...${card}.querySelectorAll('.prpips .pp')].map(p => p.dataset.k + ' ' + p.textContent) })`).then(JSON.parse);
   ctx.assert.match(out.card.line, /^#12 · you answered, \d+m ago$/, out.card.line);
   ctx.assert.deepEqual({ ...out.card, line: null }, { line: null, move: false, pips: ['let #13let go', 'ok #12answered'] });
-  const even = await ctx.evaluate(`(l => { const was = l.dataset.cards; l.dataset.cards = 'compact'; l.toggleAttribute('data-even', true); const hs = [...new Set([...document.querySelectorAll('#slist > .card')].map(c => c.getBoundingClientRect().height))]; l.dataset.cards = was; l.toggleAttribute('data-even', false); return hs; })(document.querySelector('#sessions'))`);
+  const even = await ctx.evaluate(`(l => { const was = l.dataset.cards; l.dataset.cards = 'compact'; l.toggleAttribute('data-even', true); const hs = [...new Set([...document.querySelectorAll('#slist > .card')].map(c => +c.getBoundingClientRect().height.toFixed(3)))]; l.dataset.cards = was; l.toggleAttribute('data-even', false); return hs; })(document.querySelector('#sessions'))`);
   ctx.assert.equal(even.length, 1, `at compact's same height, as tall as a card with none, to the fraction: ${even}`);
   // the pointer on that line: the rounds, and the latest on them
   await ctx.settle();   // the card moves down its lane: no move of yours on it now
@@ -75,21 +75,21 @@ export default async function (ctx) {
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
   await ctx.waitFor(`document.querySelector('#rpop.on') && document.querySelector('#rpop .rev')`, { what: 'the rounds under the pointer, with the latest events' });
   await ctx.settle();
-  out.pop = await ctx.evaluate(`JSON.stringify({ rows: [...document.querySelectorAll('#rpop .rpr')].map(r => r.dataset.k + ' ' + r.querySelector('.pchip').textContent + ' ' + r.querySelector('.h').textContent), latest: [...document.querySelectorAll('#rpop .rev .x')].map(x => x.textContent), foot: document.querySelector('#rpop .rpf').textContent,
+  out.pop = await ctx.evaluate(`JSON.stringify({ rows: [...document.querySelectorAll('#rpop .rpr')].map(r => r.dataset.k + ' ' + r.querySelector('.pchip').textContent + ' ' + r.querySelector('.rh')?.textContent), latest: [...document.querySelectorAll('#rpop .rev .x')].map(x => x.textContent), foot: document.querySelector('#rpop .rpf').textContent,
     beside: document.querySelector('#rpop').getBoundingClientRect().left >= ${card}.getBoundingClientRect().right })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.pop.rows, ['let #13 approved by priya', 'ok #12 you answered'], 'as the marks go, each its round in words');
+  ctx.assert.deepEqual(out.pop.rows, ['ok #12 you answered', 'let #13 approved by priya'], 'the matrix\'s order, each its round in words');
   ctx.assert.ok(out.pop.latest.includes('#12 you commented✓ answers 1 comment from ana') && out.pop.latest.some(l => l.includes('let this round go')), `your word, and the round it answered: ${JSON.stringify(out.pop.latest)}`);
   ctx.assert.match(out.pop.foot, /click “your move” or a PR’s mark: its timeline, at the move \(⌥⌘J\) · ⌥-click: let every round go/);
   ctx.assert.ok(out.pop.beside, 'beside the card, over the chat');
   await ctx.shot('2-answered-card', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 20), width: Math.min(innerWidth, r.right + 420), height: 420 }))(${card}.getBoundingClientRect())`));
-  // the pointer at rest anywhere on the card shows the same (2026-11-01, later) — but on a PR chip, which has a
-  // tooltip of its own: one thing at a time
+  // the pointer at rest anywhere on the card shows the same (2026-11-01, later) — but on a PR's square, which has a
+  // card of its own: one thing at a time
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 600 });
   await ctx.waitFor(`!document.querySelector('#rpop.on')`, { what: 'gone with the pointer' });
-  const chips = await centre(`#slist > .card[data-id="${two.id}"] .top .tprs .cpr`);
+  const chips = await centre(`#slist > .card[data-id="${two.id}"] .top .tmx .mxs`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: chips.x, y: chips.y });
   await ctx.sleep(1000);
-  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#rpop.on')`), false, 'not over a chip');
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#rpop.on')`), false, 'not over a square');
   const title = await centre(`#slist > .card[data-id="${two.id}"] .title`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: title.x, y: title.y });
   await ctx.waitFor(`document.querySelector('#rpop.on .rpr')`, { what: 'the rounds with the pointer at rest on the card' });

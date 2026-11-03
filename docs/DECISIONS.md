@@ -14,6 +14,8 @@ much. shuold be a toggle for now to feel it"*.
 
 * **Raised is the one look**: the switch, `data-raised` and the rows' rules it overrode are gone; the raised rules stay under `#sessions`, which keeps them above any
   `#slist` rule, and the list's fitted inks are simply the list's now. `#sbar` keeps round XVIII's, as it sits on the frame.
+* **The matrix is the one way on a card**: *All* went, and the faces with it, as they only ever came with *All*: `cardPrs`, `cardFaces`, the Faces part, the setting.
+  The people stay on a PR's card (`#mxtip`) and in the status bar's row. The stack and its fan stay for tickets, which have nothing else (`chipStack`, `fanWheel`).
 
 ## Decisions of 2026-11-03 — round XXII: raised cards, one line, a card you click
 
