@@ -53,7 +53,7 @@ export default async function (ctx) {
   ctx.assert.ok(out.notif.marks > 0, `the words marked: ${out.notif.marks}`);
   await find('same height');
   out.dependent = await look();
-  ctx.assert.deepEqual([out.dependent.panes, out.dependent.rows], [['list'], ['Same height']], 'a dependent row found by its own words');
+  ctx.assert.deepEqual([out.dependent.panes, out.dependent.rows], [['list'], ['Card size']], 'a switch found by its own words, in the row that holds it');
   await find('memory');
   out.meters = await look();
   ctx.assert.deepEqual(out.meters.rows, ['Show in the status bar'], 'a row found by its controls\' words');

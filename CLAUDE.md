@@ -251,10 +251,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `data-id`**, so `#slist > .card` — the page's and the harness's count — never sees it. `peix.motion()` logs
   every move by its `id`. → `list-motion.mjs`. **A landing** is `landed` (`landedAt` from `working` → `idle`;
   `flareLanded()` sets a negative `animation-delay` for `LANDED_MS`, so a rebuilt card carries it on).
-* **A card's glow is registered properties, never a `background`**: the lit 3 px edge (`--edge`, the first
-  `background` layer) and a glow from it, `--tint` · `--reach` · `--fall`; `.active` and `.qsel` set the
-  numbers (hover is the light under the pointer) and the `transition` eases them. A new card state that wants a glow sets the variables. The outline is
-  `1px solid transparent` at rest, so nothing moves.
+* **A card's glow** (`--edge`, `--tint`, `--reach`, `--fall`) is the base under the rows, which draw none.
 * **Type, corners and motion are tokens**: `--fs-2xs` … `--fs-xl` (10–18 px), `--r-1` … `--r-5` (3–14 px), and
   `--ease-out`, `--spring` (a `linear()` curve, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
@@ -280,8 +277,7 @@ npm run map                         # rewrite the section maps at the top of ser
   timeline, `main`'s `timeline-scope`); else `--shade` (`SCROLL_TIMELINES`).
 * **A name too long fades, not …** (`fadeOver`, `fadeSoon`): a mask only where `.over` says it overflows — the header's
   title and `.purl` on every draw, a card's title once per node (`.ovr`) and when the list's width moves.
-* **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash) —
-  not the cards, whose first layer is the lit edge the harness reads. A new wide gradient takes it.
+* **A broad gradient wears grain** (`--grain`, its first layer).
 * **Accessibility is kept by rule** (2026-10-12): the settings' `.stabs` and each half's strip are `tablist`s
   (`aria-selected`), the small terminals `inert`, `readerOn` xterm's `screenReaderMode` (VoiceOver or
   `prefs.termReader`); what colour or motion
@@ -358,23 +354,11 @@ npm run map                         # rewrite the section maps at the top of ser
   **At the notch** its top edge dips round the camera housing
   (`headNotch` from `layoutNotch`; `HEAD_BEND`, `svg.hcut`), a long title running under it, the header lowered by `--hdrop` (`headDrop`, `.tunder`) up to `HEAD_DROP_MAX`, past which it
   jumps the housing. → `head-float.mjs`.
-* **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink` (the ink on it,
-  `inkOn()`), `--rover`/`--rover2` and `#chat.tinted`; no colour, the plain panel header. **The colour eases from chat
-  to chat on the surfaces that draw it** (2026-10-13): `tintChat` sets plain `--hbg`, `--hveil`, `--hveil2` on `#chat`;
-  `.shead`, `#log` and the floating header's `.gbody` ease registered copies that do not inherit (`--hbg-eased`,
-  `--hveil-eased`, `--hveil2-eased`). **Never an
-  inherited registered property under a transition**: every element below it is restyled each frame. `--repo` stays
-  unregistered (its fallback is load-bearing). A new surface in the chat's colour reads `--hbg-eased` and joins the
-  `:where(.shead, #log, .gbody)` rule. The colour
-  square (`.sq.pick`; `colorAt` remembers which header opened it) sits at the `.sep`'s x, out of the flow.
-* **Only the project's name is on its colour; the rest of the header is black** — `.shead::after` from `--hsplit`
-  down `--hrow`, fading in over `--hfade-w` (`paintHeadSplit()` after `layoutNotch(); fitHeadPrs()` and on
-  `peixFill`) — the panel in the light theme off the notch (`main:not(.notch)` sets `--crust` and `--hd-*`). The
-  title and everything right of the h2 borrow the dark inks through `:where`, so a control's own rule wins.
+* **The chat's colour**: `tintChat()` sets `--repo`, `--rink` (`inkOn()`), `--rover`/`--rover2`, `#chat.tinted`; **it eases from chat to chat** (2026-10-13) on registered copies that do not inherit (`--hbg-eased`, `--hveil-eased`, `--hveil2-eased`; `.shead`, `#log`, `.gbody`). **Never an inherited registered property under a transition**: every element below it is restyled each frame. `--repo` stays unregistered (its fallback is load-bearing). A new surface in the chat's colour reads `--hbg-eased` and joins the `:where(.shead, #log, .gbody)` rule. The colour square (`.sq.pick`; `colorAt` remembers which header opened it) sits at the `.sep`'s x, out of the flow.
+* **The header's black** (`.shead::after`, `paintHeadSplit()`) is the base under the sidebar's toolbar, which hides it.
 * **A colour as dark as that black turns it grey** (`nearBlack` → `main.darkchat`). **On a card, a colour too dark
   or too light for the panel is held where it shows**: `--lift` (`oklch(from … max(l, .62) c h)` dark, `min(l, .72)`
-  light) for the edge, glow, spot, border and track; the glow's colour `--wash` is `--lift` but on
-  `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (the header). → the black step of `project-colors.mjs`.
+  light) for what draws it on a row. `--repo` stays the colour as set (the header). → the black step of `project-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
   open; ⌥⌘0): the sea (`makeSea`, a canvas that outlives the draws, 15 fps on screen, at rest after
   `SEA_REST_MS` with no input, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
@@ -435,15 +419,12 @@ npm run map                         # rewrite the section maps at the top of ser
   GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving
   the view, lets go. Drawn only when its markup changed (`peopleDrawn`). → `people-row.mjs`.
-* **A card comes in three sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and
-  Claude's last reply —, *medium* the last word, *compact* neither. `cardHtml` always writes both `.snip`s (the older
-  `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane*
-  (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height***
-  (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. → `card-sizes.mjs`. **Its PRs,
-  rounds, tickets and faces each optional** (2026-10-21, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone). → `card-parts.mjs`.
+* **A card comes in four sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and Claude's last reply —, *medium* the last word, *compact* neither, *one line* (2026-11-03, round XXII; `'line'` → `data-line` beside `data-cards="compact"` and `data-even`): same height's third row is the first of the question, the move (`.rowmove`), the agents (`.agrows`, which still grow it), the live line, the last word. `cardHtml` always writes both `.snip`s (the older `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane* (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height*** (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. → `card-sizes.mjs`, `card-one-line.mjs`.
+* **Every part of a card can go** (2026-11-03, round XXII; `CARD_PART`, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone; the age and the ✓ are *at rest*, off by default): a click on the real card in Settings › Chat list (`#cardPanel`, `cardLabMake`), a part left out faint there. **The list's rules reach it by a copy while the pane shows** (`clabCss`: `#slist`, `#sessions` for `.clab`, `.clabs` at the same weight). → `card-parts.mjs`.
+* **Raised cards are a switch** (2026-11-03, round XXII; `prefs.cardsRaised` → `#sessions[data-raised]`, off): the ground `--step` (towards the ink on a dark frame), the chat's hairline, `--lo`; under the pointer `translate` and `--hi`, `::before` 2 px lower or the card drops off the pointer. A card's `--side` is its ground, for its chips. A state keeps its edge; a question keeps still. On a dark frame the inks are fitted again (`raisedInks`, by hand for the board's own; INK_CHECK's `step`). → `card-raised.mjs`.
 * **A card's title row reads title · chips · time · F ·
   unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age and the ✓ show under the
-  pointer only, no room at rest (2026-11-03; the ✓ `width: 0`: focusable). The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
+  pointer only, no room at rest (2026-11-03; the ✓ `width: 0`: focusable), unless kept. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
   → `card-marks.mjs`.
 * **ALL** (`key: 'all'`) is `BLACK` through
   `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. `#splitter`

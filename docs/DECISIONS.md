@@ -5,6 +5,37 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-03. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-03 — round XXII: raised cards, one line, a card you click
+
+Ricardo: *"should we have the card outline? maybe the same 3D/hover effect of the chat? also, a compromise between compact and medium? or
+more toggle for card elements?"*. From round XXII's page, the real CSS on the made-up board, he took the suggestions as they stood: *"edge E4 (a step
+below the chat); pointer H1 (comes up); size S1 (the third row speaks); open row O0 (solid); hide tickets; keep at rest: age; reach them by T2
+(a card you click); as a switch beside today's look."*
+
+* **What "3D/hover" was read as**: the chat's sheet floating over the frame, as nothing on the chat reacts to the pointer. It is a 1 px hairline and a soft
+  shadow. The page had pointer effects for the other reading, and he took one.
+* **A step below rather than the chat's own (E3)**: ten things as tall as the chat take its place as the highest thing on the board, and in the dark, where
+  the chat's ground is darker than the frame since round XVIII, cards in it sink. The step goes to the panel in the light and towards the ink in the dark.
+* **As a switch, so off is today's exactly**: every rule is under `#sessions[data-raised]`, none of today's touched. The loser goes once he has lived with both.
+* **One line is a stop, not a change to Same height**: on the real board that day, of 29 chats not done and touched in three days, 28 last words filled Medium's
+  three lines (estimated at 72 characters a line) and 22 of the 29 had a blank third row at same height. So the row was already paid for, and Medium costs its
+  full height for a word it cuts. If it stays, Same height's blank row can go. Larger-when-it-needs-you is off under it, as it would break the one height.
+* **The row's owner by classes and siblings, never `:has()`**: the mock used `:has()`; a question is `.asking`, a move `.rowmove` from `cardHtml`, the agents' rows
+  `.agrows` from `agPaint`, the rest siblings, as the live line and the rows come before the words in the markup.
+* **Your word on a row with no process is not dimmed under One line**: round XXI's `.gone` opacity took it to 3.4:1. **Open: the same dim at Large and at Medium**,
+  where the prompt reads the same; reported, not asked for.
+* **T2 replaced four rows with one**: the size, Same height, by-lane and Show-on-a-card live in `#cardPanel` now, with a card on top. A stop does not overwrite the
+  parts: a preset that brought back what you hid would be a surprise. A part left out stays on that card, faint, or nothing could bring it back; `role="switch"` and
+  the keys reach it. The age and the ✓ are off by default, so *keep the age at rest* is one click there: today's look stays today's for everyone until they ask.
+* **The card in the pane is `cardHtml`'s, with the list's rules by a copy**: they are keyed on `#slist` and `#sessions`, and rewriting them in the source for one preview,
+  a second `#slist`, or a hand-made card that drifts were each worse. `clabCss` copies the rules naming either while the pane shows, at the same weight, and drops them after,
+  so the list's styling carries no extra rules the rest of the time.
+* **The lift's trap**: a card risen 1 px leaves the pointer on its lowest pixel, drops, and rises. `::before` reaches 2 px lower, free on all but a question, which keeps still.
+* **Inks**: INK_CHECK reads `--step` too, and it failed on every dark frame (3.96 at worst), as those inks are fitted tight to the frame. They are fitted again only under
+  `data-raised`, by `raisedInks` for a theme and by hand for the board's own, so off, nothing moved. The light's step lies between two grounds already held.
+* **The cost**: none. Raised at One line against the commit before, 400 chats in WebKit, median of 3 (`npm run perf -- --against d87b330 --runs 3 --prefs '{"cards":"line","cardsRaised":true}'`, % of a core): rest 2.4 / 2.8, the pointer 5.6 / 5.4, a scroll 16.2 / 16.3, home 11.8 / 12.6; a chat opened 83 ms and 248 layers both; 219 / 220 MB; no animation rule broken.
+* Checked: `card-one-line.mjs`, `card-raised.mjs`, `card-parts.mjs` (rewritten), `card-pr-matrix.mjs`, `settings-panes.mjs`; in WebKit the list's one height and grounds in both themes, and the pane's card from the copied rules. In the full run `status-bar` and `list-follows-word` failed once with a WebKit check running beside it, and pass alone. Pared here for room: the card's glow and the header's black, which the rows and the toolbar no longer draw.
+
 ## Decisions of 2026-11-03 — rows further apart
 
 Ricardo, on the corner tab: *"I think we need a bit more padding between cards, at least on compact view"*.

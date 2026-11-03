@@ -1,8 +1,10 @@
-// What a card shows besides its words (2026-10-21): Settings › Chat list › Show on a card — its PRs, their rounds, its
-// tickets, the faces on its PRs — each a checkbox, all on by default. Left out is hidden by CSS (`#sessions[data-hide]`),
-// the cards' markup the same, so a change redraws none. The fixture's two-PR chat, its PRs written and reviewed by
-// people the fake gh names. What this checks: the four boxes on; the PR chips and the faces shown; each box off hides its
-// part on every card, and no card is redrawn; the choice outlives a reload; back on, all of it shows.
+// What a card shows (2026-10-21; every part of it, a card you click, 2026-11-03, round XXII's T2): Settings › Chat list holds one real card with
+// every part on it, and a click on a part leaves it out of every card: left out is hidden by CSS (`#sessions[data-hide]`), the cards' markup the
+// same, so a change redraws none. A part left out stays on that card, faint, to be clicked back. The age and the ✓ are off by default, and on keep
+// themselves at rest. What this checks: the defaults; the card in the pane is the one real card, its rules a copy that goes with the pane; the PR
+// chips and the faces shown; each click hides its part on every card, no card redrawn; a stand-in of each new part hidden; same height keeps a
+// hidden move's row, and one line gives it to the word; the age and the ✓ at rest; the keyboard reaches a part; the choice outlives a reload;
+// an older prefs' parts stay as they were, the new ones shown.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,40 +24,93 @@ export default async function (ctx) {
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelector('${card} .top .faces img') && document.querySelector('${card} .top .tprs .cpr')`, { timeout: 15_000, what: 'the card\'s PR chips and faces' });
   await ctx.settle();
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+  await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
+  await ctx.waitFor(`document.querySelectorAll('#cardLab .card').length === 1`, { what: 'the card in the pane' });
+  await ctx.settle();
   const look = () => ctx.evaluate(`JSON.stringify((c => ({
-    boxes: [...document.querySelectorAll('#cardPartsRow input')].map(x => x.dataset.part + ':' + x.checked),
     hide: document.querySelector('#sessions').dataset.hide,
     prs: getComputedStyle(c.querySelector('.top .tprs:not(.ttks)')).display !== 'none',
     faces: getComputedStyle(c.querySelector('.top .faces')).display !== 'none',
     node: c === window.__card }))(document.querySelector('${card}')))`).then(JSON.parse);
+  const flip = async k => { await ctx.evaluate(`document.querySelector('#cardLab [data-part="${k}"]').click()`); await ctx.settle(); };
   await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
+
+  // by default all but the age and the ✓ at rest; the card in the pane has every part, and its rules are a copy that goes with the pane
   out.on = await look();
-  a.deepEqual(out.on, { boxes: ['prs:true', 'rounds:true', 'tickets:true', 'faces:true', 'agents:true'], hide: '', prs: true, faces: true, node: true }, 'everything shown by default');
-  await ctx.shot('1-all', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('${card}').getBoundingClientRect())`));
+  a.deepEqual(out.on, { hide: 'age tick', prs: true, faces: true, node: true }, 'everything shown by default');
+  const parts = await ctx.evaluate(`[...new Set([...document.querySelectorAll('#cardLab [data-part]')].map(e => e.dataset.part))].sort().join(' ')`);
+  a.equal(parts, 'age agents branch fable faces live move prs rounds tab tick tickets unread watch where', 'every part on it (with every PR: the faces)');
+  a.deepEqual(await ctx.evaluate(`JSON.stringify((c => [getComputedStyle(c.querySelector('.top .repo')).fontWeight, c.querySelector('[data-part="age"]').classList.contains('cpoff'), c.querySelector('[data-part="age"]').getAttribute('aria-checked'), document.querySelectorAll('#slist > .card[data-id="cardlab"]').length])(document.querySelector('#cardLab .card')))`).then(JSON.parse), ['700', true, 'false', 0], 'the board\'s rules reach it; the age faint; nothing of it in the list');
+  await ctx.shot('1-pane', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
 
-  // each box off hides its part, the card's node kept
-  const box = async (part, on) => { await ctx.evaluate(`(x => { x.checked = ${on}; x.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#cardPartsRow input[data-part="${part}"]'))`); await ctx.settle(); };
-  await box('faces', false);
+  // each click hides its part, the card's node kept
+  await flip('faces');
   out.noFaces = await look();
-  a.deepEqual([out.noFaces.hide, out.noFaces.prs, out.noFaces.faces, out.noFaces.node], ['faces', true, false, true], 'the faces gone, the chips kept, no card redrawn');
-  await box('prs', false);
+  a.deepEqual([out.noFaces.hide, out.noFaces.prs, out.noFaces.faces, out.noFaces.node], ['faces age tick', true, false, true], 'the faces gone, the chips kept, no card redrawn');
+  await flip('prs');
   out.bare = await look();
-  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.faces, out.bare.node], ['prs faces', false, false, true], 'the PRs gone too');
-  await ctx.shot('2-bare', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('${card}').getBoundingClientRect())`));
-  // tickets and rounds by the same rule: a stand-in of each on the card is hidden while its box is off
-  await box('tickets', false); await box('rounds', false);
-  out.rest = await ctx.evaluate(`JSON.stringify((c => { const t = document.createElement('span'); t.className = 'tprs ttks'; c.querySelector('.top').append(t); const r = document.createElement('div'); r.className = 'prpips'; c.append(r);
-    const v = [getComputedStyle(t).display, getComputedStyle(r).display]; t.remove(); r.remove(); return v; })(document.querySelector('${card}')))`).then(JSON.parse);
-  a.deepEqual(out.rest, ['none', 'none'], 'tickets and rounds hidden');
-  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'prs rounds tickets faces');
+  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.faces, out.bare.node], ['prs faces age tick', false, false, true], 'the PRs gone too');
+  a.deepEqual(await ctx.evaluate(`JSON.stringify((e => [e.classList.contains('cpoff'), e.getAttribute('aria-checked'), +getComputedStyle(e).opacity < .5])(document.querySelector('#cardLab [data-part="prs"]')))`).then(JSON.parse), [true, 'false', true], 'faint on the card in the pane, to be clicked back');
+  a.match(await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`), /Hidden: PRs, Faces\./, 'and named under it');
 
-  // a pref: the same after a reload; all back on
+  // the rest by the same rule: a stand-in of each on a real card, hidden while it is left out
+  const standIns = { tickets: ['.top', 'span', 'tprs ttks'], rounds: ['', 'div', 'prpips'], tab: ['.top', 'span', 'repo'], branch: ['.top', 'span', 'chip wtb'], where: ['.top', 'span', 'chip elsewhere'], watch: ['.trow', 'span', 'chip watch'], fable: ['.trow', 'span', 'fable'], unread: ['.trow', 'span', 'badge'], move: ['', 'div', 'state prmove'], live: ['', 'div', 'state live wake'] };
+  for (const [k, [where, tag, cls]] of Object.entries(standIns)) {
+    const shown = cards => ctx.evaluate(`(c => { const t = document.createElement('${tag}'); t.className = '${cls}'; t.textContent = 'x'; ${where ? `c.querySelector('${where}')` : 'c'}.append(t); const v = getComputedStyle(t).display; t.remove(); return v; })(document.querySelector('${card}'))`);
+    a.notEqual(await shown(), 'none', `${k}: shown`);
+    await flip(k);
+    a.equal(await shown(), 'none', `${k}: left out`);
+    await flip(k);
+  }
+
+  // same height holds a hidden move's row; one line gives the row to the word
+  const moved = sel => ctx.evaluate(`JSON.stringify((c => { const was = +c.getBoundingClientRect().height.toFixed(2), slot = c.querySelector('.state.moveslot'), m = document.createElement('div'); m.className = 'state prmove'; m.innerHTML = '<b class="ymove">your move</b>'; c.classList.add('rowmove'); slot?.replaceWith(m);
+    const v = { same: +c.getBoundingClientRect().height.toFixed(2) === was, display: getComputedStyle(m).display, seen: getComputedStyle(m).visibility, words: [...c.querySelectorAll('.snip')].filter(x => getComputedStyle(x).display !== 'none').length };
+    m.replaceWith(slot); c.classList.remove('rowmove'); return v; })(document.querySelector('${card}')))`).then(JSON.parse);
+  await ctx.evaluate(`document.querySelector('#cardsSize [data-v="2"]').click(); if (!document.querySelector('#cardsEven').checked) document.querySelector('#cardsEven').click()`); await ctx.settle();
+  await flip('move');
+  a.deepEqual(await moved(), { same: true, display: 'flex', seen: 'hidden', words: 0 }, 'same height: its row kept, empty');
+  await ctx.evaluate(`document.querySelector('#cardsSize [data-v="3"]').click()`); await ctx.settle();
+  a.deepEqual(await moved(), { same: true, display: 'none', seen: 'visible', words: 1 }, 'one line: the word has the row');
+  await flip('move');
+  a.deepEqual(await moved(), { same: true, display: 'flex', seen: 'visible', words: 0 }, 'one line: the move has it back');
+
+  // the age and the ✓ at rest, in one line's rows and in compact's; pointer away from the list
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+  const rest = () => ctx.evaluate(`JSON.stringify((c => [getComputedStyle(c.querySelector('.trow .time')).display, c.querySelector('.trow .time').getBoundingClientRect().width > 0, c.querySelector('.top .act').getBoundingClientRect().width])(document.querySelector('${card}')))`).then(JSON.parse);
+  const off = await rest();
+  a.deepEqual([off[0], off[1], off[2]], ['none', false, 0], 'both only under the pointer by default');
+  await flip('age'); await flip('tick');
+  const kept = await rest();
+  a.deepEqual([kept[0], kept[1], kept[2] > 0], ['block', true, true], 'both at rest');
+
+  // the keyboard: a part takes the keys and a press flips it
+  await ctx.evaluate(`(e => { e.focus(); e.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })); })(document.querySelector('#cardLab [data-part="fable"]'))`); await ctx.settle();
+  a.match(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), /\bfable\b/, 'space on a part leaves it out');
+  a.equal(await ctx.evaluate(`document.activeElement?.dataset.part`), 'fable', 'the keys stay on it');
+  await flip('fable');
+
+  // the copy of the rules goes with the pane
+  await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="general"]').click()`); await ctx.settle();
+  a.equal(await ctx.evaluate(`!document.querySelector('#clabCss') && !document.querySelector('#cardLab .card')`), true, 'gone on another pane');
+  await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`); await ctx.settle();
+  a.equal(await ctx.evaluate(`!!document.querySelector('#clabCss') && !!document.querySelector('#cardLab .card')`), true, 'back on this one');
+  await ctx.evaluate(`document.querySelector('#settings').close()`); await ctx.settle();
+  a.equal(await ctx.evaluate(`!document.querySelector('#clabCss')`), true, 'gone with the dialog');
+
+  // a pref: the same after a reload
+  const hidden = await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
+  a.equal(hidden, 'prs faces', 'the age and the ✓ kept, the PRs and faces left out');
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
-  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'prs rounds tickets faces', 'kept across a reload');
-  for (const p of ['prs', 'rounds', 'tickets', 'faces']) await box(p, true);
-  await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
-  out.back = await look();
-  a.deepEqual([out.back.hide, out.back.prs, out.back.faces], ['', true, true], 'all of it back');
+  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), hidden, 'kept across a reload');
+
+  // prefs from before: what was chosen stays, the new parts shown, the age and the ✓ not at rest
+  await ctx.evaluate(`(p => { p.cardParts = ['prs', 'agents']; p.cardPartsSeen = 1; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`);
+  await ctx.reload();
+  await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
+  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets faces age tick', 'older prefs: their choice, the rest of the parts shown');
   return out;
 }

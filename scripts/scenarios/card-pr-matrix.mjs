@@ -161,21 +161,21 @@ export default async function (ctx) {
   await ctx.waitFor(`!document.querySelector('#rpop.on') && document.querySelector('#mxtip.on')`, { what: 'a square’s card in its place' });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
 
-  // Settings › Chat list: Matrix, the faces' box off beside it; All the stack again; with no PRs on cards, off and why
+  // Settings › Chat list: Matrix, no faces on the card there; All the stack again; with no PRs on cards, off and why
   await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
   const row = `JSON.stringify({ picked: document.querySelector('#prChipsPick [aria-checked="true"]')?.dataset.pc, words: [...document.querySelectorAll('#prChipsPick [data-pc]')].map(b => b.textContent), say: document.querySelector('#prChipsSay').textContent,
-    off: document.querySelector('#prChipsRow').classList.contains('off'), faces: document.querySelector('#cardPartsRow input[data-part="faces"]').disabled })`;
+    off: document.querySelector('#prChipsRow').classList.contains('off'), faces: !document.querySelector('#cardLab [data-part="faces"]') })`;
   out.row = await ctx.evaluate(row).then(JSON.parse);
-  ctx.assert.deepEqual(out.row, { picked: 'matrix', words: ['Matrix', 'All'], say: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', off: false, faces: true }, 'Matrix picked, the faces’ box off');
+  ctx.assert.deepEqual(out.row, { picked: 'matrix', words: ['Matrix', 'All'], say: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', off: false, faces: true }, 'Matrix picked, no faces on the card in the pane');
   await ctx.evaluate(`document.querySelector('#prChipsPick [data-pc="all"]').click()`);
   await ctx.waitFor(`${card(stack.id)}?.querySelectorAll('.tprs:not(.ttks) > .cpr').length === 4 && !${card(stack.id)}.querySelector('.tmx')`, { what: 'every PR stacked' });
   ctx.assert.equal(await ctx.evaluate(`JSON.parse(localStorage.getItem('peixairada-prefs')).prChips`), 'all', 'kept in the prefs');
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#cardPartsRow input[data-part="faces"]').disabled`), false, 'the faces’ box live with every PR');
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#cardLab [data-part="faces"]')`), true, 'the faces there with every PR');
   await ctx.evaluate(`document.querySelector('#prChipsPick [data-pc="matrix"]').click()`);
   await ctx.waitFor(`${card(stack.id)}?.querySelector('.tmx .mxs') && !${card(stack.id)}.querySelector('.tprs:not(.ttks)')`, { what: 'the matrix again' });
-  await ctx.evaluate(`document.querySelector('#cardPartsRow input[data-part="prs"]').click()`);
+  await ctx.evaluate(`document.querySelector('#cardLab [data-part="prs"]').click()`);
   out.hidden = await ctx.evaluate(row).then(JSON.parse);
   ctx.assert.deepEqual([out.hidden.off, out.hidden.say], [true, 'Only with PRs shown on a card'], 'no PRs on cards: the row off, and why');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prChipsPick [data-pc="all"]').disabled`), true, 'its buttons too');

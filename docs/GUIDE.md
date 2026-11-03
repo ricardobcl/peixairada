@@ -108,8 +108,8 @@ Each is a tab of the chat; the column splits in two halves when there's more tha
 GitHub and VS Code open in the chat in the Mac app; in a browser they open in a tab of their own. In the app GitHub's pages
 open on a tab of the chat and every other page in your browser, a link out of a page to another site too; Settings ›
 General › Links keeps more sites in the board (an address's start each, like `github.com/acme` or `localhost:3000`), or
-every page. The cards' PRs, rounds, tickets and faces can each be left out (Settings › Chat list › Show on a card), and
-the PR list under the header is as tall as you drag its foot.
+every page. Any part of a card can be left out, or the age and the ✓ kept at rest: Settings › Chat list holds a card with every part on it,
+and a click on one flips it. The PR list under the header is as tall as you drag its foot.
 
 <table>
   <tr>
@@ -281,7 +281,7 @@ or *key* to find a setting wherever it is):
 - **Appearance** — Auto, Dark or Light (Auto follows macOS), the theme — a swatch each, its dark and light halves
   (⌥⌘Y shows them all on the board) —, a dark frame round the light chat, the text size, and what else the status
   bar shows (a right-click on the bar picks that too).
-- **Chat list** — card size (compact, or larger only where a chat needs you).
+- **Chat list** — a card you click to choose its parts; the card size (*One line* keeps every card one height, with a line for the question, your move, what it is doing or the last word; or larger only where a chat needs you); *Raised cards*, each on a ground of its own that comes up under the pointer.
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a colour per project, and the projects you hid.

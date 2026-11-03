@@ -170,6 +170,21 @@
   .pop .ssel select:hover { background-color: var(--ctl-hi); }
   .pop .ssel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .pop .srow.set.wide { grid-template-columns: minmax(0, 1fr); }
+  /* A card you click (2026-11-03, round XXII's T2; cardLab): one real card with every part on it, the board's rules reaching it through a
+     copy made while the pane shows (clabCss). A part hidden stays here, faint, to be clicked back. The size and its two switches share the row. */
+  #settings .clabs { display: block; width: auto; min-width: 0; max-width: none; padding: 10px; border-radius: var(--r-4); }
+  #settings .clab { display: block; height: auto; padding: 0; overflow: visible; }
+  #settings .clabs .card .title { -webkit-line-clamp: 1; }
+  :root[data-layout="sidebar"] #settings .clabs .clab .card .trow .time { display: inline; opacity: .8; }
+  :root[data-layout="sidebar"] #settings .clabs .clab .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) { width: 22px; margin-left: 0; opacity: .7; }
+  #settings .clabs [data-part] { cursor: pointer; outline: 1.5px dashed transparent; outline-offset: 1px; transition: outline-color var(--t-hover), opacity var(--t-hover); }
+  #settings .clabs [data-part]:is(:hover, :focus-visible) { outline-color: var(--accent); }
+  #settings .clabs [data-part].cpoff { opacity: .3 !important; }
+  .pop .clabsay { display: block; margin: 2px 2px 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--muted); }
+  .pop .cctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .pop .csubs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px 22px; }
+  .pop .csub { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; cursor: pointer; }
+  .pop .csub.off { cursor: default; } .pop .csub.off .sl b { color: var(--muted); }
   /* a theme: its family's two halves on one swatch, dark | light, each with its accent, the family's name under it
      (2026-11-01, round XVII) */
   .pop .sfams { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 10px 8px; padding: 4px 2px; }
@@ -974,9 +989,10 @@
      question and a move by the card's classes (.asking, .rowmove), the rows of agents by .agrows (agPaint). */
   #sessions[data-line] .card .snip:not(.older) { display: -webkit-box; -webkit-line-clamp: 1; margin-top: 4px; height: 16px; font-size: var(--fs-xs); line-height: 16px; }
   #sessions[data-line] .card .state.needs-input { display: flex; height: 16px; align-items: center; line-height: 16px; overflow: hidden; white-space: nowrap; }
-  #sessions[data-line] .card .state.live:not(:empty) { display: grid; height: 16px; }
-  #sessions[data-line] .card.agrows .state.live, #sessions[data-line] .card:is(.asking, .rowmove) :is(.state.live, .snip), #sessions[data-line] .card :is(.state.live:not(:empty), .agl:not([hidden])) ~ .snip { display: none; }
-  #sessions[data-line] .card :is(.snip:not(.older), .state.live:not(:empty), .state.needs-input) ~ .moveslot { display: none; }
+  #sessions[data-line]:not([data-hide~="live"]) .card .state.live:not(:empty) { display: grid; height: 16px; }
+  #sessions[data-line]:not([data-hide~="agents"]) .card.agrows .state.live, #sessions[data-line] .card.asking :is(.state.live, .snip), #sessions[data-line]:not([data-hide~="move"]) .card.rowmove :is(.state.live, .snip),
+  #sessions[data-line]:not([data-hide~="live"]) .card .state.live:not(:empty) ~ .snip, #sessions[data-line]:not([data-hide~="agents"]) .card .agl:not([hidden]) ~ .snip { display: none; }
+  #sessions[data-line] .card :is(.snip:not(.older), .state.needs-input) ~ .moveslot, #sessions[data-line]:not([data-hide~="live"]) .card .state.live:not(:empty) ~ .moveslot { display: none; }
   :root[data-layout="sidebar"] #sessions[data-line] #slist .card.gone:not(.active) > .snip { opacity: 1; }   /* your word on a row with no process: dimmed it read 3.4:1 */
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
@@ -1015,6 +1031,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* what a card leaves out (2026-10-21, Settings › Chat list › Show on a card) */
   #sessions[data-hide~="prs"] .card .top :is(.tprs:not(.ttks), .tmx), #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
   #sessions[data-hide~="faces"] .card .top .faces, #sessions[data-hide~="rounds"] .card .prpips { display: none; }
+  /* …and the rest of it (2026-11-03, round XXII; a click on the card in Settings › Chat list). Same height keeps a hidden move's row. */
+  #sessions[data-hide~="tab"] .card .top .repo, #sessions[data-hide~="branch"] .card .top .chip.wtb, #sessions[data-hide~="where"] .card .top .chip:is(.elsewhere, .vsc), #sessions[data-hide~="watch"] .card .trow .chip.watch,
+  #sessions[data-hide~="fable"] .card .trow .fable, #sessions[data-hide~="unread"] .card .trow .badge, #sessions[data-hide~="move"] .card .state:is(.prmove, .prans), #sessions[data-hide~="live"] .card .state.live:not(.agwho) { display: none; }
+  #sessions[data-even][data-hide~="move"]:not([data-line]) .card .state:is(.prmove, .prans) { display: flex; visibility: hidden; }
+  :root[data-layout="sidebar"] #sessions[data-hide~="tab"] #slist .card .top.hastab { height: 18px; margin: 0 0 2px; }
   .card .top .tprs:hover { grid-template-columns: 1fr repeat(var(--under), var(--span)); column-gap: 0; }
   .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
   .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
@@ -2278,7 +2299,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @starting-style { :root[data-layout="sidebar"] #slist .card:hover .trow .time { opacity: 0; } }
   :root[data-layout="sidebar"] #slist .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) { width: 0; margin-left: -7px; }
   :root[data-layout="sidebar"] #slist .card .trow .time { min-width: 21px; text-align: right; }
-  :root[data-layout="sidebar"] #sessions:not([data-even]) .card:not(:hover) .trow .title { margin-right: 28px; }
+  :root[data-layout="sidebar"] #sessions[data-hide~="age"]:not([data-even]) .card:not(:hover) .trow .title { margin-right: 28px; }
+  /* …unless they are kept at rest (2026-11-03, round XXII: both are parts of the card, off by default) */
+  :root[data-layout="sidebar"] #sessions:not([data-hide~="age"]) #slist .card:not(:hover) .trow .time { display: inline; opacity: .8; }
+  :root[data-layout="sidebar"] #sessions:not([data-hide~="tick"]) #slist .card:not(:hover) .top .act:not(.armed, .tk) { width: 22px; margin-left: 0; opacity: .7; }
   /* Every chip the toolbar's corner (2026-11-03, round XXI) */
   :root[data-layout="sidebar"] :is(#slist .card, #chat .shead) :is(.ymove, .chip, .cpr, .ctk) { border-radius: var(--r-3); }
   /* The open row: its project's colour, solid — darkened till white reads on it (2026-10-31: the system's blue
@@ -3147,12 +3171,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <div class="spane" data-tab="list" hidden role="tabpanel" id="spList" aria-labelledby="stList">
         <h5 class="sph">Chat list</h5>
         <section class="sgrp"><div class="slist" role="group" aria-label="Cards">
-          <div class="srow set" data-kw="card size cards density large medium compact one line snug word third row"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="3">One line</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
-          <div class="srow set sub" id="laneRow" data-kw="card size larger lane needs you asking"><label class="sl" for="cardsByLane"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></label><input type="checkbox" class="sw" role="switch" id="cardsByLane"></div>
-          <div class="srow set sub" id="evenRow" data-kw="card size same height even uniform compact"><label class="sl" for="cardsEven"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></label><input type="checkbox" class="sw" role="switch" id="cardsEven"></div>
+          <div class="srow set wide" id="cardPanel" data-kw="card size cards density large medium compact one line snug word third row same height even uniform larger lane needs you asking busy faces avatars people github tickets jira prs pull requests rounds chips agents sub-agents teammates show hide project tab branch worktree elsewhere terminal watching monitor fable model unread count your move doing live age time tick done">
+            <div class="clabs" id="cardLab"><div class="clab"></div></div>
+            <small class="clabsay" id="cardLabSay"></small>
+            <div class="cctl"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="3">One line</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
+            <div class="csubs">
+              <label class="csub" id="evenRow"><span class="sl"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></span><input type="checkbox" class="sw" role="switch" id="cardsEven"></label>
+              <label class="csub" id="laneRow"><span class="sl"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></span><input type="checkbox" class="sw" role="switch" id="cardsByLane"></label>
+            </div>
+          </div>
+          <div class="srow set" id="prChipsRow" data-kw="card prs pull requests chips stack matrix squares number your move updated faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="matrix">Matrix</button><button type="button" role="radio" data-pc="all">All</button></span></div>
           <div class="srow set" id="raisedRow" data-kw="card raised edge outline border ground shadow lift hover 3d depth"><label class="sl" for="cardsRaised"><b>Raised cards</b><small>Each card on a ground of its own, a step below the chat, coming up under the pointer. Off, cards are rows on the frame</small></label><input type="checkbox" class="sw" role="switch" id="cardsRaised"></div>
-          <div class="srow set" data-kw="card busy faces avatars people github tickets jira prs pull requests rounds chips agents sub-agents teammates show hide" id="cardPartsRow"><span class="sl"><b>Show on a card</b><small>Its PRs, their rounds, its tickets, the faces on its PRs and its agents</small></span><span class="schecks"><label><input type="checkbox" data-part="prs"> PRs</label><label><input type="checkbox" data-part="rounds"> Rounds</label><label><input type="checkbox" data-part="tickets"> Tickets</label><label><input type="checkbox" data-part="faces"> Faces</label><label><input type="checkbox" data-part="agents"> Agents</label></span></div>
-          <div class="srow set sub" id="prChipsRow" data-kw="card prs pull requests chips stack matrix squares number your move updated faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="matrix">Matrix</button><button type="button" role="radio" data-pc="all">All</button></span></div>
         </div></section>
       </div>
       <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
@@ -3429,8 +3458,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // a card's PRs (2026-11-01): round XII's one chip gave way to round XVI's matrix, the default — a board saved on it is on the matrix
   if (prefs.prChips === 'one') prefs.prChips = 'matrix';
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
-  if (Array.isArray(prefs.cardParts) && !prefs.cardPartsSeen) prefs.cardParts.push('agents');   // a card's parts chosen before it had agents to show (2026-11-02)
-  prefs.cardPartsSeen = 1;
+  // a card's parts chosen before it had agents to show (2026-11-02), and before every part was one (2026-11-03: shown, as they were)
+  if (Array.isArray(prefs.cardParts)) { if (!prefs.cardPartsSeen) prefs.cardParts.push('agents'); if (prefs.cardPartsSeen < 2) prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'); }
+  prefs.cardPartsSeen = 2;
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   // ---- the board's key (2026-10-16) -----------------------------------------------------------------------------------
   // Every ask of the server carries it (the server's keyWant): `x-peix-key` from api(), `?key=` on the stream and a
@@ -3527,10 +3557,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     sset.opener = document.activeElement !== document.body ? document.activeElement : null;
     settingsTab(sset.tab);   // the pane last shown, its tab lit, no search
     dlg.showModal(); $('#sq').focus(); repostPane();
-    loadJira(); loadEditors();
+    loadJira(); loadEditors(); cardLabShow(!$('#spList').hidden);
   };
   const settingsToggle = () => settingsOpen(!$('#settings').open);
   $('#settings').addEventListener('close', () => {
+    cardLabShow(false);
     if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); }
     setupUi.open = null; for (const r of document.querySelectorAll('#setup .srow.proj.open')) { r.classList.remove('open'); r.querySelector('.stile').setAttribute('aria-expanded', 'false'); }
     window.CSS?.highlights?.delete('sfind'); keySure(false); if (chatUi.setSure) { chatUi.setSure = false; renderChatSet(true); }
@@ -3595,6 +3626,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       total += n;
     }
     $('#snone').hidden = !words.length || !!total; $('#snone').textContent = `No setting matches “${raw}”.`;
+    cardLabShow(dlg.open && !$('#spList').hidden);
     $('#spTitle').textContent = words.length ? `Results for “${raw}”` : dlg.querySelector(`.stabs [data-tab="${sset.tab}"] span`).textContent;
     if (!window.CSS?.highlights) return;
     const ranges = [];
@@ -3824,7 +3856,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // One line (2026-11-03, round XXII): compact at one height, its third row saying what there is to say. Listed last, for
   // the control's data-v is its place here.
   const CARD_SIZES = ['large', 'medium', 'compact', 'line'];
-  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces', 'agents'];
+  // Every part of a card (2026-11-03, round XXII): shown, or left out by CSS through data-hide; the age and the ✓ at rest, which come only
+  // under the pointer when left out. On this list, what the card in Settings › Chat list says of each: where it is, its name, what off means.
+  const CARD_PART = { tab: ['.top .repo', 'The project'], branch: ['.top .chip.wtb', 'Its branch'], where: ['.top .chip.elsewhere', 'Running elsewhere'], tick: ['.top .act', '✓', 'only under the pointer'], tickets: ['.top .ttks', 'Tickets'],
+    prs: ['.top :is(.tmx, .tprs:not(.ttks))', 'PRs'], faces: ['.top .faces', 'Faces'], watch: ['.trow .chip.watch', 'What it watches'], age: ['.trow .time', 'Its age', 'only under the pointer'], fable: ['.trow .fable', 'The F for Fable'], unread: ['.trow .badge', 'Unread count'],
+    agents: [':is(.trow .chip.agents, .agl)', 'Agents'], live: ['.state.live', 'What it is doing'], move: ['.state.prmove', 'Your move'], rounds: ['.prpips', 'Rounds'] };
+  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick'];
+  const clab = { on: false, pc: null };
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
     const v = CARD_SIZES.indexOf(prefs.cards), line = prefs.cards === 'line';
@@ -3834,17 +3872,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#sessions').toggleAttribute('data-even', line || (prefs.cards === 'compact' && !!prefs.cardsEven));   // compact's own switch, and one line's rule
     // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
     // the same, so a change redraws no card
-    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS;
+    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => k !== 'age' && k !== 'tick');
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
-    for (const c of $('#cardPartsRow').querySelectorAll('input')) c.checked = parts.includes(c.dataset.part);
     // a card's PRs (2026-10-31; the matrix 2026-11-01): a square each, or all of them stacked with their faces — the
     // faces' box off beside the matrix, and the row off, with why, when no PR shows; a change redraws the cards (the two
     // are other markup: both, every PR twice)
-    const pc = prChipsOf(), noPrs = !parts.includes('prs'), faces = $('#cardPartsRow input[data-part="faces"]');
+    const pc = prChipsOf(), noPrs = !parts.includes('prs');
     for (const b of document.querySelectorAll('#prChipsPick [data-pc]')) { b.setAttribute('aria-checked', String(b.dataset.pc === pc)); b.disabled = noPrs; }
     $('#prChipsRow').classList.toggle('off', noPrs);
     $('#prChipsSay').textContent = noPrs ? 'Only with PRs shown on a card' : PRCHIPS_SAY[pc];
-    faces.disabled = pc === 'matrix'; faces.closest('label').title = pc === 'matrix' ? 'The faces show with every PR — A card’s PRs: All' : '';
     $('#cardsEven').checked = !!prefs.cardsEven;
     $('#sessions').toggleAttribute('data-raised', !!prefs.cardsRaised); $('#cardsRaised').checked = !!prefs.cardsRaised;   // round XXII: beside today's rows
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
@@ -3854,12 +3890,70 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       const r = $(row), say = r.querySelector('small');
       r.classList.toggle('off', off); r.querySelector('input').disabled = off; say.textContent = off ? why || say.dataset.off : say.dataset.d;
     }
+    if (clab.on) cardLabDraw();
     listChanged(); fadeSoon();   // the cards changed height under the same scroll position; a PR matrix shown again is read (fadeOver)
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); renderBoard(); };   // a folded card's line is in its markup (liveSlot); only what changed is redrawn
   const PRCHIPS_SAY = { matrix: 'A square each in its state’s colour, a stack’s joined; the number your move’s, else the one updated last', all: 'Every PR, stacked, and the faces of the people on them' };
   $('#prChipsPick').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b || b.disabled) return; prefs.prChips = b.dataset.pc; savePrefs(); applyCards(); renderBoard(); });
-  for (const c of $('#cardPartsRow').querySelectorAll('input')) c.addEventListener('change', () => { prefs.cardParts = [...$('#cardPartsRow').querySelectorAll('input:checked')].map(x => x.dataset.part); savePrefs(); applyCards(); });
+  // ---- a card you click (2026-11-03, round XXII's T2): Settings › Chat list holds one real card, cardHtml's on a chat of words about itself, with
+  // every part on it at once, which no real card has. A click on a part leaves it out of every card, and a click on it here, faint, brings it back.
+  // The board's rules for the list reach it through a copy of them that lives while the pane shows: every rule naming #slist or #sessions,
+  // those two standing for .clab and .clabs at the same weight (:is() with an id that never matches), any other id in it never matching.
+  function clabCss() {
+    const named = /#(slist|sessions)\b/, swap = sel => sel.replace(/#[A-Za-z_][\w-]*/g, m => m === '#slist' ? ':is(#_, .clab)' : m === '#sessions' ? ':is(#_, .clabs)' : '#_');
+    const tops = sel => { const out = []; let cur = '', depth = 0; for (const c of sel) { if (c === '(' || c === '[') depth++; if (c === ')' || c === ']') depth--; if (c === ',' && !depth) { out.push(cur); cur = ''; } else cur += c; } return [...out, cur]; };
+    const walk = rules => { let t = ''; for (const r of rules) {
+      if (r.selectorText != null) { const keep = tops(r.selectorText).filter(x => named.test(x)); if (keep.length) t += `${keep.map(swap).join(',')}{${r.style.cssText}}\n`; }
+      else if (r.cssRules && !(r instanceof CSSKeyframesRule)) { const inner = walk(r.cssRules); if (inner) t += `${r.cssText.slice(0, r.cssText.indexOf('{'))}{${inner}}\n`; }
+    } return t; };
+    let text = ''; for (const sheet of document.styleSheets) { try { text += walk(sheet.cssRules); } catch {} }
+    return text;
+  }
+  function cardLabMake() {
+    const at = new Date().toISOString(), who = login => ({ login, at, did: ['reviewed'] }), turn = why => ({ you: true, why, movedAt: at, at });
+    const pr = (n, why) => ({ url: `https://github.com/acme/project/pull/${n}`, label: `project#${n}`, number: n, state: 'open', title: 'A pull request', updated: at, people: [who('ana'), who('rui')], turn: turn(why) });
+    const s = { id: 'cardlab', title: 'What the chat is about', project: 'project', cwd: state.sessions.get(state.current)?.cwd || '', status: 'idle', alive: true, model: 'fable', startedAt: at, lastActivity: at, agents: 1,
+      lastReply: 'The last word, as much of it as the size lets through', lastReplyAt: at, worktree: { name: 'branch', branch: 'branch' }, tasks: [{ kind: 'monitor', what: 'what it watches' }],
+      tickets: [{ key: 'KEY-1', cat: 'doing', url: 'https://example.invalid/' }], prs: [pr(1, 'why it is your move'), pr(2, 'and this one')] };
+    const c = html2el(cardHtml(s, { key: ALL })); c.className = 'card idle'; c.removeAttribute('data-id');
+    const q = sel => c.querySelector(sel);
+    q('.trow .time').textContent = '3m';
+    q('.trow .fable')?.insertAdjacentHTML('afterend', '<span class="badge">2</span>');
+    q('.state.live').innerHTML = '<span class="ll"><b>A tool</b><span>what it is doing</span></span>';
+    const chip = q('.trow .chip.agents'); chip.hidden = false; chip.textContent = '1 agent';
+    const rows = q('.agl'); rows.hidden = false; rows.innerHTML = '<div class="agr" data-st="run"><span class="agd"></span><span class="aga">What an agent was asked</span><span class="agt">2m</span><span class="agn">what it does now</span></div>';
+    for (const el of c.querySelectorAll('a, button')) el.tabIndex = -1;
+    for (const [k, [sel, name]] of Object.entries(CARD_PART)) for (const el of c.querySelectorAll(sel)) { el.dataset.part = k; el.tabIndex = 0; el.setAttribute('role', 'switch'); el.setAttribute('aria-label', name); }
+    return c;
+  }
+  function cardLabDraw() {
+    const box = $('#cardLab'), pc = prChipsOf(), on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
+    if (clab.pc !== pc) { clab.pc = pc; box.firstElementChild.replaceChildren(cardLabMake()); }
+    box.toggleAttribute('data-raised', !!prefs.cardsRaised);
+    for (const el of box.querySelectorAll('[data-part]')) {
+      const k = el.dataset.part, [, name, off] = CARD_PART[k], here = on.includes(k);
+      el.classList.toggle('cpoff', !here); el.setAttribute('aria-checked', String(here));
+      el.title = here ? `${name}: click to ${off ? 'keep it to the pointer' : 'hide it on every card'}` : `${name}: ${off || 'hidden'}. Click to ${off ? 'keep it at rest' : 'bring it back'}`;
+    }
+    const gone = CARD_PARTS.filter(k => !on.includes(k) && !CARD_PART[k][2]).map(k => CARD_PART[k][1]);
+    $('#cardLabSay').textContent = `Click a part to hide it or bring it back. This card has them all at once, which no real one does.${gone.length ? ` Hidden: ${gone.join(', ')}.` : ''}`;
+  }
+  function cardLabShow(on) {
+    if (on === clab.on) return;
+    clab.on = on; clab.pc = null;
+    $('#clabCss')?.remove();
+    if (!on) { $('#cardLab').firstElementChild.replaceChildren(); return; }
+    document.head.append(Object.assign(document.createElement('style'), { id: 'clabCss', textContent: clabCss() }));
+    cardLabDraw();
+  }
+  function cardLabFlip(el) {
+    const k = el.dataset.part, on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
+    prefs.cardParts = on.includes(k) ? on.filter(x => x !== k) : [...on, k]; savePrefs(); applyCards();
+  }
+  $('#cardLab').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); const el = e.target.closest('[data-part]'); if (el) cardLabFlip(el); }, true);
+  $('#cardLab').addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
+  $('#cardLab').addEventListener('keydown', e => { const el = e.target.closest('[data-part]'); if (el && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); e.stopPropagation(); cardLabFlip(el); } });
   // …and by lane (2026-10-12, a switch, off): the lanes that want you — a question, a PR at your move, Claude at work, a
   // new reply — large whatever the slider says, the rest at its size. cardHtml marks those cards .roomy; the list's
   // data-bylane lets the mark count, so the switch, like the slider, re-renders nothing.
