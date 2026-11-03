@@ -968,6 +968,16 @@
   /* the rows hold the height, not what is in them (2026-11-02): a chip or a line with metrics of its own moved a card and all under it */
   #sessions[data-even] .card :is(.top, .trow) { height: 18px; }
   #sessions[data-even] .card .state:is(.prmove, .prans, .moveslot) { height: 16px; }
+  /* One line (2026-11-03, round XXII's S1; prefs.cards 'line' → data-line, beside data-even and compact's rules): same height's third
+     row says the first thing there is to say, on one line — the question, the move, what it is doing, else the last word — and costs
+     nothing, the row being paid for. Agents still grow the card. What comes before the words in the markup is told by siblings, a
+     question and a move by the card's classes (.asking, .rowmove), the rows of agents by .agrows (agPaint). */
+  #sessions[data-line] .card .snip:not(.older) { display: -webkit-box; -webkit-line-clamp: 1; margin-top: 4px; height: 16px; font-size: var(--fs-xs); line-height: 16px; }
+  #sessions[data-line] .card .state.needs-input { display: flex; height: 16px; align-items: center; line-height: 16px; overflow: hidden; white-space: nowrap; }
+  #sessions[data-line] .card .state.live:not(:empty) { display: grid; height: 16px; }
+  #sessions[data-line] .card.agrows .state.live, #sessions[data-line] .card:is(.asking, .rowmove) :is(.state.live, .snip), #sessions[data-line] .card :is(.state.live:not(:empty), .agl:not([hidden])) ~ .snip { display: none; }
+  #sessions[data-line] .card :is(.snip:not(.older), .state.live:not(:empty), .state.needs-input) ~ .moveslot { display: none; }
+  :root[data-layout="sidebar"] #sessions[data-line] #slist .card.gone:not(.active) > .snip { opacity: 1; }   /* your word on a row with no process: dimmed it read 3.4:1 */
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
      prompt that produced it recedes. */
@@ -3105,7 +3115,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <div class="spane" data-tab="list" hidden role="tabpanel" id="spList" aria-labelledby="stList">
         <h5 class="sph">Chat list</h5>
         <section class="sgrp"><div class="slist" role="group" aria-label="Cards">
-          <div class="srow set" data-kw="card size cards density large medium compact"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
+          <div class="srow set" data-kw="card size cards density large medium compact one line snug word third row"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="3">One line</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
           <div class="srow set sub" id="laneRow" data-kw="card size larger lane needs you asking"><label class="sl" for="cardsByLane"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></label><input type="checkbox" class="sw" role="switch" id="cardsByLane"></div>
           <div class="srow set sub" id="evenRow" data-kw="card size same height even uniform compact"><label class="sl" for="cardsEven"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></label><input type="checkbox" class="sw" role="switch" id="cardsEven"></div>
           <div class="srow set" data-kw="card busy faces avatars people github tickets jira prs pull requests rounds chips agents sub-agents teammates show hide" id="cardPartsRow"><span class="sl"><b>Show on a card</b><small>Its PRs, their rounds, its tickets, the faces on its PRs and its agents</small></span><span class="schecks"><label><input type="checkbox" data-part="prs"> PRs</label><label><input type="checkbox" data-part="rounds"> Rounds</label><label><input type="checkbox" data-part="tickets"> Tickets</label><label><input type="checkbox" data-part="faces"> Faces</label><label><input type="checkbox" data-part="agents"> Agents</label></span></div>
@@ -3778,14 +3788,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // A pref, not the server's word: it is how this window looks, like the widths and the folds. cardHtml marks the older
   // word and CSS hides by the list's data-cards, so the slider re-renders nothing. A pending question is not a word of
   // either: it stays at every size, the one line on a card that asks you to act.
-  const CARD_SIZES = ['large', 'medium', 'compact'];
+  // One line (2026-11-03, round XXII): compact at one height, its third row saying what there is to say. Listed last, for
+  // the control's data-v is its place here.
+  const CARD_SIZES = ['large', 'medium', 'compact', 'line'];
   const CARD_PARTS = ['prs', 'rounds', 'tickets', 'faces', 'agents'];
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
-    const v = CARD_SIZES.indexOf(prefs.cards);
-    $('#sessions').dataset.cards = prefs.cards;
-    $('#sessions').toggleAttribute('data-bylane', !!prefs.cardsByLane); $('#cardsByLane').checked = !!prefs.cardsByLane;
-    $('#sessions').toggleAttribute('data-even', prefs.cards === 'compact' && !!prefs.cardsEven);   // compact's own switch
+    const v = CARD_SIZES.indexOf(prefs.cards), line = prefs.cards === 'line';
+    $('#sessions').dataset.cards = line ? 'compact' : prefs.cards;
+    $('#sessions').toggleAttribute('data-line', line);
+    $('#sessions').toggleAttribute('data-bylane', !!prefs.cardsByLane && !line); $('#cardsByLane').checked = !!prefs.cardsByLane;
+    $('#sessions').toggleAttribute('data-even', line || (prefs.cards === 'compact' && !!prefs.cardsEven));   // compact's own switch, and one line's rule
     // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
     // the same, so a change redraws no card
     const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS;
@@ -3802,10 +3815,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#cardsEven').checked = !!prefs.cardsEven;
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
     for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
-    $('#cardsSay').textContent = ['Your last prompt and Claude’s last reply', 'The last word, yours or Claude’s', 'The title, its chips and its PRs'][v];
-    for (const [row, off] of [['#laneRow', prefs.cards === 'large'], ['#evenRow', prefs.cards !== 'compact']]) {
+    $('#cardsSay').textContent = ['Your last prompt and Claude’s last reply', 'The last word, yours or Claude’s', 'The title, its chips and its PRs', 'One height, and a line for the question, your move, what it is doing or the last word'][v];
+    for (const [row, off, why] of [['#laneRow', prefs.cards === 'large' || line, line ? 'One line keeps every card one height' : ''], ['#evenRow', prefs.cards !== 'compact']]) {
       const r = $(row), say = r.querySelector('small');
-      r.classList.toggle('off', off); r.querySelector('input').disabled = off; say.textContent = off ? say.dataset.off : say.dataset.d;
+      r.classList.toggle('off', off); r.querySelector('input').disabled = off; say.textContent = off ? why || say.dataset.off : say.dataset.d;
     }
     listChanged(); fadeSoon();   // the cards changed height under the same scroll position; a PR matrix shown again is read (fadeOver)
   }
@@ -6405,13 +6418,14 @@ const toolName = n => {
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
+    const moveLine = moveHtml(s) || answeredHtml(s);
+    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
       <div class="top${showRepo ? ' hastab' : ''}"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
       <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
-      ${stopHtml(s)}${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
+      ${stopHtml(s)}${asking(s) ? askHtml(s) : ''}${moveLine || MOVE_SLOT}${pipsHtml(s)}<i class="rg" aria-hidden="true"></i>
     </div>`;
   }
   // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,
@@ -6432,7 +6446,7 @@ const toolName = n => {
   const AG_SHOW = 3, AG_TICK_MS = 1600, AG_QUIET_MS = 3 * 60_000;
   const AG_SAID = { run: 'at work', wait: 'waiting', quiet: 'quiet', done: 'done', fail: 'failed', stop: 'stopped', joined: 'joined' };
   const agOn = s => !!s.alive && !s.done && (s.agents > 0 || s.agentRows?.length > 0);
-  const agEven = () => prefs.cards === 'compact' && !!prefs.cardsEven;
+  const agEven = () => prefs.cards === 'line' || (prefs.cards === 'compact' && !!prefs.cardsEven);
   const agUi = id => prefs.agentCards[id] || {};
   const agFolded = s => !!agUi(s.id).fold;
   const agWhoOn = s => agOn(s) && s.agents > 0 && agFolded(s);
@@ -6575,6 +6589,7 @@ const toolName = n => {
     const items = !p.folded ? agItems(p, s) : p.sum ? [agSumItem(p, false)] : [];
     const made = agDraw(box, items, soft);
     box.hidden = !items.length;
+    card.classList.toggle('agrows', !!items.length);   // one line: the rows, not what the chat itself does (2026-11-03)
     card._agKey = p.key;
     agShown.set(s.id, new Set(p.folded ? [] : p.rows.map(r => r.id)));
     return made;
