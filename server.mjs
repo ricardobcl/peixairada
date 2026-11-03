@@ -63,6 +63,7 @@ import { createServer } from 'node:http';
 import {
   accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, cpSync, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
+import { open as openFile } from 'node:fs/promises';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { cpus, freemem, homedir, hostname, networkInterfaces, tmpdir, totalmem, userInfo } from 'node:os';
@@ -886,6 +887,37 @@ const PR_RE = /https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/([1
 const PR_ONE = new RegExp(PR_RE.source);   // same pattern, no /g — safe to reuse for a single match
 const prMatch = url => { const m = PR_ONE.exec(url); return m && Number(m[3]) <= 2147483647 ? m : null; };
 const MAX_PRS = 40;
+
+// Which chats name a PR, whatever the board read of them (2026-11-03; ⌥⌘K with a link in its box): the boot reads a long
+// transcript's two ends, so the chips miss what the middle said, and those PRs must not become chips — every PR a chat
+// has un-ticks it when it moves. So the bytes are read when asked, nothing kept: 2.7 GB in about a second, the server's
+// loop never held over 11 ms (measured then). Any mention counts, a tool's output too: the link is that one page.
+const NAMING_CHUNK = 1 << 20, NAMING_AT_ONCE = 4;
+/** Whether the file holds the PR's link: `/pull/<n>`, not more digits after it, `where` (lower-case) before it, in any case. */
+async function fileNames(file, where, tail) {
+  const keep = where.length + tail.length + 1;   // a link cut by a chunk's end, and the byte after it, are whole in the next
+  const buf = Buffer.allocUnsafe(NAMING_CHUNK + keep), fh = await openFile(file, 'r');
+  try {
+    for (let have = 0; ;) {
+      const { bytesRead } = await fh.read(buf, have, NAMING_CHUNK);
+      if (!bytesRead) return false;
+      const end = have + bytesRead, hay = buf.subarray(0, end);
+      for (let i = hay.indexOf(tail); i >= 0; i = hay.indexOf(tail, i + 1)) {
+        const after = hay[i + tail.length];   // none yet at the end of what was read: no match here, and the next chunk has it whole
+        if ((after < 48 || after > 57) && i >= where.length && hay.toString('latin1', i - where.length, i).toLowerCase() === where) return true;
+      }
+      have = Math.min(end, keep); buf.copy(buf, 0, end - have, end);
+    }
+  } finally { await fh.close(); }
+}
+async function chatsNaming(owner, repo, n) {
+  const where = `github.com/${owner}/${repo}`.toLowerCase(), tail = Buffer.from(`/pull/${n}`);
+  const todo = [...sessions.values()].filter(s => s.file), ids = [];
+  await Promise.all(Array.from({ length: NAMING_AT_ONCE }, async () => {
+    for (let s; (s = todo.pop());) if (await fileNames(s.file, where, tail).catch(() => false)) ids.push(s.id);   // a file gone since: not a chat that names it
+  }));
+  return ids;
+}
 
 /**
  * Record one sighting: `by` is who said it ('user' / 'claude'), or null for a `pr-link` line — Claude
@@ -6237,6 +6269,12 @@ const server = createServer(async (req, res) => {
       if (!ids.length || gone.length) return json(res, 404, { error: ids.length ? `not on the board: ${gone.join(', ')}` : 'which chats? ?ids=a,b' });
       const items = ids.map(id => handoffItem(sessions.get(id)));
       return json(res, 200, { text: handoffText(items, url.searchParams.get('kind') === 'fold' ? 'fold' : 'merge'), chats: items.map(c => ({ id: c.id, title: c.title, cwd: c.cwd })) });
+    }
+    // ⌥⌘K's box holding a PR's link (2026-11-03): every chat whose transcript names it
+    if (req.method === 'GET' && p === '/api/named') {
+      const pr = prMatch(url.searchParams.get('pr') || '');
+      if (!pr) return json(res, 400, { error: 'that is not a PR\'s link' });
+      return json(res, 200, { ids: await chatsNaming(pr[1], pr[2], pr[3]) });
     }
     // the overview's tiles (2026-10-10): the last few things each of these chats did
     if (req.method === 'GET' && p === '/api/tails') {

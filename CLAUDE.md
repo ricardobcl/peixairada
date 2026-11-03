@@ -591,10 +591,11 @@ npm run map                         # rewrite the section maps at the top of ser
   field's worth falling off down the list — **a web address found whole**, as itself or the chip it names (2026-10-28,
   `wordIn`, `urlForms`); `hunt()` ranks; an empty box keeps each list's order. `markHits()` bolds
   what landed (`fuzzMarks`). `pickRender` fills `pick.list` and a `row` per mode and clamps the selection once.
-* **The list's magnifier matches the same way** (⌥⌘F): `renderSessionList` scores by `fuzzy(chatFields(s), q)`
-  and, with something typed, sorts by score and draws neither lane heads nor day lines; a folded lane does not apply,
-  the project in view does. ↑↓ walk a `.qsel` card, ⏎ opens it and keeps the query; the mark shows only while the box
-  has the keyboard (`markQsel()`). → `chat-filter.mjs`.
+* **⌥⌘K, typed, finds done chats too** (2026-11-03; half their worth, `doneWorth`); **a PR's link alone asks every
+  transcript** (`namedAsk` → `/api/named`, `chatsNaming`: read when asked, never chips). → `named-prs.test.mjs`, `k-finds-done.mjs`.
+* **The list's magnifier matches the same way** (⌥⌘F): `renderSessionList` sorts by `fuzzy(chatFields(s), q)`, no lane
+  heads or day lines; a folded lane does not apply, the project in view does. ↑↓ walk a `.qsel` card, ⏎ opens it, the
+  query kept; the mark shows only while the box has the keyboard (`markQsel()`). → `chat-filter.mjs`.
 * **A right-click is a menu where ⌥-click, a double-click or a drag did alone** (2026-10-12; `#ctxm`, `ctxRows`,
   `ctxShow`): a card, a PR chip, the colour square, the status bar — not a box, a terminal or the transcript's words, which keep the
   system's. The launcher has the open chat's rows too. A row may carry `sub` (a second line, `.two`) and `off`
@@ -626,7 +627,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `cloneUnder`): `gh repo clone … -- --progress`, phases weighted into one percent (`CLONE_PHASES`), `clone` events
   and `clones` in the snapshot; a failure removes what git left. → `test/folders.test.mjs`.
 * **⌥⌘N's first row is a chat in no folder** (2026-10-14, `NO_FOLDER`): ⏎ starts claude at once in the board's own
-  `<state dir>/no folder` (`SCRATCH_DIR`, `about.scratch`; `spawnTerm` makes it) — never `$HOME`. Hunted like a project; the project in view keeps the selection. → `new-chat-nofolder.mjs`.
+  `<state dir>/no folder` (`SCRATCH_DIR`, `about.scratch`; `spawnTerm` makes it) — never `$HOME`. Hunted like a project. → `new-chat-nofolder.mjs`.
 * **A chat's folder not checked out is cloned before the chat starts** (2026-10-09): `spawnTerm` refuses a missing
   folder (or one being cloned) with `clone` — **`cloneFor(cwd)`: under a root with an org, `<root>/<name>[/…]` is
   `<org>/<name>`**, null under no such root or inside a repo that is there. The page's `withCheckout(key, spawn)`
@@ -884,7 +885,7 @@ npm run map                         # rewrite the section maps at the top of ser
   codes in `ALT_COMPOSES`, and over any key when it is ASCII and no letter (`ALT_ASCII`: German ⌥L @), else Meta. → Findings: *⌥ is a compose key too*.
 * **The ◎ row types `/focus`** into the chat's holder — Claude Code's focus view has no key and no API:
   `toggleFocusView()` sends it, then reads the newest `Focus view enabled|disabled` off the screen (`focusSaid()`) and
-  lights `#viewBtn` from that; every attach reads it too (`readFocusFromScreen()`). The fake claude answers alike.
+  lights `#viewBtn` from that; every attach reads it too (`readFocusFromScreen()`).
   → `focus-view.mjs`.
 * **Paths and pages in the chat are links**: a file path in the transcript or a drawer's line — `/absolute`, `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens
   in the editor at that line (`fileUrl`, relative to the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not
@@ -1008,14 +1009,13 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it
   is noon now (`meta.tz` another or `false`; `ctx.tz`).
 * **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp
-  dir itself (`realpathSync(tmpdir())`) — a fake claude there registers `/private/var/…`; a running pid gets its `procStart`. Its two chats are a second apart.
+  dir itself (`realpathSync(tmpdir())`) — a fake claude there registers `/private/var/…`; a running pid gets its `procStart`.
 * **Every test server gets a fast clock, an empty org directory, and nothing of this Mac's** (`lib/testserver.mjs`,
   whose env is the list): fast polls (`REGISTRY_POLL_MS` 1200 …), its own `ORG_DIR` (no welcome), `CLAUDE_DIR` (empty
   unless a fixture) and config beside its `STATE_FILE`; a fake for every CLI and service (`GH_BIN` — only the fields the
-  query asks, `FAKEGH_FAIL` —; `CLAUDE_BIN` `noclaude.mjs` unless `fake`; …), `USAGE=off`, `GITHUB_API` nowhere,
-  `KEY_MODE=enforce`, a `ZDOTDIR` with no rc files; no inherited `CONFIG_FILE`, `TERMS_DIR`, XDG dirs or
-  `JIRA_API_TOKEN`. Up is its `listening` line (a port taken first moves it to a fresh one); stdin a pipe whose end
-  stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and
+  query asks, `FAKEGH_FAIL` —; `CLAUDE_BIN` `noclaude.mjs` unless `fake`; …), `USAGE=off`,
+  `KEY_MODE=enforce`, a `ZDOTDIR` with no rc files. Up is its `listening` line (a port taken first moves it to a fresh
+  one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and
   `tmpDir()` are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has
   its own state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13).
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is

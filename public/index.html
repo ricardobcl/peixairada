@@ -5176,6 +5176,12 @@ const toolName = n => {
     const words = q.split(/\s+/).filter(Boolean), hit = words.length ? chatIds(s).filter(id => words.some(w => holds(id.toLowerCase(), w))) : [];
     return hit.length ? `<span class="cur ids">${hit.slice(0, 2).map(id => markHits(id, q)).join(' · ')}${hit.length > 2 ? ` +${hit.length - 2}` : ''}</span>` : '';
   }
+  // What a done chat's match is worth in ⌥⌘K (2026-11-03): half, so the chats you jump between keep the top and a done
+  // one leads only where it matches clearly better (on the real board: `wallet` the open chats first, `cloudflare` the
+  // done chat of that name, over open ones that only scatter its letters). Not when the box is its PR's number or name, or
+  // its ticket's key: `650` wants widgets#650, done or not, before an open chat on widgets#16501.
+  const DONE_WORTH = .5;
+  const doneWorth = (s, q) => !s.done || chatIds(s).some(id => { id = id.toLowerCase(); return id === q || id.endsWith('#' + q); }) ? 1 : DONE_WORTH;
   // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
   // then the named ones, then folders by their newest chat. A pinned folder shows even with no chat in view.
   function projectList() {
@@ -6800,6 +6806,8 @@ const toolName = n => {
   // the list's own order (clauding first, then by your last touch); the box searches the same words as the list's
   // magnifier (title, project, prompt, branch) but fuzzily, and with something typed the best match leads instead
   // (2026-09-21); ⏎ opens the chat, switching project when it lives elsewhere.
+  // With something typed the done ones are hunted too (2026-11-03), at half their worth (DONE_WORTH), and a PR's link
+  // alone in the box asks the server about every transcript (namedAsk).
   // ⌥⌘N (2026-09-20) is a chat in the one dialog, a step at a time: the project (⌥⌘P's list without ALL),
   // then — since 2026-09-21 — that project's open chats, newest by your last touch, with ＋ new chat first; ＋ then asks
   // the folder when the project spans several and the environment when the folder's Taskfile launches claude itself, as
@@ -6850,6 +6858,21 @@ const toolName = n => {
   function urlForms(w) {
     const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)\b/.exec(w), jira = /^https?:\/\/[^/]+\/browse\/([a-z][a-z0-9_]*-\d+)\b/.exec(w);
     return gh ? [`${gh[1]}#${gh[2]}`, w] : jira ? [jira[1], w] : [w];
+  }
+  // A PR's link alone in ⌥⌘K's box (2026-11-03) is put to every transcript: the chips hold what the boot read of a long
+  // chat, and on the real board 54 of 123 pr-link lines in done chats lay outside that. The chats it names join the rows
+  // when the answer lands; ⏎ on no row till then waits for it.
+  const PR_LINK = /^(?:https?:\/\/)?(?:www\.)?(github\.com\/[\w.-]+\/[\w.-]+\/pull\/[1-9]\d{0,9})(?!\d)\S*$/i;
+  function namedAsk() {
+    const link = pick.mode === 'chat' ? PR_LINK.exec($('#pickq').value.trim())?.[1] : null;
+    if (!link) { pick.named = null; return; }
+    if (pick.named?.link === link) return;
+    const ask = pick.named = { link, ids: null, err: null, go: false };
+    api('GET', `/api/named?pr=${encodeURIComponent('https://' + link)}`).then(r => { ask.ids = r.ids; }, e => { ask.ids = []; ask.err = e.message; }).then(() => {
+      if (pick.named !== ask || !$('#pick').open) return;
+      pickRender(true);
+      if (ask.go && pick.list.length) pickChoose(pick.sel);
+    });
   }
   /** The word as it stands, in no longer name (`acme-widgets#6`) or number (`widgets#650`) — scored as fuzzWord
    *  scores the same letters. */
@@ -6914,12 +6937,12 @@ const toolName = n => {
   }
   // gen: which opening of the picker; typed: the chats step's box just typed in; git: the chats step's folder's working
   // trees when it is one git checkout (wtOf), wt: its ＋ row on "new worktree", br: the branch typed, as the server found it,
-  // asking: ⏎ on it waiting for that answer (wtEnter)
-  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null, asking: false };
+  // asking: ⏎ on it waiting for that answer (wtEnter); named: ⌥⌘K's box holding a PR's link, and the chats that name it (namedAsk)
+  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null, asking: false, named: null };
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc',
     pr: ctx => `Pull request — type to filter · ↑↓ · ⏎ opens${ctx.zoom === 'fill' ? ' · ⌥⌘G fills the column' : ctx.zoom === 'back' ? ' · ⌥⌘G gives the column back' : ''} · esc`,
-    chat: 'A chat — every project, asking, clauding or ready · any letters in order · ⏎ opens · esc',
+    chat: 'A chat — every project · typed, done chats too · or a PR\'s link · ⏎ · esc',
     new: () => `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${folders.roots.some(r => r.org) ? `, a name to clone from ${folders.roots.filter(r => r.org).map(r => r.org).join(' or ')}` : ''}${state.about.scratch ? ', or no folder at all' : ''} · ↑↓ · ⏎ · esc`,
     folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
     // named: ⌥⌘O never asked which folder. From ⌥⌘O the environment is a scope (its chats follow); from ⌥⌘N it is the last step.
@@ -6935,7 +6958,7 @@ const toolName = n => {
   const NO_FOLDER = '＋ new chat — no folder';   // ⌥⌘N's first row (2026-10-14)
   const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', chatpick: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
-  const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
+  const chatState = s => s.done ? 'done' : bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
   // Adding a project was the longest thing the board asked of you. A project on the board is a folder a chat ran in, so
   // ⌥⌘N's project step could only ever offer a folder that already had one — the repos you had not touched today were
@@ -7011,7 +7034,7 @@ const toolName = n => {
       if (inApp) post({ type: 'focus' });   // the key may have come from the pane: the box needs the board's keyboard
       dlg.showModal(); repostPane();        // the pane goes down while it is up, so the dialog is centred and on top
     }
-    pick.mode = mode; pick.ctx = ctx; pick.sel = 0; pick.gen++; pick.cloning = false; pick.git = null; pick.wt = false; pick.br = null; $('#pickq').disabled = false;
+    pick.mode = mode; pick.ctx = ctx; pick.sel = 0; pick.gen++; pick.cloning = false; pick.git = null; pick.wt = false; pick.br = null; pick.named = null; $('#pickq').disabled = false;
     if (mode === 'new') loadFolders();   // the org's folders, fresh: the rows join the list when the answer lands
     $('#pickq').value = ''; pickHint();
     pickRender(); $('#pickq').focus();
@@ -7029,7 +7052,7 @@ const toolName = n => {
     const mark = text => markHits(text, q);
     // With something typed the best match leads; with the box empty each list keeps its own order (the board's for
     // chats, mention order for PRs, the Taskfile's for environments). Ties go to whichever came first in that order.
-    const hunt = (items, fields) => { if (!q) return items; const hits = []; items.forEach((x, i) => { const m = fuzzy(fields(x), q); if (m) hits.push([m.score, i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]); };
+    const hunt = (items, fields, worth = () => 1) => { if (!q) return items; const hits = []; items.forEach((x, i) => { const m = fuzzy(fields(x), q); if (m) hits.push([m.score * worth(x), i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]); };
     const sel = i => i === pick.sel ? ' sel' : '';
     let row;   // each mode fills pick.list and says how a row of it is drawn; the selection is clamped once, below
     if (pick.mode === 'launch' || pick.mode === 'toggle' || pick.mode === 'prs') {   // ⌥⌘L (2026-10-10): the launcher, its switches, every chat's PRs
@@ -7040,8 +7063,11 @@ const toolName = n => {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
       row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === (pick.ctx.at || shownPr.url) ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
     } else if (pick.mode === 'chat') {
-      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
-      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
+      const order = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
+      const found = hunt([...state.sessions.values()].filter(s => visible(s) && (q || bucket(s) !== 'done')).sort(order), chatFields, s => doneWorth(s, q));
+      const named = (pick.named?.ids || []).map(id => state.sessions.get(id)).filter(s => s && !found.includes(s)).sort(order);   // what the chips did not know
+      pick.list = [...found, ...named];
+      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
     } else if (pick.mode === 'chatpick') {   // a chat to send to (2026-10-31): ⌥⌘K's rows, one it cannot go to dimmed and saying why
       // …or several to merge (`many`): ⏎ takes one in or out, ✓ before it; the first row goes on with those taken in
       const c = pick.ctx;
@@ -7110,7 +7136,8 @@ const toolName = n => {
     if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.id === was.id); if (i >= 0) pick.sel = i; }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
-    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
+    const asked = pick.mode === 'chat' && pick.named, reading = !asked ? '' : !asked.ids ? 'reading every chat\'s transcript for this PR…' : asked.err ? `the transcripts could not be read: ${asked.err}` : '';
+    $('#picklist').innerHTML = rows.join('') + (reading && `<div class="none">${esc(reading)}</div>`) || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     fillAges($('#picklist'));
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
@@ -7121,6 +7148,7 @@ const toolName = n => {
       if (!pick.ctx.bases) pick.ctx.go = !$('#pickq').value.trim(); else if (x) newChatOnBranch(pick.ctx.cwd, pick.ctx.branch, { base: x.ref });
       return;
     }
+    if (!x && pick.mode === 'chat' && pick.named && !pick.named.ids) { pick.named.go = true; return; }   // the answer opens the first it names
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
@@ -7162,7 +7190,7 @@ const toolName = n => {
   // Typing filters the chats, not ＋, so the selection moves off it and onto the first match — and falls back to
   // ＋ (the clamp below) when nothing matches, which is the thing to do with a name no chat has yet. On "new worktree"
   // it names the branch: ＋ stays selected, and where that branch is already is asked (brAsk).
-  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick') && !!$('#pickq').value.trim(); pickRender(); brAsk(); });
+  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick') && !!$('#pickq').value.trim(); namedAsk(); pickRender(); brAsk(); });
   // ＋'s switch takes ← and → past the box's ends (2026-10-13): → with the caret at the end goes to "new worktree" (and
   // onto ＋, from any row), ← with it at the start back to "this folder"; inside the text they move the caret.
   const caretAt = end => { const q = $('#pickq'); return q.selectionStart === q.selectionEnd && q.selectionStart === (end ? q.value.length : 0); };
@@ -7315,7 +7343,7 @@ const toolName = n => {
   function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
     const head = heads && LAUNCH_SECTIONS[x.kind] && pick.list[i - 1]?.kind !== x.kind ? `<div class="pkhd">${LAUNCH_SECTIONS[x.kind]}</div>` : '';
     const r = (cls, g, n, num, t, style = '') => `${head}<div class="pkrow lx ${cls}${sel(i)}" data-i="${i}"${style}><span class="g">${g}</span><span class="n">${n}</span><span class="num">${num}</span><span class="t">${t}</span></div>`;
-    if (x.kind === 'chat') { const s = x.s; return r('chat', '<span class="sq"></span>', `${ticks(mark(s.title))}${s.id === state.current ? '<span class="cur">current</span>' : ''}`, `${projIcon(s.project)}${mark(s.project)}`, `<span class="st" data-state="${chatState(s)}">${s.done ? 'done' : chatState(s)}</span>`, ` style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"`); }
+    if (x.kind === 'chat') { const s = x.s; return r('chat', '<span class="sq"></span>', `${ticks(mark(s.title))}${s.id === state.current ? '<span class="cur">current</span>' : ''}`, `${projIcon(s.project)}${mark(s.project)}`, `<span class="st" data-state="${chatState(s)}">${chatState(s)}</span>`, ` style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"`); }
     if (x.kind === 'project') return r('project', '<span class="sq"></span>', `${projIcon(x.p.name)}${mark(x.p.name)}${x.p.key === prefs.project ? '<span class="cur">current</span>' : ''}`, '', '', ` style="${repoStyle(projColor(x.p))}"`);
     if (x.kind === 'pr') { const pr = x.pr; return r('pr', `<span class="lpr" data-state="${esc(pr.state || '')}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`, `${pr.title ? mark(pr.title) : esc(pr.label)}<span class="cur">${esc(pr.label.replace(/#\d+$/, ''))}</span>`, pr.turn?.you ? '<b class="ymove">your move</b>' : esc(pr.chat || ''), `<span class="st">${esc((pr.state || '').toLowerCase())}</span>${pr.refs ? `<button type="button" class="pkchat" data-url="${esc(pr.url)}" data-chat="${esc(pr.chatId)}" title="A new chat on its branch — in the folder that has it out, else a worktree of its own · ⌥⏎">Chat</button>` : ''}`, ` title="${esc(pr.url)}"`); }
     if (x.kind === 'ticket') { const t = x.t; return r('ticket', `<span class="ltk" data-cat="${esc(t.cat)}">${esc(t.key)}</span>`, mark(t.summary || t.key), esc(t.chat || ''), `<span class="st">${esc((t.status || '').toLowerCase())}</span>`, ` title="${esc(t.url)}"`); }
@@ -7346,7 +7374,7 @@ const toolName = n => {
   // holds HOTKEYS, CMDKEYS and the app's forwarder to it (scripts/check-page.mjs). A row with an id is one the setup
   // rewrites (⌥⌘O's project, ⌥⌘N's folders).
   const KEYS = [
-    ['⌥⌘K', 'Go to', 'a chat — every project, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em>', 'asking, clauding or ready, in the list\'s order · a PR\'s number or a ticket\'s key finds the chat that has it', ['alt:KeyK']],
+    ['⌥⌘K', 'Go to', 'a chat — every project, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em>', 'asking, clauding or ready, in the list\'s order · typed, done chats too · a PR\'s number, its link or a ticket\'s key finds the chat that has it, a PR\'s link every chat whose transcript names it', ['alt:KeyK']],
     ['⌥⌘L', 'Go to', 'anything — chats, projects, PRs, tickets, actions and switches', '> actions and switches, # PRs, @ projects, ! tickets · empty, a menu: → into a row, ← back', ['alt:KeyL']],
     ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', '✎ edits a named one, ＋ makes one', ['alt:KeyP']],
     ['⌥⌘F', 'Go to', 'the list\'s own search, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],

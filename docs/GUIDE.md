@@ -214,7 +214,7 @@ sky every three levels and fireworks at a level-up, wherever the Mac has WebGL2.
 
 | Key | Does |
 |---|---|
-| ⌥⌘K | jump to any chat |
+| ⌥⌘K | jump to any chat; typed, done chats too, and a PR's link finds every chat that names it |
 | ⌥⌘N · ⌥⌘O | new chat · new chat in your ⌥⌘O project |
 | ⌥⌘P · ⌥⌘F | pick a project · filter the list |
 | ⌥⌘↑ ⌥⌘↓ | previous · next chat |

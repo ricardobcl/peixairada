@@ -36,6 +36,33 @@ below the chat); pointer H1 (comes up); size S1 (the third row speaks); open row
 * **The cost**: none. Raised at One line against the commit before, 400 chats in WebKit, median of 3 (`npm run perf -- --against d87b330 --runs 3 --prefs '{"cards":"line","cardsRaised":true}'`, % of a core): rest 2.4 / 2.8, the pointer 5.6 / 5.4, a scroll 16.2 / 16.3, home 11.8 / 12.6; a chat opened 83 ms and 248 layers both; 219 / 220 MB; no animation rule broken.
 * Checked: `card-one-line.mjs`, `card-raised.mjs`, `card-parts.mjs` (rewritten), `card-pr-matrix.mjs`, `settings-panes.mjs`; in WebKit the list's one height and grounds in both themes, and the pane's card from the copied rules. In the full run `status-bar` and `list-follows-word` failed once with a WebKit check running beside it, and pass alone. Pared here for room: the card's glow and the header's black, which the rows and the toolbar no longer draw.
 
+## Decisions of 2026-11-03 — ⌥⌘K finds done chats, and a PR's link every chat that names it
+
+Ricardo: *"hotkey K should search for chats marked as done, especially for saerching PR links"*.
+
+* **Typed, done chats join; the box empty stays the open chats.** Nothing else keeps ⌥⌘K a way to jump: 236 of the board's
+  336 chats were done that day.
+* **At half their worth** (`DONE_WORTH`), read off the real chats. At full worth `wallet` led with done chats, so the chat you
+  jump to lost the top. Open chats first, whatever the match, `cloudflare` led with an open chat that only
+  scatters those letters over its prompt, above the done chat of that name. Half keeps both right. **Not when the box is its
+  PR's number or name, or its ticket's key**: `650` wants `widgets#650`, done or not, before an open chat on `widgets#16501`.
+* **A link reads the transcripts, because the chips cannot answer it.** The page alone would have been a false *no chat*: the
+  boot reads a long transcript's two ends (`HEAD_BYTES`, `TAIL_BYTES`), 219 of 232 done chats are longer than that, and of
+  the `pr-link` lines in done chats 54 of 123 were on no chip (of the links in their words, 90 of 322).
+* **Not more chips.** Each PR on a chat is polled, and un-ticks the chat when it moves: a whole read of old chats would have
+  brought back chats done long ago. `GET /api/named` only answers, and puts nothing on the chat.
+* **Read when asked, no index**: 2.66 GB took 0.6 to 1.5 s, the server's loop held 11 ms at worst (`Buffer.indexOf` a
+  chunk at a time, four files at once). Nothing to keep, to invalidate or to read at every boot.
+* **Any mention counts**, a tool's output too: the link is that one page. Those rows come after the hunted ones and say
+  *named in its transcript*; `.ids` has it because that is where a row says why it matched.
+* **Only a link, alone in the box.** A bare number or `repo#n` still goes by the chips, so it misses what a link finds. A
+  bare number read off every transcript would be noise; `repo#n` could be asked the same way, if it turns out to be wanted.
+* **⏎ on no row yet waits for the answer**, since a paste and ⏎ is the likely use; the answer opens the first it names.
+* **`chatState` says `done`**: the launcher's row wrote that word itself, in ready's green. It is the muted grey now, as here.
+* **Left as it is**: a done chat opened while its lane is folded has no card in the list, as an idle chat opened from here
+  never has. The column shows it; unfolding Done for one chat would throw the list about. ⌥⌘L and ⌥⌘F do not read the
+  transcripts: the ask was K.
+
 ## Decisions of 2026-11-03 — rows further apart
 
 Ricardo, on the corner tab: *"I think we need a bit more padding between cards, at least on compact view"*.
