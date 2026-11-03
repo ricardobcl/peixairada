@@ -2,7 +2,7 @@
 // stack with CI and a move, seven, fourteen, thirty, and tickets alone. What this checks: the squares and the number a card has; one row, then two, then three as the count or
 // the row asks, the toolbar no taller and the row one line, the title keeping its room; past three rows' room the box scrolls, the number
 // put, the numbered square in sight, the end with more faded; a stack's line within a row and none at a row's start; CI (the number's badge, a failing square's ring, a
-// running square's pulse); a square's card under the pointer, below the header; its click its PR; the mark says how many and folds the rows, no chips anywhere; tickets are dots.
+// running square's pulse); a square's card under the pointer, below the header; its click its PR; the mark says how many and folds the rows, no chips anywhere; tickets are dots; with a page on a tab under the header, a square's card clear of it.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -142,5 +142,23 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.shot('8-listed', { x: 380, y: 0, width: 1320, height: 190 });
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+
+  // in the app, with a PR on a tab under the header: its card would be under that native page, so it goes over the list, beside the column, no arrow
+  await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };` });
+  await ctx.evaluate(`location.reload()`);
+  await ctx.waitFor(`window.__posts && document.querySelectorAll('.card').length > 0`, { what: 'the board again, with the bridge' });
+  await opened(stack, 4);
+  await ctx.evaluate(`document.querySelector('#shead > .tmx .mxs[data-url$="/11"]').click()`);
+  await ctx.waitFor(`(document.querySelector('#ptabsB .ptab.on')?.dataset.tab || '').startsWith('gh:')`, { what: 'the PR on a tab in the right half' });
+  await ctx.settle();
+  const sqApp = await centre('#shead > .tmx .mxs[data-url$="/13"]');
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: sqApp.x, y: sqApp.y });
+  await ctx.waitFor(`document.querySelector('#mxtip.on .mtt')?.textContent.startsWith('#13')`, { what: 'the square\'s card, with a page under the header' });
+  await ctx.settle();
+  out.far = await ctx.evaluate(`JSON.stringify((() => { const t = document.querySelector('#mxtip'), r = t.getBoundingClientRect(), h = document.querySelector('#shead').getBoundingClientRect(), panes = window.__posts.filter(m => m.type === 'pane').at(-1).panes;
+    return { far: t.classList.contains('far'), panes: panes.length, left: r.left >= 8, beside: r.right <= h.left, clear: !panes.some(p => p.left < r.right && r.left < p.left + p.width && p.top < r.bottom && r.top < p.top + p.height), arrow: getComputedStyle(t, '::after').display }; })())`).then(JSON.parse);
+  a.deepEqual(out.far, { far: true, panes: 1, left: true, beside: true, clear: true, arrow: 'none' }, `over the list, clear of the page: ${JSON.stringify(out.far)}`);
+  await ctx.shot('9-card-with-page', { x: 0, y: 0, width: 1700, height: 320 });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 500 });
   return out;
 }
