@@ -27,7 +27,8 @@ export default async function (ctx) {
   const read = () => ctx.evaluate(`JSON.stringify((() => {
     const N = ${JSON.stringify(NOTCH)}, main = document.querySelector('#main'), list = document.querySelector('#sessions'), chat = document.querySelector('#chat');
     const head = document.querySelector('#shead'), h2 = head.querySelector('h2');
-    const under = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.top < N.top && r.right > N.left && r.left < N.right; };
+    const words = el => { const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect(); };
+    const under = el => { const r = el.classList.contains('repo') ? words(el) : el.getBoundingClientRect(); return r.width > 0 && r.top < N.top && r.right > N.left && r.left < N.right; };   // the tab's fill reaches the sheet's top, cut round the housing with it; its words never (2026-11-03)
     const parts = [...head.querySelectorAll('*')].filter(el => el.getClientRects().length && el.textContent.trim() && !el.querySelector('*'));
     const after = [...head.children].find(el => el !== h2 && !el.classList.contains('details') && el.getClientRects().length);
     return { notch: main.classList.contains('notch'), top: main.style.getPropertyValue('--notch-top'),

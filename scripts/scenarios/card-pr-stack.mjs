@@ -49,7 +49,7 @@ export default async function (ctx) {
   const look = id => ctx.evaluate(`JSON.stringify((c => {
     const box = e => { const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), y: Math.round(r.top + r.height / 2) }; };
     const t = c.querySelector('.tprs'), chips = [...t.children];
-    return { tprs: box(t), scroll: { left: Math.round(t.scrollLeft), over: t.scrollWidth > t.clientWidth }, act: Math.round(c.querySelector('.top .act').getBoundingClientRect().left),
+    return { tprs: box(t), scroll: { left: Math.round(t.scrollLeft), over: t.scrollWidth > t.clientWidth }, act: Math.round(c.querySelector('.top .act').getBoundingClientRect().right),
       row: Math.round(c.querySelector('.top').getBoundingClientRect().right), repo: Math.round(c.querySelector('.top .repo')?.getBoundingClientRect().width ?? -1), list: Math.round(document.querySelector('#slist').scrollTop),
       chips: chips.map(e => { const b = box(e); return { ...b, text: e.textContent, url: e.dataset.url, inked: getComputedStyle(e).color !== 'rgba(0, 0, 0, 0)',
         atMiddle: document.elementFromPoint((b.l + b.r) / 2, b.y) === e, atSliver: document.elementFromPoint(b.l + 2, b.y) === e }; }) };

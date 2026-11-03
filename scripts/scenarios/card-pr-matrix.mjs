@@ -97,11 +97,12 @@ export default async function (ctx) {
   // a wheel over it moves the squares, not the number
   const mc = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card(many.id)}.querySelector('.mxg').getBoundingClientRect())`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: mc.x, y: mc.y });
+  await ctx.sleep(100); const under = await look(many.id);   // the pointer brings the ✓, which takes its room from the squares' (2026-11-03)
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: mc.x, y: mc.y, deltaX: 0, deltaY: -120 });
-  await ctx.waitFor(`${card(many.id)}.querySelector('.mxg').scrollLeft < ${out.many.box.x}`, { what: 'the squares scrolled back by the wheel' });
+  await ctx.waitFor(`${card(many.id)}.querySelector('.mxg').scrollLeft < ${under.box.x}`, { what: 'the squares scrolled back by the wheel' });
   await ctx.sleep(100);
   out.wheeled = await look(many.id);
-  ctx.assert.equal(out.wheeled.nx, out.many.nx, 'the number stays put');
+  ctx.assert.equal(out.wheeled.nx, under.nx, 'the number stays put');
   ctx.assert.ok(out.wheeled.box.ofr, `more past the end now, faded: ${JSON.stringify(out.wheeled.box)}`);
   ctx.assert.equal(await ctx.evaluate(`document.scrollingElement.scrollTop + document.querySelector('#slist').scrollTop`), 0, 'the list did not scroll');
 

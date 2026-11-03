@@ -210,6 +210,8 @@ export default async function (ctx) {
     ctx.assert.match(await ctx.evaluate(`${card}.querySelector('.act[data-act="done"]').title`), /⌥-click: done for good/, 'the ✓ says so');
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hmenu #forGoodBtn')?.textContent`), 'done for good⌥-click ✓', 'and ··· has it as a row');
     // ⌥ held over it, the ✓ is done for good's ✕, in red; let go, the ✓ again — then a real ⌥-click
+    const on = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.bottom - 3 }))(${card}.getBoundingClientRect())`);
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: on.x, y: on.y }); await ctx.sleep(100);   // the ✓ has no room until the pointer is on its card (2026-11-03)
     const tk = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card}.querySelector('.act[data-act="done"]').getBoundingClientRect())`);
     const shows = () => ctx.evaluate(`JSON.stringify((b => ({ alt: document.documentElement.hasAttribute('data-alt'), tick: getComputedStyle(b.querySelector('.tk:not(.fx)')).display,
       x: getComputedStyle(b.querySelector('.fx')).display, color: getComputedStyle(b).color, red: getComputedStyle(document.documentElement).getPropertyValue('--needs').trim() }))(${card}.querySelector('.act[data-act="done"]')))`).then(JSON.parse);

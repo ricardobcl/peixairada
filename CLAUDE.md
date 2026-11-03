@@ -424,13 +424,13 @@ npm run map                         # rewrite the section maps at the top of ser
   not on a part with a tooltip of its own; a pane page there, under; a PR-titled chat's `titleTip` its first line). → `pr-rounds.mjs`.
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
   chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
-  a non-passive listener added on `pointerover`). CSS only. → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
+  a non-passive listener added on `pointerover`). → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
   `CARD_FACES`, spread under the pointer). **That is *All*; the default is the
   matrix** (2026-11-01, Settings › Chat list › A card's PRs, `prefs.prChips`; `cardMatrix`, `.tmx`, markup by the pref): a
   square a PR in stack order (`prGroups`, `prChain` on `pr.refs`), the number your move's, else the newest `pr.updated`
   (`mxLead`); one size, nothing round a square; past the row's room `.mxg` scrolls (`mxWheel`; `fadeOver` brings the
   numbered one into sight); no tooltips: a square's or the number's PR card (`#mxtip`, `mxtShow`, `mxCardHtml`), on a
-  spring, the square lifted (`.hot`); `#rpop` lists every PR, no faces. The harness starts on *All*. → `card-pr-matrix.mjs`.
+  spring, the square lifted (`.hot`); `#rpop` lists every PR, no faces. → `card-pr-matrix.mjs`.
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
   GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving
@@ -442,8 +442,8 @@ npm run map                         # rewrite the section maps at the top of ser
   (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. → `card-sizes.mjs`. **Its PRs,
   rounds, tickets and faces each optional** (2026-10-21, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone). → `card-parts.mjs`.
 * **A card's title row reads title · chips · time · F ·
-  unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age (`.trow .time`) shows under the
-  pointer only, by `opacity`, keeping its room. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
+  unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age and the ✓ show under the
+  pointer only, no room at rest (2026-11-03; the ✓ `width: 0`: focusable). The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
   → `card-marks.mjs`.
 * **ALL** (`key: 'all'`) is `BLACK` through
   `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. `#splitter`
@@ -724,11 +724,11 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The sidebar is the one layout** (2026-10-30, round X; Tiles gone 2026-11-01): `<html data-layout="sidebar">` in the
   markup, never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the
   panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` for a split's halves,
-  `tileNotch`'s cut round the housing). **Ring is its one style** (2026-11-01, no setting). The shell: no gaps or edges (no `.ncut`); the list
-  and the status bar flat on `--side` (the frame); the header a flush toolbar of glass, no black, the theme's inks
+  `tileNotch`'s cut round the housing). The shell: no gaps or edges (no `.ncut`); the list
+  and the status bar flat on `--side` (the frame); the header a flush toolbar of glass, the theme's inks
   (`--hd-*`), lowered at the notch by padding; cards are rows — no ground, edge or light under the pointer, the open
-  one solid in its project's colour (`--selc`), white on it; the project a tag on a row, in the toolbar a capsule; PR
-  and ticket chips a tint. **`.card > .rg`, on every card (cardHtml), is the row's ring** — a still mask to a 1.5 px
+  one solid in its project's colour (`--selc`), white on it; the project a corner tab on a row (`.top.hastab`; `.card.gone` dims all but it) and in the toolbar (the h2's padding, `--htop`; 2026-11-03), inks in `INK_CHECK`; chips `--r-3`; lanes on the rows' edges
+  (→ `project-tab.mjs`); PR and ticket chips a tint. **`.card > .rg`, on every card (cardHtml), is the row's ring** — a still mask to a 1.5 px
   band, its `::before` the turning square; the card's own pseudo-elements are the sonar's. A new animation joins
   `PHASED` and the reduced-motion block. → `sidebar-layout.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the

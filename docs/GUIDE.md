@@ -135,7 +135,7 @@ peixAIrada's dark, the grey of the settings' own sidebar),
 and *Dark frame* makes that frame the theme's dark half round a light chat. Your projects keep their hue in the
 theme's shades, and in every theme the small text reads at 4.5:1 or better. The board is a Mac window: the chats a
 sidebar of rows, a ring of light round a chat at work and sonar round a question, the open chat solid in its
-project's colour. Each row names its project on a tag of its colour, and the toolbar on a capsule of it.
+project's colour. Each row names its project on a tab of its colour in its top-left corner, and the toolbar on the same tab in its own.
 
 <table>
   <tr>

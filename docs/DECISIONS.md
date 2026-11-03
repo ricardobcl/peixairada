@@ -2,8 +2,47 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-02. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-03. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-03 — the project a corner tab, and the list's edges (round XXI)
+
+Ricardo: *"the alignment on each card seems a bit off, the project name should be more promenient (maybe a bigger color
+pill background) and the rest below should be a bit indented? also the project background pill is not the same shape on
+cards and on top chat bar"*. From round XXI's page, the real CSS on the made-up board with twelve options and a mixer, he
+took *"J changed (corner tab, 22 px, 34% tint, words line up by shape). Also: lane heads on the same edges; right edge
+holds; every chip takes the pill's corner."*
+
+* **What was off, measured from the card's left**: the pill's edge and the title at 12, the pill's words at 18, agent
+  words at 30, a lane's name at 31; a lane's chevron 6 px past the chips' right edge, which itself stopped short by what
+  the hidden age and ✓ kept. Two pills: 16 px, 5 px corners, 600 on a row; 24 px, a capsule, 800 in the toolbar.
+* **A tab rather than an indent**: the tab's words land on the title's edge by its shape, so nothing under it moves and the
+  title loses no width. It costs 5 px a row (79 at same height). One project in view has no tab, and its row keeps its 18 px
+  and 74 (`.top.hastab`, from `cardHtml`).
+* **One line along the top**: the page's mock left the PRs and marks 2 to 3 px under the tab's words. Built, the top row is
+  the tab's height from the row's own top, centred.
+* **The toolbar's is the same tab**, in the sheet's corner (whose 12 px rounds it) down to the hairline. The h2 reaches the
+  toolbar's edges by its padding, a margin taking it back, so what it clips leaves the tab whole, nothing else in the row
+  moves, and a header with no project keeps its words; `fitHeadPrs` subtracts that padding. Lowered at the notch (`--hdrop`,
+  `.npad`, one `--htop`), the tab still reaches the top and its words stay level with the title. Below the strip that is
+  72 px tall; only a window that pads there (a 14-inch's, say) shows it: judge it there.
+* **The inks are not the page's**: its 34% read 4.1:1 at worst, and a sweep of 165 colours over every theme, at rest, under
+  the pointer, asking and in the toolbar, found three causes. A light project's fill went as light as its words (`--lift`
+  has no ceiling in the dark), so the fill now has its own band, `clamp(.62, l, .72)` light and `clamp(.55, l, .62)` dark; the
+  words went to `min(l, .3)` and `max(l, .95)`; and `.card.gone`'s opacity took any tab under, so that row now dims what is on
+  it, not its tab — open, nothing, all white on its solid colour. None under 4.5:1 now, and `INK_CHECK` holds it (27 colours).
+* **The right edge holds**, against 2026-09-27's "keeps its room, nothing moves": it was the row's right edge that wandered,
+  and he chose the chips moving under the pointer over that. The ✓ is `width: 0` at rest, never `display: none`, so the keys
+  still reach it, and it stays armed or ticked. The PRs stay put (the ✓ comes left of them), as the top row's order has it.
+  A title that wraps keeps the age's room at rest (28 px, the age's 21 at least and the gap), or the pointer could add a line.
+* **Lanes on the rows' edges**: the mark on the title's, the name on an agent row's words, the chevron's tip on the chips'
+  right. A day line and a lane's "N more" on the title's too, past what was picked, by the same rule.
+* **Every chip the toolbar's `--r-3`**: the tab has no one corner to copy, and the toolbar's controls already have it.
+  `.cpr` and `.ctk` with them, past the mock's two.
+* **Left off**: *same height in two rows*. The empty third row stays, and with it the words riding high on a row with no
+  move line.
+* Checked: `project-tab.mjs`, `INK_CHECK` (red with the mock's inks, 3.14), the sweep's lowest 4.54; Chrome dark and light with the
+  notch's two cases, WebKit's frame and numbers dark. `npm run perf` could not run: the screen was locked, and WebKit draws nothing then.
 
 ## Decisions of 2026-11-02, late — your word takes the list to the card
 

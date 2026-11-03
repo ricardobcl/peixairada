@@ -13,8 +13,9 @@ export default async function (ctx) {
 
   // ---- 2 · a press dips: the card to 99 %, a control to 97 %, and a press on a control inside a card dips the control alone.
   // Let go off it, so nothing is clicked. ----
-  const press = async (sel, read) => {
+  const press = async (sel, read, over) => {
     await ctx.settle();   // a draw between the press and the read replaces the node, and the new one is not :active
+    if (over) { const o = await ctx.evaluate(at(over)); await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: o.x, y: o.y }); await ctx.sleep(100); }   // the ✓ has no room until the pointer is on its card (2026-11-03)
     const p = await ctx.evaluate(at(sel));
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y });
     await mouse('mousePressed', p);
@@ -34,7 +35,7 @@ export default async function (ctx) {
   out.press = {
     card: await press('#slist > .card .title', held('#slist > .card')),
     chip: await press('#qBtn', held('#qBtn')),   // the magnifier (a state chip until 2026-10-11, later, when they went)
-    tick: await press('#slist > .card .top .act', `[${held('#slist > .card')}, ${held('#slist > .card .top .act')}]`),
+    tick: await press('#slist > .card .top .act', `[${held('#slist > .card')}, ${held('#slist > .card .top .act')}]`, '#slist > .card .title'),
     after: await ctx.evaluate(held('#qBtn')),
   };
   ctx.assert.equal(out.press.card, '0.99', 'a card held down dips to 99 %');

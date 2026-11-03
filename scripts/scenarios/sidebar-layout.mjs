@@ -6,8 +6,8 @@
 // in step with the rest (phaseAnims), the card's own pseudo-elements left alone; the asking row's sonar round its
 // rounded outline; the lanes plain. A pref left from Tiles changes nothing; at the notch nothing borders the cut;
 // reduced motion holds the ring still. The open row solid in its project's colour (green here), never the system's
-// blue. The project a tag on each row, its name in its colour on a tint of it; in the toolbar a capsule — a board
-// saved with a style gone or the toolbar's Line wears the one style and the capsule, the prefs dropped.
+// blue. The project a corner tab on each row and in the toolbar, its name in its colour on a tint of it (the rest of it in
+// project-tab.mjs) — a board saved with a style gone or the toolbar's Line wears the one style and the tab, the prefs dropped.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -116,24 +116,24 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.rows.workRing, out.rows.readyRg], ['ring', 'none'], 'the ring, none on a ready row');
     ctx.assert.ok(hueOf(out.rows.sel) > 120 && hueOf(out.rows.sel) < 200, `the open row in its project’s green, not the system’s blue: ${out.rows.sel}`);
     ctx.assert.equal(out.rows.selInk, 'rgb(255, 255, 255)', 'white on it');
-    ctx.assert.deepEqual([out.rows.pix, out.rows.dot, out.rows.tag[1]], [true, 'none', '6px'], 'the lanes’ glyphs; the project a tag, no dot');
+    ctx.assert.deepEqual([out.rows.pix, out.rows.dot, out.rows.tag[1]], [true, 'none', '12px'], 'the lanes’ glyphs; the project a tab, no dot');
     ctx.assert.ok(hueOf(out.rows.tag[0]) > 120 && hueOf(out.rows.tag[0]) < 200, `the tag a tint of its project’s green: ${out.rows.tag[0]}`);
     ctx.assert.equal(out.rows.openTag, 'rgba(0, 0, 0, 0.2)', 'on the open row a shade');
 
-    // the project in the toolbar: a capsule of its colour
+    // the project in the toolbar: the tab, of its colour
     const head = `(() => { const r = getComputedStyle(document.querySelector('#shead h2 .repo')), h = getComputedStyle(document.querySelector('#shead'));
       return { capsule: r.backgroundColor, round: r.borderTopLeftRadius, before: getComputedStyle(document.querySelector('#shead h2 .repo'), '::before').content, foot: h.borderBottomWidth }; })()`;
     out.capsule = await ctx.evaluate(head);
-    ctx.assert.deepEqual([out.capsule.round, out.capsule.before, out.capsule.foot], ['999px', 'none', '1px'], 'the toolbar’s project a capsule, no dot, the foot a hairline');
-    ctx.assert.ok(hueOf(out.capsule.capsule) > 120 && hueOf(out.capsule.capsule) < 200, `the capsule its project’s green: ${out.capsule.capsule}`);
+    ctx.assert.deepEqual([out.capsule.round, out.capsule.before, out.capsule.foot], ['0px', 'none', '1px'], 'the toolbar’s project the tab in the sheet’s corner, no dot, the foot a hairline');
+    ctx.assert.ok(hueOf(out.capsule.capsule) > 120 && hueOf(out.capsule.capsule) < 200, `the tab its project’s green: ${out.capsule.capsule}`);
 
-    // a board saved with a style gone and the toolbar's Line: the one style and the capsule, both prefs gone
+    // a board saved with a style gone and the toolbar's Line: the one style and the tab, both prefs gone
     await ctx.evaluate(`localStorage.setItem('peixairada-prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'), sidebarStyle: 'glass', headMark: 'line' }))`);
     await ctx.reload();
     ctx.assert.deepEqual(await ctx.evaluate(`[document.documentElement.dataset.sidebar ?? null, document.documentElement.dataset.hmark ?? null, 'sidebarStyle' in window.peix.prefs(), 'headMark' in window.peix.prefs(), getComputedStyle(document.querySelector('#sessions')).backdropFilter]`), [null, null, false, false, 'none'], 'Glass and Line saved: neither, the prefs gone');
     await ctx.openChat(work.id);
     await ctx.settle();
-    ctx.assert.equal((await ctx.evaluate(head)).round, '999px', 'the capsule still');
+    ctx.assert.equal((await ctx.evaluate(head)).round, '0px', 'the tab still');
 
     return out;
   } finally { for (const s of sleeps) try { s.kill(); } catch {} }

@@ -2209,18 +2209,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* the header a toolbar: the window's width, an edge at its foot alone, glass of the panel; no black beside the
      project, the theme's own inks. Lowered at the notch by padding, not a margin — the toolbar reaches the top whatever
      it holds. */
-  :root[data-layout="sidebar"] main.notch > #chat.npad > #shead { padding-top: calc(7px + var(--notch-top, 0px)); }   /* under the housing with no hole for it: below the strip (the rule under it outweighed the tiles', 2026-11-01) */
-  :root[data-layout="sidebar"] #chat > #shead { margin: 0; padding-top: calc(7px + var(--hdrop, 0px)); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink);
+  :root[data-layout="sidebar"] main.notch > #chat.npad > #shead { --htop: calc(7px + var(--notch-top, 0px)); }   /* under the housing with no hole for it: below the strip (the rule under it outweighed the tiles', 2026-11-01) */
+  :root[data-layout="sidebar"] #chat > #shead { --htop: calc(7px + var(--hdrop, 0px)); margin: 0; padding-top: var(--htop); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink);
     background: color-mix(in srgb, var(--panel) 76%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
     --hfade-w: 24px; --rink: var(--ink); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
   :root[data-layout="sidebar"] #chat > #prlist { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
   :root[data-layout="sidebar"] #chat .shead::after { display: none; }
-  /* The project in the toolbar (2026-10-31, round XI): its name in its colour on a capsule of it, as a row's tag (a
-     line of that colour along the toolbar's foot, Settings' other choice, gone 2026-11-01, round XVII's F1) */
-  :root[data-layout="sidebar"] #chat .shead h2 .repo { padding: 2px 11px; border-radius: 999px;
-    color: oklch(from var(--repo, var(--nocolor)) min(l, .42) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) min(l, .72) c h) 18%, transparent); }
+  /* The project in the toolbar (2026-11-03, round XXI): the row's corner tab, in the sheet's corner, which rounds its
+     other one, its words on the row's line and on the row's title's edge. The h2 reaches the toolbar's edges by its padding, so
+     what it clips leaves the tab whole and all else in it stands where it stood; a header with no project is words alone. */
+  :root[data-layout="sidebar"] #chat > #shead > h2 { align-self: stretch; margin: calc(-1 * var(--htop)) 0 -7px -12px; padding: var(--htop) 0 7px 12px; }
+  :root[data-layout="sidebar"] #chat .shead h2 .repo { align-self: stretch; align-content: center; margin: calc(-1 * var(--htop)) 0 -7px -12px; padding: calc(var(--htop) - 7px) 13px 0 12px; border-radius: 0 0 8px; font-weight: 700;
+    color: oklch(from var(--repo, var(--nocolor)) min(l, .3) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.62, l, .72) c h) 34%, transparent); }
   :root[data-layout="sidebar"][data-theme="dark"] #chat .shead h2 .repo {
-    color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) max(l, .62) c h) 18%, transparent); }
+    color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
   /* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
      the toolbar's ground, opaque: the card's chips overlap */
   :root[data-layout="sidebar"] :is(#slist .card .cpr, #chat .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]), :root[data-layout="sidebar"] :is(#slist .card .ctk, #chat .shead .hpr.tk)[data-cat] {
@@ -2230,10 +2232,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #chat .shead .hpr .ck { background: transparent; }
   /* the lanes as the tiles' were (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
      sidebar's ground; all caught up keeps its still mark, where its sparks start */
-  :root[data-layout="sidebar"] .gsep.lane { margin: 6px -8px 2px; padding: 7px 12px 5px 16px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; }
+  /* on the rows' edges (2026-11-03, round XXI): the mark on the title's, the name on an agent row's words, the chevron's tip on the chips' right; a day and a lane's rest on the title's */
+  :root[data-layout="sidebar"] .gsep.lane { margin: 6px -8px 2px; padding: 7px 18px 5px 19px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; }
   :root[data-layout="sidebar"] .gsep.lane[data-lane] { background: var(--side); }
   :root[data-layout="sidebar"] .gsep.lane:first-child { margin-top: 0; }
   :root[data-layout="sidebar"] .gsep.lane > i { width: 13px; height: 13px; margin: 0 1px; }
+  :root[data-layout="sidebar"] .gsep.lane .ln { margin-left: -4px; }
+  :root[data-layout="sidebar"] .gsep:is(.day, .more) { margin-inline: 12px; }
   :root[data-layout="sidebar"] .gsep.lane b { font-size: var(--fs-sm); font-weight: 500; }
   :root[data-layout="sidebar"] .gsep.lane.zero { color: var(--idle); }
   /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer, a grey
@@ -2243,9 +2248,27 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card { background: none; border: 0; outline: 0; box-shadow: none; border-radius: 7px; padding: 8px 12px; }
   :root[data-layout="sidebar"] #slist .card:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
   :root[data-layout="sidebar"] #slist .card.qsel { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent); }
-  :root[data-layout="sidebar"] #slist .card .top .repo { padding: 0 6px; border-radius: 5px; line-height: 16px; font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none;
-    color: oklch(from var(--repo, var(--nocolor)) min(l, .42) c h); background: color-mix(in srgb, var(--lift) 18%, transparent); }
-  :root[data-layout="sidebar"][data-frame="dark"] #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .82) c h); }
+  /* The project a corner tab (2026-11-03, round XXI): in the row's top-left corner, that corner the row's own 7 px and
+     its one free one a step rounder, its words on the title's edge; the top row its height from the row's top, so the PRs
+     and the marks share its line. No project shown, no tab: the row keeps its 18 px. */
+  :root[data-layout="sidebar"] #slist .card .top.hastab { height: 26px; margin: -8px 0 7px; }
+  :root[data-layout="sidebar"] #slist .card .top .repo { height: 26px; margin-left: -12px; padding: 0 10px 0 12px; border-radius: 7px 0 8px; line-height: 26px; font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; text-transform: none;
+    color: oklch(from var(--repo, var(--nocolor)) min(l, .3) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.62, l, .72) c h) 34%, transparent); }
+  :root[data-layout="sidebar"][data-frame="dark"] #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
+  /* its words 4.5:1 on any colour in every theme (INK_CHECK): the fill held in a band of its own, and a chat with no process dims
+     what is on its row, not its tab, which that opacity took under; the open row none of it, all white on its solid colour */
+  :root[data-layout="sidebar"] #slist .card.gone { opacity: 1; }
+  :root[data-layout="sidebar"] #slist .card.gone:not(.active) > :not(.top, .rg), :root[data-layout="sidebar"] #slist .card.gone:not(.active) > .top > :not(.repo, .act, .vh, .grow) { opacity: .8; }
+  /* The right edge holds (2026-11-03, round XXI): what only the pointer shows keeps no room at rest — the chips run to the
+     edge, and it pushes them left when it comes. The ✓ stays in the keys' way (no display: none), and in sight armed or ticked.
+     A title that wraps keeps that room, and the age a least width, so the pointer never shortens a row under itself. */
+  :root[data-layout="sidebar"] #slist .card:not(:hover) .trow .time { display: none; }
+  @starting-style { :root[data-layout="sidebar"] #slist .card:hover .trow .time { opacity: 0; } }
+  :root[data-layout="sidebar"] #slist .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) { width: 0; margin-left: -7px; }
+  :root[data-layout="sidebar"] #slist .card .trow .time { min-width: 21px; text-align: right; }
+  :root[data-layout="sidebar"] #sessions:not([data-even]) .card:not(:hover) .trow .title { margin-right: 28px; }
+  /* Every chip the toolbar's corner (2026-11-03, round XXI) */
+  :root[data-layout="sidebar"] :is(#slist .card, #chat .shead) :is(.ymove, .chip, .cpr, .ctk) { border-radius: var(--r-3); }
   /* The open row: its project's colour, solid — darkened till white reads on it (2026-10-31: the system's blue
      before) —, all on it white, a question on it too (its red line and pings say it) */
   :root[data-layout="sidebar"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
@@ -6381,7 +6404,7 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
+      <div class="top${showRepo ? ' hastab' : ''}"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${prChipsOf() === 'all' ? cardFaces(s) + cardPrs(s) : cardMatrix(s)}</div>
       <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -9051,7 +9074,7 @@ const toolName = n => {
     for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
     // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
-    const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
+    const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2'), h2pad = h2 ? parseFloat(getComputedStyle(h2).paddingLeft) || 0 : 0;   // the padding the h2 reaches the toolbar's edge by (the tab): its margin takes it back
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
     // what grows (the move's line, the branch's move, a task's chip: flex 1 1 0) counts at its least — it gives way
     // before a chip folds; the first two at their marks alone, their words (.q) going first
@@ -9060,10 +9083,10 @@ const toolName = n => {
         + parseFloat(st.paddingLeft) + parseFloat(st.paddingRight) + parseFloat(st.borderLeftWidth) + parseFloat(st.borderRightWidth); };
     const mv = head.querySelector('.hmove'), dr = head.querySelector('.hdrift'), mins = new Map([mv, dr].filter(Boolean).map(el => [el, shrunk(el)]));
     const least = el => mins.has(el) ? mins.get(el) : getComputedStyle(el).flexGrow !== '0' ? parseFloat(getComputedStyle(el).minWidth) || 0 : el.getBoundingClientRect().width;
-    const title = head.classList.contains('tright') && state.notch ? state.notch.right + notchPad() - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
-      : head.classList.contains('tunder') && state.notch ? Math.max(state.notch.right + notchPad() - h2.getBoundingClientRect().left, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM)   // under it: on to its far side, the title shown left of it and under it
-      : head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
-      : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM, (head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * TITLE_SHARE);
+    const title = head.classList.contains('tright') && state.notch ? state.notch.right + notchPad() - h2.getBoundingClientRect().left - h2pad + TITLE_ROOM   // the title past the housing: the jump, then its room
+      : head.classList.contains('tunder') && state.notch ? Math.max(state.notch.right + notchPad() - h2.getBoundingClientRect().left - h2pad, (head.querySelector('h2 .repo')?.offsetWidth || 0) - h2pad + TITLE_ROOM)   // under it: on to its far side, the title shown left of it and under it
+      : head.classList.contains('hole') ? h2.getBoundingClientRect().width - h2pad + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
+      : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) - h2pad + TITLE_ROOM, (head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * TITLE_SHARE);
     let room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + least(el), 0) - gap * (row.length + 1);
     if (!t) room += gap;   // no chips' button: one gap fewer

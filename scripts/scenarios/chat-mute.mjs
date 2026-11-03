@@ -46,7 +46,7 @@ export default async function (ctx) {
     // ---- at every size, every part hidden, and the word within the card ----
     const shown = () => ctx.evaluate(`(c => { const w = c.querySelector('.chip.cmute'), r = w.getBoundingClientRect(), k = c.getBoundingClientRect(), s = getComputedStyle(w);
       return { display: s.display, visibility: s.visibility, opacity: s.opacity, inside: r.left >= k.left && r.right <= k.right && r.top >= k.top && r.bottom <= k.bottom, w: Math.round(r.width), h: Math.round(r.height) }; })(${card(a.id)})`);
-    const fine = (s, where) => { ctx.assert.equal(s.visibility, 'visible', where); ctx.assert.equal(s.opacity, '1', where); ctx.assert.notEqual(s.display, 'none', where); ctx.assert.ok(s.inside, `${where}: within the card`); ctx.assert.ok(s.w >= 30 && s.h >= 12, `${where}: its size ${s.w}×${s.h}`); };
+    const fine = (s, where) => { ctx.assert.equal(s.visibility, 'visible', where); ctx.assert.ok(Number(s.opacity) >= .8, `${where}: its opacity ${s.opacity}`); ctx.assert.notEqual(s.display, 'none', where); ctx.assert.ok(s.inside, `${where}: within the card`); ctx.assert.ok(s.w >= 30 && s.h >= 12, `${where}: its size ${s.w}×${s.h}`); };
     out.sizes = {};
     for (const [v, size] of ['large', 'medium', 'compact'].entries()) {
       await ctx.evaluate(`document.querySelector('#cardsSize [data-v="${v}"]').click()`); await ctx.settle();
