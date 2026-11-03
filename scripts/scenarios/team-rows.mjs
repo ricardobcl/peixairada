@@ -2,7 +2,7 @@
 // at work, one done, one only the roster knows yet — and a chat whose team is itself alone. What this checks: the lead's
 // card has a row per teammate, by name, its state in words and its last line (the tool it calls, what it said); the
 // other card none; a teammate's next step changes its row and keeps the card's node (filled after the render, as the
-// live line is); compact cards keep the rows, compact's same height gives them no room (agent-line.mjs). Shots dark and light.
+// live line is); compact cards keep the rows, at same height too (agent-even.mjs). Shots dark and light.
 import { spawn } from 'node:child_process';
 import { appendFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -55,11 +55,11 @@ export default async function (ctx) {
     out.reviewer = (await rows(ctx, lead.id)).find(r => r.name === 'reviewer');
     ctx.assert.match(out.reviewer.last, /^Read src\/retry\.ts$/, "a path in the chat's folder from there");
 
-    // compact keeps them; compact's same height gives them no room
+    // compact keeps them, at same height too
     await ctx.evaluate(`document.querySelector('#sessions').dataset.cards = 'compact'`);
     ctx.assert.notEqual(await ctx.evaluate(`getComputedStyle(document.querySelector('#slist > .card[data-id="${lead.id}"] .agl')).display`), 'none', 'shown on a compact card');
     await ctx.evaluate(`document.querySelector('#sessions').dataset.even = ''`);
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${lead.id}"] .agl').offsetHeight`), 0, 'at one height, none');
+    ctx.assert.notEqual(await ctx.evaluate(`getComputedStyle(document.querySelector('#slist > .card[data-id="${lead.id}"] .agl')).display`), 'none', 'and at same height');
     await ctx.evaluate(`delete document.querySelector('#sessions').dataset.even; document.querySelector('#sessions').dataset.cards = 'large'`);
 
     for (const scheme of ['dark', 'light']) {

@@ -135,6 +135,19 @@ Ricardo: *"we should update the readme screenshots"*
 * **The PR-status clip unfolds the rows by the caret**: `#prToggle`'s middle is a chip now, and a chip opens its PR.
 * The README's words follow the pictures: a card is *tagged* in its project's colour, and Watching is a lane.
 
+## Decisions of 2026-11-03 — a card's agents open at same height too
+
+Ricardo, on the one line of the day before: *"I want the expand agent view even if I'm on compact card list"*. His compact has
+Same height on, so round XX's rows are now what any compact card shows, and the card grows while it has them. Same height is
+for a card with nothing more to say. That takes back *a same-height card names its agents* below: the one line (`agLine`), the
+chip's list (`agPick`) and the chip naming a lone agent went, and the chip folds again. What stays of that day: the rows' height
+fixed for the rest of the list, and an agent's call in the transcript.
+
+* **The rows take `.moveslot`'s place** rather than sit above an empty line, and a summary alone fits it exactly (`.agl`'s margin
+  and least height are the line's), so a card that has finished is back to one height at once.
+* **Folded, it is one height again**: the live line says who stepped last, in that same place. With a PR at your move that line
+  stays and the who-line gives way, or the fold would leave the card taller than its neighbours.
+
 ## Decisions of 2026-11-02 — same height is the rows', not their parts'
 
 Ricardo, shown that same-height cards differed by up to 1.9 px: *"do it all"*. Measured in WebKit on his board, 74.31 px a card:

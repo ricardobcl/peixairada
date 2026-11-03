@@ -2,7 +2,7 @@
 // a step keeps the card's node and the row's; one ended ticks and goes into the done row, its click the list with the results;
 // nothing leaves under the pointer; a failure comes first, the chip red, and stays until the chat is opened, with the summary;
 // the chip folds, remembered, and a folded card's live line says who stepped last; past three, +N; quiet after three minutes;
-// a card told not to shows none (a same-height card's one line is agent-line.mjs). Shots dark and light.
+// a card told not to shows none (same height: agent-even.mjs). Shots dark and light.
 import { spawn } from 'node:child_process';
 import { appendFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -50,9 +50,8 @@ setup file, and how the pictures are made.
   One that finishes goes into a *done* row, whose click lists what each found; one that fails stays until you open the
   chat, turns the chip red and sends an alert. Click a row for its transcript, in a read-only tab beside the chat; hover
   for its worktree and totals; right-click to ask Claude to stop it. The *3 agents* chip folds the rows, and the card
-  remembers. The same rows sit under the transcript of the chat you are reading. With *Same height* on, a card keeps its
-  height and has one line instead: the agent's name, what it is doing and its age. Click it for its transcript; with
-  several, the chip lists them. A PR at your move keeps that line, and the chip names the agent. Once it has ended and left
+  remembers. The same rows sit under the transcript of the chat you are reading. They open at every card size: under
+  *Same height* the card grows while it has them, and folded or done it is back to one height. Once one has ended and left
   the card, the agent's call stays in the chat as a line of its own: *its transcript ›* still opens it.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
