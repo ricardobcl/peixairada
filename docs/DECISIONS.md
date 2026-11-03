@@ -22,6 +22,7 @@ much. shuold be a toggle for now to feel it"*.
 * **CI had to go somewhere**, as the header is the only place that says it (2026-10-09): the number keeps its chip's badge, a failing square its red ring (an outline, 1 px off it), a running one pulses by opacity alone. A pass is the plain square; the PR's card says it.
 * **The stack's line is the square's own in the header** (`.j::before`), as a grid has no room for the `<s>` a card's uses, and at a row's start there is none rather than one reaching back to nothing.
 * **Tickets are dots after the squares**: one UI, and a chip each would have kept the row's old width. A ticket's dot has the system's tooltip, as `#mxtip` is a PR's card.
+* **Its words on one line is a switch to try**, as he asked, off by default: one clamp under `data-snipone`, so it redraws no card. Large keeps both its words, a line each; a single line there would be Medium. It reaches by-lane's larger cards at compact too, and the row is off, with why, where a card shows no words.
 * **A square's card from the header**: under the header, unless the app's pane has a page there, which would cover it: then over the list, beside the column, no arrow (`.far`, the same `paneRects` `#rpop` asks).
 
 ## Decisions of 2026-11-03 — round XXII: raised cards, one line, a card you click

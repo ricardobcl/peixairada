@@ -909,6 +909,8 @@
   /* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
      compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
   #sessions[data-cards="medium"] .card .snip.older, #sessions[data-cards="compact"] .card .snip { display: none; }
+  /* …and its words on one line each (2026-11-03; a switch to try, prefs.cardsSnipOne → data-snipone): medium's last word, large's prompt and reply */
+  #sessions[data-snipone] .card .snip { -webkit-line-clamp: 1; }
   /* …and compact's own switch, one height for every card (2026-09-29; data-even, prefs.cardsEven): the title on one
      line, the question left to the card's blinking edge, and the *your move* line kept (the same morning: "the same
      height should preserve the 'your move' row") — on a card without one, an invisible one of the same size holds its
@@ -3140,13 +3142,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <div class="spane" data-tab="list" hidden role="tabpanel" id="spList" aria-labelledby="stList">
         <h5 class="sph">Chat list</h5>
         <section class="sgrp"><div class="slist" role="group" aria-label="Cards">
-          <div class="srow set wide" id="cardPanel" data-kw="card size cards density large medium compact one line snug word third row same height even uniform larger lane needs you asking busy faces avatars people github tickets jira prs pull requests rounds chips agents sub-agents teammates show hide project tab branch worktree elsewhere terminal watching monitor fable model unread count your move doing live age time tick done">
+          <div class="srow set wide" id="cardPanel" data-kw="card size cards density large medium compact one line snug word words last interaction prompt reply snippet third row same height even uniform larger lane needs you asking busy faces avatars people github tickets jira prs pull requests rounds chips agents sub-agents teammates show hide project tab branch worktree elsewhere terminal watching monitor fable model unread count your move doing live age time tick done">
             <div class="clabs" id="cardLab"><div class="clab"></div></div>
             <small class="clabsay" id="cardLabSay"></small>
             <div class="cctl"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="3">One line</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
             <div class="csubs">
               <label class="csub" id="evenRow"><span class="sl"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></span><input type="checkbox" class="sw" role="switch" id="cardsEven"></label>
               <label class="csub" id="laneRow"><span class="sl"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></span><input type="checkbox" class="sw" role="switch" id="cardsByLane"></label>
+              <label class="csub" id="snipRow"><span class="sl"><b>Its words on one line</b><small data-d="The last word, or the prompt and the reply, a line each" data-off="Only where a card shows its words"></small></span><input type="checkbox" class="sw" role="switch" id="cardsSnipOne"></label>
             </div>
           </div>
         </div></section>
@@ -3390,7 +3393,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
+  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3840,10 +3843,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => k !== 'age' && k !== 'tick');
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
     $('#cardsEven').checked = !!prefs.cardsEven;
+    $('#sessions').toggleAttribute('data-snipone', !!prefs.cardsSnipOne); $('#cardsSnipOne').checked = !!prefs.cardsSnipOne;
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
     for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
     $('#cardsSay').textContent = ['Your last prompt and Claude’s last reply', 'The last word, yours or Claude’s', 'The title, its chips and its PRs', 'One height, and a line for the question, your move, what it is doing or the last word'][v];
-    for (const [row, off, why] of [['#laneRow', prefs.cards === 'large' || line, line ? 'One line keeps every card one height' : ''], ['#evenRow', prefs.cards !== 'compact']]) {
+    for (const [row, off, why] of [['#laneRow', prefs.cards === 'large' || line, line ? 'One line keeps every card one height' : ''], ['#evenRow', prefs.cards !== 'compact'], ['#snipRow', line || (prefs.cards === 'compact' && !prefs.cardsByLane)]]) {
       const r = $(row), say = r.querySelector('small');
       r.classList.toggle('off', off); r.querySelector('input').disabled = off; say.textContent = off ? why || say.dataset.off : say.dataset.d;
     }
@@ -3884,6 +3888,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   }
   function cardLabDraw() {
     const box = $('#cardLab'), on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
+    box.toggleAttribute('data-snipone', !!prefs.cardsSnipOne);
     if (!clab.made) { clab.made = true; box.firstElementChild.replaceChildren(cardLabMake()); }
     for (const el of box.querySelectorAll('[data-part]')) {
       const k = el.dataset.part, [, name, off] = CARD_PART[k], here = on.includes(k);
@@ -3914,6 +3919,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#cardsByLane').addEventListener('change', e => { prefs.cardsByLane = e.target.checked; savePrefs(); applyCards(); });
   $('#cardsSize').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); renderBoard(); });
+  $('#cardsSnipOne').addEventListener('change', e => { prefs.cardsSnipOne = e.target.checked; savePrefs(); applyCards(); });
   applyCards();
   // A theme's colours are drawn again on the list and the open chat's header.
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
@@ -7164,7 +7170,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
-    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
