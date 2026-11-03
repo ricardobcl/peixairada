@@ -152,7 +152,7 @@ export default async function (ctx) {
     await lift(p);
     const foot = await ctx.evaluate(`(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.bottom - 8) }))(document.querySelector('#slist').getBoundingClientRect())`);
     await move(foot);
-    await ctx.waitFor(`(l => l.scrollTop + l.clientHeight >= l.scrollHeight - 2)(document.querySelector('#slist'))`, { what: 'the list scrolled to its end by the pointer at its foot', timeout: 10_000 });
+    await ctx.waitFor(`(l => l.scrollTop + l.clientHeight >= l.scrollHeight - 2)(document.querySelector('#slist'))`, { what: 'the list scrolled to its end by the pointer at its foot', timeout: 40_000 });
     const head = await at(`document.querySelector('#slist > .gsep.lane[data-lane="done"]')`);
     await move(head);
     ctx.assert.match((await ghost()).say, /^Hold to open/, 'the head says so');

@@ -4,7 +4,7 @@
 // the row keeps its height; the ✓ stays in the keys' way. A chat with no process dims its row, not its tab; open, nothing.
 // The toolbar's tab, one shape: in the sheet's corner down to the hairline, its words level with the title — lowered at
 // the notch too; a header with no project keeps its words where they were. The lane heads and the day lines on the rows' edges.
-// The chips one corner. The tab's inks are INK_CHECK's. Shots dark and light.
+// The chips one corner. The tab's inks are INK_CHECK's. Rows apart, a head or a day line keeping to its own. Shots dark and light.
 import { spawn } from 'node:child_process';
 import { realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -112,6 +112,11 @@ export default async function (ctx) {
     near(out.edges.name, L.titleWords + 18, 'its name on an agent row’s words');
     near(out.edges.chevron, R, 'its chevron on the right edge');
     near(out.edges.day, L.titleWords, 'a day line on the title’s edge');
+    // rows apart; a head or a day line nearer the rows under it than those above (2026-11-03)
+    out.apart = await ctx.evaluate(`(() => { const kids = [...document.querySelectorAll('#slist > *')], kind = e => e.matches('.card') ? 'card' : e.matches('.gsep.lane') ? 'lane' : e.matches('.gsep.day') ? 'day' : 'other', seen = {};
+      kids.slice(1).forEach((e, i) => { const k = kind(kids[i]) + '>' + kind(e), d = Math.round((e.getBoundingClientRect().top - kids[i].getBoundingClientRect().bottom) * 10) / 10; (seen[k] ??= new Set()).add(d); });
+      return Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v]])); })()`);
+    for (const [k, want] of Object.entries({ 'card>card': 6, 'lane>card': 4, 'card>day': 8, 'day>card': 4 })) ctx.assert.deepEqual(out.apart[k], [want], `${k}: ${want} px, of ${JSON.stringify(out.apart)}`);
     await ctx.shot('project-tab-dark');
 
     // the toolbar's: one shape, whatever lowers it

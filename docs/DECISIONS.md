@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-03. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-03 — rows further apart
+
+Ricardo, on the corner tab: *"I think we need a bit more padding between cards, at least on compact view"*.
+
+* **The gap, not the padding**: 2 px between rows became 6, at every size. Inside, a row is as it was (79 px at same height); what
+  was tight was the outside: a tab flush with the row's top sits 10 px under the words above it, two rings 2 px apart and
+  the open row's fill all but touching the tab below. Shot at 2, 5, 6, 8 and 10 on the made-up board at his prefs: 6 clears all
+  three for 4 px a row; 10 starts to read as separate cards, and costs a row in every ten.
+* **Every size**: the same three things touch on medium and large, and one number means no jump between sizes.
+* **Heads and day lines stay with their rows**: the gap would have pushed a head away from the rows it names, so their margins
+  take it back. A lane head and a day line stay 4 px over their first row; a head stays 8 under the row before it, while a day
+  line goes from 4 to 8, so it reads as the next run's. A lane's *N more* stays where it was.
+* **A long drag's wait**: `card-drag-fold` timed out in the suite, and with 20 busy loops running, never alone. The drag's scroll goes
+  11 px a frame, 5.6 s at 40 fps for this list; at 19 fps it was still moving when the 10 s ran out, no stall. The wait is 40 s now:
+  a wait's timeout is for what never comes.
+* **The cost**, closing the round XXI entry's open check, with the tab and this gap against the commit before the tab
+  (`npm run perf -- --against 7f18b86 --runs 3`, medians, % of a core): rest 3.2 / 2.6, the pointer 4.6 / 4.1, a scroll 15.3 /
+  14.1, home 10.1 / 11.2; a chat opened 83 ms both; no animation rule broken. All far under the ceilings.
+
 ## Decisions of 2026-11-03 — the project a corner tab, and the list's edges (round XXI)
 
 Ricardo: *"the alignment on each card seems a bit off, the project name should be more promenient (maybe a bigger color
@@ -42,7 +61,7 @@ holds; every chip takes the pill's corner."*
 * **Left off**: *same height in two rows*. The empty third row stays, and with it the words riding high on a row with no
   move line.
 * Checked: `project-tab.mjs`, `INK_CHECK` (red with the mock's inks, 3.14), the sweep's lowest 4.54; Chrome dark and light with the
-  notch's two cases, WebKit's frame and numbers dark. `npm run perf` could not run: the screen was locked, and WebKit draws nothing then.
+  notch's two cases, WebKit's frame and numbers dark. `npm run perf` could not run that day (the screen locked, and WebKit draws nothing then); it ran with the rows-apart entry above.
 
 ## Decisions of 2026-11-02, late — your word takes the list to the card
 

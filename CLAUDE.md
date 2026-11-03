@@ -149,7 +149,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `sudo` first, then osascript's dialog (a cancel is a 409); `AWAKE_ADMIN` is `sudo` · `osascript` · `none` (the tests).
   **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` every minute (`POWER_POLL_MS`),
   with the idle sleep in use and the power source (`idleSleep`, `power`); the cup is muted while it has nothing to hold
-  off (`cupMoot`, `cupTip`).  → `test/awake.test.mjs`, `keep-awake.mjs`.
+  off (`cupMoot`, `cupTip`). → `test/awake.test.mjs`, `keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
@@ -259,7 +259,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `--ease-out`, `--spring` (a `linear()` curve, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
   dips by the `scale` property** (the FLIP's `transform` and the ring's stay theirs): a card 99 % unless the press is on
-  a control in it (`:has`), small controls 97 %  — never the address, nor a tab
+  a control in it (`:has`), small controls 97 % — never the address, nor a tab
   pressed on its ×. → `small-motions.mjs`, `pane-tabs.mjs`.
 * **Counts roll** (`rn(key, n)`, `rollSoon`): a count is plain text in `.rn[data-rk]`; after a draw, one whose key
   showed another number becomes a digit strip, plain text again `ROLL_MS` later — so `setHtml` and the reconciles
@@ -271,7 +271,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **An age is `data-at`, never words in markup**: `fillAges(root)` writes `rel()` after the list's render, after
   `pickRender` and on the 30 s tick. **A card's `.time` carries nothing at all** — `fillAges` sets it from the chat —
   so neither the clock nor a tool call changes a card's html (a *prompt* still rebuilds it). `dayOf(ts)` is the one
-  spelling of a day (`Today` · `Yesterday` · the weekday · `DD-MM-YYYY`). 
+  spelling of a day (`Today` · `Yesterday` · the weekday · `DD-MM-YYYY`).
 * **Controls wear a fill, never a grey edge** (2026-09-28): `border: 1px solid transparent` and `background:
   var(--ctl)`, `var(--ctl-hi)` under the pointer; a state is a tint of its colour. `--ctl` is the ink at 7 %, set on
   every element (`*`) so it follows a borrowed `--ink`. Text boxes, dialogs and popovers keep their edges, as does a
@@ -721,15 +721,15 @@ npm run map                         # rewrite the section maps at the top of ser
   the split** (`unsplit` leaves it); the divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`). Stacked is
   `#groups.stack`; the second strip's `.gturn` turns it too. The app forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
-* **The sidebar is the one layout** (2026-10-30, round X; Tiles gone 2026-11-01): `<html data-layout="sidebar">` in the
+* **The sidebar is the one layout** (2026-10-30, round X; no Tiles 2026-11-01): `<html data-layout="sidebar">` in the
   markup, never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the
   panels' base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` for a split's halves,
   `tileNotch`'s cut round the housing). The shell: no gaps or edges (no `.ncut`); the list
   and the status bar flat on `--side` (the frame); the header a flush toolbar of glass, the theme's inks
-  (`--hd-*`), lowered at the notch by padding; cards are rows — no ground, edge or light under the pointer, the open
+  (`--hd-*`), lowered at the notch by padding; cards are rows 6 px apart (a head or day line 4 off its own) — no ground, edge or light, the open
   one solid in its project's colour (`--selc`), white on it; the project a corner tab on a row (`.top.hastab`; `.card.gone` dims all but it) and in the toolbar (the h2's padding, `--htop`; 2026-11-03), inks in `INK_CHECK`; chips `--r-3`; lanes on the rows' edges
-  (→ `project-tab.mjs`); PR and ticket chips a tint. **`.card > .rg`, on every card (cardHtml), is the row's ring** — a still mask to a 1.5 px
-  band, its `::before` the turning square; the card's own pseudo-elements are the sonar's. A new animation joins
+  (→ `project-tab.mjs`); PR and ticket chips a tint. **`.card > .rg` (every card) is the row's ring** — a still mask to a 1.5 px
+  band, its `::before` the turning square; the card's own pseudo-elements the sonar's. A new animation joins
   `PHASED` and the reduced-motion block. → `sidebar-layout.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes
