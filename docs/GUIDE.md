@@ -39,7 +39,7 @@ setup file, and how the pictures are made.
   number and title, CI, its place in a stack, whose move and why, who's on it and when it last changed; click it for
   the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. The chat's header has the same squares,
   in up to three rows when there are many, with its CI on them: a red ring when it fails, a pulse while it runs, and the number's own tick, cross or ring;
-  its tickets are dots after them, and the git mark beside them lists everything, one row each. ⌥-click the ✓ to tick a chat done for good: its
+  its tickets are dots after them, and the git mark beside them says how many there are and lists them, one row each. ⌥-click the ✓ to tick a chat done for good: its
   PRs won't bring it back. Take a PR off a chat from its square's right-click menu (or ⌥-click a square in the header) —
   until you name it there yourself.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says

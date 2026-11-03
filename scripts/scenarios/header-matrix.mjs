@@ -2,7 +2,7 @@
 // stack with CI and a move, seven, fourteen, thirty, and tickets alone. What this checks: the squares and the number a card has; one row, then two, then three as the count or
 // the row asks, the toolbar no taller and the row one line, the title keeping its room; past three rows' room the box scrolls, the number
 // put, the numbered square in sight, the end with more faded; a stack's line within a row and none at a row's start; CI (the number's badge, a failing square's ring, a
-// running square's pulse); a square's card under the pointer, below the header; its click its PR; the mark folds the rows, no chips anywhere; tickets are dots.
+// running square's pulse); a square's card under the pointer, below the header; its click its PR; the mark says how many and folds the rows, no chips anywhere; tickets are dots.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,11 +50,13 @@ export default async function (ctx) {
       head: Math.round(r(h).height), inHead: sq.every(e => r(e).top >= r(h).top && r(e).bottom <= r(h).bottom), oneLine: Math.abs((r(t).top + r(t).height / 2) - (r(h2).top + r(h2).height / 2)) < 12, title: Math.round(r(h2).width - h2.querySelector('.repo').offsetWidth),
       scrolls: g ? g.scrollWidth > g.clientWidth + 1 : false, ofr: g?.classList.contains('ofr'), mark: t?.querySelector('.ic') ? 'pr' : null, chips: h.querySelectorAll('.hpr, .hcaret').length, toggleNext: m?.nextElementSibling?.id };
   })())`).then(JSON.parse);
+  const count = () => ctx.evaluate(`document.querySelector('#prToggle .rn')?.textContent`);
   const crop = async (name, w = 1320) => ctx.shot(name, { x: 380, y: 0, width: w, height: 70 });
 
   await opened(one, 1);
   out.one = await look();
   a.deepEqual([out.one.rows, out.one.size, out.one.num, out.one.head, out.one.toggleNext, out.one.chips], [1, 9, '#21', 43, 'prToggle', 0], `one PR: a square and its number, the mark beside them, no chip: ${JSON.stringify(out.one)}`);
+  a.equal(await count(), '1', 'the mark says how many');
   await crop('1-one');
 
   await opened(stack, 4);
@@ -78,6 +80,7 @@ export default async function (ctx) {
   await opened(thirty, 30);
   out.thirty = await look();
   a.deepEqual([out.thirty.rows, out.thirty.cols, out.thirty.head, out.thirty.inHead, out.thirty.num, out.thirty.scrolls], [3, 10, 43, true, '#330', false], `thirty: three rows, the toolbar no taller: ${JSON.stringify(out.thirty)}`);
+  a.equal(await count(), '30', 'and of thirty');
   await crop('5-thirty');
 
   // the number's square is in sight; a wide row asks no more rows than the count does, and a narrow one more

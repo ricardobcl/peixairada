@@ -64,6 +64,7 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelectorAll('#shead > .tmx .mxs.tk').length === 2`, { what: 'the header\'s ticket dots' });
     out.head = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#shead > .tmx .mxs.tk')].map(e => [e.textContent, e.dataset.cat]))`).then(JSON.parse);
     ctx.assert.deepEqual(out.head, [['ACME-12', 'doing'], ['OPS-7', 'done']]);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prToggle .rn').textContent`), '2', 'the git mark counts tickets too');
     await ctx.evaluate(`document.querySelector('#prToggle').click()`);
     await ctx.waitFor(`!document.querySelector('#prlist').hidden`, { what: 'the rows' });
     out.rows = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#prlist .prrow.tk')].map(e => [e.querySelector('.st').textContent, e.querySelector('.num').textContent, e.querySelector('.t').textContent, e.querySelector('.who').textContent]))`).then(JSON.parse);
