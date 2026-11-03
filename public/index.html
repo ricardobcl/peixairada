@@ -2274,13 +2274,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] .gsep.more { margin-block: 0 2px; }
   :root[data-layout="sidebar"] .gsep.lane b { font-size: var(--fs-sm); font-weight: 500; }
   :root[data-layout="sidebar"] .gsep.lane.zero { color: var(--idle); }
-  /* the cards are rows: no ground at rest, no lit edge, no glow and no light under the pointer, a grey
-     under the pointer; the project a tag, its name in its colour on a tint of it (2026-10-31, round XI: a dot read as one
-     more light) */
+  /* the cards: no lit edge, no glow and no light under the pointer (their ground and their rise further on, 2026-11-03);
+     the project a tag, its name in its colour on a tint of it (2026-10-31, round XI: a dot read as one more light) */
   :root[data-layout="sidebar"] #slist { gap: 6px; }   /* a row's tab clear of the words above it, two rows' rings and fills apart; a head or a day line keeps to its own rows, its margins taking the gap back (2026-11-03) */
   :root[data-layout="sidebar"] #slist .card { background: none; border: 0; outline: 0; box-shadow: none; border-radius: 7px; padding: 8px 12px; }
-  :root[data-layout="sidebar"] #slist .card:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
-  :root[data-layout="sidebar"] #slist .card.qsel { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent); }
   /* The project a corner tab (2026-11-03, round XXI): in the row's top-left corner, that corner the row's own 7 px and
      its one free one a step rounder, its words on the title's edge; the top row its height from the row's top, so the PRs
      and the marks share its line. No project shown, no tab: the row keeps its 18 px. */
@@ -2331,40 +2328,34 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before { content: ''; position: absolute; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%;
     background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg)); animation: ring var(--spins, 1.4s) linear infinite; }
   :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
-  :root[data-layout="sidebar"] #slist .card.working { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent); }
   /* …and a question: a red hairline, a red wash (not on the open row's solid colour) and the sonar's two pings leaving
      the row's own outline */
-  :root[data-layout="sidebar"] #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs); }
-  :root[data-layout="sidebar"] #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, transparent); }
   :root[data-layout="sidebar"] #slist .card.asking::before, :root[data-layout="sidebar"] #slist .card.asking::after { inset: 0; border-width: 1.5px; border-radius: inherit; }
-  /* Raised cards (2026-11-03, round XXII's E4 and H1; a switch, prefs.cardsRaised → #sessions[data-raised]): the chat's own material a
+  /* A card is raised (2026-11-03, round XXII's E4 and H1; the one look since that afternoon): the chat's own material a
      step lower — a ground between the frame and the chat, the chat's hairline, a 2 px shadow — and under the pointer a card rises to
      about the chat's height. In the dark the chat's ground is darker than the frame (round XVIII), so the step goes towards the ink, or
      the cards would sink. --side is the card's ground, which its PR chips tint against. A state keeps its own edge: the ring, the red,
      the open row's colour. */
-  :root[data-layout="sidebar"] #sessions[data-raised] { --step: color-mix(in srgb, var(--panel) 62%, var(--side)); --lo: 0 1px 2px rgb(0 0 0 / .07); --hi: 0 8px 18px -8px rgb(0 0 0 / .34), 0 2px 5px -2px rgb(0 0 0 / .12); }
-  :root[data-layout="sidebar"][data-frame="dark"] #sessions[data-raised] { --step: color-mix(in srgb, var(--ink) 6%, var(--side)); --lo: 0 1px 2px rgb(0 0 0 / .4); --hi: 0 10px 22px -8px rgb(0 0 0 / .9), 0 2px 6px -2px rgb(0 0 0 / .5); }
-  /* …and on a ground lighter than the frame, the inks a step lighter too, or they fall under 4.5:1 (themeInks' rule, run once; a theme's: raisedInks) */
-  :root[data-theme="dark"]:not([data-skin]) #sessions[data-raised] { --needs: #ff8380; --idle: #43ae6b; --pr-open: #4bc35a; --pr-merged: #bd9dfe; --pr-closed: #ff8c80; --pr-draft: #afafa8; --tk-todo: #a0b0c1; --tk-doing: #76afff; }
-  :root[data-theme="light"][data-frame="dark"] #sessions[data-raised] { --needs: #fc6c6a; --idle: #35a45f; --pr-merged: #b48cfe; --pr-closed: #ff756a; --pr-draft: #a2a29c; --tk-todo: #95a4b4; --tk-doing: #5fa1fe; }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card { box-shadow: 0 0 0 1px var(--sheet-edge), var(--lo); transition: translate .28s var(--spring), box-shadow .18s var(--ease-out), scale .3s var(--spring); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card:not(.active) { --side: var(--step); background: var(--step); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.active { box-shadow: none; }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.watching:not(.asking) { box-shadow: var(--lo); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.working:not(.asking) { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent), var(--lo); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs), var(--lo); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, var(--step)); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.qsel:not(.active) { background: color-mix(in srgb, var(--ink) 8%, var(--step)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent), var(--lo); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { transition-duration: .28s, .18s, .06s; transition-timing-function: var(--spring), var(--ease-out), ease-out; }
+  :root[data-layout="sidebar"] #sessions { --step: color-mix(in srgb, var(--panel) 62%, var(--side)); --lo: 0 1px 2px rgb(0 0 0 / .07); --hi: 0 8px 18px -8px rgb(0 0 0 / .34), 0 2px 5px -2px rgb(0 0 0 / .12); }
+  :root[data-layout="sidebar"][data-frame="dark"] #sessions { --step: color-mix(in srgb, var(--ink) 6%, var(--side)); --lo: 0 1px 2px rgb(0 0 0 / .4); --hi: 0 10px 22px -8px rgb(0 0 0 / .9), 0 2px 6px -2px rgb(0 0 0 / .5); }
+  :root[data-layout="sidebar"] #sessions #slist .card { box-shadow: 0 0 0 1px var(--sheet-edge), var(--lo); transition: translate .28s var(--spring), box-shadow .18s var(--ease-out), scale .3s var(--spring); }
+  :root[data-layout="sidebar"] #sessions #slist .card:not(.active) { --side: var(--step); background: var(--step); }
+  :root[data-layout="sidebar"] #sessions #slist .card.active { box-shadow: none; }
+  :root[data-layout="sidebar"] #sessions #slist .card.watching:not(.asking) { box-shadow: var(--lo); }
+  :root[data-layout="sidebar"] #sessions #slist .card.working:not(.asking) { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent), var(--lo); }
+  :root[data-layout="sidebar"] #sessions #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs), var(--lo); }
+  :root[data-layout="sidebar"] #sessions #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, var(--step)); }
+  :root[data-layout="sidebar"] #sessions #slist .card.qsel:not(.active) { background: color-mix(in srgb, var(--ink) 8%, var(--step)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent), var(--lo); }
+  :root[data-layout="sidebar"] #sessions #slist .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { transition-duration: .28s, .18s, .06s; transition-timing-function: var(--spring), var(--ease-out), ease-out; }
   /* under the pointer; a question keeps still, its pings leave from where it is */
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card:hover { z-index: 1; box-shadow: 0 0 0 1px var(--sheet-edge), var(--hi); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card:not(.asking):hover { translate: 0 -1px; }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.active:hover { box-shadow: var(--hi); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.watching:not(.asking):hover { box-shadow: var(--hi); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.working:not(.asking):hover { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent), var(--hi); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.asking:hover { box-shadow: inset 0 0 0 1.5px var(--needs), var(--hi); }
+  :root[data-layout="sidebar"] #sessions #slist .card:hover { z-index: 1; box-shadow: 0 0 0 1px var(--sheet-edge), var(--hi); }
+  :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover { translate: 0 -1px; }
+  :root[data-layout="sidebar"] #sessions #slist .card.active:hover { box-shadow: var(--hi); }
+  :root[data-layout="sidebar"] #sessions #slist .card.watching:not(.asking):hover { box-shadow: var(--hi); }
+  :root[data-layout="sidebar"] #sessions #slist .card.working:not(.asking):hover { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent), var(--hi); }
+  :root[data-layout="sidebar"] #sessions #slist .card.asking:hover { box-shadow: inset 0 0 0 1.5px var(--needs), var(--hi); }
   /* risen 1 px, the pointer on its lowest pixel would be off the card, and it would drop, and rise: 2 px of the card below it, in the pseudo-element no state uses but a question's */
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card:not(.asking):hover::before { content: ''; position: absolute; inset: 0 0 -2px; z-index: -1; width: auto; height: auto; margin: 0; border: 0; background: none; transform: none; animation: none; }
+  :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover::before { content: ''; position: absolute; inset: 0 0 -2px; z-index: -1; width: auto; height: auto; margin: 0; border: 0; background: none; transform: none; animation: none; }
 
   /* ---- a card in the hand (2026-11-02, round XIV's I5): dragged onto another to fold it in (cdLift) ----
      The ghost by the pointer says what letting go would do; the card it came from and the chats it cannot go into fade; the
@@ -2373,12 +2364,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   body.carddrag.cdno, body.carddrag.cdno * { cursor: not-allowed !important; }
   #slist .card:is(.cdfrom, .cdoff) { opacity: .4; }
   #slist .card.cdfrom { scale: .98; }
-  :root[data-layout="sidebar"] #slist .card.cdover { z-index: 1; scale: 1.015; box-shadow: inset 0 0 0 2px var(--accent); }
-  :root[data-layout="sidebar"] #slist .card.cdover:not(.active) { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  :root[data-layout="sidebar"] #slist .card.active.cdover { box-shadow: inset 0 0 0 2px #fff; }   /* on the open row's solid colour, white as all on it */
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.cdover { translate: none; box-shadow: inset 0 0 0 2px var(--accent); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.cdover:not(.active) { background: color-mix(in srgb, var(--accent) 14%, var(--step)); }
-  :root[data-layout="sidebar"] #sessions[data-raised] #slist .card.active.cdover { box-shadow: inset 0 0 0 2px #fff; }
+  :root[data-layout="sidebar"] #slist .card.cdover { z-index: 1; scale: 1.015; }
+  :root[data-layout="sidebar"] #sessions #slist .card.cdover { translate: none; box-shadow: inset 0 0 0 2px var(--accent); }
+  :root[data-layout="sidebar"] #sessions #slist .card.cdover:not(.active) { background: color-mix(in srgb, var(--accent) 14%, var(--step)); }
+  :root[data-layout="sidebar"] #sessions #slist .card.active.cdover { box-shadow: inset 0 0 0 2px #fff; }   /* on the open row's solid colour, white as all on it */
   :root[data-layout="sidebar"] .gsep.lane.cdhold[data-lane] { background: color-mix(in srgb, var(--accent) 18%, var(--side)); }   /* a shut lane's head, held on: it is about to open */
   #cdghost { position: fixed; left: 0; top: 0; z-index: 70; box-sizing: border-box; width: min(320px, calc(100vw - 16px)); padding: 8px 11px; display: grid; gap: 4px; pointer-events: none;
     color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-4); box-shadow: 0 10px 28px rgb(0 0 0 / .3); transform-origin: 0 0; will-change: translate; transition: border-color var(--t-hover); }
@@ -2401,7 +2390,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles ~ #sbar { border-top: 0; }
   /* the board's own dark on its frame (2026-11-01, round XVIII): the inks that fell under 4.5:1 on the lighter grey,
      lifted for the list and the status bar alone (themeInks' rule, run once) */
-  :root[data-theme="dark"]:not([data-skin]) :is(#sessions, #sbar) { --needs: #fc6c6b; --idle: #35a360; --pr-merged: #b38bff; --pr-closed: #ff7368; --pr-draft: #a1a19a; --tk-todo: #93a2b3; --tk-doing: #5fa1fe; }
+  :root[data-theme="dark"]:not([data-skin]) #sbar { --needs: #fc6c6b; --idle: #35a360; --pr-merged: #b38bff; --pr-closed: #ff7368; --pr-draft: #a1a19a; --tk-todo: #93a2b3; --tk-doing: #5fa1fe; }
+  /* …and the list's a step lighter again (2026-11-03): a card's ground is lighter than the frame (themeInks' rule, run once; a theme's: raisedInks) */
+  :root[data-theme="dark"]:not([data-skin]) #sessions { --needs: #ff8380; --idle: #43ae6b; --pr-open: #4bc35a; --pr-merged: #bd9dfe; --pr-closed: #ff8c80; --pr-draft: #afafa8; --tk-todo: #a0b0c1; --tk-doing: #76afff; }
   /* The dark frame (Settings › Appearance › Dark frame; T5's Ink, 2026-11-01): a graphite frame round the light chat
      (Stage, T6's paper frame round a dark one, gone with round XVII). <html data-frame> is the frame's appearance; what
      sits on it — the list, the status bar — wears the frame's own tokens here (a theme's, its dark half's: skinCss), and
@@ -2416,6 +2407,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { --side: var(--bg); --bar: var(--bg);
     --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
     --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
+  :root[data-theme="light"][data-frame="dark"] #sessions { --needs: #fc6c6a; --idle: #35a45f; --pr-merged: #b48cfe; --pr-closed: #ff756a; --pr-draft: #a2a29c; --tk-todo: #95a4b4; --tk-doing: #5fa1fe; }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
   #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
@@ -3010,7 +3002,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     .agr[data-st="run"] > .agd::before { animation: none; border-color: var(--glow, var(--working)); }   /* an agent's arc: a whole circle, still */
     .agcar { transition: none; }
-    :root[data-layout="sidebar"] #sessions[data-raised] #slist .card { transition: none; } :root[data-layout="sidebar"] #sessions[data-raised] #slist .card:not(.asking):hover { translate: none; }   /* raised cards: the shadow alone says it */
+    :root[data-layout="sidebar"] #sessions #slist .card { transition: none; } :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover { translate: none; }   /* the shadow alone says it */
     #slist .card.cdfrom, :root[data-layout="sidebar"] #slist .card.cdover { scale: none; } #cdghost { transition: none; }   /* a card in the hand: nothing comes up (cdLift and cdEnd read REDUCED) */
     :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
@@ -3181,7 +3173,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
             </div>
           </div>
           <div class="srow set" id="prChipsRow" data-kw="card prs pull requests chips stack matrix squares number your move updated faces github ci"><span class="sl" id="slPrChips"><b>A card’s PRs</b><small id="prChipsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slPrChips" id="prChipsPick"><button type="button" role="radio" data-pc="matrix">Matrix</button><button type="button" role="radio" data-pc="all">All</button></span></div>
-          <div class="srow set" id="raisedRow" data-kw="card raised edge outline border ground shadow lift hover 3d depth"><label class="sl" for="cardsRaised"><b>Raised cards</b><small>Each card on a ground of its own, a step below the chat, coming up under the pointer. Off, cards are rows on the frame</small></label><input type="checkbox" class="sw" role="switch" id="cardsRaised"></div>
         </div></section>
       </div>
       <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
@@ -3423,7 +3414,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsRaised: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
+  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3882,7 +3873,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#prChipsRow').classList.toggle('off', noPrs);
     $('#prChipsSay').textContent = noPrs ? 'Only with PRs shown on a card' : PRCHIPS_SAY[pc];
     $('#cardsEven').checked = !!prefs.cardsEven;
-    $('#sessions').toggleAttribute('data-raised', !!prefs.cardsRaised); $('#cardsRaised').checked = !!prefs.cardsRaised;   // round XXII: beside today's rows
     // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
     for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
     $('#cardsSay').textContent = ['Your last prompt and Claude’s last reply', 'The last word, yours or Claude’s', 'The title, its chips and its PRs', 'One height, and a line for the question, your move, what it is doing or the last word'][v];
@@ -3930,7 +3920,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   function cardLabDraw() {
     const box = $('#cardLab'), pc = prChipsOf(), on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
     if (clab.pc !== pc) { clab.pc = pc; box.firstElementChild.replaceChildren(cardLabMake()); }
-    box.toggleAttribute('data-raised', !!prefs.cardsRaised);
     for (const el of box.querySelectorAll('[data-part]')) {
       const k = el.dataset.part, [, name, off] = CARD_PART[k], here = on.includes(k);
       el.classList.toggle('cpoff', !here); el.setAttribute('aria-checked', String(here));
@@ -3960,7 +3949,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#cardsByLane').addEventListener('change', e => { prefs.cardsByLane = e.target.checked; savePrefs(); applyCards(); });
   $('#cardsSize').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); renderBoard(); });
-  $('#cardsRaised').addEventListener('change', e => { prefs.cardsRaised = e.target.checked; savePrefs(); applyCards(); });
   applyCards();
   // A theme's colours are drawn again on the list and the open chat's header.
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
@@ -4149,7 +4137,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // A light half under Settings › Appearance › Dark frame (2026-11-01, round XVII's D1): the frame its family's dark half
   // — the window's ground that half's own, and what sits on it, the list and the status bar, in its tokens (the CSS's
   // Ink block sets the grounds that read them). A family whose dark half is the board's own (Softened) has the CSS's.
-  // Raised cards on a dark frame (2026-11-03, round XXII): their ground is the frame's a step towards the ink, the CSS's --step, so what
+  // A card on a dark frame (2026-11-03, round XXII): their ground is the frame's a step towards the ink, the CSS's --step, so what
   // is fitted to the frame alone is fitted again there. A light frame's step lies between two grounds already held.
   const raisedInks = (t, side) => {
     const f = themeInks(t), step = mixOf(rgbOf(t.ink), side, .06), wash = (k, p) => [step, { tint: p, over: step }];
@@ -4158,9 +4146,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   };
   const skinCss = (k, t) => {
     const at = `:root:root[data-skin="${k}"]`, d = !t.dark && SKINS[halfOf(famOf(k), true)];
-    return `${at} { ${skinTokens(t)} }` + (t.dark ? `\n${at} #sessions[data-raised] { ${raisedInks(t, rgbOf(t.crust))} }` : d ? `\n${at}[data-frame="dark"] { --frame: ${d.bg}; }
+    return `${at} { ${skinTokens(t)} }` + (t.dark ? `\n${at} #sessions { ${raisedInks(t, rgbOf(t.crust))} }` : d ? `\n${at}[data-frame="dark"] { --frame: ${d.bg}; }
   ${at}[data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark; ${skinTokens(d)} --side: var(--bg); --bar: var(--bg); }
-  ${at}[data-frame="dark"] #sessions[data-raised] { ${raisedInks(d, rgbOf(d.bg))} }` : `\n${at}[data-frame="dark"] { --frame: #1e1e1c; }`);
+  ${at}[data-frame="dark"] #sessions { ${raisedInks(d, rgbOf(d.bg))} }` : `\n${at}[data-frame="dark"] { --frame: #1e1e1c; }`);
   };
   document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
   const sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches;   // macOS's, which the board follows only when asked
@@ -7227,7 +7215,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
-    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsRaised', 'Raised cards'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },

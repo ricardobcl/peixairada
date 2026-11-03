@@ -77,8 +77,9 @@ export default async function (ctx) {
   await ctx.sleep(250);
   out.hover = await rects(ctx, t);
   ctx.assert.ok(Number(out.hover.op) > 0.5, `shown under the pointer (opacity ${out.hover.op})`);
-  const at = r => [r.x, r.y];   // a hover brings out a mark in the title row, which narrows the title; where things start is what must hold
-  ctx.assert.deepEqual([at(out.hover.title), at(out.hover.top)], [at(out.rest.title), at(out.rest.top)], 'the rows start where they did');
+  // a hover brings out a mark in the title row, which narrows the title; where things start in the card is what must hold (the card itself rises, 2026-11-03)
+  const at = (r, o) => [r.x, r.y - o.card.y];
+  ctx.assert.deepEqual([at(out.hover.title, out.hover), at(out.hover.top, out.hover)], [at(out.rest.title, out.rest), at(out.rest.top, out.rest)], 'the rows start where they did');
   await ctx.shot('hover', { x: 0, y: 40, width: 400, height: 460 });
   const place = async title => { const b = (await rects(ctx, title)).card; await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x + b.w / 2, y: b.y + b.h - 3 }); await ctx.sleep(150); return placed(title); };   // the age is the pointer's
   const placed = title => ctx.evaluate(`JSON.stringify((c => { const r = q => { const e = c.querySelector(q), b = e && e.getBoundingClientRect(); return b && { l: Math.round(b.left), r: Math.round(b.right), y: Math.round(b.top + b.height / 2) }; };

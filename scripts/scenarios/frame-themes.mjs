@@ -83,7 +83,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await attrs(), { theme: 'dark', frame: 'dark', skin: null, layout: 'sidebar' });
   l = await look();
   ctx.assert.deepEqual([l.body, l.list, l.bar, l.chat], ['rgb(40, 40, 37)', 'rgb(40, 40, 37)', 'rgb(40, 40, 37)', 'rgb(28, 28, 26)'], 'dark: the frame Settings’ grey, the chat a step darker');
-  ctx.assert.deepEqual(await ctx.evaluate(`['#sessions', '#chat'].map(s => getComputedStyle(document.querySelector(s)).getPropertyValue('--needs').trim())`), ['#fc6c6b', '#f36464'], 'the asking red lifted on the list, the chat’s as it was');
+  ctx.assert.deepEqual(await ctx.evaluate(`['#sessions', '#chat'].map(s => getComputedStyle(document.querySelector(s)).getPropertyValue('--needs').trim())`), ['#ff8380', '#f36464'], 'the asking red lifted on the list, the chat’s as it was');
   ctx.assert.deepEqual([l.on, l.can, l.off, l.say], [true, false, true, 'Only in light: in dark the frame is dark already'], 'the switch kept, off in dark, with why');
 
   // a theme framed in its crust: Gruvbox

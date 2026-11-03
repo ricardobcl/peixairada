@@ -5,6 +5,16 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-03. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-03, later — one look, the matrix everywhere, a line of words
+
+Ricardo, after living with round XXII: *"the matrix PRs should be the only option. also, we should use the same UI on the top chat (maybe with 2 or 3 rows if necessary)
+and have the git icon next to it to expand the list of PRs, intead fo the UI of today. feel free to open an artifact with alternatives"*, *"raised cards should be the only
+option"*, *"the last interaction row on a card, could we have an option to be just 1 line or something? in the medium/large card UI, it take multiple rows and I find it too
+much. shuold be a toggle for now to feel it"*.
+
+* **Raised is the one look**: the switch, `data-raised` and the rows' rules it overrode are gone; the raised rules stay under `#sessions`, which keeps them above any
+  `#slist` rule, and the list's fitted inks are simply the list's now. `#sbar` keeps round XVIII's, as it sits on the frame.
+
 ## Decisions of 2026-11-03 — round XXII: raised cards, one line, a card you click
 
 Ricardo: *"should we have the card outline? maybe the same 3D/hover effect of the chat? also, a compromise between compact and medium? or

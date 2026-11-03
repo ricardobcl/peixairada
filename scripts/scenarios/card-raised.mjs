@@ -1,9 +1,8 @@
-// Raised cards (2026-11-03, round XXII's E4 and H1; Settings › Chat list, off by default): the chat's material a step lower, and under
-// the pointer a card comes up. What this checks: off, a row is as it was, no ground and no shadow; on, a ground between the frame and the
-// chat and lighter than the frame in both themes, the chat's hairline and a small shadow, no card redrawn and none taller; a state keeps
-// its own edge (the open row its solid colour, a question its red, a ring no hairline); the PR chips tint against the card's ground;
-// under the pointer the card rises 1 px and its shadow deepens, its hit area reaching 2 px lower so it does not drop off the pointer; a
-// question keeps still; reduced motion leaves the shadow alone; the switch outlives a reload. Shots dark and light.
+// A card is raised (2026-11-03, round XXII's E4 and H1; the one look since that afternoon): the chat's material a step lower, and under
+// the pointer a card comes up. What this checks: a ground between the frame and the chat and lighter than the frame in both themes, the
+// chat's hairline and a small shadow; a state keeps its own edge (the open row its solid colour, a question its red, a ring no hairline);
+// a card's --side is its ground, for its chips; under the pointer the card rises 1 px and its shadow deepens, its hit area reaching 2 px
+// lower so it does not drop off the pointer; a question keeps still; reduced motion leaves the shadow alone. Shots dark and light.
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -30,14 +29,6 @@ export default async function (ctx) {
     const lum = async col => ctx.evaluate(`(() => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = '${col}'; x.fillRect(0, 0, 1, 1); const d = x.getImageData(0, 0, 1, 1).data; return (d[0] + d[1] + d[2]) / 3; })()`);
     const none = 'rgba(0, 0, 0, 0)';
 
-    // off: today's rows
-    a.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-raised')`), false, 'off by default');
-    const off = await look('A ready one');
-    a.deepEqual([off.bg, off.shadow], [none, 'none'], 'a row at rest: no ground, no shadow');
-    await ctx.evaluate(`for (const c of document.querySelectorAll('#slist > .card')) c.__mark = 1`);
-
-    // on
-    await ctx.evaluate(`document.querySelector('#cardsRaised').click()`); await ctx.settle();
     for (const dark of [false, true]) {
       await ctx.evaluate(`document.documentElement.dataset.theme = '${dark ? 'dark' : 'light'}'; document.documentElement.dataset.frame = '${dark ? 'dark' : 'light'}'`);
       await ctx.settle();
@@ -46,8 +37,6 @@ export default async function (ctx) {
       a.equal(await lum(on.bg) > await lum(on.frame), true, `${dark ? 'dark' : 'light'}: lighter than the frame (${on.bg} on ${on.frame})`);
       if (!dark) a.equal(await lum(on.bg) < await lum(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).backgroundColor`)), true, 'and below the chat in the light');
       a.match(on.shadow, /0px 0px 0px 1px/, 'the hairline');
-      a.equal(on.kept, true, 'no card redrawn');
-      a.equal(on.h, off.h, 'no taller');
       await ctx.shot(`raised-${dark ? 'dark' : 'light'}`, { x: 0, y: 0, width: 420, height: 520 });
     }
     await ctx.evaluate(`document.documentElement.dataset.theme = 'light'; document.documentElement.dataset.frame = 'light'`); await ctx.settle();
@@ -84,12 +73,6 @@ export default async function (ctx) {
     await ctx.send('Emulation.setEmulatedMedia', { features: [] });
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 500 });
 
-    // kept; and off is today's again
-    await ctx.reload();
-    a.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-raised') && document.querySelector('#cardsRaised').checked`), true, 'kept across a reload');
-    await ctx.evaluate(`document.querySelector('#cardsRaised').click()`); await ctx.settle();
-    const back = await look('A ready one');
-    a.deepEqual([back.bg, back.shadow], [none, 'none'], 'off: a row again');
     return out;
   } finally { asker.kill(); }
 }

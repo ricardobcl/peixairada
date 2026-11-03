@@ -281,7 +281,7 @@ or *key* to find a setting wherever it is):
 - **Appearance** — Auto, Dark or Light (Auto follows macOS), the theme — a swatch each, its dark and light halves
   (⌥⌘Y shows them all on the board) —, a dark frame round the light chat, the text size, and what else the status
   bar shows (a right-click on the bar picks that too).
-- **Chat list** — a card you click to choose its parts; the card size (*One line* keeps every card one height, with a line for the question, your move, what it is doing or the last word; or larger only where a chat needs you); *Raised cards*, each on a ground of its own that comes up under the pointer.
+- **Chat list** — a card you click to choose its parts; the card size (*One line* keeps every card one height, with a line for the question, your move, what it is doing or the last word; or larger only where a chat needs you).
 - **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a colour per project, and the projects you hid.
