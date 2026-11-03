@@ -156,7 +156,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(on('chat').parts, ['#groups', '#resume'], 'its body and its resume bar, drawn round as one');
   ctx.assert.ok(on('open').parts[0] === '#moreBtn' && on('open').card.t >= on('open').hole.b, 'its keys: ···, the card under it');
   ctx.assert.ok(on('split').parts[0] === '#groups', 'the split: the column');
-  ctx.assert.ok(on('prs').parts[0] === '#prToggle' && on('prs').card.t >= on('prs').hole.b, 'its PRs: the header’s chips, the card under them');
+  ctx.assert.ok(on('prs').parts[0] === '#prToggle' && on('prs').card.t >= on('prs').hole.b, 'its PRs: the header’s git mark, the card under it');
   ctx.assert.ok(on('move').parts[0]?.includes('hmove') && on('move').card.t >= on('move').hole.b, `its move: the header’s tag, the card under it ${JSON.stringify(on('move').parts)}`);
   ctx.assert.ok(on('timeline').parts[0] === '#moreBtn' && on('timeline').pic.includes('⌥⌘J'), `its timeline, closed: ···, with a picture ${JSON.stringify(on('timeline').parts)}`);
   for (let i = 0; i < 4; i++) { await arrow('ArrowLeft'); await ctx.sleep(50); }

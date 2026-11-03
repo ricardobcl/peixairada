@@ -9,13 +9,13 @@ export default async function (ctx) {
   const [two] = ctx.fixture.chats, out = {};
   const head = () => ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shead'), ch = document.querySelector('#chat'), c = ch.getBoundingClientRect(), r = h.getBoundingClientRect(), cs = getComputedStyle(h), bw = ch.clientLeft;   // inside the tile's border
     return { attr: document.documentElement.dataset.head || null, radius: cs.borderTopLeftRadius, left: Math.round(r.left - c.left - bw), right: Math.round(c.right - r.right - bw), top: Math.round(r.top - c.top - bw),
-      chips: document.querySelectorAll('#shead .hpr:not(.more):not([hidden])').length, more: !!document.querySelector('#moreBtn') }; })())`).then(JSON.parse);
+      chips: document.querySelectorAll('#shead > .tmx .mxs').length, more: !!document.querySelector('#moreBtn') }; })())`).then(JSON.parse);
   await ctx.openChat(two.id);
-  await ctx.waitFor(`document.querySelectorAll('#shead .hpr').length >= 2`, { what: 'the header with its PRs' });
+  await ctx.waitFor(`document.querySelectorAll('#shead > .tmx .mxs').length >= 2`, { what: 'the header with its PRs' });
   await ctx.settle();
   out.float = await head();
   ctx.assert.deepEqual([out.float.attr, out.float.radius, out.float.left, out.float.right, out.float.top], ['float', '0px', 0, 0, 0], `the toolbar, flush (${JSON.stringify(out.float)})`);
-  ctx.assert.ok(out.float.chips >= 1 && out.float.more, 'its chips and ··· still in it');
+  ctx.assert.ok(out.float.chips >= 1 && out.float.more, 'its matrix and ··· still in it');
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
   await ctx.settle();
   out.rows = await ctx.evaluate(`(r => Math.round(r.left - document.querySelector('#chat').getBoundingClientRect().left - document.querySelector('#chat').clientLeft))(document.querySelector('#prlist').getBoundingClientRect())`);

@@ -59,10 +59,10 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.shot('2-card', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(${card}.getBoundingClientRect())`));
 
-    // The header: among the chips, after the PRs; the rows under it
+    // The header: dots in the matrix, after the PRs; the rows under it
     await ctx.openChat(c.id);
-    await ctx.waitFor(`document.querySelectorAll('#shead .hpr.tk').length === 2`, { what: 'the header\'s ticket chips' });
-    out.head = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#shead .hpr.tk')].map(e => [e.textContent, e.dataset.cat]))`).then(JSON.parse);
+    await ctx.waitFor(`document.querySelectorAll('#shead > .tmx .mxs.tk').length === 2`, { what: 'the header\'s ticket dots' });
+    out.head = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#shead > .tmx .mxs.tk')].map(e => [e.textContent, e.dataset.cat]))`).then(JSON.parse);
     ctx.assert.deepEqual(out.head, [['ACME-12', 'doing'], ['OPS-7', 'done']]);
     await ctx.evaluate(`document.querySelector('#prToggle').click()`);
     await ctx.waitFor(`!document.querySelector('#prlist').hidden`, { what: 'the rows' });

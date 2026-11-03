@@ -147,14 +147,12 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#prToggle').click()`);
     await ctx.waitFor(`document.querySelector('#prlist .prrow[data-turn="you"] .why')`, { what: 'the PR row saying why' });
     await ctx.settle();
-    out.head = await ctx.evaluate(`JSON.stringify({ chip: document.querySelector('#prToggle .hpr[data-turn="you"]')?.textContent,
-      move: document.querySelector('#shead .hmove .q')?.textContent, moveNext: document.querySelector('#shead .hmove')?.nextElementSibling?.id,
-      bg: getComputedStyle(document.querySelector('#prToggle .hpr[data-turn="you"]')).backgroundImage,
+    out.head = await ctx.evaluate(`JSON.stringify({ chip: document.querySelector('#shead > .tmx .mxs[data-turn="you"] .vh')?.textContent.match(/^#\\d+/)?.[0], num: document.querySelector('#shead > .tmx .mxn.you')?.firstChild.textContent,
+      move: document.querySelector('#shead .hmove .q')?.textContent, moveNext: document.querySelector('#shead .hmove')?.nextElementSibling?.className,
       why: document.querySelector('#prlist .prrow[data-turn="you"] .why').textContent })`).then(JSON.parse);
-    ctx.assert.equal(out.head.chip, '#12');
+    ctx.assert.deepEqual([out.head.chip, out.head.num], ['#12', '#12'], 'its square, and the number follows the move');
     ctx.assert.equal(out.head.move, 'repo-a#12 · pushed since your review', 'the header says whose move and why…');
-    ctx.assert.equal(out.head.moveNext, 'prToggle', '…just before the PR chips');
-    ctx.assert.equal(out.head.bg, 'none', 'the header\'s chip is solid, not its wash');
+    ctx.assert.equal(out.head.moveNext, 'tmx', '…just before the matrix');
     ctx.assert.equal(out.head.why, 'your move · pushed since your review');
     await ctx.shot('2-header', await ctx.evaluate(`(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`));
     // a narrow column (2026-10-11, afternoon — ··· went to a second line beside the housing): the reason gives way

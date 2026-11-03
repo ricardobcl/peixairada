@@ -19,7 +19,7 @@ export default async function (ctx) {
   const [chat] = makeFixture(ctx.fixture.dir, [{ cwd: '/Users/test/repo-a', title: 'A long enough title to be truncated left of the housing, surely', prompt: `The stack: ${urls.join(' ')}`, reply: 'Six.' }]).chats;
   await ctx.waitFor(`!!window.peix.session(${JSON.stringify(chat.id)})`, { what: 'the chat on the board' });
   await ctx.openChat(chat.id);
-  await ctx.waitFor(`document.querySelectorAll('#prToggle .hpr:not(.more)').length === 6`, { what: 'the chips drawn' });
+  await ctx.waitFor(`document.querySelectorAll('#shead > .tmx .mxs').length === 6`, { what: 'the squares drawn' });
   const fill = (on, notch = NOTCH) => ctx.evaluate(`window.peixFill(${on}, ${JSON.stringify(notch)})`).then(() => ctx.sleep(250));
   const listWidth = w => ctx.evaluate(`document.querySelector('#sessions').style.width = '${w}px'`).then(() => ctx.sleep(250));
   // The row, measured: what is in the strip, and whether anything of the header sits under the housing (x within it,
@@ -38,12 +38,12 @@ export default async function (ctx) {
       headPad: parseFloat(getComputedStyle(head).paddingTop), h2Right: Math.round(h2.getBoundingClientRect().right), h2Flex: h2.style.flex,
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
       underHousing: parts.filter(under).map(el => el.textContent.trim().slice(0, 30)),
-      chips: [...head.querySelectorAll('#prToggle .hpr:not(.more)')].filter(c => !c.hidden).length, more: [...head.querySelectorAll('.hpr.more')].some(m => !m.hidden),
+      chips: head.querySelectorAll(':scope > .tmx .mxs').length, more: false,
       title: h2.querySelector('.t')?.getBoundingClientRect().width | 0, tright: head.classList.contains('tright'), tunder: head.classList.contains('tunder'),
       tLeft: Math.round(h2.querySelector('.t').getBoundingClientRect().left), tRight: Math.round(h2.querySelector('.t').getBoundingClientRect().right),
       repoRight: Math.round(h2.querySelector('.repo').getBoundingClientRect().right), sepRight: Math.round(h2.querySelector('.sep').getBoundingClientRect().right),
       tailRight: Math.round(head.querySelector('.hmore').getBoundingClientRect().right + parseFloat(getComputedStyle(head.querySelector('.hmore')).marginRight)), headInner: Math.round(head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight) - parseFloat(getComputedStyle(head).borderRightWidth)),
-      split: Math.round(head.getBoundingClientRect().left + parseFloat(head.style.getPropertyValue('--hsplit'))), oneLine: after ? Math.abs(after.getBoundingClientRect().top - h2.getBoundingClientRect().top) < 12 : null };
+      split: Math.round(head.getBoundingClientRect().left + parseFloat(head.style.getPropertyValue('--hsplit'))), oneLine: after ? Math.abs((after.getBoundingClientRect().top + after.getBoundingClientRect().bottom) / 2 - (h2.getBoundingClientRect().top + h2.getBoundingClientRect().bottom) / 2) < 12 : null };
   })())`).then(JSON.parse);
 
   out.off = await read();
@@ -61,7 +61,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.on.tailRight, out.on.headInner, 'and what follows the title stands at the far right (2026-09-28)');
   ctx.assert.deepEqual([out.on.underHousing, out.on.oneLine], [[], true], 'nothing of the row under the housing, and the row is one line');
   ctx.assert.ok(out.on.title > 150, `the title keeps room (${out.on.title} px)`);
-  ctx.assert.deepEqual([out.on.chips, out.on.more], [2, true], 'two of the six chips right of the housing, and the count (two at most since 2026-10-12)');
+  ctx.assert.equal(out.on.chips, 6, 'the six squares right of the housing');
   await ctx.shot('1-filled', { x: 0, y: 0, width: 1728, height: 60 });
 
   // The list dragged under the housing: its cards start under the strip, and the header — no room for a title left of

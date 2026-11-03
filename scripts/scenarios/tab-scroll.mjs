@@ -15,8 +15,8 @@ export default async function (ctx) {
   await ctx.evaluate(`location.reload()`);
   await ctx.waitFor(`window.__posts && document.querySelectorAll('.card').length > 0`, { what: 'the board again, with the bridge' });
   await ctx.openChat(two.id);
-  await ctx.waitFor(`document.querySelector('#shead .hpr')`, { what: 'the chat\'s PR chip' });
-  await ctx.evaluate(`document.querySelector('#shead .hpr').click()`);
+  await ctx.waitFor(`document.querySelector('#shead > .tmx .mxs')`, { what: 'the chat\'s PR square' });
+  await ctx.evaluate(`document.querySelector('#shead > .tmx .mxs').click()`);
   await ctx.waitFor(`(document.querySelector('#ptabsB .ptab.on')?.dataset.tab || '').startsWith('gh:')`, { what: 'the PR on a tab in the right half' });
   const first = await ctx.evaluate(`window.peix.state().tab`);
   const urls = Array.from({ length: 14 }, (_, i) => `https://github.com/acme/widgets-service-${i}/pull/${100 + i}`);

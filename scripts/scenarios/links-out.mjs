@@ -35,7 +35,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await asks(urls), [true, false, false, true, true, true, true, true], 'github.com kept, whole: not github.company.com, nor gist');
   await ctx.evaluate(`(() => { const a = document.createElement('a'); a.href = 'https://example.com/a'; a.textContent = 'x'; document.querySelector('#log .msg').appendChild(a); a.click(); a.remove(); })()`);
   ctx.assert.deepEqual(await outs(), ['https://example.com/a'], 'the browser');
-  await ctx.evaluate(`document.querySelector('#shead .hpr[data-url$="/pull/12"]').click()`);
+  await ctx.evaluate(`document.querySelector('#shead > .tmx .mxs[data-url$="/pull/12"]').click()`);
   await ctx.waitFor(`window.peix.state().tab?.startsWith('gh:')`, { what: 'the PR on a tab' });
   ctx.assert.deepEqual(await outs(), ['https://example.com/a'], 'the PR stayed in the board');
 

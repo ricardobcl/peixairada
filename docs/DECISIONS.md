@@ -16,6 +16,13 @@ much. shuold be a toggle for now to feel it"*.
   `#slist` rule, and the list's fitted inks are simply the list's now. `#sbar` keeps round XVIII's, as it sits on the frame.
 * **The matrix is the one way on a card**: *All* went, and the faces with it, as they only ever came with *All*: `cardPrs`, `cardFaces`, the Faces part, the setting.
   The people stay on a PR's card (`#mxtip`) and in the status bar's row. The stack and its fan stay for tickets, which have nothing else (`chipStack`, `fanWheel`).
+* **The header wears the same matrix, the git mark beside it**: the chips, the count, the caret and `CHIPS_MAX` are gone. One size, 9 px as on a card, which three rows fit: the rows reach into the toolbar's padding, 5 px
+  left above and below three, and the toolbar stays 43 px. One row while there is room and at most `HEAD_COLS`, then two, then three, as he asked for rows "if necessary"; twelve columns is the width the two chips and their count took, and
+  without a cap a chat on thirty PRs takes the title's place. Past three rows' room the box scrolls as a card's does.
+* **CI had to go somewhere**, as the header is the only place that says it (2026-10-09): the number keeps its chip's badge, a failing square its red ring (an outline, 1 px off it), a running one pulses by opacity alone. A pass is the plain square; the PR's card says it.
+* **The stack's line is the square's own in the header** (`.j::before`), as a grid has no room for the `<s>` a card's uses, and at a row's start there is none rather than one reaching back to nothing.
+* **Tickets are dots after the squares**: one UI, and a chip each would have kept the row's old width. A ticket's dot has the system's tooltip, as `#mxtip` is a PR's card.
+* **A square's card from the header**: under the header, unless the app's pane has a page there, which would cover it: then over the list, beside the column, no arrow (`.far`, the same `paneRects` `#rpop` asks).
 
 ## Decisions of 2026-11-03 — round XXII: raised cards, one line, a card you click
 

@@ -64,7 +64,7 @@ It's a real terminal, and it outlives the board: restart the server or quit the 
 
 ## 🐙 PRs link themselves
 
-A PR a chat opens or mentions — a link, `#482`, `storefront#482` — becomes a chip on its card and in its header, in
+A PR a chat opens or mentions — a link, `#482`, `storefront#482` — becomes a square on its card and in its header, in
 GitHub's colours, with nothing to set up but `gh`. A chat with an open PR is named after it.
 
 <img src="docs/shots/clip-prs.webp" alt="A question answered, Claude opens a draft PR, and its chip comes in on the card and in the header while the chat takes the PR's title">

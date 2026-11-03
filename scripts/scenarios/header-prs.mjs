@@ -1,9 +1,9 @@
-// The chat's PRs in the header (2026-09-24). What this checks: a chat with PRs
-// shows them as the cards' chips in the header row, one button, with the rows under the header folded; a click
+// The chat's PRs in the header (2026-09-24; the card's matrix and a git mark since 2026-11-03, header-matrix.mjs). What this checks: a chat with
+// PRs shows them in the header row, with the rows under the header folded; a click on the git mark
 // unfolds them and a second folds them back, as does the arrow up at the open list's foot (2026-10-13), clicked or
-// pressed with Enter — the keys then on the chips; the fold outlives a reload (a pref, not the chat's); a row's link is
-// copied from the mark next to its name (2026-10-21); a row still opens its PR; a chip opens its own, the rows left folded, and a caret after the chips unfolds them (2026-10-16); a chat
-// without PRs has neither. ⌥ over a chip, or a row, shows an ✕ in red without moving a thing, and
+// pressed with Enter — the keys then on the mark; the fold outlives a reload (a pref, not the chat's); a row's link is
+// copied from the mark next to its name (2026-10-21); a row still opens its PR; a square opens its own, the rows left folded (2026-10-16); a chat
+// without PRs has neither. ⌥ over a square, or a row, shows an ✕ in red without moving a thing, and
 // ⌥-click takes that PR off the chat (2026-10-11): gone from the header, the rows and the server's summary, kept off
 // when Claude names it again and across a restart (its lines read afresh), back when you name it.
 import { appendFileSync } from 'node:fs';
@@ -15,20 +15,15 @@ export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
   const out = {};
   const head = () => ctx.evaluate(`JSON.stringify((() => { const t = document.querySelector('#prToggle'), pl = document.querySelector('#prlist');
-    return { chips: t ? [...t.querySelectorAll('.hpr:not(.more)')].map(c => c.textContent) : null, expanded: t?.getAttribute('aria-expanded') ?? null,
+    return { chips: t ? [...document.querySelectorAll('#shead > .tmx .mxs')].map(c => c.querySelector('.vh').textContent.match(/^#\\d+/)?.[0]) : null, expanded: t?.getAttribute('aria-expanded') ?? null,
       rows: pl.querySelectorAll('.prrow').length, shown: !pl.hidden && pl.offsetParent !== null, pref: window.peix.prefs().prsOpen }; })())`).then(JSON.parse);
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === 2`, { what: 'two PR rows' });
   out.folded = await head();
-  ctx.assert.equal(out.folded.chips.length, 2, 'two chips in the header');
-  ctx.assert.ok(out.folded.chips.every(c => /^#\d+$/.test(c)), '…labelled #n, as on the cards');
+  ctx.assert.deepEqual(out.folded.chips, ['#12', '#13'], 'two squares in the header, the cards\' order');
   ctx.assert.equal(out.folded.shown, false, 'the rows folded by default');
   ctx.assert.equal(out.folded.expanded, 'false');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prToggle').parentElement.id`), 'shead', 'in the header row itself');
-  // taller than the cards' to be seen (the same evening); the edge went back to 1 px once the chips had a wash
-  out.chip = await ctx.evaluate(`JSON.stringify((c => ({ h: Math.round(c.getBoundingClientRect().height), border: getComputedStyle(c).borderTopWidth }))(document.querySelector('#shead .hpr')))`).then(JSON.parse);
-  ctx.assert.ok(out.chip.h >= 22, `the PR chips are taller (${out.chip.h} px)`);
-  ctx.assert.equal(out.chip.border, '1px', '…with a 1 px edge');
   await ctx.shot('1-folded', { x: 400, y: 0, width: 1300, height: 120 });
 
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
@@ -37,7 +32,7 @@ export default async function (ctx) {
   await ctx.shot('2-open', { x: 400, y: 0, width: 1300, height: 160 });
 
   // the list's foot is an arrow up that folds it (2026-10-13): under the last row, in the middle, a button that says what
-  // it does; a real click on it folds the list as the chips do, and the chips unfold it again
+  // it does; a real click on it folds the list as the git mark does, and the mark unfolds it again
   await ctx.settle();
   out.arrow = await ctx.evaluate(`JSON.stringify((() => { const pl = document.querySelector('#prlist'), b = pl.querySelector('#prFold'), r = b.getBoundingClientRect(), l = pl.getBoundingClientRect();
     return { tag: b.tagName, label: b.getAttribute('aria-label'), controls: b.getAttribute('aria-controls'), last: pl.lastElementChild.contains(b), svg: !!b.querySelector('svg.ic.st'),
@@ -50,15 +45,15 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.elementFromPoint(${out.arrow.x}, ${out.arrow.y})?.closest('#prFold') ? 'arrow' : 'covered'`), 'arrow', 'nothing over it');
   for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: out.arrow.x, y: out.arrow.y, ...type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 } });
   out.arrowed = await head();
-  ctx.assert.deepEqual([out.arrowed.shown, out.arrowed.expanded, out.arrowed.pref, out.arrowed.rows], [false, 'false', false, 2], 'a click on it folds the list — the pref, the chips\' aria-expanded, the rows still there for ⌥⌘G');
+  ctx.assert.deepEqual([out.arrowed.shown, out.arrowed.expanded, out.arrowed.pref, out.arrowed.rows], [false, 'false', false, 2], 'a click on it folds the list — the pref, the mark\'s aria-expanded, the rows still there for ⌥⌘G');
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 500 });
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
-  ctx.assert.deepEqual(await head().then(h => [h.shown, h.expanded, h.pref]), [true, 'true', true], 'and the chips unfold it again');
-  // from the keyboard: Enter on the arrow folds it, and the keys land on the chips — the arrow went with the list
+  ctx.assert.deepEqual(await head().then(h => [h.shown, h.expanded, h.pref]), [true, 'true', true], 'and the mark unfolds it again');
+  // from the keyboard: Enter on the arrow folds it, and the keys land on the mark — the arrow went with the list
   await ctx.evaluate(`document.querySelector('#prFold').focus()`);
   for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, ...type === 'keyDown' ? { text: '\r' } : {} });
   out.keyed = await ctx.evaluate(`JSON.stringify({ pref: window.peix.prefs().prsOpen, focus: document.activeElement?.id || document.activeElement?.tagName })`).then(JSON.parse);
-  ctx.assert.deepEqual([out.keyed.pref, out.keyed.focus], [false, 'prToggle'], `Enter on the arrow folds it, the keys on the chips — ${JSON.stringify(out.keyed)}`);
+  ctx.assert.deepEqual([out.keyed.pref, out.keyed.focus], [false, 'prToggle'], `Enter on the arrow folds it, the keys on the mark — ${JSON.stringify(out.keyed)}`);
   for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, ...type === 'keyDown' ? { text: '\r' } : {} });
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify([window.peix.prefs().prsOpen, document.activeElement?.id])`).then(JSON.parse), [true, 'prToggle'], 'and Enter there unfolds it, the keys staying');
   await ctx.reload();
@@ -107,25 +102,22 @@ export default async function (ctx) {
   out.again = await head();
   ctx.assert.deepEqual([out.again.shown, out.again.pref], [false, false], 'a second click folds them back');
 
-  // ⌥ over a chip: its ✕, white on red, the chip its size; let go, the chip — then a real ⌥-click on it
+  // ⌥ over a square: its ✕, white on red; let go, the square — then a real ⌥-click on it
   const pr12 = 'https://github.com/acme/repo-a/pull/12', pr13 = 'https://github.com/acme/repo-a/pull/13';
-  const on = url => `#shead .hpr[data-url="${url}"]`, row = url => `#prlist .prrow[data-url="${url}"]`;
+  const on = url => `#shead > .tmx .mxs[data-url="${url}"]`, row = url => `#prlist .prrow[data-url="${url}"]`;
   const mid = sel => ctx.evaluate(`JSON.stringify((r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: r.width }))(document.querySelector('${sel}').getBoundingClientRect()))`).then(JSON.parse);
   const x = sel => ctx.evaluate(`(el => JSON.stringify({ alt: document.documentElement.hasAttribute('data-alt'), x: getComputedStyle(el, '::before').content !== 'none' && getComputedStyle(el).color === 'rgba(0, 0, 0, 0)', w: el.getBoundingClientRect().width }))(document.querySelector('${sel}'))`).then(JSON.parse);
   const mouse = (type, p, alt) => ctx.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, modifiers: alt ? 1 : 0, ...type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 } });
   const prsOf = async id => (await ctx.server.api('/api/sessions')).body.sessions.find(c => c.id === id).prs.map(p => p.url);
-  // a chip opens its PR (2026-10-16) — a real click, the rows left folded — and the caret after the chips, every one
-  // shown, is what unfolds them (the count, when some fold); the button as a whole still does for the keys or a script
+  // a square opens its PR (2026-10-16) — a real click, the rows left folded — and the git mark unfolds them
   await ctx.settle();
-  const caret = '#prToggle .hcaret', click = async p => { for (const t of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(t, p, false); };
-  ctx.assert.equal(await ctx.evaluate(`!document.querySelector('${caret}').hidden && document.querySelector('${caret}').textContent`), '▾', 'a caret, with both chips shown and no count');
+  const caret = '#prToggle', click = async p => { for (const t of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(t, p, false); };
   await click(await mid(on(pr13)));
-  await ctx.waitFor(`window.peix.state().pr === '${pr13}'`, { what: 'the chip\'s PR opened' });
+  await ctx.waitFor(`window.peix.state().pr === '${pr13}'`, { what: 'the square\'s PR opened' });
   ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().prsOpen`), false, 'one click, the rows still folded');
   await click(await mid(caret));
-  ctx.assert.deepEqual(await head().then(h => [h.shown, h.pref, h.expanded]), [true, true, 'true'], 'the caret unfolds them');
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('${caret}').textContent`), '▴', '…and turns');
-  await ctx.shot('2b-caret-open', { x: 400, y: 0, width: 1300, height: 160 });
+  ctx.assert.deepEqual(await head().then(h => [h.shown, h.pref, h.expanded]), [true, true, 'true'], 'the mark unfolds them');
+  await ctx.shot('2b-mark-open', { x: 400, y: 0, width: 1300, height: 160 });
   await click(await mid(caret));
   ctx.assert.deepEqual(await head().then(h => [h.shown, h.pref]), [false, false], 'and folds them');
   await mouse('mouseMoved', { x: 5, y: 500 }, false);
@@ -133,16 +125,15 @@ export default async function (ctx) {
   const c13 = await mid(on(pr13));
   await mouse('mouseMoved', c13, false);
   ctx.assert.equal((await x(on(pr13))).x, false, 'no ✕ without ⌥');
-  ctx.assert.match(await ctx.evaluate(`document.querySelector('${on(pr13)}').title`), /⌥-click: take it off this chat/, 'the chip says so');
   await mouse('mouseMoved', { ...c13, x: c13.x + 1 }, true);
   out.altChip = await x(on(pr13));
-  ctx.assert.deepEqual([out.altChip.alt, out.altChip.x, out.altChip.w], [true, true, c13.w], `⌥ over the chip: its ✕, the chip its size — ${JSON.stringify(out.altChip)}`);
-  ctx.assert.equal((await x(on(pr12))).x, false, '…that chip only');
+  ctx.assert.deepEqual([out.altChip.alt, out.altChip.x], [true, true], `⌥ over the square: its ✕ — ${JSON.stringify(out.altChip)}`);
+  ctx.assert.equal((await x(on(pr12))).x, false, '…that square only');
   await ctx.shot('3-alt-chip', { x: 400, y: 0, width: 1300, height: 60 });
   await mouse('mouseMoved', c13, false);
-  ctx.assert.equal((await x(on(pr13))).x, false, 'let go, the number again');
+  ctx.assert.equal((await x(on(pr13))).x, false, 'let go, the square again');
   await mouse('mousePressed', c13, true); await mouse('mouseReleased', c13, true);
-  await ctx.waitFor(`!document.querySelector('${on(pr13)}') && !document.querySelector('${row(pr13)}')`, { what: 'the chip and its row gone' });
+  await ctx.waitFor(`!document.querySelector('${on(pr13)}') && !document.querySelector('${row(pr13)}')`, { what: 'the square and its row gone' });
   ctx.assert.deepEqual(await prsOf(two.id), [pr12], 'off the chat on the server');
   ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().prsOpen`), false, 'and the ⌥-click did not unfold the rows');
   ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'unlink')`), 'it folded out');
@@ -170,13 +161,13 @@ export default async function (ctx) {
   await ctx.reload();
   await ctx.openChat(two.id);
   ctx.assert.deepEqual(await prsOf(two.id), [], 'still off after a restart');
-  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#prToggle')`), false, 'no chips');
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#prToggle')`), false, 'no matrix, no mark');
   appendFileSync(two.file, chatLines({ id: two.id, cwd: two.cwd, prompt: `Back to ${pr13}, please.`, reply: 'On it.', at: new Date(Date.now() + 61_000) }).map(l => JSON.stringify(l)).join('\n') + '\n');
   await ctx.waitFor(`!!document.querySelector('${on(pr13)}')`, { what: 'the PR you named back' });
   ctx.assert.deepEqual(await prsOf(two.id), [pr13], 'a word of yours brings that one back, and only that one');
 
   await ctx.openChat(plain.id);
   out.plain = await head();
-  ctx.assert.deepEqual([out.plain.chips, out.plain.shown], [null, false], 'no PRs, no chips and no rows');
+  ctx.assert.deepEqual([out.plain.chips, out.plain.shown], [null, false], 'no PRs, no matrix and no rows');
   return out;
 }

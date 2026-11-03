@@ -1058,22 +1058,38 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      number lifts the square it names (.hot). */
   .card .top .tmx { --q: 9px; --c: 4px; --g: 4px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); display: flex; align-items: center; gap: 2px; flex: 0 999 auto; min-width: calc(var(--nw) + 2px + var(--mn)); margin-right: -3px;
     font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .card .tmx .mxn { flex: none; max-width: 9ch; overflow: hidden; color: var(--ink); cursor: pointer; }
-  :root[data-theme="dark"] .card .top .tmx { --mxyou: color-mix(in srgb, var(--accent) 82%, var(--ink)); }
-  .card .tmx .mxn.you { color: var(--mxyou); }   /* the accent towards the ink, so it reads at 11 px: 4.9:1 at least on the sidebar's light grey (the accent 3.9 on white) */
-  .card .tmx .mxg { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--g); padding: 3px; position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; --fl: 0px; --fr: 0px; }
-  .card .tmx .mxg::-webkit-scrollbar { display: none; }
-  .card .tmx .mxg:is(.ofl, .ofr) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
-  .card .tmx .mxg.ofl { --fl: 12px; } .card .tmx .mxg.ofr { --fr: 12px; }
-  .card .tmx .mxc { flex: none; display: flex; align-items: center; }
-  .card .tmx .mxc > s { flex: none; width: var(--c); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
-  .card .tmx .mxs, :is(#rpop, #mxtip) .rsq { --prc: initial; position: relative; flex: none; display: block; width: var(--q); height: var(--q); border-radius: 2px; box-sizing: border-box; background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent)); }
-  .card .tmx .mxs[data-state="open"], :is(#rpop, #mxtip) .rsq[data-state="open"] { --prc: var(--pr-open); } .card .tmx .mxs[data-state="merged"], :is(#rpop, #mxtip) .rsq[data-state="merged"] { --prc: var(--pr-merged); }
-  .card .tmx .mxs[data-state="closed"], :is(#rpop, #mxtip) .rsq[data-state="closed"] { --prc: var(--pr-closed); }
-  .card .tmx .mxs[data-state="draft"], :is(#rpop, #mxtip) .rsq[data-state="draft"] { --prc: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
-  .card .tmx .mxs { cursor: pointer; transition: scale .32s var(--spring), filter var(--t-hover); }
-  .card .tmx .mxs::after { content: ''; position: absolute; inset: -5px calc(var(--g) / -2); }
-  .card .tmx .mxs:is(:hover, .hot) { scale: 1.3; filter: brightness(1.1); }
+  :is(.card, .shead) .tmx .mxn { flex: none; max-width: 9ch; overflow: hidden; color: var(--ink); cursor: pointer; }
+  :root[data-theme="dark"] :is(.card .top, .shead) .tmx { --mxyou: color-mix(in srgb, var(--accent) 82%, var(--ink)); }
+  :is(.card, .shead) .tmx .mxn.you { color: var(--mxyou); }   /* the accent towards the ink, so it reads at 11 px: 4.9:1 at least on the sidebar's light grey (the accent 3.9 on white) */
+  :is(.card, .shead) .tmx .mxg { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--g); padding: 3px; position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; --fl: 0px; --fr: 0px; }
+  :is(.card, .shead) .tmx .mxg::-webkit-scrollbar { display: none; }
+  :is(.card, .shead) .tmx .mxg:is(.ofl, .ofr) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+  :is(.card, .shead) .tmx .mxg.ofl { --fl: 12px; } :is(.card, .shead) .tmx .mxg.ofr { --fr: 12px; }
+  :is(.card, .shead) .tmx .mxc { flex: none; display: flex; align-items: center; }
+  :is(.card, .shead) .tmx .mxc > s { flex: none; width: var(--c); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+  :is(.card, .shead) .tmx .mxs, :is(#rpop, #mxtip) .rsq { --prc: initial; position: relative; flex: none; display: block; width: var(--q); height: var(--q); border-radius: 2px; box-sizing: border-box; background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent)); }
+  :is(.card, .shead) .tmx .mxs[data-state="open"], :is(#rpop, #mxtip) .rsq[data-state="open"] { --prc: var(--pr-open); } :is(.card, .shead) .tmx .mxs[data-state="merged"], :is(#rpop, #mxtip) .rsq[data-state="merged"] { --prc: var(--pr-merged); }
+  :is(.card, .shead) .tmx .mxs[data-state="closed"], :is(#rpop, #mxtip) .rsq[data-state="closed"] { --prc: var(--pr-closed); }
+  :is(.card, .shead) .tmx .mxs[data-state="draft"], :is(#rpop, #mxtip) .rsq[data-state="draft"] { --prc: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
+  :is(.card, .shead) .tmx .mxs { cursor: pointer; transition: scale .32s var(--spring), filter var(--t-hover); }
+  :is(.card, .shead) .tmx .mxs::after { content: ''; position: absolute; inset: var(--hy, -5px) calc(var(--g) / -2); }
+  :is(.card, .shead) .tmx .mxs:is(:hover, .hot) { scale: 1.3; filter: brightness(1.1); }
+  /* The chat header's PRs (2026-11-03; headMatrix, fitHeadPrs): the same squares, in as many rows as the toolbar's room asks, three at most, the
+     rows reaching into its padding (5 px left above and below three). Flat, for a grid: a stack's line is the square's own (.j), none at a row's
+     start (.jw). What only the header says: a PR's CI — the number's badge, a failing square's ring, a running square's pulse — and the chat's
+     tickets, dots after the squares. Past three rows' room the box scrolls as a card's does, which fitHeadPrs says by --mxw. */
+  .shead .tmx { --q: 9px; --g: 4px; --gr: 3px; --hy: -1.5px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); flex: none; display: flex; align-items: center; gap: 3px; margin: -6px -3px -6px 0; font: 600 var(--fs-sm)/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .shead .tmx[data-rows="1"] { --hy: -5px; }
+  .shead .tmx .mxn { display: inline-flex; align-items: center; max-width: none; }
+  .shead .tmx .mxg { display: grid; grid-template-columns: repeat(var(--cols, 12), var(--q)); gap: var(--gr) var(--g); max-width: var(--mxw, none); }
+  .shead .tmx .mxc { display: contents; }
+  .shead .tmx .mxs.j::before { content: ''; position: absolute; right: 100%; top: calc(50% - .75px); width: var(--g); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+  .shead .tmx .mxs.j.jw::before { content: none; }
+  .shead .tmx .mxs[data-checks="fail"] { outline: 1.5px solid var(--pr-closed); outline-offset: 1px; }   /* a failing PR is seen from across the room */
+  .shead .tmx .mxs[data-checks="pending"] { animation: mxrun 1.2s ease-in-out infinite alternate; }
+  @keyframes mxrun { to { opacity: .35; } }
+  .shead .tmx .mxs.tk { border-radius: 50%; }
+  .shead .tmx .mxs.tk[data-cat="todo"] { --prc: var(--tk-todo); } .shead .tmx .mxs.tk[data-cat="doing"] { --prc: var(--tk-doing); } .shead .tmx .mxs.tk[data-cat="done"] { --prc: var(--tk-done); }
   /* A PR's card (2026-11-01, later; mxCardHtml, mxtShow): its repo and state, the number and title, its CI and its place
      in a stack, whose move, who had a hand and when GitHub last updated it — over the square, its arrow on it, kept in
      the list. It comes on a spring from a little below (above, when it opens under the square) and glides from square
@@ -1086,6 +1102,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #mxtip.on { opacity: 1; transform: none; transition: opacity .14s var(--ease-out), transform .46s var(--spring), left .2s var(--ease-out), top .2s var(--ease-out); }
   #mxtip::after { content: ''; position: absolute; left: calc(var(--ax, 50%) - 5px); bottom: -5.5px; width: 9px; height: 9px; box-sizing: border-box; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; rotate: 45deg; }
   #mxtip.below::after { top: -5.5px; bottom: auto; border-width: 1px 0 0 1px; }
+  #mxtip.far::after { display: none; }   /* a pane page under the header: over the list, no arrow to point with */
   #mxtip.on::after { transition: left .2s var(--ease-out); }
   #mxtip .mts[data-state="run"] { --prc: var(--working-ink); } #mxtip .mts[data-state="quiet"] { --prc: var(--working-ink); } #mxtip .mts[data-state="wait"] { --prc: var(--watch); } #mxtip .mts[data-state="done"] { --prc: var(--idle); } #mxtip .mts[data-state="fail"] { --prc: var(--needs); }
   #mxtip .agi { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 9px; margin: 0; font-size: var(--fs-xs); }
@@ -1131,25 +1148,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #people.on button:not(.on) { opacity: .35; }
   #people.on button:not(.on):hover { opacity: .8; }
   #people button.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
-  /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
-  .shead .hpr { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; color: var(--muted); background: var(--ctl); }
-  .shead .hpr[data-state="open"] { --prc: var(--pr-open); }
-  .shead .hpr[data-state="merged"] { --prc: var(--pr-merged); }
-  .shead .hpr[data-state="closed"] { --prc: var(--pr-closed); }
-  .shead .hpr[data-state="draft"] { --prc: var(--pr-draft); }
-  /* Solid in its state's colour, every chip GitHub has answered for (2026-09-28): the ink is the page's ground, the
-     edge the fill. One whose state is not known yet stays an outline in the muted ink. Which one is at your move, the
-     card's line and the header say by name. */
-  .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]) { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — on the card a stack of
-     its own as the PRs are (.tprs.ttks, 2026-10-11; the first ticket and a count before), the branch's, else the last
-     named, on top; in the header among the PRs, last, so they fold first */
+     its own (.tprs.ttks, 2026-10-11; the first ticket and a count before), the branch's, else the last named, on top */
   .card .ctk { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; white-space: nowrap; cursor: pointer; }
   .card .ctk:hover { filter: brightness(1.12); }
-  :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="todo"] { --prc: var(--tk-todo); }
-  :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="doing"] { --prc: var(--tk-doing); }
-  :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="done"] { --prc: var(--tk-done); }
-  :is(.card .ctk, .shead .hpr.tk)[data-cat] { background: var(--prc); border-color: var(--prc); color: var(--bg); }
+  :is(.card .ctk, .prrow.tk)[data-cat="todo"] { --prc: var(--tk-todo); }
+  :is(.card .ctk, .prrow.tk)[data-cat="doing"] { --prc: var(--tk-doing); }
+  :is(.card .ctk, .prrow.tk)[data-cat="done"] { --prc: var(--tk-done); }
+  .card .ctk[data-cat] { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   .prrow.tk .st { width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--prc); }
   .prrow.tk .who { flex: none; color: var(--muted); font-size: var(--fs-xs); }
   .prrow.tk .who.me { color: var(--accent); font-weight: 600; }
@@ -1283,11 +1289,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .act.armed .tk { flex: none; }
   .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hgit, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1480,52 +1486,35 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chat.tinted .shead .btn:hover { color: var(--rink); }
   #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
   #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
-  /* The chat's PRs in the header row, compact (2026-09-24): the cards' chips, #n in the PR's state
-     colour, as one button; a click unfolds #prlist under the header — one row per PR — and folds it back. The fold
-     is a pref (prsOpen), not the chat's. On a tinted header the chips sit on the panel, so the state colours read on
-     any project's. */
-  .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: var(--r-3); background: none; font: inherit; color: var(--muted); cursor: pointer; }
-  /* taller than the cards', to be seen (2026-09-24); the edge was 2 px until the wash below made that its job
-     ("we can go back on the extra thick border"), and keeps the stronger colour */
-  .shead .hpr { font-size: var(--fs-sm); line-height: 24px; padding: 0 7px; border-radius: var(--r-3);   /* the tile's controls' 26 px (2026-10-11, Q1; 22 before) */
-    /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
-       it prettier") — since 2026-09-28 only a chip whose state is not known yet: the rest are solid (above) */
-    background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
-  .shead .hprs:hover, .shead .hprs.on { background: var(--ctl); }
-  .shead .hpr.more { color: var(--muted); border-style: dashed; }
-  /* a chip opens its PR or ticket (2026-10-16), lit under the pointer as a card's is; the count, or the caret when every
-     chip is shown, unfolds the rows */
-  .shead .hpr:is([data-url], .tk):hover { filter: brightness(1.12); }
-  .shead .hcaret { min-width: 22px; font-size: var(--fs-sm); line-height: 24px; text-align: center; border-radius: var(--r-3); background: var(--ctl); }
-  .shead .hcaret:hover { background: var(--ctl-hi); }
+  /* The git mark beside the header's matrix (2026-11-03): a click unfolds #prlist under the header, one row per PR, and folds it back. The fold is
+     a pref (prsOpen), not the chat's. */
+  .shead .hgit { flex: none; display: inline-flex; align-items: center; padding: 4px 5px; margin: -2px -2px -2px -3px; border: 0; border-radius: var(--r-3); background: none; color: var(--muted); cursor: pointer; }
+  .shead .hgit .ic { width: 15px; height: 15px; fill: currentColor; }
+  .shead .hgit:hover, .shead .hgit.on { color: var(--ink); background: var(--inline-bg); }
   /* CI on the PR's head (2026-10-09): a round badge after its number, in the page's ground with the outcome's colour —
      a tick, a cross, or a ring turning while the checks run */
-  :is(.shead .hpr, .prrow) .ck { --ckc: var(--pr-open); display: inline-grid; place-items: center; width: 13px; height: 13px; flex: none; margin: 0 -3px 0 4px; border-radius: 50%; background: var(--bg); vertical-align: -2px; }
-  :is(.shead .hpr, .prrow) .ck[data-checks="fail"] { --ckc: var(--pr-closed); }
-  :is(.shead .hpr, .prrow) .ck[data-checks="pending"] { --ckc: var(--working); }
-  :is(.shead .hpr, .prrow) .ck svg { width: 11px; height: 11px; fill: none; stroke: var(--ckc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-  :is(.shead .hpr, .prrow) .ck[data-checks="pending"] svg { stroke-width: 2; stroke-dasharray: 18 11; animation: ring 1.1s linear infinite; }
+  :is(.shead .tmx, .prrow) .ck { --ckc: var(--pr-open); display: inline-grid; place-items: center; width: 13px; height: 13px; flex: none; margin: 0 -3px 0 4px; border-radius: 50%; background: var(--bg); vertical-align: -2px; }
+  :is(.shead .tmx, .prrow) .ck[data-checks="fail"] { --ckc: var(--pr-closed); }
+  :is(.shead .tmx, .prrow) .ck[data-checks="pending"] { --ckc: var(--working); }
+  :is(.shead .tmx, .prrow) .ck svg { width: 11px; height: 11px; fill: none; stroke: var(--ckc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  :is(.shead .tmx, .prrow) .ck[data-checks="pending"] svg { stroke-width: 2; stroke-dasharray: 18 11; animation: ring 1.1s linear infinite; }
   /* …and the answer coming in (prMoments, 2026-10-11): the tick or the cross stroked in, once */
-  .shead .hpr .ck.now path { stroke-dasharray: 16; animation: ckdraw .26s ease-out .08s both; }
+  .shead .tmx .ck.now path { stroke-dasharray: 16; animation: ckdraw .26s ease-out .08s both; }
   @keyframes ckdraw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
-  /* A PR merged, seen (prMoments): a sheen sweeps across its chip as it turns, once — a strip moved by a transform. */
-  .shead .hpr.sheen { position: relative; overflow: hidden; }
-  .shead .hpr.sheen::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 60%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .6), transparent); animation: sheen .6s ease-in-out .1s both; }
-  @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
-  .shead .hpr[data-checks="fail"] { box-shadow: 0 0 0 1.5px var(--pr-closed); }   /* a failing PR is seen from across the room */
-  /* ⌥ held over a PR's chip, or its row under the header (2026-10-11): an ✕, white on red, over its number — ⌥-click
-     takes the PR off the chat (unlinkPr). Nothing moves: the number goes clear under it, the row's pads by a shadow. */
-  :root[data-alt] :is(.shead .hpr[data-url]:hover, .prrow[data-url]:hover .num) { position: relative; color: transparent; background: var(--needs); border-color: var(--needs); box-shadow: 0 0 0 var(--xpad, 0) var(--needs); cursor: pointer; }
+  /* ⌥ held over a PR's square in the header, or its row under it (2026-10-11): an ✕, white on red — ⌥-click takes the PR off the
+     chat (unlinkPr). Nothing moves: the row's number goes clear under it and pads by a shadow. */
+  :root[data-alt] :is(.shead .tmx .mxs[data-url]:hover, .prrow[data-url]:hover .num) { position: relative; color: transparent; background: var(--needs); border-color: var(--needs); box-shadow: 0 0 0 var(--xpad, 0) var(--needs); cursor: pointer; }
   :root[data-alt] .prrow[data-url]:hover .num { --xpad: 3px; border-radius: var(--r-1); }
-  :root[data-alt] .shead .hpr[data-url]:hover .ck { visibility: hidden; }
-  :root[data-alt] :is(.shead .hpr[data-url]:hover, .prrow[data-url]:hover .num)::before { content: ''; position: absolute; inset: 0; background: #fff;
+  :root[data-alt] :is(.shead .tmx .mxs[data-url]:hover, .prrow[data-url]:hover .num)::before { content: ''; position: absolute; inset: 0; width: auto; height: auto; background: #fff;
     -webkit-mask: var(--xmask) center / 18px no-repeat; mask: var(--xmask) center / 18px no-repeat; }
+  :root[data-alt] .shead .tmx .mxs[data-url]:hover { --prc: var(--needs); scale: 1.5; outline: 0; animation: none; }
+  :root[data-alt] .shead .tmx .mxs[data-url]:hover::before { -webkit-mask-size: 100%; mask-size: 100%; }
   :root { --xmask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E"); }
   .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); }
   .prrow .ckw .ck { margin: 0; }
   .prrow .ckw[data-checks="fail"] { color: var(--pr-closed); font-weight: 600; }
-  #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
-  #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { background: color-mix(in srgb, var(--rink) 12%, transparent); }
+  #chat.tinted .shead .hgit { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .hgit:hover, #chat.tinted .shead .hgit.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 12%, transparent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
   /* The floating header (2026-10-09, the studies' E; the only header since 2026-10-14 — <html data-head="float"> is in
@@ -2245,11 +2234,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
   /* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
      the toolbar's ground, opaque: the card's chips overlap */
-  :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]), :root[data-layout="sidebar"] :is(#slist .card .ctk, #chat .shead .hpr.tk)[data-cat] {
+  :root[data-layout="sidebar"] #slist .card .ctk[data-cat] {
     background: color-mix(in srgb, var(--prc) 12%, var(--side)); border-color: color-mix(in srgb, var(--prc) 34%, var(--side)); color: var(--prc); }
   :root[data-layout="sidebar"] #slist .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; }   /* a stack's slivers carry no number (the tint's ink beat the stack's rule, 2026-11-01) */
-  :root[data-layout="sidebar"] #chat .shead .hpr:is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"], .tk[data-cat]) { background: color-mix(in srgb, var(--prc) 12%, var(--panel)); border-color: color-mix(in srgb, var(--prc) 34%, var(--panel)); }
-  :root[data-layout="sidebar"] #chat .shead .hpr .ck { background: transparent; }
+  :root[data-layout="sidebar"] #chat .shead .tmx .ck { background: transparent; }
   /* the lanes as the tiles' were (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
      sidebar's ground; all caught up keeps its still mark, where its sparks start */
   /* on the rows' edges (2026-11-03, round XXI): the mark on the title's, the name on an agent row's words, the chevron's tip on the chips' right; a day and a lane's rest on the title's */
@@ -2646,8 +2634,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tour .tlink .tq { color: var(--muted); font-style: italic; }
   #tour .tlink .tto { display: flex; align-items: center; gap: 6px; color: var(--muted); }
   #tour .tlink .ymove { font-style: normal; }
-  #tour .tchip { display: inline-flex; padding: 0 6px; border-radius: var(--r-1); background: var(--c, var(--pr-open)); color: var(--bg); font: 700 var(--fs-xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; }
-  #tour .tchip[data-state="draft"] { --c: var(--pr-draft); } #tour .tchip.tk { --c: var(--tk-doing); }
+  #tour .tchip { display: inline-block; width: 9px; height: 9px; box-sizing: border-box; border-radius: 2px; background: var(--c, var(--pr-open)); }
+  #tour .tchip[data-state="draft"] { --c: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--c); } #tour .tchip.tk { --c: var(--tk-doing); border-radius: 50%; }
   #tour .tfoot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
   #tour .tfoot .spacer { flex: 1; }
   #tour .tfoot [hidden] { display: none; }
@@ -2843,12 +2831,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, .shead .hpr, .card .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card, .shead) .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
   #slist, #log, #picklist, #pfolders, #prScroll, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
-  .card .top .tprs, .card .tmx .mxg, .ptrack { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
+  .card .top .tprs, :is(.card, .shead) .tmx .mxg, .ptrack { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
   /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
@@ -2865,7 +2853,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
     :root[data-theme][data-frame] :is(#sessions, #sbar) { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
       --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }   /* the frame's own, under the dark frame */
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hgit, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2878,7 +2866,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
     :root[data-layout="sidebar"] #slist .card { border: 1px solid CanvasText; } :root[data-layout="sidebar"] #slist .card.active { outline: 2px solid Highlight; }   /* the sidebar's rows */
-    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .agd, .card .trow .drift, .card .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
+    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .agd, .card .trow .drift, :is(.card, .shead) .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
     :root[data-layout="sidebar"] #slist .card.cdover { outline: 2px solid Highlight; } #cdghost { border: 1px solid CanvasText; }   /* a card in the hand: its shadows are gone here */
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
@@ -3009,7 +2997,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .shim > .sw { display: none; }   /* no light runs across clauding */
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
     #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
-    .shead .hpr .ck.now path, .shead .hpr.sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
+    .shead .tmx .ck.now path { animation: none; }   /* an answer: there, not drawn */
+    .shead .tmx .mxs[data-checks="pending"] { animation: none; opacity: .6; }   /* running: dim, not pulsing; the number's badge says it too */
     #log > .in { animation: none; }
     :is(#fillHint, #tvHint), :is(#fillHint, #tvHint).out { translate: -50% 0; } @starting-style { :is(#fillHint, #tvHint) { translate: -50% 0; } }   /* the fill's word and the timeline's fade, in place */
     #tour :is(.thole, .tcard) { transition: outline-color .2s; } #tour .tin.in { animation: none; }   /* the tour jumps from part to part */
@@ -3024,13 +3013,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card .top .tprs { transition: none; }   /* the stack fans at once */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
-    .card .tmx .mxs { transition: filter var(--t-hover); } .card .tmx .mxs:is(:hover, .hot) { scale: none; }   /* a square under the pointer brightens, no lift */
+    :is(.card, .shead) .tmx .mxs { transition: filter var(--t-hover); } :is(.card, .shead) .tmx .mxs:is(:hover, .hot) { scale: none; }   /* a square under the pointer brightens, no lift */
     #mxtip, #mxtip.on { transform: none; transition: opacity .12s var(--ease-out); } #mxtip.on::after { transition: none; }   /* a PR's card fades in where it stands */
     /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
     .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
-    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -4551,7 +4540,7 @@ const toolName = n => {
   const MX_FADE = 12, MX_LIFT = 3;
   function fadeOver(all = false) {
     const els = [...document.querySelectorAll(`#shead h2 .t, .ptabs .purl, #slist > .card .title${all ? '' : ':not(.ovr)'}`)];   // the header's and the strip's are few: read every time
-    const mxs = [...document.querySelectorAll(`#slist > .card .tmx .mxg${all ? '' : ':not(.ovr)'}`)];
+    const mxs = [...document.querySelectorAll(`#shead > .tmx .mxg, #slist > .card .tmx .mxg${all ? '' : ':not(.ovr)'}`)];   // the header's is one, and fitHeadPrs moves its box
     const over = els.map(e => e.classList.contains('title') ? e.scrollHeight > e.clientHeight + 1 : e.scrollWidth > e.clientWidth + 1);
     const mx = mxs.map(g => { const r = !g.classList.contains('ovr') && g.querySelector('.mxs.lead'); return { x: g.scrollLeft, w: g.clientWidth, sw: g.scrollWidth, l: r ? r.offsetLeft : -1, rw: r ? r.offsetWidth : 0 }; });
     els.forEach((e, i) => { e.classList.toggle('over', over[i]); e.classList.add('ovr'); });
@@ -4573,7 +4562,7 @@ const toolName = n => {
   function rollSoon() { if (!rollSoon.f) rollSoon.f = requestAnimationFrame(() => { rollSoon.f = 0; rollIn(); prMoments(); }); }
   // A PR's change, seen (2026-10-11), in the same pass: a chip whose CI went from running to an answer draws it — the
   // tick or the cross stroked in, the badge popping, and a failure shaking its chip as a wrong password does — and a
-  // chip gone from open to merged sweeps a sheen across as it turns purple. Each chip is keyed by its PR and where it
+  // square gone from open to merged pops as it turns purple. Each square is keyed by its PR and where it
   // stands (the header, a card), against what that key showed last; a first sight plays nothing.
   const prShown = new Map();
   // …and a PR come round to you (2026-10-11): the *your move* tag on a card, or the header's, that was not there the
@@ -4594,19 +4583,20 @@ const toolName = n => {
   }
   function prMoments() {
     moveMoments();
-    for (const el of document.querySelectorAll('.shead .hpr[data-url]:not(.pm)')) {
+    for (const el of document.querySelectorAll('.shead .tmx .mxs[data-url]:not(.pm)')) {
       el.classList.add('pm');
       const key = `${el.closest('.card')?.dataset.id || 'head'}|${el.dataset.url}`, now = { st: el.dataset.state || '', ck: el.dataset.checks || '' }, was = prShown.get(key);
       prShown.set(key, now);
       if (!was || REDUCED.matches) continue;
       if (was.ck === 'pending' && (now.ck === 'pass' || now.ck === 'fail')) {
-        const ck = el.querySelector('.ck'); ck?.classList.add('now');
+        const ck = el.closest('.tmx').querySelector(`.mxn[data-url="${CSS.escape(el.dataset.url)}"] .ck`); ck?.classList.add('now');   // the number's badge, when it is this PR's
         ck?.animate([{ scale: .6 }, { scale: 1 }], { duration: 420, easing: SPRING, id: 'ci' });
+        el.animate([{ scale: 1.8 }, { scale: 1 }], { duration: 420, easing: SPRING, id: 'ci' });
         if (now.ck === 'fail') el.animate([{ translate: '0' }, { translate: '-3px' }, { translate: '3px' }, { translate: '-2px' }, { translate: '1px' }, { translate: '0' }], { duration: 340, delay: 160, easing: 'ease-out', id: 'ci' });
         noteMotion(el.dataset.url, 'ci:' + now.ck);
       }
       if (was.st !== 'merged' && now.st === 'merged') {
-        el.classList.add('sheen'); setTimeout(() => el.classList.remove('sheen'), 700);
+        el.animate([{ scale: 1.9, filter: 'brightness(1.5)' }, { scale: 1, filter: 'none' }], { duration: 560, easing: SPRING, id: 'merged' });
         noteMotion(el.dataset.url, 'merged');
       }
     }
@@ -6403,14 +6393,24 @@ const toolName = n => {
     return { pr, you: false };
   }
   const prNum = pr => pr.number != null ? `#${pr.number}` : pr.label;
+  const mxSquare = (pr, lead, cls = '', attrs = '') => `<a class="mxs${pr === lead.pr ? ' lead' : ''}${cls}" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${attrs}><span class="vh">${esc(prNum(pr))}${pr.title ? ` ${esc(pr.title)}` : ''}, ${esc(pr.state || 'not known yet')}${prCk(pr) ? `, ${CK_SAID[prCk(pr)]}` : ''}${pr.turn?.you ? ', your move' : ''}</span></a>`;
+  const mxNumber = (lead, n, ck = '') => `<a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}">${esc(prNum(lead.pr))}${ck}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${n} PR${n === 1 ? '' : 's'}: </span></a>`;
   function cardMatrix(s) {
     const prs = s.prs || []; if (!prs.length) return '';
     const groups = prGroups(prs), lead = mxLead(s), px = MX_PX;
     const wide = groups.reduce((w, g) => w + g.length * px.q + (g.length - 1) * px.c, 0) + (groups.length - 1) * px.g;   // the squares' own width
     const least = Math.min(wide, 3 * px.q + 2 * px.g) + 2 * MX_PAD, num = prNum(lead.pr);
-    const sq = pr => `<a class="mxs${pr === lead.pr ? ' lead' : ''}" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"><span class="vh">${esc(prNum(pr))}${pr.title ? ` ${esc(pr.title)}` : ''}, ${esc(pr.state || 'not known yet')}${prCk(pr) ? `, ${CK_SAID[prCk(pr)]}` : ''}${pr.turn?.you ? ', your move' : ''}</span></a>`;
-    return `<span class="tmx" style="--nw:${Math.min(num.length, 9)}ch;--mn:${least}px"><a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}">${esc(num)}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${prs.length} PR${prs.length === 1 ? '' : 's'}: </span></a>`
-      + `<span class="mxg">${groups.map(g => `<span class="mxc">${g.map(sq).join('<s></s>')}</span>`).join('')}</span></span>`;
+    return `<span class="tmx" style="--nw:${Math.min(num.length, 9)}ch;--mn:${least}px">${mxNumber(lead, prs.length)}`
+      + `<span class="mxg">${groups.map(g => `<span class="mxc">${g.map(pr => mxSquare(pr, lead)).join('<s></s>')}</span>`).join('')}</span></span>`;
+  }
+  /** The chat header's PRs (2026-11-03): the card's matrix, its squares, order and number, in as many rows as fitHeadPrs finds room for; what only
+   *  the header says, each PR's CI — the number's badge, data-checks on its square — and the chat's tickets, dots after the squares. A click on
+   *  a square opens its PR, its card comes under the pointer, as on a card; the git mark beside it (#prToggle) lists them. */
+  function headMatrix(s) {
+    const prs = s.prs || [], tks = s.tickets || []; if (!prs.length && !tks.length) return '';
+    const lead = prs.length ? mxLead(s) : null;
+    const dots = tks.map(t => `<a class="mxs tk" data-cat="${esc(t.cat)}" data-key="${esc(t.key)}" title="${esc(`${ticketTip(t)}\nClick: open it`)}"><span class="vh">${esc(t.key)}</span></a>`).join('');
+    return `<span class="tmx">${lead ? mxNumber(lead, prs.length, ckHtml(lead.pr)) : ''}<span class="mxg">${prGroups(prs).map(g => `<span class="mxc">${g.map((pr, i) => mxSquare(pr, lead, i ? ' j' : '', prCk(pr) ? ` data-checks="${prCk(pr)}"` : '')).join('')}</span>`).join('')}${dots}</span></span>`;
   }
   /** A PR's card (2026-11-01, later; #mxtip): what a square's tooltip said, drawn — the repo and its state, the number
    *  and title, its CI and its place in a stack (the stack's squares, its own lit), whose move and why, who had a hand
@@ -6430,10 +6430,10 @@ const toolName = n => {
   }
   // The pointer on a square or the number (2026-11-01, later): its PR's card after MXT_IN, at once from one square to
   // the next while a card is up; off them MXT_OUT, it goes. The square it is for is lifted (.hot) — the number's too.
-  const MX_AT = '.card .tmx [data-url], .card .agr[data-ag]', MXT_IN = 120, MXT_OUT = 140, MXT_W = 290;
+  const MX_AT = '.tmx [data-url], .card .agr[data-ag]', MXT_IN = 120, MXT_OUT = 140, MXT_W = 290;
   const mxt = { el: null, a: null, sq: null, timer: 0, out: 0 };
   function mxtShow() {
-    const a = mxt.a, c = a?.isConnected && a.closest('#slist > .card'), s = c && state.sessions.get(c.dataset.id);
+    const a = mxt.a, c = a?.isConnected && a.closest('#slist > .card'), head = a?.isConnected && a.closest('#shead'), s = c ? state.sessions.get(c.dataset.id) : head && state.sessions.get(state.current);
     const ag = a?.dataset.ag && s?.agentRows?.find(r => r.id === a.dataset.ag);   // a row of its agents': that one's card (2026-11-02)
     const pr = !ag && s?.prs?.find(p => p.url === a.dataset.url); if (!pr && !ag) return mxtHide();
     rpopHide(); restOff();
@@ -6444,26 +6444,29 @@ const toolName = n => {
     if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
     const sq = ag ? null : a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
     if (mxt.sq !== sq) { mxt.sq?.classList.remove('hot'); sq?.classList.add('hot'); mxt.sq = sq; }
-    const r = a.getBoundingClientRect(), list = $('#sessions').getBoundingClientRect(), w = Math.min(MXT_W, list.width - 12);
+    const r = a.getBoundingClientRect(), list = (head || $('#sessions')).getBoundingClientRect(), w = Math.min(MXT_W, list.width - 12);
     el.style.setProperty('--w', `${w}px`);
     const h = el.offsetHeight, cx = r.left + r.width / 2, left = Math.max(list.left + 6, Math.min(cx - w / 2, list.right - 6 - w));
-    const above = r.top - 10 - h >= 8;
-    el.classList.toggle('below', !above);
+    const above = r.top - 10 - h >= 8, y = above ? r.top - 10 - h : r.bottom + 10;
+    // from the header, in the app: a pane page under it would cover the card, so over the list, beside the column
+    const far = !!head && list.left - w - 8 >= 8 && paneRects().some(p => p.left < left + w && left < p.left + p.width && p.top < y + h && y < p.top + p.height);
+    el.classList.toggle('below', !above); el.classList.toggle('far', far);
     el.style.setProperty('--ax', `${Math.round(Math.max(14, Math.min(w - 14, cx - left)))}px`);
-    Object.assign(el.style, { left: `${Math.round(left)}px`, top: `${Math.round(above ? r.top - 10 - h : r.bottom + 10)}px` });
+    Object.assign(el.style, { left: `${Math.round(far ? list.left - w - 8 : left)}px`, top: `${Math.round(y)}px` });
     if (!el.classList.contains('on')) { void el.offsetWidth; el.classList.add('on'); }   // where it stands first, then the spring
   }
   function mxtHide() { clearTimeout(mxt.timer); clearTimeout(mxt.out); mxt.a = null; mxt.sq?.classList.remove('hot'); mxt.sq = null; mxt.el?.classList.remove('on'); }
-  $('#slist').addEventListener('pointerover', e => {
+  const mxtOver = e => {
     const a = e.target.closest?.(MX_AT); if (!a || e.pointerType === 'touch') return;
     clearTimeout(mxt.out); if (a === mxt.a) return;
     mxt.a = a; clearTimeout(mxt.timer);
     if (mxt.el?.classList.contains('on')) mxtShow(); else mxt.timer = setTimeout(mxtShow, MXT_IN);
-  });
-  $('#slist').addEventListener('pointerout', e => {
+  };
+  const mxtOut = e => {
     const a = e.target.closest?.(MX_AT); if (!a || a.contains(e.relatedTarget) || e.relatedTarget?.closest?.(MX_AT)) return;
     clearTimeout(mxt.timer); mxt.out = setTimeout(mxtHide, MXT_OUT);
-  });
+  };
+  for (const box of [$('#slist'), $('#shead')]) { box.addEventListener('pointerover', mxtOver); box.addEventListener('pointerout', mxtOut); }
   /** The card's Jira tickets (2026-10-08): chips in their status category's colour, the first — the branch's, else the
    *  last one named — on top; a stack as the PRs are since 2026-10-11 (a chip and a count before). */
   const ticketTip = t => `${t.key} — ${t.summary}\n${t.status}${t.type ? ` · ${t.type}` : ''}${t.assignee ? ` · ${t.assignee.me ? 'yours' : t.assignee.name}` : ' · unassigned'}${t.branch ? '\nthe chat\'s branch' : ''}`;
@@ -7961,8 +7964,8 @@ const toolName = n => {
       pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
     { id: 'prs', side: () => state.current ? 'below' : 'right', at: () => (state.current && onScreen($('#prToggle'))) || [...document.querySelectorAll('#slist > .card .tmx')].find(onScreen) || null,
       title: 'PRs and tickets link themselves',
-      text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A chip says its state and CI — on a card a square, its tooltip the rest; a click on the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
-      pic: () => `<div class="tlink"><span class="tq">“…#12 is the base, and acme/widgets#13 depends on it”</span><span class="tto">→ <span class="tchip" data-state="open">#12</span><span class="tchip" data-state="draft">#13</span><span class="tchip tk">PAY-311</span></span></div>` },
+      text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A square says its state, in the header its CI too, and the pointer on one brings up the rest; the git mark beside the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
+      pic: () => `<div class="tlink"><span class="tq">“…#12 is the base, and acme/widgets#13 depends on it”</span><span class="tto">→ <b>#12</b><span class="tchip" data-state="open"></span><span class="tchip" data-state="draft"></span><span class="tchip tk"></span></span></div>` },
     { id: 'move', side: () => onScreen($('#shead .hmove')) ? 'below' : 'above', at: () => onScreen($('#shead .hmove')) || onScreen($('#slist > .card .prmove')) || onScreen($('#fBtn')), title: 'Your move',
       text: () => 'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; a click on the tag opens the timeline at the move, ⌥-click lets that round go. The funnel shows only the chats at your move.',
       pic: () => `<div class="tlink"><span class="tto"><b class="ymove">${ICON.pr}your move</b><span class="tq">#12 · changes asked by alex</span></span></div>` },
@@ -8130,11 +8133,13 @@ const toolName = n => {
     e.preventDefault();
     t.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
   };
-  $('#slist').addEventListener('pointerover', e => {
-    const t = e.target.closest('.card .tmx'); if (!t || t._wheel) return;
-    t._wheel = true; t.addEventListener('wheel', mxWheel, { passive: false });
-  });
-  $('#slist').addEventListener('scroll', e => { if (e.target.classList?.contains('mxg')) { mxEdges(e.target); mxtHide(); } }, { capture: true, passive: true });
+  for (const box of [$('#slist'), $('#shead')]) {
+    box.addEventListener('pointerover', e => {
+      const t = e.target.closest('.tmx'); if (!t || t._wheel) return;
+      t._wheel = true; t.addEventListener('wheel', mxWheel, { passive: false });
+    });
+    box.addEventListener('scroll', e => { if (e.target.classList?.contains('mxg')) { mxEdges(e.target); mxtHide(); } }, { capture: true, passive: true });
+  }
   // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — in one motion since
   // 2026-11-01, the head staying put and the list under it sliding over the lane's cards or off them (foldRun, openRun)
   function foldLane(g, byKey = false) {
@@ -8573,24 +8578,20 @@ const toolName = n => {
     wantDiffStat(s);   // the +n −n chip (2026-10-10): asked a few seconds apart at most
     // One row: title · [dot+age] · buttons. No status word — the dot carries it in colour; what it cannot say is how
     // long ago. The dot and its age *are* the details button (2026-09-20 — the dot, the age and a ··· were three things
-    // for one fold): a click shows path, branch and session details under the row. The chat's PRs are chips in the row,
-    // and a click on them the block under it, one per row (#prlist) — as many as the row has room for, the rest counted
-    // (fitHeadPrs).
+    // for one fold): a click shows path, branch and session details under the row. The chat's PRs are the card's matrix in the row
+    // (headMatrix, fitHeadPrs), and a click on the git mark beside it the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && drawer.arm === s.id;
     const menu = $('#hmenu'); if (menu.open && menu.dataset.id !== s.id) menu.close();   // another chat: its own menu, shut
     menu.dataset.id = s.id;
     const loud = armed || !!drawer.err;   // >_ with something to say stays in the row, where it is seen
     const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}`;
     const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'Claude in its drawer' : 'Claude here';
-    // the PRs at your move lead the chips, the newest move first — the one the move's line names (2026-10-12): the row
-    // shows two at most, and those are the ones it must
+    // the PRs at your move lead the rows, the newest move first — the one the move's line names (2026-10-12)
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
-    const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" title="${said} in this chat — a chip opens its ${prs.length ? 'PR' : 'ticket'}, the ${prsOpen ? '▴ folds the list' : '▾ lists them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
-      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\nClick: open it · ${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
-    }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" data-key="${esc(t.key)}" title="${esc(`${ticketTip(t)}\nClick: open it`)}">${esc(t.key)}</span>`).join('')}<span class="hpr more" data-said="${esc(said.replace(' and ', ' · '))}" hidden></span><span class="hpr more short" hidden></span><span class="hcaret" aria-hidden="true" hidden></span></button>`;
+    const hprs = !prs.length && !tks.length ? '' : `<button class="hgit${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" aria-label="${said}: ${prsOpen ? 'fold the list' : 'list them'}" title="${said} in this chat: click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${ICON.pr}</button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === projDir(s.cwd) ? ' on' : ''}" title="${s.cwd && prefs.project === projDir(s.cwd) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
-      ${driftChip(s)}${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
+      ${driftChip(s)}${diffChip(s)}${headMove(s)}${headMatrix(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${inEdName()}${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
@@ -8633,7 +8634,7 @@ const toolName = n => {
     const prsHtml = (prs.length ? `<div class="ptop"><button type="button" class="ptl" id="prTl" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them — on a tab (⌥⌘J)">${ICON.timeline}<span>Timeline</span><kbd>⌥⌘J</kbd></button></div>` : '')
       + `<div class="pwin"><div class="pscroll" id="prScroll">${[...prs.map(pr => prLine(s, pr)), ...tks.map(ticketRow)].join('')}</div>`
       + '<div class="pedge up"><button type="button" data-dir="-1" tabindex="-1"></button></div><div class="pedge down"><button type="button" data-dir="1" tabindex="-1"></button></div></div>'
-      + `<div class="pfoot"><button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button></div>`;
+      + `<div class="pfoot"><button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the git mark in the header does the same">${ICON.up}</button></div>`;
     if (prsHtml !== drawn.prs) {
       const was = state.prsFor === s.id ? $('#prScroll')?.scrollTop || 0 : 0;   // the same chat's list redrawn keeps its place
       pl.innerHTML = drawn.prs = prsHtml;
@@ -8644,17 +8645,16 @@ const toolName = n => {
     // pressed from the keyboard (no clicks counted, the button focused), the keys stay on the chips: the header they sat
     // in, or the arrow, is gone with the draw
     const showPrs = (open, e) => { const keys = !e.detail && document.activeElement === e.currentTarget; prefs.prsOpen = open; savePrefs(); renderHead(s); if (keys) $('#prToggle')?.focus(); };
-    const pt = $('#prToggle'); if (pt) pt.onclick = e => {
-      const c = e.target.closest('.hpr[data-url]'); if (c && e.altKey) return unlinkPr(s, c);   // ⌥ on a chip: that PR off the chat
-      // a chip opens its PR, as a card's does (2026-10-16): another PR was the list unfolded, then its row — two clicks
-      if (c) return showPr(c.dataset.url);
-      const tk = e.target.closest('.hpr.tk[data-key]'), t = tk && (s.tickets || []).find(x => x.key === tk.dataset.key);
-      if (t) return /^https?:\/\//.test(t.url) && openExternal(t.url, { s });
-      showPrs(!prefs.prsOpen, e);
+    const pt = $('#prToggle'); if (pt) pt.onclick = e => showPrs(!prefs.prsOpen, e);
+    // a square or the number opens its PR, as a card's does; ⌥ takes it off the chat; a ticket's dot opens the ticket
+    const hm = $('#shead > .tmx'); if (hm) hm.onclick = e => {
+      const c = e.target.closest('[data-url]'); if (c) return e.altKey ? unlinkPr(s, c) : showPr(c.dataset.url);
+      const tk = e.target.closest('.tk[data-key]'), t = tk && (s.tickets || []).find(x => x.key === tk.dataset.key);
+      if (t && /^https?:\/\//.test(t.url)) openExternal(t.url, { s });
     };
     pl.querySelector('#prFold').onclick = e => showPrs(false, e);
     const tl = pl.querySelector('#prTl'); if (tl) tl.onclick = () => hotTimeline();
-    if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
+    if (headNew) { if (mxt.a && !mxt.a.isConnected) mxtHide(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
     renderResume(s); renderRival(s); tvSoon();
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
@@ -8822,7 +8822,7 @@ const toolName = n => {
   // PRs off, copy its link; on a PR chip — open it, take it off the chat; on the colour square — let go of the colour.
   // The same rows are the launcher's (actionRows), for the keyboard.
   const shownHere = pr => !!pr?.url;
-  const unlinkUrl = (s, url) => { const el = document.querySelector(`#shead .hpr[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`); if (el) return unlinkPr(s, el); api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => note($('#shead'), `Could not take it off: ${err.message}`, true)); };
+  const unlinkUrl = (s, url) => { const el = document.querySelector(`#shead .mxs[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`); if (el) return unlinkPr(s, el); api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => note($('#shead'), `Could not take it off: ${err.message}`, true)); };
   const moveFocused = s => { const k = tabOf(s); if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0); else note($('#shead'), 'The chat stays in its half — pick a tab to move', true); };
   const clearColor = name => { colorAt = '#shead'; colorWas.set(name, projCfg(name).color ?? null); written.delete(name); previewColor(name, null); setColor(name, null); };
   function ctxRows(e) {
@@ -8845,7 +8845,7 @@ const toolName = n => {
     }
     const agRow = e.target.closest('.agr[data-ag]');
     if (agRow) { const s = state.sessions.get(agRow.closest('.card, .ot')?.dataset.id || state.current), r = s?.agentRows?.find(x => x.id === agRow.dataset.ag); return r ? agMenu(s, r, agRow) : null; }
-    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.tmx [data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
+    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.tmx [data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
       return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Copy its link', fn: () => copyText(url).then(ok => note(chip, ok ? 'Link copied' : 'Could not copy it', !ok)) }, { t: 'Its timeline', sub: 'its events and the turns about it · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, url); } }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
@@ -9176,24 +9176,19 @@ const toolName = n => {
   // answers with the address without it, so the tab's address, its reload and a copy of it are the plain one
   const vswebAt = (d, folder) => `${d.url}?folder=${encodeURIComponent(folder)}${d.token ? `&tkn=${encodeURIComponent(d.token)}` : ''}`;
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
-  const TITLE_SHARE = .4, CHIPS_MAX = 2;   // the title keeps 40 % of the row at least, and the row two chips (2026-10-12)
+  const TITLE_SHARE = .4;   // the title keeps 40 % of the row at least (2026-10-12)
+  // The matrix (2026-11-03): one row while it is short and the row has room, then two, then three; a row of HEAD_COLS squares at most, or a chat on
+  // thirty PRs takes the title's place, until three rows ask for more. Past the row's room the box scrolls, with the number and three columns kept.
+  const HEAD_COLS = 12, HEAD_ROWS = 3;
   function fitHeadPrs() {
-    // no PRs, the row still folds (2026-10-13): the changes' count and the branch's move have no chips to give way first
-    const head = $('#shead'), t = $('#prToggle'); if (!t && !head.querySelector(':scope > :is(#diffBtn, .hdrift)')) return;
-    const chips = t ? [...t.querySelectorAll('.hpr:not(.more)')] : [], more = t?.querySelector('.hpr.more:not(.short)'), short = t?.querySelector('.hpr.more.short'), caret = t?.querySelector('.hcaret');
-    for (const c of chips) c.hidden = false;
-    // the whole count, not the folded one (2026-10-12): it opens the list of them all — and +n where even one chip and
-    // the whole count leave the title short of its room, both measured in the one layout; its arrow up while the list is
-    // open (2026-10-13), the way it goes
-    const way = prefs.prsOpen ? '▴' : '▾';
-    if (t) { more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ${way}`; short.hidden = false; short.textContent = `+${chips.length} ${way}`; caret.hidden = false; caret.textContent = way; }
-    for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
-    // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
-    // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
+    // no PRs, the row still folds (2026-10-13): the changes' count and the branch's move have no matrix to give way first
+    const head = $('#shead'), m = head.querySelector(':scope > .tmx'); if (!m && !head.querySelector(':scope > :is(#diffBtn, .hdrift)')) return;
+    for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // what the last fit put away
+    // Every width in one layout, then the arithmetic (2026-09-27)
     const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2'), h2pad = h2 ? parseFloat(getComputedStyle(h2).paddingLeft) || 0 : 0;   // the padding the h2 reaches the toolbar's edge by (the tab): its margin takes it back
-    const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
+    const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== m && !el.classList.contains('details') && el.getClientRects().length);
     // what grows (the move's line, the branch's move, a task's chip: flex 1 1 0) counts at its least — it gives way
-    // before a chip folds; the first two at their marks alone, their words (.q) going first
+    // before the matrix asks for a row more; the first two at their marks alone, their words (.q) going first
     const shrunk = el => { const kids = [...el.children].filter(c => !c.classList.contains('vh')), st = getComputedStyle(el);
       return kids.reduce((w, c) => w + (c.classList.contains('q') ? 0 : c.getBoundingClientRect().width), 0) + (parseFloat(st.columnGap) || 0) * (kids.length - 1)
         + parseFloat(st.paddingLeft) + parseFloat(st.paddingRight) + parseFloat(st.borderLeftWidth) + parseFloat(st.borderRightWidth); };
@@ -9204,28 +9199,25 @@ const toolName = n => {
       : head.classList.contains('hole') ? h2.getBoundingClientRect().width - h2pad + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
       : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) - h2pad + TITLE_ROOM, (head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * TITLE_SHARE);
     let room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
-      - row.reduce((w, el) => w + least(el), 0) - gap * (row.length + 1);
-    if (!t) room += gap;   // no chips' button: one gap fewer
-    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more?.getBoundingClientRect().width || 0, sw = short?.getBoundingClientRect().width || 0, kw = caret?.getBoundingClientRect().width || 0, tg = t ? parseFloat(getComputedStyle(t).columnGap) || 0 : 0;
-    const all = t?.getBoundingClientRect().width || 0, frame = all - cw.reduce((a, b) => a + b, 0) - mw - sw - kw - tg * (chips.length + 2);
-    // two chips at most (2026-10-12; as many as fitted before — eleven took the title down to fifteen letters), the rest
-    // behind the whole count, which opens the list — with none behind it, the caret does (2026-10-16: a chip opens its PR)
-    const wide = (n, m) => !t ? 0 : frame + cw.slice(0, n).reduce((a, b) => a + b, 0) + tg * n + (n === chips.length ? kw : m);
-    let shown = Math.min(chips.length, CHIPS_MAX), width = wide(shown, mw), terse = false;
-    while (shown > 1 && width > room) { shown--; width = wide(shown, mw); }
-    if (width > room && shown < chips.length) { terse = true; width = wide(shown, sw); }
-    // Down to one chip and the row still too full (2026-10-11): the move's line goes, then the changes' count — the card
-    // says the one, ··· has the other — and last the branch's move, which the card's red branch still says (2026-10-13),
-    // so the row stays one line, ··· on it, whatever the column's width.
-    const off = [];
-    for (const el of [mv, head.querySelector('#diffBtn'), dr]) if (el && row.includes(el) && width > room) { room += least(el) + gap; off.push(el); }
+      - row.reduce((w, el) => w + least(el), 0) - gap * row.length;
+    // the matrix: its number, and a width for so many columns, its box's padding in
+    const box = m?.querySelector('.mxg'), squares = m ? [...m.querySelectorAll('.mxs')] : [], n = squares.length, num = m?.querySelector('.mxn');
+    const before = m ? (num ? num.getBoundingClientRect().width + (parseFloat(getComputedStyle(m).columnGap) || 0) : 0) - (parseFloat(getComputedStyle(m).marginRight) || 0) : 0;
+    const across = c => c * MX_PX.q + (c - 1) * MX_PX.g + 2 * MX_PAD;
+    if (m) room -= gap;
+    // Too full for the number and three columns (2026-10-11): the move's line goes, then the changes' count — the card says the one, ··· has the
+    // other — and last the branch's move, which the card's red branch still says (2026-10-13), so the row stays one line, ··· on it, whatever its width.
+    const needed = m ? before + across(Math.min(3, Math.ceil(n / HEAD_ROWS))) : 0, off = [];
+    for (const el of [mv, head.querySelector('#diffBtn'), dr]) if (el && row.includes(el) && needed > room) { room += least(el) + gap; off.push(el); }
     for (const el of off) el.classList.add('hfold');
-    for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
     for (const [el, w] of mins) el.style.setProperty('--hmin', `${Math.ceil(w)}px`);
-    if (!t) return;
-    more.hidden = shown === chips.length || terse; short.hidden = shown === chips.length || !terse; caret.hidden = shown !== chips.length;
-    const left = shown === chips.length ? null : terse ? short : more;
-    if (left) { if (terse) short.textContent = `+${chips.length - shown} ${way}`; left.title = `${chips.length - shown} more:\n` + chips.slice(shown).map(c => c.title.split('\n')[0]).join('\n'); }
+    if (!m) return;
+    let rows = HEAD_ROWS, cols = Math.ceil(n / HEAD_ROWS);
+    for (let r = 1; r <= HEAD_ROWS; r++) { const c = Math.ceil(n / r); if (c <= HEAD_COLS && before + across(c) <= room) { rows = r; cols = c; break; } }
+    m.dataset.rows = rows; m.style.setProperty('--cols', cols);
+    if (before + across(cols) > room) m.style.setProperty('--mxw', `${Math.max(needed, Math.floor(room)) - before}px`); else m.style.removeProperty('--mxw');
+    squares.forEach((el, i) => el.classList.toggle('jw', i % cols === 0));   // a stack's line reaches back along its row, none at a row's start
+    box.classList.remove('ovr'); fadeSoon();
   }
   // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a
   // fold that changes the height would otherwise run this again); under the housing every change moves the hole.

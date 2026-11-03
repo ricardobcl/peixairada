@@ -75,7 +75,7 @@ export default async function (ctx) {
         card: __chroma(cs(card(${JSON.stringify(asking.id)}).querySelector('.top .repo'), 'background-color')),   // a row's project tag
         open: __chroma(cs(plain, 'background-color')), head: __chroma(cs(document.querySelector('.shead'), '--hbg-eased')),   // the header's own eased copy (2026-10-13)
         lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
-        pr: __chroma(cs(plain.querySelector('.mxs[data-state="open"]'), 'background-color')), num: __chroma(cs(plain.querySelector('.mxn'), 'color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'color')),   // the sidebar's chips a tint, their ink the state's
+        pr: __chroma(cs(plain.querySelector('.mxs[data-state="open"]'), 'background-color')), num: __chroma(cs(plain.querySelector('.mxn'), 'color')), hpr: __chroma(cs(document.querySelector('.shead .tmx .mxs[data-state="open"]'), 'background-color')),
         dots: [...document.querySelectorAll('#slist > .gsep.lane.working > i')].map(i => __chroma(cs(i, 'border-top-color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
         you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),

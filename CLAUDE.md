@@ -376,31 +376,28 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The chat header is drawn only when it changed**: `renderHead` compares the header's, the menu's and the PR rows'
   markup with `drawn`, and runs `layoutNotch(); fitHeadPrs()` only for a new header; the handlers are bound on every
   call. Anything that edits the header in place resets `drawn.head` (`editTitle` does).
-* **The chat header's row is the title, the PR chips, a task's chip and ···**: its buttons — `#termBtn`,
+* **The chat header's row is the title, the PR matrix and its git mark, a task's chip and ···**: its buttons — `#termBtn`,
   `#viewBtn`, `#webBtn`, `#detailsBtn`, VS Code — are rows of `#hmenu`, keeping their ids for the hotkeys and the
   harness (`.click()` works on a closed menu). `#hmenu` is a **non-modal `<dialog>`**, static in the markup:
   `postPane` lowers the pane while it is up, Esc closes it, `runHotkey` closes it rather than let it swallow the key.
   Toggles leave it up (the click-outside test goes by `composedPath()`); actions close it. `>_` comes back into the
   row while armed or failed; a note about a folded button anchors at ··· (`seen()`). → `head-menu.mjs`.
 * **A PR's CI is said in the chat header only** (2026-10-09): `statusCheckRollup` in `PR_FIELDS` → `prChecks` →
-  `checks` (pass · fail · pending) → `.ck` on `.hpr`, for open and draft PRs. **A change is seen** (`prMoments`, keyed
+  `checks` (pass · fail · pending) → for open and draft PRs, the number's `.ck`, a square's `data-checks` (a ring, a pulse: `mxrun`). **A change is seen** (`prMoments`, keyed
   by `data-url` and place, `prShown`): a first sight plays nothing. → `pr-checks.mjs`.
 * **A chat's Jira tickets are chips** (2026-10-08): on the card a stack that fans out (`cardTickets`, `chipStack`, `fanWheel`,
-  `.tprs.ttks`, `.ctk[data-cat]`), the branch's first; in the header `.hpr.tk` after the PRs (`fitHeadPrs` folds them
-  first), `.prrow.tk` in `#prlist`. Setup's Jira section (`jiraSetup`): site and email into the setup file, the token
+  `.tprs.ttks`, `.ctk[data-cat]`), the branch's first; in the header dots after the PRs (`.mxs.tk`), `.prrow.tk` in `#prlist`. Setup's Jira section (`jiraSetup`): site and email into the setup file, the token
   write-only into the keychain (`PUT /api/jira/token`). → `jira-tickets.mjs`.
-* **The header's PRs are chips, folded** (`#prToggle`, `fitHeadPrs()`): **`CHIPS_MAX` (two) at most**, your move
-  first, the rest behind the count (or `+n ▾`), else a caret (`.hcaret`) — either unfolds the rows; **a chip opens its
-  PR or ticket** (2026-10-16), as a card's does; fewer while the title would have less than its repo name plus
+* **The header's PRs are the card's matrix** (2026-11-03; `headMatrix`, `fitHeadPrs()`, `#prToggle` the git mark beside it): the same squares, order and number, in a grid of up to `HEAD_ROWS` rows, `HEAD_COLS` columns till three rows ask for more, the fewest rows the row has room for, past that `.mxg` scrolling (`--mxw`), the toolbar no taller; a stack's line is the square's (`.j`, none at a row's start, `.jw`); a square's card `#mxtip`, over the list when a pane page is under the header (`.far`); ⌥-click takes it off. The tickets are dots after them. The title keeps its repo name plus
   `TITLE_ROOM` and `TITLE_SHARE` of the row; on every new header and its `ResizeObserver`. **The row never wraps**: the
   move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the move's line,
   the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`. `#prlist`
   (`prefs.prsOpen`) is rendered folded too (the harness reads `#prlist .prrow`); open, its foot's arrow folds it
-  (2026-10-13, `#prFold`), ▾ then ▴; `#prTl` up top; the rows scroll (`#prScroll`), its ends as the list's (`prEdges`, 2026-10-21);
-  dragging the foot sizes it (`prefs.prsHeight`). → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
-* **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
-  at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
-  `.mxs`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
+  (2026-10-13, `#prFold`); `#prTl` up top; the rows scroll (`#prScroll`), its ends as the list's (`prEdges`, 2026-10-21);
+  dragging the foot sizes it (`prefs.prsHeight`). → `header-matrix.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
+* **A PR's square GitHub has answered for is solid** (`--prc`, its state's colour, a draft hollow), one not known yet a faint grey. **A PR
+  at your move is said by name, not by its square's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
+  `.mxs`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
   ticked — **a card counts nothing**; hovered, the move's age, `.mt`: `turn.at`, else `movedAt`), the header's
   (`headMove`, `.hmove`). A new tag slides in (`moveMoments`, `#shead[data-sid]`). **Each PR's round** (2026-10-15;
   `roundOf`): `.prround` under its `#prlist` row (the round before, Let go · Ask Claude · Undo; `.why` hidden); on the card each PR in play (`pipsHtml`, `pchip` in `prHue`; not at same height),
@@ -921,7 +918,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `.card { isolation: isolate }`: the ring and its cover sit at z-index -1 under the card's background only because
   the card is its own stacking context. **So is `#slist { isolation: isolate }`** (2026-10-13): A new scroller of positioned boxes gets one too. **And each card is a layer inside it**
   (`#slist > .card { will-change: transform }`).
-* `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
+* `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; the matrix and its mark are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
   `#sessions`' (whose *column* is placed too: the timeline, the glass and the ends lie over the list's cell). A hidden
   block is `display:none`, which slides its siblings up a row; a body in an `auto` row sizes itself to its terminal. A

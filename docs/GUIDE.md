@@ -37,8 +37,10 @@ setup file, and how the pictures are made.
   else the one updated last. The squares keep their size however many there are; past the row's room they scroll
   under the pointer. Hover a square (or the number) and it lifts, with a card about its PR: the repo and state, its
   number and title, CI, its place in a stack, whose move and why, who's on it and when it last changed; click it for
-  the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. ⌥-click the ✓ to tick a chat done for good: its
-  PRs won't bring it back. Take a PR off a chat from its square's right-click menu —
+  the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. The chat's header has the same squares,
+  in up to three rows when there are many, with its CI on them: a red ring when it fails, a pulse while it runs, and the number's own tick, cross or ring;
+  its tickets are dots after them, and the git mark beside them lists everything, one row each. ⌥-click the ✓ to tick a chat done for good: its
+  PRs won't bring it back. Take a PR off a chat from its square's right-click menu (or ⌥-click a square in the header) —
   until you name it there yourself.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
   *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat
@@ -98,7 +100,7 @@ Each is a tab of the chat; the column splits in two halves when there's more tha
 |---|---|
 | ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes on a click (or ⌥⌘C), cloning its repo first when its folder isn't checked out, and making its worktree again when that was removed (on the chat's branch). It survives the board's restarts. |
 | ⌥⌘T · ⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own — ⌘T opens another, or on a web page a blank tab, its address ready to type into. ⌘W closes the tab you are in. |
-| ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab (a chip in the header opens it too); its state, its CI and whose move it is under the header. With several, ⌥⌘G again from one picks another. |
+| ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab (a square in the header opens it too); its state, its CI and whose move it is under the header. With several, ⌥⌘G again from one picks another. |
 | ⌥⌘E · ⌥⌘V | 🧩 **The in-app editor** on the chat's folder, on a tab: VS Code Web, or vim in a terminal (Settings › General › In-app editor) — or ⌥⌘V, the folder in the external editor: VS Code, or Zed (Settings › General › External editor), in its own window. A file path clicked in a chat opens there at its line. |
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, the branch against its base, or a PR's, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
 | ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. Press a tab's key again from it (⌥⌘C, ⌥⌘T, ⌥⌘G, ⌥⌘E, ⌥⌘D) and its half fills the column (⌥⌘G with several PRs: their picker first); once more, both are back. |
@@ -229,7 +231,7 @@ sky every three levels and fireworks at a level-up, wherever the Mac has WebGL2.
 | ⌥⌘Y | the theme |
 | ⌥⌘R · ⌘R | reload the board · reload the page in the pane (VS Code Web keeps its own ⌘R) |
 
-`?` (or *Keyboard shortcuts* in Settings) lists the rest, grouped. A right-click on a card, a PR chip or a project's colour square has
+`?` (or *Keyboard shortcuts* in Settings) lists the rest, grouped. A right-click on a card, a PR's square or a project's colour square has
 what ⌥-click and a double-click do — rename, tick done, take a PR off, let go of a colour — and the launcher has the
 same for the open chat.
 

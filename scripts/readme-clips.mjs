@@ -237,7 +237,7 @@ export default async function (ctx) {
       await start(chat('Bump Node to 22').id);
       await record('pr-status', async () => {
         await sleep(600);
-        await click('#prToggle > :is(.hcaret, .hpr.more):not([hidden])'); await sleep(1500);   // the caret: a chip opens its PR
+        await click('#prToggle'); await sleep(1500);
         // GitHub moves: #92's CI goes green, polled within seconds here
         PRS['acme/infra#92'].commits = { nodes: [{ commit: { statusCheckRollup: { state: 'SUCCESS' } } }] };
         writeFileSync(prsFile, JSON.stringify(PRS));
