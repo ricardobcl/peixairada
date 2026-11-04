@@ -379,7 +379,7 @@ npm run map                         # rewrite the section maps at the top of ser
   harness (`.click()` works on a closed menu). `#hmenu` is a **non-modal `<dialog>`**, static in the markup:
   `postPane` lowers the pane while it is up, Esc closes it, `runHotkey` closes it rather than let it swallow the key.
   Toggles leave it up (the click-outside test goes by `composedPath()`); actions close it. `>_` comes back into the
-  row while armed or failed; a note about a folded button anchors at ··· (`seen()`). → `head-menu.mjs`.
+  row while failed; a note about a folded button anchors at ··· (`seen()`). → `head-menu.mjs`.
 * **A PR's CI is said in the chat header only** (2026-10-09): `statusCheckRollup` in `PR_FIELDS` → `prChecks` →
   `checks` (pass · fail · pending) → for open and draft PRs, the number's `.ck`, a square's `data-checks` (a ring, a pulse: `mxrun`). **A change is seen** (`prMoments`, keyed
   by `data-url` and place, `prShown`): a first sight plays nothing. → `pr-checks.mjs`.
@@ -905,7 +905,8 @@ npm run map                         # rewrite the section maps at the top of ser
   a drawer.
 * **A chat whose claude has ended is its transcript with the resume bar under it** (2026-10-07; `#resume`, row 5,
   `renderResume` from `renderHead` while `resumable(s)`: no process, a file, no drawer). Resume is `termAction`, and
-  only the button (or ⌥⌘C) starts it — nothing resumes a chat by itself. → `resume-bar.mjs`.
+  only the button (or ⌥⌘C) starts it — nothing resumes a chat by itself. **One running outside the board has the bar too**
+  (2026-11-04; `elsewhereBar`, `renderElsewhere`): where, its pid, `#takeGo` pressed twice. → `resume-bar.mjs`.
 
 ## Invariants that bit us — one line each, the story in Findings
 

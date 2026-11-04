@@ -1696,6 +1696,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #resume .rgo .ic { width: 10px; height: 10px; fill: currentColor; }
   #resume .rgo .k { font-weight: 400; opacity: .7; font-size: var(--fs-xs); }
   #resume .rgo:disabled { opacity: .6; cursor: default; }
+  #resume .rgo.arm, #resume .rgo.arm:hover { background: var(--needs); color: #fff; }   /* Take over, pressed once (2026-11-04): the next press ends that claude */
   #resume::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; pointer-events: none; }
   /* the chat's folder cloned first (2026-10-09): the line along the top is git's progress, a ring turns round the mark */
   #resume.cloning::before { transform: scaleX(var(--clone-p, 0)); transition: transform .3s ease-out; }
@@ -8685,9 +8686,9 @@ const toolName = n => {
     const take = takeable(s), armed = take && drawer.arm === s.id;
     const menu = $('#hmenu'); if (menu.open && menu.dataset.id !== s.id) menu.close();   // another chat: its own menu, shut
     menu.dataset.id = s.id;
-    const loud = armed || !!drawer.err;   // >_ with something to say stays in the row, where it is seen
+    const loud = !!drawer.err;   // >_ with something to say stays in the row, where it is seen; armed, the bar says it (renderElsewhere)
     const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}`;
-    const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'Claude in its drawer' : 'Claude here';
+    const termWord = drawer.err ? 'failed' : take ? (armed ? sureWord(s) : 'take over') : termLive(s) ? 'Claude in its drawer' : 'Claude here';
     // the PRs at your move lead the rows, the newest move first — the one the move's line names (2026-10-12)
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
@@ -10421,6 +10422,7 @@ const toolName = n => {
       ? `Click again to end ${what} and resume the chat here${s.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}.`
       : `Take over: end ${what} and resume the chat here.`) + (vs ? VSC_COST : '');
   };
+  const sureWord = s => s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?';
   const KEY_C = ' · ⌥⌘C';   // on every tip the button acts on; the disabled and failed ones say why instead
   const termTip = s => drawer.err ? drawer.err
     : termLive(s) ? (termFor(s.terminal.id) ? 'This chat runs here — the terminal is the pane' : "Show this chat's claude session") + KEY_C
@@ -10440,7 +10442,7 @@ const toolName = n => {
     renderHead(s);
   }
   async function takeOver(s) {
-    drawer.arm = null; clearTimeout(drawer.armTimer);
+    drawer.arm = null; clearTimeout(drawer.armTimer); renderResume(s);
     const tb = $('#termBtn'); if (tb) { tb.disabled = true; const l = tb.querySelector('.lbl'); if (l) l.textContent = 'ending…'; }
     let d = null;
     try { d = await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); } catch (e) { drawer.err = e.message; }
@@ -12543,12 +12545,25 @@ const toolName = n => {
   // A chat with no process is its transcript and nothing more (2026-10-07; a box under it sent a one-shot
   // `claude --resume -p` reply before, and read as if the chat were still there). The bar under the column says so,
   // and its button is >_'s: `claude --resume` in a drawer here. Not under a terminal on the same chat — that drawer is
-  // the chat — nor on one live elsewhere, whose take-over is >_'s, armed twice. It waits for the button (a countdown to
-  // a resume by itself was a switch until 2026-10-14).
-  const resumable = s => !!(s && !s.alive && s.file && !termLive(s) && !terms.some(tm => tm.id && tm.sessionId === s.id && tm.exited === null));
+  // the chat. It waits for the button (a countdown to a resume by itself was a switch until 2026-10-14).
+  const inDrawer = s => termLive(s) || terms.some(tm => tm.id && tm.sessionId === s.id && tm.exited === null);
+  const resumable = s => !!(s && !s.alive && s.file && !inDrawer(s));
+  // A claude running outside the board has the same bar (2026-11-04): where it runs and what to do about it. Its transcript
+  // alone, with Take over one row of ···, read as a chat with no claude and no way back to it.
+  const elsewhereBar = s => !!(s && takeable(s) && !inDrawer(s));
+  function renderElsewhere(s, box) {
+    const armed = drawer.arm === s.id, err = drawer.err, going = termAsking.has(s.id) && !armed;
+    const where = inVsCode(s) ? 'VS Code' : s.live.entrypoint === 'cli' ? 'a terminal outside the board' : 'a process outside the board';
+    box.hidden = false; box.classList.toggle('err', !!err); box.classList.remove('cloning');
+    setHtml(box, `<span class="ric">${ICON.term}</span>
+      <span class="t"><b>${err ? 'Could not take it over' : `Claude is running in ${where}`}</b><span>${err ? esc(err) : `pid ${s.live.pid}. Take over ends it there and resumes the chat here${inVsCode(s) ? '; the tab there will not follow' : ''}.`}</span></span>
+      <button class="btn rgo${armed ? ' arm' : ''}" id="takeGo"${going ? ' disabled' : ''} title="${esc(takeTip(s) + KEY_C)}">${ICON.term}${going ? 'ending…' : armed ? sureWord(s) : 'Take over'}<span class="k">⌥⌘C</span></button>`);
+    box.querySelector('#takeGo').onclick = () => termAction(state.sessions.get(s.id) || s);
+  }
   function renderResume(s) {
     if (s && s.id !== state.current) return;   // the open chat's only, as its header
     const box = $('#resume');
+    if (elsewhereBar(s)) return renderElsewhere(s, box);
     if (!resumable(s)) { box.hidden = true; return; }
     const going = termAsking.has(s.id), err = drawer.err;
     // cloning its folder first (2026-10-09), or about to: `folderMissing` and `cloneRef` are the server's, on the summary

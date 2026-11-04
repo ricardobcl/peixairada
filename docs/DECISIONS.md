@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-04 — a chat twice, and no button
+
+A report from a colleague's board: *"a chat duplicated. the pids were different but it was on the same chat, only one was live, the
+other was not and didn't have the button to resume. also, we should be able to force delete (option + done button) on idle/done chats,
+aka, all chats"*. Their data was not to hand, so the board ran on **the real CLI (2.1.318)**, a config dir of its own and an API stand-in on
+loopback: no cost, nothing touched (`CLAUDE_BIN` a wrapper in a scenario). Ricardo, of the fixes that came out of it: *"do it all"*.
+
+* **Two things, not one.** The duplicate: Claude Code or the board makes a second chat with the same content, and the board drew them as
+  unrelated. The button: Resume only shows when nothing runs, and a claude running outside a drawer had its one action in ···.
+* **What the CLI does, measured.** `--resume X` registers as X from its first write. A second `--resume X`, `--continue` or `/resume X`
+  joins a running chat, no refusal: two pids, one id, one card. `--resume X --fork-session --session-id N` registers as N and writes **nothing
+  until the first word**, then X's lines with the id rewritten and the uuids kept. `/branch` moves the same pid to a new id, the copy written
+  at once, *(Branch)* in its title. **`/fork`** keeps the chat where it is and starts a process of `kind: bg` under a new id, a copy with the
+  same uuids, titled *<title> ⑂ <prompt>*. **`/bg`** ends the foreground and starts one under a new id: the old transcript gets a
+  `continued-in` line naming it, the new one nothing but its title until the first word. `claude --bg --resume X` keeps the id, or, X running,
+  starts an empty copy and says so. `claude attach <job>` opens one in a terminal and **registers nothing**; closing it leaves the session
+  running. **A background session SIGTERMed may come back**: its job reads *crashed*, and the daemon started one again 11 s later in one
+  run of two. `claude stop <job>` is its own way out. The daemon is on demand and exits on its own.
+* **Why Ricardo never saw it**: 339 transcripts here, no two sharing a first line; 28 claudes, all `interactive`; `~/.claude/jobs` empty.
+* **The bar for a claude elsewhere** (`elsewhereBar`, `renderElsewhere`): where it runs, its pid, and Take over on it, pressed twice, the
+  second press what `>_` armed in the header before. With it `>_` no longer comes into the row to say *sure?*. One line, as the resume bar is.
+
 ## Decisions of 2026-11-04 — the real shell, driven
 
 After a page sat 32 pt too high in a normal window for six weeks (the entry below), Ricardo: *"anything to improve on the
