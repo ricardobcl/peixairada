@@ -1036,7 +1036,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sessions[data-hide~="tab"] .card .top .repo, #sessions[data-hide~="branch"] .card .top .chip.wtb, #sessions[data-hide~="where"] .card .top .chip:is(.elsewhere, .vsc), #sessions[data-hide~="watch"] .card .trow .chip.watch,
   #sessions[data-hide~="fable"] .card .trow .fable, #sessions[data-hide~="unread"] .card .trow .badge, #sessions[data-hide~="move"] .card .state:is(.prmove, .prans), #sessions[data-hide~="live"] .card .state.live:not(.agwho) { display: none; }
   #sessions[data-even][data-hide~="move"]:not([data-line]) .card .state:is(.prmove, .prans) { display: flex; visibility: hidden; }
-  :root[data-layout="sidebar"] #sessions[data-hide~="tab"] #slist .card .top.hastab { height: 18px; margin: 0 0 2px; }
+  :root[data-layout="sidebar"] #sessions[data-hide~="tab"] #slist .card .top { height: 18px; margin: 0 0 2px; }
   .card .top .tprs:hover { grid-template-columns: 1fr repeat(var(--under), var(--span)); column-gap: 0; }
   .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
   .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
@@ -2259,8 +2259,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] #slist .card { background: none; border: 0; outline: 0; box-shadow: none; border-radius: 7px; padding: 8px 12px; }
   /* The project a corner tab (2026-11-03, round XXI): in the row's top-left corner, that corner the row's own 7 px and
      its one free one a step rounder, its words on the title's edge; the top row its height from the row's top, so the PRs
-     and the marks share its line. No project shown, no tab: the row keeps its 18 px. */
-  :root[data-layout="sidebar"] #slist .card .top.hastab { height: 26px; margin: -8px 0 7px; }
+     and the marks share its line. The same card on a project in view as on ALL (2026-11-04, round XXV): nothing on it
+     moves when the filter goes on or off. */
+  :root[data-layout="sidebar"] #slist .card .top { height: 26px; margin: -8px 0 7px; }
   :root[data-layout="sidebar"] #slist .card .top .repo { height: 26px; margin-left: -12px; padding: 0 10px 0 12px; border-radius: 7px 0 8px; line-height: 26px; font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; text-transform: none;
     color: oklch(from var(--repo, var(--nocolor)) min(l, .3) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.62, l, .72) c h) 34%, transparent); }
   :root[data-layout="sidebar"][data-frame="dark"] #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
@@ -3877,7 +3878,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const s = { id: 'cardlab', title: 'What the chat is about', project: 'project', cwd: state.sessions.get(state.current)?.cwd || '', status: 'idle', alive: true, model: 'fable', startedAt: at, lastActivity: at, agents: 1,
       lastReply: 'The last word, as much of it as the size lets through', lastReplyAt: at, worktree: { name: 'branch', branch: 'branch' }, tasks: [{ kind: 'monitor', what: 'what it watches' }],
       tickets: [{ key: 'KEY-1', cat: 'doing', url: 'https://example.invalid/' }], prs: [pr(1, 'why it is your move'), pr(2, 'and this one')] };
-    const c = html2el(cardHtml(s, { key: ALL })); c.className = 'card idle'; c.removeAttribute('data-id');
+    const c = html2el(cardHtml(s)); c.className = 'card idle'; c.removeAttribute('data-id');
     const q = sel => c.querySelector(sel);
     q('.trow .time').textContent = '3m';
     q('.trow .fable')?.insertAdjacentHTML('afterend', '<span class="badge">2</span>');
@@ -5544,12 +5545,12 @@ const toolName = n => {
     // chats asking you outside the project in view (2026-10-12): a line over the lanes says how many, a click is ALL
     const away = p.key === ALL || q ? 0 : [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && !inProject(s, p)).length;
     if (away) items.push({ html: `<div class="gsep lane asking away" data-away role="button" tabindex="0" title="Every project again (ALL), to see them"><i></i><span class="ln">${away} asking you in other projects</span></div>` });
-    if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, p, q) }));
+    if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, q) }));
     else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
       if (zero && (g === 'idle' || g === 'done') && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
       // a lane's lines keyed by the lane (2026-11-01): its head one node, folded or not, and a day's line the lane's own
       items.push({ key: `lane:${g}`, html: laneHtml(g, inLane[g], !flt && laneShut(g), !!flt) });
-      if (flt || !laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ key: `day:${g}:${days[i]}`, html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
+      if (flt || !laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ key: `day:${g}:${days[i]}`, html: a }); items.push({ id: s.id, html: cardHtml(s, q) }); });
       if (held[g] && !laneShut(g)) items.push({ key: `more:${g}`, html: moreHtml(g, held[g]) });
     }
     if (zero && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
@@ -6482,7 +6483,7 @@ const toolName = n => {
     const t = s.tickets || []; if (!t.length) return '';
     return chipStack(t, (k, style) => `<a class="ctk"${style} data-cat="${esc(k.cat)}" data-url="${esc(k.url)}" title="${esc(ticketTip(k))}">${esc(k.key)}</a>`, ' ttks');
   }
-  function cardHtml(s, p, q = '') {
+  function cardHtml(s, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
     // Which of the two words is the older, for the cog's *medium* cards: Claude's reply is the last word once it came
@@ -6498,7 +6499,6 @@ const toolName = n => {
     // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
     // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
-    const showRepo = p.key === ALL || p.custom;
     // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23); a CLI elsewhere — a
     // terminal's mark since 2026-10-12, its tooltip saying where and that ⌥⌘C takes it over; *CLI* before —, VS
     // Code running it too, still do. VS Code's own chat wore its logo here until 2026-09-28 — the chat header's ···
@@ -6508,7 +6508,7 @@ const toolName = n => {
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     const moveLine = moveHtml(s) || answeredHtml(s);
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top${showRepo ? ' hastab' : ''}"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
       <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}

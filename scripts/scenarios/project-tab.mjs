@@ -1,5 +1,5 @@
 // The project's corner tab, and the edges round it (2026-11-03, round XXI), on the prefs it was chosen on. A row's tab sits in
-// its top-left corner, its words on the title's edge and the top row on one line; no project shown, no tab and the row's 18 px.
+// its top-left corner, its words on the title's edge and the top row on one line; a project in view changes nothing on it (2026-11-04).
 // What only the pointer shows keeps no room at rest, so the chips run to the right edge; it comes under the pointer and
 // the row keeps its height; the ✓ stays in the keys' way. A chat with no process dims its row, not its tab; open, nothing.
 // The toolbar's tab, one shape: in the sheet's corner down to the hairline, its words level with the title — lowered at
@@ -31,7 +31,7 @@ export default async function (ctx) {
     const words = s => { const r = document.createRange(); r.selectNodeContents(c.querySelector(s)); return r.getBoundingClientRect().left; };
     const squares = c.querySelectorAll('.tmx .mxs'), last = squares[squares.length - 1]?.getBoundingClientRect();
     return { card: box(), top: box('.top'), tab: box('.top .repo'), tabWords: c.querySelector('.top .repo') && words('.top .repo'), titleWords: words('.title'), title: box('.title'), trow: box('.trow'), titleRoom: parseFloat(getComputedStyle(c.querySelector('.title')).marginRight),
-      act: box('.act'), time: box('.time'), where: box('.chip.elsewhere'), tmx: box('.tmx'), lastSquare: last ? last.right : null, ymove: box('.ymove'), trowEnd: [...c.querySelectorAll('.trow > *')].filter(e => e.getClientRects().length).pop().getBoundingClientRect().right, hastab: c.querySelector('.top').classList.contains('hastab') };
+      act: box('.act'), time: box('.time'), where: box('.chip.elsewhere'), tmx: box('.tmx'), lastSquare: last ? last.right : null, ymove: box('.ymove'), trowEnd: [...c.querySelectorAll('.trow > *')].filter(e => e.getClientRects().length).pop().getBoundingClientRect().right };
   })(document.querySelector('#slist > .card[data-id="${id}"]'))`);
   const point = (x, y) => ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
   const over = async c => { await point(c.l + c.w / 2, c.b - 4); await ctx.sleep(250); };
@@ -66,7 +66,6 @@ export default async function (ctx) {
     // the row's tab
     const L = out.live = await read(live.id), M = out.moved = await read(moved.id);
     for (const [what, c] of [['live', L], ['with a PR', M]]) {
-      ctx.assert.ok(c.hastab, `${what}: the top row knows`);
       near(c.tab.l, c.card.l, `${what}: the tab at the row's left`);
       near(c.tab.t, c.card.t, `${what}: at its top`);
       ctx.assert.equal(c.tab.h, 26, `${what}: its height`);
@@ -147,14 +146,15 @@ export default async function (ctx) {
     await away();
     await ctx.evaluate(`document.querySelector('#cardsEven').click()`); await ctx.settle();
 
-    // one project in view: no tab, the row's 18 px
+    // one project in view: the same card, nothing on it moved (2026-11-04, round XXV)
+    const A = await read(moved.id);
     await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
-    await ctx.waitFor(`!document.querySelector('#slist > .card[data-id="${moved.id}"] .top .repo')`, { what: 'the project in view' });
+    await ctx.waitFor(`window.peix.prefs().project !== 'all'`, { what: 'the project in view' });
     await ctx.settle();
     const P = out.picked = await read(moved.id);
-    ctx.assert.deepEqual([P.hastab, P.top.h, P.card.h], [false, 18, 74], 'no tab: the row as it was');
+    ctx.assert.deepEqual([P.top.h, P.card.h, P.title.t - P.card.t, P.tab.w], [A.top.h, A.card.h, A.title.t - A.card.t, A.tab.w], 'the tab stays, and nothing on the card moves');
     await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
-    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${moved.id}"] .top .repo')`, { what: 'every project' });
+    await ctx.waitFor(`window.peix.prefs().project === 'all'`, { what: 'every project' });
 
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
     await ctx.sleep(300); await ctx.settle();
