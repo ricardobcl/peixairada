@@ -5,6 +5,55 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-04 — the project filter you can see, and leave (round XXV)
+
+Ricardo: *"when filtering by project, the UI on the left a bit ugly (seems like cards are not rendered the same) and it's not
+clear that the filter is on, nor how to remove it"*. From round XXV's page, the real CSS on the made-up board with the research
+beside it, he took: *"card A1 (the tab stays); cue B1 (a hanging tab); colour C1 (the list's ground); toolbar T1 (solid, with the
+funnel); outside O1 (on the way out); list's end E1 (says what is hidden); keys K1 (⌥⌘P ⌥⌘P), K3 (Right-click a card); another
+project's chat R1 (lets go to all); left on S1 (stays on and waves); motion M1 (the tab flies up); fix the away line and the keys sheet."*
+
+* **What was wrong, measured**: filtered, a card's top row went from 26 px to 18 and its title moved up 5, and on his real board 26
+  of 107 chats not done have nothing else on that row, so 18 px of nothing sat over the title. The only word was a 33 px row at the
+  foot, 440 px under the last card on a short list, its way out a 20 px grey ×. The filter also moved by itself, and a click on the
+  away line left the toolbar's underline on. How the cue got there: the list's head on 2026-09-24, moved to the bottom with the fish
+  and the controls on 2026-09-29, alone at the foot once the status bar took the rest.
+* **The tab stays, against the research's ranking**: for a toggle in place over the same rows it ranks emptying the tab and keeping the
+  row first (no product was verified doing it). On a board where one card in four has nothing else there, that keeps the hole
+  complained of. With the tab there nothing on a card moves, and a list of one colour says one project by itself. What the research
+  did find: every confirmed drop of a label happens on navigating to a new titled list, and none on a toggle.
+* **The top, in words**: Apple's HIG warns against critical things at the foot of a sidebar, and Mail, Mail's categories and Things all
+  say it above the list. No study tests position or tint; this is convention. The cue's words are the name, the count (a count alone
+  fails at Baymard) and *Show all*: no sourced Apple filter readout uses a × outside a search field, and an X can read as Close.
+* **Level with the toolbar, at every notch**: its height and words follow the toolbar's (`--cue-h`, `--cue-drop`, read in `floatH`);
+  the drop is the toolbar's padding, never its height less 43: at the notch the row is shorter with no chips in it, and the words
+  would stand 4 px off.
+* **The tint is paler than the page's, on purpose**: the page mixed the project's colour 26% into the frame, which darkened the
+  ground; swept over every look and 27 colours, 8695 of 33015 pairs fell under 4.5:1, down to 2.74. Hue and some chroma on the
+  ground's own lightness, nudged away from the ink (`--scope-l`, `.032` light, `-.012` dark), hold them all (32147 pairs, none
+  under), and read lighter than the page showed. It is inline over `--side0`, since a theme's frame sets `--side` at a weight no
+  class would beat. No colour, or black: no tint, the words carry it. Colour was never going to carry it alone: in the one
+  experiment on it a whole-screen colour change explained 4 to 5% of mode errors (Sellen 1992).
+* **The way out on a card's ground**, not a control's grey: on some themes the ink on `--ctl` over the frame fell under 4.5:1, and
+  the list's inks are already fitted to `--step`. The cue's solid is `min(l, .52)`, the open row's `.55`, which reads 4.14:1 at worst,
+  so the open row has that fault still; left as it is, for another day.
+* **The away line goes**: *1 asking* sits on the way out, and a click on it goes to the one waiting longest. A question is the one class
+  that gets past (Focus's rule, the nearest there is). The bug went with the line.
+* **Lets go, never moves**: `openSession` and a new chat elsewhere go to ALL. ⌥⌘P ⌥⌘P brings it back, and ⌥⌘P ⏎ stays the press that always
+  lands on ALL: a toggle punishes a wrong belief.
+* **Esc is left out**: the keys are in the drawer most of the time, where Esc interrupts Claude. Someone who has learned it clears the
+  filter would stop a turn sooner or later.
+* **The motion**: M1 is a stand-in in the cue's colours (`.tabfly`), by transform and opacity, its place on a card read through the
+  slide just begun (`offsetTop`); not on switching project, where the cue is there already. The page's mock used View Transitions.
+  The cue's row changes inside `drawCards`, or the cards would jump by its height and slide from there.
+* **Also**: a named project lights the toolbar's tab and lets go on a click (it moved to the folder); an empty project says Show all.
+* **A name clash, for the next one**: `function setProject` already existed further down, and a function declaration wins silently,
+  check-page none the wiser. The new one is `scopeTo`.
+* Checked: `project-filter.mjs` new, `project-cue.mjs` and `project-tab.mjs` changed, `INK_CHECK` sweeps the tint; the suite; shots light and
+  dark on the made-up board, and WebKit's own frame (level with the toolbar at 8 and 51, the tab flying). The cost against the commit before
+  (`npm run perf -- --against 728a29f --runs 3`, medians, a board with no filter on, % of a core): rest 3.5 / 3.1, the pointer 5.3 / 5.6, a scroll
+  17.6 / 17.1, home 12.2 / 12.4; a chat opened 83 / 82 ms, memory 225 / 221 MB; no animation rule broken.
+
 ## Decisions of 2026-11-04 — a page under its strip in a window
 
 Ricardo: *"I hear reports that github PR opens but without the bar up to where the url and buttons for browsing live. I thought we fixed this issue in the past, where you said that it was opening on vscode or something?"*

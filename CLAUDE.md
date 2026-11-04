@@ -229,10 +229,7 @@ npm run map                         # rewrite the section maps at the top of ser
 
 ## The board
 
-* **Two columns**: the selected project's chats → the chat. **The list's foot is the project filter's whole cue**
-  (`#sessions` rows: the list `minmax(0, 1fr)`, the project): `#stitle` names the project (`hidden` on ALL; a click is
-  ⌥⌘P, × back to ALL), and the chat header's folder name toggles it (`.repo.on`). The
-  fish, the search and the funnel are the status bar's. At the notch the cards start under the strip (`.npad`). → `project-cue.mjs`. A chat is *ready · clauding · done*
+* **Two columns**: the selected project's chats → the chat. **A project in view is the list's own tab, at its top** (2026-11-04, round XXV; `#stitle`, `cueDraw`, `hidden` on ALL; its row `auto`, the list's `minmax(0, 1fr)`, changed inside `drawCards`, so the cards slide by it): level with the toolbar (`--cue-h`, `--cue-drop`, `floatH`), the name (`.t`, ⌥⌘P's picker), `.cn`, Show all (`.sx`), a question elsewhere counted there (`.ask`). **A card is the same as on ALL**; the list's ground a tint (`scopeTint`: `--side` over `--side0`, a hue on the ground's own lightness, so every ink holds), its end what is hidden (`.gsep.others`), the toolbar's tab solid with the funnel (`.repo.on`, `scopedOn`). ⌥⌘P ⌥⌘P ALL and back (`projectAgain`, `prefs.lastProject`). **A chat from elsewhere lets it go; it never moves by itself** (`scopeTo`). `tabFlight`; `cueWave`. → `project-filter.mjs`, `project-cue.mjs`. A chat is *ready · clauding · done*
   (`bucket()`); the server keeps the finer `status` for notifications and the badge.
 * **The cards are reconciled, not rebuilt** (2026-09-27): `renderSessionList` builds `{id, html}` items;
   `drawCards` keeps each card's node whose markup is unchanged (`cardNodes`), makes the rest, and orders them with the
@@ -318,17 +315,16 @@ npm run map                         # rewrite the section maps at the top of ser
   repo's, its card wears its branch, `.chip.wtb` from `s.worktree` — `headNow` while it runs, else `gitBranch`). Pinned projects head the pickers (`state.pins`, `PUT /api/pins`).
   **✕ on a row of ⌥⌘N hides a project** (`hidden` in the state file, `PUT /api/hidden`; `projectList()` and
   `freeFolders()` skip it); its chats still show under ALL; starting a chat there puts it back (`newChat`).
-* **A project's colour is the setup's** (2026-10-15; Peacock's moved there once, `movePeacock`):
+* **A project's colour is the setup's** (2026-10-15):
   `projects[name].color` by name (`colorKey`: a worktree's is its repo's). None → `--nocolor`;
   `#000000` is `BLACK`, with its inks. The header's square is the picker (`setColor`); it and the
   setup's squares read `ownColor`, the board `repoColor` (a theme's hue). **A new colour on the board reads a token or `repoColor`, never a hex or `ownColor` of
   its own, or a theme does not reach it.** → `project-colors.mjs`.
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): a block of tokens under
-  `:root:root[data-skin=…]` (three classes deep, beating `:root` and the dark block), set only beside its own
+  `:root:root[data-skin=…]` (three classes deep), set only beside its own
   appearance. **A theme is a family of two halves** (2026-11-01, round XVII; `FAMILIES`, `prefs.theme`, `halfOf`,
-  `famOf`): the appearance picks the half — the family the same day and night; Black, Matte Black and Softened have
-  one half, the other the board's own (`own-dark`, `own-light`). Settings › Appearance › Theme is a swatch a family
-  (`#themePick`, `setTheme`), ⌥⌘Y a tile a family. **The appearance is the board's, whatever macOS shows**
+  `famOf`): the appearance picks the half; Black, Matte Black and Softened have
+  one half, the other the board's own (`own-dark`, `own-light`); `#themePick`, `setTheme`. **The appearance is the board's, whatever macOS shows**
   (2026-10-12): `<html data-theme="dark|light">`, which every dark rule reads — **never `prefers-color-scheme`**; a new
   one is `:root[data-theme="dark"] …` —, set before the first paint by the head's script. Worn (`wornKey()`,
   `skinOn()`): the family's half of `darkNow()` — under Appearance › Auto (`prefs.skinFollow`, the default; `setLook`)
@@ -336,8 +332,8 @@ npm run map                         # rewrite the section maps at the top of ser
   remembered as `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read
   `--crust`, `--bar`, `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; none
   under one of the board's own, `asSet`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`).
-  **Black** is the board's own dark on true black (`:root[data-skin="black"]`). **Every theme lays the
-  chat in a frame** (2026-11-01; round XVII's C1): `--frame` (the board's own in `:root` — in dark Settings' grey, its list's inks lifted for it, round XVIII —, a theme's its `crust`) the
+  **Every theme lays the
+  chat in a frame** (2026-11-01): `--frame` (the board's own in `:root`, a theme's its `crust`) the
   window's ground, the sidebar (`--side`) and the status bar, the chat a sheet in it. **`data-frame` is
   the frame's appearance** — dark round a light chat under Settings' *Dark frame* (`prefs.darkFrame`, light only; a
   theme's frame is then its family's dark half, skinCss's `[data-frame="dark"]` blocks) —, which what sits on it —
@@ -509,8 +505,8 @@ npm run map                         # rewrite the section maps at the top of ser
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live, its `.lab` the harness's): a 720 × 900 picture, its frames
   only while open and not paused or called; its own Web Audio (`prefs.zeBand`, `zeMode`, `zeRadio`, a room a sky `zeRoom`), made by the press that
-  starts a round, suspended by a pause, closed with the dialog or by M. He is pixels in the code (`ZE_FACE`, `zeBuild`), no picture and no setting;
-  bulk, not lives (`g.mass`); the cars (`zeRide`); Trota's ways (`ZE_DIFFS`); rounds of a few minutes (`ZE_PACE`). **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it uses); the title's demo (`g.demo`) takes
+  starts a round, suspended by a pause, closed with the dialog or by M. He is pixels in the code (`ZE_FACE`, `zeBuild`);
+  bulk, not lives (`g.mass`); the cars (`zeRide`); Trota's ways (`ZE_DIFFS`); `ZE_PACE`. **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it uses); the title's demo (`g.demo`) takes
   chance's, makes no sound and wins nothing. **It hears the board**: a chat that starts asking stops it on a card (`zeHeard`; the page's Esc asks
   `zeCallEnd` first), today's lunch falls (`zeLunch`), the room gets a score only by a K.O. button (`zePost`, `zePoll`), Zé walks across All caught up
   (`.zewalk`). **The picture is a stage on the GPU** (2026-11-01, HD-2D; `zg`, `zgOn`, `zgDraw`, `zgFree`): WebGL2 made with the dialog and let go with
@@ -701,7 +697,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `tileNotch`'s cut round the housing). The shell: no gaps or edges (no `.ncut`); the list
   and the status bar flat on `--side` (the frame); the header a flush toolbar of glass, the theme's inks
   (`--hd-*`), lowered at the notch by padding; cards 6 px apart (a head or day line 4 off its own), raised, no light of their own, the open
-  one solid in its project's colour (`--selc`), white on it; the project a corner tab on a row (`.top.hastab`; `.card.gone` dims all but it) and in the toolbar (the h2's padding, `--htop`; 2026-11-03), inks in `INK_CHECK`; chips `--r-3`; lanes on the rows' edges
+  one solid in its project's colour (`--selc`), white on it; the project a corner tab on every row (`.top .repo`; `.card.gone` dims all but it) and in the toolbar (the h2's padding, `--htop`; 2026-11-03), inks in `INK_CHECK`; chips `--r-3`; lanes on the rows' edges
   (→ `project-tab.mjs`); PR and ticket chips a tint. **`.card > .rg` (every card) is the row's ring** — a still mask to a 1.5 px
   band, its `::before` the turning square; the card's own pseudo-elements the sonar's. A new animation joins
   `PHASED` and the reduced-motion block. → `sidebar-layout.mjs`.
