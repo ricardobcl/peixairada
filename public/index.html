@@ -1293,13 +1293,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .act.tk { opacity: 1; color: #fff; background: var(--idle); }
   .act.tk .tk path { stroke-dasharray: 14; animation: tkdraw .2s ease-out both; }
   @keyframes tkdraw { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
-  /* ⌥ held over the ✓ of a chat with PRs (2026-10-11): done for good's ✕, white on red — and the ✕ is what draws when
-     ⌥-clicked (.fg, tickDone). <html data-alt> is ⌥ held, off the keys and the pointer's own events (altHeld). */
+  /* ⌥ held over a card (2026-10-11; every card's, 2026-11-04): its button is delete's ✕, white on red under the pointer — and
+     the ✕ is what draws when ⌥-clicked (.fg, removeChat). <html data-alt> is ⌥ held, off the keys and the pointer's own events
+     (altHeld). A chat at work has no ✓: its button is the ✕ alone, and only ⌥ brings it. */
   .act .fx { display: none; }
-  :root[data-alt] .act:hover .fx, .act.fg .fx { display: block; }
-  :root[data-alt] .act:hover:has(.fx) .tk:not(.fx), .act.fg .tk:not(.fx) { display: none; }
+  :root[data-alt] .card:hover .act .fx, .act.fg .fx, .act.armed.del .fx { display: block; }
+  :root[data-alt] .card:hover .act:has(.fx) .tk:not(.fx), .act.fg .tk:not(.fx) { display: none; }
   :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
   .act.tk.fg { color: #fff; background: var(--needs); }
+  .act .rv { display: grid; place-items: center; }
+  .act.del:not(.armed) { display: none; }
+  :root[data-alt] .card:hover .act.del:not(.armed) { display: inline-grid; }
   /* A watching chat's ✓ armed by a first click (tickGate, 2026-10-31): it says what Done ends, in the attention colour,
      and a second click ticks — or it lets go after ARM_MS */
   .act.armed, .act.armed:hover { opacity: 1; display: inline-flex; align-items: center; width: auto; min-width: 0; max-width: 62%; gap: 4px; padding: 0 7px 0 5px; color: var(--needs); background: color-mix(in srgb, var(--needs) 14%, transparent); }
@@ -5074,6 +5078,7 @@ const toolName = n => {
   // Ticked done, an empty chat is gone at once (2026-09-27): Done ends its claude, and there is nothing in it to read
   // or resume.
   function visible(s) {
+    if (s.removed) return false;   // deleted from the board (2026-11-04): only ⌥⌘K, typed, finds it
     if (!s.lastActivity) return s.alive && !s.done && !inVsCode(s);
     if (!s.alive && !s.done && Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS) return false;
     return true;
@@ -5139,6 +5144,8 @@ const toolName = n => {
   const hhmm = ts => { const d = new Date(ts); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
   const relIn = ts => { const m = Math.round((new Date(ts) - Date.now()) / 60000); return !(m > 0) ? 'due now' : m < 60 ? `in ${m} min` : `in ${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`; };
   const tickArmed = new Map(), armedOn = id => (tickArmed.get(id) || 0) > performance.now();   // chat id → until when its ✓ is armed
+  const delArmed = new Map(), delArmedOn = id => (delArmed.get(id) || 0) > performance.now();   // …and its ✕ (2026-11-04)
+  const DEL_TIP = '⌥-click: delete from the board — its claude ends, the transcript stays';
   // The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the chats with a PR at your
   // move — clauding ones too, the PR waits on you all the same — or the ready ones with a new reply. Done chats never.
   const FILTERS = {
@@ -6536,12 +6543,15 @@ const toolName = n => {
     // after your last touch — a prompt, an answer, an Escape; before that it is the previous turn's, and yours leads.
     const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
-    // ⌥-click is done for good (2026-10-11): the chat's PRs are forgotten — a move on one no longer brings it back
-    // …a watching chat's says what Done would end, once armed by a first click (tickGate, 2026-10-31)
-    const ends = !s.done && canTick(s) ? watchEnds(s) : '', armed = ends && armedOn(s.id);
-    const act = s.done ? `<button class="act" data-act="reopen" title="${s.forGood ? 'Done for good — its PRs no longer bring it back. Untick to bring it back' : 'Untick — bring it back'}">↩</button>`
-      : armed ? `<button class="act armed" data-act="done" title="${esc(`Done ends its watch — ${ends}. Click ✓ again to tick it done`)}">${ICON.tick}${s.prs?.length ? ICON.forget : ''}<span class="aw">ends ${esc(ends)}</span></button>`
-      : canTick(s) ? `<button class="act" data-act="done" title="${ends ? esc(`Tick as done — it ends its watch: ${ends}, so it asks once more`) : s.prs?.length ? 'Tick as done — it comes back on new activity, or when one of its PRs comes round to you. ⌥-click: done for good, its PRs forgotten' : 'Tick as done (persisted; comes back on new activity)'}">${ICON.tick}${s.prs?.length ? ICON.forget : ''}</button>` : '';
+    // ⌥-click on any card's button deletes it from the board (2026-11-04, removeChat): a chat at work has no ✓, and only ⌥
+    // brings its ✕, which asks once more for what it would end. A watching chat's ✓ says what Done would end, once armed by a
+    // first click (tickGate, 2026-10-31)
+    const ends = !s.done && canTick(s) ? watchEnds(s) : '', armed = ends && armedOn(s.id), delEnds = delArmedOn(s.id) && removeEnds(s);
+    const act = delEnds ? `<button class="act armed del" data-act="del" title="${esc(`Deleting it ends ${delEnds}. Click again to delete it from the board`)}">${ICON.forget}<span class="aw">ends ${esc(delEnds)}</span></button>`
+      : s.done ? `<button class="act" data-act="reopen" title="${s.forGood ? 'Done for good — its PRs no longer bring it back. Untick to bring it back' : 'Untick — bring it back'}. ${DEL_TIP}"><span class="tk rv">↩</span>${ICON.forget}</button>`
+      : armed ? `<button class="act armed" data-act="done" title="${esc(`Done ends its watch — ${ends}. Click ✓ again to tick it done`)}">${ICON.tick}${ICON.forget}<span class="aw">ends ${esc(ends)}</span></button>`
+      : canTick(s) ? `<button class="act" data-act="done" title="${ends ? esc(`Tick as done — it ends its watch: ${ends}, so it asks once more`) : s.prs?.length ? 'Tick as done — it comes back on new activity, or when one of its PRs comes round to you' : 'Tick as done (persisted; comes back on new activity)'}. ${DEL_TIP}">${ICON.tick}${ICON.forget}</button>`
+      : `<button class="act del" data-act="del" title="${DEL_TIP}">${ICON.forget}</button>`;
     // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
     // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
@@ -7095,10 +7105,10 @@ const toolName = n => {
       row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === (pick.ctx.at || shownPr.url) ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
     } else if (pick.mode === 'chat') {
       const order = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
-      const found = hunt([...state.sessions.values()].filter(s => visible(s) && (q || bucket(s) !== 'done')).sort(order), chatFields, s => doneWorth(s, q));
+      const found = hunt([...state.sessions.values()].filter(s => (visible(s) && (q || bucket(s) !== 'done')) || (q && s.removed)).sort(order), chatFields, s => doneWorth(s, q));
       const named = (pick.named?.ids || []).map(id => state.sessions.get(id)).filter(s => s && !found.includes(s)).sort(order);   // what the chips did not know
       pick.list = [...found, ...named];
-      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
+      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${s.removed ? '<span class="cur">deleted from the board</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
     } else if (pick.mode === 'chatpick') {   // a chat to send to (2026-10-31): ⌥⌘K's rows, one it cannot go to dimmed and saying why
       // …or several to merge (`many`): ⏎ takes one in or out, ✓ before it; the first row goes on with those taken in
       const c = pick.ctx;
@@ -7299,6 +7309,7 @@ const toolName = n => {
         ...(s.cwd ? [{ name: `Its folder in ${editor().name} — its own window`, sub: of, hint: '⌥⌘V', fn: hotEditorApp }] : []),
         ...(canTick(s) ? [{ name: watchEnds(s) ? `Tick it done — ends its watch: ${watchEnds(s)}` : 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
+        s.removed ? { name: 'Put it back on the board', sub: of, fn: () => restoreChat(s.id) } : { name: 'Delete it from the board — its claude ends, the transcript stays', sub: of, fn: () => removeChat(s.id, $('#shead')) },
         { name: s.muted ? 'Unmute it' : 'Mute it — no banner, sound or count, questions too', sub: of, fn: () => setMuted(s.id, !s.muted) },
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
@@ -7658,7 +7669,7 @@ const toolName = n => {
   // A tick is felt (2026-10-11, Things' checkbox): the ✓ fills and draws its stroke where it was clicked, and the
   // server is told once it has (TICK_MS) — its answer redraws the card, as done or gone, which would take the mark with it.
   const TICK_MS = 230;
-  // Done for good (2026-10-11; ⌥-click on the ✓, ··· and the launcher): the server forgets the chat's PRs while the tick stands.
+  // Done for good (2026-10-11; ··· , a card's menu and the launcher): the server forgets the chat's PRs while the tick stands.
   // A watching chat's ✓ asks once more (2026-10-31, round XIII): Done ends the chat's processes, its monitor or command
   // with them, so a first tick of one arms it — the card's ✓ says what it ends, elsewhere a note — and only a second
   // within ARM_MS ticks. Every way to tick comes through here: the card's ✓, the chats step's, the menus', the
@@ -7684,11 +7695,36 @@ const toolName = n => {
     if (!done || !mark || REDUCED.matches) return go();
     if (mark.classList.contains('tk')) return;   // a second click while it draws
     mark.classList.add('tk'); noteMotion(id, 'tick'); lastTickAt = performance.now();
-    if (forGood && mark.querySelector('.fx')) mark.classList.add('fg');   // the ✕ fills and draws instead
     mark.animate([{ scale: .7 }, { scale: 1 }], { duration: 360, easing: SPRING, id: 'tick' });
     setTimeout(go, TICK_MS);   // the open chat moves on with it: a move first would redraw the card, the mark with it
   }
-  // ⌥ held (2026-10-11): the card's ✓ shows done for good's ✕ under the pointer. Off the keys, and off the pointer's own
+  // Delete from the board (2026-11-04; ⌥-click on any card's button, a card's menu, ···, the launcher): whatever the chat is
+  // doing, its claude ended, its transcript left where it is. What it would interrupt asks once more, as a watching chat's ✓
+  // does; an idle or ended chat goes at once. ⌥⌘K, typed, finds it, and a word in it, a resume or Put it back brings it back.
+  const removeEnds = s => !s.alive ? '' : s.status === 'working' ? 'its turn' : asking(s) ? 'its question' : watchEnds(s);
+  function removeGate(id, anchor) {
+    const s = state.sessions.get(id), ends = s && removeEnds(s); if (!ends) return true;
+    if (delArmedOn(id)) { delArmed.delete(id); return true; }
+    delArmed.set(id, performance.now() + ARM_MS); noteMotion(id, 'arm');
+    if (!anchor?.closest?.('#slist .card')) note(anchor?.isConnected ? anchor : $('#shead'), `Deleting it ends ${ends}. Ask again to delete it`);
+    setTimeout(() => { if (delArmed.has(id) && !delArmedOn(id)) { delArmed.delete(id); renderBoard(); } }, ARM_MS + 30);
+    renderBoard();
+    return false;
+  }
+  function removeChat(id, anchor, mark = null) {
+    if (!removeGate(id, mark || anchor)) return;
+    const go = () => {
+      if (id === state.current) { moveOn(id); if (state.current === id) leaveChat(); }
+      api('POST', `/api/sessions/${id}/remove`, {}).catch(err => note(anchor?.isConnected ? anchor : $('#shead'), `Could not delete it: ${err.message}`, true));
+    };
+    if (!mark || REDUCED.matches) return go();
+    if (mark.classList.contains('tk')) return;   // a second click while it draws
+    mark.classList.add('tk', 'fg'); noteMotion(id, 'delete');
+    mark.animate([{ scale: .7 }, { scale: 1 }], { duration: 360, easing: SPRING, id: 'tick' });
+    setTimeout(go, TICK_MS);
+  }
+  const restoreChat = id => api('POST', `/api/sessions/${id}/remove`, { undo: true }).catch(err => note($('#shead'), `Could not put it back: ${err.message}`, true));
+  // ⌥ held (2026-10-11): a card's button under the pointer shows delete's ✕ (2026-11-04). Off the keys, and off the pointer's own
   // events too — in the app a key pressed with a page of the pane in front never reaches this one.
   const altHeld = on => { if (on !== document.documentElement.hasAttribute('data-alt')) document.documentElement.toggleAttribute('data-alt', on); };
   addEventListener('keydown', e => { if (e.key === 'Alt') altHeld(true); }, true);
@@ -8279,7 +8315,7 @@ const toolName = n => {
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
     if (e.target.closest('.chip.cmute')) { e.stopPropagation(); setMuted(card.dataset.id, false); return; }
     const act = e.target.closest('.act');
-    if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act, e.altKey); return; }
+    if (act) { e.stopPropagation(); if (e.altKey || act.dataset.act === 'del') removeChat(card.dataset.id, card, act); else tickDone(card.dataset.id, act.dataset.act === 'done', card, act); return; }
     const mv = e.altKey && e.target.closest('.prmove');
     if (mv) { e.stopPropagation(); letGo(state.sessions.get(card.dataset.id), mv); return; }   // ⌥ on "your move": this round let go
     // the move line, or a PR's mark beside it: the chat, its timeline on that PR, at the move (2026-10-17)
@@ -8722,7 +8758,9 @@ const toolName = n => {
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       `<button class="hmi${s.muted ? ' on' : ''}" id="muteBtn" aria-pressed="${!!s.muted}" title="No banner, sound or count from this chat, questions too, till you unmute it — its card says so and still shows what it does">${ICON.bellOff}<span>mute notifications</span><span class="k">${s.muted ? 'on' : 'off'}</span></button>`,
-      canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
+      canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.tick}<span>done for good</span><span class="k"></span></button>` : '',
+      s.removed ? `<button class="hmi" id="undelBtn" title="Its card back on the list">${ICON.tick}<span>put it back on the board</span><span class="k"></span></button>`
+        : `<button class="hmi" id="delBtn" title="Off the list and every count, whatever it is doing: its claude ends, the transcript stays. ⌥⌘K, typed, finds it">${ICON.forget}<span>delete from the board</span><span class="k">⌥-click ✓</span></button>`,
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
       '<div class="sep"></div>',
@@ -8782,6 +8820,8 @@ const toolName = n => {
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) && !isVimTab(s, tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + zshsOf(s)[0].id; if (k) dropTab(s, k); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
+    const db = $('#delBtn'); if (db) db.onclick = () => { menu.close(); removeChat(s.id, $('#shead')); };
+    const ub = $('#undelBtn'); if (ub) ub.onclick = () => { menu.close(); restoreChat(s.id); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
@@ -8970,6 +9010,7 @@ const toolName = n => {
       ...talkRows(s, card),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
+      { t: 'Delete from the board', sub: `${removeEnds(s) ? `ends ${removeEnds(s)}, asks once more` : 'its claude ends'}; the transcript stays · ⌥-click ✓`, warn: true, fn: () => removeChat(s.id, card) },
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
       s.muted ? { t: 'Unmute', fn: () => setMuted(s.id, false) } : { t: 'Mute', sub: 'no banner, sound or count, questions too', fn: () => setMuted(s.id, true) },
       ...((s.prs || []).length ? [{ hr: true }, ...(s.prs || []).slice(0, 6).map(pr => ({ t: `Take ${pr.label.replace(/^.*?#/, '#')} off this chat`, fn: () => unlinkUrl(s, pr.url) }))] : []),
@@ -12608,10 +12649,12 @@ const toolName = n => {
       : s.folderMissing && s.back?.near ? `Its folder, ${where}, is gone — resuming starts it in <code>${esc(homePath(s.back.near))}</code>, the nearest folder left.`
       : s.folderMissing ? `Its folder, ${where}, is not there, and no folder of repos with an org holds it to clone from. Put it back, then resume.`
       : inVsCode(s) ? 'Last used in VS Code. Resuming moves it here; the tab there will not follow.' : '';
+    const off = s.removed && !err;   // found by ⌥⌘K, deleted from the board (2026-11-04): either button brings its card back
     setHtml(box, `<span class="ric">${ICON.term}</span>
-      <span class="t"><b>${err ? 'Could not resume this chat' : 'Claude isn’t running in this chat'}</b>${more ? `<span>${more}</span>` : ''}</span>
-      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
+      <span class="t"><b>${err ? 'Could not resume this chat' : off ? 'Deleted from the board' : 'Claude isn’t running in this chat'}</b>${off ? '<span>Its transcript stays. Put it back, or resume it, and its card comes back.</span>' : more ? `<span>${more}</span>` : ''}</span>
+      ${off ? '<button class="btn" id="undelGo">Put it back</button>' : ''}${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     const go = box.querySelector('#resumeGo'); if (go) go.onclick = () => termAction(state.sessions.get(s.id) || s);
+    const back = box.querySelector('#undelGo'); if (back) back.onclick = () => restoreChat(s.id);
   }
   // ---- attachments: files dropped on the board, images pasted --------------------------------
   // What claude wants is a path: an @-mention (`@dir/file`, a space escaped as `\ ` — how the CLI itself writes
@@ -16575,7 +16618,8 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       if (landed) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       const heard = was && asking(was) && !asking(s) && s.alive && !s.done;
       if (heard) { heardAt.set(s.id, performance.now()); noteMotion(s.id, 'heard'); }   // the question answered: its card hears it (flareLanded)
-      if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
+      if (s.id === state.current && s.removed) { if (!was?.removed) { moveOn(s.id); if (state.current === s.id) leaveChat(); } }   // deleted from another page; found by ⌥⌘K, it stays open
+      else if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
       else if (s.id === state.current && noneLeft(s)) leaveEmpty(s);
       if (s.id === state.current && String(s.lastUserAt || '') > String(was?.lastUserAt || '')) followCard.id = s.id;   // your word: the next draw takes the list to its card
       if (landed || heard) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all

@@ -146,6 +146,9 @@ let doneMarks = {};
 // forgotten — a move on one neither un-ticks it, ranks it, alerts on it nor has it asked about (`forgotten`). A tick of
 // any other kind, a word in the chat or ↩ ends it.
 let forGoodMarks = {};
+// Off the board (2026-11-04): sessionId -> the done mark it came with, a tick for good that also hides the chat, while it
+// stands and no claude runs in it (isRemoved). The transcript stays: nothing under ~/.claude is ever written.
+let removedMarks = {};
 // PRs taken off a chat (2026-10-11): sessionId -> { PR url: when }. ⌥-click on its chip in the header, or its row: a PR
 // the chat only mentioned in passing — a review's other PR, the one it follows — leaves the chat, and its lines do not
 // bring it back, a re-read included (notePr); a word of yours naming it after does.
@@ -246,6 +249,7 @@ function loadState() {
     const st = JSON.parse(readFileSync(stateFrom, 'utf8'));
     doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
     forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
+    removedMarks = st.removed && typeof st.removed === 'object' ? st.removed : {};
     unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
     seen = st.seen && typeof st.seen === 'object' ? st.seen : {}; seenSince = typeof st.seenSince === 'string' ? st.seenSince : null;
     driftAcks = st.driftAcks && typeof st.driftAcks === 'object' ? st.driftAcks : {};
@@ -288,7 +292,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, mutedChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, removed: removedMarks, unlinked, seen, seenSince, driftAcks, mutedChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
@@ -305,6 +309,11 @@ const isDone = s => {
 };
 /** Done for good, and still done: its PRs move nothing of the chat's. */
 const forgotten = s => forGood(s) && isDone(s);
+/** Deleted from the board, and it stands: a word in it ends that, as any tick's, and so does a claude started on it. */
+const removing = new Set();   // the chats whose claudes are being ended
+const isRemoved = s => !!removedMarks[s.id] && removedMarks[s.id] === doneMarks[s.id] && isDone(s) && (!s.alive || removing.has(s.id));
+const markRemoved = s => { doneMarks[s.id] = forGoodMarks[s.id] = removedMarks[s.id] = new Date().toISOString(); };
+function putBackOnBoard(s) { delete doneMarks[s.id]; delete forGoodMarks[s.id]; delete removedMarks[s.id]; saveState(); schedulePush(s); }
 
 // ---- chats tied by your hand: merged, folded, branched (2026-10-31) -------------------------------------------------
 const LINK_KINDS = new Set(['merge', 'fold', 'branch']), LINKS_MAX = 2000;
@@ -796,7 +805,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
-    done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
+    done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s), removed: isRemoved(s),
     muted: !!mutedChats[s.id],   // no banner, sound or count from it, till you unmute it (2026-11-02)
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
     ...linksShown(s.id) && { links: linksShown(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
@@ -3245,6 +3254,8 @@ function loadRegistry() {
     if (s.live && !found.has(s.id)) { s.live = null; s.rivals = []; if (applyLiveness(s)) schedulePush(s); }
     else if (s.live && applyLiveness(s)) schedulePush(s);
   }
+  // a claude started on a chat deleted from the board (2026-11-04): it is at work again, and shown
+  for (const id of Object.keys(removedMarks)) { const s = sessions.get(id); if (s?.alive && !removing.has(id)) putBackOnBoard(s); }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3265,7 +3276,7 @@ function nativeNotify(title, subtitle, body) {
 const hushOf = s => ({ quiet: !notificationsOn || !!mutedChats[s.id], muted: !!mutedChats[s.id] });
 
 function queueNotify(s, kind) {
-  if (indexing || s.silent) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news
+  if (indexing || s.silent || isRemoved(s)) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news; one deleted from the board calls nobody
   if (s.forkAt && String(s.lastActivity || '') < s.forkAt) return;   // a branch's copied past, however its lines come in (2026-10-31)
   (s.pendingNotify ||= new Set()).add(kind);   // one of each kind (2026-10-14): a branch's move and a reply in one window were one alert, the other lost — and a move is said once
   clearTimeout(s.notifyTimer);
@@ -6313,7 +6324,7 @@ const server = createServer(async (req, res) => {
     // the home's day (2026-10-10): every chat's spans since the page's midnight
     if (req.method === 'GET' && p === '/api/today') {
       const since = Number(url.searchParams.get('since')) || new Date().setHours(0, 0, 0, 0);
-      return json(res, 200, dayOf([...sessions.values()], since));
+      return json(res, 200, dayOf([...sessions.values()].filter(s => !isRemoved(s)), since));
     }
     // a handoff (2026-10-31): where these chats stand, for the box a merge or a fold is read and changed in before it goes
     if (req.method === 'GET' && p === '/api/handoff') {
@@ -6469,8 +6480,28 @@ const server = createServer(async (req, res) => {
       } else { delete doneMarks[s.id]; delete forGoodMarks[s.id]; }
       for (const id of Object.keys(doneMarks)) if (!sessions.has(id)) delete doneMarks[id]; // prune forgotten sessions
       for (const id of Object.keys(forGoodMarks)) if (forGoodMarks[id] !== doneMarks[id]) delete forGoodMarks[id];   // and ticks since replaced
+      for (const id of Object.keys(removedMarks)) if (removedMarks[id] !== doneMarks[id]) delete removedMarks[id];
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s), forGood: forgotten(s) });
+    }
+    // Delete from the board (2026-11-04; ⌥-click on any card's button, its menus): whatever the chat is doing. Its claudes and
+    // drawers end, as Done's do but awaited; the mark again once they have, since what an ending writes is dated before that.
+    // The transcript stays, and `{undo}` is the way back. Vim is asked to quit, and with unsaved work the chat stays.
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/remove$/))) {
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      if ((await jsonBody(req)).undo === true) { putBackOnBoard(s); return json(res, 200, { ok: true, removed: false }); }
+      markRemoved(s); removing.add(s.id); saveState(); schedulePush(s);
+      const mine = [...terms.values()].filter(t => t.sessionId === s.id && t.exited === null);
+      for (const t of mine) killTerm(t);
+      const ended = s.alive ? await Promise.all([s.live, ...s.rivals].filter(l => l?.pid).map(endClaude)) : [];
+      const vim = mine.filter(t => t.editor);
+      for (let i = 0; i < 20 && vim.some(t => t.exited === null); i++) await new Promise(r => setTimeout(r, 100));
+      loadRegistry(); removing.delete(s.id);
+      const stuck = ended.find(r => !r.ok && r.code !== 409)?.error || (s.alive && `pid ${s.live?.pid} is still running`) || (vim.some(t => t.exited === null) && 'vim has unsaved work: save or quit it first');
+      if (stuck) { putBackOnBoard(s); return json(res, 409, { error: stuck }); }
+      markRemoved(s); saveState(); schedulePush(s);
+      return json(res, 200, { ok: true, removed: isRemoved(s) });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/fold$/))) {   // folded into another chat (2026-10-31): the tie, said to both — the page ticks it done
       const s = sessions.get(m[1]), body = await jsonBody(req), into = typeof body.into === 'string' ? sessions.get(body.into) : null;
@@ -6633,6 +6664,7 @@ const server = createServer(async (req, res) => {
       // `prompt` (2026-10-31, Send to…): the words go in as the resumed claude's first prompt — `prompted` says they did;
       // a drawer already there, or a resume another ask started, has not had them, and the page types them in instead
       const body = await jsonBody(req), prompt = typeof body.prompt === 'string' && body.prompt.trim() ? body.prompt : null;
+      if (removedMarks[s.id] && !removing.has(s.id)) putBackOnBoard(s);   // resumed from where ⌥⌘K found it (2026-11-04)
       const have = termOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have), prompted: false });
       // In the background (2026-11-04): attached, not a second claude — the one running, in this drawer

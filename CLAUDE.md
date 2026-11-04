@@ -199,7 +199,7 @@ npm run map                         # rewrite the section maps at the top of ser
   the PR** (`isDone` against `turn.movedAt`, kept in `prTurns` by `moveTurn`) and alerts the chat touched last
   (`notifyPr`, a `heading`). Polled by its own newest event too (`PR_WATCH`). **A chat done for good** (2026-10-11;
   `forGoodMarks` → `forGood`, while that tick holds) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are
-  asked about for it; ⌥ over its ✓ shows the ✕ (`data-alt` from `altHeld`: the pane eats the key). →
+  asked about for it. →
   `test/pr-turn.test.mjs`, `pr-turn.mjs`.
 * **A round let go** (2026-10-12; ⌥-click on a card's `.prmove` or the header's `.hmove`, their right-click row →
   `letGo` → `POST /api/sessions/:id/waive` → `waiveTurn`; one PR `{url}`, back `{url, undo}` → `unwaiveTurn`,
@@ -357,16 +357,13 @@ npm run map                         # rewrite the section maps at the top of ser
 * **A colour as dark as that black turns it grey** (`nearBlack` → `main.darkchat`). **On a card, a colour too dark
   or too light for the panel is held where it shows**: `--lift` (`oklch(from … max(l, .62) c h)` dark, `min(l, .72)`
   light) for what draws it on a row. `--repo` stays the colour as set (the header). → the black step of `project-colors.mjs`.
-* **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
-  open; ⌥⌘0): the sea (`makeSea`, a canvas that outlives the draws, 15 fps on screen, at rest after
-  `SEA_REST_MS` with no input, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
-  day — `GET /api/today?since=<the page's midnight>`, a row per chat with its turns, questions (`a`) and monitors
-  (`m`). The spans come from the transcript as folded (`noteSpan`, `s.day`), an open question from the registry
-  (`live.statusAt`). `homeSoon` on session events; the day asked again each minute and on a landing.
-  → `test/today.test.mjs`, `home.mjs`.
+* **With no chat open the column is home** (2026-10-10; `showHome`; ⌥⌘0): the sea (`makeSea`, 15 fps on screen, at rest after `SEA_REST_MS` with no
+  input, still under reduced motion; `peix.sea()`), the board's facts, and the day — `GET /api/today?since=<the page's midnight>`, a row per chat with
+  its turns, questions (`a`) and monitors (`m`), spans from the transcript as folded (`noteSpan`, `s.day`), an open question from the registry.
+  `homeSoon` on session events; the day asked again each minute and on a landing. → `test/today.test.mjs`, `home.mjs`.
 * **⌥⌘A is the overview** (2026-10-10; `#ov`, a modal dialog): `ovColumns` — Asking you, Clauding, Watching, New replies
   — every project, never a done chat; a tile per chat (1–9 and ⏎ open, arrows move, a click on nothing closes —
-  `ovNothing`), `ovSoon` on its chats' events; zoomed out of the cards, into the column (`ovZoomIn`, `ovGo`). **A tile
+  `ovNothing`), `ovSoon` on its chats' events. **A tile
   is live**: the chat's drawer as a read-only xterm (`mountMini` — **it never sends a resize**: the PTY keeps the chat's
   own size; scaled to .7 and cropped, the footer below the edge unless asking — `footRows`, `placeMini`), else its tail
   (`tailHtml` over `GET /api/tails?ids=`, every 2 s; `s.recent`, `noteRecent`). A question's answers (`ask.labels`) come
@@ -450,6 +447,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **A chat opened from elsewhere is located** (`locate`, `locateCard`): scrolled to, and a band of light sweeps
   across it (`.card > .loc`, a box of its own: the pseudo-elements are the ring's). Not a click on the card, ⌥⌘↑↓ or a
   tick's move.
+* **⌥-click on any card's button deletes it from the board** (2026-11-04; `removeChat`, `.act.del` on a chat at work, `…/remove`, `removedMarks` → `removed`; `data-alt` from `altHeld`: the pane eats the key): a tick for good, hidden (`visible`), whatever it is doing. Its claudes and drawers end, awaited, what that interrupts asking once more (`removeGate`), vim's unsaved work keeping it; the transcript stays. Back by a word, a claude started on it, a resume or `{undo}`; ⌥⌘K, typed, finds it. → `test/chat-remove.test.mjs`, `chat-delete.mjs`.
 * **Your word takes the list to the open chat's card** (2026-11-02; `followCard`): at once; the top if it is on the first
   screen; no slide past a screen (`far`). No reply or other chat's word. → `list-follows-word.mjs`.
 * **Ticking the open chat moves on** (`tickDone` — the card's ✓ and ↩, the chats step's ✓): to the card below as
@@ -487,10 +485,9 @@ npm run map                         # rewrite the section maps at the top of ser
   (`askedAt`, `byWait`), then PRs at your move, then what to read, oldest first: a fixed order, only on a press, never a
   lane. **Red on the bar means asking**: a meter past 90 % is the ink and a `!` (`hotInk`, `hotMark`). **A mute shows**
   (`muteSeg`, `setNotify`). → `next-verb.mjs`, `asking-oldest.mjs`, `bar-one-red.mjs`, `mute-shows.mjs`.
-* **The lane's news and switches** (2026-11-01): `laneNews`, a line whose click is Next: *while you were out* (`wentOut`,
-  `cameBack`, `outLine`, `OUT_MS`; `peixFront`, `peixAway`) and *gone fishing*'s catch (`fishing`, `prefs.fishing`,
-  `goFishing`, `backFromFishing`; `onAlert` holds reply and pr). Off by default: a fish per chat (`prefs.laneSchool`,
-  `schoolBar`, `.sf`) and the seabed (`prefs.laneBed`, `bedDraw`). → `while-out.mjs`, `gone-fishing.mjs`, `lane-school.mjs`, `lane-seabed.mjs`.
+* **The lane's news and switches** (2026-11-01): `laneNews`, a line whose click is Next: *while you were out* (`wentOut`, `outLine`; `peixFront`, `peixAway`)
+  and *gone fishing*'s catch (`fishing`; `onAlert` holds reply and pr). Off by default: a fish per chat (`prefs.laneSchool`) and the seabed (`prefs.laneBed`).
+  → `while-out.mjs`, `gone-fishing.mjs`, `lane-school.mjs`, `lane-seabed.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` leaves it out of
   the bar. → `usage-bar.mjs`.
@@ -533,8 +530,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size — a hole in a
   veil (the hole's own shadow) round each step's part, the card on the side with room. Once on its own after the
   welcome's answer (`prefs.toured`; the harness's `true`), again from Settings, ⌥⌘L, home, ? and About.
-  A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred — with
-  a picture (`pic`) where a step has no part of its own. A new main part gets a step. → `tour.mjs`.
+  A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred. A new main part gets a step. → `tour.mjs`.
 * **The page asks the server through `api(method, url, body)`**: JSON in, JSON out, a throw with the server's own
   `error` (else the status) — `e.status`, `e.body`. Every caller says what went wrong where it happened, or catches on
   purpose. The attach upload keeps a raw `fetch`: its body is a file.

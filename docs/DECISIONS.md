@@ -39,6 +39,18 @@ loopback: no cost, nothing touched (`CLAUDE_BIN` a wrapper in a scenario). Ricar
 * **`/resume` of the original, in a branch's drawer**: `t.fork === s.id` meant the drawer never followed. The branch's card showed a drawer that
   was really the original's, with no pid or bar, and the original's Take over would have ended that same claude. The guard stands until the
   drawer's claude is seen on its own id, which on the real CLI is its first write.
+* **Delete from the board** (`removeChat`, `POST …/remove`, `removedMarks`), asked of ⌥ + the done button on *all chats*. Asked what delete means, Ricardo took
+  the board's own: off the list and every count, and the transcript stays, since *never written under `~/.claude`* is a hard rule and `claude --resume
+  <id>` must go on working. It is a tick for good with a mark on it, so its PRs are already forgotten and a word in it ends it, as any tick's.
+  **⌥ now means this on every card**, which was done for good on a chat with PRs (a question left open and decided by the *do it all*: one gesture,
+  one meaning, and the ✕ was already called *for delete* the day it was drawn, 2026-10-11). Done for good stays in ··· , the card's menu and the launcher.
+  * A chat at work has no ✓, so its button is the ✕ alone, and only ⌥ brings it. What it would interrupt (a turn, a question, a watch) asks once more, by the
+    armed chip a watching chat's ✓ has; an idle or ended chat goes at once.
+  * The mark is written twice, before its claudes end and after, as what an ending writes is dated between. A claude that will not end, or vim with
+    unsaved work, puts the chat back with the reason: nothing is killed over your edits.
+  * A claude started on it later brings it back at once (`loadRegistry`), with no word needed: a hidden chat at work would be the worst of both.
+  * **Found again by ⌥⌘K, typed**, *deleted from the board* on its row, and the bar under it has Put it back beside Resume. Not asked for: a gesture this strong
+    needed a way back, and no toast can offer one here. A deleted chat's `done` is lost on the way back, so it returns as a chat with no tick.
 
 ## Decisions of 2026-11-04 — the real shell, driven
 

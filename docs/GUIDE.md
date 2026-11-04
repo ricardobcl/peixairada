@@ -39,8 +39,8 @@ setup file, and how the pictures are made.
   number and title, CI, its place in a stack, whose move and why, who's on it and when it last changed; click it for
   the PR. Rest the pointer anywhere else on the card for every PR the chat has and their latest events. The chat's header has the same squares,
   in up to three rows when there are many, with its CI on them: a red ring when it fails, a pulse while it runs, and the number's own tick, cross or ring;
-  its tickets are dots after them, and the git mark beside them says how many there are and lists them, one row each. ⌥-click the ✓ to tick a chat done for good: its
-  PRs won't bring it back. Take a PR off a chat from its square's right-click menu (or ⌥-click a square in the header) —
+  its tickets are dots after them, and the git mark beside them says how many there are and lists them, one row each. ⌥-click a card's ✓ or ↩ (any card, with ⌥ held at work too) to delete it from the board: its claude ends, the transcript stays, and ⌥⌘K, typed, finds it again. *Done for good* in ··· or its right-click menu keeps a chat in Done with its PRs silent.
+  Take a PR off a chat from its square's right-click menu (or ⌥-click a square in the header) —
   until you name it there yourself.
 - 💬 **Chats that talk** — when one chat messages another (Claude Code's SendMessage), the card that got it says
   *← from* the chat that sent it, and its transcript shows the message where it arrived — or *queued*, while the chat
@@ -234,7 +234,7 @@ sky every three levels and fireworks at a level-up, wherever the Mac has WebGL2.
 | ⌥⌘R · ⌘R | reload the board · reload the page in the pane (VS Code Web keeps its own ⌘R) |
 
 `?` (or *Keyboard shortcuts* in Settings) lists the rest, grouped. A right-click on a card, a PR's square or a project's colour square has
-what ⌥-click and a double-click do — rename, tick done, take a PR off, let go of a colour — and the launcher has the
+what ⌥-click and a double-click do — rename, tick done, delete from the board, take a PR off, let go of a colour — and the launcher has the
 same for the open chat.
 
 <p align="center"><img src="shots/launcher-dark.webp" alt="⌥⌘L, the launcher: chats, projects, a new chat, PRs, every switch, the theme, settings, keys" width="560"></p>

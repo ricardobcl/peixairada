@@ -7,7 +7,7 @@
 // night: "just replied … left a comment and still says your move"). And the card itself (the chip was all): a line
 // under the card — a *your move* tag, the PR and why — at every card size, the PR chips last in the top row, where the
 // F would be, solid whatever their turn, the reason in the chat header too, and the chat ranked by the move — above a
-// newer chat, under today's line — and the funnel's Your move narrowing the list to it (2026-10-12). And done for good (2026-10-11): ⌥-click on the ✓ forgets the chat's PRs — a push is
+// newer chat, under today's line — and the funnel's Your move narrowing the list to it (2026-10-12). And done for good (2026-10-11): ··· forgets the chat's PRs — a push is
 // nothing to it, the PR is not asked about for it — until ↩.
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -200,12 +200,12 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`window.__alerts.length`), 0, 'and no alert for it');
     ctx.assert.ok(moved, 'the move had a time');
 
-    // done for good (2026-10-11): ⌥-click on the ✓ — the chat's PRs are forgotten while that tick stands: ana pushes
+    // done for good (2026-10-11): ··· — the chat's PRs are forgotten while that tick stands: ana pushes
     // again and nothing comes of it, nor is the PR asked about for it; ↩ counts them again, and the push is a move
     await ctx.settle();
-    ctx.assert.match(await ctx.evaluate(`${card}.querySelector('.act[data-act="done"]').title`), /⌥-click: done for good/, 'the ✓ says so');
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hmenu #forGoodBtn')?.textContent`), 'done for good⌥-click ✓', 'and ··· has it as a row');
-    // ⌥ held over it, the ✓ is done for good's ✕, in red; let go, the ✓ again — then a real ⌥-click
+    ctx.assert.match(await ctx.evaluate(`${card}.querySelector('.act[data-act="done"]').title`), /⌥-click: delete from the board/, 'the ✓ says what ⌥ does');
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hmenu #forGoodBtn')?.textContent`), 'done for good', 'and ··· has done for good as a row');
+    // ⌥ held over it, the ✓ is delete's ✕ (2026-11-04), in red; let go, the ✓ again — chat-delete.mjs clicks it. Done for good is ···'s
     const on = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.bottom - 3 }))(${card}.getBoundingClientRect())`);
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: on.x, y: on.y }); await ctx.sleep(100);   // the ✓ has no room until the pointer is on its card (2026-11-03)
     const tk = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card}.querySelector('.act[data-act="done"]').getBoundingClientRect())`);
@@ -219,9 +219,7 @@ export default async function (ctx) {
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: tk.x, y: tk.y + 1, modifiers: 0 });
     out.plainHover = await shows();
     ctx.assert.deepEqual([out.plainHover.alt, out.plainHover.tick, out.plainHover.x], [false, 'block', 'none'], 'let go, the ✓');
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: tk.x, y: tk.y, button: 'left', clickCount: 1, modifiers: 1 });
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: tk.x, y: tk.y, button: 'left', clickCount: 1, modifiers: 1 });
-    ctx.assert.equal(await ctx.evaluate(`${card}?.querySelector('.act.tk.fg') ? 'fg' : null`), 'fg', 'the ✕ is what fills');
+    await ctx.evaluate(`document.querySelector('#forGoodBtn').click()`);
     await ctx.waitFor(`window.peix.session('${two.id}').forGood === true && window.peix.session('${two.id}').done === true`, { what: 'the chat done for good' });
     await ctx.settle();
     out.forGood = await ctx.evaluate(`JSON.stringify({ cls: ${card}.className, undo: ${card}.querySelector('.act[data-act="reopen"]').title, filter: getComputedStyle(${card}.querySelector('.tmx')).filter })`).then(JSON.parse);
