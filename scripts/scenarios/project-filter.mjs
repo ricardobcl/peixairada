@@ -2,8 +2,8 @@
 // project the list's own tab, level with the chat's toolbar and on the cards' edges, says its name, how many of how many and
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
 // the count gives way first and a long name fades, Show all whole; the list's ground a tint of the project, and of nothing else;
-// the toolbar's tab solid with the funnel while on, a named project's too; the list ends on what is hidden; at the notch it stays
-// level with the toolbar.
+// the toolbar's tab solid with the funnel while on, a named project's too; the list ends on what is hidden; ⌥⌘P ⌥⌘P lets go and
+// comes back; at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -135,6 +135,16 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#slist > .gsep.others').click()`); await ctx.settle();
     ctx.assert.equal(await project(), 'all', 'a click is Show all');
     ctx.assert.equal(await others(), null, 'ALL hides nothing');
+
+    // ⌥⌘P ⌥⌘P: on a project, ALL; on ALL, back to it; ⌥⌘P ⏎ still lands on ALL, and nothing to go back to is nothing
+    await pick('shop');
+    await ctx.key('KeyP'); await ctx.sleep(120); await ctx.key('KeyP'); await ctx.settle();
+    ctx.assert.deepEqual([await project(), await ctx.evaluate(`document.querySelector('#pick').open`)], ['all', false], 'twice on a project: ALL, the picker gone');
+    await ctx.key('KeyP'); await ctx.sleep(120); await ctx.key('KeyP'); await ctx.settle();
+    ctx.assert.deepEqual([await project(), await ctx.evaluate(`document.querySelector('#pick').open`)], ['shop', false], 'twice on ALL: back to it');
+    await ctx.key('KeyP'); await ctx.sleep(120);
+    await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`); await ctx.settle();
+    ctx.assert.equal(await project(), 'all', '⌥⌘P ⏎ lands on ALL, whatever it was');
 
     // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
     await pick('shop');

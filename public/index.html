@@ -3410,7 +3410,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
+  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -6792,7 +6792,11 @@ const toolName = n => {
       }
     }
   }
-  function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); if (key !== ALL) showList(); }   // the header's folder name is the toggle's other end
+  // The project last in view stays known, for ⌥⌘P ⌥⌘P (2026-11-04, round XXV)
+  function scopeTo(key) { if (prefs.project !== ALL && key !== prefs.project) prefs.lastProject = prefs.project; prefs.project = key; savePrefs(); }
+  function selectProject(key) { scopeTo(key); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); if (key !== ALL) showList(); }
+  // ⌥⌘P with the picker up (2026-11-04, round XXV): on a project, ALL; on ALL, the project last in view, as cd - goes back.
+  function projectAgain() { const back = prefs.project === ALL ? prefs.lastProject : ALL; $('#pick').close(); if (back) selectProject(back); }   // the header's folder name is the toggle's other end
   // ---- ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name. ----
   // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
@@ -7372,7 +7376,7 @@ const toolName = n => {
   const KEYS = [
     ['⌥⌘K', 'Go to', 'a chat — every project, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em>', 'asking, clauding or ready, in the list\'s order · typed, done chats too · a PR\'s number, its link or a ticket\'s key finds the chat that has it, a PR\'s link every chat whose transcript names it', ['alt:KeyK']],
     ['⌥⌘L', 'Go to', 'anything — chats, projects, PRs, tickets, actions and switches', '> actions and switches, # PRs, @ projects, ! tickets · empty, a menu: → into a row, ← back', ['alt:KeyL']],
-    ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', '✎ edits a named one, ＋ makes one', ['alt:KeyP']],
+    ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', 'pressed twice: every project, and from there back · ✎ edits a named one, ＋ makes one', ['alt:KeyP']],
     ['⌥⌘F', 'Go to', 'the list\'s own search, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
     ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
@@ -7471,6 +7475,7 @@ const toolName = n => {
     if (!fn) return false;
     if ($('#hmenu').open) { $('#hmenu').close(); if (fn === hotClose) return true; }   // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
     if ($('#room').open) { $('#room').close(); if (fn === hotClose) return true; }   // …nor is the chat's panel (2026-10-17): a key is back to work
+    if (code === 'KeyP' && mods === 'altcmd' && $('#pick').open && pick.mode === 'project') { projectAgain(); return true; }
     if (fn === hotGhKey && $('#pick').open && pick.mode === 'pr' && pick.ctx.sid) { prPickAgain(); return true; }   // the PRs' picker from one of them: ⌥⌘G again is the column's
     if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && !(fn === lunchToggle && $('#lunchd').open) && !(fn === zeToggle && $('#zeGame').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
