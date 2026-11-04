@@ -16,4 +16,5 @@ if (env.FAKE_BREW_FAIL || !dir) { console.error('Error: Download failed on Cask 
 console.log(`==> Moving App 'Zed.app' to '${join(dir, 'Zed.app')}'`); await sleep(gap);
 mkdirSync(join(dir, 'Zed.app', 'Contents'), { recursive: true });
 writeFileSync(join(dir, 'Zed.app', 'Contents', 'Info.plist'), '<plist><dict><key>CFBundleIdentifier</key><string>dev.zed.Zed</string></dict></plist>\n');
+console.log("==> Linking Binary 'cli' to '/opt/homebrew/bin/zed'"); await sleep(gap);   // as brew's: the app is there a while before brew has ended (2026-11-04)
 console.log('🍺  zed was successfully installed!');

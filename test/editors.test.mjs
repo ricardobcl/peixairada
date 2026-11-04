@@ -20,7 +20,7 @@ test('Zed: not here, installed once however often asked, then here — and Launc
     const a = await srv.post('api/editors/zed/install', {}), b = await srv.post('api/editors/zed/install', {});
     assert.deepEqual([a.status, a.body.zed.installing, b.status, b.body.zed.installing], [202, true, 202, true], 'started, and a second ask joins it');
     const app = join(srv.dir, 'apps', 'Zed.app');
-    await waitFor(async () => (await srv.api('api/editors')).body.zed.app === app, { timeout: 15_000, what: 'Zed.app in the apps folder' });
+    await waitFor(async () => !(await srv.api('api/editors')).body.zed.installing, { timeout: 15_000, what: 'brew ended' });   // the app is there a while before that (2026-11-04)
     assert.deepEqual((await srv.api('api/editors')).body.zed, { app, brew: true, installing: false, line: null, error: null });
     await waitFor(() => lines(log).length === 2, { what: 'lsregister asked' });
     assert.deepEqual(lines(log), ['install --cask zed', `-f ${app}`], 'one brew, then Launch Services told of the app');
