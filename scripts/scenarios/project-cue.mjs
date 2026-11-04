@@ -1,6 +1,6 @@
-// The board without its projects column (2026-09-24). What this checks: there is no column; the list's foot names the
-// project — on a row of its own since 2026-10-08, and the chat header's folder name toggles it — and is the way to
-// another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and no colour square since
+// The board without its projects column (2026-09-24). What this checks: there is no column; the list's top names the
+// project — its own tab since 2026-11-04 (project-filter.mjs), and the chat header's folder name toggles it — and is the way to
+// another — a click on the name is ⌥⌘P's picker, Show all goes back to ALL, which shows nothing at all and no colour square since
 // 2026-09-27 —; the two things only the column's rows did are in the picker (✎ on a named project,
 // ＋ new project last); the settings are the header's ··· and ⌘,; and the fish — the status bar's since 2026-10-09 (it
 // headed the list's foot row until then) — is the About box (2026-09-27).
@@ -37,21 +37,20 @@ export default async function (ctx) {
   out.proj = await head();
   ctx.assert.equal(await pickOpen(), false, 'the choice closes it');
   ctx.assert.ok(out.proj.text.startsWith(folder) && !out.proj.hidden, 'the head names the project chosen');
-  ctx.assert.equal(out.proj.x, true, '…with × beside it');
+  ctx.assert.equal(out.proj.x, true, '…with Show all beside it');
   ctx.assert.equal(out.proj.sq, false, '…and no colour square: the chat header\'s is the picker (2026-09-27)');
-  // A row of its own at the list's foot (2026-10-08): the whole list's width, the name whole and × in sight — squeezed
-  // into the controls' row before, a list at its usual width showed × alone
-  out.projRow = await ctx.evaluate(`JSON.stringify((() => { const r = q => document.querySelector(q).getBoundingClientRect(), t = document.querySelector('#stitle .t'), row = r('#stitle'), s = document.querySelector('#sessions'), list = r('#sessions'), x = r('#stitle .sx');
-    return { full: Math.round(list.width - 2 * s.clientLeft - row.width), foot: Math.round(list.bottom - s.clientTop - row.bottom), whole: t.scrollWidth <= t.clientWidth, x: x.width > 0 && x.right <= row.right }; })())`).then(JSON.parse);
-  ctx.assert.deepEqual(out.projRow, { full: 0, foot: 0, whole: true, x: true }, `the project's row: full width, at the list's foot, the name whole, × in it: ${JSON.stringify(out.projRow)}`);
+  // Atop the list, the whole list's width within its margins: the name whole and Show all in sight (2026-11-04)
+  out.projRow = await ctx.evaluate(`JSON.stringify((() => { const r = q => document.querySelector(q).getBoundingClientRect(), t = document.querySelector('#stitle .t .n'), row = r('#stitle'), list = r('#sessions'), x = r('#stitle .sx');
+    return { top: Math.round(row.top - list.top), sides: Math.round(list.width - row.width), whole: t.scrollWidth <= t.clientWidth, x: x.width > 0 && x.right <= row.right }; })())`).then(JSON.parse);
+  ctx.assert.deepEqual(out.projRow, { top: 8, sides: 16, whole: true, x: true }, `the project's row: atop the list, the name whole, Show all in it: ${JSON.stringify(out.projRow)}`);
   await ctx.evaluate(`document.querySelector('#stitle .t').click()`);
   ctx.assert.equal(await pickOpen(), true, 'a click on the name opens the picker');
   await closePick();
   ctx.assert.notEqual(out.proj.project, 'all');
   await ctx.shot('2-project', { x: 0, y: 0, width: 520, height: 140 });
   await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
-  ctx.assert.equal(await pickOpen(), false, '× opens nothing');
-  ctx.assert.equal((await head()).project, 'all', '× is ALL again');
+  ctx.assert.equal(await pickOpen(), false, 'Show all opens nothing');
+  ctx.assert.equal((await head()).project, 'all', 'Show all is ALL again');
 
   // What only the column's rows did: ✎ on a named project, ＋ new project
   const cwd = (await ctx.peix('sessions()'))[0].cwd;
@@ -76,7 +75,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.prefs().listHidden`, { what: 'the list hidden' });
   await ctx.key('KeyP');
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
-  await ctx.waitFor(`!window.peix.prefs().listHidden && !document.querySelector('#stitle').hidden`, { what: 'the list shown for the project, its foot naming it' });
+  await ctx.waitFor(`!window.peix.prefs().listHidden && !document.querySelector('#stitle').hidden`, { what: 'the list shown for the project, its head naming it' });
 
   // The settings (2026-09-28): no cog in the list — the chat header's ···, a chat or none, and ⌘,; a modal, centred
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#cogBtn, #pfoot')`), false, 'no cog in the list');

@@ -353,19 +353,17 @@
   :where(.shead, #log, .gbody) { --hbg-eased: var(--hbg); transition: --hbg-eased .25s; }   /* :where — the header's own list below wins */
   .shead { --hveil-eased: var(--hveil); --hveil2-eased: var(--hveil2); transition: --hbg-eased .25s, --hveil-eased .25s, --hveil2-eased .25s; }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
-  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; container-type: inline-size; }
+  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
   /* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
      of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
      over the list's, which only a definite cell allows. */
   #sessions { grid-template-columns: minmax(0, 1fr); }
-  /* The list, and the project in view under it, a row of its own (2026-10-08; squeezed into the list's foot row of
-     controls before, where a list at its usual width left the name no room at all — only × showed): the name and ×,
-     the whole width. The foot row — the fish, the search, the faces, the plan usage — is the status bar's (2026-10-09;
-     for good, 2026-10-14). */
-  #tline { grid-row: 1; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 1; grid-column: 1 / -1; }
-  #stitle { grid-row: 2; grid-column: 1 / -1; }
+  /* The project in view, then the list (2026-11-04, round XXV: the cue at the top, where the list is read; it had been at
+     the foot since 2026-09-29, a row of its own there since 2026-10-08). The foot row of controls is the status bar's. */
+  #stitle { grid-row: 1; grid-column: 1 / -1; }
+  #tline { grid-row: 2; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 2; grid-column: 1 / -1; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
   main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
   /* The list hidden (⌥⌘B, the status bar's first button — 2026-10-25; folded to a rail of squares from 2026-09-22):
@@ -458,17 +456,26 @@
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
 
   /* ---- projects: a folder, or a named set of folders ---- */
-  /* No column of their own since 2026-09-24. The chat
-     list's head is the cue: the project's colour square and its name — a click there is ⌥⌘P's picker — and × to
-     go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
-     project's colour, ALL's black. */
-  #stitle { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 12px; cursor: pointer; border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--repo, var(--nocolor)) 30%, var(--panel)); color: var(--ink); font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
+  /* The project in view is the list's own tab (2026-11-04, round XXV): the card's tab grown to the list's size, solid as
+     the open card is, on a rule the cards hang from — the list a folder — and level with the chat's toolbar (--cue-h,
+     floatH). Its name, how many of how many, and the way out in words. Nothing at all on ALL. */
+  #stitle { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); display: flex; align-items: stretch; gap: 8px; box-sizing: border-box; height: var(--cue-h, 43px); min-width: 0; margin: 8px 8px 6px; box-shadow: inset 0 -2px 0 var(--selc); white-space: nowrap; }
   #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
-  #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 40%, var(--panel)); }
-  #stitle > .t { flex: 0 1 auto; min-width: 0; display: block; overflow: hidden; text-overflow: ellipsis; }   /* a block, so a long name ends in … */
-  #stitle .sx { flex: none; margin-left: auto; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: var(--fs-lg); font-weight: 400; line-height: 1; color: var(--muted); }
-  #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
+  #stitle > .t { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 62%; padding: var(--cue-drop, 0px) 9px 0 12px; border: 0; border-radius: 7px 7px 0 0; background: var(--selc); color: #fff; font-family: inherit; font-size: var(--fs-md); font-weight: 700; line-height: 1.2; cursor: pointer; }
+  #stitle > .t:hover { background: oklch(from var(--selc) calc(l * .92) c h); }
+  #stitle > .t .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* a long name ends in … */
+  #stitle > .t .ch { flex: none; width: 9px; height: 9px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #stitle > .cn { flex: none; align-self: center; padding-top: var(--cue-drop, 0px); font-size: var(--fs-sm); color: var(--muted); }
+  /* the way out, in words, and the one question it would show: one fill, two presses */
+  #stitle > .out { flex: none; align-self: center; display: flex; align-items: center; height: 26px; margin: var(--cue-drop, 0px) 0 2px auto; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-sm); font-weight: 600; }
+  #stitle > .out button { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0 10px; border: 0; border-radius: inherit; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+  #stitle > .out button:hover { background: var(--ctl-hi); }
+  #stitle > .out .ask { padding-right: 6px; color: var(--needs); font-weight: 700; }
+  #stitle > .out .ask i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  #stitle > .out .ask + .sx { padding-left: 6px; }
+  @container (max-width: 380px) { #stitle > .cn { display: none; } #stitle > .t { max-width: 48%; } }   /* narrow, the count gives way first */
+  main.notch #sessions.npad #stitle { margin-top: calc(var(--notch-top, 0px) + 6px); }
+  main.tiles.notch #sessions.npad.scoped #slist { padding-top: 0; }   /* under the strip already: the cue took its place */
   #sbar #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
   /* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
      the chips' place while it was open; the chips went 2026-10-11, later): open, the icon is the field's left cap
@@ -555,7 +562,6 @@
   .gsep.lane.ready > i { background: radial-gradient(var(--lanec) 32%, transparent 38%); }
   .gsep.lane.idle > i { border-style: dotted; }
   .gsep.lane.done > i { background: var(--lanec); }
-  .gsep.lane.away { cursor: pointer; color: var(--needs); opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
   #sbar .seg.ask { cursor: pointer; }
   #sbar .seg.nx.none { color: var(--muted); } #sbar .seg.nx .nxw { color: var(--ink); font-weight: 600; max-width: 220px; overflow: hidden; }
   #sbar .seg.nx .nxw.over { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
@@ -641,7 +647,7 @@
   /* While the days are out, a pane of glass over the cards (2026-09-25):
      a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
      a frosted list rather than on card text. Lets every pointer event through. */
-  .tl-glass { grid-row: 1; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
+  .tl-glass { grid-row: 2; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
     background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
   #sessions.tlon .tl-glass { opacity: 1; }
   #tline > *, #tline .tl-lab { position: absolute; }
@@ -665,7 +671,7 @@
   /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
-  .sedge { grid-row: 1; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
+  .sedge { grid-row: 2; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
   .sedge.up { align-self: start; align-items: flex-start; margin-top: var(--stick, 0px); padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }   /* under the stuck lane head */
   /* the lower one at the right, on a shorter fog (2026-10-12): centred, it sat on the last card's your-move line — the
      line that card most had to say, and left-aligned, so the right is where a card's last line is most often empty */
@@ -1291,11 +1297,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .act.armed .tk { flex: none; }
   .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hgit, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hgit, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle > .t, #stitle > .out button) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane], #stitle > .out button):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -2201,8 +2207,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-layout="sidebar"] main.tiles ~ #sbar { margin: 0; border: 0; border-top: 1px solid var(--line); background: var(--side); }
   :root[data-layout="sidebar"] .sedge.up { background: linear-gradient(color-mix(in srgb, var(--side) 85%, transparent) 25%, transparent); }
   :root[data-layout="sidebar"] .sedge.down { background: linear-gradient(transparent, color-mix(in srgb, var(--side) 85%, transparent) 80%); }
-  :root[data-layout="sidebar"] #stitle { background: color-mix(in srgb, var(--repo, var(--nocolor)) 20%, transparent); border-top-color: color-mix(in srgb, var(--ink) 10%, transparent); }
-  :root[data-layout="sidebar"] #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 30%, transparent); }
   /* the splitter a hairline, its grip 7 px wide still */
   :root[data-layout="sidebar"] #splitter { width: 1px; background: color-mix(in srgb, var(--ink) 10%, transparent); }
   :root[data-layout="sidebar"] #splitter::before { content: ''; position: absolute; inset: 0 -3px; z-index: 5; }
@@ -3049,12 +3053,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <template id="logo"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></template>
 <main id="main" class="tiles">
   <section id="sessions">
+    <div id="stitle" hidden></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
-    <div id="stitle" hidden></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
@@ -5517,13 +5521,6 @@ const toolName = n => {
       seen[g] = (seen[g] || 0) + 1; if (seen[g] <= LANE_CAP || s.id === state.current) return true;
       held[g] = (held[g] || 0) + 1; return false;
     });
-    // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
-    // the colour picker is the chat header's.
-    // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
-    // and nothing at all on ALL, which is what no filter means.
-    $('#stitle').hidden = p.key === ALL;
-    setHtml($('#stitle'), p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="sx" title="Every project again (ALL)">×</span>`);
-    $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
     const b = shown.map(rankOf), every = ordered.map(rankOf);   // a lane's head over each group (laneHtml), folded or not
@@ -5542,9 +5539,10 @@ const toolName = n => {
     // and done lanes. Not under a filter, which is about something else.
     const zero = !q && !flt && !ordered.some(s => ['asking', 'ready'].includes(rankOf(s))) && ordered.length > 0;
     const items = [];
-    // chats asking you outside the project in view (2026-10-12): a line over the lanes says how many, a click is ALL
-    const away = p.key === ALL || q ? 0 : [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && !inProject(s, p)).length;
-    if (away) items.push({ html: `<div class="gsep lane asking away" data-away role="button" tabindex="0" title="Every project again (ALL), to see them"><i></i><span class="ln">${away} asking you in other projects</span></div>` });
+    // The project in view (2026-11-04, round XXV): its tab atop the list, its name a click on ⌥⌘P's picker, how many of
+    // the chats not done are here, and Show all; a chat asking you elsewhere is counted there, a click going to the one
+    // waiting longest (a line over the lanes from 2026-10-12). Drawn inside drawCards, so the cards slide by its height.
+    drawCards.cue = () => cueDraw(p, ordered);
     if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, q) }));
     else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
       if (zero && (g === 'idle' || g === 'done') && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
@@ -5628,7 +5626,22 @@ const toolName = n => {
     htmls.forEach((h, i) => { const c = el.children[i]; if (c?._drawn === h) return; tpl.innerHTML = h; const n = tpl.content.firstElementChild; n._drawn = h; if (c) c.replaceWith(n); else el.append(n); });
     while (el.children.length > htmls.length) el.lastElementChild.remove();
   }
+  const CUE_CHEV = '<svg class="ch" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" /></svg>';
+  const notDone = s => visible(s) && bucket(s) !== 'done';
+  const askingElsewhere = p => [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && !inProject(s, p));
+  function cueDraw(p, here) {
+    const box = $('#stitle'), on = p.key !== ALL;
+    box.hidden = !on; $('#sessions').classList.toggle('scoped', on);
+    if (!on) { setHtml(box, ''); return; }
+    const n = here.filter(notDone).length, all = [...state.sessions.values()].filter(notDone).length, ask = askingElsewhere(p).length;
+    const tip = `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — a click or ⌥⌘P for another`;
+    setHtml(box, `<button type="button" class="t" title="${esc(tip)}"><span class="n">${projIcon(p.name)}${esc(p.name)}</span>${CUE_CHEV}</button>`
+      + `<span class="cn" role="status" title="${n} of the ${all} chats not done">${rn('cue:n', n)} of ${rn('cue:all', all)}</span>`
+      + `<span class="out">${ask ? `<button type="button" class="ask" title="Go to the one waiting longest"><i></i>${rn('cue:ask', ask)} asking</button>·` : ''}<button type="button" class="sx" title="Every project again (ALL)">Show all</button></span>`);
+  }
   const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
+  // The cue's row comes or goes after drawCards has read where the cards stood, so they slide by its height too
+  const cueNow = () => { const f = drawCards.cue; drawCards.cue = null; f?.(); };
   function drawCards(items, empty) {
     const list = $('#slist'), want = new Set(), nodes = [], fresh = new Set(), redrawn = [], lines = new Map(), seen = new Map();
     const move = !!drawCards.drawn && !REDUCED.matches && !prefs.listHidden;   // hidden, nothing to see move
@@ -5651,17 +5664,18 @@ const toolName = n => {
     }
     lineNodes = lines;
     for (const id of [...cardNodes.keys()]) if (!want.has(id)) cardNodes.delete(id);
-    if (!nodes.length) { list.innerHTML = empty; return true; }
+    if (!nodes.length) { cueNow(); list.innerHTML = empty; return true; }
     // Nothing moved, nothing new, nothing gone — most updates (2026-10-03: every one measured every card twice and
     // made every line anew): the list is left as it is, and nothing is read.
     let i = 0, same = true;
     for (const c of list.children) { if (c.classList.contains('leaving')) continue; if (c !== nodes[i++]) { same = false; break; } }
-    if (same && i === nodes.length) { flareLanded(); followCard(); return false; }   // …and nothing new to phase
+    if (same && i === nodes.length) { cueNow(); flareLanded(); followCard(); return false; }   // …and nothing new to phase
     const lr = move ? list.getBoundingClientRect() : null, before = new Map();
     if (move) {
       for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
       for (const [was, el] of redrawn) if (was.isConnected) before.set(el, was.getBoundingClientRect());
     }
+    cueNow();
     const keep = new Set(nodes), gone = [], gap = move ? parseFloat(getComputedStyle(list).rowGap) || 0 : 0;
     if (lane?.shut) foldRun(list, lane.g, lr, gap, n => n.classList.contains('leaving') || (n.classList.contains('card') ? !want.has(n.dataset.id) : !keep.has(n)));
     let cur = list.firstElementChild;
@@ -8164,8 +8178,8 @@ const toolName = n => {
   $('#slist').addEventListener('keydown', e => { const m = e.target.closest?.('.gsep.more[data-more]'); if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); moreLane(m.dataset.more); } });
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
-    if (e.target.closest('#stitle')) { pickOpen('project'); return; }
-    if (e.target.closest('#slist > .gsep.lane[data-away]')) { prefs.project = ALL; savePrefs(); renderBoard(); return; }
+    if (e.target.closest('#stitle .ask')) { const s = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0]; if (s) openSession(s.id, { locate: true }); return; }
+    if (e.target.closest('#stitle .t')) { pickOpen('project'); return; }
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
@@ -8804,6 +8818,8 @@ const toolName = n => {
     const top = $('#groups').getBoundingClientRect().top, log = $('#log');
     const bottom = Math.max(top, ...['#shead', '#prlist', '#rival'].map(id => $(id)).filter(el => el.getClientRects().length)
       .map(el => el.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(el).marginBottom) || 0)));
+    const head = $('#shead'), sh = head.offsetHeight, drop = Math.max(0, (parseFloat(getComputedStyle(head).paddingTop) || 0) - 7), cueAt = `${sh} ${drop}`;   // the cue stands level with the toolbar, however far the notch lowered it (2026-11-04)
+    if (cueAt !== floatH.cue) { floatH.cue = cueAt; const list = $('#sessions'); list.style.setProperty('--cue-h', `${sh}px`); list.style.setProperty('--cue-drop', `${drop}px`); }
     const h = `${Math.round(bottom - top)}px`; if (h === was) return;
     const end = log.scrollHeight - log.scrollTop - log.clientHeight < 4;
     chat.style.setProperty('--float-h', h);

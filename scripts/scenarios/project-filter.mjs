@@ -1,0 +1,97 @@
+// A project in view is unmistakable, and easy to leave (2026-11-04, round XXV). What this checks: nothing at all on ALL; on a
+// project the list's own tab, level with the chat's toolbar and on the cards' edges, says its name, how many of how many and
+// Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
+// the count gives way first and a long name fades, Show all whole; at the notch it stays level with the toolbar.
+import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
+import { join } from 'node:path';
+import { makeFixture } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
+
+export const meta = { server: true, fixture: 'auto', prefs: { cards: 'medium', cardsSnipOne: true, lanesShut: [] } };
+
+export default async function (ctx) {
+  const out = {}, now = Date.now(), root = realpathSync(tmpDir('peix-filter-')), sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
+  const LONG = 'a-very-long-project-name-that-goes-on-and-on-and-on';
+  const near = (a, b, what, by = 1.5) => ctx.assert.ok(Math.abs(a - b) <= by, `${what}: ${a} against ${b}`);
+  const cue = () => ctx.evaluate(`(() => { const c = document.querySelector('#stitle'); if (c.hidden) return null;
+    const box = e => { if (!e || !e.getClientRects().length) return null; const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height, w: b.width }; };
+    const words = e => { const g = document.createRange(); g.selectNodeContents(e); return box(g); };
+    const n = c.querySelector('.t .n');
+    return { name: n.textContent, count: c.querySelector('.cn').textContent, shown: !!box(c.querySelector('.cn')), way: c.querySelector('.out').textContent, box: box(c), tab: box(c.querySelector('.t')), words: words(n), wholeName: n.scrollWidth <= n.clientWidth, sx: box(c.querySelector('.sx')), out: box(c.querySelector('.out')), fits: c.scrollWidth <= c.clientWidth };
+  })()`);
+  const head = () => ctx.evaluate(`(() => { const h = document.querySelector('#shead').getBoundingClientRect(), t = document.createRange(); t.selectNodeContents(document.querySelector('#shead h2 .t')); const r = t.getBoundingClientRect(); return { t: h.top, b: h.bottom, mid: (r.top + r.bottom) / 2 }; })()`);
+  const pick = async name => { await ctx.key('KeyP'); await ctx.sleep(150); await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(name)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`); await ctx.settle(); };
+  const project = () => ctx.evaluate(`window.peix.prefs().project.split('/').pop()`);
+  const showAll = async () => { await ctx.evaluate(`document.querySelector('#stitle .sx').click()`); await ctx.settle(); };
+  try {
+    const { chats } = makeFixture(ctx.fixture.dir, [
+      { cwd: join(root, 'shop'), title: 'First in the shop', prompt: 'hi', reply: 'Hello.', at: new Date(now - 60_000) },
+      { cwd: join(root, 'shop'), title: 'Second in the shop', prompt: 'hi', reply: 'Hello.', at: new Date(now - 120_000) },
+      { cwd: join(root, 'other'), title: 'Asking elsewhere', prompt: 'go', reply: 'one question', at: new Date(now - 180_000), live: { pid: sleeper.pid, startedAt: now - 3600_000, status: 'waiting', waitingFor: 'input needed', statusAt: now - 180_000 } },
+      { cwd: join(root, LONG), title: 'Far along', prompt: 'hi', reply: 'Hello.', at: new Date(now - 240_000) },
+    ]);
+    const [first, , asker] = chats;
+    await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projects: { shop: { color: '#3b7ddd' }, other: { color: '#2e9e6a' } } }) });
+    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${asker.id}"].asking') && document.querySelector('#slist > .card[data-id="${first.id}"]')`, { what: 'the rows' });
+    await ctx.openChat(first.id); await ctx.settle();
+
+    // nothing on ALL
+    ctx.assert.equal(await cue(), null, 'ALL says nothing');
+    const notDone = await ctx.evaluate(`window.peix.sessions().filter(s => !s.done).length`);
+
+    // the list's own tab, level with the toolbar, on the cards' edges
+    await pick('shop');
+    const c = out.cue = await cue(), h = await head();
+    ctx.assert.deepEqual([c.name, c.count, c.way], ['shop', `2 of ${notDone}`, '1 asking·Show all'], 'its name, how many of how many, and the way out in words');
+    near(c.box.t, h.t, 'level with the toolbar: its top'); near(c.box.b, h.b, 'and its foot');
+    near((c.words.t + c.words.b) / 2, h.mid, 'its words level with the title');
+    const row = await ctx.evaluate(`(() => { const c = document.querySelector('#slist > .card'), b = c.getBoundingClientRect(), g = document.createRange(); g.selectNodeContents(c.querySelector('.title')); return { l: b.left, r: b.right, words: g.getBoundingClientRect().left }; })()`);
+    near(c.tab.l, row.l, "the tab on the cards' left edge"); near(c.out.r, row.r, 'the way out on their right'); near(c.words.l, row.words, "its words on the title's edge");
+    ctx.assert.ok(c.sx.h >= 24 && c.sx.w >= 24, `the way out a target of 24 px at least: ${c.sx.w} × ${c.sx.h}`);
+    ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#slist > .gsep.lane[data-away]')`), false, 'no line over the lanes: the count is on the way out');
+    await ctx.shot('project-filter-light');
+
+    // the list keeps the cue's row, the first card under it: the cards slide by its height
+    await showAll();
+    ctx.assert.equal(await cue(), null, 'Show all: nothing again');
+    let n0 = (await ctx.peix('motion()')).length;
+    await pick('other');
+    out.slide = (await ctx.peix('motion()')).slice(n0).find(m => m.id === asker.id && m.kind === 'flip');
+    ctx.assert.ok(out.slide && out.slide.dy <= -40, `the card on top slides down by the cue's height: ${JSON.stringify(out.slide)}`);
+    ctx.assert.equal((await cue()).way, 'Show all', 'no question outside it: no count');
+    await showAll();
+
+    // a question elsewhere: the count goes to it
+    await pick('shop');
+    await ctx.evaluate(`document.querySelector('#stitle .ask').click()`);
+    await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(asker.id)}`, { what: 'the question opened' });
+    await ctx.settle();
+    if (await project() !== 'all') await showAll();
+
+    // narrow: the count first, a long name fades, Show all whole
+    await ctx.evaluate(`document.querySelector('#sessions').style.width = '300px'`);
+    await pick(LONG);
+    const w = out.narrow = await cue();
+    ctx.assert.equal(w.shown, false, 'the count gives way first');
+    ctx.assert.equal(w.wholeName, false, 'a long name ends in …');
+    ctx.assert.ok(w.fits && w.sx.r <= w.box.r + .5, `Show all whole: ${JSON.stringify(w)}`);
+    await showAll();
+    await ctx.evaluate(`document.querySelector('#sessions').style.width = '417px'`);
+
+    // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
+    await pick('shop');
+    await ctx.evaluate(`window.peixFill(true, { top: 32, left: 500, right: 700 })`);
+    await ctx.settle(); await ctx.sleep(200);
+    const nc = await cue(), nh = await head();
+    ctx.assert.ok(nh.b - nh.t > 60, `the toolbar lowered: ${JSON.stringify(nh)}`);
+    near(nc.box.b, nh.b, 'at the notch, its foot the toolbar\'s'); near((nc.words.t + nc.words.b) / 2, nh.mid, 'its words level with the title', 2);
+    await ctx.evaluate(`window.peixFill(true, { top: 32, left: 100, right: 300 })`);
+    await ctx.settle(); await ctx.sleep(200);
+    const nl = await cue();
+    ctx.assert.ok(nl.box.t >= 32, `under the housing, under its strip: ${nl.box.t}`);
+    await ctx.evaluate(`window.peixFill(false, null)`);
+    await ctx.settle();
+    return out;
+  } finally { sleeper.kill(); }
+}
