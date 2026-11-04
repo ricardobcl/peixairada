@@ -2,8 +2,28 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-03. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-04 — a command that runs for hours stays in Watching
+
+Ricardo: *"why is the widgets "EVERY PR" chat not in monitoring section? seems like a bug"* — a chat whose job is to watch every PR of a repo, by a `while true` loop in a
+background `Bash`, relaunched after each event. It sat in Ready with its loop running. Another chat, four days into *watch this PR until it is merged*, was the same. Two holes, one
+behind the other:
+
+* **The cap took no account of the machine.** `taskExpired` dropped a task `TASK_MAX_MS` (6 h) after its start, whatever lsof said: a quiet night and the loop was off the lane at six
+  hours, without a log line (only the sweep's *no longer running* logs), and `tasksGone` kept it off. The cap dates from before the sweep, when nothing else could end a command whose
+  notice never became a line. **Now it counts from lsof's last *held*** (`t.heldAt`, `taskOverdue`), so it binds only what the machine cannot speak for: no output file, or none left.
+* **A line read anew has had no look.** A task over the cap with no `heldAt` — the boot, a chat read whole — is kept but not shown till lsof answers (`pruneTasks` waits on `t.askedAt`;
+  a failed lsof is no look): it appears, rather than a chat's every old command flashing as a chip. One let go that was never shown is not logged: read whole, this chat asks about 17. A re-read
+  carries `heldAt` and `askedAt` over, or opening the chat would drop it out of the lane for a poll.
+* **The tail would have lost it anyway.** Its start lay 585 KB from the file's end, past `TAIL_BYTES`: a compaction and the prompt after it wrote some 360 KB (attachments,
+  `api-request-shape`, `api-request-blob`). So the first restart after fixing the cap would not have brought it back. **The registry says so**: `shell`, read off 2.1.318, is `idle` with a
+  `local_bash` task not ended; measured, lsof held five `tasks/*.output`, of two `shell` chats and three busy ones, and no `idle` chat held one. `findTasks`, on the poll: a live `shell` chat
+  with none known and its head unread is read whole, as opening it does — one a poll, once by `loaded`; 358 ms on that 70 MB file.
+* **Not used**: `shell` as the lane's own signal (it has no name for the card, the transcript does), and the `task_status` attachments a compaction writes
+  (`{taskId, description, status, outputFilePath}`; here 543 KB back, past the tail too). **Open**: a command started before a `/clear`, if its shell outlives it, has no line in the new
+  transcript — not looked at.
 
 ## Decisions of 2026-11-03, later — one look, the matrix everywhere, a line of words
 

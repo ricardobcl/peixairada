@@ -2464,6 +2464,7 @@ function indexFile(file, { full = false } = {}) {
   s.newEntries = []; // initial load: nothing is "new"
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
   if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks;   // a tail re-read has not seen the calls that started them
+  for (const [id, t] of s.tasks || []) { const p = prev?.tasks?.get(id); if (p) { t.heldAt = p.heldAt; t.askedAt = p.askedAt; } }   // …and lsof's word is the machine's, not the lines' (2026-11-04)
   if (!s.wakes && prev?.wakes?.size) s.wakes = prev.wakes;   // …nor the wake-ups it set (2026-10-31)
   if (prev?.agentEnds?.size) s.agentEnds = new Map([...prev.agentEnds, ...(s.agentEnds || [])]);   // …nor how its agents ended, past the tail (2026-11-02)
   if (prev) { s.diskDrift = prev.diskDrift; s.diskSeen = prev.diskSeen; s.linesIn = prev.linesIn; }   // the disk's word, not the transcript's: a re-read's old prompts do not clear it
@@ -2866,7 +2867,7 @@ function agentLog(s, id) {
 const TASK_ID_RE = [[/Monitor started \(task ([a-z0-9]+)/i, 'monitor'], [/Command running in background with ID: ([a-z0-9]+)/i, 'bash']];
 const TASK_NOTE_RE = /^<task-notification>/;
 const MONITOR_MS = Number(process.env.MONITOR_MS || 30 * 60_000);      // what a Monitor gives itself when it says nothing else
-const TASK_MAX_MS = Number(process.env.TASK_MAX_MS || 6 * 60 * 60_000); // a background command whose end never reached the transcript
+const TASK_MAX_MS = Number(process.env.TASK_MAX_MS || 6 * 60 * 60_000); // a background command whose end never reached the transcript and the machine cannot speak for (taskOverdue)
 
 /** The call: remembered by tool_use id until its result comes back with the task id the harness gave it. */
 function noteTaskCall(s, b) {
@@ -2931,20 +2932,24 @@ async function sweepTasks() {
     if (!s.alive || !s.tasks?.size) continue;
     for (const [id, t] of s.tasks) {
       const age = now - (Date.parse(t.at) || 0);
-      if (!t.out || age < TASK_GRACE_MS || now - (t.askedAt || 0) < Math.min(60_000, age / 10) || !existsSync(t.out)) continue;   // not written yet, or cleaned up: no verdict
-      t.askedAt = now; due.push({ s, id, t });
+      if (!t.out || age < TASK_GRACE_MS || now - (t.askedAt || 0) < Math.min(60_000, age / 10)) continue;
+      t.askedAt = now;
+      if (existsSync(t.out)) due.push({ s, id, t });   // not written yet, or cleaned up: no verdict
     }
   }
   if (!due.length) return;
   sweeping = true;
   let held; try { held = await heldFiles([...new Set(due.map(d => d.t.out))]); } finally { sweeping = false; }
-  if (!held) return;
+  if (!held) { for (const d of due) d.t.askedAt = 0; return; }   // no answer is no look: pruneTasks goes by whether one was had
   for (const { s: was, id, t } of due) {
     // the chat as it is now, by its id (2026-10-14): a re-read while lsof ran replaced the object, and the old one's push
     // was a stale summary
-    const s = sessions.get(was.id);
-    if (held.has(realPath(t.out)) || !s?.tasks?.has(id)) continue;
-    letTaskGo(s, id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s);
+    const s = sessions.get(was.id), cur = s?.tasks?.get(id);
+    if (!cur) continue;
+    const shown = !taskOverdue(cur);
+    if (held.has(realPath(t.out))) { cur.heldAt = Date.now(); if (!shown) schedulePush(s); continue; }
+    letTaskGo(s, id);
+    if (shown) { console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s); }   // a chat read whole asks about every command it ever ran: those never shown go in silence
   }
 }
 /** A `<task-notification>`: an event while it runs, and with a `<status>` (completed, failed, stopped) its end. */
@@ -2957,8 +2962,13 @@ function noteTaskEvent(s, text, ts) {
   t.last = snippet(/<event>([\s\S]*?)<\/event>/.exec(text)?.[1] || /<summary>([\s\S]*?)<\/summary>/.exec(text)?.[1] || '', 100);   // what it said last — the overview's tile
   return true;
 }
-/** A task from before this claude started (it died with the last one), past TASK_MAX_MS, or past its own expiry. */
-const taskExpired = (s, t, now = Date.now()) => { const at = Date.parse(t.at) || 0; return at < (Number(s.live?.startedAt) || 0) || now - at > TASK_MAX_MS || (t.until && now > t.until); };
+/** A task from before this claude started (it died with the last one), or past its own expiry: nothing to ask. */
+const taskDead = (s, t, now) => (Date.parse(t.at) || 0) < (Number(s.live?.startedAt) || 0) || (t.until && now > t.until);
+/** Past TASK_MAX_MS, counted from lsof's last "still held" (2026-11-04): the cap is for a command the machine cannot
+ *  speak for — no output file, or none left — never for one it says runs. A watch loop ten hours in fell off the
+ *  Watching lane at six. */
+const taskOverdue = (t, now = Date.now()) => now - Math.max(Date.parse(t.at) || 0, t.heldAt || 0) > TASK_MAX_MS;
+const taskExpired = (s, t, now = Date.now()) => taskDead(s, t, now) || taskOverdue(t, now);
 /** What is still running, for the summary — nothing on a chat whose claude is gone. Reads only: the pruning is
  *  pruneTasks, on the poll (2026-09-27; the summary used to delete on the way, twelve times a minute from the app's
  *  watchdog alone). */
@@ -2968,12 +2978,24 @@ function runningTasks(s) {
   for (const [id, t] of s.tasks) if (!taskExpired(s, t, now)) out.push({ id, kind: t.kind, what: t.what, at: t.at, until: t.until ? new Date(t.until).toISOString() : null, events: t.events, lastEventAt: t.lastEventAt || null, last: t.last || null });
   return out;
 }
-/** The pruning: a dead claude takes its tasks with it, an expired one goes. True when any went. */
+/** The pruning: a dead claude takes its tasks with it, an expired one goes — one overdue only once lsof has had its look,
+ *  which a line read anew (the boot, a chat read whole) has not: till then it is kept, and not shown (runningTasks). True
+ *  when any went. */
 function pruneTasks(s) {
   if (!s.tasks?.size) return false;
   const n = s.tasks.size, now = Date.now();
-  for (const [id, t] of s.tasks) if (!s.alive || taskExpired(s, t, now)) letTaskGo(s, id);
+  for (const [id, t] of s.tasks) if (!s.alive || taskDead(s, t, now) || (taskOverdue(t, now) && (!t.out || t.askedAt))) letTaskGo(s, id);
   return s.tasks.size !== n;
+}
+/** The registry says `shell` — idle with a background Bash running, the CLI's own word (a `local_bash` task not ended,
+ *  read off 2.1.318) — and the tail names none: it started further back, and one compaction writes a few hundred KB
+ *  (2026-11-04). The chat is read whole, as opening it does: one a poll, once (`loaded`). */
+function findTasks() {
+  for (const s of sessions.values()) {
+    if (!s.alive || !s.file || s.loaded || s.live?.status !== 'shell' || runningTasks(s).length) continue;
+    indexFile(s.file, { full: true }); applyLiveness(sessions.get(s.id));
+    return;
+  }
 }
 /** A task the poll let go stays gone (2026-10-14): its end never reached the transcript, and a whole re-read — opening a
  *  long chat — started it again from its first line, a chip until lsof was asked again, or, its output file cleaned up
@@ -6666,7 +6688,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { cronNext, nextWake, pruneWakes, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, prAlertChat, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cronNext, nextWake, pruneWakes, pruneTasks, findTasks, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, prAlertChat, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 export { handoffText };   // chats that talk (2026-10-31)
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -6756,6 +6778,7 @@ for (const s of sessions.values()) if (s.alive) scanAgents(s);
 setInterval(() => {
   // a live chat's file looked at: what an event never told of is read (2026-10-14) — a stat when nothing was
   for (const f of [...sessions.values()].filter(s => s.alive && s.file).map(s => s.file)) try { tailFile(f); } catch (e) { console.error('[peixairada] tail error', f, e); }
+  try { findTasks(); } catch (e) { console.error('[peixairada] findTasks', e); }
   for (const s of sessions.values()) {
     if (pruneTasks(s) + pruneWakes(s)) schedulePush(s);   // both asked, each its own pruning
     if (s.alive) scanAgents(s);
