@@ -59,6 +59,13 @@ loopback: no cost, nothing touched (`CLAUDE_BIN` a wrapper in a scenario). Ricar
   read *No messages yet*, live, with no button at all. `continued-in` says which, so the first chat is ticked done, as a /clear ticks the chat it left,
   once by the tie (a boot reads the line again, and that tick may have been undone). Its Resume would be a second line from there: its bar says it went on, with
   **Open it** first and Resume beside it. Nothing moves the column by itself: unlike /clear's, the drawer ended with the chat.
+* **A `claude` that does not exec** (a wrapper script): the PTY's process was never the registry's, so nothing tied them on a resume, and /clear left the drawer on the
+  old chat, showing the new one under the old card, with the old card ticked done and the new one wearing *running elsewhere*. Reproduced by a wrapper on the real CLI.
+  `untied`: a live drawer with no claude tied, whose PTY's pid has no registry file, takes the claude below it, a launcher's way. By the files' names, so a file
+  being rewritten still says a process is claude, and a claude's own `claude -p` is never taken for its drawer's. `ps` runs only while a drawer is untied, and only
+  for a pid new to its table, so a normal drawer costs one at most as it starts.
+* **Found on the way: a Mac with no `~/.claude/projects` at boot was never watched.** Nothing created the watch once the folder came, so the first chat's transcript was not read
+  until a restart: a card with no words, and no Resume. Refusing a resume with no file made it matter. The registry's poll now starts the watch and reads what is there.
 
 ## Decisions of 2026-11-04 — the real shell, driven
 

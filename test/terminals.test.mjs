@@ -2,7 +2,7 @@
 // the socket's snapshot, a server restart with the holder alive under it, adoption, and the kill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync, chmodSync } from 'node:fs';
 import { connect, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -365,6 +365,29 @@ test('a claude live elsewhere is known by its start as Claude Code writes it, wh
     assert.ok(take.status < 300, `take over: ${take.status} ${JSON.stringify(take.body)}`);
     await waitFor(() => !alive(other.pid) || other.exitCode !== null || other.signalCode, { what: 'the other claude ended' });
   } finally { try { other.kill(); } catch {} await srv.stop(); }
+});
+
+test('a claude that does not exec: its drawer is tied to the claude below it, and follows its /clear', { timeout: 40_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1], dir = tmpDir('peix-wrap-'), wrapper = join(dir, 'claude'), fake = fileURLToPath(new URL('../scripts/fakeclaude.mjs', import.meta.url));
+  writeFileSync(wrapper, `#!/bin/sh\n'${fake}' "$@"\nexit $?\n`); chmodSync(wrapper, 0o755);
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { CLAUDE_BIN: wrapper } });
+  const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+  try {
+    const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 }), tid = r.body.terminal.id;
+    const s = await waitFor(async () => { const c = await on(chat.id); return c?.alive && c; }, { what: 'the claude below the wrapper up' });
+    assert.notEqual(s.live.pid, r.body.terminal.pid, 'the PTY\'s process is the wrapper');
+    const ws = new WebSocket(srv.ws(`api/terminals/${tid}/ws`));
+    await new Promise(res => ws.addEventListener('open', res, { once: true }));
+    await new Promise(res => setTimeout(res, 1600));   // past a registry poll: tied by then
+    ws.send(JSON.stringify({ t: 'in', d: '/clear\r' }));
+    const moved = await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(c => c.id !== chat.id && c.alive && c.terminal?.id === tid), { what: 'the drawer on the chat its claude moved to' });
+    assert.equal(moved.live.pid, s.live.pid, 'the same claude');
+    const left = await on(chat.id);
+    assert.equal(left.alive, false);
+    assert.ok(!left.terminal || left.terminal.id !== tid, 'and the chat it left holds no drawer: its Resume is there');
+    ws.close();
+  } finally { await srv.stop(); }
 });
 
 test('a background session is attached in a drawer, runs on when it closes, and Done stops it by its job; a spare is no chat', { timeout: 40_000 }, async () => {

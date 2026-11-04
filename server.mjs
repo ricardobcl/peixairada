@@ -3241,8 +3241,10 @@ function loadRegistry() {
   const held = new Map();
   for (const s of sessions.values()) if (s.live) for (const l of [s.live, ...s.rivals]) held.set(`${l.pid}:${l.procStart}`, s);
   const found = new Map();   // sessionId -> its registry entries, one per pid
+  const regPids = new Set();   // every pid with a file, by its name: one being rewritten still says the process is claude
   for (const name of readdirSync(SESSIONS_DIR)) {
     if (!name.endsWith('.json')) continue;   // the registry's own files only: never the `<pid>.<hash>.key` beside each (2026-10-31, see inClaudeDir's section)
+    regPids.add(Number(name.slice(0, -5)));
     let reg;
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
     if (!reg.sessionId || reg.spare || ownReader(reg)) continue;   // a lunch menu's reader (2026-10-18): the board's own claude, no chat; a spare (2026-11-04): the daemon's, waiting to be given one
@@ -3253,13 +3255,13 @@ function loadRegistry() {
   const entries = [...found.values()].flat(), keys = new Set(entries.map(startKey));
   for (const k of startsSeen.keys()) if (!keys.has(k)) startsSeen.delete(k);   // a file gone takes its verdict with it
   learnStarts(entries);   // one ps for every entry new to the board
-  const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids([...found.values()].flat().map(l => l.pid).filter(pidAlive)) : null;   // a launcher's claude is below the PTY's pid
+  const ppids = [...terms.values()].some(t => untied(t, regPids)) ? parentPids([...found.values()].flat().map(l => l.pid).filter(pidAlive)) : null;   // a launcher's or a wrapper's claude is below the PTY's pid
   for (const [id, lives] of found) {
     let s = sessions.get(id);
     if (!s) { s = newSession(id, null); sessions.set(id, s); }
     for (const l of lives) {
       if (pstr(l.name) && procAlive(l)) peerNames.set(l.name, id);   // the name another chat's SendMessage reaches it by (2026-10-31)
-      linkTermToRegistry(l.pid, s, ppids);   // a new chat's terminal learns its session id here
+      linkTermToRegistry(l.pid, s, ppids, regPids);   // a new chat's terminal learns its session id here
       const was = held.get(`${l.pid}:${l.procStart}`);
       if (was && was !== s && procAlive(l)) { clearedFrom.set(s.id, was.id); tickCleared(s); }
     }
@@ -6022,6 +6024,10 @@ function parentPids(need = []) {
   catch (e) { console.error(`[peixairada] ps: ${e.message}`); }
   return ppidTable = m;
 }
+/** A drawer whose claude is not known yet: its PTY's process is in no registry file, and it has none tied. Behind a launcher, or
+ *  a `claude` that does not exec (2026-11-04: a wrapper script's drawer stayed on the chat it began when /clear moved its claude on,
+ *  showing the new chat under the old card, the new card with no drawer). An attach's is the worker it was given. */
+const untied = (t, regPids) => !t.shell && t.exited === null && !t.claudePid && !regPids.has(t.pid);
 const descends = (pid, from, ppids) => { if (!ppids) return false; for (let p = ppids.get(pid), i = 0; p > 1 && i < 64; p = ppids.get(p), i++) if (p === from) return true; return false; };
 /**
  * A new chat has no session id until claude registers; the pid ties the two together, and the holder is told. The PTY's
@@ -6041,16 +6047,19 @@ function noteEnv(sessionId, task) {
   if (!indexing) for (const id of Object.keys(envs)) if (!sessions.has(id)) delete envs[id];
   saveState();
 }
-function linkTermToRegistry(pid, s, ppids = null) {
+function linkTermToRegistry(pid, s, ppids = null, regPids = new Set()) {
   for (const t of terms.values()) {
+    if (t.shell) continue;
+    const below = untied(t, regPids) && descends(pid, t.pid, ppids);
+    if (below && t.sessionId === s.id) { t.claudePid = pid; holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid }); }   // a resume's, on the chat it was started for: known now, for its /clear
     // a branch's drawer is not the chat it copied while it starts (2026-10-31); once on its own id, a /resume of that chat
     // is a move as any other (2026-11-04: the drawer stayed on the branch and its claude showed on the chat, with no way to it)
-    if (t.fork && t.sessionId === s.id && t.pid === pid) { t.fork = null; holderSend(t, { t: 'meta', sessionId: s.id, fork: null }); }
-    if (t.shell || t.sessionId === s.id || t.fork === s.id) continue;
+    if (t.fork && t.sessionId === s.id && (t.pid === pid || t.claudePid === pid)) { t.fork = null; holderSend(t, { t: 'meta', sessionId: s.id, fork: null }); }
+    if (t.sessionId === s.id || t.fork === s.id) continue;
     // the PTY's own process; the claude it was tied to (behind a launcher that is not the PTY's — /clear there gives
     // that claude a new id, and the drawer has to follow it as it does any other, 2026-10-03); or, not yet tied, a
-    // claude below a launcher's task
-    if (t.pid !== pid && !(t.exited === null && t.claudePid === pid) && !(t.task && t.exited === null && descends(pid, t.pid, ppids))) continue;
+    // claude below it
+    if (t.pid !== pid && !(t.exited === null && t.claudePid === pid) && !below) continue;
     const was = sessions.get(t.sessionId);   // the chat it is leaving — /clear gave this pid a new id
     t.sessionId = s.id; t.claudePid = pid; holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
     noteEnv(s.id, t.task);
