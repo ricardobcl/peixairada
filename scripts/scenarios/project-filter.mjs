@@ -178,6 +178,14 @@ export default async function (ctx) {
     await ctx.settle(); await ctx.evaluate(`document.querySelector('#stitle .sx').click()`); await ctx.settle();
     ctx.assert.equal(await waves(() => ctx.evaluate(`window.peixFront(false, ${OUT}); window.peixFront(true)`)), 0, 'nothing on ALL');
 
+    // Show all by the keys hands them to the list; by the mouse it leaves them where they are
+    await pick('shop');
+    await ctx.evaluate(`document.querySelector('#stitle .sx').focus(); document.querySelector('#stitle .sx').click()`); await ctx.settle();
+    ctx.assert.equal(await ctx.evaluate(`document.activeElement?.id`), 'slist', 'the keys go to the list, the button gone');
+    await pick('shop');
+    ctx.assert.equal(await ctx.evaluate(`(b => !b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })))(document.querySelector('#stitle .sx'))`), true, 'a press takes no keys');
+    await showAll();
+
     // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
     await pick('shop');
     await ctx.evaluate(`window.peixFill(true, { top: 32, left: 500, right: 700 })`);

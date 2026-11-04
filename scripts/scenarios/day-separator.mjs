@@ -17,7 +17,7 @@ export const meta = { server: true, fixture: 'auto' };
 // What #slist holds, in order: a card is its title, a line is its kind and the day it names. A day's line also says
 // where its day sits against the line's middle, whatever stands either side of it (nothing, since 2026-09-27), and
 // how many animations run anywhere on it.
-const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#slist').children].map(el => {
+const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#slist').children].filter(el => !el.classList.contains('others')).map(el => {
   if (!el.classList.contains('gsep')) return { card: el.querySelector('.title')?.textContent || '' };
   if (el.classList.contains('lane')) return { lane: [...el.classList].find(c => !['gsep', 'lane'].includes(c)) };   // a group's head (2026-10-09)
   const b = el.querySelector('b'), r = el.getBoundingClientRect(), br = b?.getBoundingClientRect();

@@ -94,7 +94,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#hmenu').open, document.querySelector('#settings').open]`), [false, true], 'the row closes the menu and opens the settings');
   await ctx.cmd('Comma');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '⌘, toggles them');
-  await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#stitle').hidden`), true, 'the chat opened from another project let the filter go (2026-11-04)');
   // The chat header's folder name is the filter's toggle (2026-10-08): a click shows that folder's chats, the next ALL
   // (a chat in a worktree of a repo is the repo's project, 2026-10-13: the suite run from one)
   const chatCwd = await ctx.evaluate(`window.peix.session(window.peix.state().current).cwd.replace(/\\/\\.claude\\/worktrees\\/[^/]+(?:\\/.*)?$/, '')`);

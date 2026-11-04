@@ -461,6 +461,7 @@
      floatH). Its name, how many of how many, and the way out in words. Nothing at all on ALL. */
   #stitle { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .52) min(c, .16) h); display: flex; align-items: stretch; gap: 8px; box-sizing: border-box; height: var(--cue-h, 43px); min-width: 0; margin: 8px 8px 6px; box-shadow: inset 0 -2px 0 var(--selc); white-space: nowrap; }
   #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
+  #slist:focus { outline: none; }   /* the keys there after Show all */
   #stitle > .t { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 62%; padding: var(--cue-drop, 0px) 9px 0 12px; border: 0; border-radius: 7px 7px 0 0; background: var(--selc); color: #fff; font-family: inherit; font-size: var(--fs-md); font-weight: 700; line-height: 1.2; cursor: pointer; }
   #stitle > .t:hover { background: oklch(from var(--selc) calc(l * .92) c h); }
   #stitle > .t { transform-origin: 50% 100%; }   /* the wave grows from the rule */
@@ -2851,7 +2852,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, .shead .hgit, :is(.card, .shead) .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, .shead .hgit, :is(.card, .shead) .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b, #stitle > .cn, #stitle .ask { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -2873,7 +2874,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
     :root[data-theme][data-frame] :is(#sessions, #sbar) { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
       --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }   /* the frame's own, under the dark frame */
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hgit, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hgit, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt, #stitle > .out) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2889,6 +2890,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .agd, .card .trow .drift, :is(.card, .shead) .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
     :root[data-layout="sidebar"] #slist .card.cdover { outline: 2px solid Highlight; } #cdghost { border: 1px solid CanvasText; }   /* a card in the hand: its shadows are gone here */
     #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
+    #stitle { border-bottom: 2px solid CanvasText; } #stitle > :is(.t, .out) { border: 1px solid CanvasText; }   /* the rule and the fills are gone here */
   }
 
   /* ---- lunch (2026-10-18): the sign and the day's dishes in the fish's lane, ⌥⌘M's chalkboard, Settings › Lunch ---- */
@@ -8256,12 +8258,18 @@ const toolName = n => {
   $('#slist').addEventListener('keydown', e => { const l = e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
   const moreLane = g => { laneMore.add(g); noteMotion(g, 'more'); renderBoard(); };   // a long lane's rest (LANE_CAP)
   $('#slist').addEventListener('keydown', e => { const m = e.target.closest?.('.gsep.more[data-more]'); if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); moreLane(m.dataset.more); } });
-  $('#slist').addEventListener('keydown', e => { if (e.target.closest?.('.gsep.others') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectProject(ALL); } });
+  $('#slist').addEventListener('keydown', e => { if (e.target.closest?.('.gsep.others') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showAll(); } });
+  // Show all takes away the button the keys were on: they go to the list (2026-11-04). A press with the mouse leaves them where they are, in a terminal most likely.
+  function showAll() {
+    const had = document.activeElement?.closest?.('#stitle, .gsep.others'); selectProject(ALL);
+    if (had) { const l = $('#slist'); l.tabIndex = -1; l.focus({ preventScroll: true }); l.addEventListener('blur', () => l.removeAttribute('tabindex'), { once: true }); }
+  }
+  for (const box of [$('#stitle'), $('#slist')]) box.addEventListener('mousedown', e => { if (e.target.closest('#stitle button, .gsep.others')) e.preventDefault(); });
   $('#sessions').addEventListener('click', e => {
-    if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
+    if (e.target.closest('#stitle .sx')) { showAll(); return; }
     if (e.target.closest('#stitle .ask')) { const s = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0]; if (s) openSession(s.id, { locate: true }); return; }
     if (e.target.closest('#stitle .t')) { pickOpen('project'); return; }
-    if (e.target.closest('#slist > .gsep.others')) { selectProject(ALL); return; }
+    if (e.target.closest('#slist > .gsep.others')) { showAll(); return; }
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
