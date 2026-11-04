@@ -478,7 +478,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#sbList`, `#filters`), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light — alone, its colour the state (`bar.lost`, 2026-10-27), belly-up
-  while down —, its click the About box; Next (`nextSeg`), a mute's mark (`muteSeg`), the
+  while down —, its click the About box (Copy details, 2026-11-04: `detailsText`, no chat, path or address → `about-details.mjs`); Next (`nextSeg`), a mute's mark (`muteSeg`), the
   monitors while any (`ICON.watch`); the chat, `chatSeg`; the update, `updSeg`),
   `#sbPeople` (`#people`), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`; `GET /api/stats?want=…`
   every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pies (`sbMeter`, `uGrant`) — a click lifts its rows (`usageRows`, `uPace`),

@@ -44,6 +44,12 @@ harness/tests to not happen these kind of bugs?"*, and of the three answers: *"d
   saved a picture of About with a page up, and half of the box was behind it. Twelve of the page's thirteen `showModal()`s are followed by
   `repostPane()`; About's, since 2026-09-27, never was, and Chrome has no view there to cover it. Fixed; `npm run check` fails a `showModal()`
   with none on its line, and the check holds it.
+* **About's Copy details**: a report was a commit hash, and whether it came from a normal window was a guess, one still not settled for the
+  reports behind this entry. Now the version and commit, the app and whether it is behind, macOS, the window's shape and the page's
+  inset, the screen, the column and each half's rects in the page's px beside each view's in the window's points, a few settings. **The two
+  sets of rects side by side are what this bug would have shown at once.** No chat, path or address: a page's tab is its kind. Shown as it is
+  copied, so nobody sends what they have not seen, and there to select if the clipboard says no. An app older than the page says nothing,
+  and the text says that. `about-details.mjs` the page's half, `details.mjs` the shell's, which stubs the clipboard: the real one is this Mac's.
 * **Not run**: `--space` (`macos-full-screen.mjs`), macOS's own full screen. It cannot be done aside, the app comes forward and takes a Space
   for some seconds, so it waits for a moment Ricardo can spare his screen. Until then that one is unproved, here and in the entry below.
 

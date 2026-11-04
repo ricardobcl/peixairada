@@ -550,6 +550,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     paneDelegate.open = { [weak self] w, url in self?.paneOpen(w, url) }
     paneDelegate.linkOut = { [weak self] url, done in self?.paneLinkOut(url, done) ?? done(false) }
   }
+  /// What a report wants of the window (2026-11-04; the page's detailsText): its shape and where the pages' views really
+  /// are, in the window's terms, from its top; never a page's address. Their places hold while a dialog has them hidden.
+  private func tellDetails() {
+    let h = window.frame.height
+    var d: [String: Any] = [
+      "macos": ProcessInfo.processInfo.operatingSystemVersionString,
+      "app": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+      "mode": fillSaved != nil ? "fill" : window.styleMask.contains(.fullScreen) ? "full" : "window",
+      "w": window.frame.width, "h": h, "inset": paneTopC.constant, "zoom": zoom, "screens": NSScreen.screens.count,
+      "views": paneKeys.compactMap { paneViews[$0] }.map { v -> [CGFloat] in let r = v.convert(v.bounds, to: nil); return [r.minX, h - r.maxY, r.width, r.height] },
+    ]
+    if let s = window.screen { d["screen"] = [s.frame.width, s.frame.height, s.backingScaleFactor]; d["housing"] = s.safeAreaInsets.top > 0 }
+    guard let data = try? JSONSerialization.data(withJSONObject: d), let json = String(data: data, encoding: .utf8) else { return }
+    web.evaluateJavaScript("window.peixDetails?.(\(json))", completionHandler: nil)
+  }
   /// The overlay's top where WebKit puts the page's: under what the title bar takes of the window (2026-11-04). By the
   /// rect's height, never its origin: AppKit says an origin a window's height off while it lays the bar out, and an
   /// inset past the window's height makes the constraints grow the window.
@@ -1734,6 +1749,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       setSummonKey(code: body["code"] as? String ?? "", mods: body["mods"] as? [String] ?? [])
     case "fullscreen":   // Settings › Look's full screen (2026-10-14): the fill, or the system's in a Space of its own
       setSpaceMode(body["space"] as? Bool ?? false)
+    case "details":   // About's Copy details (2026-11-04)
+      tellDetails()
     case "key":   // the lock's *Read the key again*, a new key made on the board (2026-10-16)
       logLine("key: read again\(boardKey() == nil ? " — there is no key file" : "")")
       loadBoard(reload: true)

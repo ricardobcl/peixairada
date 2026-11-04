@@ -65,6 +65,8 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   `performClick`** (`setSummonKey`, `summonMenu`; Carbon): on 27.2 performClick opens off the top of the screen with the
   bar hidden. On 27.2 a status button's `NSApp.currentEvent` has no flags and its type swapped: read `NSEvent.modifierFlags`.
   Logged `fish:`, `summon:`.
+* **About's Copy details asks the shell** (2026-11-04; `details` → `tellDetails` → `peixDetails`): macOS, the window's shape and inset, the
+  screen, where each page's view really is in the window's terms, never its address. → `shell-checks/details.mjs`.
 * **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
   front, a view has the keys (`keysBack`, logged `focus:`).
 * **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display

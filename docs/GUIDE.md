@@ -276,6 +276,9 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 ## Settings and setup
 
+**Something wrong?** About (the fish at the far left of the status bar) has *Copy details*: the version, macOS and the shape of
+the window, for a report, and shown as it is copied. No chat, path or address goes with it.
+
 **Settings** — ⌘, or ··· in the chat's header — is a sidebar of panes with a search box on top (type *dark*, *zoom*
 or *key* to find a setting wherever it is):
 
@@ -339,7 +342,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 
 ## Hacking
 
-`npm test` · `npm run check` · `npm run scenarios`. The pictures are taken on a made-up board
+`npm test` · `npm run check` · `npm run scenarios` · `npm run shell` (the app's own window, read off its pixels, out of your way). The pictures are taken on a made-up board
 (`scripts/readme-board.mjs`), never yours: `npm run scenario -- scripts/readme-shots.mjs` redraws the stills, and
 `npm run scenario -- scripts/readme-clips.mjs --timeout 900000 [-- <clip>…]` the README's clips (animated WebP, by
 libwebp's `img2webp` — `brew install webp`); VS Code Web's want the `code` CLI. The browser checks drive Google Chrome

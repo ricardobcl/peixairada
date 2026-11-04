@@ -2566,6 +2566,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #about .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
   #about .facts b { color: var(--ink); font-weight: 600; text-align: right; }
   #about .help { margin: 14px 0 0; }
+  #about #aboutDetails { margin: 12px 0 0; padding: 8px 10px; max-height: 230px; overflow: auto; overscroll-behavior: contain; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--fs-2xs) / 1.5 ui-monospace, monospace; color: var(--muted); background: var(--ctl); border-radius: var(--r-3); }
   /* The first run (2026-10-01): where the repos live, asked once, About's look — the fish, a question, a line of why —
      over the server's guesses as the setup's inset rows, the two boxes, and Skip beside the answer. */
   :is(#welcome, #lock) { width: min(500px, 92vw); padding: 24px 24px 16px; outline: none; }
@@ -9662,6 +9663,7 @@ const toolName = n => {
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
+    details: () => detailsText(),   // About's Copy details (2026-11-04), its text with no clipboard touched
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
     ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
@@ -16416,10 +16418,45 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       ['state', esc(homePath(a.stateFile || '?'))],
       ['chats', `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`],
     ];
-    $('#about').innerHTML = `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></p>`;
+    $('#about').innerHTML = `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button> <button class="btn" id="aboutCopy" title="The version, macOS and the shape of the window, for a report of something wrong — no chat, path or address">Copy details</button></p><pre id="aboutDetails" hidden></pre>`;
+    if (inApp) post({ type: 'details' });   // asked now: by the click the clipboard wants its text at once
     $('#about').showModal(); repostPane();
   }
-  $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); else if (e.target.closest('#aboutTour')) tourStart(); });   // the backdrop; the tour (2026-10-14)
+  $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); else if (e.target.closest('#aboutTour')) tourStart(); else if (e.target.closest('#aboutCopy')) copyDetails(); });   // the backdrop; the tour (2026-10-14)
+  // What a report wants (2026-11-04): which board it is and what shape its window is, since a bug of one shape never reaches
+  // the Mac that lives in another. No chat, path or address: a page's tab is its kind, a view its place. The shell's part
+  // comes when About opens (`details` → peixDetails: the view as placed, in the window's terms); an app older than this
+  // says nothing, which says that much.
+  let shellDetails = null;
+  window.peixDetails = d => { shellDetails = d; };
+  function detailsText() {
+    const a = state.about || {}, u = state.update || {}, d = shellDetails, s = state.sessions.get(state.current);
+    const code = !u.checkout ? (u.checkout === false ? 'not a git checkout' : '?') : `commit ${shortSha(u.head)}${u.branch ? ` on ${u.branch}` : ''}`;
+    const lines = [`peixAIrada ${u.version || a.version || '?'} · ${code}`];
+    if (!inApp) lines.push(`a browser: ${navigator.userAgent}`, `window: ${innerWidth}×${innerHeight}`);
+    else if (!d) lines.push(`the app: says nothing of its window, so older than this page${u.app?.behind ? ' (behind this checkout)' : ''}`);
+    else lines.push(
+      `the app: ${d.app || 'not a bundle'}${u.app ? (u.app.behind ? ', behind this checkout' : ', built from this checkout') : ''}`,
+      `macOS: ${d.macos}`,
+      `window: ${{ fill: 'the fill', full: 'macOS\'s full screen', window: 'a normal window' }[d.mode] || d.mode}, ${d.w}×${d.h}, the page ${d.inset} pt down, zoom ${d.zoom}`,
+      `screen: ${d.screen ? `${d.screen[0]}×${d.screen[1]} @${d.screen[2]}×${d.housing ? ', a camera housing' : ''}` : 'none'}, ${d.screens} in all`);
+    if (s) {
+      const p = placeOf(s), r = (sel, q) => { const b = $(sel).getBoundingClientRect(); return Math.round(b[q]); };
+      lines.push(`column: ${splitNow() ? (stackNow() ? 'one half over the other' : 'side by side') : 'one half'} · tabs ${p.map(k => (k || 'none').split(':')[0]).join(' | ')} · the keys in half ${focusG + 1}`);
+      p.forEach((k, g) => { if (k && isPaneTab(k)) lines.push(`half ${g + 1} in the page's px: strip ${r(GEL[g].tabs, 'top')}–${r(GEL[g].tabs, 'bottom')}, body ${r(GEL[g].body, 'top')}–${r(GEL[g].body, 'bottom')}, from x ${r(GEL[g].body, 'left')}`); });
+      if (d?.views?.length) lines.push(`pages' views in the window's pt: ${d.views.map(v => `${v[2]}×${v[3]} at ${v[0]},${v[1]}`).join(' · ')}`);
+    }
+    if (inApp) lines.push(`settings: ⌃⌘F ${prefs.fullSpace ? 'its own Space' : 'the fill'} · ${prefs.pagesOut ? 'some pages' : 'every page'} in the board · the in-app editor ${prefs.inEditor || 'code'} · text size ${prefs.pageZoom || 1}`);
+    return lines.join('\n');
+  }
+  async function copyDetails() {
+    const b = $('#aboutCopy'), box = $('#aboutDetails'), text = detailsText();
+    box.textContent = text; box.hidden = false;   // what goes, in sight — and there to select by hand if the clipboard says no
+    let ok = await copyText(text);
+    if (!ok) { const r = document.createRange(); r.selectNodeContents(box); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); try { ok = document.execCommand('copy'); } catch {} }
+    b.textContent = ok ? 'Copied' : 'Select it and ⌘C';
+    clearTimeout(b.timer); b.timer = setTimeout(() => { b.textContent = 'Copy details'; }, 1600);
+  }
   // The open chat's transcript as the page holds it (2026-10-03): which reading of the file (`gen` — a re-read numbers
   // its entries afresh), how many of them it has (`upto`), and what the stream said while a fetch was on its way
   // (`pending`). The fetch and the stream raced: an entry pushed before the answer landed went into the last chat's

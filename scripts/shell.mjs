@@ -142,6 +142,8 @@ async function runCheck(file, bin) {
       size: (w, h) => shell.ask('size', { w, h }),
       /** Settings' text size, as its menu picks it. */
       zoom: async z => { await ctx.js(`const p = document.querySelector('#zoomPick'); p.value = ${JSON.stringify(String(z))}; p.dispatchEvent(new Event('change')); return true`); await waitFor(async () => (await ctx.win()).zoom === z, { what: `the zoom at ${z}`, every: 50 }); },
+      /** Nothing finite still moving and no draw to come, as a scenario's ctx.settle(), then a frame for it to reach the window. */
+      settle: async () => { await ctx.until(`!window.peix?.state().rendering && !document.getAnimations().some(a => a.playState === 'running' && a.timeline === document.timeline && a.effect?.getTiming?.().iterations !== Infinity)`, 'the page to settle', 4000); await ctx.js(`await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true`); },
       /** A picture of the window as WebKit and the window server drew it. */
       shot: async label => { const path = join(shots, `shell-${name}-${label}.png`); await shell.ask('shot', { path }); return path; },
     };
