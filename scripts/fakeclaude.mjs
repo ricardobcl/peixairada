@@ -27,13 +27,24 @@ if (!CLAUDE_DIR || underReal(CLAUDE_DIR)) { console.error('fakeclaude: CLAUDE_DI
 const all = process.argv.slice(2), dd = all.indexOf('--');
 const args = dd >= 0 ? all.slice(0, dd) : all, firstPrompt = dd >= 0 ? all.slice(dd + 1).join(' ') : null;
 const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
+// `stop <job>` (2026-11-04): a background session ended by its id, as Claude Code does; the process is the registry's, whatever it is
+const inRegistry = job => { const d = join(CLAUDE_DIR, 'sessions'); for (const n of existsSync(d) ? readdirSync(d) : []) { if (!n.endsWith('.json')) continue; try { const r = JSON.parse(readFileSync(join(d, n), 'utf8')); if (r.jobId === job) return { ...r, file: join(d, n) }; } catch {} } return null; };
+if (args[0] === 'stop') {
+  const r = inRegistry(args[1]); if (!r) { console.error(`no such session: ${args[1]}`); process.exit(1); }
+  try { process.kill(r.pid, 'SIGTERM'); } catch {}
+  try { unlinkSync(r.file); } catch {}
+  process.exit(0);
+}
+// `attach <job>` (2026-11-04): a background session on this terminal. The client registers nothing, and its end leaves the session running
+const attached = args[0] === 'attach' ? inRegistry(args[1]) : null;
+if (args[0] === 'attach' && !attached) { console.error(`no such session: ${args[1]}`); process.exit(1); }
 // `--session-id <uuid>` (2026-10-31): a new chat under the id the board picked, as Claude Code takes one; with --resume
 // only beside --fork-session, as Claude Code refuses it otherwise
 if (arg('--session-id') && arg('--resume') && !args.includes('--fork-session')) { console.error('Error: --session-id can only be used with --continue or --resume if --fork-session is also specified.'); process.exit(1); }
 // `--resume <id> --fork-session [--session-id <uuid>]`: a copy of that chat under a new id, the chat itself untouched — its
 // lines written into the copy's file at the start, each under the new id
 const forkOf = args.includes('--fork-session') ? arg('--resume') : null;
-let sessionId = forkOf ? arg('--session-id') || randomUUID() : arg('--resume') || arg('--session-id') || randomUUID();
+let sessionId = attached?.sessionId || (forkOf ? arg('--session-id') || randomUUID() : arg('--resume') || arg('--session-id') || randomUUID());
 const cwd = process.cwd();
 const slug = cwd.replace(/[/.]/g, '-');
 const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
@@ -72,7 +83,7 @@ const reply = text => SCREEN?.replies?.[text] ?? `You said: ${text}\n\nThis is t
 // board holds a pid against before it signals one (sameProcess); without it every check took the no-procStart shortcut.
 const t0reg = Date.now();
 const procStart = (() => { try { return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(process.pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim(); } catch { return undefined; } })();
-const register = (status = 'idle') => writeFileSync(regFile, JSON.stringify({ pid: process.pid, procStart, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now() }));
+const register = (status = 'idle') => attached || writeFileSync(regFile, JSON.stringify({ pid: process.pid, procStart, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now() }));
 register();
 const bye = code => { try { unlinkSync(regFile); } catch {} out(`${FULL ? '\x1b[?1049l' : ''}\x1b[?2004l\x1b[?1004l\x1b[?25h\n`); process.exit(code); };
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => bye(sig === 'SIGHUP' ? 129 : 143));

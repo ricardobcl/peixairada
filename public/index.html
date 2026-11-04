@@ -1048,7 +1048,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sessions[data-hide~="prs"] .card .top .tmx, #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
   #sessions[data-hide~="rounds"] .card .prpips { display: none; }
   /* …and the rest of it (2026-11-03, round XXII; a click on the card in Settings › Chat list). Same height keeps a hidden move's row. */
-  #sessions[data-hide~="tab"] .card .top .repo, #sessions[data-hide~="branch"] .card .top .chip.wtb, #sessions[data-hide~="where"] .card .top .chip:is(.elsewhere, .vsc), #sessions[data-hide~="watch"] .card .trow .chip.watch,
+  #sessions[data-hide~="tab"] .card .top .repo, #sessions[data-hide~="branch"] .card .top .chip.wtb, #sessions[data-hide~="where"] .card .top .chip:is(.elsewhere, .vsc, .rival), #sessions[data-hide~="watch"] .card .trow .chip.watch,
   #sessions[data-hide~="fable"] .card .trow .fable, #sessions[data-hide~="unread"] .card .trow .badge, #sessions[data-hide~="move"] .card .state:is(.prmove, .prans), #sessions[data-hide~="live"] .card .state.live:not(.agwho) { display: none; }
   #sessions[data-even][data-hide~="move"]:not([data-line]) .card .state:is(.prmove, .prans) { display: flex; visibility: hidden; }
   :root[data-layout="sidebar"] #sessions[data-hide~="tab"] #slist .card .top { height: 18px; margin: 0 0 2px; }
@@ -4482,11 +4482,13 @@ const toolName = n => {
     people: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.75 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.5-.25a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM1 14c0-2.4 2.1-4.2 4.75-4.2S10.5 11.6 10.5 14Zm10.5 0c0-1.4-.45-2.6-1.25-3.5.35-.1.7-.15 1.05-.15 2.1 0 3.7 1.4 3.7 3.4v.25Z"/></svg>'
   };
   $('#noChatMore').innerHTML = ICON.more;
-  const entryLabel = s => s.terminal && s.terminal.exited === null ? 'a drawer here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'a terminal elsewhere' : s.alive ? 'elsewhere' : 'not running';   // the words, not the entrypoint's (2026-10-12; CLI, live, stale before)
+  const entryLabel = s => s.terminal && s.terminal.exited === null ? 'a drawer here' : !s.alive ? 'not running' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : inBackground(s) ? 'in the background' : s.live?.entrypoint === 'cli' ? 'a terminal elsewhere' : 'elsewhere';   // the words, not the entrypoint's (2026-10-12; CLI, live, stale before)
   // Lives in VS Code (the server's rule: the registry while it runs, else the transcript's last line).
   // Such a chat wears a blue border and can be taken over like a CLI chat (2026-09-20) — the cost is the
   // tab in VS Code, which goes dead and does not follow; every button and hint that offers it says so.
   const inVsCode = s => s?.entrypoint === 'claude-vscode';
+  // A background session (2026-11-04; `/bg`, `/fork`, `claude --bg`): running with no terminal, the daemon's, opened by `claude attach`.
+  const inBackground = s => s?.live?.kind === 'bg';
   const shName = () => state.about.shell || 'zsh';   // the shell a ⌥⌘T tab is — the login shell's name, from the server
   // A project's colour is the setup's (2026-10-15; Peacock's for its folder before, the setup's where Peacock gave
   // none): `projects[name].color`, under the project's shown name — a worktree's its repo's (projDir) —, and for a
@@ -6548,8 +6550,8 @@ const toolName = n => {
     // Code running it too, still do. VS Code's own chat wore its logo here until 2026-09-28 — the chat header's ···
     // still says it (*VS Code's chat*).
     const where = !s.alive || inVsCode(s) ? ''
-      : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
-        + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
+      : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${attachable(s) ? 'Running in the background — ⌥⌘C opens it here' : `${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here`}">${ICON.term}</span>`)
+        + (hasRival(s) ? (rivalsIn(s, 'vs') ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : `<span class="chip rival" title="Another claude runs on this chat too — open it to end it">a second claude</span>`) : '');
     const moveLine = moveHtml(s) || answeredHtml(s);
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
       <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
@@ -8687,8 +8689,8 @@ const toolName = n => {
     const menu = $('#hmenu'); if (menu.open && menu.dataset.id !== s.id) menu.close();   // another chat: its own menu, shut
     menu.dataset.id = s.id;
     const loud = !!drawer.err;   // >_ with something to say stays in the row, where it is seen; armed, the bar says it (renderElsewhere)
-    const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}`;
-    const termWord = drawer.err ? 'failed' : take ? (armed ? sureWord(s) : 'take over') : termLive(s) ? 'Claude in its drawer' : 'Claude here';
+    const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take && !attachable(s) ? ' disabled' : ''}>${ICON.term}`;
+    const termWord = drawer.err ? 'failed' : take ? (armed ? sureWord(s) : 'take over') : termLive(s) ? 'Claude in its drawer' : attachable(s) ? 'attach' : 'Claude here';
     // the PRs at your move lead the rows, the newest move first — the one the move's line names (2026-10-12)
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
@@ -8700,7 +8702,7 @@ const toolName = n => {
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
-          s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
+          s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.alive && s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
     const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; rollSoon(); fadeSoon(); tvHint(s); }
     fillAges($('#shead'));
@@ -10427,13 +10429,17 @@ const toolName = n => {
   const termTip = s => drawer.err ? drawer.err
     : termLive(s) ? (termFor(s.terminal.id) ? 'This chat runs here — the terminal is the pane' : "Show this chat's claude session") + KEY_C
     : takeable(s) ? takeTip(s) + KEY_C
+    : attachable(s) ? ATTACH_TIP + KEY_C
     : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here`
     : inVsCode(s) ? 'Open a terminal on this chat (claude --resume). It was last continued in VS Code: from here on it is a CLI chat, and the tab there, if still open, will not follow it' + KEY_C
     : 'Open a terminal on this chat (claude --resume)' + KEY_C;
   // Live somewhere that is not our drawer — iTerm, VS Code. Nothing respawns a CLI claude, and VS Code's
   // extension does not respawn its own either (it launches one when a tab opens a chat, never after a
   // death — measured 2026-09-20), so ending it and resuming here leaves one writer.
-  const takeable = s => !!(s?.alive && s.live?.pid && !termLive(s));
+  // A background session is not: `claude attach` opens it in a drawer, the one running, and closing the drawer leaves it so (2026-11-04).
+  const attachable = s => !!(s?.alive && inBackground(s) && s.live?.jobId && !termLive(s));
+  const takeable = s => !!(s?.alive && s.live?.pid && !termLive(s) && !attachable(s));
+  const ATTACH_TIP = 'Open this background session here (claude attach): it keeps running when the drawer closes';
   // Two clicks, six seconds apart at most: the first arms the button (it turns red and says so), the
   // second ends the other claude. renderHead re-runs on every update and reads the armed state back.
   function armTakeOver(s) {
@@ -12550,9 +12556,17 @@ const toolName = n => {
   const resumable = s => !!(s && !s.alive && s.file && !inDrawer(s));
   // A claude running outside the board has the same bar (2026-11-04): where it runs and what to do about it. Its transcript
   // alone, with Take over one row of ···, read as a chat with no claude and no way back to it.
-  const elsewhereBar = s => !!(s && takeable(s) && !inDrawer(s));
+  const elsewhereBar = s => !!(s && (takeable(s) || attachable(s)) && !inDrawer(s));
   function renderElsewhere(s, box) {
     const armed = drawer.arm === s.id, err = drawer.err, going = termAsking.has(s.id) && !armed;
+    if (attachable(s)) {
+      box.hidden = false; box.classList.toggle('err', !!err); box.classList.remove('cloning');
+      setHtml(box, `<span class="ric">${ICON.term}</span>
+        <span class="t"><b>${err ? 'Could not open it' : 'Claude is running in the background'}</b><span>${err ? esc(err) : `pid ${s.live.pid}. Attach opens it here; it keeps running when the drawer closes.`}</span></span>
+        <button class="btn rgo" id="takeGo"${going ? ' disabled' : ''} title="${esc(ATTACH_TIP + KEY_C)}">${ICON.term}${going ? 'opening…' : 'Attach'}<span class="k">⌥⌘C</span></button>`);
+      box.querySelector('#takeGo').onclick = () => termAction(state.sessions.get(s.id) || s);
+      return;
+    }
     const where = inVsCode(s) ? 'VS Code' : s.live.entrypoint === 'cli' ? 'a terminal outside the board' : 'a process outside the board';
     box.hidden = false; box.classList.toggle('err', !!err); box.classList.remove('cloning');
     setHtml(box, `<span class="ric">${ICON.term}</span>
@@ -12955,19 +12969,21 @@ const toolName = n => {
   // into its tab forks the transcript, so the bar says close it there, and the button ends it (the take-over
   // route, which with the chat already here only ends the others).
   function hasRival(s) { return !!(s?.rivals?.length && s.live?.entrypoint !== 'claude-vscode'); }
+  /** The others on a chat by what they are (2026-11-04): the chip said VS Code of any of them. */
+  const rivalsIn = (s, of) => s.rivals.filter(r => of === 'vs' ? r.entrypoint === 'claude-vscode' : r.kind === 'bg').length;
   let rivalEnding = null;   // the chat whose others are being ended: the bar says so across the updates until the answer
   function renderRival(s) {
     const box = $('#rival');
     if (!hasRival(s)) { box.hidden = true; return; }
     const ending = rivalEnding === s.id;
     const vs = s.rivals.filter(r => r.entrypoint === 'claude-vscode'), other = s.rivals.length - vs.length;
-    const who = vs.length ? `VS Code runs a claude on this chat too` : `Another claude runs on this chat`;
+    const who = vs.length ? `VS Code runs a claude on this chat too` : rivalsIn(s, 'bg') === s.rivals.length ? 'A background session runs on this chat too' : `Another claude runs on this chat`;
     const pids = s.rivals.map(r => `pid ${r.pid}${r.startedAt ? ', since ' + rel(new Date(r.startedAt).toISOString()) + ' ago' : ''}`).join('; ');
     // written by VS Code after our terminal started: the chat is forked already, not just at risk
     const wrote = termLive(s) && s.tailEntrypoint === 'claude-vscode' && s.tailEntrypointAt && s.terminal.startedAt && s.tailEntrypointAt > s.terminal.startedAt;
     box.hidden = false;
     setHtml(box, `<span class="t"><b>${who}</b> (${esc(pids)})${vs.length ? ' — it starts one whenever the chat is opened there' : ''}${other && vs.length ? `, and ${other} more elsewhere` : ''}. ${vs.length ? 'Its tab does not see what happens here, and a' : 'A'}nything typed there forks the transcript${wrote ? ' — <b>and it has written to it since the take-over</b>' : ''}. ${vs.length ? 'Close the chat in VS Code, then' : 'Then'} end ${s.rivals.length === 1 ? 'it' : 'them'} here.</span>
-      <button class="btn" id="rivalEnd"${ending ? ' disabled' : ''} title="SIGTERM ${esc(s.rivals.map(r => r.pid).join(', '))} — what closing that chat amounts to; it comes back only if the chat is opened there again">${ending ? 'ending…' : `end ${s.rivals.length === 1 ? 'it' : 'them'}`}</button>`);
+      <button class="btn" id="rivalEnd"${ending ? ' disabled' : ''} title="End ${esc(s.rivals.map(r => r.pid).join(', '))} — what closing that chat amounts to; it comes back only if the chat is opened there again">${ending ? 'ending…' : `end ${s.rivals.length === 1 ? 'it' : 'them'}`}</button>`);
     box.querySelector('#rivalEnd').onclick = async () => {
       rivalEnding = s.id; renderRival(s);
       try { await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); rivalEnding = null; }   // the registry changes and the SSE update re-renders the head, bar included

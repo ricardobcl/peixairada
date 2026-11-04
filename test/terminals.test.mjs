@@ -362,6 +362,35 @@ test('a claude live elsewhere is known by its start as Claude Code writes it, wh
   } finally { try { other.kill(); } catch {} await srv.stop(); }
 });
 
+test('a background session is attached in a drawer, runs on when it closes, and Done stops it by its job; a spare is no chat', { timeout: 40_000 }, async () => {
+  const { spawn, execFileSync } = await import('node:child_process');
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1], spareId = '00000000-0000-4000-8000-000000000abc';
+  const start = pid => execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim();
+  const worker = spawn('sleep', ['60'], { stdio: 'ignore' }), spare = spawn('sleep', ['60'], { stdio: 'ignore' });
+  const entry = (p, more) => JSON.stringify({ pid: p.pid, cwd: chat.cwd, startedAt: Date.now(), procStart: start(p.pid), kind: 'bg', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now(), ...more });
+  writeFileSync(join(fx.dir, 'sessions', `${worker.pid}.json`), entry(worker, { sessionId: chat.id, jobId: 'abcd1234' }));
+  writeFileSync(join(fx.dir, 'sessions', `${spare.pid}.json`), entry(spare, { sessionId: spareId, jobId: 'beef0000', spare: true }));
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+  try {
+    await waitFor(async () => (await on(chat.id))?.alive, { what: 'the chat live in the background' });
+    assert.equal((await on(spareId)) ?? null, null, 'a spare is the daemon\'s, waiting for a chat');
+    const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.match(srv.logText(), /claude attach abcd1234/, 'attached, where a chat live elsewhere is refused');
+    const s = await on(chat.id);
+    assert.deepEqual([s.live.pid, s.live.kind, s.live.jobId, s.rivals], [worker.pid, 'bg', 'abcd1234', []], 'the worker is its claude, and no rival');
+    assert.equal(s.terminal.exited, null, 'in a drawer');
+    await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+    await waitFor(async () => (await on(chat.id)).terminal?.exited != null, { what: 'the drawer closed' });
+    assert.equal(worker.exitCode ?? worker.signalCode ?? null, null, 'and the session runs on');
+    await srv.post(`api/sessions/${chat.id}/done`, { done: true });
+    await waitFor(() => worker.exitCode !== null || worker.signalCode, { what: 'Done stopped it by its job' });
+    await waitFor(async () => !(await on(chat.id)).alive, { what: 'the chat with no claude' });
+  } finally { for (const p of [worker, spare]) try { p.kill(); } catch {} await srv.stop(); }
+});
+
 // Node takes its 'error' listener off a socket it hands to 'upgrade'; until the boot is done nobody else has put one on
 // (2026-10-14): a holder that accepts and says nothing holds the boot HELLO_MS, and a page's WebSocket reset in that
 // window ended the server — an unheard ECONNRESET.

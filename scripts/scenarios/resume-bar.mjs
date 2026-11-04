@@ -2,9 +2,10 @@
 // Resume — where the one-shot reply box was. What is checked: the bar on a stale chat and no box to type in; Resume
 // starts the drawer and the bar goes; the drawer ended, the bar is back; and nothing resumes a chat by itself — opened
 // anew, or opened by a reload, it waits for the button (a countdown to a resume was a switch until 2026-10-14). And a
-// claude running outside the board (2026-11-04): the same bar, saying where, its one button Take over, pressed twice.
+// claude running outside the board (2026-11-04): the same bar, saying where, its one button Take over, pressed twice; a
+// background session's Attach, one press, the session still running when the drawer closes.
 import { execFileSync, spawn } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
@@ -52,8 +53,8 @@ export default async function (ctx) {
   ctx.assert.ok(!(await ctx.peix(`session(${sid(twoPrs.id)})`)).alive, 'and after a reload too');
 
   // ---- a claude outside the board: no Resume, where it runs, and Take over on the bar ----
-  const other = spawn('sleep', ['120'], { stdio: 'ignore' });
-  const procStart = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(other.pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim();
+  const procOf = pid => execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim();
+  const other = spawn('sleep', ['120'], { stdio: 'ignore' }), procStart = procOf(other.pid);
   writeFileSync(join(ctx.fixture.dir, 'sessions', `${other.pid}.json`), JSON.stringify({ pid: other.pid, sessionId: twoPrs.id, cwd: twoPrs.cwd, startedAt: Date.now(), procStart, kind: 'interactive', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now() }));
   try {
     await ctx.waitFor(`!!document.querySelector('#takeGo')`, { what: 'Take over on the bar' });
@@ -74,6 +75,37 @@ export default async function (ctx) {
     await running(twoPrs.id);
     await ctx.waitFor(`${BAR}.hidden`, { what: 'the bar gone once it runs here' });
     ctx.assert.ok(other.signalCode || other.exitCode !== null, 'the claude elsewhere ended');
+    // a second claude that is no VS Code's, on the chat with a drawer: said as what it is
+    const second = spawn('sleep', ['120'], { stdio: 'ignore' }), regSecond = join(ctx.fixture.dir, 'sessions', `${second.pid}.json`);
+    writeFileSync(regSecond, JSON.stringify({ pid: second.pid, procStart: procOf(second.pid), sessionId: twoPrs.id, cwd: twoPrs.cwd, startedAt: Date.now(), kind: 'interactive', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now() }));
+    await ctx.waitFor(`!document.querySelector('#rival').hidden`, { what: 'the rival bar' });
+    await ctx.settle();
+    out.rival = await ctx.evaluate(`JSON.stringify({ bar: document.querySelector('#rival .t b').textContent, chip: document.querySelector('#slist > .card[data-id=${sid(twoPrs.id)}] .chip.rival')?.textContent, vs: !!document.querySelector('#slist > .card[data-id=${sid(twoPrs.id)}] .chip.vsc') })`).then(JSON.parse);
+    ctx.assert.deepEqual(out.rival, { bar: 'Another claude runs on this chat', chip: 'a second claude', vs: false }, 'no VS Code in it');
+    second.kill(); rmSync(regSecond, { force: true });
+    await ctx.waitFor(`document.querySelector('#rival').hidden`, { what: 'the rival gone' });
   } finally { try { other.kill(); } catch {} }
+
+  // ---- a background session: attached, not taken over; the drawer closed, it runs on ----
+  const worker = spawn('sleep', ['120'], { stdio: 'ignore' });
+  writeFileSync(join(ctx.fixture.dir, 'sessions', `${worker.pid}.json`), JSON.stringify({ pid: worker.pid, procStart: procOf(worker.pid), sessionId: plain.id, cwd: plain.cwd, startedAt: Date.now(), kind: 'bg', jobId: 'abcd1234', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now() }));
+  try {
+    await ctx.openChat(plain.id);
+    await ctx.waitFor(`document.querySelector('#takeGo')?.textContent.startsWith('Attach')`, { what: 'Attach on the bar' });
+    await ctx.settle();
+    out.bg = await ctx.evaluate(`JSON.stringify({ title: ${BAR}.querySelector('.t b').textContent, chip: document.querySelector('#slist > .card[data-id=${sid(plain.id)}] .chip.elsewhere')?.title })`).then(JSON.parse);
+    ctx.assert.equal(out.bg.title, 'Claude is running in the background');
+    ctx.assert.match(out.bg.chip, /^Running in the background/);
+    await ctx.shot('background');
+    await ctx.evaluate(`document.querySelector('#takeGo').click()`);
+    await running(plain.id);
+    await ctx.waitFor(`${BAR}.hidden`, { what: 'the bar gone under the drawer' });
+    ctx.assert.equal(worker.exitCode ?? worker.signalCode ?? null, null, 'one press, and nothing ended');
+    ctx.assert.match(ctx.server.logText(), /claude attach abcd1234/, 'the session itself, not a second claude');
+    const t = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
+    await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+    await ctx.waitFor(`document.querySelector('#takeGo')?.textContent.startsWith('Attach')`, { what: 'Attach back once the drawer closed' });
+    ctx.assert.ok((await ctx.peix(`session(${sid(plain.id)})`)).alive, 'and it runs on');
+  } finally { try { worker.kill(); } catch {} }
   return out;
 }

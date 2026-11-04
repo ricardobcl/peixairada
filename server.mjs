@@ -3194,9 +3194,9 @@ function loadRegistry() {
     if (!name.endsWith('.json')) continue;   // the registry's own files only: never the `<pid>.<hash>.key` beside each (2026-10-31, see inClaudeDir's section)
     let reg;
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
-    if (!reg.sessionId || ownReader(reg)) continue;   // a lunch menu's reader (2026-10-18): the board's own claude, no chat
+    if (!reg.sessionId || reg.spare || ownReader(reg)) continue;   // a lunch menu's reader (2026-10-18): the board's own claude, no chat; a spare (2026-11-04): the daemon's, waiting to be given one
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
-    found.get(reg.sessionId).push({ pid: reg.pid, procStart: reg.procStart, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
+    found.get(reg.sessionId).push({ pid: reg.pid, procStart: reg.procStart, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, jobId: reg.jobId, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
       status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
   }
   const entries = [...found.values()].flat(), keys = new Set(entries.map(startKey));
@@ -3214,11 +3214,12 @@ function loadRegistry() {
     }
     // Several processes can hold one chat: VS Code mounts a chat twice on its own, or reopens one that was
     // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
-    // that is not VS Code's (the one you are driving), else the newest live one, else whatever is left (a
-    // dead pid's file lingers until claude's housekeeping). The rest, live only, are its rivals.
+    // that is neither VS Code's nor in the background (the one you are driving), else the newest that is not VS Code's,
+    // else the newest live one, else whatever is left (a dead pid's file lingers until claude's housekeeping). The rest,
+    // live only, are its rivals.
     const mine = [...terms.values()].filter(t => t.sessionId === id && !t.shell && t.exited === null).map(t => t.claudePid || t.pid)[0];
     const alive = lives.filter(procAlive).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
-    const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
+    const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode' && l.kind !== 'bg') || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
     const rivals = alive.filter(l => l !== live);
     const changed = JSON.stringify(live) !== JSON.stringify(s.live) || JSON.stringify(rivals) !== JSON.stringify(s.rivals);
     const wasWaiting = waitingOn(s);
@@ -5537,11 +5538,17 @@ function sameProcess({ pid, procStart }) {
   if (!procStart) return true;
   return procStarts([pid]).get(Number(pid)) === squash(procStart);
 }
+/** A background session's job (2026-11-04): what `claude attach` and `claude stop` take, as the registry names it. */
+const jobOf = l => l?.kind === 'bg' && /^[0-9a-f]{8}$/.test(l.jobId || '') ? l.jobId : null;
 function endClaude(entry) {
   const { pid } = entry;
   return new Promise(resolve => {
     if (!sameProcess(entry)) return resolve({ code: 409, error: `pid ${pid} is no longer that claude — its registry file outlived it` });
-    try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve({ code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
+    // A background session is the daemon's (2026-11-04): one SIGTERMed reads *crashed*, and the daemon may start it again
+    // (measured: 11 s later, one run in two). Its own stop keeps the conversation, and the wait below still holds.
+    const job = jobOf(entry), bin = job && claudeBin();
+    if (bin) execFile(bin, ['stop', job], { env: drawerEnv(), timeout: 15_000 }, err => { if (err) console.error(`[peixairada] claude stop ${job}: ${err.message}`); });
+    else try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve({ code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
     const t0 = Date.now(); let hard = false;
     const tick = () => {
       if (!pidAlive(pid)) return resolve({ ok: true });
@@ -5861,7 +5868,7 @@ const VIM_BIN = process.env.VIM_BIN || 'vim';
  * Only the words you wrote in the board's Send box; never logged.
  */
 const PROMPT_MAX = 100_000;
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null, fork = null }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null, fork = null, attach = null, claudePid = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = editor ? VIM_BIN : shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
@@ -5885,7 +5892,8 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   }
   // `newId` (2026-10-31): a new chat under an id the board picked — `--session-id` — so it is known before claude registers;
   // with `fork`, a copy of that chat under it (Claude Code's --fork-session: the chat itself is not written to)
-  const args = editor ? ['.'] : task ? [task] : shell ? [] : sessionId ? ['--resume', sessionId] : fork && newId ? ['--resume', fork, '--fork-session', '--session-id', newId] : newId ? ['--session-id', newId] : [];
+  // `attach` (2026-11-04): a background session in this drawer, its worker's pid `claudePid`: the client registers nothing, and ending it leaves the session running
+  const args = editor ? ['.'] : task ? [task] : shell ? [] : attach ? ['attach', attach] : sessionId ? ['--resume', sessionId] : fork && newId ? ['--resume', fork, '--fork-session', '--session-id', newId] : newId ? ['--session-id', newId] : [];
   const said = args.join(' ');   // the log's: the prompt is yours, and not the log's to keep
   if (prompt && !editor && !task && !shell) args.push('--', String(prompt).slice(0, PROMPT_MAX));
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
@@ -5893,7 +5901,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   const sock = join(TERMS_DIR, `${id}.sock`);
   if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!(sessionId || fork), ...fork && { fork }, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!(sessionId || fork), ...fork && { fork }, ...attach && { attach, claudePid }, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -5936,7 +5944,7 @@ async function adoptHolder(f) {
   let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { return; }
   const id = meta.id || f.slice(0, -5);
   const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
-  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, editor: meta.editor ?? null, task: meta.task ?? null, fork: meta.fork ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, editor: meta.editor ?? null, task: meta.task ?? null, fork: meta.fork ?? null, attach: meta.attach ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
   try {
     await connectHolder(t);
     terms.set(id, t);
@@ -6618,6 +6626,9 @@ const server = createServer(async (req, res) => {
       const body = await jsonBody(req), prompt = typeof body.prompt === 'string' && body.prompt.trim() ? body.prompt : null;
       const have = termOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have), prompted: false });
+      // In the background (2026-11-04): attached, not a second claude — the one running, in this drawer
+      const job = s.alive && s.live?.pid && jobOf(s.live);
+      if (job) { const r = await spawnOnce(`${s.id}:claude`, () => spawnTerm({ cwd: s.live.cwd || s.cwd, sessionId: s.id, attach: job, claudePid: s.live.pid, cols: body.cols, rows: body.rows })); return json(res, r.code, { ...r, prompted: false }); }
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
       let mine = false;

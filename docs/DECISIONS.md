@@ -26,6 +26,12 @@ loopback: no cost, nothing touched (`CLAUDE_BIN` a wrapper in a scenario). Ricar
 * **Why Ricardo never saw it**: 339 transcripts here, no two sharing a first line; 28 claudes, all `interactive`; `~/.claude/jobs` empty.
 * **The bar for a claude elsewhere** (`elsewhereBar`, `renderElsewhere`): where it runs, its pid, and Take over on it, pressed twice, the
   second press what `>_` armed in the header before. With it `>_` no longer comes into the row to say *sure?*. One line, as the resume bar is.
+* **A background session is opened, not taken over** (`kind: bg`, `jobOf`): the bar says *in the background* and its button is Attach, one press,
+  `claude attach <job>` in a drawer. Nothing ends, there is no second claude, and the drawer closed leaves it running (`t.claudePid` is the
+  worker, so a `/clear` in it is followed). Done and *end it* go by `claude stop <job>`, since a SIGTERM can be undone by the daemon. A `spare` is a
+  process waiting for a chat, read from the CLI's code and not met in a run: no card.
+* **Words that were wrong**: *VS Code too* on any second claude, seen with no VS Code about (now *a second claude*, or the bar's *a background
+  session*); *a terminal elsewhere* and a pid on a claude long dead, whose registry file outlived it (now *not running*, no pid).
 
 ## Decisions of 2026-11-04 — the real shell, driven
 

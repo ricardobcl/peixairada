@@ -87,7 +87,7 @@ npm run map                         # rewrite the section maps at the top of ser
 |---|---|
 | Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, `fs.watch(recursive)`, started before the boot's scan; a live chat's file stat'ed on the poll too (2026-10-14). Boot reads the last `TAIL_BYTES` of each and the PRs in its first `HEAD_BYTES` (`headPrs`); opening one reads it whole, a chunk at a time (`readLines`) |
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` and, given a `procStart`, that pid's start (`procAlive`, `LC_ALL=C TZ=UTC ps -o lstart=`, 2026-10-14); watched *and* polled every 10 s (pids die silently) |
-| Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` |
+| Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest in no VS Code or background; the rest are `rivals`. **A background session** (2026-11-04; `kind: bg`: `/bg`, `/fork`, `--bg`; `jobOf`): `/terminal` attaches it (`claude attach <job>`, which registers nothing; `t.claudePid` the worker), `endClaude` by `claude stop` (SIGTERMed, the daemon may start it again), a `spare` no chat. → `terminals.test.mjs`, `resume-bar.mjs` |
 | Reply finished | an assistant line whose `stop_reason` is in `TURN_ENDS` (`end_turn`, `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal`; tool calls are `tool_use`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`: `/compact` ends with no assistant line) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl` whose last line is not a turn's end, nor its `SubagentHandback` result, nor an interrupt, written within `AGENT_STALE_MS` (`scanAgents()`; a dead chat counts none). A background agent ends the main turn at once; this keeps the card clauding |
 | An agent's row | (2026-11-02) its `.meta.json`, its transcript's first line (`agentBorn`) and last (`mateLast`), its notice to the chat (`noteAgentNotices`, by `toolUseId`) → `s.agentRows` (`noteAgents`): the last round (one starting after all before ended), an older failure kept (`old`); words hold `AGENT_WORDS_MS`; `finished` with nothing written since ends one (`agentFinished`); a roster's name with no file is `joined`. `…/agents/:id`: totals, `?after=n` its transcript, read when asked (`agentLog`). → `test/agent-rows.test.mjs`, `team.test.mjs` |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed`, `permission prompt`, …) — `waitingOn()` / `statusOf()`; any live process waiting is the chat waiting, and it beats the agents; **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer* — only the fallback for a claude that reports no status (`s.ask`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
@@ -506,15 +506,13 @@ npm run map                         # rewrite the section maps at the top of ser
   the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live, its `.lab` the harness's): a 720 × 900 picture, its frames
-  only while open and not paused or called; its own Web Audio (`prefs.zeBand`, `zeMode`, `zeRadio`, a room a sky `zeRoom`), made by the press that
-  starts a round, suspended by a pause, closed with the dialog or by M. He is pixels in the code (`ZE_FACE`, `zeBuild`);
-  bulk, not lives (`g.mass`); the cars (`zeRide`); Trota's ways (`ZE_DIFFS`); `ZE_PACE`. **What falls is the day's** (`zeSeed`, `ZE_DRAWS` a drop whatever it uses); the title's demo (`g.demo`) takes
-  chance's, makes no sound and wins nothing. **It hears the board**: a chat that starts asking stops it on a card (`zeHeard`; the page's Esc asks
-  `zeCallEnd` first), today's lunch falls (`zeLunch`), the room gets a score only by a K.O. button (`zePost`, `zePoll`), Zé walks across All caught up
-  (`.zewalk`). **The picture is a stage on the GPU** (2026-11-01, HD-2D; `zg`, `zgOn`, `zgDraw`, `zgFree`): WebGL2 made with the dialog and let go with
-  it **by hand** (`zgKeep`, `zgLetGo`); none or lost, the 2D canvas (`zeDraw`). The set baked a sky (`zgScene`, `ZE_RIGS`), what moves `zeActors` on a 2D-shaped batcher (`zgBatch`) —
-  **never a canvas handed to WebGL a frame** —, `zeUi` the top canvas. **Blur by layer, never by screen height**: what falls
-  stays sharp. Nothing shaking, flashing or blinking under reduced motion (`zeCalm`); **no sound outlives it** (`zeHush` on `close`). → `ze-*.mjs`.
+  only while open and not paused or called; its own Web Audio (`zeRadio`), made by the press that starts a round, suspended by a pause, closed
+  with the dialog or by M. **What falls is the day's** (`zeSeed`); the title's demo (`g.demo`) takes chance's, makes no sound and wins nothing.
+  **It hears the board**: a chat that starts asking stops it on a card (`zeHeard`; the page's Esc asks `zeCallEnd` first), today's lunch falls,
+  the room gets a score only by a K.O. button (`zePost`). **The picture is a stage on the GPU** (2026-11-01; `zg`): WebGL2 made with the dialog and
+  let go with it **by hand** (`zgLetGo`); none or lost, the 2D canvas (`zeDraw`). What moves goes on a 2D-shaped batcher (`zgBatch`), **never a
+  canvas handed to WebGL a frame**. **Blur by layer, never by screen height**: what falls stays sharp. Nothing shaking, flashing or blinking under
+  reduced motion (`zeCalm`); **no sound outlives it** (`zeHush` on `close`). → `ze-*.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   ticks, titles, pins, PR turns… — whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
@@ -1024,6 +1022,6 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   by: a design for in front of the app. → Decisions 2026-09-27.
 * **Making VS Code's tab follow a chat continued elsewhere** — the extension watches only `~/.claude/sessions/`.
 * **Attaching to a *live* session from the board** — its socket cannot answer a permission prompt for you, and only its
-  auth line is documented (2026-10-31). Live chats are refused on purpose.
+  auth line is documented (2026-10-31). Live chats are refused on purpose, but for what `claude attach` opens.
 * **The app is signed for this machine only**, not for distribution.
 
