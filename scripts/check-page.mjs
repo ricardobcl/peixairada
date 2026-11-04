@@ -24,6 +24,10 @@ if (quoted.length) { console.error(`${file}: an attribute in single quotes built
 // drawn from it —, every row's code is one of theirs, and the app forwards every ⌥⌘ letter the board answers while a
 // page in the pane has the keyboard, and every ⌘ letter and digit (mac/Sources/main.swift's boardKeys and cmdKeys; ⌘W
 // and ⌘, are the menus', not the forwarder's).
+// A dialog up lowers the pane (2026-11-04): a page in the app is a native view, so a dialog opened with one up is drawn under
+// it, and Chrome, with no view there, shows nothing wrong. Each opener says so on its own line.
+const unlowered = [...html.matchAll(/^.*\.showModal\(\).*$/gm)].filter(m => !/\.showModal\(\);.*\brepostPane\(\)/.test(m[0])).map(m => html.slice(0, m.index).split('\n').length);
+if (unlowered.length) { console.error(`${file}: a showModal() with no repostPane() after it on its line, so it opens under a page in the pane, at line ${unlowered.join(', ')}`); process.exit(1); }
 if (file.endsWith('public/index.html')) {
   const keysOf = name => { const m = html.match(new RegExp(`const ${name} = \\{(.*?)\\};`)); return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null; };
   const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), table = html.match(/const KEYS = \[([\s\S]*?)\n  \];/);

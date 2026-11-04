@@ -40,6 +40,10 @@ harness/tests to not happen these kind of bugs?"*, and of the three answers: *"d
   the strip shows 6 of its 38 pt: the page is over it"*; a page's new window loaded in its own view (2026-10-21's), the tab never comes,
   *"timed out … waiting for a half showing"*; the rects not × the zoom, *"at 125 %, a window: the page is nowhere in the half"*. The verdict
   itself is `test/pane-place.test.mjs`, with no window, so `npm test` holds it.
+* **The first bug it found, the first time it looked at a dialog**: the About box opened under a page. The check for Copy details (below)
+  saved a picture of About with a page up, and half of the box was behind it. Twelve of the page's thirteen `showModal()`s are followed by
+  `repostPane()`; About's, since 2026-09-27, never was, and Chrome has no view there to cover it. Fixed; `npm run check` fails a `showModal()`
+  with none on its line, and the check holds it.
 * **Not run**: `--space` (`macos-full-screen.mjs`), macOS's own full screen. It cannot be done aside, the app comes forward and takes a Space
   for some seconds, so it waits for a moment Ricardo can spare his screen. Until then that one is unproved, here and in the entry below.
 

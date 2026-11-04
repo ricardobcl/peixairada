@@ -72,10 +72,10 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/worktree.sh` | A worktree per piece of parallel work (see above) |
 | `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness (see Verifying) |
-| `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
+| `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's cost in WebKit (see Verifying) |
 | `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/main.swift` itself, driven (see Verifying) |
-| `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
-| `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
+| `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView`, the app's engine |
+| `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
 | `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP) → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
@@ -641,7 +641,7 @@ npm run map                         # rewrite the section maps at the top of ser
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and arrows and ⌘ + the layout keys
   (`hotkeyCode()`) to `window.peixKey`, and a click on a page as `peixPaneFocus(key)` (`installPaneClickMonitor()`),
   so the half with the keys follows the pointer. The shell reports `peixPane(visible, left)`. **A dialog open lowers
-  the pane** (`postPane` sends no page while a `dialog[open]` exists; every dialog's `close` puts it back); `postPane`
+  the pane** (`postPane` sends no page while a `dialog[open]` exists; `repostPane()` beside every `showModal()`, `npm run check`'s; every dialog's `close` puts it back); `postPane`
   posts only a message that differs. Esc pressed in a pane page is forwarded (`hotEscape()`: a dialog closes first, else the
   chat tab comes back); one on the board reaches the page, whose capture-phase handler closes a dialog or popover and,
   the pane up, does hotEscape's outside a terminal or a box (2026-10-14). The pane's `focus` is null unless the keys' half shows a page.
