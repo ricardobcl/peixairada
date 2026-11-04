@@ -65,6 +65,7 @@ test('a notice arriving ends the row; a new round replaces the last; a finished 
     writeFileSync(files.one.replace(/\.jsonl$/, '.meta.json'), JSON.stringify({ agentType: 'general-purpose', description: 'First', toolUseId: 'toolu_one', finished: true }));
     const r = await waitFor(async () => { const x = (await rowsOf(srv, chat.id))?.[0]; return x?.st === 'fail' && x; }, { what: 'failed by its notice' });
     assert.equal(r.why, 'Agent terminated early due to an API error');
+    assert.doesNotMatch(srv.logText(), /could not be folded/, 'a notice is a line like any other');   // 2026-11-04: agentsSoon, out of reach inside main()
     // words again: written after its meta, it is at work
     await new Promise(res => setTimeout(res, 1700));
     appendFileSync(files.one, JSON.stringify({ isSidechain: true, type: 'assistant', timestamp: new Date().toISOString(), message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_z', name: 'Bash', input: { description: 'Try again' } }], stop_reason: 'tool_use' } }) + '\n');

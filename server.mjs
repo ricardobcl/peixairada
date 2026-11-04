@@ -2659,6 +2659,14 @@ function agentRunning(file, now = Date.now(), since = 0) {
   return !(res && tail.some(l => isHandback(l, res.tool_use_id)));
 }
 const agentsDir = s => s.file ? join(dirname(s.file), s.id, 'subagents') : null;
+/** A scan soon, for a chat whose agents moved: from the transcripts' watcher and from a notice folded (noteAgentNotices), so
+ *  it lives out here (2026-11-04: inside main(), a notice threw and its line was skipped). */
+const pendingAgents = new Map();
+function agentsSoon(s) {
+  if (indexing || s.silent) return;   // the boot's scan, a re-read: its own scan follows
+  clearTimeout(pendingAgents.get(s.id));
+  pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
+}
 function scanAgents(s) {
   const dir = agentsDir(s); let names = [];
   if (dir) try { names = readdirSync(dir); } catch {}
@@ -6721,12 +6729,7 @@ if (!seenSince) { seenSince = new Date().toISOString(); saveState(); }   // a re
 loadConfig();
 // The transcripts are watched before they are read (2026-10-14): FSEvents tells only of what comes after the watch
 // starts, and a reply written while the scan or the adoption ran stayed unread until the file's next line.
-const pendingFiles = new Map(), pendingAgents = new Map();
-function agentsSoon(s) {
-  if (indexing || s.silent) return;   // the boot's scan, a re-read: its own scan follows
-  clearTimeout(pendingAgents.get(s.id));
-  pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
-}
+const pendingFiles = new Map();
 function onFsEvent(_ev, rel) {
   if (!rel) return;
   const parts = String(rel).split('/');
