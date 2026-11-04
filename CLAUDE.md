@@ -973,7 +973,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   frames); a locked screen or a sleeping display hides it.
 * **What the page and the shell do only together is checked in the real shell** (2026-11-04; `npm run shell`, `shell-checks/`): a fake
   bridge says what the page asks for, this whether the window agrees; how is in mac/CLAUDE.md. **A change to `main.swift` or to what
-  crosses the bridge runs it before it lands** (`npm run check` says when the shell has moved since). → `shell-up.mjs`.
+  crosses the bridge runs it before it lands** (`npm run check` says when the shell has moved since). → `pane-place.mjs`.
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board, lights on: the web process's
   CPU, layers, memory against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:
   nothing never-ending on an SVG child, at a playback rate other than 1, by `steps()` or with nothing drawn; no

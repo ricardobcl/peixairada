@@ -54,7 +54,7 @@ server.mjs, build.sh's `SOURCE`).
 under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its height), a click on no page let through
 (`PaneOverlay.hitTest`). A rect from the page is in the overlay's terms: anything placed by one hangs from it. A
   page's new window is a tab beside it (`PaneDelegate.open` → `peixPaneOpen`), a link to another host the page's to
-  judge (`PaneDelegate.linkOut` → `peixLinkOut`).
+  judge (`PaneDelegate.linkOut` → `peixLinkOut`). → `shell-checks/pane-place.mjs`.
 * **The badge and the Dock**: the page's `{type: 'state'}` is their number; `refreshBadges` redraws only on a change
   (`badged`); a newly asking chat, the app behind, bounces the Dock once.
 * **The fish in the menu bar** (2026-11-01, round XIX; `drawFish`, `fishFace`): dim, nothing wants you (`appearsDisabled`);
@@ -84,7 +84,7 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   (`kProbeAside`): never in front, one pixel on the screen, its home a temp folder (`CFFIXED_USER_HOME`). **It differs from the app in
   five places, each a hole in what it proves**: the activation policy, `probeBegin`, `BoardWindow`'s frame, `placeFill`, `tellFill`'s
   left edge; keep them few, and a new command in the probe, not here (a change under `mac/` puts every app behind). **A new check first
-  fails on the bug it is for** (`--src <dir>/main.swift`). A locked screen is `NOT RUN`, exit 3. → `shell-up.mjs`.
+  fails on the bug it is for** (`--src <dir>/main.swift`). A locked screen is `NOT RUN`, exit 3; `--space` is macOS's full screen, and takes the screen. → `shell-up.mjs`.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
   **The board's web view draws no ground** (`drawsBackground` off): the window's `backgroundColor` and

@@ -31,6 +31,17 @@ harness/tests to not happen these kind of bugs?"*, and of the three answers: *"d
   since it last passed whole (a note, not a failure; `shell-passed` in the cache). A locked screen is `NOT RUN`, exit 3, never a pass.
 * **What it cannot see**: another macOS than the one it runs on (the 32 pt is 27.2's); keys and the mouse (no Accessibility grant, a click
   is the script's); a second screen.
+* **The first check is the bug's** (`shell-checks/pane-place.mjs`, `lib/paneplace.mjs`): each half's strip painted one colour, the page
+  served in another, and the verdict read off a column and a row of the window's pixels: the strip whole, the page from its foot, down
+  to its half's foot, across its half. Every way a place crosses the bridge, each a window, the fill and a window again: side by side,
+  125 %, one over the other, a page in each half, a page alone; and a smaller window, and a dialog lowering the pane. Every way a page
+  gets there: a link, a page's new window, the editor's. 25 looks in about 10 s; three runs in a row passed.
+* **Failed on purpose first**, a `main.swift` with one old fix taken out each time (`--src`): the overlay's inset at 0, *"side by side, a window:
+  the strip shows 6 of its 38 pt: the page is over it"*; a page's new window loaded in its own view (2026-10-21's), the tab never comes,
+  *"timed out … waiting for a half showing"*; the rects not × the zoom, *"at 125 %, a window: the page is nowhere in the half"*. The verdict
+  itself is `test/pane-place.test.mjs`, with no window, so `npm test` holds it.
+* **Not run**: `--space` (`macos-full-screen.mjs`), macOS's own full screen. It cannot be done aside, the app comes forward and takes a Space
+  for some seconds, so it waits for a moment Ricardo can spare his screen. Until then that one is unproved, here and in the entry below.
 
 ## Decisions of 2026-11-04 — the project filter you can see, and leave (round XXV)
 
