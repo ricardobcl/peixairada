@@ -1,7 +1,8 @@
 // A project in view is unmistakable, and easy to leave (2026-11-04, round XXV). What this checks: nothing at all on ALL; on a
 // project the list's own tab, level with the chat's toolbar and on the cards' edges, says its name, how many of how many and
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
-// the count gives way first and a long name fades, Show all whole; at the notch it stays level with the toolbar.
+// the count gives way first and a long name fades, Show all whole; the list's ground a tint of the project, and of nothing else;
+// at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -78,6 +79,20 @@ export default async function (ctx) {
     ctx.assert.ok(w.fits && w.sx.r <= w.box.r + .5, `Show all whole: ${JSON.stringify(w)}`);
     await showAll();
     await ctx.evaluate(`document.querySelector('#sessions').style.width = '417px'`);
+
+    // the list's ground takes a tint of the project, the chat and the status bar as they were; no colour, no tint; ALL, none
+    const grounds = () => ctx.evaluate(`({ list: getComputedStyle(document.querySelector('#sessions')).backgroundColor, bar: getComputedStyle(document.querySelector('#sbar')).backgroundColor, chat: getComputedStyle(document.querySelector('#chat')).backgroundColor, card: getComputedStyle(document.querySelector('#slist > .card:not(.active)') || document.body).backgroundColor })`);
+    const plain = out.plain = await grounds();
+    ctx.assert.equal(plain.list, plain.bar, 'on ALL the list is the frame');
+    await pick('shop');
+    const tinted = out.tinted = await grounds();
+    ctx.assert.notEqual(tinted.list, plain.list, 'a project in view tints the list');
+    ctx.assert.deepEqual([tinted.bar, tinted.chat], [plain.bar, plain.chat], 'the status bar and the chat as they were');
+    ctx.assert.notEqual(tinted.card, plain.card, 'its cards are raised from that ground');
+    await showAll();
+    await pick(LONG);
+    ctx.assert.equal((await grounds()).list, plain.list, 'no colour, no tint');
+    await showAll();
 
     // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
     await pick('shop');
