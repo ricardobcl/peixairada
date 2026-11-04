@@ -50,7 +50,9 @@ server.mjs, build.sh's `SOURCE`).
   cover the head row, so only a hold brings them — the menu bar's own, or the Dock's (with the Dock out AppKit
   wants the menu bar auto-hidden) (2026-11-01).
 * **The pane's views**: a web view per page (`paneViews`, up to `paneViewsMax`, the chat's own spared), placed by the
-  page's `{type:'pane'}`; **the overlay covers the window**, a click on no page let through (`PaneOverlay.hitTest`). A
+  page's `{type:'pane'}`; **the overlay covers the page, not the window**: its top is where WebKit puts the page's y = 0,
+under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its height), a click on no page let through
+(`PaneOverlay.hitTest`). A rect from the page is in the overlay's terms: anything placed by one hangs from it. A
   page's new window is a tab beside it (`PaneDelegate.open` → `peixPaneOpen`), a link to another host the page's to
   judge (`PaneDelegate.linkOut` → `peixLinkOut`).
 * **The badge and the Dock**: the page's `{type: 'state'}` is their number; `refreshBadges` redraws only on a change

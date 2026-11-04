@@ -5,6 +5,15 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-04 — a page under its strip in a window
+
+Ricardo: *"I hear reports that github PR opens but without the bar up to where the url and buttons for browsing live. I thought we fixed this issue in the past, where you said that it was opening on vscode or something?"*
+
+* **What it was**: every page, in a window, always. WebKit insets a page by the title bar on its own (measured 2026-09-27), so the page's y = 0 is 32 pt down the window (macOS 27.2). The overlay was pinned to the content view's top, the window's y = 0, and placed each page by the page's rect: 32 pt too high, over 32 of the strip's 38 px, and 32 pt short of the half's foot. The fill has no inset, and this Mac lives filled (the log's last windowed spell: seconds on 2026-10-14), so only other people's boards showed it.
+* **Not 2026-10-21's**: that was the editor's view following a new window, in the fill (the log has `fill: on` that day), and its fix stands. Its *stale rect ruled out* could not see this: `pane-tabs.mjs` compares the posted `top` with the strip's bottom, both in the page's terms.
+* **The overlay's top is the page's** (`paneTop`, `paneTopC`, a KVO on `contentLayoutRect`, which is what WebKit itself observes), the find bar's with it. By the rect's height, not its origin: while AppKit lays the bar out the rect's origin is briefly a window's height off, and an inset past the window's height made the constraints grow the window, by 32 pt, seen in the probe. `contentLayoutGuide` is no help: a borderless window's is no `NSLayoutGuide`.
+* **Checked** in a probe (scratch, not kept) built as `buildWindow` builds the window, the real page on a throwaway server, a coloured view where `{type:'pane'}` says, in the compositor's frame, a window then the fill's style mask and back: 32 pt over the strip, 0, 32 before; 0, 0, 0 after, the window's size unchanged, the strip whole. `main.swift` itself is typechecked only: no harness drives the shell. Not run: macOS's full screen, which would take a Space from the screen in use; it reads the same rect as WebKit does.
+
 ## Decisions of 2026-11-04 — one press is one chat
 
 Ricardo: *"noticed this bug when opening a new chat with a worktree. it was very slow to open the chats and then created 4 or 5 equal chats. investigate"*, then *"do it all"*.

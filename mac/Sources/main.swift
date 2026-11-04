@@ -247,6 +247,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var web: BoardWebView!
   var content: NSView!
   var paneOverlay: PaneOverlay!
+  var paneTopC: NSLayoutConstraint!            // the overlay's top: where the page's own y = 0 is, under a title bar (paneTop)
+  var paneTopObs: NSKeyValueObservation?
   // A web view per page (`key`: gh:<a PR's url>, ide:<a folder's editor url>), kept loaded; the page's strip has the tabs.
   var paneViews: [String: WKWebView] = [:]
   var paneOrder: [String] = []                 // least recently shown first — what goes when there are too many
@@ -468,16 +470,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     web.translatesAutoresizingMaskIntoConstraints = false
     paneOverlay.translatesAutoresizingMaskIntoConstraints = false
     content.addSubview(web); content.addSubview(paneOverlay)
+    paneTopC = paneOverlay.topAnchor.constraint(equalTo: content.topAnchor)
     NSLayoutConstraint.activate([
       web.leadingAnchor.constraint(equalTo: content.leadingAnchor), web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
       web.topAnchor.constraint(equalTo: content.topAnchor), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-      paneOverlay.leadingAnchor.constraint(equalTo: content.leadingAnchor), paneOverlay.topAnchor.constraint(equalTo: content.topAnchor),
+      paneOverlay.leadingAnchor.constraint(equalTo: content.leadingAnchor), paneTopC,
       paneOverlay.trailingAnchor.constraint(equalTo: content.trailingAnchor), paneOverlay.bottomAnchor.constraint(equalTo: content.bottomAnchor)
     ])
     buildFindBar()
     buildLights()
     paneOverlay.isHidden = true
     window.contentView = content
+    // In a window WebKit insets the page by the title bar on its own, from contentLayoutRect, so the page's y = 0 is below
+    // the bar while the overlay's was above it (2026-11-04): every page sat that much too high, over its half's strip,
+    // and short of the half's foot. The fill and macOS's full screen have no inset, so the overlay goes by the same word.
+    paneTopObs = window.observe(\.contentLayoutRect, options: [.initial]) { [weak self] w, _ in self?.paneTop(w) }
     installEscapeMonitor()
     installHotkeyForwarder()
     installPaneClickMonitor()
@@ -531,6 +538,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     paneOverlay.layer?.backgroundColor = NSColor.clear.cgColor
     paneDelegate.open = { [weak self] w, url in self?.paneOpen(w, url) }
     paneDelegate.linkOut = { [weak self] url, done in self?.paneLinkOut(url, done) ?? done(false) }
+  }
+  /// The overlay's top where WebKit puts the page's: under what the title bar takes of the window (2026-11-04). By the
+  /// rect's height, never its origin: AppKit says an origin a window's height off while it lays the bar out, and an
+  /// inset past the window's height makes the constraints grow the window.
+  private func paneTop(_ w: NSWindow) {
+    let inset = max(0, w.frame.height - w.contentLayoutRect.height)
+    guard paneTopC.constant != inset else { return }
+    paneTopC.constant = inset
+    logLine("pane: the page starts \(inset) pt down the window")
   }
   /// A page's new window, for the board to put on a tab beside it (2026-10-21) — or, the board saying no (a view not
   /// the open chat's), loaded where it came from, as before.
@@ -744,7 +760,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       stack.topAnchor.constraint(equalTo: findBar.topAnchor), stack.bottomAnchor.constraint(equalTo: findBar.bottomAnchor)
     ])
     findRightC = findBar.trailingAnchor.constraint(equalTo: content.leadingAnchor, constant: 0)
-    findTopC = findBar.topAnchor.constraint(equalTo: content.topAnchor, constant: 12)
+    findTopC = findBar.topAnchor.constraint(equalTo: paneOverlay.topAnchor, constant: 12)   // the page's rect is in the overlay's terms
     NSLayoutConstraint.activate([findRightC, findTopC])
   }
   /// The bar sits over the top right of the page that has the keys — whichever half that is.
