@@ -69,7 +69,10 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#stitle .ask').click()`);
     await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(asker.id)}`, { what: 'the question opened' });
     await ctx.settle();
-    if (await project() !== 'all') await showAll();
+    // …and a chat from another project lets the filter go: it never takes a value you did not give it, and ⌥⌘P ⌥⌘P brings it back
+    ctx.assert.equal(await project(), 'all', 'opening a chat elsewhere lets go to ALL, the filter not moving to its folder');
+    ctx.assert.equal(await cue(), null, 'and the cue leaves');
+    ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().lastProject.split('/').pop()`), 'shop', 'the project last in view is kept');
 
     // narrow: the count first, a long name fades, Show all whole
     await ctx.evaluate(`document.querySelector('#sessions').style.width = '300px'`);

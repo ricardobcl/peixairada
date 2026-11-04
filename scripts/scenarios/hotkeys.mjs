@@ -122,7 +122,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
   await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(plain.id)}`, { what: 'the plain chat opened from the picker' });
   out.chatOpened = { current: (await ctx.peix('state()')).current, project: (await ctx.peix('prefs()')).project, inList: await ctx.evaluate(`!!document.querySelector('#slist .card[data-id=${JSON.stringify(plain.id)}]')`), picker: await ctx.evaluate(`document.querySelector('#pick').open`) };
-  ctx.assert.ok(out.chatOpened.inList, 'the opened chat is in the list shown (ALL here; openSession switches project when it is not)'); ctx.assert.equal(out.chatOpened.picker, false);
+  ctx.assert.ok(out.chatOpened.inList, 'the opened chat is in the list shown (ALL here; openSession lets the project go when it is not)'); ctx.assert.equal(out.chatOpened.picker, false);
   // N, a chat: the project step (the column's list without ALL), then that project's open chats with ＋ new chat at
   // their head, then — the launchers route stubbed to answer as oracle's Taskfile would — the environment step,
   // whose ⏎ posts `task <name>` to /api/terminals (stubbed: nothing spawns)

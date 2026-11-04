@@ -12477,7 +12477,7 @@ const toolName = n => {
     if (box && !box.isConnected) { note($('#shead'), `Cloned — the new chat in ${folderName(cwd)} is on the list`); renderBoard(); return; }
     leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">${more?.from?.length ? `merged from ${more.from.length} chats` : 'new chat'}${task ? ` · task ${esc(task)}` : ''}</span></h2>`,
       '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>', repoColor(cwd));
-    if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = projDir(cwd);   // so the new chat lands in view
+    if (!inProject({ cwd }, projectStub(prefs.project))) scopeTo(ALL);   // so the new chat lands in view (2026-11-04, a filter never takes a value you did not give it)
     savePrefs(); renderBoard();
     attachTerm(curTerm(), d.terminal);
     if (d.sessionId) openSession(d.sessionId);   // an id the board picked: no registry to wait on
@@ -13234,8 +13234,9 @@ const toolName = n => {
     // came put its id back over the next one's, and a link to that one was then no change of hash)
     if (location.hash !== '#' + id + tvHash(id)) history.replaceState(null, '', '#' + id + tvHash(id));   // and the timeline's narrow beside it (2026-10-17)
     const s0 = state.sessions.get(id);
-    // a deep link or a notification can point at a chat outside the selected project — switch to its folder
-    if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = projDir(s0.cwd) || '?'; savePrefs(); }
+    // a deep link, a notification or Next can point at a chat outside the project in view: the filter lets go, and ⌥⌘P ⌥⌘P
+    // brings it back. It never takes a value you did not give it (2026-11-04, round XXV; it moved to the chat's folder, in silence).
+    if (s0 && !inProject(s0, projectStub(prefs.project))) scopeTo(ALL);
     renderBoard();
     if (locate && s0) { document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }); locateCard(id); }
     if (s0) renderHead(s0);
@@ -13252,7 +13253,7 @@ const toolName = n => {
     renderHead(s1); renderLog(); syncTerm(s1);
     // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
     // `session` push — gets its card, and the project switch above, from the answer.
-    if (!s0) { if (!inProject(data.session, projectStub(prefs.project))) { prefs.project = projDir(data.session.cwd) || '?'; savePrefs(); } renderBoard(); }
+    if (!s0) { if (!inProject(data.session, projectStub(prefs.project))) scopeTo(ALL); renderBoard(); }
     $('#log').scrollTop = $('#log').scrollHeight;
     document.querySelector(`#slist > .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
   }
