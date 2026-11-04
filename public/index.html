@@ -8927,6 +8927,7 @@ const toolName = n => {
       { t: 'Open', fn: () => openSession(s.id) },
       ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
+      ...(s.cwd ? [scopedOn(s) ? { t: 'Every project', sub: 'show all · ⌥⌘P ⌥⌘P', fn: () => selectProject(ALL) } : { t: `Only ${s.project}`, sub: 'narrow the list to it', fn: () => selectProject(projDir(s.cwd)) }] : []),
       ...talkRows(s, card),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),

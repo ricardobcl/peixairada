@@ -3,7 +3,7 @@
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
 // the count gives way first and a long name fades, Show all whole; the list's ground a tint of the project, and of nothing else;
 // the toolbar's tab solid with the funnel while on, a named project's too; the list ends on what is hidden; ⌥⌘P ⌥⌘P lets go and
-// comes back; at the notch it stays level with the toolbar.
+// comes back, a card's menu too; at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -145,6 +145,16 @@ export default async function (ctx) {
     await ctx.key('KeyP'); await ctx.sleep(120);
     await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`); await ctx.settle();
     ctx.assert.equal(await project(), 'all', '⌥⌘P ⏎ lands on ALL, whatever it was');
+
+    // a card's menu narrows to its project, and lets go
+    const right = id => ctx.evaluate(`(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(document.querySelector('#slist > .card[data-id="${id}"]'))`);
+    const menuRow = t => ctx.evaluate(`(b => b ? (b.click(), 'pressed') : 'none')([...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(t)})))`);
+    await right(first.id);
+    ctx.assert.notEqual(await menuRow('Only shop'), 'none', 'the row names the project'); await ctx.settle();
+    ctx.assert.equal(await project(), 'shop', 'it narrows to it');
+    await right(first.id);
+    ctx.assert.notEqual(await menuRow('Every project'), 'none', 'on a project the row lets go'); await ctx.settle();
+    ctx.assert.equal(await project(), 'all', 'it lets go');
 
     // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
     await pick('shop');
