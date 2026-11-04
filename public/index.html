@@ -2655,6 +2655,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #pickfoot[hidden] { display: none; }   /* (2026-10-28) the flex above beat the attribute: the chats step's foot stayed on under every step after it */
   #pickfoot kbd { font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
   .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: var(--r-3); cursor: pointer; min-width: 0; }
+  #pickq:disabled ~ #picklist .pkrow { opacity: .5; cursor: progress; transition: opacity var(--t-hover) .12s; }   /* a step under way (pickChoose, 2026-11-04); the delay: an answer at once dims nothing */
   .pkrow .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); }
   .pkrow .n { font-weight: 700; font-size: var(--fs-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .pkrow :is(.n, .num) b { color: var(--accent); }
@@ -2981,6 +2982,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     .agr[data-st="run"] > .agd::before { animation: none; border-color: var(--glow, var(--working)); }   /* an agent's arc: a whole circle, still */
     .agcar { transition: none; }
+    #pickq:disabled ~ #picklist .pkrow { transition: none; }   /* the picker's rows, a step under way */
     :root[data-layout="sidebar"] #sessions #slist .card { transition: none; } :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover { translate: none; }   /* the shadow alone says it */
     #slist .card.cdfrom, :root[data-layout="sidebar"] #slist .card.cdover { scale: none; } #cdghost { transition: none; }   /* a card in the hand: nothing comes up (cdLift and cdEnd read REDUCED) */
     :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
@@ -7085,6 +7087,7 @@ const toolName = n => {
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
   function pickChoose(i) {
+    if (pick.cloning) return;   // a step under way (2026-11-04): a press meanwhile is the same press — each was a chat of its own
     const x = pick.list[i], dlg = $('#pick');
     if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
     if (pick.mode === 'base') {   // nothing matched: the step stays; ⏎ before the branches are read takes the default once they are
@@ -7148,6 +7151,7 @@ const toolName = n => {
     else if ((e.key === 'ArrowLeft' || e.key === 'Backspace') && !$('#pickq').value && pick.ctx.back) { e.preventDefault(); typeof pick.ctx.back === 'function' ? pick.ctx.back() : pickOpen(pick.ctx.back); }
   });
   $('#picklist').addEventListener('click', e => {
+    if (pick.cloning) return;   // as pickChoose: the rows are dimmed, and take nothing until it answers
     const x = e.target.closest('.pkx');   // ✕: the row goes off the board, the picker stays where it is
     if (x) { e.stopPropagation(); hideProject(x.dataset.key); pickRender(); return; }
     const md = e.target.closest('.pkmode button');   // ＋'s switch: this folder or a new worktree, the box keeping the keys
@@ -9045,12 +9049,16 @@ const toolName = n => {
   }
   /** A new chat on a PR's branch (2026-10-13): in the tree that has it out, else in a worktree made for it — the chat's
    *  folder is then its branch, and its changes, its editor and its zsh are the branch's by construction. */
+  const prChatting = new Set();   // the PRs a chat is being started on (2026-11-04): a second press meanwhile is the same press
   async function chatOnPr(s, url, at) {
-    note(at, 'Finding its tree…');
-    let t; try { t = await api('POST', '/api/worktrees', { cwd: s.cwd, pr: url }); } catch (e) { return note(at, e.message, true); }
-    document.querySelectorAll('.note').forEach(n => n.remove());
-    wtData.delete(s.cwd); $('#pick').open && $('#pick').close();
-    newChat(t.path);
+    if (prChatting.has(url)) return;
+    prChatting.add(url); note(at, 'Finding its tree…');
+    try {
+      let t; try { t = await api('POST', '/api/worktrees', { cwd: s.cwd, pr: url }); } catch (e) { return note(at, e.message, true); }
+      document.querySelectorAll('.note').forEach(n => n.remove());
+      wtData.delete(s.cwd); $('#pick').open && $('#pick').close();
+      await newChat(t.path);
+    } finally { prChatting.delete(url); }
   }
   // ---- ⌥⌘N's ＋ on "new worktree" (2026-10-13) --------------------------------------------------------------------------
   // The chats step of a git checkout: ＋ in this folder, or in a worktree of its own on the branch typed — made inside
@@ -9124,16 +9132,25 @@ const toolName = n => {
     if (pick.ctx.go && !$('#pickq').value.trim()) pickChoose(pick.sel);
   }
   /** The worktree made — from `base` when the branch is new — and the chat started in it; `share`: a tree that has it out. */
+  const wtStarting = new Set();   // the branches a chat is being started on (2026-11-04): the picker left and the same asked again is the same ask, not a second chat
   async function newChatOnBranch(cwd, name, { base = null, share = false } = {}) {
-    const box = $('#pickq'), was = box.value, short = base && base.replace(/^refs\/(heads|remotes)\//, '');
+    const key = `${cwd}\0${name}`;
+    if (wtStarting.has(key)) { $('#pick').close(); return note($('#shead'), `Already starting a chat on ${name} — it opens once its worktree is there`); }
+    wtStarting.add(key);
+    const box = $('#pickq'), was = box.value, short = base && base.replace(/^refs\/(heads|remotes)\//, ''), run = ++pick.gen;
     box.disabled = true; pick.cloning = true; box.value = ''; box.placeholder = share ? `starting a chat on ${name}…` : `making a worktree for ${name}${short ? ` from ${short}` : ''}…`;
-    let t; try { t = await api('POST', '/api/worktrees', { cwd, branch: name, fresh: true, share, ...base && { base } }); }
-    catch (e) {
-      pick.cloning = false; box.disabled = false; box.value = was; pickHint();
-      if (e.body?.out && pick.mode === 'chats') { pick.br = null; brAsk(); }   // out in a tree since the row last looked: it says so now, and ⏎ again shares it
-      pickRender(); box.focus(); return note(box, e.message, true);
-    }
-    wtData.delete(cwd); $('#pick').close(); newChat(t.path);
+    try {
+      let t; try { t = await api('POST', '/api/worktrees', { cwd, branch: name, fresh: true, share, ...base && { base } }); }
+      catch (e) {
+        if (run !== pick.gen || !$('#pick').open) return note($('#shead'), `Could not make a worktree for ${name}: ${e.message}`, true);   // the picker left meanwhile: its box is another step's now
+        pick.cloning = false; box.disabled = false; box.value = was; pickHint();
+        if (e.body?.out && pick.mode === 'chats') { pick.br = null; brAsk(); }   // out in a tree since the row last looked: it says so now, and ⏎ again shares it
+        pickRender(); box.focus(); return note(box, e.message, true);
+      }
+      wtData.delete(cwd); if (run === pick.gen) $('#pick').close();
+      await newChat(t.path);
+      if (t.unasked) note($('#shead'), `Origin did not answer: ${name} starts from ${t.from.replace(/^refs\/(heads|remotes)\//, '')}, unchecked against its branches`, true);
+    } finally { wtStarting.delete(key); }
   }
   // ---- the editor at a PR's branch (2026-10-13) ------------------------------------------------------------------------
   // The folder that has the branch, else a worktree of its own inside the repo (POST /api/worktrees: found, or made),
@@ -12337,7 +12354,7 @@ const toolName = n => {
   // `then` is ⌥⌘O's way through (2026-09-21): the environment scopes a chats step instead of starting anything.
   async function newChatIn(cwd, then = 'new') {
     let launchers = [];
-    if ($('#pick').open) $('#pickq').placeholder = 'asking the folder how it starts claude…';
+    if ($('#pick').open) { const q = $('#pickq'); q.placeholder = 'asking the folder how it starts claude…'; q.disabled = true; pick.cloning = true; }   // a step under way: pickChoose (2026-11-04)
     try { launchers = (await api('GET', `/api/launchers?cwd=${encodeURIComponent(cwd)}`)).launchers || []; } catch {}
     if (launchers.length) return pickOpen('env', { cwd, launchers, then });
     if (then === 'chats') return chatsStep({ key: cwd, name: folderName(cwd), cwds: [cwd] });   // no launchers: the folder's own chats, ＋ a new one

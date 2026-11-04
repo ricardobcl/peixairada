@@ -51,7 +51,7 @@ npm run map                         # rewrite the section maps at the top of ser
   on its branch from the local main, with no node_modules link — Node and `npm run check` find the
   checkout's up the folders. Land it on main (a fast-forward, else a cherry-pick), then `done <name>`: the worktree and
   its branch go only when every commit is on main (by patch), nothing is uncommitted and no process is inside, never by
-  force; `prune` does it for every finished one left an hour. These worktrees are disposable; removing one is routine.
+  force; `prune` does it for every finished one left an hour.
   → `test/worktree-script.test.mjs`.
 
 ## Layout
@@ -69,7 +69,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version `lib/version.mjs`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
-| `scripts/worktree.sh` | A worktree per piece of parallel work: made from main, removed only with its work on main, never forced |
+| `scripts/worktree.sh` | A worktree per piece of parallel work (see above) |
 | `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness (see Verifying) |
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
@@ -153,7 +153,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
-  origin when a PR's diff is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint
+  origin when a PR's diff or a worktree is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint
   (`planUsage`), Jira once the setup names a site (`jiraAsk`; its token
   never reaches the page or the setup file — `GET /api/jira` says only where it is), GitHub's REST API for the chat, Instagram and
   `claude -p` for lunch, VS Code's update service, and Homebrew when Zed is picked and missing.
@@ -606,16 +606,15 @@ npm run map                         # rewrite the section maps at the top of ser
   past the box's ends, a click): on *new worktree* the text is the branch's name, not a query, and ＋ says what ⏎
   would do (`wtSay` from `brAsk` → `branchWhere`: a new branch, one here or on origin, or **one out in a tree already —
   said in red, and only then `share`d**, else refused, `out`). **A new branch asks its base** (2026-10-28; mode
-  `base`, `worktreeBases`): the default selected, the checkout's if ahead (`prefer`). `newChatOnBranch` makes the
-  worktree and starts the chat. A chat's environment is `s.env` (`.chip.env` on its card); the `env` step counts each
-  (`envCounts`). An idle chat's row has the card's ✓ (`button.pkdone`, `canTick(s)`), the picker staying up
-  (`pickRender(true)` keeps the selection). → `new-chat-flow.mjs`.
+  `base`, `worktreeBases`): the default selected, the checkout's if ahead (`prefer`). `newChatOnBranch` makes the worktree and starts the chat.
+  **One press, one chat** (2026-11-04): a step answering (`pick.cloning`, the box disabled) dims the rows and `pickChoose` takes
+  nothing; `wtStarting`, `prChatting`. A new branch asks origin `WT_ASK_MS` at most (`unasked`, said). `s.env` is a chat's environment (`.chip.env`); the `env` step counts each (`envCounts`). An idle chat's row has the card's ✓ (`button.pkdone`, `canTick(s)`), the picker staying up.
+  → `new-chat-flow.mjs`, `chat-worktree.mjs`, `test/worktree-origin.test.mjs`.
 * **The project step holds the folders you have no chat in, and clones one you have not got**: after the board's
   projects come the folders under each root on no project (`freeFolders()`; `GET /api/folders`, cached by each
   root's mtime), and a query naming none is offered as **＋ clone `<org>/<name>`** per root with an org (`cloneRows()`,
   never filtered out) — `POST /api/clone {name, root}`, `gh repo clone` into that root, `cloneAndStart()` carrying on.
-  **A worktree is not offered** (`isWorktree`: a `.git` file naming `…/worktrees/…`) unless typed whole. A long path
-  goes beside the name (`.cur`), never in the row's `auto` column. → `new-project.mjs`. **A clone is one per folder and
+  **A worktree is not offered** (`isWorktree`: a `.git` file naming `…/worktrees/…`) unless typed whole. → `new-project.mjs`. **A clone is one per folder and
   says how far it is** (`clones`, by target folder; a second ask joins it; a spawn in it is refused until done,
   `cloneUnder`): `gh repo clone … -- --progress`, phases weighted into one percent (`CLONE_PHASES`), `clone` events
   and `clones` in the snapshot; a failure removes what git left. → `test/folders.test.mjs`.
@@ -997,8 +996,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
-* **The harness makes no sound** (2026-11-01): headless Chrome has no audio device (`--disable-audio-output`; an
-  `AudioContext` still runs), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs`, `ze-webkit.mjs`.
+* **The harness makes no sound** (2026-11-01): headless Chrome has no audio device (`--disable-audio-output`), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs`, `ze-webkit.mjs`.
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it
   is noon now (`meta.tz` another or `false`; `ctx.tz`).
 * **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp
@@ -1030,7 +1028,6 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   by: a design for in front of the app. → Decisions 2026-09-27.
 * **Making VS Code's tab follow a chat continued elsewhere** — the extension watches only `~/.claude/sessions/`.
 * **Attaching to a *live* session from the board** — its socket cannot answer a permission prompt for you, and only its
-  auth line is documented, not its message frame (2026-10-31): the board drives a chat only through Claude. Live chats
-  are refused on purpose.
+  auth line is documented (2026-10-31). Live chats are refused on purpose.
 * **The app is signed for this machine only**, not for distribution.
 

@@ -5,9 +5,10 @@
 // widgets chats; the launcher's PR row has Chat too; and ⌥⌘N's chats step gives ＋ a switch — this folder or a new
 // worktree (←→, a click) — whose row says what the branch typed would do, in red where it would share a tree; a new
 // name asks what it starts from (2026-10-28: origin's main selected, typing filters, ← back to the name) and ⏎ makes a
-// worktree from it and starts a chat there.
+// worktree from it and starts a chat there. One press is one chat (2026-11-04): with origin slow to answer, real clicks
+// on the base row, a ⏎ twice on ＋, Chat twice on a PR, the picker left and the same asked again.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
@@ -28,6 +29,9 @@ execFileSync('git', ['clone', '-q', '--no-local', '--config', `url.${origin}.ins
 mkdirSync(other, { recursive: true });
 const real = realpathSync(repo), wt = n => join(real, '.claude', 'worktrees', n);
 
+// origin slow to say whether it has a branch under slow/: as long as this Mac's SSH took on 2026-11-04
+const slowGit = join(root, 'slowgit');
+writeFileSync(slowGit, '#!/bin/sh\ncase "$*" in *ls-remote*slow/again*) sleep 8;; *ls-remote*slow/*) sleep 3;; *ls-remote*off/*) exit 128;; esac\nexec git "$@"\n'); chmodSync(slowGit, 0o755);
 const prsFile = join(root, 'prs.json');
 writeFileSync(prsFile, JSON.stringify({ 'acme/widgets#14': { state: 'OPEN', title: 'Round tax to the cent', createdAt: '2026-10-09T09:00:00Z', headRefName: 'feat/tax-rounding', baseRefName: 'main', isCrossRepository: false } }));
 const { chats: [chat] } = makeFixture(claudeDir, [
@@ -37,7 +41,7 @@ const { chats: [chat] } = makeFixture(claudeDir, [
 
 export const meta = {
   server: true, fake: true, fixture: claudeDir,
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300' },
+  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300', GIT_BIN: slowGit, WT_ASK_MS: '20000' },
   prefs: { prsOpen: true },
 };
 
@@ -148,5 +152,65 @@ export default async function (ctx) {
   ctx.assert.ok(await termIn(wt('feat-new-thing')), 'a chat started in .claude/worktrees/feat-new-thing');
   ctx.assert.equal(git(wt('feat-new-thing'), 'rev-parse', 'HEAD'), git(repo, 'rev-parse', 'origin/main'), 'from origin’s main');
   ctx.assert.equal(git(wt('feat-new-thing'), 'branch', '--show-current'), 'feat/new-thing');
+
+  // One press is one chat (2026-11-04). The way to a branch's base step, the chats in a folder, and a wait long enough
+  // for a second one to have shown
+  const chatsIn = async dir => (await ctx.server.terminals()).filter(t => t.cwd === dir && !t.shell).length;
+  const noSecond = async (dir, want, what) => {
+    await ctx.waitFor(`!document.querySelector('#pick').open`, { what: `the picker gone: ${what}`, timeout: 15000 });
+    for (let i = 0; i < 100 && await chatsIn(dir) < want; i++) await ctx.sleep(100);
+    await ctx.sleep(1000);
+    ctx.assert.equal(await chatsIn(dir), want, `one chat: ${what}`);
+  };
+  const toChats = async () => {
+    await ctx.key('KeyN');
+    await ctx.waitFor(`document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel')`, { what: '⌥⌘N' });
+    await press('Enter');
+    await ctx.waitFor(`document.querySelector('#picklist .pkrow.new .pkmode')`, { what: 'the switch on ＋', timeout: 10000 });
+  };
+  const toBase = async name => {
+    await toChats(); await press('ArrowRight');
+    await ctx.fill('#pickq', name);
+    await ctx.waitFor(`/a new branch/.test(document.querySelector('#picklist .pkrow.new .cur')?.textContent || '')`, { what: 'a new name' });
+    await press('Enter');
+    await ctx.waitFor(`document.querySelector('#picklist .pkrow.base.sel')`, { what: 'the base step' });
+  };
+  // real clicks on the row, the worktree not there yet: the rows dim and take nothing
+  await toBase('slow/clicks');
+  const click = async () => {
+    const at = await ctx.evaluate(`(b => ({ x: b.left + b.width / 2, y: b.top + b.height / 2 }))(document.querySelector('#picklist .pkrow.base').getBoundingClientRect())`);
+    for (const type of ['mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', clickCount: 1 });
+  };
+  for (let i = 0; i < 4; i++) { await click(); await ctx.sleep(150); }
+  out.busy = await ctx.evaluate(`(c => ({ opacity: c.opacity, cursor: c.cursor, disabled: document.querySelector('#pickq').disabled, ph: document.querySelector('#pickq').placeholder }))(getComputedStyle(document.querySelector('#picklist .pkrow.base')))`);
+  ctx.assert.deepEqual([out.busy.opacity, out.busy.cursor, out.busy.disabled], ['0.5', 'progress', true], JSON.stringify(out.busy));
+  ctx.assert.match(out.busy.ph, /^making a worktree for slow\/clicks from origin\/main…$/);
+  await ctx.shot('4-making');
+  await noSecond(wt('slow-clicks'), 1, 'four clicks on the base row');
+  // the picker left while it is made, and the same branch asked for again: the same ask
+  await toBase('slow/again');
+  await press('Enter');
+  await ctx.evaluate(`document.querySelector('#pick').close()`); await ctx.settle();   // its close event, which a step opened before it would take for its own
+  await toBase('slow/again');
+  await press('Enter');
+  await ctx.waitFor(`/^Already starting a chat on slow\\/again/.test(document.querySelector('.note')?.textContent || '')`, { what: 'it says so' });
+  await noSecond(wt('slow-again'), 1, 'the same branch asked for twice');
+  // ⏎ twice on ＋ in this folder, while the folder is asked how it starts claude
+  const here = await chatsIn(real);
+  await toChats();
+  await ctx.evaluate(`(q => { for (let i = 0; i < 2; i++) q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })(document.querySelector('#pickq'))`);
+  await noSecond(real, here + 1, '⏎ twice on ＋');
+  // origin does not answer: the chat starts all the same, and the board says what it could not check
+  await toBase('off/line');
+  await press('Enter');
+  await ctx.waitFor(`/^Origin did not answer: off\\/line starts from origin\\/main, unchecked/.test(document.querySelector('.note')?.textContent || '')`, { what: 'it says so', timeout: 10000 });
+  await noSecond(wt('off-line'), 1, 'origin does not answer');
+  ctx.assert.equal(git(wt('off-line'), 'rev-parse', 'HEAD'), git(repo, 'rev-parse', 'origin/main'), 'from the base picked');
+  // Chat twice on a PR's row
+  await ctx.openChat(chat.id);
+  await ctx.waitFor(`document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]')`, { what: 'Chat on #14’s row', timeout: 20000 });
+  const onPr = await chatsIn(wt('feat-tax-rounding'));
+  await ctx.evaluate(`(b => { b.click(); b.click(); })(document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]'))`);
+  await noSecond(wt('feat-tax-rounding'), onPr + 1, 'Chat twice on a PR');
   return out;
 }

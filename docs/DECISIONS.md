@@ -5,6 +5,27 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-04 — one press is one chat
+
+Ricardo: *"noticed this bug when opening a new chat with a worktree. it was very slow to open the chats and then created 4 or 5 equal chats. investigate"*, then *"do it all"*.
+
+* **Clicks on the base row, while the worktree was made.** `newChatOnBranch` disabled the box but nothing held the rows: each click was a POST, the server's `wtAsking` handed all of them the one tree, and
+  each started its chat. The log's shape: one `worktree … made` line, five drawers within half a second. Five real clicks on a slowed `git fetch` gave five cards. **A ⏎ is not how**: Chrome and WebKit both take
+  the keys off a box the page disables, read in WebKit with real `NSEvent`s to a `WKWebView`, on a page shaped as the picker; what he pressed is logged nowhere, so the clicks are by elimination.
+* **`pickChoose` is the one door**: nothing while `pick.cloning`, and the list's own click stops there too, rather than a guard per step. `newChatIn` is a step under way now, its box disabled as the others': a
+  ⏎ twice there was two chats, the scenario failing without it.
+* **What no picker holds has a set of its own**: the picker left and the same branch asked again is the same ask, and says so (`wtStarting`, by folder and branch); Chat twice on a PR's row is one (`prChatting`).
+  Both last through `newChat`'s POST, as the tree comes first and a press in between was a second chat all the same.
+* **The answer acts on the picker only while it is still its own** (`run`, as `cloneAndStart`): one left meanwhile was closed under the next, and a failure wrote the old name into its box.
+* **The rows dim, 120 ms on**, so an answer at once dims nothing. The box's `:disabled` says it, no class to reset; a clone's progress is no `.pkrow`.
+* **The wait was the first thing it did**: a new name was asked of origin by a `git fetch`, a minute at most, a failure taken as *no such branch*, and a second fetch after it for a base of origin's. SSH to GitHub was being
+  refused that morning, 7 to 15 s a try. Now `ls-remote`, `WT_ASK_MS` (5 s), and no second try without an answer. **An origin that answers keeps its minute**: a cap on the fetch would have been a stale base, silently, on a slow day, and
+  the wait it costs is only ever origin's.
+* **Not asked is said** (`unasked`, a note): a name origin has and this checkout has not heard of becomes a new branch here, and only the push would tell. No origin at all is nothing to say.
+* **`agentsSoon` was out of reach**: inside `main()`, called from `noteAgentNotices` out here. Every agent's notice threw after setting `agentEnds`, so the rows read right and the tests passed, and the line's
+  task event and push were lost: 122 times in the log since 2026-11-02, said once per file. Now beside `scanAgents`, and the agents test reads the log for the throw.
+* **Left**: why SSH is refused, with the agent's key the one on the account and yesterday's push through. Esc does not cancel: the chat still starts when its tree is there, as it did.
+
 ## Decisions of 2026-11-04 — a command that runs for hours stays in Watching
 
 Ricardo: *"why is the widgets "EVERY PR" chat not in monitoring section? seems like a bug"* — a chat whose job is to watch every PR of a repo, by a `while true` loop in a
@@ -25,6 +46,7 @@ behind the other:
   (`{taskId, description, status, outputFilePath}`; here 543 KB back, past the tail too). **Open**: a command started before a `/clear`, if its shell outlives it, has no line in the new
   transcript — not looked at.
 
+||||||| parent of 7fbe946 (One press in the picker is one chat)
 ## Decisions of 2026-11-03, later — one look, the matrix everywhere, a line of words
 
 Ricardo, after living with round XXII: *"the matrix PRs should be the only option. also, we should use the same UI on the top chat (maybe with 2 or 3 rows if necessary)
