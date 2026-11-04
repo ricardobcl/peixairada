@@ -28,6 +28,7 @@ npm test                            # node:test over test/, the drawers end to e
 npm run check                       # static: the page compiles, the tests' rules, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
+npm run shell                       # the real shell on a throwaway server, by the window's pixels; never in front (≈20 s)
 npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s)
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
@@ -72,6 +73,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/worktree.sh` | A worktree per piece of parallel work (see above) |
 | `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness (see Verifying) |
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
+| `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/main.swift` itself, driven (see Verifying) |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
 | `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
@@ -963,25 +965,22 @@ npm run map                         # rewrite the section maps at the top of ser
 Look at the screenshots. **After any edit to the page, load it**: `check-page` only compiles, and a `const` read before its line kills
 the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `npm run verify` reads the live one.
 
-* `npm run verify -- "<js>"` evaluates one expression on the live board, handed its key; `--hash <id>` opens a chat
-  first, `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/` (and `KEY=`). Drive
+* `npm run verify -- "<js>"` evaluates one expression on the live board, handed its key; `--hash`, `--shot`, `URL=` at its head. Drive
   Chrome over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView`;
-  `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. A body asks the
-  shell for `layers()` (the compositor's tree), `footprint()` (the web process's memory) and `say(line)`;
-  `WK_BORDERS` / `WK_COUNTERS` draw layer borders and repaint counts into the shot (2026-10-13). The window is opaque and on screen by one pixel (off a
-  screen WebKit runs no frames); a locked screen or a sleeping display hides it; a mirror of the main
-  screen is not another screen.
+  `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. What a body can ask and `WK_BORDERS` are at its head. On screen by one pixel (off a screen WebKit runs no
+  frames); a locked screen or a sleeping display hides it.
+* **What the page and the shell do only together is checked in the real shell** (2026-11-04; `npm run shell`, `shell-checks/`): a fake
+  bridge says what the page asks for, this whether the window agrees; how is in mac/CLAUDE.md. **A change to `main.swift` or to what
+  crosses the bridge runs it before it lands** (`npm run check` says when the shell has moved since). → `shell-up.mjs`.
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board, lights on: the web process's
-  CPU (`WK_PIDFILE`) at rest, moving, scrolling, home, a chat opened; layers, memory — against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:
+  CPU, layers, memory against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:
   nothing never-ending on an SVG child, at a playback rate other than 1, by `steps()` or with nothing drawn; no
   inherited registered property transitioned over a big subtree) — Chrome checks them too (`compositor-rules.mjs`) but
   the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
   change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
-  on that commit beside it (a worktree, the runs interleaved; `--runs n`, medians), `--sample` the top of macOS
-  `sample`'s stacks, `--prefs '<json>'` another look (`'{"look":"light","skinFollow":false}'`). **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
-  <pid>`) — CPU, memory, where the time went.
+  on that commit beside it; `--sample`, `--prefs`, and `--app` (the app as it runs) are at its head.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `gl` a software WebGL, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen, every page in the board**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free

@@ -18,7 +18,7 @@ const fails = [];
 const npmTest = JSON.parse(read('package.json')).scripts?.test || '';
 if (!/--import[= ]\.\/test\/env\.mjs\b/.test(npmTest)) fails.push(`package.json: the test script does not preload ./test/env.mjs (node --import ./test/env.mjs --test …): ${npmTest}`);
 
-const files = ['test', 'scripts/scenarios'].flatMap(d => readdirSync(join(ROOT, d)).filter(f => f.endsWith('.mjs')).map(f => `${d}/${f}`));
+const files = ['test', 'scripts/scenarios', 'scripts/shell-checks'].flatMap(d => readdirSync(join(ROOT, d)).filter(f => f.endsWith('.mjs')).map(f => `${d}/${f}`));
 for (const f of files) {
   const t = read(f), at = re => { const m = re.exec(t); return m ? m.index : -1; };
   if (/\bmkdtempSync\b/.test(t)) fails.push(`${f}: a bare mkdtempSync — tmpDir() from lib/testserver.mjs removes its folder on exit`);

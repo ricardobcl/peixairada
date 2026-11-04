@@ -11,6 +11,7 @@
     "verify": "node scripts/verify.mjs",
     "webkit": "node scripts/webkit.mjs",
     "perf": "node scripts/perf.mjs",
+    "shell": "node scripts/shell.mjs",
     "scenario": "node scripts/scenario.mjs",
     "scenarios": "node scripts/scenarios.mjs",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",

@@ -1,12 +1,12 @@
 #!/bin/sh
 # Static checks, ten seconds: every script parses, the page's inline script compiles, the tests keep to a state and temp
 # dirs of their own and name every route (scripts/check-tests.mjs), the shell scripts parse, the app's Swift type-checks
-# against the deployment target build.sh uses, and the WebKit check's against this Mac.
+# against the deployment target build.sh uses, with the shell's probe too, and the WebKit check's against this Mac.
 # `npm run check`. No network, no server.
 set -eu
 cd "$(dirname "$0")/.."
 echo "› node --check"
-for f in server.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
+for f in server.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs scripts/shell-checks/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
 echo "› the tests: their environment, their temp dirs, every route named"
@@ -33,5 +33,9 @@ if command -v swiftc >/dev/null 2>&1; then
   echo "› swiftc -typecheck (macOS $MIN_OS)"
   swiftc -typecheck -swift-version 5 -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" mac/Sources/main.swift
   swiftc -typecheck -swift-version 5 scripts/webkit.swift
+  # …and the shell as `npm run shell` builds it (2026-11-04); that run is what looks at it, so a change it has not seen is said
+  swiftc -typecheck -swift-version 5 -D PEIX_PROBE -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" mac/Sources/main.swift scripts/shell-probe.swift
+  [ "$(cat mac/Sources/main.swift scripts/shell-probe.swift | shasum -a 256 | cut -d' ' -f1)" = "$(cat "$NM/.cache/peixairada/shell-passed" 2>/dev/null)" ] ||
+    echo "› note: the shell has changed since \`npm run shell\` last passed: run it before this lands"
 else echo "› swiftc not found — the app is not type-checked here"; fi
 echo "ok"

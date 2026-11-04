@@ -78,6 +78,13 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to
   fail first; the 5 s watchdog probes `/api/projects` and brings the board back once the server answers
   (`boardShown`). A web process that dies is loaded again. The bridge answers the board's own main frame only.
+* **`npm run shell` runs this very file** (2026-11-04; `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/`): with the probe beside it
+  and `-D PEIX_PROBE`, which build.sh does not set, on a throwaway server and fixture, a line of JSON each way; `ctx` is at the runner's
+  head, and what a check believes is the window's pixels in sRGB (`ask('shot')`, `ask('runs')`). Out of the way of the app in use
+  (`kProbeAside`): never in front, one pixel on the screen, its home a temp folder (`CFFIXED_USER_HOME`). **It differs from the app in
+  five places, each a hole in what it proves**: the activation policy, `probeBegin`, `BoardWindow`'s frame, `placeFill`, `tellFill`'s
+  left edge; keep them few, and a new command in the probe, not here (a change under `mac/` puts every app behind). **A new check first
+  fails on the bug it is for** (`--src <dir>/main.swift`). A locked screen is `NOT RUN`, exit 3. → `shell-up.mjs`.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
   **The board's web view draws no ground** (`drawsBackground` off): the window's `backgroundColor` and

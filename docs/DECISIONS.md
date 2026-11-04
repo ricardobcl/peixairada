@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-04 — the real shell, driven
+
+After a page sat 32 pt too high in a normal window for six weeks (the entry below), Ricardo: *"anything to improve on the
+harness/tests to not happen these kind of bugs?"*, and of the three answers: *"do it all"*.
+
+* **Why nothing saw it**: 19 of 147 scenarios fake the bridge, so they can say what the page asks for, in the page's own coordinates;
+  `main.swift`'s 2,225 lines were typechecked and no more; `npm run webkit` is the right engine in a borderless window, the one shape
+  with no title bar inset; and he lives in the fill. Twice now a report of this symptom came through that gap (2026-10-21's too).
+* **`npm run shell`** (`scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/`): `main.swift` itself compiled with `-D PEIX_PROBE` and a
+  file beside it, a line of JSON each way over stdin and stdout, on a throwaway server and fixture. **Not a copy of `buildWindow`**, as
+  the morning's probe was: a copy drifts, and is the same blind spot. None of it is in the app: build.sh sets no flag, and the
+  commands that run script and read the window are in a file it does not compile.
+* **Out of the way of the app in use, which is why it can run any time** (`kProbeAside`): `.prohibited` (no Dock icon, no activation;
+  checked at every look, and `lsappinfo front` the same before and after), no fish, at the screen saver's level with no mouse, one pixel on
+  the main screen. **`CFFIXED_USER_HOME` moved everything but the defaults**: the key, both logs, the launchd agent's plist (so it finds
+  none to kick) and WebKit's stores are a temp folder's; the defaults are the process's name's in the real ~/Library/Preferences, wiped and
+  removed around a run. Measured with a throwaway binary first, since `homeDirectoryForCurrentUser` might have ignored it.
+* **The fill does not take the screen**, which the answer given before this was built said it would: its style mask and its word to
+  the page are the real ones, `placeFill` leaves the frame and the presentation options alone, and `tellFill` reckons the housing from the
+  screen's left edge, as the fill's frame would.
+* **Each difference from the app is a hole in what it proves**, so there are five: the activation policy, `probeBegin`, `BoardWindow`'s
+  frame, `placeFill`, `tellFill`'s left edge.
+* **Not in `npm test`**: it needs a screen nobody locked, and a Swift compile. `npm run check` says when `main.swift` or the probe has moved
+  since it last passed whole (a note, not a failure; `shell-passed` in the cache). A locked screen is `NOT RUN`, exit 3, never a pass.
+* **What it cannot see**: another macOS than the one it runs on (the 32 pt is 27.2's); keys and the mouse (no Accessibility grant, a click
+  is the script's); a second screen.
+
 ## Decisions of 2026-11-04 — the project filter you can see, and leave (round XXV)
 
 Ricardo: *"when filtering by project, the UI on the left a bit ugly (seems like cards are not rendered the same) and it's not

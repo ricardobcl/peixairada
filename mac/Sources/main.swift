@@ -13,6 +13,14 @@ import Cocoa
 import WebKit
 import UserNotifications
 
+/// `npm run shell` (2026-11-04) builds this file with scripts/shell-probe.swift and -D PEIX_PROBE: the real shell on a
+/// throwaway server, driven by a test, out of the way of the app in use. build.sh sets no flag, so the app has none of it.
+#if PEIX_PROBE
+let kProbeAside = ProcessInfo.processInfo.environment["PEIX_PROBE_SPACE"] == nil   // …but when it is macOS's full screen being tried
+#else
+let kProbeAside = false
+#endif
+
 let kPort = ProcessInfo.processInfo.environment["PEIXAIRADA_PORT"].flatMap(Int.init) ?? 7331
 let kURL = URL(string: "http://127.0.0.1:\(kPort)/")!
 let kFrameName = "peixairada.main"   // the window's frame in the defaults — off while ⌃⌘F fills the screen
@@ -319,10 +327,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   static let lightsH: CGFloat = 28        // a title bar's
 
   func applicationDidFinishLaunching(_ note: Notification) {
-    NSApp.setActivationPolicy(.regular)
+    NSApp.setActivationPolicy(kProbeAside ? .prohibited : .regular)
     buildMenu()
     buildStatusItem()
     buildWindow()
+    #if PEIX_PROBE
+    probeBegin()
+    #endif
     setUpNotifications()
     watchAway()
     voiceOverObs = NSWorkspace.shared.observe(\.isVoiceOverEnabled) { [weak self] _, _ in DispatchQueue.main.async { self?.tellVoiceOver() } }
@@ -1332,6 +1343,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   func placeFill(on screen: NSScreen) {
     fillMenuH = max(screen.safeAreaInsets.top, NSApp.mainMenu?.menuBarHeight ?? 0)   // the housing's strip beside one, the main menu's own elsewhere
     if fillMenuH <= 0 { fillMenuH = 24 }
+    if kProbeAside { return }   // the fill's style and its word to the page, off the screen in use
     let options = fillOptions()
     if NSApp.presentationOptions != options { NSApp.presentationOptions = options }   // the same again is the Dock's and the menu bar's work for nothing (2026-10-15)
     if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
@@ -1542,7 +1554,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     var notch = "null"
     if fillSaved != nil, let screen = window.screen, screen.safeAreaInsets.top > 0,
        let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea {
-      notch = "{top: \(screen.safeAreaInsets.top / zoom), left: \((l.maxX - window.frame.minX) / zoom), right: \((r.minX - window.frame.minX) / zoom)}"
+      let left = kProbeAside ? screen.frame.minX : window.frame.minX   // where the fill's frame starts, the probe's window being elsewhere
+      notch = "{top: \(screen.safeAreaInsets.top / zoom), left: \((l.maxX - left) / zoom), right: \((r.minX - left) / zoom)}"
     }
     let js = "window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))"
     if js == fillSaid { return }
@@ -2215,7 +2228,7 @@ final class BoardWindow: NSWindow {
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { true }
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
-    fill ? frameRect : super.constrainFrameRect(frameRect, to: screen)
+    fill || kProbeAside ? frameRect : super.constrainFrameRect(frameRect, to: screen)
   }
 }
 
