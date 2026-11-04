@@ -574,6 +574,12 @@
   .gsep.more { margin: 4px 10px 2px; padding: 3px 0; text-align: center; cursor: pointer; border-radius: var(--r-2); }
   .gsep.more:hover { color: var(--ink); background: var(--ctl); }
   .gsep.more .ms { display: none; }
+  .gsep.others { flex: none; display: flex; align-items: center; gap: 8px; margin: 2px 0 0; padding: 7px 12px; border-radius: 7px; font: 500 var(--fs-sm)/16px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0; cursor: pointer; }
+  .gsep.others:hover { color: var(--ink); background: var(--ctl); }
+  .gsep.others .sqs { flex: none; display: inline-flex; gap: 2px; }
+  .gsep.others .sqs i { width: 8px; height: 8px; border-radius: var(--r-1); background: oklch(from var(--repo, var(--nocolor)) clamp(.5, l, .72) c h); }
+  .gsep.others .ln { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .gsep.others b { flex: none; margin-left: auto; font-weight: 600; color: var(--ink); }
   .gsep.lane[data-lane]:hover .lc { opacity: 1; }
   .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
   .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
@@ -5559,9 +5565,10 @@ const toolName = n => {
       if (held[g] && !laneShut(g)) items.push({ key: `more:${g}`, html: moreHtml(g, held[g]) });
     }
     if (zero && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
+    if (p.key !== ALL && !q && items.length) { const o = othersHtml(p); if (o) items.push({ key: 'others', html: o }); }
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
     // now and then (the bar's own interval), nothing else moving.
-    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
+    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : p.key !== ALL ? ['No chats in this project', 'Show all, up top, or ⌥⌘N starts one'] : ['No chats yet', '⌥⌘N starts one'];
     const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillLive($('#slist')); fillAges($('#slist')); fillAgents(); fadeSoon();   // the live line first: a wake-up's is an age to fill
     const o = drawCards.opening; drawCards.opening = null; if (o) openRun($('#slist'), o.g, o.lr, o.gap);   // a lane opened, its cards filled in
@@ -5644,8 +5651,18 @@ const toolName = n => {
     box.style.setProperty('--scope-c', Math.min(.036, c * .3).toFixed(3)); box.style.setProperty('--scope-h', `${(h * 180 / Math.PI).toFixed(1)}`);
     box.style.setProperty('--side', 'oklch(from var(--side0) calc(l + var(--scope-l)) calc(c + var(--scope-c)) var(--scope-h))');
   }
+  const OTHERS_SQUARES = 8;
   const CUE_CHEV = '<svg class="ch" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" /></svg>';
   const notDone = s => visible(s) && bucket(s) !== 'done';
+  // The list's end says what the project in view hides (2026-11-04, round XXV): where the eye lands on a short list, a square
+  // for each of the other projects, the fullest first, and Show all; nothing when there is nothing else.
+  function othersHtml(p) {
+    const by = new Map(), rest = [...state.sessions.values()].filter(s => notDone(s) && !inProject(s, p));
+    if (!rest.length) return '';
+    for (const s of rest) { const b = by.get(s.project) || { n: 0, cwd: s.cwd }; b.n++; by.set(s.project, b); }
+    const squares = [...by.values()].sort((a, b) => b.n - a.n).slice(0, OTHERS_SQUARES).map(b => `<i style="${repoStyle(repoColor(b.cwd))}"></i>`).join('');
+    return `<div class="gsep others" data-others role="button" tabindex="0" title="Every project again (ALL)"><span class="sqs" aria-hidden="true">${squares}</span><span class="ln">${rest.length} more in ${by.size === 1 ? 'another project' : 'other projects'}</span><b>Show all</b></div>`;
+  }
   const askingElsewhere = p => [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && !inProject(s, p));
   function cueDraw(p, here) {
     const box = $('#stitle'), on = p.key !== ALL;
@@ -8194,10 +8211,12 @@ const toolName = n => {
   $('#slist').addEventListener('keydown', e => { const l = e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
   const moreLane = g => { laneMore.add(g); noteMotion(g, 'more'); renderBoard(); };   // a long lane's rest (LANE_CAP)
   $('#slist').addEventListener('keydown', e => { const m = e.target.closest?.('.gsep.more[data-more]'); if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); moreLane(m.dataset.more); } });
+  $('#slist').addEventListener('keydown', e => { if (e.target.closest?.('.gsep.others') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectProject(ALL); } });
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
     if (e.target.closest('#stitle .ask')) { const s = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0]; if (s) openSession(s.id, { locate: true }); return; }
     if (e.target.closest('#stitle .t')) { pickOpen('project'); return; }
+    if (e.target.closest('#slist > .gsep.others')) { selectProject(ALL); return; }
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
