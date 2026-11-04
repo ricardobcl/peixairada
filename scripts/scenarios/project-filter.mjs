@@ -2,7 +2,7 @@
 // project the list's own tab, level with the chat's toolbar and on the cards' edges, says its name, how many of how many and
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
 // the count gives way first and a long name fades, Show all whole; the list's ground a tint of the project, and of nothing else;
-// at the notch it stays level with the toolbar.
+// the toolbar's tab solid with the funnel while on, a named project's too; at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -93,6 +93,35 @@ export default async function (ctx) {
     await pick(LONG);
     ctx.assert.equal((await grounds()).list, plain.list, 'no colour, no tint');
     await showAll();
+
+    // the toolbar's tab says it: the funnel under the pointer, solid with the funnel kept while on, a click lets go; another
+    // project in view says nothing there, and a click narrows to its own; a named project holding the chat is on too
+    const tb = () => ctx.evaluate(`(r => { const st = getComputedStyle(r), f = getComputedStyle(r.querySelector('.fun')); return { on: r.classList.contains('on'), ink: st.color, ground: st.backgroundColor, fun: f.opacity, line: st.textDecorationLine }; })(document.querySelector('#shead .repo'))`);
+    await ctx.openChat(first.id); await ctx.settle();
+    const off = out.tabOff = await tb();
+    ctx.assert.deepEqual([off.on, off.fun], [false, '0'], 'off: no funnel at rest');
+    await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
+    await ctx.settle();
+    const on = out.tabOn = await tb();
+    ctx.assert.deepEqual([on.on, on.ink, on.fun, on.line], [true, 'rgb(255, 255, 255)', '1', 'none'], 'on: solid, its words white, the funnel kept, no underline');
+    ctx.assert.notEqual(on.ground, off.ground, 'and its ground changed');
+    ctx.assert.equal(await project(), 'shop', 'the click narrowed to it');
+    await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
+    await ctx.settle();
+    ctx.assert.equal(await project(), 'all', 'and again lets go');
+    await pick('other');
+    ctx.assert.equal((await tb()).on, false, 'another project in view: nothing here');
+    await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
+    await ctx.settle();
+    ctx.assert.equal(await project(), 'shop', 'a click narrows to the chat\'s own');
+    await showAll();
+    await ctx.server.api('api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'web set', cwds: [join(root, 'shop'), join(root, 'other')] }) });
+    await ctx.waitFor(`(() => true)()`, { what: 'the set' }); await ctx.sleep(300);
+    await pick('web set');
+    ctx.assert.equal((await tb()).on, true, 'a named project holding the chat is on');
+    await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
+    await ctx.settle();
+    ctx.assert.equal(await project(), 'all', 'and a click lets go of it');
 
     // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
     await pick('shop');

@@ -1386,8 +1386,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* The repo is the identifier you navigate by, so it does not shrink — the title absorbs the
      truncation instead, and only past 60% does the repo start to ellipsise too. */
   .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-  .shead h2 .repo:hover { text-decoration: underline; text-decoration-style: dotted; }
-  .shead h2 .repo.on { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }   /* the list shows this folder alone: a click lets go */
+  /* The tab is the filter's toggle, and says so (2026-11-04, round XXV): the funnel's own glyph under the pointer, kept while the list shows this project alone */
+  .shead h2 .repo .fun { width: 11px; height: 11px; margin: 0 -4px 0 6px; vertical-align: -1px; fill: currentColor; opacity: 0; transition: opacity var(--t-hover); }
+  .shead h2 .repo:hover .fun { opacity: .75; }
+  .shead h2 .repo.on .fun { opacity: 1; }
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   /* a bar between the project and the title (2026-09-26): the header's
      ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
@@ -2239,6 +2241,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     color: oklch(from var(--repo, var(--nocolor)) min(l, .3) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.62, l, .72) c h) 34%, transparent); }
   :root[data-layout="sidebar"][data-theme="dark"] #chat .shead h2 .repo {
     color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
+  :root[data-layout="sidebar"][data-theme] #chat .shead h2 .repo.on { color: #fff; background: oklch(from var(--repo, var(--nocolor)) min(l, .52) min(c, .16) h); }   /* solid while on, as the list's own tab is */
   /* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
      the toolbar's ground, opaque: the card's chips overlap */
   :root[data-layout="sidebar"] #slist .card .ctk[data-cat] {
@@ -5042,6 +5045,8 @@ const toolName = n => {
   // its prefix already (inFolder), and its colour by the repo's name (colorKey). Its branch is a chip on its card.
   const projDir = cwd => cwd ? cwd.replace(/\/\.claude\/worktrees\/[^/]+(?:\/.*)?$/, '') : cwd;
   const inProject = (s, p) => p.key === ALL || (p.custom ? p.cwds.some(f => inFolder(s.cwd, f)) : (projDir(s.cwd) || '?') === p.key);
+  const scopedOn = s => !!s.cwd && prefs.project !== ALL && inProject(s, projectStub(prefs.project));   // the list narrowed to what holds this chat, a folder or a named set
+  const REPO_FUN = '<svg class="fun" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z" /></svg>';
   const projectStub = key => key === ALL ? { key } : key.startsWith('c:') ? { key, custom: true, cwds: state.projects.find(p => 'c:' + p.id === key)?.cwds || [] } : { key };
   // The same rules as the lane board had: empty live panels and stale chats older than 30 days hide unless asked.
   // Taken off the board by ⌥⌘N's ✕ (2026-09-22): the key is a folder's cwd or `c:<id>`, the pins' own spelling, and the
@@ -8627,7 +8632,7 @@ const toolName = n => {
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
     const hprs = !prs.length && !tks.length ? '' : `<button class="hgit${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" aria-label="${said}: ${prsOpen ? 'fold the list' : 'list them'}" title="${said} in this chat: click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${ICON.pr}${rn(`hgit:${s.id}`, prs.length + tks.length)}</button>`;
-    const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === projDir(s.cwd) ? ' on' : ''}" title="${s.cwd && prefs.project === projDir(s.cwd) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
+    const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${scopedOn(s) ? ' on' : ''}" title="${scopedOn(s) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}${REPO_FUN}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${driftChip(s)}${diffChip(s)}${headMove(s)}${headMatrix(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${inEdName()}${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
@@ -8718,7 +8723,7 @@ const toolName = n => {
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#muteBtn').onclick = () => setMuted(s.id, !state.sessions.get(s.id)?.muted);   // a toggle: the menu stays up
-    $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === projDir(s.cwd) ? ALL : projDir(s.cwd)); };   // a toggle (2026-10-08)
+    $('#shead .repo').onclick = () => { if (s.cwd) selectProject(scopedOn(s) ? ALL : projDir(s.cwd)); };   // a toggle (2026-10-08), a named project's too (2026-11-04)
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
   // The header's PR chips take whatever the row has (2026-09-24): all
