@@ -3,7 +3,7 @@
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
 // the count gives way first and a long name fades, Show all whole; the list's ground a tint of the project, and of nothing else;
 // the toolbar's tab solid with the funnel while on, a named project's too; the list ends on what is hidden; ⌥⌘P ⌥⌘P lets go and
-// comes back, a card's menu too; at the notch it stays level with the toolbar.
+// comes back, a card's menu too; a chat from elsewhere lets it go; its tab flies, and waves when left on; at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -158,6 +158,25 @@ export default async function (ctx) {
     await right(first.id);
     ctx.assert.notEqual(await menuRow('Every project'), 'none', 'on a project the row lets go'); await ctx.settle();
     ctx.assert.equal(await project(), 'all', 'it lets go');
+
+    // the tab flies up with the filter and back without it, by a stand-in that leaves nothing behind; switching projects does not
+    await ctx.openChat(first.id); await ctx.settle();
+    const cueMoves = async fn => { const n = (await ctx.peix('motion()')).length; await fn(); const stand = await ctx.evaluate(`!!document.querySelector('.tabfly')`), hidden = await ctx.evaluate(`document.querySelector('#stitle .t')?.style.visibility || ''`); await ctx.settle(); return { kinds: (await ctx.peix('motion()')).slice(n).filter(m => m.id === 'cue').map(m => m.kind), stand, hidden, left: await ctx.evaluate(`!!document.querySelector('.tabfly')`), after: await ctx.evaluate(`document.querySelector('#stitle .t')?.style.visibility || ''`) }; };
+    ctx.assert.deepEqual(out.flyUp = await cueMoves(() => ctx.evaluate(`document.querySelector('#shead .repo').click()`)), { kinds: ['flyup'], stand: true, hidden: 'hidden', left: false, after: '' }, 'on: the open card\'s tab flies up, the cue\'s own hidden till it lands');
+    ctx.assert.deepEqual((await cueMoves(async () => { await ctx.key('KeyP'); await ctx.sleep(120); await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = 'other'; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`); })).kinds, [], 'another project: the cue is there already, no flight');
+    await ctx.evaluate(`document.querySelector('#shead .repo').click()`); await ctx.settle();
+    ctx.assert.deepEqual(out.flyBack = await cueMoves(() => ctx.evaluate(`document.querySelector('#stitle .sx').click()`)), { kinds: ['flyback'], stand: true, hidden: '', left: false, after: '' }, 'Show all: it goes back down');
+
+    // left on, it waves once on coming back from away, and on launch; not on a short look away, nor with nothing on
+    await pick('shop');
+    const waves = async fn => { const n = (await ctx.peix('motion()')).length; await fn(); await ctx.sleep(700); return (await ctx.peix('motion()')).slice(n).filter(m => m.kind === 'wave').length; };
+    const OUT = await ctx.evaluate(`Date.now() - 3 * 3600_000`);
+    ctx.assert.equal(await waves(() => ctx.evaluate(`window.peixFront(false, Date.now() - 1000); window.peixFront(true)`)), 0, 'a short look away: nothing');
+    ctx.assert.equal(await waves(() => ctx.evaluate(`window.peixFront(false, ${OUT}); window.peixFront(true)`)), 1, 'back from away: it waves');
+    await ctx.reload(); await ctx.sleep(900);
+    ctx.assert.ok((await ctx.peix('motion()')).some(m => m.id === 'cue' && m.kind === 'wave'), 'and on launch');
+    await ctx.settle(); await ctx.evaluate(`document.querySelector('#stitle .sx').click()`); await ctx.settle();
+    ctx.assert.equal(await waves(() => ctx.evaluate(`window.peixFront(false, ${OUT}); window.peixFront(true)`)), 0, 'nothing on ALL');
 
     // at the notch: lowered with the toolbar, level with it; the list under the housing, under its strip
     await pick('shop');

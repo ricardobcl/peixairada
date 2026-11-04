@@ -463,6 +463,8 @@
   #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
   #stitle > .t { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 62%; padding: var(--cue-drop, 0px) 9px 0 12px; border: 0; border-radius: 7px 7px 0 0; background: var(--selc); color: #fff; font-family: inherit; font-size: var(--fs-md); font-weight: 700; line-height: 1.2; cursor: pointer; }
   #stitle > .t:hover { background: oklch(from var(--selc) calc(l * .92) c h); }
+  #stitle > .t { transform-origin: 50% 100%; }   /* the wave grows from the rule */
+  .tabfly { position: fixed; z-index: 40; box-sizing: border-box; display: flex; align-items: center; padding: 0 9px 0 12px; overflow: hidden; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: var(--fs-md); font-weight: 700; pointer-events: none; transform-origin: 0 0; }
   #stitle > .t .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* a long name ends in … */
   #stitle > .t .ch { flex: none; width: 9px; height: 9px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   #stitle > .cn { flex: none; align-self: center; padding-top: var(--cue-drop, 0px); font-size: var(--fs-sm); color: var(--muted); }
@@ -5327,7 +5329,9 @@ const toolName = n => {
   function wentOut(at = Date.now()) { if (!outUi.at) outUi.at = at; }
   function cameBack() {
     const since = outUi.at; outUi.at = 0;
-    if (!since || Date.now() - since < OUT_MS || fishing.until) return;   // fishing, the catch will say it
+    if (!since || Date.now() - since < OUT_MS) return;
+    setTimeout(cueWave, 400);
+    if (fishing.until) return;   // fishing, the catch will say it
     setTimeout(() => { const line = outLine(since); if (line) laneNews(line); }, 400);   // the stream's news of the moment first
   }
   function outLine(since) {
@@ -6794,7 +6798,43 @@ const toolName = n => {
   }
   // The project last in view stays known, for ⌥⌘P ⌥⌘P (2026-11-04, round XXV)
   function scopeTo(key) { if (prefs.project !== ALL && key !== prefs.project) prefs.lastProject = prefs.project; prefs.project = key; savePrefs(); }
-  function selectProject(key) { scopeTo(key); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); if (key !== ALL) showList(); }
+  function selectProject(key) { const fly = tabFlight(key); scopeTo(key); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); if (key !== ALL) showList(); fly?.(); }
+  // The tab flies (2026-11-04, round XXV): filtered, the open card's tab rises into the cue as the others leave; let go, the
+  // cue's goes back down to it — it shows once where the filter lives. A stand-in in the cue's colours, moved by transform and
+  // opacity alone. Its place on a card read through the slide the card has just begun (offsetTop, not the rect).
+  const FLY_MS = 340;
+  function tabFlight(key) {
+    const on = key !== ALL, s = state.sessions.get(state.current), list = $('#slist');
+    if (on === (prefs.project !== ALL) || REDUCED.matches || prefs.listHidden || !s || (on && !inProject(s, projectStub(key)))) return null;
+    const cardTab = () => { const c = list.querySelector(':scope > .card.active'), t = c?.querySelector('.top .repo'); if (!t?.getClientRects().length) return null;
+      const r = t.getBoundingClientRect(), lr = list.getBoundingClientRect(), top = lr.top + c.offsetTop - list.scrollTop + (r.top - c.getBoundingClientRect().top);
+      return top + r.height > lr.top && top < lr.bottom ? { left: r.left, top, width: r.width, height: r.height } : null; };
+    if (on) { const from = cardTab(); return from && (() => { const t = $('#stitle .t'); if (t?.getClientRects().length) flyTab(t, from, t.getBoundingClientRect(), true); }); }
+    const t = $('#stitle .t'); if (!t?.getClientRects().length) return null;
+    const from = t.getBoundingClientRect(), look = flyLook(t);
+    return () => { const to = cardTab(); if (to) flyTab(null, from, to, false, look); };
+  }
+  const flyLook = t => { const st = getComputedStyle(t); return { name: t.textContent, ground: st.backgroundColor, ink: st.color, corners: st.borderRadius }; };
+  function flyTab(t, from, to, arriving, look = flyLook(t)) {
+    const box = arriving ? to : from, far = arriving ? from : to, f = document.createElement('div');
+    f.className = 'tabfly'; f.textContent = look.name;
+    f.style.cssText = `left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;background:${look.ground};color:${look.ink};border-radius:${look.corners}`;
+    document.body.append(f);
+    if (t) t.style.visibility = 'hidden';
+    const away = `translate(${far.left - box.left}px, ${far.top - box.top}px) scale(${far.width / box.width}, ${far.height / box.height})`, here = 'none';
+    const a = f.animate(arriving ? [{ transform: away, opacity: .5 }, { transform: here, opacity: 1 }] : [{ transform: here, opacity: 1 }, { transform: away, opacity: 0 }], { duration: FLY_MS, easing: EASE_OUT });
+    noteMotion('cue', arriving ? 'flyup' : 'flyback');
+    const end = () => { f.remove(); if (t) t.style.visibility = ''; };
+    a.addEventListener('finish', end); a.addEventListener('cancel', end);
+  }
+  // A filter left on says so once (2026-11-04, round XXV): on launch and on coming back from away the cue's tab pulses, motion being
+  // what the eye catches from the side.
+  const WAVE_MS = 560;
+  function cueWave() {
+    const t = $('#stitle .t'); if (prefs.project === ALL || REDUCED.matches || document.hidden || !t?.getClientRects().length) return;
+    t.animate([{ scale: 1 }, { scale: 1.09 }, { scale: 1 }], { duration: WAVE_MS, easing: 'ease-in-out' });
+    noteMotion('cue', 'wave');
+  }
   // ⌥⌘P with the picker up (2026-11-04, round XXV): on a project, ALL; on ALL, the project last in view, as cd - goes back.
   function projectAgain() { const back = prefs.project === ALL ? prefs.lastProject : ALL; $('#pick').close(); if (back) selectProject(back); }   // the header's folder name is the toggle's other end
   // ---- ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name. ----
@@ -16436,7 +16476,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     };
     es.onerror = () => { bar.conn = false; bar.back = false; bar.lost = es.readyState === EventSource.CLOSED; renderBar(); if (bar.lost) api('GET', '/api/key').catch(() => {}); };   // a stream turned away: for want of the key, the lock
     es.addEventListener('snapshot', e => {
-      const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
+      const d = JSON.parse(e.data); state.snapshots++; if (state.snapshots === 1) setTimeout(cueWave, 600);   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
       for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews, agentTabs]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);
