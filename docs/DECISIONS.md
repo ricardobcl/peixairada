@@ -11,7 +11,7 @@ Ricardo: *"noticed this bug when opening a new chat with a worktree. it was very
 
 * **Clicks on the base row, while the worktree was made.** `newChatOnBranch` disabled the box but nothing held the rows: each click was a POST, the server's `wtAsking` handed all of them the one tree, and
   each started its chat. The log's shape: one `worktree … made` line, five drawers within half a second. Five real clicks on a slowed `git fetch` gave five cards. **A ⏎ is not how**: Chrome and WebKit both take
-  the keys off a box the page disables, read in WebKit with real `NSEvent`s to a `WKWebView`, on a page shaped as the picker; what he pressed is logged nowhere, so the clicks are by elimination.
+  the keys off a box the page disables, read in WebKit with real `NSEvent`s to a `WKWebView`, on a page shaped as the picker; what was pressed is logged nowhere, so the clicks are by elimination.
 * **`pickChoose` is the one door**: nothing while `pick.cloning`, and the list's own click stops there too, rather than a guard per step. `newChatIn` is a step under way now, its box disabled as the others': a
   ⏎ twice there was two chats, the scenario failing without it.
 * **What no picker holds has a set of its own**: the picker left and the same branch asked again is the same ask, and says so (`wtStarting`, by folder and branch); Chat twice on a PR's row is one (`prChatting`).
