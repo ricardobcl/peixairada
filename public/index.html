@@ -2207,8 +2207,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      question, the open row solid in its project's colour, the list flat on the frame (round X's D2, Ring; its other
      styles — Edge, Tinted, and Glass, the list frosted over a wallpaper in the open chat's colour — gone 2026-11-01).
      The sidebar is the frame (the inset, below). ---- */
-  :root[data-layout="sidebar"] { --side: var(--frame); --side0: var(--frame); --scope-l: .032; }
-  :root[data-layout="sidebar"][data-frame="dark"] { --scope-l: -.012; }
+  :root[data-layout="sidebar"] { --side: var(--frame); }
   /* the panels meet, square at the screen's corners too; the cut round the housing stays, with no border round it */
   :root[data-layout="sidebar"] main.tiles { padding: 0; }
   :root[data-layout="sidebar"] main.tiles :is(#sessions, #chat) { border: 0; }
@@ -2401,7 +2400,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     --code-bg: #141413; --code-ink: #e0a284; --snip-claude: #cfcdc3; --nocolor: #6a6a63; --ended: #605f5a; --prg: 44%;
     --needs: #f96968; --watch: #45c8c8; --working: #d9a82a; --working-ink: #d9a82a; --idle: #32a15d; --you: #4fb8a8; --spend: #f28a3c; --vscode: #4aa5f0;
     --pr-open: #3fb950; --pr-merged: #b186ff; --pr-closed: #fe6e63; --pr-draft: #9e9e98; --tk-todo: #91a0b0; --tk-doing: #5a9efe; --tk-done: #4bce97; }
-  :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { --side: var(--bg); --side0: var(--bg); --bar: var(--bg);
+  :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { --side: var(--bg); --bar: var(--bg);
     --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
     --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
   :root[data-theme="light"][data-frame="dark"] #sessions { --needs: #fc6c6a; --idle: #35a45f; --pr-merged: #b48cfe; --pr-closed: #ff756a; --pr-draft: #a2a29c; --tk-todo: #95a4b4; --tk-doing: #5fa1fe; }
@@ -4139,7 +4138,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const skinCss = (k, t) => {
     const at = `:root:root[data-skin="${k}"]`, d = !t.dark && SKINS[halfOf(famOf(k), true)];
     return `${at} { ${skinTokens(t)} }` + (t.dark ? `\n${at} #sessions { ${raisedInks(t, rgbOf(t.crust))} }` : d ? `\n${at}[data-frame="dark"] { --frame: ${d.bg}; }
-  ${at}[data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark; ${skinTokens(d)} --side: var(--bg); --side0: var(--bg); --bar: var(--bg); }
+  ${at}[data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark; ${skinTokens(d)} --side: var(--bg); --bar: var(--bg); }
   ${at}[data-frame="dark"] #sessions { ${raisedInks(d, rgbOf(d.bg))} }` : `\n${at}[data-frame="dark"] { --frame: #1e1e1c; }`);
   };
   document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
@@ -5514,7 +5513,6 @@ const toolName = n => {
   });
   function renderSessionList(p) {
     const pc = projColor(p), box = $('#sessions'); if (pc) box.style.setProperty('--repo', pc); else box.style.removeProperty('--repo');
-    scopeTint(box, p.key !== ALL ? pc : null);
     // The magnifier matches the way ⌥⌘K does (2026-09-25): any letters
     // in order, each word within one of the chat's fields, and the best match leads — so with something typed the list
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
@@ -5645,17 +5643,6 @@ const toolName = n => {
     const tpl = document.createElement('template');
     htmls.forEach((h, i) => { const c = el.children[i]; if (c?._drawn === h) return; tpl.innerHTML = h; const n = tpl.content.firstElementChild; n._drawn = h; if (c) c.replaceWith(n); else el.append(n); });
     while (el.children.length > htmls.length) el.lastElementChild.remove();
-  }
-  // A project in view tints the list's ground (2026-11-04, round XXV): the chat and the status bar stay as they are, so it
-  // says this column is narrowed. Its hue and some of its chroma on the ground's own lightness, so what is read there
-  // holds its contrast whatever the colour; inline, over whatever the theme's frame set; none where there is no colour
-  // to say it with.
-  function scopeTint(box, color) {
-    if (!color || color === BLACK) { for (const k of ['--side', '--scope-c', '--scope-h']) box.style.removeProperty(k); return; }
-    const rgb = rgbOf(color); if (!rgb) return;
-    const [, c, h] = oklchOf(rgb);
-    box.style.setProperty('--scope-c', Math.min(.036, c * .3).toFixed(3)); box.style.setProperty('--scope-h', `${(h * 180 / Math.PI).toFixed(1)}`);
-    box.style.setProperty('--side', 'oklch(from var(--side0) calc(l + var(--scope-l)) calc(c + var(--scope-c)) var(--scope-h))');
   }
   const OTHERS_SQUARES = 8;
   const CUE_CHEV = '<svg class="ch" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" /></svg>';
@@ -9675,7 +9662,6 @@ const toolName = n => {
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
-    scopeTint,   // the list's ground on a project in view (2026-11-04: the inks' check)
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
     ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)

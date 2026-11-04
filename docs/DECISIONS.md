@@ -28,7 +28,7 @@ project's chat R1 (lets go to all); left on S1 (stays on and waves); motion M1 (
 * **Level with the toolbar, at every notch**: its height and words follow the toolbar's (`--cue-h`, `--cue-drop`, read in `floatH`);
   the drop is the toolbar's padding, never its height less 43: at the notch the row is shorter with no chips in it, and the words
   would stand 4 px off.
-* **The tint is paler than the page's, on purpose**: the page mixed the project's colour 26% into the frame, which darkened the
+* **The tint is paler than the page's, on purpose** (and gone the same day, below): the page mixed the project's colour 26% into the frame, which darkened the
   ground; swept over every look and 27 colours, 8695 of 33015 pairs fell under 4.5:1, down to 2.74. Hue and some chroma on the
   ground's own lightness, nudged away from the ink (`--scope-l`, `.032` light, `-.012` dark), hold them all (32147 pairs, none
   under), and read lighter than the page showed. It is inline over `--side0`, since a theme's frame sets `--side` at a weight no
@@ -49,7 +49,10 @@ project's chat R1 (lets go to all); left on S1 (stays on and waves); motion M1 (
 * **Also**: a named project lights the toolbar's tab and lets go on a click (it moved to the folder); an empty project says Show all.
 * **A name clash, for the next one**: `function setProject` already existed further down, and a function declaration wins silently,
   check-page none the wiser. The new one is `scopeTo`.
-* Checked: `project-filter.mjs` new, `project-cue.mjs` and `project-tab.mjs` changed, `INK_CHECK` sweeps the tint; the suite; shots light and
+* **No colour on the ground after all (C0)**: built, *"let's go with C0 instead of C1, it's too much color when filter is on"*. The list and
+  its cards are as on ALL, the tab at the top and the words saying it (`scopeTint`, `--side0`, `--scope-*` gone, and `INK_CHECK`'s sweep with them;
+  the cue's tab stays checked). The way out stays on `--step`, the cards' ground, whose inks are fitted.
+* Checked: `project-filter.mjs` new, `project-cue.mjs` and `project-tab.mjs` changed; the suite; shots light and
   dark on the made-up board, and WebKit's own frame (level with the toolbar at 8 and 51, the tab flying). The cost against the commit before
   (`npm run perf -- --against 728a29f --runs 3`, medians, a board with no filter on, % of a core): rest 3.5 / 3.1, the pointer 5.3 / 5.6, a scroll
   17.6 / 17.1, home 12.2 / 12.4; a chat opened 83 / 82 ms, memory 225 / 221 MB; no animation rule broken.

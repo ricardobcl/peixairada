@@ -136,7 +136,7 @@ and *Dark frame* makes that frame the theme's dark half round a light chat. Your
 theme's shades, and in every theme the small text reads at 4.5:1 or better. The board is a Mac window: the chats a
 sidebar of rows, a ring of light round a chat at work and sonar round a question, the open chat solid in its
 project's colour. Each row names its project on a tab of its colour in its top-left corner, and the toolbar on the same tab in its own.
-Narrow the list to one project (⌥⌘P, a click on the toolbar's tab, or a card's right-click menu) and that tab grows to the head of the list, the list takes a tint of its colour and
+Narrow the list to one project (⌥⌘P, a click on the toolbar's tab, or a card's right-click menu) and that tab grows to the head of the list and
 says how many of how many, and *Show all* lets go; opening a chat from another project lets go too.
 
 <table>

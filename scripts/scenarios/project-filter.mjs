@@ -1,7 +1,7 @@
 // A project in view is unmistakable, and easy to leave (2026-11-04, round XXV). What this checks: nothing at all on ALL; on a
 // project the list's own tab, level with the chat's toolbar and on the cards' edges, says its name, how many of how many and
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
-// the count gives way first and a long name fades, Show all whole; the list's ground a tint of the project, and of nothing else;
+// the count gives way first and a long name fades, Show all whole; no ground takes its colour;
 // the toolbar's tab solid with the funnel while on, a named project's too; the list ends on what is hidden; ⌥⌘P ⌥⌘P lets go and
 // comes back, a card's menu too; a chat from elsewhere lets it go; its tab flies, and waves when left on; at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
@@ -84,18 +84,12 @@ export default async function (ctx) {
     await showAll();
     await ctx.evaluate(`document.querySelector('#sessions').style.width = '417px'`);
 
-    // the list's ground takes a tint of the project, the chat and the status bar as they were; no colour, no tint; ALL, none
+    // no ground moves for a project in view: the list stays the frame, its cards raised from it, the status bar and the chat as they were
     const grounds = () => ctx.evaluate(`({ list: getComputedStyle(document.querySelector('#sessions')).backgroundColor, bar: getComputedStyle(document.querySelector('#sbar')).backgroundColor, chat: getComputedStyle(document.querySelector('#chat')).backgroundColor, card: getComputedStyle(document.querySelector('#slist > .card:not(.active)') || document.body).backgroundColor })`);
     const plain = out.plain = await grounds();
     ctx.assert.equal(plain.list, plain.bar, 'on ALL the list is the frame');
     await pick('shop');
-    const tinted = out.tinted = await grounds();
-    ctx.assert.notEqual(tinted.list, plain.list, 'a project in view tints the list');
-    ctx.assert.deepEqual([tinted.bar, tinted.chat], [plain.bar, plain.chat], 'the status bar and the chat as they were');
-    ctx.assert.notEqual(tinted.card, plain.card, 'its cards are raised from that ground');
-    await showAll();
-    await pick(LONG);
-    ctx.assert.equal((await grounds()).list, plain.list, 'no colour, no tint');
+    ctx.assert.deepEqual(out.scoped = await grounds(), plain, 'a project in view takes no colour on any ground');
     await showAll();
 
     // the toolbar's tab says it: the funnel under the pointer, solid with the funnel kept while on, a click lets go; another
