@@ -12607,7 +12607,7 @@ const toolName = n => {
     if (attachable(s)) {
       box.hidden = false; box.classList.toggle('err', !!err); box.classList.remove('cloning');
       setHtml(box, `<span class="ric">${ICON.term}</span>
-        <span class="t"><b>${err ? 'Could not open it' : 'Claude is running in the background'}</b><span>${err ? esc(err) : `pid ${s.live.pid}. Attach opens it here; it keeps running when the drawer closes.`}</span></span>
+        <span class="t"><b>${err ? 'Could not open it' : 'Claude is running in the background'}</b><span>${err ? esc(err) : `${!s.lastActivity && s.links?.some(l => l.k === 'continued' && l.dir === 'in') ? 'What it remembers shows here after its next word. ' : ''}pid ${s.live.pid}. Attach opens it here; it keeps running when the drawer closes.`}</span></span>
         <button class="btn rgo" id="takeGo"${going ? ' disabled' : ''} title="${esc(ATTACH_TIP + KEY_C)}">${ICON.term}${going ? 'opening…' : 'Attach'}<span class="k">⌥⌘C</span></button>`);
       box.querySelector('#takeGo').onclick = () => termAction(state.sessions.get(s.id) || s);
       return;
@@ -12650,11 +12650,14 @@ const toolName = n => {
       : s.folderMissing ? `Its folder, ${where}, is not there, and no folder of repos with an org holds it to clone from. Put it back, then resume.`
       : inVsCode(s) ? 'Last used in VS Code. Resuming moves it here; the tab there will not follow.' : '';
     const off = s.removed && !err;   // found by ⌥⌘K, deleted from the board (2026-11-04): either button brings its card back
+    // it went on as another chat (2026-11-04, /bg): that one is the way on, and a resume here a second line from this point
+    const on = !err && (id => state.sessions.has(id) && visible(state.sessions.get(id)) && id)(s.links?.find(l => l.k === 'continued' && l.dir === 'out')?.id);
     setHtml(box, `<span class="ric">${ICON.term}</span>
-      <span class="t"><b>${err ? 'Could not resume this chat' : off ? 'Deleted from the board' : 'Claude isn’t running in this chat'}</b>${off ? '<span>Its transcript stays. Put it back, or resume it, and its card comes back.</span>' : more ? `<span>${more}</span>` : ''}</span>
-      ${off ? '<button class="btn" id="undelGo">Put it back</button>' : ''}${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
+      <span class="t"><b>${err ? 'Could not resume this chat' : off ? 'Deleted from the board' : on ? 'It went on in another chat' : 'Claude isn’t running in this chat'}</b>${off ? '<span>Its transcript stays. Put it back, or resume it, and its card comes back.</span>' : on ? '<span>Resuming this one starts a second line from here.</span>' : more ? `<span>${more}</span>` : ''}</span>
+      ${off ? '<button class="btn" id="undelGo">Put it back</button>' : ''}${on ? '<button class="btn rgo" id="onGo">Open it</button>' : ''}${s.cwd ? `<button class="btn${on ? '' : ' rgo'}" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     const go = box.querySelector('#resumeGo'); if (go) go.onclick = () => termAction(state.sessions.get(s.id) || s);
     const back = box.querySelector('#undelGo'); if (back) back.onclick = () => restoreChat(s.id);
+    const ahead = box.querySelector('#onGo'); if (ahead) ahead.onclick = () => openSession(on);
   }
   // ---- attachments: files dropped on the board, images pasted --------------------------------
   // What claude wants is a path: an @-mention (`@dir/file`, a space escaped as `\ ` — how the CLI itself writes
@@ -12753,18 +12756,18 @@ const toolName = n => {
   // and the card's right-click menu list them, each a row that opens its chat.
   /** A tie in words: what it is, and the chat at its other end — “Merged into ‘Queue for invoice webhooks’”. */
   function linkSay(l) {
-    const say = { 'merge:out': 'Merged into', 'merge:in': 'Merged from', 'fold:out': 'Folded into', 'fold:in': 'Folded in from', 'branch:in': 'Branched from', 'branch:out': 'Its branch' }[`${l.k}:${l.dir}`];
+    const say = { 'merge:out': 'Merged into', 'merge:in': 'Merged from', 'fold:out': 'Folded into', 'fold:in': 'Folded in from', 'branch:in': 'Branched from', 'branch:out': 'Its branch', 'continued:out': 'Went on as', 'continued:in': 'Goes on from' }[`${l.k}:${l.dir}`];
     return `${say} “${state.sessions.get(l.id)?.title || 'a chat no longer on the board'}”`;
   }
   function linkChip(s) {
     const ls = s.links || []; if (!ls.length) return '';
     const n = k => ls.filter(l => `${l.k}:${l.dir}` === k).length;
-    const words = [['branch:in', () => 'branch'], ['branch:out', c => `${c} branch${c > 1 ? 'es' : ''}`], ['merge:in', c => `merge of ${c}`], ['merge:out', () => 'merged'], ['fold:in', c => `${c} folded in`], ['fold:out', () => 'folded']]
+    const words = [['branch:in', () => 'branch'], ['branch:out', c => `${c} branch${c > 1 ? 'es' : ''}`], ['merge:in', c => `merge of ${c}`], ['merge:out', () => 'merged'], ['fold:in', c => `${c} folded in`], ['fold:out', () => 'folded'], ['continued:in', () => 'went on from a chat'], ['continued:out', () => 'went on']]
       .filter(([k]) => n(k)).map(([k, say]) => say(n(k)));
-    return `<span class="chip lnk" title="${esc(ls.map(linkSay).join('\n'))}">${ls.some(l => l.k === 'branch') ? ICON.branch : ICON.prMerged}${esc(words.slice(0, 2).join(' · '))}</span>`;
+    return `<span class="chip lnk" title="${esc(ls.map(linkSay).join('\n'))}">${ls.some(l => l.k === 'branch' || l.k === 'continued') ? ICON.branch : ICON.prMerged}${esc(words.slice(0, 2).join(' · '))}</span>`;
   }
   function linkMenuHtml(s) {
-    return (s.links || []).map(l => `<button class="hmi" data-lnk="${esc(l.id)}"${state.sessions.has(l.id) ? '' : ' disabled'} title="Open it">${l.k === 'branch' ? ICON.branch : ICON.prMerged}<span class="lbl">${esc(linkSay(l))}</span><span class="k"></span></button>`).join('');
+    return (s.links || []).map(l => `<button class="hmi" data-lnk="${esc(l.id)}"${state.sessions.has(l.id) ? '' : ' disabled'} title="Open it">${l.k === 'branch' || l.k === 'continued' ? ICON.branch : ICON.prMerged}<span class="lbl">${esc(linkSay(l))}</span><span class="k"></span></button>`).join('');
   }
   // ---- Merge with…: a new chat from several, its first prompt where each stands (2026-10-31) -----------------------
   // From a card's menu (that chat taken in) or the launcher: the chats picked in the picker (⏎ takes one in or out), then
@@ -16627,6 +16630,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       ovSoon();   // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up
       homeSoon(landed);   // …and the home its facts, the day again when a turn lands
       if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
+      else if (state.sessions.get(state.current)?.links?.some(l => l.id === s.id)) renderResume(state.sessions.get(state.current));   // where it went on may have only just come up (2026-11-04)
       // The chats step follows its chats — one ticked there leaves, one that stopped clauding says ready.
       if ($('#pick').open && pick.mode === 'chats' && (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))) pickRender(true);
     });

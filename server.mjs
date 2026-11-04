@@ -316,7 +316,7 @@ const markRemoved = s => { doneMarks[s.id] = forGoodMarks[s.id] = removedMarks[s
 function putBackOnBoard(s) { delete doneMarks[s.id]; delete forGoodMarks[s.id]; delete removedMarks[s.id]; saveState(); schedulePush(s); }
 
 // ---- chats tied by your hand: merged, folded, branched (2026-10-31) -------------------------------------------------
-const LINK_KINDS = new Set(['merge', 'fold', 'branch']), LINKS_MAX = 2000;
+const LINK_KINDS = new Set(['merge', 'fold', 'branch', 'continued']), LINKS_MAX = 2000;
 let linkIdx = null;   // chat id → its links as the summary says them, rebuilt after a change
 /** `from` tied to `to`: kept, said to both chats' pages. The ones neither of whose chats the board knows go. */
 function addLink(k, from, to) {
@@ -327,6 +327,38 @@ function addLink(k, from, to) {
   if (chatLinks.length > LINKS_MAX) chatLinks = chatLinks.slice(-LINKS_MAX);
   linkIdx = null; saveState();
   for (const id of [from, to]) { const s = sessions.get(id); if (s) schedulePush(s); }
+}
+/** Whether two chats are tied already, whichever way and by what. */
+const tied = (a, b) => chatLinks.some(l => (l.from === a && l.to === b) || (l.from === b && l.to === a));
+/** A copy Claude Code made is told by its first line (2026-11-04): `/branch`, `/fork`, `--fork-session` and a word in what `/bg`
+ *  left all keep the chat's uuids under a new id, and name no origin in a shape they share. The oldest file is the chat, each
+ *  other its branch, tied once; its copied past is no news (forkAt, as the board's own branch). */
+const firstLines = new Map();   // uuid of a chat's first user line -> the ids of the chats that begin with it
+function noteFirstLine(s, line) {
+  if (s.firstUuid || line.type !== 'user' || line.isSidechain || !line.uuid) return;
+  s.firstUuid = line.uuid;
+  let ids = firstLines.get(line.uuid); if (!ids) firstLines.set(line.uuid, ids = new Set());
+  ids.add(s.id);
+  if (ids.size < 2) return;
+  const others = [...ids].filter(id => id !== s.id).map(id => sessions.get(id)).filter(Boolean);
+  if (others.some(o => (o.bornAt ?? Infinity) < (s.bornAt ?? Infinity))) s.forkAt ||= new Date().toISOString();
+  setImmediate(tieCopies, line.uuid);   // the read under way holds this chat's object back from `sessions` (indexFile)
+}
+function tieCopies(uuid) {
+  const chats = [...firstLines.get(uuid) || []].map(id => sessions.get(id)).filter(Boolean).sort((a, b) => (a.bornAt ?? Infinity) - (b.bornAt ?? Infinity));
+  for (const c of chats.slice(1)) if (!tied(chats[0].id, c.id)) addLink('branch', chats[0].id, c.id);
+}
+/** `/bg` (2026-11-04): the chat went on under a new id in a process of its own, and its transcript's last word says which:
+ *  `{type: continued-in, continuedInSessionId}`. Tied, and ticked done as a /clear's is: resuming it would be a second line
+ *  from there. Once, by the tie: a later boot reads the line again, and the tick may have been undone since. */
+function noteContinued(s, to, ts) {
+  setImmediate(() => {
+    if (chatLinks.some(l => l.k === 'continued' && l.from === s.id && l.to === to)) return;
+    addLink('continued', s.id, to);
+    const was = sessions.get(s.id);
+    if (!was || !ts || isDone(was) || String(was.lastActivity || '') > ts) return;
+    doneMarks[was.id] = ts; saveState(); schedulePush(was);
+  });
 }
 /** A chat's links, each `{k, dir, id, at}` — `out` from it (merged into, folded into, its branch), `in` to it (merged
  *  from, folded in, branched from) — or null. */
@@ -2276,6 +2308,7 @@ function fold(s, line) {
   const ts = line.timestamp || null;
   switch (line.type) {
     case 'ai-title': if (line.aiTitle) s.title = line.aiTitle; return true;
+    case 'continued-in': if (line.continuedInSessionId) noteContinued(s, line.continuedInSessionId, ts); return false;
     case 'custom-title': s.customTitle = line.customTitle || line.title || null; return true;
     case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = plainSnippet(line.lastPrompt, 200); return true;   // whole, it was a card's and a search's to carry
     case 'pr-link': {
@@ -2296,6 +2329,7 @@ function fold(s, line) {
       return true;
     case 'user': {
       if (line.isSidechain) return false;
+      if (!s.truncatedHead) noteFirstLine(s, line);   // a tail's first is not the chat's: headPrs read that
       if (line.cwd) s.cwd = line.cwd;
       if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       if (line.gitBranch) { s.gitBranch = line.gitBranch; if (line.gitBranch !== s.ticketBranch) noteBranchTicket(s, line.gitBranch, ts); }
@@ -2461,6 +2495,7 @@ function indexFile(file, { full = false } = {}) {
   const id = basename(file, '.jsonl');
   const prev = sessions.get(id);
   const s = newSession(id, file);
+  s.bornAt = st.birthtimeMs;
   if (prev) {
     for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'agentRows', 'agentSig', 'agentSaid', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
@@ -2495,6 +2530,7 @@ function indexFile(file, { full = false } = {}) {
  *  in its first prompt — "review <url>" — and the card went without it, titled by another, until the chat was opened.
  *  Only what names a PR, read as fold reads it: the rest of the head is the past, and the tail's to tell. */
 function headPrs(s, line) {
+  noteFirstLine(s, line);
   const ts = line.timestamp || null, c = line.message?.content, blocks = Array.isArray(c) ? c : [];
   if (line.type === 'pr-link') { const url = line.prUrl || line.url; if (url) notePr(s, url, ts, null); return; }
   if ((line.type !== 'user' && line.type !== 'assistant') || line.isSidechain) return;

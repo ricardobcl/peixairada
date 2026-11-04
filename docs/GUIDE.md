@@ -75,7 +75,8 @@ setup file, and how the pictures are made.
   handoff into another's Claude — not sent, for you to read and send — and ticks the first one done; or drag its card
   onto the other: the chat it would go into lights, Esc puts it back, and letting go asks before anything happens. *Branch from
   here* (a card's menu, or the chat's ···) opens a copy of the chat in a drawer of its own, to try another way while
-  the first goes on as it was.
+  the first goes on as it was. A copy Claude Code made itself (`/branch`, `/fork`) wears the same *branch* word, and one `/bg` sent off says *went on*:
+  the chat it left is ticked done, and its bar opens where it went.
 
 <table>
   <tr>

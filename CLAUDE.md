@@ -92,6 +92,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | An agent's row | (2026-11-02) its `.meta.json`, its transcript's first line (`agentBorn`) and last (`mateLast`), its notice to the chat (`noteAgentNotices`, by `toolUseId`) → `s.agentRows` (`noteAgents`): the last round (one starting after all before ended), an older failure kept (`old`); words hold `AGENT_WORDS_MS`; `finished` with nothing written since ends one (`agentFinished`); a roster's name with no file is `joined`. `…/agents/:id`: totals, `?after=n` its transcript, read when asked (`agentLog`). → `test/agent-rows.test.mjs`, `team.test.mjs` |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed`, `permission prompt`, …) — `waitingOn()` / `statusOf()`; any live process waiting is the chat waiting, and it beats the agents; **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer* — only the fallback for a claude that reports no status (`s.ask`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
 | Work behind the turn | `Monitor`, a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines its events and end. `s.tasks` → `tasks`; a task dies with its claude (`live.startedAt`, `pruneTasks`) or at its expiry (`MONITOR_MS`; `TASK_MAX_MS` from lsof's last *held*, 2026-11-04, `taskOverdue`). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over the output files (held till it exits), after `TASK_GRACE_MS`, never on lsof's own failure. **The registry's `shell` says one runs**: none known, the chat is read whole, once (`findTasks`). → `test/long-tasks.test.mjs`. **Wake-ups** (2026-10-31): `ScheduleWakeup`, `CronCreate` → `wake` (`nextWake`, `cronNext`); a stopped turn → `stopped` (`stopOf`). → `test/watch-lane.test.mjs`, `stopped-reason.mjs` |
+| A copy of a chat | (2026-11-04) its first user line's uuid, kept by `/branch`, `/fork`, `--fork-session` (`noteFirstLine`, `firstLines`): the oldest file (`bornAt`) is the chat, each other its `branch` link (`tieCopies`), its past no news (`forkAt`). **`/bg`**: a `continued-in` line is a `continued` link and a tick, once (`noteContinued`). → `test/chat-copies.test.mjs`, `chat-went-on.mjs` |
 | Chats talking | (2026-10-31) a meta `user` line or `queued_command` attachment with `origin.kind: "peer"`, no `senderTaskId`; queued, a `queue-operation` envelope (`peerOf`). **Never your word**; sender by `msg_id`, pid, name (`peerSender`) → `peers.test.mjs` |
 | Titles | board title (state file) › `custom-title` › its own PR, merged too — the first pr-link's, else the first you named (`linked`, `named`; 2026-10-27) › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model` |
@@ -323,10 +324,8 @@ npm run map                         # rewrite the section maps at the top of ser
   setup's squares read `ownColor`, the board `repoColor` (a theme's hue). **A new colour on the board reads a token or `repoColor`, never a hex or `ownColor` of
   its own, or a theme does not reach it.** → `project-colors.mjs`.
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): a block of tokens under
-  `:root:root[data-skin=…]` (three classes deep), set only beside its own
-  appearance. **A theme is a family of two halves** (2026-11-01, round XVII; `FAMILIES`, `prefs.theme`, `halfOf`,
-  `famOf`): the appearance picks the half; Black, Matte Black and Softened have
-  one half, the other the board's own (`own-dark`, `own-light`); `#themePick`, `setTheme`. **The appearance is the board's, whatever macOS shows**
+  `:root:root[data-skin=…]` , set only beside its own appearance. **A theme is a family of two halves** (2026-11-01; `FAMILIES`, `halfOf`): the appearance picks the half; one with a
+  single half has the board's own for the other; `#themePick`, `setTheme`. **The appearance is the board's, whatever macOS shows**
   (2026-10-12): `<html data-theme="dark|light">`, which every dark rule reads — **never `prefers-color-scheme`**; a new
   one is `:root[data-theme="dark"] …` —, set before the first paint by the head's script. Worn (`wornKey()`,
   `skinOn()`): the family's half of `darkNow()` — under Appearance › Auto (`prefs.skinFollow`, the default; `setLook`)
@@ -366,7 +365,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `ovNothing`), `ovSoon` on its chats' events. **A tile
   is live**: the chat's drawer as a read-only xterm (`mountMini` — **it never sends a resize**: the PTY keeps the chat's
   own size; scaled to .7 and cropped, the footer below the edge unless asking — `footRows`, `placeMini`), else its tail
-  (`tailHtml` over `GET /api/tails?ids=`, every 2 s; `s.recent`, `noteRecent`). A question's answers (`ask.labels`) come
+  (`tailHtml`, `GET /api/tails?ids=`, every 2 s). A question's answers (`ask.labels`) come
   once the transcript has it; one clicked types its digit into the drawer (`answerInDrawer`). → `overview.mjs`.
 * **The chat header is drawn only when it changed**: `renderHead` compares the header's, the menu's and the PR rows'
   markup with `drawn`, and runs `layoutNotch(); fitHeadPrs()` only for a new header; the handlers are bound on every
@@ -404,7 +403,7 @@ npm run map                         # rewrite the section maps at the top of ser
   numbered one into sight); no tooltips: a square's or the number's PR card (`#mxtip`, `mxtShow`, `mxCardHtml`), on a
   spring, the square lifted (`.hot`); `#rpop` lists every PR. → `card-pr-matrix.mjs`.
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
-  GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
+  GitHub's mark, folded by default (`prefs.peopleCompact`). A face
   clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving
   the view, lets go. Drawn only when its markup changed (`peopleDrawn`). → `people-row.mjs`.
 * **A card comes in four sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and Claude's last reply —, *medium* the last word, *compact* neither, *one line* (2026-11-03, round XXII; `'line'` → `data-line` beside `data-cards="compact"` and `data-even`): same height's third row is the first of the question, the move (`.rowmove`), the agents (`.agrows`, which still grow it), the live line, the last word. `cardHtml` always writes both `.snip`s (the older `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane* (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height*** (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. **Its words on one line** (2026-11-03; a switch to try, `prefs.cardsSnipOne` → `data-snipone`): each `.snip` clamped to one. → `card-sizes.mjs`, `card-one-line.mjs`, `card-words-line.mjs`.
@@ -476,8 +475,8 @@ npm run map                         # rewrite the section maps at the top of ser
   while down —, its click the About box (Copy details, 2026-11-04: `detailsText`, no chat, path or address → `about-details.mjs`); Next (`nextSeg`), a mute's mark (`muteSeg`), the
   monitors while any (`ICON.watch`); the chat, `chatSeg`; the update, `updSeg`),
   `#sbPeople` (`#people`), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`; `GET /api/stats?want=…`
-  every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pies (`sbMeter`, `uGrant`) — a click lifts its rows (`usageRows`, `uPace`),
-  both awake switches (`#sbAwake`, `#sbLid`), and the clock (`clockTick`). `#sbLeft` and
+  every 3 s), the plan usage as pies (`sbMeter`) — a click lifts its rows (`usageRows`),
+  both awake switches (`#sbAwake`, `#sbLid`), and the clock. `#sbLeft` and
   `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`): one `swim` animation whose pace is its length (`swimPaceTo`, never
   `updatePlaybackRate`); two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups**; `fishAt` reads the swim's clock, never a rect,
   and `feed` is a frame loop only while a bubble is out; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
@@ -492,12 +491,12 @@ npm run map                         # rewrite the section maps at the top of ser
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` leaves it out of
   the bar. → `usage-bar.mjs`.
 * **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd`
-  alone (no raw HTML or image; https/mailto links, to the browser), polls (`chatPollHtml`, `chatPollForm`), the
+  alone (no raw HTML or image; https/mailto links, to the browser), polls, the
   admin's people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`). **Yours is in the log at ⏎** (2026-10-27,
   `chatUi.out`): faded till GitHub has it; one not sent says so there alone (`chatRetry`).
   **No chat code reaches a drawer, a claude or `md()`**. → `chat-room.mjs`, `chat-poll.mjs`.
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
-  the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
+  the fish out (`lunchOut`), ⌥⌘M's `#lunchd`
   and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()` live, its `.lab` the harness's): a 720 × 900 picture, its frames
   only while open and not paused or called; its own Web Audio (`zeRadio`), made by the press that starts a round, suspended by a pause, closed

@@ -51,6 +51,14 @@ loopback: no cost, nothing touched (`CLAUDE_BIN` a wrapper in a scenario). Ricar
   * A claude started on it later brings it back at once (`loadRegistry`), with no word needed: a hidden chat at work would be the worst of both.
   * **Found again by ⌥⌘K, typed**, *deleted from the board* on its row, and the bar under it has Put it back beside Resume. Not asked for: a gesture this strong
     needed a way back, and no toast can offer one here. A deleted chat's `done` is lost on the way back, so it returns as a chat with no tick.
+* **What ties a copy to its chat**, so two cards with one title read as what they are. The transcripts share no field: `/branch`'s lines name the chat they came from,
+  `--fork-session`'s nothing, and a job's `state.json` knows but only for a job. What they all keep is **the uuids of their lines**, measured on all of
+  `/branch`, `/fork`, `--fork-session` and a first word after `/bg`: same first user line, id rewritten. So `noteFirstLine`: the oldest file is the chat,
+  each other its `branch`, by the chip and the ··· rows Branch from here has. No titles changed: `/fork`'s already says *⑂ <prompt>*, `/branch`'s *(Branch)*.
+* **`/bg` is the report's likeliest**: the chat ends, a new id runs on with the same title, and its file holds nothing but that title until a first word, so opened it
+  read *No messages yet*, live, with no button at all. `continued-in` says which, so the first chat is ticked done, as a /clear ticks the chat it left,
+  once by the tie (a boot reads the line again, and that tick may have been undone). Its Resume would be a second line from there: its bar says it went on, with
+  **Open it** first and Resume beside it. Nothing moves the column by itself: unlike /clear's, the drawer ended with the chat.
 
 ## Decisions of 2026-11-04 — the real shell, driven
 
