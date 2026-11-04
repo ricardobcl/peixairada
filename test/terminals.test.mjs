@@ -108,6 +108,11 @@ test('a chat in no folder (2026-10-14): the board\'s own folder, made for the fi
     const id = await waitFor(async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null, { what: 'the chat registered' });
     const s = await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id && x.alive), { what: 'its card' });
     assert.deepEqual([s.cwd, s.project], [scratch, 'no folder'], 'claude runs there, and the project reads so');
+    const ws = new WebSocket(srv.ws(`api/terminals/${r.body.terminal.id}/ws`));   // a word: with none there is nothing to resume, and Claude Code says so
+    await new Promise(res => ws.addEventListener('open', res, { once: true }));
+    ws.send(JSON.stringify({ t: 'in', d: 'a word\r' }));
+    await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.file, { what: 'its transcript' });
+    ws.close();
     await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
     await waitFor(async () => !(await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.alive, { what: 'its claude ended' });
     rmSync(scratch, { recursive: true, force: true });

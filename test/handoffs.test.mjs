@@ -96,6 +96,40 @@ test('Fold: the tie from the chat folded to the one it went into, said both ways
   } finally { await srv.stop(); }
 });
 
+test('a branch\'s drawer follows a /resume of the chat it copied; one ended before its first word leaves nothing to resume or to name', { timeout: 40_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1];
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  try {
+    const r = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 }), id = r.body.sessionId, tid = r.body.terminal.id;
+    await waitFor(async () => (await chatOf(srv, id))?.alive, { what: 'the branch up' });
+    const ws = new WebSocket(srv.ws(`api/terminals/${tid}/ws`));
+    await new Promise(res => ws.addEventListener('open', res, { once: true }));
+    ws.send(JSON.stringify({ t: 'in', d: 'a word of its own\r' }));
+    await waitFor(async () => (await chatOf(srv, id))?.lastPrompt === 'a word of its own' && (await chatOf(srv, id)).status === 'idle', { what: 'the branch answered' });
+    ws.send(JSON.stringify({ t: 'in', d: `/resume ${chat.id}\r` }));
+    await waitFor(async () => (await chatOf(srv, chat.id))?.terminal?.id === tid, { what: 'the drawer on the chat it runs now' });
+    const [orig, copy] = [await chatOf(srv, chat.id), await chatOf(srv, id)];
+    assert.ok(orig.alive, 'the claude is on the chat it copied');
+    assert.equal(copy.alive, false, 'and off the branch');
+    assert.ok(!copy.terminal || copy.terminal.id !== tid, 'whose card no longer holds that drawer');
+    ws.close();
+    await srv.api(`api/terminals/${tid}`, { method: 'DELETE' });
+    await waitFor(async () => !(await chatOf(srv, chat.id)).alive, { what: 'that claude ended' });
+
+    // ---- a branch closed before a word ----
+    const e = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
+    assert.ok((await linksOf(srv, chat.id)).some(l => l.id === e.body.sessionId), 'while it runs, the chat names it');
+    await waitFor(async () => (await chatOf(srv, e.body.sessionId))?.alive, { what: 'the empty branch up' });
+    await srv.api(`api/terminals/${e.body.terminal.id}`, { method: 'DELETE' });
+    await waitFor(async () => { const c = await chatOf(srv, e.body.sessionId); return !c.alive && c.terminal?.exited != null; }, { what: 'the empty branch ended' });
+    assert.ok(!(await linksOf(srv, chat.id)).some(l => l.id === e.body.sessionId), 'then there is no chat at that end to name');
+    const again = await srv.post(`api/sessions/${e.body.sessionId}/terminal`, { cols: 90, rows: 24 });
+    assert.equal(again.status, 409, 'and nothing to resume, said rather than a drawer that exits');
+    assert.match(again.body.error, /nothing in it to resume/);
+  } finally { await srv.stop(); }
+});
+
 test('Branch: a copy in a drawer under an id the board picked — --fork-session — tied both ways; the chat it copied untouched, its copied past no news', { timeout: 40_000 }, async () => {
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const chat = fx.chats[1], was = readFileSync(chat.file, 'utf8');
@@ -111,9 +145,9 @@ test('Branch: a copy in a drawer under an id the board picked — --fork-session
     assert.deepEqual((await linksOf(srv, id)).map(l => [l.k, l.dir, l.id]), [['branch', 'in', chat.id]], 'the copy: branched from it');
     assert.deepEqual((await linksOf(srv, chat.id)).map(l => [l.k, l.dir, l.id]), [['branch', 'out', id]], 'the chat: its branch');
     assert.equal((await chatOf(srv, id)).title, 'Plain chat', 'before a line of its own, the copy goes by the title of the chat it copied');
-    const s = await waitFor(async () => { const c = await chatOf(srv, id); return c?.alive && c.file && c; }, { what: 'the copy alive, its transcript written' });
+    const s = await waitFor(async () => { const c = await chatOf(srv, id); return c?.alive && c; }, { what: 'the copy alive' });
     assert.equal(s.terminal?.id, r.body.terminal.id, 'its drawer is its own');
-    assert.equal(s.lastPrompt, 'what day is it?', 'it carries the past it copied');
+    assert.equal(s.file, null, 'no transcript before its first word, as Claude Code writes a fork');
     const orig = await chatOf(srv, chat.id);
     assert.equal(orig.alive, false, 'the chat it copied is not resumed');
     assert.equal(orig.terminal, null, 'nor given the drawer');
@@ -126,6 +160,8 @@ test('Branch: a copy in a drawer under an id the board picked — --fork-session
     ws.send(JSON.stringify({ t: 'in', d: 'try it the other way\r' }));
     await waitFor(async () => (await chatOf(srv, id))?.lastPrompt === 'try it the other way', { what: 'the copy taking a word' });
     ws.close();
+    const lines = readFileSync((await chatOf(srv, id)).file, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
+    assert.equal(lines.find(l => l.type === 'user').message.content[0]?.text ?? lines.find(l => l.type === 'user').message.content, 'what day is it?', 'its file begins with the past it copied');
     assert.equal((await chatOf(srv, chat.id)).lastPrompt, 'what day is it?');
     assert.equal(readFileSync(chat.file, 'utf8'), was);
     await waitFor(() => a.got.length, { what: 'the copy\'s own reply, news' });

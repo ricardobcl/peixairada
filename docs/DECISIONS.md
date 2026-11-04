@@ -32,6 +32,13 @@ loopback: no cost, nothing touched (`CLAUDE_BIN` a wrapper in a scenario). Ricar
   process waiting for a chat, read from the CLI's code and not met in a run: no card.
 * **Words that were wrong**: *VS Code too* on any second claude, seen with no VS Code about (now *a second claude*, or the bar's *a background
   session*); *a terminal elsewhere* and a pid on a claude long dead, whose registry file outlived it (now *not running*, no pid).
+* **Branch from here, on the real CLI**: the fake wrote a fork's copy at its start and the real one at its first word, so nothing had seen a
+  branch closed before a word: no card, *No messages yet*, no bar, its origin's title over it, and ··· *Claude here* a `--resume` that exits 1
+  in a drawer nobody sees. Now the column goes back to the chat it copied (`noneLeft`, `leaveEmpty`; a link to it too), that chat stops saying
+  *1 branch* (`linksShown`), and `/terminal` says there is nothing to resume. The fake writes the copy with the first word.
+* **`/resume` of the original, in a branch's drawer**: `t.fork === s.id` meant the drawer never followed. The branch's card showed a drawer that
+  was really the original's, with no pid or bar, and the original's Take over would have ended that same claude. The guard stands until the
+  drawer's claude is seen on its own id, which on the real CLI is its first write.
 
 ## Decisions of 2026-11-04 — the real shell, driven
 

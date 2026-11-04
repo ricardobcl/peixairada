@@ -1,7 +1,8 @@
 // Branch from here (2026-10-31, round XIV's I6): a copy of a chat in a drawer of its own. What this checks: the header's
 // ··· and a card's menu have it; Branch opens the column on the copy — a new id, its drawer attached, the fake started
 // as `--resume <id> --fork-session --session-id <new>` —, the chat it copied not resumed nor written to; the copy's card
-// says *branch* and the first one's *1 branch*, each ··· naming the other; a word typed in the copy is its own.
+// says *branch* and the first one's *1 branch*, each ··· naming the other; a word typed in the copy is its own; one closed
+// before a word leaves no card and no word on the first, and the column goes back to it.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 const sid = JSON.stringify;
 
@@ -51,5 +52,23 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#hmenu').close()`);
   const t = (await ctx.peix(`session(${sid(copy)})`)).terminal;
   if (t) await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+
+  // ---- a branch closed before a word (2026-11-04): no transcript was written, so no card, and the column goes back ----
+  await ctx.openChat(twoPrs.id);
+  await ctx.evaluate(`document.querySelector('#branchBtn').click()`);
+  const empty = await ctx.waitFor(`(c => c && c !== ${sid(twoPrs.id)} && c)(window.peix.state().current)`, { timeout: 10_000, what: 'the column on the empty branch' });
+  await ctx.waitFor(`(s => s?.alive && s.terminal?.exited === null)(window.peix.session(${sid(empty)}))`, { timeout: 20_000, what: 'its claude up' });
+  await ctx.settle();
+  out.twins = await ctx.evaluate(`[${sid(empty)}, ${sid(twoPrs.id)}].map(id => document.querySelector('#slist > .card[data-id="' + id + '"] .title')?.textContent)`);
+  ctx.assert.equal(out.twins[0], out.twins[1], 'two cards, one title: a copy of it, which its chip says');
+  const et = (await ctx.peix(`session(${sid(empty)})`)).terminal;
+  await ctx.server.api(`/api/terminals/${et.id}`, { method: 'DELETE' });
+  await ctx.waitFor(`window.peix.state().current === ${sid(twoPrs.id)}`, { timeout: 15_000, what: 'the column back on the chat it copied' });
+  await ctx.settle();
+  out.gone = await ctx.evaluate(`JSON.stringify({ card: !!document.querySelector('#slist > .card[data-id=${sid(empty)}]'), chip: document.querySelector('#slist > .card[data-id=${sid(twoPrs.id)}] .chip.lnk')?.textContent ?? null })`).then(JSON.parse);
+  ctx.assert.deepEqual(out.gone, { card: false, chip: null }, 'no card of it, and no word of it on the other');
+  await ctx.evaluate(`history.replaceState(null, '', '#${empty}')`);
+  await ctx.reload();
+  await ctx.waitFor(`window.peix.state().current === ${sid(twoPrs.id)}`, { timeout: 15_000, what: 'a link to it comes to the same' });
   return out;
 }

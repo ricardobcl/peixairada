@@ -12494,6 +12494,10 @@ const toolName = n => {
     catch (e) { if (e.body && 'awake' in e.body) state.awake = awakeOf(e.body); if (e.message !== 'cancelled') note(at || $('#shead'), `Could not ${'lid' in body ? 'change the lid\'s setting' : 'keep the Mac awake'}: ${e.message}`, true); }
     finally { state.lidAsking = false; awakeChanged(); }
   }
+  // A chat whose claude ended before a first word (2026-11-04: a branch, a new one): no line of it was written, so it has
+  // no card and nothing to resume. The column does not stay on it: back to the chat a branch copied, else home.
+  const noneLeft = s => !s.alive && !s.file && !termLive(s) && !visible(s);
+  const leaveEmpty = s => { const from = s.links?.find(l => l.k === 'branch' && l.dir === 'in' && state.sessions.has(l.id))?.id; if (from) openSession(from); else leaveChat(); };
   function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
     state.current = null; state.entries = []; Object.assign(logOf, { id: null, gen: null, upto: null, waiting: false, pending: [] }); history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     const menu = $('#hmenu'); if (menu.open) menu.close();
@@ -16557,7 +16561,8 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = hashId();
-      if (want && !state.current && state.sessions.has(want)) { tvFromHash(state.sessions.get(want)); openSession(want); }
+      if (want && !state.current && state.sessions.has(want) && noneLeft(state.sessions.get(want))) leaveEmpty(state.sessions.get(want));
+      else if (want && !state.current && state.sessions.has(want)) { tvFromHash(state.sessions.get(want)); openSession(want); }
       else if (!state.current) showHome();   // nothing to open: the home (2026-10-10)
       // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries
       // pushed while the stream was down never came (2026-09-27): fetch the open chat again, in place. Not openSession,
@@ -16571,6 +16576,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       const heard = was && asking(was) && !asking(s) && s.alive && !s.done;
       if (heard) { heardAt.set(s.id, performance.now()); noteMotion(s.id, 'heard'); }   // the question answered: its card hears it (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
+      else if (s.id === state.current && noneLeft(s)) leaveEmpty(s);
       if (s.id === state.current && String(s.lastUserAt || '') > String(was?.lastUserAt || '')) followCard.id = s.id;   // your word: the next draw takes the list to its card
       if (landed || heard) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
       zeHeard(s, was, landed);   // Zé's game, if it is up: a question pauses it

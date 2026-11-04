@@ -42,7 +42,8 @@ if (args[0] === 'attach' && !attached) { console.error(`no such session: ${args[
 // only beside --fork-session, as Claude Code refuses it otherwise
 if (arg('--session-id') && arg('--resume') && !args.includes('--fork-session')) { console.error('Error: --session-id can only be used with --continue or --resume if --fork-session is also specified.'); process.exit(1); }
 // `--resume <id> --fork-session [--session-id <uuid>]`: a copy of that chat under a new id, the chat itself untouched — its
-// lines written into the copy's file at the start, each under the new id
+// lines written into the copy's file with its first word, each under the new id and keeping its uuid (2026-11-04, measured:
+// until that word there is no file; this wrote it at the start, and what that hid was a chat with no way back)
 const forkOf = args.includes('--fork-session') ? arg('--resume') : null;
 let sessionId = attached?.sessionId || (forkOf ? arg('--session-id') || randomUUID() : arg('--resume') || arg('--session-id') || randomUUID());
 const cwd = process.cwd();
@@ -57,13 +58,13 @@ if (arg('--resume') && !forkOf && !existsSync(file)) {
   const found = foundById(sessionId);
   if (found.length === 1) file = found[0];
 }
-if (forkOf) {
+let owedCopy = !forkOf ? null : () => {
   const src = foundById(forkOf)[0];
   if (src) appendFileSync(file, readFileSync(src, 'utf8').split('\n').filter(Boolean).map(l => { try { const j = JSON.parse(l); if ('sessionId' in j) j.sessionId = sessionId; return JSON.stringify(j) + '\n'; } catch { return ''; } }).join(''));
-}
+};
 const now = () => new Date().toISOString();
 let parent = null;
-const line = o => { appendFileSync(file, JSON.stringify(o) + '\n'); };
+const line = o => { if (owedCopy) { const copy = owedCopy; owedCopy = null; copy(); } appendFileSync(file, JSON.stringify(o) + '\n'); };
 function userLine(text) {
   const uuid = randomUUID();
   line({ parentUuid: parent, isSidechain: false, type: 'user', message: { role: 'user', content: [{ type: 'text', text }] }, uuid, timestamp: now(), userType: 'external', entrypoint: 'cli', cwd, sessionId, version: 'fake', gitBranch: 'main' });
@@ -225,6 +226,12 @@ function clearSession() {
   out('\x1b[2J\x1b[H'); shown = []; mark = 0;
   say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (cleared) · ${cwd}`, '']); commit();
 }
+/** /resume <id> (2026-11-04): the same process goes on under that chat's id, and nothing refuses one already running elsewhere. */
+function resumeSession(id) {
+  const found = foundById(id)[0]; if (!found) { say([`No conversation found with session ID: ${id}`, '']); commit(); return; }
+  sessionId = id; file = found; owedCopy = null; register();
+  say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (resumed) · ${cwd}`, '']); commit();
+}
 setInterval(tick, 1000);
 process.stdout.on('resize', FULL ? paint : drawLive);
 let ctrlC = 0, busy = false, focusView = false;
@@ -245,6 +252,7 @@ async function submit() {
   const text = input.trim(); input = ''; cur = 0;
   if (text === '/exit' || text === '/quit') bye(0);
   if (text === '/clear') return clearSession();
+  if (text.startsWith('/resume ')) return resumeSession(text.slice(8).trim());
   if (text === '/compact' && !busy) { busy = true; await compact(); busy = false; return; }
   // /focus, the view toggle the board's header button types in (2026-09-20): the real one answers with exactly
   // this line, and the board reads it back off the screen to know which way it went.

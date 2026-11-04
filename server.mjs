@@ -331,6 +331,12 @@ function linksOf(id) {
   }
   return linkIdx.get(id) || null;
 }
+/** What a card says of its branches (2026-11-04): one that ended before its first word never wrote a line, and there is no
+ *  chat at that end to open. Claude Code writes a fork's copy with that word. */
+function linksShown(id) {
+  const ls = linksOf(id)?.filter(l => { if (l.k !== 'branch' || l.dir !== 'out') return true; const o = sessions.get(l.id); return !!o && (!!o.file || o.alive || termOf(o)?.exited === null); });
+  return ls?.length ? ls : null;
+}
 // A handoff (2026-10-31): where chats stand, written from their transcripts as the board reads them — for a new chat that
 // merges them, or one another is folded into. Claude Code's own recap first where it wrote one (away_summary), its last
 // reply where that came after; no `claude -p` asked to sum anything up. You read it, and may change it, before it goes.
@@ -793,7 +799,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
     muted: !!mutedChats[s.id],   // no banner, sound or count from it, till you unmute it (2026-11-02)
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
-    ...linksOf(s.id) && { links: linksOf(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
+    ...linksShown(s.id) && { links: linksShown(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
     // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
     // that checkout — while its claude runs, and not once you said you know
     drift: (d => d && { from: d.from, to: d.to, at: d.at, peers: s.peers || [] })(driftOf(s)), headNow: s.alive ? s.headNow : null,
@@ -5990,7 +5996,10 @@ function noteEnv(sessionId, task) {
 }
 function linkTermToRegistry(pid, s, ppids = null) {
   for (const t of terms.values()) {
-    if (t.shell || t.sessionId === s.id || t.fork === s.id) continue;   // a branch's drawer is never the chat it copied (2026-10-31)
+    // a branch's drawer is not the chat it copied while it starts (2026-10-31); once on its own id, a /resume of that chat
+    // is a move as any other (2026-11-04: the drawer stayed on the branch and its claude showed on the chat, with no way to it)
+    if (t.fork && t.sessionId === s.id && t.pid === pid) { t.fork = null; holderSend(t, { t: 'meta', sessionId: s.id, fork: null }); }
+    if (t.shell || t.sessionId === s.id || t.fork === s.id) continue;
     // the PTY's own process; the claude it was tied to (behind a launcher that is not the PTY's — /clear there gives
     // that claude a new id, and the drawer has to follow it as it does any other, 2026-10-03); or, not yet tied, a
     // claude below a launcher's task
@@ -6630,6 +6639,7 @@ const server = createServer(async (req, res) => {
       const job = s.alive && s.live?.pid && jobOf(s.live);
       if (job) { const r = await spawnOnce(`${s.id}:claude`, () => spawnTerm({ cwd: s.live.cwd || s.cwd, sessionId: s.id, attach: job, claudePid: s.live.pid, cols: body.cols, rows: body.rows })); return json(res, r.code, { ...r, prompted: false }); }
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
+      if (!s.alive && !s.file) return json(res, 409, { error: 'nothing in it to resume: its claude ended before a first word' });   // claude would say so and exit, on a drawer nobody sees (2026-11-04)
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
       let mine = false;
       const r = await spawnOnce(`${s.id}:claude`, async () => { mine = true; return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, prompt }); });
@@ -6759,7 +6769,11 @@ function onFsEvent(_ev, rel) {
   clearTimeout(pendingFiles.get(file));
   pendingFiles.set(file, setTimeout(() => { pendingFiles.delete(file); try { tailFile(file); } catch (e) { console.error('[peixairada] tail error', file, e); } }, 40));
 }
-if (existsSync(PROJECTS_DIR)) watch(PROJECTS_DIR, { recursive: true }, onFsEvent);
+// The transcripts' folder, watched from when there is one (2026-11-04: a Mac whose first chat came after the boot had no watch at
+// all, and that chat's transcript was not read until a restart — a card with no words and no Resume).
+let projectsWatch = null;
+function watchProjects() { if (!projectsWatch && existsSync(PROJECTS_DIR)) projectsWatch = watch(PROJECTS_DIR, { recursive: true }, onFsEvent); return !!projectsWatch; }
+watchProjects();
 scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
@@ -6795,6 +6809,7 @@ for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
 // a chat whose last word was "monitor started" has nothing else to push.
 setInterval(() => {
+  if (!projectsWatch && watchProjects()) scanProjects();
   // a live chat's file looked at: what an event never told of is read (2026-10-14) — a stat when nothing was
   for (const f of [...sessions.values()].filter(s => s.alive && s.file).map(s => s.file)) try { tailFile(f); } catch (e) { console.error('[peixairada] tail error', f, e); }
   try { findTasks(); } catch (e) { console.error('[peixairada] findTasks', e); }

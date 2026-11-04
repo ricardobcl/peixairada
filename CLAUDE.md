@@ -467,14 +467,11 @@ npm run map                         # rewrite the section maps at the top of ser
   `offsetTop`, hence `#slist { position: relative }`); a dot red for one asking, amber for clauding; a click scrolls a
   screenful; the PR list's likewise (`.pedge`). → `list-ends.mjs`.
 * **The timeline is the list's scrollbar, out of sight until called** (`#tline`, over the list's cell; the native
-  scrollbar hidden): the pointer held at the list's edge (`TL_EDGE`, `TL_DWELL_MS`; gone
-  `TL_HIDE_MS` after) shows it (`#sessions.tlshow`). **To scale**: its height is the list's `scrollHeight`, a label
-  where its run starts (`tl.runs`, built in `renderSessionList`: one day and one group; none under a query), the thumb
-  (`TL_W`, ≥ `TL_MIN`) the window. **The swell is a fisheye** round the pointer (`tlWarp`, `TL_R`, `TL_MAX`), which
-  stays fixed, so a drag reads the list's position off it (`tlScrub`); by the clock (`tlAnimate`, `tl.k`, `tl.K`;
-  `REDUCED` jumps). The rail's hit area is `.tl-catch` (`TL_CATCH`, `tl.reach`); a press on no label is on the `.near`
-  one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13); `show()` and
-  anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
+  scrollbar hidden): the pointer held at the list's edge shows it (`TL_DWELL_MS`, `#sessions.tlshow`). **To scale**: its height is the list's
+  `scrollHeight`, a label where its run starts (`tl.runs`: one day and one group; none under a query), the thumb the window. **The swell is a fisheye**
+  round the pointer (`tlWarp`), which stays fixed, so a drag reads the list's position off it (`tlScrub`); by the clock (`tlAnimate`; `REDUCED` jumps).
+  A press on no label is on the `.near` one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13).
+  `peix.state().timeline`. → `timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#sbList`, `#filters`), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light — alone, its colour the state (`bar.lost`, 2026-10-27), belly-up
@@ -892,7 +889,7 @@ npm run map                         # rewrite the section maps at the top of ser
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **Chats that talk** (2026-10-31; `#handoff`): Send to… types into the drawer (`drawerType`), else the resume takes the
   words after `--` (`spawnTerm`'s `prompt`, never logged); a merge or a branch (`fork`) gets the board's id (`newId`);
-  `links` ties chats (`addLink`). → `handoffs.test.mjs`. **A card dragged onto another** (2026-11-02; `cdLift`, `cdHit`, `cdEnd`, `#cdghost`) is Fold
+  `links` ties chats (`addLink`). **A fork writes no line until its first word** (2026-11-04): closed before it, no card, no link, no resume (`noneLeft`, `leaveEmpty`, `linksShown`). → `handoffs.test.mjs`, `branch-chat.mjs`. **A card dragged onto another** (2026-11-02; `cdLift`, `cdHit`, `cdEnd`, `#cdghost`) is Fold
   into…: the list held still (`renderBoard.held`), and the box asks. → `card-drag-fold.mjs`.
 * **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
