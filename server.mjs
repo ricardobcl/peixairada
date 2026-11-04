@@ -3715,6 +3715,7 @@ async function indexCopy(root) {
 // do — no checkout of that repo, origin unreachable — `gh pr diff` does, from GitHub (`gh: true` asks for it).
 const BRANCH_NAME = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;   // a base asked for by name: a branch, never an option
 const GIT_NET = { timeout: 60_000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } };
+const WT_ASK_MS = Number(process.env.WT_ASK_MS || 5000);   // how long origin has to say whether it has a new chat's branch (makeWorktree, 2026-11-04)
 /** origin's default branch as this checkout last heard it (origin/HEAD), no network — else main. */
 const originDefault = async root => (await gitOr(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']))?.replace(/^origin\//, '') || 'main';
 /** Which PR `pr=` names — a number (the checkout's repo) or a URL — and whether it is the checkout's repo's. */
@@ -4001,7 +4002,7 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
 async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null }) {
   const main = w.main, fail = (e, what) => ({ code: 500, error: `${what}: ${String(e.stderr || e.message).trim().split('\n')[0]}` });
   if (inClaudeDir(join(main, '.claude', 'worktrees'))) return { code: 409, error: `a tree here would be under ${tildePath(CLAUDE_DIR)}, Claude Code's — the board writes nothing there` };   // a repo at ~/.claude or ~ (2026-10-14)
-  let oid = null, start = [];
+  let oid = null, start = [], unasked = false;
   if (detach) {
     oid = refs?.headOid;
     if (!oid || await gitOr(main, ['cat-file', '-e', `${oid}^{commit}`], false) === false) {
@@ -4016,13 +4017,17 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
   } else if (await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`])) {
     start = [null, branch];   // a branch of this repo's, checked out nowhere
   } else {
-    try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], GIT_NET); start = ['--track', '-b', branch, null, `refs/remotes/origin/${branch}`]; }
-    catch (e) {
-      if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`);
+    // A new chat's branch (2026-11-04): origin is asked only whether it has the name, WT_ASK_MS at most. One that does not
+    // answer costs that and no more, and the branch is new, from what is here; one that does keeps its minute for a fetch.
+    const there = !fresh || (await gitOr(main, ['remote', 'get-url', 'origin'], false) && await gitOut(main, ['ls-remote', '--heads', 'origin', `refs/heads/${branch}`], { ...GIT_NET, timeout: WT_ASK_MS }).then(o => o.split('\n').some(l => l.endsWith(`\trefs/heads/${branch}`)), () => null));
+    unasked = there === null;
+    if (there) try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], GIT_NET); start = ['--track', '-b', branch, null, `refs/remotes/origin/${branch}`]; }
+    catch (e) { if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`); }
+    if (!start.length) {
       // a new branch (a new chat on one): from the base asked for (2026-10-28; origin's as origin has it now), else from
       // origin's default branch as origin has it now — tracking nothing yet
       const theirs = base ? /^refs\/remotes\/origin\/(.+)$/.exec(base)?.[1] : w.dflt;
-      if (theirs) try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${theirs}:refs/remotes/origin/${theirs}`], GIT_NET); } catch {}
+      if (theirs && !unasked) try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${theirs}:refs/remotes/origin/${theirs}`], GIT_NET); } catch {}
       const from = base || (await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${theirs}`]) ? `refs/remotes/origin/${theirs}` : 'HEAD');   // full refs: never a branch of that name
       start = ['--no-track', '-b', branch, null, from];
     }
@@ -4033,7 +4038,7 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
   catch (e) { return fail(e, 'git worktree add failed'); }
   await treeMade(main, path, { branch: detach ? null : branch, pr: want?.url ?? null, ...want && { prState: prStatus.get(want.url)?.state ?? null } });
   console.log(`[peixairada] worktree ${tildePath(path)} made for ${detach ? `PR #${want.n}, detached` : branch}`);
-  return { path, branch: detach ? null : branch, made: true, detached: !!detach, here: false };
+  return { path, branch: detach ? null : branch, made: true, detached: !!detach, here: false, ...unasked && { unasked: true, from: start.at(-1) } };
 }
 /** A tree just added: out of the repo's own status where no ignore file says so already (the repo's info/exclude, never
  *  a tracked file), and in the state file's `worktrees` — the only trees the sweep ever removes. */
@@ -5508,7 +5513,7 @@ function termEnv() {
 // reads off its environment goes but CLAUDE_DIR (see above), the ones that are the system's or a tool's too (PATH, XDG_*,
 // VSCODE_CLI_DATA_DIR, JIRA_API_TOKEN) and the holder's TERM_LINGER_MS, which the holder keeps from its PTY. A knob
 // added to the server joins the list (terminals.test reads the server for them).
-const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
+const BOARD_ENV = new Set(['WT_ASK_MS', 'PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
   'MAX_ENTRIES', 'TAIL_BYTES', 'HEAD_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'AGENT_WORDS_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
