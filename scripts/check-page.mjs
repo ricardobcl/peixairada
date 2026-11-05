@@ -28,6 +28,15 @@ if (quoted.length) { console.error(`${file}: an attribute in single quotes built
 // it, and Chrome, with no view there, shows nothing wrong. Each opener says so on its own line.
 const unlowered = [...html.matchAll(/^.*\.showModal\(\).*$/gm)].filter(m => !/\.showModal\(\);.*\brepostPane\(\)/.test(m[0])).map(m => html.slice(0, m.index).split('\n').length);
 if (unlowered.length) { console.error(`${file}: a showModal() with no repostPane() after it on its line, so it opens under a page in the pane, at line ${unlowered.join(', ')}`); process.exit(1); }
+// A function declared twice in the script's own scope (2026-11-05): the later one wins, silently — a drawer's `letGo` took over
+// the round let go's of that name, and only a scenario's ⌥-click found it. The page's script is one IIFE: its own scope is the
+// declarations two spaces in.
+{
+  const seen = new Map();
+  for (const m of html.matchAll(/^  (?:async )?function\*? ?(\w+)\s*\(/gm)) { const at = html.slice(0, m.index).split('\n').length; (seen.get(m[1]) || seen.set(m[1], []).get(m[1])).push(at); }
+  const twice = [...seen].filter(([, at]) => at.length > 1);
+  if (twice.length) { console.error(`${file}: a function declared twice, the later one silently replacing the first: ${twice.map(([n, at]) => `${n} at lines ${at.join(', ')}`).join('; ')}`); process.exit(1); }
+}
 if (file.endsWith('public/index.html')) {
   const keysOf = name => { const m = html.match(new RegExp(`const ${name} = \\{(.*?)\\};`)); return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null; };
   const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), table = html.match(/const KEYS = \[([\s\S]*?)\n  \];/);

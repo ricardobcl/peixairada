@@ -836,20 +836,19 @@ npm run map                         # rewrite the section maps at the top of ser
   → `test/idle-drawer.test.mjs`.
 * **A page that attaches gets the screen serialized, then only what followed it** (`ws.hold` until the snapshot,
   flushed minus `seq ≤ upto`). → Findings: *round three*.
-* **The two screens stay in step because nothing reaches one while it refits** (2026-10-03): the holder holds its
-  PTY's output, a clear and a snapshot in `held` until `refit`'s `done`, resizes one at a time to the newest size, and
-  reads the cursor behind the queue; the page holds its socket's frames the same way (`toXt`, `tm.refits`); both go back only as
-  far as the park's CUD went (a scroll region stops it). A clear is numbered where it was asked for.
+* **The two screens stay in step because nothing reaches one while it refits** (2026-10-03): the holder holds its PTY's
+  output, a clear and a snapshot until `refit`'s `done`, one resize at a time to the newest, the cursor read behind the
+  queue; the page likewise (`toXt`, `tm.refits`); both go back only as far as the park's CUD went.
 * **A drawer whose socket closed while its claude runs is attached again** (`tm.lost`, a backed-off `syncTerm`, 5 s
   at most). A holder that accepts and never says hello is a failure after `HELLO_MS`.
-* **`nudgeTerm()` after every attach** — a resize one row short, then the true size 150 ms later — makes Claude
-  repaint over whatever the page holds. **The row-short repaint is never shown**: from the socket's first frame until
-  the true size's repaint has come (`NUDGE_QUIET_MS`, `NUDGE_MAX_MS`), output is held through `toXt` (`tm.refits`).
-  → `drawer-switch.mjs`.
-* **A drawer attached anew comes up at its end** (2026-10-29, `settleUntil`): until its nudge lets go, a scroll that
-  leaves the end is undone in the same event. → `drawer-at-end.mjs`.
-* **`fitTerm` sends a resize only when the size moved, and once it has stopped moving** (120 ms; at once with `now`,
-  as a socket opens): `tm.sent` is per attachment (`attachTerm`), forgotten on focus and on coming into view. The prefs' `termSize` is saved only when it changed.
+* **`nudgeTerm()` after every attach** — a resize one row short, then the size last told, 150 ms later — makes Claude
+  repaint over the snapshot, **unseen**: from the first frame till that repaint is in, output is held (`NUDGE_QUIET_MS`,
+  `NUDGE_MAX_MS`). → `drawer-switch.mjs`.
+* **A drawer comes up at its end, and stays through a resize** (2026-10-29, `settleUntil`; 2026-11-05, `keepEnd`): a
+  scroll leaving the end is undone at once, till the nudge lets go and `KEEP_END_MS` past a resize. → `drawer-at-end.mjs`.
+* **A TUI's grid waits for its repaint** (2026-11-05; `paintsItself`): the PTY is told, its answer held (`tm.hold`, `REPAINT_*`),
+  then grid and bytes go in one parser pass (`endHold`, `unhold`); a zsh reflows at once (`fitLocal`). A size goes at once
+  (`moving()`, `FIT_STILL_MS`: once still). → `drawer-repaint*.mjs`, `drawer-soak*.mjs`.
 * **The drawer's geometry**: `grid-template-columns: minmax(0, 1fr)` on `#term` and `#chat`, `min-width: 0;
   overflow: hidden` on `.tbody`, and `.tbody { box-sizing: content-box }`. Refits on the body's `ResizeObserver`, a display-scale change (`watchDpr`), focus and
   visibility. → Findings: *run off the right edge*, *round two*. **A glyph's width is read to the fraction**
@@ -960,7 +959,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   Chrome over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView`;
-  `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. What a body can ask and `WK_BORDERS` are at its head. On screen by one pixel (off a screen WebKit runs no
+  `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. What a body can ask (`burst()`, 2026-11-05) and `WK_BORDERS` are at its head. On screen by one pixel (off a screen WebKit runs no
   frames); a locked screen or a sleeping display hides it.
 * **What the page and the shell do only together is checked in the real shell** (2026-11-04; `npm run shell`, `shell-checks/`): a fake
   bridge says what the page asks for, this whether the window agrees; how is in mac/CLAUDE.md. **A change to `main.swift` or to what
@@ -971,7 +970,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   inherited registered property transitioned over a big subtree) — Chrome checks them too (`compositor-rules.mjs`) but
   the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
   change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
-  on that commit beside it; `--sample`, `--prefs`, and `--app` (the app as it runs) are at its head.
+  on that commit beside it; `--app` the app as it runs, the rest at its head.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `gl` a software WebGL, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen, every page in the board**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
@@ -979,7 +978,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   emulation on**, and cleans up on any way out (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
   (`#log[data-sid]`). **A rectangle is read after `ctx.settle()`**: cards slide after they arrive or move, dialogs rise;
-  `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`.
+  `settle` waits for every finite animation and a pending draw. `ctx` is listed at the head of `scripts/scenario.mjs`; `watchFrames` a drawer's every frame.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
 * **The harness makes no sound** (2026-11-01): headless Chrome has no audio device (`--disable-audio-output`), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs`, `ze-webkit.mjs`.
@@ -996,7 +995,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `tmpDir()` are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has
   its own state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13).
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
-  instant and touches nothing. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
+  instant and touches nothing; the real CLI, at no cost: `lib/reallab.mjs`. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.
 * **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — a headless page's
   `focus()` is no focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and **every re-attach that

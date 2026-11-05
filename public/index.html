@@ -9601,6 +9601,7 @@ const toolName = n => {
     // ran first, this one undoes it in the same event, before a frame is drawn.
     $(tm.el.tbody).querySelector('.xterm-viewport').addEventListener('scroll', () => {
       const b = tm.xt.buffer.active;
+      if (b.viewportY < b.baseY) fitNote(tm, "scrolled up", { by: b.baseY - b.viewportY, kept: performance.now() < tm.settleUntil });
       if (performance.now() < tm.settleUntil && b.viewportY < b.baseY) tm.xt.scrollToBottom();
     });
     tm.xt.onData(d => termSend(tm, d));
@@ -9643,28 +9644,126 @@ const toolName = n => {
       xt.write(`\x1b[${n}B`, () => { const went = b.cursorY - y0; resize(); xt.write(went > 0 ? `\x1b[${went}A` : '', done); });
     });
   }
-  /** What reaches a drawer's screen, in order — held while a refit runs (see refitTerm). */
+  /** What reaches a drawer's screen, in order — held while a refit, a nudge or a repaint is awaited (`refits`): the socket's
+   *  bytes as they came, anything else as a function. */
   const toXt = (tm, f) => { if (tm.refits) tm.held.push(f); else f(); };
+  /** What was held, written in order: the bytes in a row as one write, which xterm parses whole before it draws (2026-11-05:
+   *  a frame landing between two of them showed a repaint's top and not its bottom). */
+  function flushHeld(tm) {
+    let bytes = [];
+    const write = () => {
+      if (!bytes.length) return;
+      const all = new Uint8Array(bytes.reduce((n, b) => n + b.length, 0)); let at = 0;
+      for (const b of bytes) { all.set(b, at); at += b.length; }
+      bytes = []; tm.xt.write(all);
+    };
+    for (const x of tm.held.splice(0)) if (typeof x === 'function') { write(); x(); } else bytes.push(x);
+    write();
+  }
+  /** One wait on the screen over: the last lets what was held through — at the grid a repaint was awaited for, first, in the
+   *  same pass of xterm's parser as the bytes, so no frame shows the one without the other. */
+  function unhold(tm) {
+    if (--tm.refits > 0) return;
+    const g = tm.gridDue, ws = tm.ws; tm.gridDue = null; if (g) fitNote(tm, 'grid', { to: `${g.cols}x${g.rows}` });
+    if (!g || (g.cols === tm.xt.cols && g.rows === tm.xt.rows)) return flushHeld(tm);
+    tm.refits = 1;
+    tm.xt.write('', () => {
+      if (tm.ws !== ws) return unhold(tm);   // another drawer since: its own fit sizes it
+      keepEnd(tm);
+      refitTerm(tm.xt, g.rows, () => { try { tm.xt._core._renderService.clear(); tm.xt.resize(g.cols, g.rows); } catch {} }, () => { unhold(tm); keepEnd(tm); setTimeout(() => fitTerm(tm)); });
+    });
+  }
+  // A TUI's screen follows its repaint (2026-11-05). What a claude or vim shows is its drawing for one size: put on another
+  // grid it is cut off or short, and the repaint for the new size comes once the PTY hears of it — two looks of the whole
+  // screen, 130 ms apart at the least, every time the column changed shape, and a torn frame now and then besides (the real
+  // CLI's ESC[2J and 20 KB of screen, in chunks, wrapped in nothing that holds a frame). So the page's grid stays as it is
+  // and the PTY is told; what comes is held until it has stopped coming, and the grid and the repaint go in together.
+  // The wait: REPAINT_WAIT_MS for the repaint to start — REPAINT_BYTES since the PTY was told, more than a spinner's tick or
+  // the modes the real one says first —, then REPAINT_QUIET_MS past its last byte (the real one answers in 6-23 ms, its 20 KB
+  // within a millisecond; a turn's output comes slower than that), REPAINT_MAX_MS at most: a claude that does not answer, or
+  // whose output never pauses, is as before, only later.
+  // A zsh at its prompt is not one: its lines are xterm's to reflow, at once, as a terminal does.
+  const REPAINT_WAIT_MS = 150, REPAINT_QUIET_MS = 16, REPAINT_MAX_MS = 250, REPAINT_BYTES = 200, FIT_STILL_MS = 120;
+  /** The last of what each drawer's fit decided, for the console and the harness (`peix.fits(g)`): a report of a wrong drawer
+   *  reads it before anyone guesses (2026-11-05). */
+  const fitNote = (tm, ev, x = {}) => { const l = tm.fitLog ||= []; l.push({ t: Math.round(performance.now()), ev, grid: `${tm.xt?.cols}x${tm.xt?.rows}`, ...x }); if (l.length > 40) l.shift(); };
+  const paintsItself = tm => !!(tm.snapped && tm.ws?.readyState === 1 && tm.exited === null && (tm.kind === 'claude' || tm.xt.buffer.active.type === 'alternate'));
+  function awaitRepaint(tm, d, told) {
+    let h = tm.hold;
+    const fresh = !h;
+    if (!h) {
+      if (d.cols === tm.xt.cols && d.rows === tm.xt.rows) return;   // the grid is already the size: nothing to wait for
+      keepEnd(tm);   // the body moves now, the grid later
+      h = tm.hold = { ws: tm.ws, timer: 0, cap: setTimeout(() => endHold(tm, h), REPAINT_MAX_MS) };
+      h.arm = ms => { clearTimeout(h.timer); h.timer = setTimeout(() => endHold(tm, h), ms); };
+      h.resume = () => h.arm(h.got >= REPAINT_BYTES ? REPAINT_QUIET_MS : REPAINT_WAIT_MS);   // a size that was to go and did not: the wait as it was
+      tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
+    }
+    h.cols = d.cols; h.rows = d.rows; if (told) h.got = 0;
+    if (told) h.arm(REPAINT_WAIT_MS); else if (fresh) h.arm(0); else h.resume();   // the PTY already that size: nothing more is coming fitNote(tm, 'wait', { to: `${d.cols}x${d.rows}`, told });
+  }
+  /** The wait over — answered, or given up on: the grid the PTY was told of, then everything that came. */
+  function endHold(tm, h = tm.hold) {
+    if (!h || tm.hold !== h) return;
+    clearTimeout(h.timer); clearTimeout(h.cap); tm.hold = null;
+    tm.gridDue = tm.ws === h.ws ? { cols: h.cols, rows: h.rows } : null; fitNote(tm, 'let go', { to: `${h.cols}x${h.rows}`, same: tm.ws === h.ws, refits: tm.refits });
+    unhold(tm);
+    setTimeout(() => fitTerm(tm));   // the layout moved meanwhile, or the screen stopped being a TUI's: the fit's own word
+  }
+  /** A wait dropped with its drawer — detached, ended: nothing it held is that screen's any more. */
+  function dropHold(tm) {
+    tm.gridDue = null;   // a grid let go before the socket went, still behind a nudge
+    const h = tm.hold; if (!h) return;
+    clearTimeout(h.timer); clearTimeout(h.cap); tm.hold = null; tm.held = [];
+    tm.refits = Math.max(0, (tm.refits || 0) - 1);
+  }
+  // A layout change from a hand still at work — a bar held, the window being resized — goes to the PTY once it has stopped
+  // moving (2026-10-03: a splitter drag sent one resize per column it crossed, each a SIGWINCH and a whole repaint); any
+  // other at once (2026-11-05), but one following another within FIT_STILL_MS, which is the layout still moving too.
+  let handDown = false, windowMovedAt = 0;
+  addEventListener('mousedown', () => { handDown = true; }, true);
+  addEventListener('mouseup', () => { handDown = false; for (const tm of terms) if (tm.sizeTimer) fitTerm(tm, true); }, true);   // let go: now
+  addEventListener('blur', () => { handDown = false; });
+  addEventListener('mousemove', e => { if (!e.buttons) handDown = false; }, true);   // let go outside the window
+  addEventListener('resize', () => { windowMovedAt = performance.now(); for (const tm of terms) keepEnd(tm); }, true);   // the clamp's scroll event comes before the body's observer
+  const moving = () => handDown || performance.now() - windowMovedAt < FIT_STILL_MS;
+  // A drawer at its end stays there through a resize (2026-11-05): the body changes size before the grid, or the grid
+  // before its scroll area, and the browser clamps the viewport's scroll a frame later, which xterm takes for a hand
+  // scrolling up — the soak found a drawer with its scrollback in view and its prompt below the fold, before this change
+  // too. Kept as an attach is (`settleUntil`, its scroll listener), for KEEP_END_MS past the resize; one scrolled up stays so.
+  const KEEP_END_MS = 400;
+  const keepEnd = tm => { const b = tm.xt?.buffer.active; if (b && b.viewportY >= b.baseY) tm.settleUntil = Math.max(tm.settleUntil || 0, performance.now() + KEEP_END_MS); };
+  /** The page's grid to the body at once, the old way: xterm reflows what it holds (a zsh's lines, a screen no app answers for). */
+  function fitLocal(tm, d) {
+    if (d.cols === tm.xt.cols && d.rows === tm.xt.rows) return;
+    keepEnd(tm);
+    tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
+    refitTerm(tm.xt, d.rows, () => { try { tm.fit.fit(); } catch {} }, () => { unhold(tm); keepEnd(tm); });
+  }
   function fitTerm(tm, now = false) {
     if (!tm) { for (const t of terms) fitTerm(t, now); return; }
     if (!tm.xt || $(tm.el.term).hidden) return;
     let d; try { d = tm.fit.proposeDimensions(); } catch { return; }
     if (!d || !(d.cols > 1) || !(d.rows > 1)) return;
-    if (d.cols !== tm.xt.cols || d.rows !== tm.xt.rows) {
-      tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
-      refitTerm(tm.xt, d.rows, () => { try { tm.fit.fit(); } catch {} }, () => { if (--tm.refits === 0) for (const f of tm.held.splice(0)) f(); });
-    }
-    // The page's grid follows at once; the PTY hears the size once it has stopped moving, 120 ms later — or at once,
-    // `now`, when a socket has just opened (2026-10-03: a splitter drag sent one resize per column it crossed, each a
-    // SIGWINCH and a whole Claude Code repaint; and the prefs were written on every one).
-    clearTimeout(tm.sizeTimer);
+    const same = g => g && g.cols === d.cols && g.rows === d.rows;
+    // nothing new: the PTY has the size, the grid has it or will once its repaint is in (a body's observer says it twice)
+    fitNote(tm, 'fit', { d: `${d.cols}x${d.rows}`, sent: tm.sent && `${tm.sent.cols}x${tm.sent.rows}`, hold: !!tm.hold, paints: paintsItself(tm), now, moving: moving(), refits: tm.refits || 0 });
+    if (same(tm.sent) && same(tm.hold || tm.xt)) { if (tm.sizeTimer) { clearTimeout(tm.sizeTimer); tm.sizeTimer = 0; tm.hold?.resume(); } return; }
+    keepEnd(tm);   // the body moved: whatever comes next, a drawer at its end stays there
+    if (!paintsItself(tm)) fitLocal(tm, d);
+    clearTimeout(tm.sizeTimer); tm.sizeTimer = 0;
     const send = () => {
+      tm.sizeTimer = 0;
       if (prefs.termSize?.cols !== d.cols || prefs.termSize?.rows !== d.rows) { prefs.termSize = { cols: d.cols, rows: d.rows }; savePrefs(); }   // what a drawer started before any xterm exists asks for
       // Only a size that moved goes to the PTY (2026-09-27): the holder resizes it unchecked. `sent` is this
       // attachment's: a new socket starts over (attachTerm), so the holder always hears the first size.
-      if (tm.ws?.readyState === 1 && (tm.sent?.cols !== d.cols || tm.sent?.rows !== d.rows)) { tm.sent = { cols: d.cols, rows: d.rows }; tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows })); }
+      const told = tm.ws?.readyState === 1 && !same(tm.sent);
+      if (told) { tm.sent = { cols: d.cols, rows: d.rows }; tm.sentAt = performance.now(); tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows })); }
+      fitNote(tm, 'send', { d: `${d.cols}x${d.rows}`, told, paints: paintsItself(tm) });
+      if (paintsItself(tm)) awaitRepaint(tm, d, told); else fitLocal(tm, d);
     };
-    if (now) send(); else tm.sizeTimer = setTimeout(send, 120);
+    if (now || (!moving() && !tm.hold && performance.now() - (tm.sentAt || 0) > FIT_STILL_MS)) send();
+    else { if (tm.hold) clearTimeout(tm.hold.timer); tm.sizeTimer = setTimeout(send, FIT_STILL_MS); }   // a newer size on its way: the wait holds for it
   }
   // The media query is for the scale of the moment, so it is re-armed after each change; xterm listens to the
   // same change and re-measures in its handler, and the refit must run after that — hence the timeout.
@@ -9692,7 +9791,7 @@ const toolName = n => {
   function checkRoom(tm) {
     const el = $(tm.el.term);
     if (!tm.id || !tm.xt || el.hidden || !el.matches(UNDER_HEAD)) return;
-    if (tm.refits) return roomSoon(tm);   // a refit or a nudge under way: the screen is between two sizes
+    if (tm.refits || tm.sizeTimer) return roomSoon(tm);   // a refit, a nudge or a repaint under way: the screen is between two sizes
     const fh = parseFloat($('#chat').style.getPropertyValue('--float-h')) || 0, cell = $(tm.el.tbody).querySelector('.xterm-screen')?.offsetHeight / tm.xt.rows;
     if (!fh || !(cell > 0)) return;
     const under = el.classList.contains('under'), room = blankRun(tm.xt);
@@ -9713,7 +9812,7 @@ const toolName = n => {
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
     // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
     // counts' roll, the fades, the list's ends and timeline, the rings' phase), which ctx.settle() missed
-    state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!(renderBoardSoon.t || rollSoon.f || fadeSoon.f || listChanged.queued || phaseAnims.queued), project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
+    state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!(renderBoardSoon.t || rollSoon.f || fadeSoon.f || listChanged.queued || phaseAnims.queued || terms.some(t => t.hold || t.sizeTimer)), project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, v.map(pageUrl)])), paneTabs: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), zoomed: zoomed.get(state.current) ?? null, focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
@@ -9728,6 +9827,7 @@ const toolName = n => {
     prefs: () => ({ ...prefs }),
     tour: () => ({ open: $('#tour').open, at: tour.i, step: tour.steps[tour.i]?.id || null, steps: tour.steps.map(t => t.id), drawn: tour.drawn, parts: tour.els.map(el => { const c = el.closest('#slist > .card'), cls = [...el.classList].map(k => '.' + k).join(''); return el.id ? '#' + el.id : c ? `#slist > .card[data-id="${c.dataset.id}"]${c === el ? '' : ' ' + cls}` : el.localName + cls; }) }),   // the tour (2026-10-14)
     term: g => window.peixDebug(g),
+    fits: g => (terms[g ?? focusG].fitLog || []).slice(),
     grid: g => { const tm = terms[g ?? focusG]; return { cols: tm.xt?.cols ?? null, rows: tm.xt?.rows ?? null, id: tm.id, refits: tm.refits || 0, hold: tm.hold ? { cols: tm.hold.cols, rows: tm.hold.rows } : null }; },   // a drawer's grid, reading no layout: lib/framewatch.mjs reads it every frame (2026-11-05)
     screen: g => [...document.querySelectorAll(`${GEL[g ?? focusG].tbody} .xterm-rows > div`)].map(r => r.textContent.replace(/\s+$/, '')),
     /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
@@ -9762,14 +9862,15 @@ const toolName = n => {
   const NUDGE_QUIET_MS = 60, NUDGE_MAX_MS = 600, SETTLE_MAX_MS = 2000;
   function nudgeTerm(tm) {
     if (!tm.xt || tm.ws?.readyState !== 1) return;
-    const ws = tm.ws, { cols, rows } = tm.xt;
+    const ws = tm.ws, { cols, rows } = tm.sent || tm.xt;   // the size the PTY was told: the grid may be waiting for its repaint (2026-11-05)
     tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
     let poll = 0, back = 0, done = false;
-    const release = () => { if (done) return; done = true; clearInterval(poll); if (tm.ws === ws) tm.settleUntil = 0; if (--tm.refits === 0) for (const f of tm.held.splice(0)) f(); };
+    const release = () => { if (done) return; done = true; clearInterval(poll); if (tm.ws === ws) tm.settleUntil = 0; unhold(tm); };
     ws.send(JSON.stringify({ t: 'resize', cols, rows: Math.max(5, rows - 1) }));
     setTimeout(() => {
       if (tm.ws !== ws || ws.readyState !== 1) return release();
-      ws.send(JSON.stringify({ t: 'resize', cols: tm.xt.cols, rows: tm.xt.rows })); back = performance.now();
+      const g = tm.sent || tm.xt;
+      ws.send(JSON.stringify({ t: 'resize', cols: g.cols, rows: g.rows })); back = performance.now();
       poll = setInterval(() => { const now = performance.now(); if (now - back > NUDGE_MAX_MS || (now - back > 80 && now - (tm.outAt || 0) > NUDGE_QUIET_MS)) release(); }, 20);
     }, 150);
   }
@@ -9788,7 +9889,9 @@ const toolName = n => {
     ws.onmessage = e => {
       if (tm.ws !== ws) return;
       if (typeof e.data !== 'string') {
-        const data = new Uint8Array(e.data); tm.outAt = performance.now(); toXt(tm, () => tm.xt.write(data));
+        const data = new Uint8Array(e.data); tm.outAt = performance.now();
+        if (tm.hold && (tm.hold.got += data.length) >= REPAINT_BYTES && !tm.sizeTimer) tm.hold.arm(REPAINT_QUIET_MS);   // it is coming: until it stops
+        if (tm.refits) tm.held.push(data); else tm.xt.write(data);
         if (!tm.snapped) { tm.snapped = true; nudgeTerm(tm); }   // the screen as the holder has it is up: the repaint, unseen, behind it
         return;
       }
@@ -9802,7 +9905,7 @@ const toolName = n => {
     // server is down; an exit or another chat ends it (attachTerm and detachTerm clear `lost`).
     ws.onclose = () => {
       if (tm.ws !== ws) return;
-      tm.ws = null;
+      tm.ws = null; dropHold(tm);
       if (tm.exited !== null || !tm.id) return;
       tm.lost = true; tm.retry = (tm.retry || 0) + 1;
       clearTimeout(tm.retryTimer);
@@ -9810,6 +9913,7 @@ const toolName = n => {
     };
   }
   function detachTerm(tm) {
+    dropHold(tm); clearTimeout(tm.sizeTimer); tm.sizeTimer = 0;
     const ws = tm.ws; tm.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
     clearTimeout(tm.retryTimer);

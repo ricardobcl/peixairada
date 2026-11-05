@@ -2,8 +2,64 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-04. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-05. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-05 — a drawer that waits for its repaint
+
+Ricardo: *"why does chat flicker when re-sizing, splitting view, closing anything, etc.?"*, and then: *"if there is no downside, do it. but
+try to measure if we're introduce bugs, maybe by adding more tests or improving harness"*.
+
+* **Measured first, on the real CLI (2.1.318) in WebKit, by the window's own frames** (a burst of `CGWindowListCreateImage` on the
+  harness's window, about 1 ms a capture). Every change of the column's shape — a split, a half closed, the list hidden or shown, the
+  window or a divider dragged — drew the drawer twice: the page's xterm took the new grid at once, with Claude Code's drawing for the old
+  size on it (cut off, or short with the prompt in the wrong place), and the PTY heard of the size 120 ms later (`fitTerm`'s debounce,
+  2026-10-03), whose answer is `ESC[2J ESC[H` and the whole screen again — 18-19 KB at 268×76, in 1 KB chunks, in 6-23 ms, wrapped in
+  no synchronized output. So the wrong look stood 130-240 ms, and in 2 changes of 16 a frame landed in the repaint and showed the
+  screen's top without its bottom. The rendered transcript does none of it: one look per change.
+* **Ruled out**: a blank frame from the fit addon's `_renderService.clear()` — `DomRenderer.handleResize` draws every row again in the
+  same call. Traced, not guessed.
+* **The grid waits for the repaint** (`paintsItself`: a claude, or anything on the alternate screen). The PTY is told and the page's grid
+  stays as it is; what comes is held (`awaitRepaint` → `tm.hold`) until the repaint has started — `REPAINT_BYTES` (200) since the PTY was
+  told, more than a tick or the modes the CLI says first — and stopped, `REPAINT_QUIET_MS` (16) past its last byte; `REPAINT_WAIT_MS` (150)
+  for it to start, `REPAINT_MAX_MS` (250) in all. Then the grid and the bytes go in together: the resize inside a `write('', cb)` and the
+  bytes held, as one write, behind it in the same pass of xterm's parser (`endHold`, `unhold`, `flushHeld`), so no frame has one without the
+  other. A zsh at its prompt is no TUI: its lines are xterm's to reflow, at once, as before (`fitLocal`). The nudge's held output is
+  written as one write too.
+* **A size goes at once now**, but while a hand is down (a bar held), the window is being resized (`moving()`), or within `FIT_STILL_MS`
+  of the last one: then 120 ms after it stops, as before, and at once on the mouse's release. A wait whose newer size is still to go waits
+  for it; a newer size given up resumes the wait as it was (`h.resume`), never a shorter one.
+* **What it gives, real CLI, pixels in WebKit**: the wrong look went from 120-150 ms to 30-60 ms, and is the old drawing untouched,
+  cropped or short, not reflowed; the new screen comes about 100 ms sooner. In Chrome's frames, 2 looks a change before, 1 after.
+  The fake, made to answer as the real one but in chunks 2 ms apart: stale frames 0 (from 4-36 a change), torn 0 (from 2-27).
+* **The downsides, measured**: keys typed during a wait echo when it lets go (`drawer-repaint-edge`: all of them, in order); output that
+  never pauses 16 ms is frozen for 250 ms at most (a line every 4 ms; every 20 ms is told apart); a claude that never answers gets the
+  new grid after 150 ms (it got it at once, and waited the same for its repaint). A TUI's drawing does not follow a drag until the hand
+  stops — it never did, only its cut-off copy moved. **Still open**: the 30-60 ms in which the new layout shows the old drawing; a
+  layout change held back with it (a view transition) was not tried.
+* **The harness, for this and the next report of the kind**: `lib/framewatch.mjs` reads every frame of a drawer after its paint
+  (`ctx.watchFrames`, `ctx.frames`); `peix.grid(g)` the grid with no layout read, `peix.fits(g)` what each fit decided; the fake answers a
+  resize as the real CLI (`FAKE_ANSWER=real`, `FAKE_ANSWER_GAP_MS`, `silent`, `fake slow <ms>`, `fake stream <ms>`) and writes the size it
+  drew for on its first and last rows (`FAKE_SIZE_MARK`), so a stale or torn frame is a fact, not a reading of pixels; `burst()` in
+  `npm run webkit` is the window's real frames; `lib/reallab.mjs` runs the real CLI in a drawer at no cost. **Scenarios**: `drawer-repaint`
+  (every change, every frame), `drawer-repaint-edge` (no answer, a late one, a stream, keys, another chat, the server, the drawer ending
+  — all mid-wait), `drawer-repaint-real` (the real CLI, Chrome and WebKit), and `drawer-soak` / `drawer-soak-inline` (seeded random walks
+  through every change: grid, PTY, the page's screen against the holder's, character for character, and every key typed;
+  `-- <seed> <steps>`). Fullscreen, the code before passed seeds 7, 1 and 2; this passes those and 3-6, 8-14. Inline, 2-6 and 8-11.
+* **What the soak found that was there before**: a drawer with the transcript in its scrollback (no `tui: fullscreen`) left scrolled up
+  after a resize, its prompt below the fold — the body changes size, the browser clamps the viewport's scroll, and xterm takes the scroll
+  event for a hand. Seeds 2, 3 and 4 of `drawer-soak-inline` on the code before; now a drawer at its end is kept there for `KEEP_END_MS`
+  from the window's resize event, the body's change and the grid's (`keepEnd`, the attach's `settleUntil`). Still open, also from before:
+  a drawer attached anew into a half of another size shows the holder's snapshot at the old size until the nudge's repaint (a chat
+  moved between halves, a resize during an attach), and with the transcript in the scrollback the page's xterm and the holder's reflow
+  what is above the live region each their own way (the inline soak compares the region alone).
+* **What the whole suite found**: the wait's let-go was `function letGo`, and the page had one — the round of a PR let go
+  (⌥-click on *your move*). The later declaration won, silently: `let-go.mjs` failed and nothing else. It is `endHold` now, and
+  `npm run check` fails a function declared twice in the page's own scope. `split-stacked` read the drawer's size the moment the
+  halves turned, which the grid now reaches a repaint later: `ctx.settle()` waits two frames first and `rendering` covers a wait.
+* **What the soak found that was its own**: a check run before the body's observer had fired (the next frame's), a fake line that
+  autowrapped and was drawn over — which the serialize addon brings back a row off in a snapshot —, status lines wider than a narrow half,
+  scrolling the mark off, and the fake's timer read with a space where the DOM has another.
 
 ## Decisions of 2026-11-04 — a chat twice, and no button
 

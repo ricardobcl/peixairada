@@ -11,7 +11,8 @@ const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.spl
 const rects = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries(['#grp', '#grpB', '#gsplit', '#groups'].map(id => { const r = document.querySelector(id).getBoundingClientRect(); return [id.slice(1), { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }]; })))`).then(JSON.parse);
 const layout = ctx => ctx.evaluate(`JSON.stringify({ stack: document.querySelector('#groups').classList.contains('stack'), dir: getComputedStyle(document.querySelector('#groups')).flexDirection, cursor: getComputedStyle(document.querySelector('#gsplit')).cursor, turn: document.querySelector('#ptabsB .gturn')?.dataset.to || null })`).then(JSON.parse);
 const ids = ctx => Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
-const fits = async ctx => { for (const g of [0, 1]) { const d = await ctx.peix(`term(${g})`); ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`); } };
+// settled first: a claude's grid waits for its repaint (2026-11-05)
+const fits = async ctx => { await ctx.settle(); for (const g of [0, 1]) { const d = await ctx.peix(`term(${g})`); ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`); } };
 
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
