@@ -12,7 +12,7 @@
 // [r, g, b] in sRGB at a point in CSS px, and `shot.where(test, [x, y, w, h])` the count and centroid of the pixels
 // that pass. A body can also ask the shell (2026-10-13): `await layers()` is the compositor's layer tree as text, one
 // `(layer bounds …)` a layer; `await footprint()` the web process's memory, `{ now, peak }` in MB; `await muted()` whether
-// the page is muted, as it always is (2026-11-01); `say(line)` prints a line at once. `WK_BORDERS=1` and `WK_COUNTERS=1` draw WebKit's compositing borders and repaint counters into a
+// the page is muted, as it always is (2026-11-01); `say(line)` prints a line at once; `await burst(ms, [x, y, w, h], dir)` what the window really showed in that part, frame by frame, `await resize(w, h)` the window a new size (2026-11-05). `WK_BORDERS=1` and `WK_COUNTERS=1` draw WebKit's compositing borders and repaint counters into a
 // --shot — what is a layer of its own, what paints again. The page starts from no prefs but auto-resume off (`PREFS`
 // over them): the app's defaults, tiles and the floating header on. `WAIT` (s) before the capture, 0.3 by default;
 // `TIMEOUT` (s) for the whole run, 30. The page is given the board's key as the app gives it: `KEY`, else the live board's

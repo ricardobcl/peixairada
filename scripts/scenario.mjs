@@ -6,7 +6,7 @@
 // A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto', env: {…} }` (its
 // needs, so no flags are required — `env` goes to the throwaway server, for the ones it reads from its environment)
 // and `export default async function (ctx) { … return result }`. `ctx` carries the page
-// (evaluate, waitFor, send, on(event, fn), sleep, shot(name), key(code), openChat(id), reload(), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
+// (evaluate, waitFor, send, on(event, fn), sleep, shot(name), key(code), openChat(id), reload(), screen(), type(text), fill(sel, text), settle(), watchFrames(g), frames()), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 // The clock reads noon (2026-10-14): this process, the server and the page run in the Etc/GMT±N zone where it is about
@@ -20,6 +20,7 @@ import { pathToFileURL } from 'node:url';
 import { launchChrome, liveKey, openBoard, openChat, sleep, SOFT_GL } from '../lib/cdp.mjs';
 import { startTestServer } from '../lib/testserver.mjs';
 import { defaultFixture } from './fixture.mjs';
+import { FRAME_WATCH } from '../lib/framewatch.mjs';
 
 const argv = process.argv.slice(2);
 const dd = argv.indexOf('--'); const scenarioArgs = dd >= 0 ? argv.splice(dd).slice(1) : [];
@@ -134,6 +135,9 @@ const ctx = {
     await mouse('mouseReleased', b.x, b.y, 0);
     return seen;
   },
+  /** What each frame of a half's drawer showed, from now until `frames()` (lib/framewatch.mjs). */
+  watchFrames: (g = 0) => cdp.evaluate(`window.__frames = ${FRAME_WATCH}(${g}); 0`),
+  frames: () => cdp.evaluate(`JSON.stringify(window.__frames.stop())`).then(JSON.parse),
   /** A read-only look into the page's closure (window.peix). */
   peix: what => cdp.evaluate(`JSON.stringify(window.peix.${what})`).then(v => JSON.parse(v)),
 };

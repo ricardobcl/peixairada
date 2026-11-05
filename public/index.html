@@ -9728,6 +9728,7 @@ const toolName = n => {
     prefs: () => ({ ...prefs }),
     tour: () => ({ open: $('#tour').open, at: tour.i, step: tour.steps[tour.i]?.id || null, steps: tour.steps.map(t => t.id), drawn: tour.drawn, parts: tour.els.map(el => { const c = el.closest('#slist > .card'), cls = [...el.classList].map(k => '.' + k).join(''); return el.id ? '#' + el.id : c ? `#slist > .card[data-id="${c.dataset.id}"]${c === el ? '' : ' ' + cls}` : el.localName + cls; }) }),   // the tour (2026-10-14)
     term: g => window.peixDebug(g),
+    grid: g => { const tm = terms[g ?? focusG]; return { cols: tm.xt?.cols ?? null, rows: tm.xt?.rows ?? null, id: tm.id, refits: tm.refits || 0, hold: tm.hold ? { cols: tm.hold.cols, rows: tm.hold.rows } : null }; },   // a drawer's grid, reading no layout: lib/framewatch.mjs reads it every frame (2026-11-05)
     screen: g => [...document.querySelectorAll(`${GEL[g ?? focusG].tbody} .xterm-rows > div`)].map(r => r.textContent.replace(/\s+$/, '')),
     /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
     links: (y, g) => (termLinks(terms[g ?? focusG], y) || []).map(l => ({ text: l.text, href: l.href, range: l.range })),

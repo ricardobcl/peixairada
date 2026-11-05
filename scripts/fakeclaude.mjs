@@ -89,7 +89,9 @@ register();
 const bye = code => { try { unlinkSync(regFile); } catch {} out(`${FULL ? '\x1b[?1049l' : ''}\x1b[?2004l\x1b[?1004l\x1b[?25h\n`); process.exit(code); };
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => bye(sig === 'SIGHUP' ? 129 : 143));
 
-const out = s => process.stdout.write(s);
+// What is drawn waits behind an answer to a resize being written (FAKE_ANSWER, below): a chunk ends anywhere, in an escape.
+let sink = null;
+const out = s => { if (sink) sink.push(s); else process.stdout.write(s); };
 const cols = () => process.stdout.columns || 80, rows = () => process.stdout.rows || 24;
 const LIVE = 6;                                   // rule, prompt, rule, status ×3
 // FAKE_TUI=fullscreen is Claude Code's `tui: fullscreen` (2026-10-11): the alternate screen, the transcript drawn from
@@ -101,6 +103,16 @@ const FULL = process.env.FAKE_TUI === 'fullscreen';
 // place of the banner and the history, and of the status lines under the prompt — the timer still; `replies` (2026-10-16)
 // maps a prompt to its answer.
 const SCREEN = process.env.FAKE_SCREEN ? JSON.parse(readFileSync(process.env.FAKE_SCREEN, 'utf8')) : null;
+// How a resize is answered (2026-11-05). By default the whole region at once, in one write. FAKE_ANSWER=real as Claude
+// Code 2.1.318 was measured to: its modes at once, then, FAKE_ANSWER_MS later (6-23 there), ESC[2J and the whole screen
+// in chunks of 1020 bytes, FAKE_ANSWER_GAP_MS apart — wider than the real ones (under 1 ms), to land a frame in it.
+// FAKE_ANSWER=silent, none at all. FAKE_STREAM_MS a line rewritten that often, however busy a turn can be. A prompt
+// `fake real|silent|slow <ms>|stream <ms>` changes them mid-chat.
+// FAKE_SIZE_MARK: the size the screen was drawn for on its first and last rows, `<<cols x rows>>`, so a frame says
+// what it was drawn for (lib/framewatch.mjs): the wrong size is a stale screen, one mark alone a torn one.
+let ANSWER = process.env.FAKE_ANSWER || '', ANSWER_MS = Number(process.env.FAKE_ANSWER_MS ?? 10), STREAM_MS = Number(process.env.FAKE_STREAM_MS || 0);
+const ANSWER_GAP = Number(process.env.FAKE_ANSWER_GAP_MS || 0), SIZE_MARK = !!process.env.FAKE_SIZE_MARK;
+const sizeMark = () => SIZE_MARK ? `<<${cols()}x${rows()}>>` : '';
 let shown = [], mark = 0;
 const commit = () => { mark = shown.length; };
 const t0 = Date.now();
@@ -129,9 +141,9 @@ function drawLive() {
   out(`\x1b[2m${rule()}\x1b[0m\n`);
   if (SCREEN) out([0, 1, 2].map(i => SCREEN.status?.[i] || '').join('\n'));
   else {
-    out(`  📂 ${basename(cwd)} | 🌿 main | \x1b[32mFake 1\x1b[0m | 💪 \x1b[33mtest\x1b[0m | 🆔 \x1b[35m${sessionId.slice(0, 8)}\x1b[0m\n`);
-    out(`${status2prefix()}${elapsed()}\x1b[33m${status2suffix()}\x1b[0m\n`);
-    out(`  \x1b[33m⏵⏵ fake mode on\x1b[0m (shift+tab to cycle) · ← for agents`);
+    out(fitW(`  📂 ${basename(cwd)} | 🌿 main | \x1b[32mFake 1\x1b[0m | 💪 \x1b[33mtest\x1b[0m | 🆔 \x1b[35m${sessionId.slice(0, 8)}\x1b[0m`) + "\n");
+    out(fitW(`${status2prefix()}${elapsed()}\x1b[33m${status2suffix()}\x1b[0m`) + "\n");
+    out(fitW(`${sizeMark()}  \x1b[33m⏵⏵ fake mode on\x1b[0m (shift+tab to cycle) · ← for agents`));
   }
   out(at(top + 1, 3 + cur) + '\x1b[?25h');
 }
@@ -152,16 +164,23 @@ function wrapScreen(l, w) {
   }
   return [...out, cur];
 }
+/** Under the mark, a status line no wider than the screen: one that wraps scrolls the mark off the top. */
+const fitW = l => SIZE_MARK ? clipTo(l, cols() - 4) : l;   // four for the wide glyphs, which count one here
+/** A line cut at the width, its escapes all kept. */
+function clipTo(l, w) { let n = 0, o = ''; for (const part of l.split(/(\x1b\[[0-9;]*m)/)) { if (part.startsWith('\x1b')) { o += part; continue; } for (const ch of part) if (n < w) { o += ch; n++; } } return o; }
 function paint() {
-  const all = SCREEN ? shown.flatMap(l => wrapScreen(l, cols())) : shown;
+  // under the mark, every line within the width (2026-11-05): the real one never lets a line wrap, and an autowrapped row
+  // drawn over is one the serialize addon brings back wrong, in the holder's snapshot the soak compares with
+  const all = SCREEN ? shown.flatMap(l => wrapScreen(l, cols())) : SIZE_MARK ? shown.map(l => clipTo(l, cols())) : shown;
   const view = all.slice(Math.max(0, all.length - (rows() - LIVE - 1)));
-  out(`\x1b[?25l\x1b[H\x1b[2J${view.map((l, i) => at(i + 2, 1) + l).join('')}`);
+  out(`\x1b[?25l\x1b[H\x1b[2J${sizeMark()}${view.map((l, i) => at(i + 2, 1) + l).join('')}`);
   lastRows = 0; drawLive();
 }
 /** Only the timer's cells — Claude Code's status bar does the same, so a replay that starts after the paint shows lone digits. */
 function tick() {
   if (SCREEN) return;
   const col = status2prefix().length + 1;
+  if (SIZE_MARK && col + 8 > cols() - 4) return;   // its cells cut off the line: written past the edge, they would wrap onto the mark
   out(`\x1b7${at(rows() - 1, col)}${elapsed()}\x1b8`);
 }
 /** Transcript text goes above the live region: erase it, print, make room, draw it again at the bottom. */
@@ -172,6 +191,8 @@ function say(lines) {
   drawLive();
 }
 async function turn(text) {
+  const knob = /^fake (real|silent|slow|stream)(?: (\d+))?$/.exec(text);
+  if (knob) { const [, k, n] = knob; if (k === 'stream') stream(Number(n)); else { ANSWER = k === 'slow' ? 'real' : k; if (k === 'slow') ANSWER_MS = Number(n); else ANSWER_MS = 10; } }
   register('busy');
   userLine(text);
   say([...text.split('\n').map((l, i) => `${i ? '  ' : '\x1b[36m>\x1b[0m '}${l}`), '']); commit();
@@ -233,7 +254,30 @@ function resumeSession(id) {
   say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (resumed) · ${cwd}`, '']); commit();
 }
 setInterval(tick, 1000);
-process.stdout.on('resize', FULL ? paint : drawLive);
+let answering = 0;
+function answerResize() {
+  const draw = FULL ? paint : drawLive;
+  if (ANSWER === 'silent') return;
+  if (!ANSWER) return draw();
+  const gen = ++answering;
+  out('\x1b[?2004h');
+  setTimeout(() => {
+    if (gen !== answering) return;
+    const queued = sink || [];   // behind the answer this one replaces
+    sink = []; draw(); const parts = [...sink, ...queued].join('').match(/[\s\S]{1,1020}/gu) || []; sink = [];
+    const next = i => {
+      if (gen !== answering) return;
+      if (i === parts.length) { const q = sink; sink = null; for (const x of q) out(x); return; }
+      process.stdout.write(parts[i]);
+      if (ANSWER_GAP) setTimeout(next, ANSWER_GAP, i + 1); else setImmediate(next, i + 1);
+    };
+    next(0);
+  }, ANSWER_MS);
+}
+process.stdout.on('resize', answerResize);
+let streamed = 0, streamer = 0;
+function stream(ms) { clearInterval(streamer); STREAM_MS = ms; if (ms) streamer = setInterval(() => out(`\x1b7${at(2, 1)}stream ${++streamed}\x1b8`), ms); }
+stream(STREAM_MS);
 let ctrlC = 0, busy = false, focusView = false;
 // The keys, read as a terminal app reads them (2026-10-14): escape sequences whole — focus reports, arrows and the
 // edit keys, a bracketed paste —, Shift+Enter (the drawer's ESC CR) a newline in the prompt, the line-editing keys the

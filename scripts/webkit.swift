@@ -6,7 +6,8 @@
 // the page and runs no frames; at 1 % alpha the capture comes back premultiplied, its colours in steps of 85.
 // Floating, on every Space, no mouse; WK_PIDFILE is given the web process's pid. WK_BORDERS and WK_COUNTERS draw
 // WebKit's compositing borders and repaint counters into the page (what is a layer, what repaints), and a body can ask
-// this side for the compositor's layer tree, the web process's memory, or a line said at once (2026-10-13; see `Asks`).
+// this side for the compositor's layer tree, the web process's memory, or a line said at once (2026-10-13; see `Asks`),
+// and for what the window really showed, frame by frame, or a new size for it (2026-11-05; `burst`).
 // Driven by scripts/webkit.mjs, which compiles it:
 //   webkit <url> <body> <shot.png or ""> <then or "">
 import AppKit
@@ -27,6 +28,7 @@ let tools = """
     if (Date.now() - t0 > ms) throw new Error('timed out waiting for ' + what); await sleep(50); } };
   const ask = what => window.webkit.messageHandlers.wk.postMessage(what);
   const layers = () => ask('layers'), footprint = () => ask('footprint'), muted = () => ask('muted'), say = line => ask('say:' + line);
+  const burst = (ms, rect, dir = '') => ask('burst:' + JSON.stringify({ ms, rect, dir })), resize = (w, h) => ask('resize:' + w + 'x' + h);
   """
 let ready = """
   if (document.visibilityState === 'hidden') throw new Error('the page is hidden (the screen locked, or asleep?): WebKit runs no frames then');
@@ -85,6 +87,17 @@ final class Asks: NSObject, WKScriptMessageHandlerWithReply {
       FileHandle.standardError.write((what.dropFirst(4) + "\n").data(using: .utf8)!)
       return replyHandler(true, nil)
     }
+    if what.hasPrefix("resize:") {
+      let p = what.dropFirst(7).split(separator: "x").compactMap { Double($0) }
+      guard p.count == 2 else { return replyHandler(nil, "resize: <w>x<h>") }
+      win.setContentSize(NSSize(width: p[0], height: p[1])); wv.frame = win.contentView!.bounds
+      return replyHandler(true, nil)
+    }
+    if what.hasPrefix("burst:") {
+      guard let o = (try? JSONSerialization.jsonObject(with: Data(what.dropFirst(6).utf8))) as? [String: Any], let ms = (o["ms"] as? NSNumber)?.doubleValue,
+            let r = (o["rect"] as? [NSNumber])?.map({ $0.doubleValue }), r.count == 4 else { return replyHandler(nil, "burst: ms, [x, y, w, h], dir") }
+      return burst(ms: ms, rect: r, dir: o["dir"] as? String ?? "", window: UInt32(win.windowNumber), points: win.contentView!.bounds.width) { replyHandler($0, nil) }
+    }
     switch what {
     case "layers": replyHandler((wv.perform(Selector(("_caLayerTreeAsText")))?.takeUnretainedValue() as? String) ?? "", nil)
     case "muted": replyHandler((wv.value(forKey: "_mediaMutedState") as? NSNumber)?.intValue == 1, nil)
@@ -130,6 +143,48 @@ func srgb(_ img: CGImage) -> NSBitmapImageRep {
 typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
 // unavailable in the SDK since macOS 15, still in the system: looked up by name
 let capture = unsafeBitCast(dlsym(dlopen(nil, RTLD_NOW), "CGWindowListCreateImage"), to: Capture.self)
+
+// What the window showed, frame by frame, for ms: the window server's own frames, not the page's idea of them, taken as fast
+// as they come (about 1 ms each at nominal resolution). A capture is kept only when the part asked for (x, y, w, h in CSS px)
+// differs from the last kept, judged on a small copy, since 2400×1300 held per capture is gigabytes. Each kept: `t` ms from the
+// start, `ink` the share of the part not its commonest colour, `bands` that by thirty bands from the top (`.` none, `-` a
+// trace, `+` some, `#` much), so a screen with its bottom gone shows; `file` its PNG in dir, if one is given (2026-11-05).
+func burst(ms: Double, rect r: [Double], dir: String, window: UInt32, points: Double, done: @escaping ([String: Any]) -> Void) {
+  DispatchQueue.global(qos: .userInteractive).async {
+    let sW = 400, sH = 220, space = CGColorSpace(name: CGColorSpace.sRGB)!, raw = CGImageAlphaInfo.noneSkipLast.rawValue
+    let small = CGContext(data: nil, width: sW, height: sH, bitsPerComponent: 8, bytesPerRow: sW * 4, space: space, bitmapInfo: raw)!
+    var kept: [(Double, CGImage)] = [], caps = 0, last = 0; let t0 = Date()
+    while Date().timeIntervalSince(t0) * 1000 < ms {
+      // optionIncludingWindow (1 << 3); boundsIgnoreFraming (1 << 0), nominalResolution (1 << 4)
+      guard let img = capture(.null, 1 << 3, window, 1 | (1 << 4))?.takeRetainedValue() else { continue }
+      caps += 1
+      let s = Double(img.width) / points
+      guard let part = img.cropping(to: CGRect(x: r[0] * s, y: r[1] * s, width: r[2] * s, height: r[3] * s)) else { continue }
+      small.draw(part, in: CGRect(x: 0, y: 0, width: sW, height: sH))
+      let d = small.data!.assumingMemoryBound(to: UInt8.self); var hash = 5381
+      for i in stride(from: 0, to: sW * sH * 4, by: 4) { hash = (hash &* 33) &+ Int(d[i]) &+ Int(d[i + 1]) << 8 }
+      if hash != last { last = hash; kept.append((Date().timeIntervalSince(t0) * 1000, part)) }
+    }
+    if !dir.isEmpty { try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true) }
+    let frames: [[String: Any]] = kept.enumerated().map { i, f in
+      let w = f.1.width, h = f.1.height, c = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space, bitmapInfo: raw)!
+      c.draw(f.1, in: CGRect(x: 0, y: 0, width: w, height: h))
+      let d = c.data!.assumingMemoryBound(to: UInt8.self), key = { (o: Int) in Int(d[o] >> 3) << 10 | Int(d[o + 1] >> 3) << 5 | Int(d[o + 2] >> 3) }
+      var hist = [Int: Int]()
+      for y in stride(from: 0, to: h, by: 2) { for x in stride(from: 0, to: w, by: 2) { hist[key((y * w + x) * 4), default: 0] += 1 } }
+      let mode = hist.max { $0.value < $1.value }?.key ?? 0, total = hist.values.reduce(0, +)
+      var ink = [Int](repeating: 0, count: 30), n = ink
+      for y in stride(from: 0, to: h, by: 2) { let b = min(29, y * 30 / max(1, h)); for x in stride(from: 0, to: w, by: 2) { n[b] += 1; if key((y * w + x) * 4) != mode { ink[b] += 1 } } }
+      let bands = zip(ink, n).map { a, m -> String in let v = m > 0 ? Double(a) / Double(m) : 0; return v == 0 ? "." : v < 0.02 ? "-" : v < 0.08 ? "+" : "#" }.joined()
+      var row: [String: Any] = ["t": Int(f.0), "ink": Double(total - (hist[mode] ?? 0)) / Double(max(1, total)), "bands": bands]
+      if !dir.isEmpty, let im = c.makeImage(), let png = NSBitmapImageRep(cgImage: im).representation(using: .png, properties: [:]) {
+        let file = dir + "/" + String(format: "%03d.png", i); try? png.write(to: URL(fileURLWithPath: file)); row["file"] = file
+      }
+      return row
+    }
+    DispatchQueue.main.async { done(["caps": caps, "frames": frames]) }
+  }
+}
 
 func finish() {
   wv.evaluateJavaScript("JSON.stringify(window.__wkErrs || [])") { v, _ in
