@@ -22,7 +22,7 @@ if (!expr) { console.error('usage: node scripts/verify.mjs [--hash <session-id>]
 let cdp = null;
 const bail = setTimeout(async () => { console.error(`timed out after ${TIMEOUT}ms`); await Promise.race([cdp?.close(), new Promise(r => setTimeout(r, 4000))]); process.exit(1); }, TIMEOUT);
 try {
-  cdp = await launchChrome({ port: process.env.CDP_PORT ? Number(process.env.CDP_PORT) : undefined, dark: !!process.env.DARK, key: liveKey() });
+  cdp = await launchChrome({ dark: !!process.env.DARK, key: liveKey() });
   await openBoard(cdp, URL_, { hash });
   let out;
   try { out = { value: await cdp.evaluate(expr) }; } catch (e) { out = { error: e.message }; }
