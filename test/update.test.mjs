@@ -6,7 +6,7 @@ import './env.mjs';   // first: server.mjs reads where its state lives as it is 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { updateParts } from '../server.mjs';
@@ -222,3 +222,46 @@ test('only a signed commit is taken (2026-11-06): not one unsigned, nor one a ke
     assert.deepEqual([st.why, p.head()], ['current', c]);
   } finally { await srv.stop(); }
 });
+
+test('a rewritten history (2026-11-06) is followed when every commit here is one its tip names as rewritten, and signed — not unsigned, not over a commit of this checkout\'s own', { timeout: 90_000 }, async () => {
+  const p = project(), dev = join(p.root, 'dev');
+  const srv = await startTestServer({ env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
+  const look = async (body = {}) => (await srv.post('api/update', body)).body;
+  // every commit made again, a name taken out of the README, the rewrite signed throughout; its tip names the old ones
+  const rewrite = (sign = true) => {
+    const named = existsSync(join(dev, '.github/rewritten')) ? readFileSync(join(dev, '.github/rewritten'), 'utf8').split('\n').filter(l => /^[0-9a-f]{40}$/.test(l)) : [];
+    const old = [...named, ...p.git(dev, 'rev-list', 'HEAD').split('\n')];   // a rewrite of a rewrite names both
+    for (const [k, v] of [['gpg.format', 'ssh'], ['user.signingkey', p.signer], ['commit.gpgsign', 'true']]) p.git(dev, 'config', k, v);
+    p.git(dev, 'rebase', '-q', '--root', '--force-rebase', '--exec', "sed -i '' 's/the old name/a name/' README.md; git add -A && git commit -q --amend --no-edit --allow-empty");
+    p.write(dev, { '.github/rewritten': `# the commits this history replaces\n${old.join('\n')}\n` });
+    p.git(dev, 'add', '-A'); p.git(dev, '-c', `commit.gpgsign=${sign}`, 'commit', '-q', '-m', 'the commits it replaces');
+    p.git(dev, 'push', '-q', '--force');
+    return p.git(dev, 'rev-parse', 'HEAD');
+  };
+  try {
+    await waitFor(async () => (await srv.api('api/update')).body.checkout, { what: 'the checkout read at boot' });
+    p.push({ 'README.md': 'tiny, with the old name\n' }, 'a line that names it');
+    p.push({ 'public/index.html': PAGE + '<!-- b -->\n' }, 'the page');
+    let st = await look({ apply: true });
+    assert.equal(st.why, 'current');
+    const was = p.head();
+
+    const a = rewrite(false);   // its tip unsigned: never followed
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.rewritten, p.head()], ['unsigned', true, was]);
+
+    const b = rewrite();
+    st = await look();
+    assert.deepEqual([st.why, st.rewritten, st.ahead > 0, st.fresh], ['off', true, true, 3], 'said, as news: what is new is the line changed and the two lists (the unsigned rewrite\'s, rewritten in its turn)');
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, p.head(), readFileSync(join(p.co, 'README.md'), 'utf8'), st.last.rewritten, st.last.count], ['current', b, 'tiny, with a name\n', true, 3], 'onto the rewritten history');
+    assert.notEqual(a, b);
+
+    // a commit of this checkout's own, then another rewrite: diverged, as ever — never reset away
+    const mine = p.commit({ 'mine.txt': 'mine\n' });
+    rewrite();
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.rewritten, p.head()], ['diverged', false, mine]);
+  } finally { await srv.stop(); }
+});
+

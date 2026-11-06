@@ -5327,7 +5327,7 @@ async function readCheckout() {
   const top = await gitIn(['rev-parse', '--show-toplevel']).catch(() => '');
   let here = UPDATE_DIR; try { here = realpathSync(UPDATE_DIR); } catch {}
   if (!top || realpathSync(top) !== here) return { checkout: false };
-  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null, sign: null, commits: [] };
+  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null, sign: null, commits: [], rewritten: false, fresh: 0 };
   // the board's version at that commit (2026-10-21, lib/version.mjs): counted once per HEAD
   if (co.head === upd.head && upd.version) co.version = upd.version;
   else { const git = args => gitIn(args).catch(() => ''); co.version = await versionFrom((() => { try { return JSON.parse(readFileSync(join(UPDATE_DIR, 'package.json'), 'utf8')).version; } catch { return PKG.version; } })(), git) || null; }
@@ -5342,12 +5342,27 @@ async function readCheckout() {
   const names = async (...args) => (await gitIn(['diff', '--name-only', '--no-renames', '-z', ...args])).split('\0').filter(Boolean);
   const changed = [...new Set([...await names('HEAD'), ...await names('--cached')])];   // the work tree's and the index's
   co.dirty = changed.length; co.changed = changed.slice(0, CHANGED_MAX);
-  if (changed.length && co.behind && !co.ahead) { const theirs = new Set(await names('HEAD', '@{u}')); co.clash = changed.filter(f => theirs.has(f)); }
+  if (co.ahead && co.behind) co.rewritten = await rewrittenHere();
+  if (changed.length && co.behind && (!co.ahead || co.rewritten)) { const theirs = new Set(await names('HEAD', '@{u}')); co.clash = changed.filter(f => theirs.has(f)); }
+  if (co.rewritten) co.fresh = Number(await gitIn(['rev-list', '--count', '--cherry-pick', '--right-only', 'HEAD...@{u}']).catch(() => co.behind)) || 0;
   if (co.behind) {
     co.sign = await signedBy(co.up);
     co.commits = (await gitIn(['log', '-n', String(COMMITS_SAID), '--format=%h%x1f%an%x1f%s', 'HEAD..@{u}']).catch(() => '')).split('\n').filter(Boolean).map(l => { const [h, a, s] = l.split('\x1f'); return { h, a, s }; });
   }
   return co;
+}
+// The upstream's history rewritten (2026-11-06): its commits made again — a name taken out of every one of them — so
+// this checkout's are none of its own any more and the branch reads as diverged, which no update takes. A rewrite says
+// which commits it replaces: REWRITTEN in its tip, one old commit a line. When every commit here that the upstream has
+// not got is one it names — no work of this checkout's own among them —, the update follows it: `git reset --keep` to
+// the tip instead of a fast-forward, as signed as any update must be (signedBy), never over a change here the new
+// history changes too (`clash`). A commit of this checkout's own among them: diverged, as ever.
+const REWRITTEN = '.github/rewritten';
+async function rewrittenHere() {
+  const list = new Set((await gitIn(['show', `@{u}:${REWRITTEN}`]).catch(() => '')).split('\n').map(l => l.trim()).filter(l => /^[0-9a-f]{40}$/.test(l)));
+  if (!list.size) return false;
+  const mine = (await gitIn(['rev-list', '@{u}..HEAD']).catch(() => '')).split('\n').filter(Boolean);
+  return mine.length > 0 && mine.every(c => list.has(c));
 }
 // Only a commit the board's keys signed is taken (2026-11-06). An update runs what it pulls — npm, the pre-flight, a
 // restart, the app rebuilt and signed with the user's own identity — so push access to the upstream was code on every
@@ -5408,7 +5423,7 @@ function whyNot(asked, apply) {
   if (!upd.branch) return 'detached';
   if (!upd.upstream) return 'no-upstream';
   if (!upd.behind) return 'current';
-  if (upd.ahead) return 'diverged';
+  if (upd.ahead && !upd.rewritten) return 'diverged';
   if (!upd.sign?.ok) return 'unsigned';   // not even *update now* takes it (2026-11-06)
   if (upd.dirty && (!apply || upd.clash.length)) return 'changes';   // *update now* pulls over them (2026-10-15) — a fast-forward keeps them —, never over one the commits change too
   if (!autoUpdate && !apply) return 'off';
@@ -5456,14 +5471,15 @@ async function checkUpdate({ asked = false, apply = false } = {}) {
   return updateState();
 }
 async function applyUpdate() {
-  const from = upd.head, to = upd.up, count = upd.behind;
+  const from = upd.head, to = upd.up, rewritten = !!upd.rewritten, count = rewritten ? upd.fresh : upd.behind;
   const parts = updateParts((await gitIn(['diff', '--name-only', from, to])).split('\n').filter(Boolean));
   const has = k => parts.includes(k), checkPage = has('page') && existsSync(join(UPDATE_DIR, 'scripts', 'check-page.mjs'));
   upd.steps = ['pull', ...(has('deps') ? ['deps'] : []), ...(checkPage ? ['page'] : []), ...(has('server') ? ['server'] : []), ...(buildBin && (has('app') || upd.app?.behind) ? ['build'] : []), ...(has('server') && restartBin ? ['restart'] : [])];
   const step = k => { upd.step = upd.steps.indexOf(k); sayUpdate(); };
   step('pull');
   if (!upd.sign?.ok || upd.sign.sha !== to) throw new Error(`${to.slice(0, 7)} was not taken: it ${upd.sign?.why || 'was not checked'}`);   // the one checked, and no other
-  await gitIn(['merge', '--ff-only', '--quiet', to], 60_000).catch(e => { throw new Error(mergeRefused(e) || errText(e)); });
+  if (rewritten) await gitIn(['reset', '--quiet', '--keep', to], 60_000).catch(e => { throw new Error(`not followed: ${errText(e)}`); });   // onto the rewritten history, the changes here kept
+  else await gitIn(['merge', '--ff-only', '--quiet', to], 60_000).catch(e => { throw new Error(mergeRefused(e) || errText(e)); });
   try {
     if (has('deps')) { step('deps'); await npmInstall(); }
     await preflight(parts, to, step);
@@ -5483,11 +5499,11 @@ async function applyUpdate() {
     throw new Error(`${to.slice(0, 7)} was not kept: ${e.message}${undo}`);
   }
   updateHeld = null;
-  updateLast = { at: new Date().toISOString(), from, to, count, parts };
+  updateLast = { at: new Date().toISOString(), from, to, count, parts, ...rewritten && { rewritten: true } };
   saveState();
   Object.assign(upd, await readCheckout(), { why: 'current' });
   upd.app = await readApp();
-  console.log(`[peixairada] updated ${from.slice(0, 7)} → ${to.slice(0, 7)} (${count} commit${count === 1 ? '' : 's'}): ${parts.join(', ') || 'nothing to start again'}`);
+  console.log(`[peixairada] updated ${from.slice(0, 7)} → ${to.slice(0, 7)} (${count} commit${count === 1 ? '' : 's'}${rewritten ? ', onto its rewritten history' : ''}): ${parts.join(', ') || 'nothing to start again'}`);
   upd.pending = parts.filter(p => p === 'server' && !restartBin);   // the app's, when this server does not rebuild it, is appWhy's `manual`
   upd.appWhy = appWhyNot(true, true, false);   // the commits taken: the app comes along whenever it is behind them
   if (!upd.appWhy) { step('build'); startBuild(); }

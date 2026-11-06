@@ -11,7 +11,8 @@
 // · update*), over a file changed here too unless the commits change it (2026-10-15). Last (2026-10-14): a commit made
 // in the checkout itself, which no pull brings, leaves the installed app behind mac/ — said in the bar and the settings,
 // and a click on the bar's word rebuilds it alone. Every commit is signed by the project's own key, which its
-// .github/allowed_signers names, and one that is not is never taken, said as such (2026-11-06).
+// .github/allowed_signers names, and one that is not is never taken, said as such; a rewritten history whose tip names
+// every commit here is followed (2026-11-06).
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -217,6 +218,23 @@ export default async function (ctx) {
     ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), d, 'pulled by the click');
     ctx.assert.equal(readFileSync(dirty, 'utf8'), `${clean}// mine\n`, 'the change kept');
     writeFileSync(dirty, clean);
+
+    // origin's history rewritten (2026-11-06): every commit made again, signed, its tip naming the ones it replaces — said
+    // as such, and followed by a click on the word, onto the new history
+    const replaced = git(dev, 'rev-list', 'HEAD').split('\n');
+    for (const [k, v] of [['gpg.format', 'ssh'], ['user.signingkey', signer], ['commit.gpgsign', 'true']]) git(dev, 'config', k, v);
+    git(dev, 'rebase', '-q', '--root', '--force-rebase');
+    write({ '.github/rewritten': `${replaced.join('\n')}\n` }); git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the commits it replaces'); git(dev, 'push', '-q', '--force');
+    const rw = git(dev, 'rev-parse', 'HEAD');
+    await ctx.server.post('/api/update', {});
+    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === 'history rewritten · update'`, { what: 'the rewritten history, said in the bar' });
+    out.rewritten = { say: await say(), word: (await row()).word, more: await more() };
+    ctx.assert.match(out.rewritten.say, /^origin\/main's history rewritten, 1 new commit besides — Update now follows it/);
+    ctx.assert.equal(out.rewritten.word, 'History rewritten');
+    ctx.assert.match(out.rewritten.more, /^every commit here is one it names as rewritten \(\.github\/rewritten\), so none of them is lost/);
+    await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
+    await ctx.waitFor(`/up to date/.test(document.querySelector('#updSay').textContent)`, { what: 'onto the rewritten history' });
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), rw, 'followed by the click');
 
     // a commit made here, to mac/: nothing to pull, and the app behind it all the same — said, and rebuilt alone
     ctx.assert.equal(readFileSync(marks, 'utf8').includes('build'), false, 'no build while the app was built from mac/ as it stands');

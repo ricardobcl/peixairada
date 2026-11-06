@@ -69,8 +69,15 @@ branch names validated, the tokens never in a response or the server's log. What
 * **A handoff's prompt still rides claude's argv**, for the drawer's life — readable by another account. Claude Code takes
   a first prompt only as an argument; a file would make the chat's first words `@<path>`, and typing it in after the
   start races the TUI. One account on this Mac; said here for a shared one.
-* **The real org's name is in the public history** (six lines, quoted requests of 2026-10-09). Rewriting main would
-  turn every other board's update into *diverged*; left for Ricardo to decide.
+* **The real org's name is in the public history** (six lines, quoted requests of 2026-10-09). Rewriting main turned
+  every other board's update into *diverged*. Ricardo: *"I would like to, but can we prepare the auto-update of the app
+  to deal with this, even if temporarily?"* — so first the updater learnt to follow a rewrite (`rewrittenHere`): a
+  rewritten history's tip carries `.github/rewritten`, every commit it replaces a line (a rewrite of a rewrite names
+  both), and a checkout whose every commit the upstream has not got is named there — none of its own work among them —
+  is moved onto it by `git reset --keep`, signed as any update must be, never over a change the new history changes
+  too, said as *History rewritten* (`fresh`: what is new besides). A commit of the checkout's own keeps it *diverged*.
+  The rewrite itself waits until the other boards have taken this; a board that has not is *diverged* and needs `git
+  fetch && git reset --keep origin/main` by hand once.
 * **The Instagram profile keeps Chrome's mock keychain**: the login window and the headless runs share cookies by it.
   The state folder's 0700 is what guards them now.
 

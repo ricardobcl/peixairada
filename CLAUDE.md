@@ -143,10 +143,10 @@ npm run map                         # rewrite the section maps at the top of ser
   `state.json.bad-<ms>` and logged, never dropped and written over. STATE_FILE set never reads the legacy one.
   → `test/state.test.mjs`. **The state folder is this user's alone** (2026-11-06; `privateDir`: 0700, one not this
   user's refused — TERMS_DIR too, before a spawn and an adoption).
-* **Nothing secret rides argv** (2026-11-06; `ps` shows every account's): the ticket on osascript's stdin, board.sh's
+* **Nothing secret rides argv** (2026-11-06; `ps` shows all): the ticket on osascript's stdin, board.sh's
   key by `curl -K -`, Jira's by `security -i`. A chat id never starts with `-` (`spawnTerm`); osascript's words follow
-  `--`; a spawn's prompt has no control character; the Jira token goes only to its own site (`jiraTokenSite`); the log
-  writes `…` for `key=`, `tkn=`, `ticket=`.
+  `--`; a spawn's prompt no control character; the Jira token goes only to its own site (`jiraTokenSite`); the log
+  writes no `key=`, `tkn=`, `ticket=`.
 * **One spawn per chat and kind at a time** (`spawnOnce`, `<chat>:claude` / `:shell`). **Nothing is signalled that
   is not the registry's process**: `endClaude(entry)` compares `procStart` with `ps -o lstart=` in UTC
   (`sameProcess`) — a dead claude's file lingers and its pid can be anyone's. → `test/terminals.test.mjs`.
@@ -179,8 +179,9 @@ npm run map                         # rewrite the section maps at the top of ser
   default** (2026-10-13): what came is said, *update now* takes it; Settings › Updates, `GET/PUT/POST /api/update`, an
   `update` event): only the agent looks by the clock (`UNDER_AGENT`, `UPDATE_EVERY_MS`), fetching its branch's upstream
   alone (no FETCH_HEAD, no tags), **fast-forward only, to a tip a key in `.github/allowed_signers` signed** (2026-11-06;
-  `signedBy`, HEAD's list, never the new commits'; else `unsigned`, not even *update now*; named, `commits`) — not over
-  a tracked change (`dirty`), a branch moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a
+  `signedBy`, HEAD's list, never the new commits'; else `unsigned`, not even *update now*; named, `commits`) — a
+  rewritten history whose tip names every commit here (`.github/rewritten`, `rewrittenHere`) by `reset --keep` — not
+  over a tracked change (`dirty`), a branch moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a
   touch (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`) the switch, the hold and a change
   the commits do not touch too (`clash`, 2026-10-15; `whyNot`, `updWord`). What they touched restarts (`updateParts`):
   `npm ci --ignore-scripts` (2026-11-06), the agent (`launchd.sh restart`) and, when behind, the app (`mac/build.sh
@@ -390,7 +391,7 @@ npm run map                         # rewrite the section maps at the top of ser
   counting PRs and tickets): the same squares, order and number, up to `HEAD_ROWS` rows, `HEAD_COLS` columns till three
   rows ask for more, the fewest rows there is room for, past that `.mxg` scrolling (`--mxw`), the toolbar no taller; a
   stack's line is the square's (`.j`, `.jw`); a square's card `#mxtip` (`.far` over a pane page); ⌥-click takes it off;
-  the tickets dots after them. The title keeps its repo name plus `TITLE_ROOM` and `TITLE_SHARE` of the row (every new
+  tickets are dots. The title keeps its repo name plus `TITLE_ROOM` and `TITLE_SHARE` of the row (every new
   header, its `ResizeObserver`). **The row never wraps**: the move's line, a task's chip and the branch's move
   (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the move's line, the count, the branch last); ··· stays on the
   title's line. A card's branch move is `.trow .drift`. `#prlist` (`prefs.prsOpen`) is rendered folded too (the harness
@@ -530,10 +531,10 @@ npm run map                         # rewrite the section maps at the top of ser
   panes (`renderSetup` → `#setup`, `#jiraSet`; not redrawn under a box with the keys): keep `.srow.root(.add)`,
   `.sdir`, `.sorg`, `#quickSel`, `.srow.proj` (`.stile` opens `.ssw`), `.sadd`. → `test/config.test.mjs`,
   `cog-setup.mjs`, `welcome.mjs`.
-* **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size — a hole in a
-  veil (the hole's own shadow) round each step's part, the card on the side with room. Once on its own after the
-  welcome's answer (`prefs.toured`; the harness's `true`).
-  A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred. A new main part gets a step. → `tour.mjs`.
+* **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size, a hole in a
+  veil round each step's part, the card where there is room; once after the welcome (`prefs.toured`; the harness's
+  `true`). A step's part is found as the board stands (`at`); none, `need` drops the step. A new main part gets a step.
+  → `tour.mjs`.
 * **The page asks the server through `api(method, url, body)`**: JSON in, JSON out, a throw with the server's own
   `error` (else the status) — `e.status`, `e.body`. Every caller says what went wrong where it happened, or catches on
   purpose. The attach upload keeps a raw `fetch`: its body is a file.
