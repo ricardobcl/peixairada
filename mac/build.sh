@@ -132,7 +132,7 @@ fi
 [ -n "$ID" ] || ID=-
 if [ "$ID" = - ]; then echo "› sign (ad-hoc — privacy grants will not survive the next install)"
 else echo "› sign ($(printf '%s\n' "$IDS" | grep -F "$ID" | sed 's/.*"\(.*\)".*/\1/'))"; fi
-codesign --force --deep -s "$ID" "$APP"
+codesign --force --deep --options runtime -s "$ID" "$APP"   # the hardened runtime (2026-11-06): no DYLD_ libraries, no code but the bundle's own
 # not `verify && echo`: set -e lets the left side of an && fail, and an app that does not verify went on to be installed
 codesign --verify --deep "$APP" || { echo "the signature does not verify — not installing" >&2; exit 1; }
 echo "  signature OK"

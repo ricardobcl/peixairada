@@ -22,7 +22,15 @@ let kProbeAside = ProcessInfo.processInfo.environment["PEIX_PROBE_SPACE"] == nil
 let kProbeAside = false
 #endif
 
+/// The port: the launchd agent's own (scripts/launchd.sh's PORT), else 7331 (2026-11-06). The environment says it only to a
+/// probe build (npm run shell): the app took PEIXAIRADA_PORT and PEIXAIRADA_NODE from whatever launched it, so anything
+/// that could `launchctl setenv` pointed the app — and the key it sends, the grants it holds — wherever it liked.
+#if PEIX_PROBE
 let kPort = ProcessInfo.processInfo.environment["PEIXAIRADA_PORT"].flatMap(Int.init) ?? 7331
+#else
+let kPort = (NSDictionary(contentsOf: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/net.peixairada.server.plist"))?["EnvironmentVariables"] as? [String: Any])?["PORT"]
+  .flatMap { ($0 as? String).flatMap(Int.init) } ?? 7331
+#endif
 let kURL = URL(string: "http://127.0.0.1:\(kPort)/")!
 let kFrameName = "peixairada.main"   // the window's frame in the defaults — off while ⌃⌘F fills the screen
 let kFillKey = "peixairada.fill"      // whether the board was full screen (either kind) when it was last up: a relaunch comes back so
@@ -116,9 +124,11 @@ final class ServerController {
   /// `npm install`, so node-pty's native addon matches it. Finding a node on the machine from a
   /// GUI app was the fragile part of this whole thing — bare launchd PATH, mise activating only in
   /// interactive shells, shell-integration escapes in the shell's output — and is gone with it.
-  /// `PEIXAIRADA_NODE` still overrides, for running against a different node.
+  /// `PEIXAIRADA_NODE` overrides it in a probe build only (2026-11-06, see kPort).
   static func nodePath() -> String? {
+    #if PEIX_PROBE
     if let override = ProcessInfo.processInfo.environment["PEIXAIRADA_NODE"], isExec(override) { return override }
+    #endif
     if let bundled = Bundle.main.url(forResource: "node", withExtension: nil)?.path, isExec(bundled) { return bundled }
     return nil
   }
@@ -196,8 +206,8 @@ final class ServerController {
     guard let node = ServerController.nodePath() else {
       done("""
       This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
-      ran npm install), point PEIXAIRADA_NODE at one, or start the server yourself with
-      `npm start` and reopen this app.
+      ran npm install), or start the server yourself (scripts/launchd.sh install, or `npm start`)
+      and reopen this app.
       """)
       return
     }
@@ -209,7 +219,9 @@ final class ServerController {
     p.executableURL = URL(fileURLWithPath: node)
     p.arguments = [script.path]
     p.currentDirectoryURL = script.deletingLastPathComponent()
-    var env = ProcessInfo.processInfo.environment
+    // what the app was launched with, but what would load code into the server (2026-11-06): a DYLD_ library or a
+    // NODE_OPTIONS --require set for every app by `launchctl setenv` ran inside the server, with the key
+    var env = ProcessInfo.processInfo.environment.filter { !$0.key.hasPrefix("DYLD_") && $0.key != "NODE_OPTIONS" }
     env["PORT"] = String(kPort)
     env["NOTIFY"] = "off"               // this app posts the notifications instead
     p.environment = env
