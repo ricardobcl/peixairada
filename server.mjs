@@ -6127,7 +6127,9 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   // transcript's back itself, and a flag beside --resume would override it
   if (typeof agent === 'string' && !editor && !task && !shell && !attach && !sessionId && !fork) args.push('--agent', agent);
   const said = args.map(a => a === '' ? "''" : a).join(' ');   // the log's: the prompt is yours, and not the log's to keep
-  if (prompt && !editor && !task && !shell) args.push('--', String(prompt).slice(0, PROMPT_MAX));
+  // the words alone (2026-11-06): a handoff quotes Claude's replies and PR titles, and a control character in them is
+  // nobody's to send — a carriage return, an escape — so only tabs and newlines stay
+  if (prompt && !editor && !task && !shell) args.push('--', String(prompt).replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '').slice(0, PROMPT_MAX));
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
   const sock = join(TERMS_DIR, `${id}.sock`);

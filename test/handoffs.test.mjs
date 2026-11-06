@@ -175,10 +175,10 @@ test('Send to…: a chat with no process resumes with your words as its first pr
   const chat = fx.chats[1];
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
   try {
-    const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30, prompt: 'carry on\nwith the queue' });
+    const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30, prompt: 'carry on\r\nwith the\x1b[Z queue\x07' });   // a control character is nobody's to send (2026-11-06)
     assert.equal(r.status, 201, JSON.stringify(r.body));
     assert.equal(r.body.prompted, true, 'the words went in with the resume');
-    await waitFor(() => readFileSync(chat.file, 'utf8').includes(JSON.stringify('carry on\nwith the queue')), { what: 'the prompt in its transcript, as written' });
+    await waitFor(() => readFileSync(chat.file, 'utf8').includes(JSON.stringify('carry on\nwith the[Z queue')), { what: 'the prompt in its transcript, as written but its control characters' });
     await waitFor(async () => (await chatOf(srv, chat.id))?.lastReply?.includes('You said: carry on'), { what: 'its Claude answering it' });
     assert.doesNotMatch(srv.logText(), /with the queue/, 'the words are not the log\'s');
     assert.match(srv.logText(), /--resume \S+ -- <a prompt of yours>/, 'the log says a prompt went in');
