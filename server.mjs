@@ -4044,6 +4044,10 @@ async function branchNameOk(main, name) {
 // branch of origin's is checked out tracking it; a fork's PR, or one asked for review only, is detached at its head —
 // nothing to push to, and never "already checked out". Nothing is installed: node_modules is linked from the main tree
 // when asked and the lockfiles match. The trees made here are the state file's `worktrees`; only they are ever removed.
+// A fork's PR is a stranger's code, and its tree is made outside the repo (2026-11-06): in the state folder's `reviews`,
+// where no trust given to the repo or a folder above it — VS Code Web's, whose workspace runs a folder's tasks and
+// settings once trusted — reaches it.
+const REVIEWS_DIR = join(dirname(STATE_FILE), 'reviews');
 const wtSlug = b => String(b).replace(/[^\w.-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 80) || 'wt';
 const wtAsking = new Map();   // one making per repo and branch at a time: a second ask waits for the first's tree
 async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, fresh = false, share = false, base = null }) {
@@ -4106,7 +4110,10 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
       start = ['--no-track', '-b', branch, null, from];
     }
   }
-  const dir = join(main, '.claude', 'worktrees'), slug = wtSlug(detach ? `pr-${want.n}` : branch);
+  const stranger = !!(detach && refs?.fork);
+  let dir = join(main, '.claude', 'worktrees');
+  if (stranger) try { dir = realpathSync(privateDir(REVIEWS_DIR)); } catch (e) { return { code: 500, error: e.message }; }
+  const slug = wtSlug(stranger ? `${basename(main)}-pr-${want.n}` : detach ? `pr-${want.n}` : branch);
   let path = join(dir, slug); for (let i = 2; existsSync(path); i++) path = join(dir, `${slug}-${i}`);
   try { await gitOut(main, ['worktree', 'add', '--quiet', ...start.map(a => a ?? path)]); }
   catch (e) { return fail(e, 'git worktree add failed'); }
@@ -4117,7 +4124,7 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
 /** A tree just added: out of the repo's own status where no ignore file says so already (the repo's info/exclude, never
  *  a tracked file), and in the state file's `worktrees` — the only trees the sweep ever removes. */
 async function treeMade(main, path, rec) {
-  if (await gitOr(main, ['check-ignore', '-q', path], false) === false) try { appendFileSync(join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'), '\n/.claude/worktrees/\n'); } catch {}
+  if (path.startsWith(`${main}/`) && await gitOr(main, ['check-ignore', '-q', path], false) === false) try { appendFileSync(join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'), '\n/.claude/worktrees/\n'); } catch {}
   worktreesMade[path] = { repo: main, ...rec, head: await gitOr(path, ['rev-parse', 'HEAD']), at: new Date().toISOString() };
   saveState();
 }

@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { tmpDir } from '../lib/testserver.mjs';
@@ -35,6 +35,7 @@ branch('feat/a', 21, 'a2.js'); branch('feat/b', 22, 'b.js'); const fork = branch
 execFileSync('git', ['clone', '-q', '--no-local', '--config', `url.${origin}.insteadOf=https://github.com/acme/widgets`, 'https://github.com/acme/widgets', co], { stdio: 'pipe', env });
 git(co, 'checkout', '-q', 'feat/b'); mkdirSync(join(co, 'node_modules', 'x'), { recursive: true });
 const real = git(co, 'rev-parse', '--show-toplevel'), wt = n => join(real, '.claude', 'worktrees', n);
+const review = n => join(realpathSync(tmp), 'reviews', n);   // a fork's PR: outside the repo (2026-11-06)
 const url = n => `https://github.com/acme/widgets/pull/${n}`;
 const refs = (head, fork = false) => prRefs({ headRefName: head, baseRefName: 'main', headRefOid: null, isCrossRepository: fork });
 const folder = () => ({ head: git(co, 'rev-parse', 'HEAD'), branch: git(co, 'branch', '--show-current'), status: git(co, 'status', '--porcelain') });
@@ -63,7 +64,8 @@ test('a PR\'s branch: the tree that has it, else one made inside the repo, track
 test('a fork\'s PR, or one asked for review only, is detached at its head; a new branch starts from origin\'s main', async () => {
   setPrInfo(url(23), 'open', 'Fork', null, Date.now(), undefined, false, null, null, refs('main', true));   // a fork's branch named main means nothing here
   const f = await ensureWorktree({ cwd: co, pr: url(23) });
-  assert.deepEqual([f.path, f.branch, f.detached, f.made], [wt('pr-23'), null, true, true]);
+  assert.deepEqual([f.path, f.branch, f.detached, f.made], [review('widgets-pr-23'), null, true, true], 'a stranger\'s code outside the repo: no trust given to it or above reaches there');
+  assert.equal(statSync(review('')).mode & 0o777, 0o700);
   assert.equal(git(f.path, 'rev-parse', 'HEAD'), fork); assert.throws(() => git(f.path, 'symbolic-ref', '-q', 'HEAD'), 'detached');
   const r = await ensureWorktree({ cwd: co, pr: url(21), detach: true });
   assert.deepEqual([r.path, r.detached], [wt('pr-21'), true], 'review only: a tree of its own beside the branch’s');
@@ -76,7 +78,7 @@ test('a fork\'s PR, or one asked for review only, is detached at its head; a new
 
 test('node_modules: linked to the main tree\'s when the lockfiles match, never installed', async () => {
   const w = await worktreesFor(wt('feat-a'));
-  assert.deepEqual(w.worktrees.map(t => [t.path, t.branch, t.modules, !!t.made]), [[real, 'feat/b', null, false], [wt('feat-a'), 'feat/a', 'same', true], [wt('feat-new'), 'feat/new', 'same', true], [wt('pr-21'), null, 'same', true], [wt('pr-23'), null, 'same', true]]);
+  assert.deepEqual(w.worktrees.map(t => [t.path, t.branch, t.modules, !!t.made]), [[real, 'feat/b', null, false], [review('widgets-pr-23'), null, 'same', true], [wt('feat-a'), 'feat/a', 'same', true], [wt('feat-new'), 'feat/new', 'same', true], [wt('pr-21'), null, 'same', true]]);   // in git's own order
   assert.deepEqual(await linkModules(wt('feat-a')), { ok: true, path: wt('feat-a') });
   assert.ok(lstatSync(join(wt('feat-a'), 'node_modules')).isSymbolicLink());
   assert.match((await linkModules(wt('feat-a'))).error, /has a node_modules already/);
@@ -100,10 +102,10 @@ test('the sweep removes a tree it made once its PR is merged or closed and nothi
   assert.ok(existsSync(join(co, 'node_modules', 'x')), 'the main tree’s node_modules, which it linked to, untouched');
   // a chat in it holds it; a PR still open, a tree the board did not make, are never touched
   setPrInfo(url(23), 'closed', 'Fork', null, Date.now(), undefined, false, null, null, refs('main', true));
-  const s = newSession(randomUUID(), null); s.alive = true; s.live = { cwd: wt('pr-23') }; sessions.set(s.id, s);
+  const s = newSession(randomUUID(), null); s.alive = true; s.live = { cwd: review('widgets-pr-23') }; sessions.set(s.id, s);
   assert.deepEqual(await sweepWorktrees(), [], 'a live chat in pr-23');
   sessions.delete(s.id);
-  assert.deepEqual(await sweepWorktrees(), [wt('pr-23')]);
+  assert.deepEqual(await sweepWorktrees(), [review('widgets-pr-23')]);
   assert.ok(existsSync(wt('pr-21')) && existsSync(wt('feat-new')) && existsSync(real));
 });
 
