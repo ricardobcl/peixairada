@@ -1864,9 +1864,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     // put off; a ✓ is not offered on it, since a tick ends the chat's processes and a question is Claude waiting. Any of
     // them can mute the chat that sent it (2026-11-02).
     let later = UNNotificationAction(identifier: "snooze", title: "In 15 minutes", options: [])
-    let done = UNNotificationAction(identifier: "done", title: "Done", options: [])
-    let mute = UNNotificationAction(identifier: "mute", title: "Mute this chat", options: [])
-    let reply = UNTextInputNotificationAction(identifier: "reply", title: "Reply…", options: [], textInputButtonTitle: "Send", textInputPlaceholder: "to Claude, in its drawer")
+    // What acts on a chat asks for the Mac unlocked first (2026-11-06): Reply… types into its claude and presses ⏎, Done
+    // ends its processes, Mute quiets it — none of them anybody's at a locked screen. The snooze changes nothing.
+    let done = UNNotificationAction(identifier: "done", title: "Done", options: [.authenticationRequired])
+    let mute = UNNotificationAction(identifier: "mute", title: "Mute this chat", options: [.authenticationRequired])
+    let reply = UNTextInputNotificationAction(identifier: "reply", title: "Reply…", options: [.authenticationRequired], textInputButtonTitle: "Send", textInputPlaceholder: "to Claude, in its drawer")
     center.setNotificationCategories([
       UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, later, mute], intentIdentifiers: [], options: []),
       UNNotificationCategory(identifier: "reply", actions: [done, later, mute], intentIdentifiers: [], options: []),
