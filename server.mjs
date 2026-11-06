@@ -5608,7 +5608,9 @@ function endClaude(entry) {
     // (measured: 11 s later, one run in two). Its own stop keeps the conversation, and the wait below still holds.
     const job = jobOf(entry), bin = job && claudeBin();
     if (bin) execFile(bin, ['stop', job], { env: drawerEnv(), timeout: 15_000 }, err => { if (err) console.error(`[peixairada] claude stop ${job}: ${err.message}`); });
-    else try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve({ code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
+    // gone between the look and the signal (2026-11-06) — a drawer's claude ends with its holder, which the delete ends
+    // first — is ended: what was asked
+    else try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve(e.code === 'ESRCH' ? { ok: true } : { code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
     const t0 = Date.now(); let hard = false;
     const tick = () => {
       if (!pidAlive(pid)) return resolve({ ok: true });

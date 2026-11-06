@@ -60,6 +60,11 @@ and open an artifact."* The study (round XXVIII, https://claude.ai/artifact/Nrvb
   against that folder's list before the folder exists (`SCRATCH_DIR`), and checks any name's form even where the folder is
   still to be cloned. A redraw on the agents' answer keeps ⌥⌘N's selection by row (`same`: a folder's project has no id,
   so the first row without one took it). → the no-folder step of `new-chat-agent.mjs`, `test/new-chat-agent.test.mjs`.
+* **A delete no longer fails on a claude that ended by itself** (the same day). Deleting a chat ends its drawers first, and a
+  drawer's claude dies with its holder — between `endClaude`'s look (`sameProcess`) and its SIGTERM, so the signal met
+  `ESRCH` and the delete answered 409 *could not signal pid … kill ESRCH*, the chat put back. `chat-remove.test.mjs` failed so
+  every run on this Mac, read earlier as a flake. A process gone before the signal is ended, which is what was asked; Done and
+  Take over share it.
 
 ## Decisions of 2026-11-05 — a drawer that waits for its repaint
 
