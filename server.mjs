@@ -6501,6 +6501,21 @@ function sortedSummaries() {
 // serves the working tree's.
 const PAGE_FILE = join(__dirname, 'public', 'index.html');
 const pageStamp = html => createHash('sha1').update(html).digest('hex').slice(0, 12);
+// The page's policy (2026-11-06): its script is its own two inline blocks — by their hashes, worked out from the page as
+// it is served, so an edit needs nothing here — and the vendored files; its connections this server alone, its pictures
+// its own, data: and GitHub's faces; no plugin, frame, form target or <base>. It stands behind the sanitiser (md()): a
+// script a reply's markup slipped past it, or an inline handler, would not run. Styles stay open — the page sets custom
+// properties in style="" everywhere — and the app's own scripts (the key, the bridge's calls) are the shell's, outside it.
+const PAGE_SCRIPTS = /<script>([\s\S]*?)<\/script>/g;
+const SAFE_HOST = /^[\w.-]+(:\d+)?$|^\[[0-9a-f:.]+\](:\d+)?$/i;
+function pageCsp(html, host) {
+  const hashes = [...html.matchAll(PAGE_SCRIPTS)].map(m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+  const ws = SAFE_HOST.test(host || '') ? ` ws://${host}` : '';   // 'self' covers ws: in CSP 3; an older WebKit wants it named
+  return [`default-src 'self'`, `script-src 'self' ${hashes.join(' ')}`, `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob: https://avatars.githubusercontent.com`, `connect-src 'self'${ws}`, `font-src 'self' data:`,
+    `media-src 'self' data: blob:`, `worker-src 'self' blob:`, `object-src 'none'`, `frame-src 'none'`, `base-uri 'none'`,
+    `form-action 'none'`, `frame-ancestors 'none'`].join('; ');
+}
 
 // Requests wait for the boot, which starts once the port is ours (main()). Everything a route does is inside the try,
 // and every answer's head is written only once its body is in hand: a throw after a writeHead used to throw again in
@@ -6519,7 +6534,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       const html = readFileSync(PAGE_FILE, 'utf8');
       const body = html.replace('<meta name="peix-page" content="">', `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`);
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "frame-ancestors 'none'", 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': pageCsp(body, req.headers.host), 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
       return res.end(body);
     }
     if (req.method === 'GET' && p === '/api/alive') { res.writeHead(204, aliveProof(req)); return res.end(); }   // up and booted: the app's probe, launchd.sh
@@ -7023,6 +7038,7 @@ export { cronNext, nextWake, pruneWakes, pruneTasks, findTasks, stopOf, pollBody
 export { handoffText };   // chats that talk (2026-10-31)
 export { agentFront, agentsFor };   // a new chat as an agent (2026-11-06)
 export { readerArgs };   // a reader reads, and does nothing else (2026-11-06)
+export { pageCsp };   // the page's policy (2026-11-06)
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();

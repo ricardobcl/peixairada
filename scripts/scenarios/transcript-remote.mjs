@@ -7,7 +7,9 @@
 import { createServer } from 'node:http';
 import { makeFixture } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+// The page's policy is the wall behind md() here (2026-11-06): a <track> in DOMPurify's own parse of the reply is refused
+// by it (a report, no fetch — the probe heard nothing before it too), so the run reads the reports itself, below.
+export const meta = { server: true, fixture: 'auto', csp: false };
 
 export default async function (ctx) {
   const out = {}, cwd = '/Users/me/proj/remote-repo';
@@ -52,6 +54,8 @@ export default async function (ctx) {
     ctx.assert.ok(out.left.imgs.includes('inline:data:image'), 'a data: image stays an image');
     ctx.assert.equal(out.left.boxes, 2, "a task list's checkboxes stay");
     ctx.assert.ok(out.left.links >= 1, 'the markdown image is a link to it');
+    out.refused = ctx.console.filter(l => /CSP violation/.test(l));
+    ctx.assert.ok(out.refused.every(l => l.includes(P)), 'what the page\'s policy refused was the probe\'s alone');
     return out;
   } finally { probe.close(); }
 }

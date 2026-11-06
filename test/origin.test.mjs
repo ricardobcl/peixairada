@@ -44,7 +44,7 @@ test('another origin is refused on every route and on the terminal socket; the b
     // another site's <iframe> of the board is a navigation too (2026-10-14): refused, and the page says it is nobody's frame
     for (const dest of ['iframe', 'frame', 'embed', 'object']) assert.equal(await ask(srv, { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': dest }, 'GET', '/'), 403, `another site's ${dest}`);
     const page = await fetch(`${mine}/`);
-    assert.deepEqual([page.status, page.headers.get('content-security-policy'), page.headers.get('x-frame-options')], [200, "frame-ancestors 'none'", 'DENY'], 'the page is nobody\'s frame');
+    assert.deepEqual([page.status, /(^|; )frame-ancestors 'none'(;|$)/.test(page.headers.get('content-security-policy') || ''), page.headers.get('x-frame-options')], [200, true, 'DENY'], 'the page is nobody\'s frame');   // in the page's whole policy (2026-11-06)
     assert.equal(await ask(srv, { 'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'cors' }), 200, 'the board\'s own fetch');
     assert.equal(await ask(srv, { 'sec-fetch-site': 'none', 'sec-fetch-mode': 'navigate' }), 200, 'the address typed');
   } finally { await srv.stop(); }

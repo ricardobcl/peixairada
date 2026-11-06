@@ -12,6 +12,7 @@
 // The clock reads noon (2026-10-14): this process, the server and the page run in the Etc/GMT±N zone where it is about
 // noon now, so a fixture minutes to hours old never straddles a midnight (a day line between its chats) nor a DST change;
 // `meta.tz` names another zone, or `false` keeps the Mac's — from the setup on: the module's top level ran at noon.
+// The page's policy holds (2026-11-06): a CSP violation on any document of the run fails it (`meta.csp: false` reads one).
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -83,6 +84,8 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
   cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {}, tz, key: meta.key === false ? null : server ? server.key : liveKey(), args: meta.gl ? SOFT_GL : [] });
   cleanups.push(() => cdp.close());
   log(`chrome profile ${cdp.profile}`);   // what scripts/scenarios.mjs looks for leftovers by, with the server's state dir
+  // the page's policy holds every scenario (2026-11-06): a violation is a console line, and the run fails on one
+  await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `document.addEventListener('securitypolicyviolation', e => console.error('CSP violation: ' + e.effectiveDirective + ' ' + (e.blockedURI || '') + ' at ' + (e.sourceFile || '') + ':' + e.lineNumber + ' ' + (e.sample || '')));` });
   await openBoard(cdp, boardUrl, { hash: hash || null });
 } catch (e) {
   log(`setup failed: ${e.stack || e}`); clearTimeout(bail); await finish(1);
@@ -147,6 +150,8 @@ let code = 0;
 try {
   const result = await mod.default(ctx);
   if (cdp.exceptions.length) { log('page JS exceptions:', cdp.exceptions); code = 1; }
+  const csp = cdp.console.filter(l => /CSP violation/.test(l));
+  if (csp.length && meta.csp !== false) { log('the page\'s policy refused:', csp); code = 1; }
   console.log(JSON.stringify(result ?? { ok: true }, null, 1));
 } catch (e) {
   code = 1; console.error(`[${name}] FAILED: ${e.stack || e}`);
