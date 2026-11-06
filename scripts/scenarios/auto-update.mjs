@@ -10,7 +10,8 @@
 // and why — a click opening Settings › Updates, or, on news *update now* would take, taking it (2026-10-14: *1 new commit
 // · update*), over a file changed here too unless the commits change it (2026-10-15). Last (2026-10-14): a commit made
 // in the checkout itself, which no pull brings, leaves the installed app behind mac/ — said in the bar and the settings,
-// and a click on the bar's word rebuilds it alone.
+// and a click on the bar's word rebuilds it alone. Every commit is signed by the project's own key, which its
+// .github/allowed_signers names, and one that is not is never taken, said as such (2026-11-06).
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -19,13 +20,16 @@ import { tmpDir } from '../../lib/testserver.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const root = tmpDir('peix-upd-'), origin = join(root, 'origin.git'), co = join(root, 'co'), dev = join(root, 'dev'), marks = join(root, 'marks');
-const git = (cwd, ...args) => execFileSync('git', ['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-C', cwd, ...args], { encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com' } }).trim();
+const signer = join(root, 'signer'); execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'test', '-f', signer]);
+const signs = (sign = true) => sign ? ['-c', 'gpg.format=ssh', '-c', `user.signingkey=${signer}`, '-c', 'commit.gpgsign=true'] : ['-c', 'commit.gpgsign=false'];
+const gitAs = (sign, cwd, ...args) => execFileSync('git', [...signs(sign), '-c', 'core.hooksPath=/dev/null', '-C', cwd, ...args], { encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com' } }).trim();
+const git = (cwd, ...args) => gitAs(true, cwd, ...args);
 const write = files => { for (const [f, body] of Object.entries(files)) { mkdirSync(dirname(join(dev, f)), { recursive: true }); writeFileSync(join(dev, f), body); } };
 const TINY = `import { createServer } from 'node:http';\nconst s = createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); });\ns.listen(Number(process.env.PORT), '127.0.0.1', () => console.log('[tiny] listening on ' + process.env.PORT));\nprocess.on('SIGTERM', () => process.exit(0));\n`;
 const PAGE = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
 mkdirSync(dev);
 git(dev, 'init', '-q', '-b', 'main');
-write({ 'server.mjs': TINY, 'public/index.html': PAGE });
+write({ 'server.mjs': TINY, 'public/index.html': PAGE, '.github/allowed_signers': `test@example.com namespaces="git" ${readFileSync(`${signer}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}\n` });
 for (const f of ['lib/testserver.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
 git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the first');
 git(root, 'init', '-q', '--bare', '-b', 'main', origin);
@@ -40,7 +44,7 @@ writeFileSync(build, `#!/bin/sh\necho "build $*" >> "${marks}"\nsleep 2\nprintf 
 writeFileSync(npm, '#!/bin/sh\nsleep 3\n'); chmodSync(npm, 0o755);   // a slow install: long enough to see the step
 let n = 0;
 /** a commit on origin, as from someone else's machine; its sha */
-const push = (files = { 'public/index.html': `${PAGE}<!-- ${++n} -->\n` }) => { write(files); git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', `change ${n}`); git(dev, 'push', '-q'); return git(dev, 'rev-parse', 'HEAD'); };
+const push = (files = { 'public/index.html': `${PAGE}<!-- ${++n} -->\n` }, sign = true) => { write(files); git(dev, 'add', '-A'); gitAs(sign, dev, 'commit', '-q', '-m', `change ${n}`); git(dev, 'push', '-q'); return git(dev, 'rev-parse', 'HEAD'); };
 
 export const meta = { server: true, env: { UPDATE_DIR: co, UPDATE_RESTART_BIN: restart, NPM_BIN: npm, UPDATE_QUIET_MS: '0', UPDATE_BUILD_BIN: build, BOARD_APP: app } };
 
@@ -66,6 +70,19 @@ export default async function (ctx) {
     ctx.assert.equal(await seg(), null, 'up to date: the status bar says nothing');
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
     await ctx.shot('1-up-to-date', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
+
+    // a commit nobody the board trusts signed (2026-11-06): said in the bar and the settings, no update now — then gone
+    // from origin again, as if pushed by mistake
+    push(undefined, false);
+    await ctx.evaluate(`document.querySelector('#updBtn').click()`);
+    await ctx.waitFor(`document.querySelector('#updWord').textContent === 'Not signed'`, { what: 'an unsigned commit, said' });
+    out.unsigned = { say: await say(), seg: await seg(), button: await ctx.evaluate(`document.querySelector('#updBtn').textContent`), more: await more() };
+    ctx.assert.match(out.unsigned.say, /^1 new commit on origin\/main, not taken: [0-9a-f]{7} is not signed/);
+    ctx.assert.deepEqual([out.unsigned.seg?.text, out.unsigned.seg?.take, out.unsigned.button], ['1 new commit · not signed', null, 'Check now'], 'no update now, in the bar or the settings');
+    ctx.assert.match(out.unsigned.more, /signed by a key in \.github\/allowed_signers.*the new commit: [0-9a-f]{7} change \d+ — test/);
+    git(dev, 'reset', '-q', '--hard', 'HEAD~1'); git(dev, 'push', '-q', '--force');
+    await ctx.evaluate(`document.querySelector('#updBtn').click()`);
+    await ctx.waitFor(`/up to date/.test(document.querySelector('#updSay').textContent)`, { what: 'up to date again' });
 
     // check now, with a commit that changes the page: said, not taken — the status bar's alert, update now offered
     const first = git(co, 'rev-parse', 'HEAD'), a = push();

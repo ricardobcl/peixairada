@@ -5292,7 +5292,7 @@ async function readCheckout() {
   const top = await gitIn(['rev-parse', '--show-toplevel']).catch(() => '');
   let here = UPDATE_DIR; try { here = realpathSync(UPDATE_DIR); } catch {}
   if (!top || realpathSync(top) !== here) return { checkout: false };
-  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null };
+  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null, sign: null, commits: [] };
   // the board's version at that commit (2026-10-21, lib/version.mjs): counted once per HEAD
   if (co.head === upd.head && upd.version) co.version = upd.version;
   else { const git = args => gitIn(args).catch(() => ''); co.version = await versionFrom((() => { try { return JSON.parse(readFileSync(join(UPDATE_DIR, 'package.json'), 'utf8')).version; } catch { return PKG.version; } })(), git) || null; }
@@ -5308,7 +5308,36 @@ async function readCheckout() {
   const changed = [...new Set([...await names('HEAD'), ...await names('--cached')])];   // the work tree's and the index's
   co.dirty = changed.length; co.changed = changed.slice(0, CHANGED_MAX);
   if (changed.length && co.behind && !co.ahead) { const theirs = new Set(await names('HEAD', '@{u}')); co.clash = changed.filter(f => theirs.has(f)); }
+  if (co.behind) {
+    co.sign = await signedBy(co.up);
+    co.commits = (await gitIn(['log', '-n', String(COMMITS_SAID), '--format=%h%x1f%an%x1f%s', 'HEAD..@{u}']).catch(() => '')).split('\n').filter(Boolean).map(l => { const [h, a, s] = l.split('\x1f'); return { h, a, s }; });
+  }
   return co;
+}
+// Only a commit the board's keys signed is taken (2026-11-06). An update runs what it pulls — npm, the pre-flight, a
+// restart, the app rebuilt and signed with the user's own identity — so push access to the upstream was code on every
+// board that follows it. The keys are SIGNERS as HEAD has it, never as the new commits do: a commit that adds a key is
+// taken only when one already trusted signed it, and from then on that key is trusted too. Only the tip is checked, as
+// `git merge --verify-signatures` does: whoever signed it vouched for the tree it brings. ssh-keygen by its own path,
+// never the PATH's. No list at HEAD — a fork that dropped it — is nothing to trust: nothing is taken.
+const SIGNERS = '.github/allowed_signers';
+const COMMITS_SAID = 20;   // the new commits named to the page, newest first
+async function signedBy(sha) {
+  const git = findBin('git', 'the board does not update itself'), keygen = findBin('ssh-keygen', 'a commit\'s signature cannot be checked');
+  if (!git || !keygen) return { sha, ok: false, why: `cannot be checked: ${git ? 'ssh-keygen' : 'git'} is not installed` };
+  const list = await gitIn(['show', `HEAD:${SIGNERS}`]).catch(() => '');
+  if (!list.trim()) return { sha, ok: false, why: `cannot be checked: this checkout names no key to trust (${SIGNERS})` };
+  const file = join(tmpdir(), `peixairada-signers.${process.pid}`);
+  try {
+    writeFileSync(file, list + '\n', { mode: 0o600 });
+    const r = await execFileP(git, ['--no-optional-locks', '-C', UPDATE_DIR, '-c', `gpg.ssh.allowedSignersFile=${file}`, '-c', `gpg.ssh.program=${keygen}`, 'verify-commit', sha], { env: updateEnv(), timeout: 30_000 });
+    const by = /Good "git" signature for (\S+)/.exec(String(r.stderr))?.[1] || null;
+    return { sha, ok: true, by };
+  } catch (e) {
+    const err = String(e?.stderr || '');
+    // git says nothing at all of a commit with no signature
+    return { sha, ok: false, why: e?.code === 1 && !err.trim() || /no signature found/i.test(err) ? 'is not signed' : /principal|not trusted|allowed signers|could not verify|bad signature/i.test(err) ? 'is not signed by a key this board trusts' : errText(e) };
+  } finally { rmSync(file, { force: true }); }
 }
 /** HEAD's mac/ as the app is built from it: its tree, the notes (`*.md`, mac/CLAUDE.md) left out (2026-10-28) — as
  *  build.sh leaves them out of its stamp, so a note is no rebuild. The same tree as HEAD:mac while it has none. */
@@ -5345,6 +5374,7 @@ function whyNot(asked, apply) {
   if (!upd.upstream) return 'no-upstream';
   if (!upd.behind) return 'current';
   if (upd.ahead) return 'diverged';
+  if (!upd.sign?.ok) return 'unsigned';   // not even *update now* takes it (2026-11-06)
   if (upd.dirty && (!apply || upd.clash.length)) return 'changes';   // *update now* pulls over them (2026-10-15) — a fast-forward keeps them —, never over one the commits change too
   if (!autoUpdate && !apply) return 'off';
   if (updateHeld?.to === upd.up && !apply) return 'held';
@@ -5397,6 +5427,7 @@ async function applyUpdate() {
   upd.steps = ['pull', ...(has('deps') ? ['deps'] : []), ...(checkPage ? ['page'] : []), ...(has('server') ? ['server'] : []), ...(buildBin && (has('app') || upd.app?.behind) ? ['build'] : []), ...(has('server') && restartBin ? ['restart'] : [])];
   const step = k => { upd.step = upd.steps.indexOf(k); sayUpdate(); };
   step('pull');
+  if (!upd.sign?.ok || upd.sign.sha !== to) throw new Error(`${to.slice(0, 7)} was not taken: it ${upd.sign?.why || 'was not checked'}`);   // the one checked, and no other
   await gitIn(['merge', '--ff-only', '--quiet', to], 60_000).catch(e => { throw new Error(mergeRefused(e) || errText(e)); });
   try {
     if (has('deps')) { step('deps'); await npmInstall(); }
@@ -5477,11 +5508,16 @@ function watchBuild() {
   if (b.pid && pidAlive(b.pid)) { if (!upd.building) { upd.building = true; sayUpdate(); } setTimeout(watchBuild, 3000); }
   else buildEnded();
 }
+/** The packages as the lockfile has them, and nothing else (2026-11-06): `npm ci`, never `install` — which could move
+ *  past the lockfile and runs every package's install scripts. The scripts stay off: node-pty runs from the prebuilt
+ *  binaries in its package, and the one thing a script did here, package.json's postinstall, is done by hand. */
 async function npmInstall() {
   const beside = join(dirname(process.execPath), 'npm');
   const npm = process.env.NPM_BIN || (canRun(beside) ? beside : findBin('npm', 'an update that changes the packages is not taken'));
   if (!npm) throw new Error('npm not found');
-  await execFileP(npm, ['install', '--no-audit', '--no-fund'], { cwd: UPDATE_DIR, env: updateEnv(), timeout: 10 * 60_000, maxBuffer: 16 << 20 }).catch(e => { throw new Error(`npm install failed: ${errText(e)}`); });
+  await execFileP(npm, ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: UPDATE_DIR, env: updateEnv(), timeout: 10 * 60_000, maxBuffer: 16 << 20 }).catch(e => { throw new Error(`npm ci failed: ${errText(e)}`); });
+  const pre = join(UPDATE_DIR, 'node_modules', 'node-pty', 'prebuilds');
+  try { for (const d of readdirSync(pre)) { const f = join(pre, d, 'spawn-helper'); if (existsSync(f) && !(statSync(f).mode & 0o100)) chmodSync(f, 0o755); } } catch {}
 }
 /** The new code, tried before it is kept: the page's script compiled, the server started on a spare port with a state
  *  of its own (the tests' throwaway server, imported fresh from the checkout) and its page asked for. */

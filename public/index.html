@@ -3748,6 +3748,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     else if (u.why === 'diverged') { say = `this checkout and ${up} have each moved on, ${u.ahead} here and ${u.behind} there — not pulled`; more.push(`<code>${inCheckout(u, 'git', 'pull', '--rebase')}</code> puts ${u.ahead === 1 ? 'the one' : 'those'} here on top, then <b>Check now</b>`); }
     else if (u.why === 'changes' && u.clash?.length) { say = `${fresh}, not pulled: ${filesSay(u.clash)} changed here, and the new commits change ${them(u.clash.length)} too`; more.push(`commit or discard ${them(u.clash.length)} (<code>${inCheckout(u, 'git', 'checkout', 'HEAD', '--', ...u.clash)}</code> discards), then <b>Check now</b>`); }
     else if (u.why === 'held') { say = `<code>${shortSha(u.held?.to)}</code> was not kept — the next commit is tried`; more.push(`why: ${esc(u.held?.why || 'it did not start')}`); }
+    // a tip no trusted key signed is never taken, the button's way neither (2026-11-06): said, with the keys' file
+    else if (u.why === 'unsigned') { say = `${fresh}, not taken: <code>${shortSha(u.up)}</code> ${esc(u.sign?.why || 'is not signed')}`; more.push(`an update is taken only when its newest commit is signed by a key in <code>.github/allowed_signers</code>, as this checkout has it — <code>${inCheckout(u, 'git', 'log', '--show-signature', '-1', u.upstream || '@{u}')}</code> shows it`); }
     else say = ({
       detached: 'the checkout is on no branch — nothing to follow',
       'no-upstream': `<b>${esc(u.branch)}</b> follows no remote branch — nothing to pull`,
@@ -3761,12 +3763,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (u.pending?.includes('server')) { say += ' · restart the server to wear it'; more.push('<code>scripts/launchd.sh restart</code> restarts it; the chats in drawers stay'); }
     if (u.checkedAt && !u.busy) say += ` · looked ${rel(u.checkedAt)} ago`;
     if (!u.every) { say += ' · it looks only when asked'; more.push('this server is not the login agent, so it looks only when asked'); }
+    if (u.behind > 0 && u.commits?.length) more.push(`${u.behind === 1 ? 'the new commit' : `the new commits${u.behind > u.commits.length ? `, the newest ${u.commits.length}` : ''}`}${u.sign?.ok && u.sign.by ? `, the newest signed by ${esc(u.sign.by)}` : ''}: ${u.commits.map(c => `<code>${esc(c.h)}</code> ${esc(c.s)} — ${esc(c.a)}`).join('<br>')}`);   // what Update now takes, named first (2026-11-06)
     if (u.last) more.push(`last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${u.last.parts.length ? `, touching ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}`);
     return { word: updWord(u), say, more: more.join('<br>'), apply: canPull(u) || canBuild(u) };
   }
   /** Where the update stands, in a few words: the status row's name. */
   const updWord = u => u.busy === 'checking' ? 'Looking…' : u.busy === 'updating' ? 'Updating…' : u.error ? 'Could not look'
-    : u.failed ? 'Update failed' : u.why === 'held' ? 'Held back' : u.why === 'diverged' ? 'Diverged'
+    : u.failed ? 'Update failed' : u.why === 'held' ? 'Held back' : u.why === 'diverged' ? 'Diverged' : u.why === 'unsigned' ? 'Not signed'
     : u.why === 'changes' && u.clash?.length ? 'Waiting on your changes' : u.behind > 0 ? many(u.behind, 'new commit')
     : u.why === 'detached' ? 'On no branch' : u.why === 'no-upstream' ? 'No remote branch' : u.app?.behind ? 'The app is behind'
     : u.ahead ? 'Ahead of the remote' : 'Up to date';
@@ -3782,7 +3785,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (reload.want) return seg('page', ICON.reload, 'updated · reload the page', `The board's page was updated — it reloads by itself once you leave it be (${{ dialog: 'a dialog is up', typing: 'a box has the keyboard', pane: 'a page of the pane is in front', input: 'you are at it' }[reload.why] || 'any moment'})`);
     if (u.failed || u.why === 'held') return seg('err', ICON.reload, u.why === 'held' ? 'update held back' : 'update failed', tip);
     if (appFailed(u)) return seg('err', ICON.reload, 'the app was not rebuilt', tip);
-    const why = { off: '', changes: canPull(u) ? '' : ' · changes here', diverged: ' · diverged', busy: ' · once you rest' }[u.why];   // off, the default: new commits are the news, not the switch (2026-10-13); changes here, unless a click pulls over them (2026-10-15)
+    const why = { off: '', changes: canPull(u) ? '' : ' · changes here', diverged: ' · diverged', unsigned: ' · not signed', busy: ' · once you rest' }[u.why];   // off, the default: new commits are the news, not the switch (2026-10-13); changes here, unless a click pulls over them (2026-10-15)
     if (u.behind > 0 && why != null) return seg('new', ICON.download, `${many(u.behind, 'new commit')}${why || (canPull(u) ? ' · update' : '')}`, tip, null, canPull(u) ? 'to update now' : '');
     const appWhy = { off: '', tried: '', manual: '', changes: ' · changes here', busy: ' · once you rest' }[u.appWhy];   // nothing to pull, and the app older than mac/ here (2026-10-14)
     if (u.app?.behind && appWhy != null) return seg('new', ICON.download, `the app is behind${appWhy || (canBuild(u) ? ' · rebuild' : '')}`, tip, null, canBuild(u) ? 'to rebuild it now (it quits and opens again)' : '');

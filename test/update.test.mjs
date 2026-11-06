@@ -93,7 +93,7 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
     p.push({ 'package.json': '{ "name": "tiny", "version": "2.0.0" }\n' }, 'a package');
     st = await look();
     assert.deepEqual(st.last.parts, ['deps', 'server']);
-    assert.ok(p.asked().includes('npm install --no-audit --no-fund'), p.asked().join('\n'));
+    assert.ok(p.asked().includes('npm ci --ignore-scripts --no-audit --no-fund'), p.asked().join('\n'));
 
     // a tracked file changed here: said by name, and never pulled over by itself — update now pulls over it, and keeps
     // it (2026-10-15: a package-lock.json npm rewrote left a board with no way to its updates)
@@ -194,3 +194,31 @@ test('a commit made here while the pre-flight runs is never undone with the comm
   } finally { await srv.stop(); }
 });
 
+test('only a signed commit is taken (2026-11-06): not one unsigned, nor one a key off the list signed — not even by update now; a key the list gains is trusted once a trusted one signed it', { timeout: 60_000 }, async () => {
+  const p = project();
+  const srv = await startTestServer({ env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
+  const look = async (body = {}) => (await srv.post('api/update', body)).body;
+  try {
+    await waitFor(async () => (await srv.api('api/update')).body.checkout, { what: 'the checkout read at boot' });
+    const first = p.head();
+    const a = p.push({ 'public/index.html': PAGE + '<!-- unsigned -->\n' }, 'unsigned', { sign: false });
+    let st = await look({ apply: true });
+    assert.deepEqual([st.why, st.sign.ok, st.sign.why, st.behind, p.head()], ['unsigned', false, 'is not signed', 1, first], 'unsigned: said, not taken');
+    assert.deepEqual(st.commits.map(c => [c.h, c.s]), [[a.slice(0, 7), 'unsigned']], 'the commits it would take, named');
+    const stranger = p.keygen('stranger');
+    p.push({ 'public/index.html': PAGE + '<!-- a stranger -->\n' }, 'a stranger\'s', { sign: stranger });
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.sign.why, p.head()], ['unsigned', 'is not signed by a key this board trusts', first]);
+    // a stranger's commit that names its own key: the list at HEAD decides, not the one it brings
+    p.push({ '.github/allowed_signers': p.signers(p.signer, stranger) }, 'trust me', { sign: stranger });
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, p.head()], ['unsigned', first]);
+    // the same list signed by the trusted key: taken, and then the new key is trusted too
+    const b = p.push({ '.github/allowed_signers': p.signers(p.signer, stranger), 'README.md': 'a second key\n' }, 'a second key');
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.sign, p.head()], ['current', null, b], 'the tip signed by a trusted key brings the commits under it');
+    const c = p.push({ 'public/index.html': PAGE + '<!-- the second key -->\n' }, 'by the second key', { sign: stranger });
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, p.head()], ['current', c]);
+  } finally { await srv.stop(); }
+});

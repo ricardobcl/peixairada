@@ -2,7 +2,9 @@
 // side by side): a bare "origin", a clone the server updates (`co`) and one that commits and pushes (`dev`); its
 // server.mjs a few lines that answer, its lib/testserver.mjs, check-page and page the real ones (the pre-flight runs
 // them); the restart, the app's build and npm stand-ins that write down what they were asked; the installed app a folder
-// with an Info.plist, stamped as build.sh does.
+// with an Info.plist, stamped as build.sh does. Every commit is signed by the project's own key, which its
+// .github/allowed_signers names (2026-11-06: the server takes only a signed tip); `push(…, { sign })` signs with another
+// key, or `false` not at all.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -17,11 +19,16 @@ export const PAGE = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
  *  the installed app (`app`) built from the first commit's mac/, until a build stamps it again. */
 export function project() {
   const root = tmpDir('peix-upd-'), origin = join(root, 'origin.git'), co = join(root, 'co'), dev = join(root, 'dev'), marks = join(root, 'marks'), app = join(root, 'peixAIrada.app');
-  const git = (cwd, ...args) => execFileSync('git', ['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-C', cwd, ...args], { encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com' } }).trim();
+  const keygen = name => { const f = join(root, name); execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', name, '-f', f]); return f; };
+  const signer = keygen('signer');
+  const signs = key => key ? ['-c', 'gpg.format=ssh', '-c', `user.signingkey=${key}`, '-c', 'commit.gpgsign=true'] : ['-c', 'commit.gpgsign=false'];
+  const gitSigned = (key, cwd, ...args) => execFileSync('git', [...signs(key), '-c', 'core.hooksPath=/dev/null', '-C', cwd, ...args], { encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com' } }).trim();
+  const git = (cwd, ...args) => gitSigned(signer, cwd, ...args);
+  const signers = (...keys) => keys.map(k => `test@example.com namespaces="git" ${readFileSync(`${k}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}`).join('\n') + '\n';
   const write = (dir, files) => { for (const [f, body] of Object.entries(files)) { mkdirSync(dirname(join(dir, f)), { recursive: true }); writeFileSync(join(dir, f), body); } };
   mkdirSync(dev);
   git(dev, 'init', '-q', '-b', 'main');
-  write(dev, { 'server.mjs': TINY, 'package.json': '{ "name": "tiny" }\n', 'README.md': 'tiny\n', 'public/index.html': PAGE });
+  write(dev, { 'server.mjs': TINY, 'package.json': '{ "name": "tiny" }\n', 'README.md': 'tiny\n', 'public/index.html': PAGE, '.github/allowed_signers': signers(signer) });
   for (const f of ['lib/testserver.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
   git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the first');
   git(root, 'init', '-q', '--bare', '-b', 'main', origin);
@@ -35,11 +42,11 @@ export function project() {
   const build = stand('build', `[ -f "${root}/build-slow" ] && sleep 2\n[ -f "${root}/build-fails" ] && { echo "swiftc: error: no such module 'Cocoa'"; exit 1; }\nprintf '<plist><dict><key>PeixSource</key><string>%s</string></dict></plist>\\n' "$(git -C "${co}" rev-parse HEAD:mac)" > "${plist}"\necho "installed → /Applications/peixAIrada.app"\n`);
   const env = { UPDATE_DIR: co, UPDATE_RESTART_BIN: stand('restart'), UPDATE_BUILD_BIN: build, NPM_BIN: stand('npm'), BOARD_APP: app };
   /** a commit on origin, as from someone else's machine; its sha */
-  const push = (files, msg = 'a change') => { write(dev, files); git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', msg); git(dev, 'push', '-q'); return git(dev, 'rev-parse', 'HEAD'); };
+  const push = (files, msg = 'a change', { sign = signer } = {}) => { write(dev, files); git(dev, 'add', '-A'); gitSigned(sign, dev, 'commit', '-q', '-m', msg); git(dev, 'push', '-q'); return git(dev, 'rev-parse', 'HEAD'); };
   const head = () => git(co, 'rev-parse', 'HEAD');
   const asked = () => existsSync(marks) ? readFileSync(marks, 'utf8').trim().split('\n') : [];
   /** a commit made here, in the checkout the server runs from — never pushed, so no pull ever brings it */
   const commit = (files, msg = 'a change of mine') => { write(co, files); git(co, 'add', '-A'); git(co, 'commit', '-q', '-m', msg); return git(co, 'rev-parse', 'HEAD'); };
   const builds = () => asked().filter(l => l.startsWith('build ')).length;
-  return { root, co, env, git, write, push, commit, head, asked, builds, stamp, flag: (name, on) => on ? writeFileSync(join(root, name), '') : rmSync(join(root, name), { force: true }) };
+  return { root, co, env, git, write, push, commit, head, asked, builds, stamp, keygen, signer, signers, flag: (name, on) => on ? writeFileSync(join(root, name), '') : rmSync(join(root, name), { force: true }) };
 }
