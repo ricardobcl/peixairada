@@ -3324,7 +3324,7 @@ function nativeNotify(title, subtitle, body) {
     '-e', 'on run argv',
     '-e', 'display notification (item 3 of argv) with title (item 1 of argv) subtitle (item 2 of argv) sound name "Glass"',
     '-e', 'end run',
-    title, subtitle, body
+    '--', title, subtitle, body   // never an option (2026-11-06): a heading that began with -e would be a line of script
   ], () => {});
 }
 
