@@ -29,8 +29,8 @@ branch names validated, the tokens never in a response or the server's log. What
   with the user's identity — and the repo is public, `main` was unprotected, no commit was signed. Now only a tip signed
   by a key in `.github/allowed_signers`, as HEAD has it, is taken (`signedBy`): a key is added only by a commit a trusted
   one signed. The packages are `npm ci --ignore-scripts`. The repo signs its commits (`commit.gpgsign`, ssh, this Mac's
-  key); GitHub has Dependabot alerts, secret scanning with push protection, and a ruleset on main against force-pushes
-  and deletion.
+  key, registered on GitHub as a signing key); GitHub has Dependabot alerts, secret scanning with push protection, and a
+  ruleset on main: signed commits only, no force-push, no deletion.
 * **A reply's own HTML borrowed the board's classes, ids and `data-*`** (high, proved): DOMPurify keeps them by default, and
   `<span class="lgo" data-url="file:///…">` in a `.chalk` reached the lunch link's click handler on `#log`, which handed
   the URL to the app's `external`, which opened anything — one click anywhere on the transcript, `id="tour"` lending it
@@ -71,8 +71,6 @@ branch names validated, the tokens never in a response or the server's log. What
   start races the TUI. One account on this Mac; said here for a shared one.
 * **The real org's name is in the public history** (six lines, quoted requests of 2026-10-09). Rewriting main would
   turn every other board's update into *diverged*; left for Ricardo to decide.
-* **The ruleset does not yet require signed commits**: GitHub must know the signing key first, which wants a token
-  scope (`admin:ssh_signing_key`) this Mac's gh has not got. The board's own check does not depend on it.
 * **The Instagram profile keeps Chrome's mock keychain**: the login window and the headless runs share cookies by it.
   The state folder's 0700 is what guards them now.
 
