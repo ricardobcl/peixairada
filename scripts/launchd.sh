@@ -65,7 +65,9 @@ PLIST
 case "${1:-}" in install|restart|uninstall)
   case " $* " in *" --detached "*) ;; *)
     if [ -n "${PEIXAIRADA_DRAWER:-}" ] || [ "${__CFBundleIdentifier:-}" = net.peixairada.app ]; then
-      OUT="${TMPDIR:-/tmp}/peixairada-launchd.log"
+      # this user's own temporary folder (2026-11-06): in /tmp another account could put a link where it is written
+      OUT=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null) && [ -d "$OUT" ] && [ -O "$OUT" ] || { OUT="$HOME/Library/Caches/peixairada"; mkdir -p -m 700 "$OUT"; }
+      OUT="${OUT%/}/peixairada-launchd.log"
       echo "› this terminal is a peixAIrada drawer: running detached so the change outlives it — log: $OUT"
       nohup "$0" "$@" --detached >"$OUT" 2>&1 </dev/null &
       exit 0

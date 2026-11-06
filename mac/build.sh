@@ -33,8 +33,13 @@ command -v swiftc >/dev/null || { echo "swiftc not found — install the Xcode c
 # The detached copy is marked by an *argument*, never an environment variable: `open` hands the
 # caller's environment to the app, the app to its server, the server to every drawer, and an env marker
 # came back round to the next install from a drawer, which then ran inline and killed itself.
+# This user's own temporary folder (2026-11-06), never /tmp: another account could make the lock there first and stop
+# every build (the board's own rebuild with them), or put a link where the log is written.
+MINE=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null) || MINE=
+[ -n "$MINE" ] && [ -d "$MINE" ] && [ -O "$MINE" ] || { MINE="$HOME/Library/Caches/peixairada"; mkdir -p -m 700 "$MINE"; }
+MINE="${MINE%/}"
 if [ "${1:-build}" = install ] && [ "${2:-}" != --detached ] && [ "${__CFBundleIdentifier:-}" = net.peixairada.app ]; then
-  LOG="${TMPDIR:-/tmp}/peixairada-build.log"
+  LOG="$MINE/peixairada-build.log"
   echo "› this terminal lives in a peixAIrada drawer, which dies with the app: rebuilding detached instead"
   echo "  log: $LOG — this chat ends when the app quits; resume it from the board once it is back"
   nohup "$0" install --detached >"$LOG" 2>&1 </dev/null &
@@ -43,7 +48,7 @@ fi
 
 # One build at a time, from any checkout (2026-10-14): the board rebuilds the app by itself when it is behind, and two
 # installs at once remove each other's app. A lock whose builder is gone is taken over.
-LOCK="/tmp/peixairada-build-$(id -u).lock"
+LOCK="$MINE/peixairada-build.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
   OTHER=$(cat "$LOCK/pid" 2>/dev/null || true)
   if [ -n "$OTHER" ] && kill -0 "$OTHER" 2>/dev/null; then echo "another build of the app is running (pid $OTHER) — nothing done" >&2; exit 1; fi
@@ -56,7 +61,7 @@ trap 'rm -rf "$LOCK"' EXIT
 # in, through an index of its own (the checkout's is not touched). The board compares it with HEAD's mac/ (readApp in
 # server.mjs) to tell an app older than its checkout — commits made here as much as pulled ones. Empty outside git.
 # mac/'s notes (*.md, 2026-10-28) are left out on both sides (macSource): a note is no rebuild.
-IDX="${TMPDIR:-/tmp}/peixairada-src.$$"
+IDX="$MINE/peixairada-src.$$"
 SOURCE=$( { cd "$ROOT" && export GIT_INDEX_FILE="$IDX" && git read-tree HEAD && git add -A -- mac \
   && git ls-files -z -- 'mac/*.md' | git update-index --force-remove -z --stdin && git write-tree --prefix=mac/; } 2>/dev/null ) || SOURCE=
 rm -f "$IDX" "$IDX.lock"
