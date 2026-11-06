@@ -5626,7 +5626,7 @@ const BOARD_ENV = new Set(['WT_ASK_MS', 'PORT', 'HOST', 'NOTIFY', 'USAGE', 'STAT
   'AGENT_STALE_MS', 'AGENT_WORDS_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
   'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN',
-  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'open'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
+  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'osascript'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
@@ -6463,9 +6463,12 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'POST' && p === '/api/key/open') {   // a tab with a ticket, in this Mac's default browser: the key goes to its screen
       if (Date.now() - keyOpenAt < 10_000) return json(res, 429, { error: 'a tab with the key was opened a moment ago' });
-      const bin = findBin('open', 'a tab with the key cannot be opened'); if (!bin) return json(res, 501, { error: 'no open command on this Mac' });
+      // the ticket on osascript's stdin, never an argument (2026-11-06): `ps` is setuid root on macOS and shows every
+      // account's arguments, so `open <url>#ticket=…` let another account read the ticket and claim the key first
+      const bin = findBin('osascript', 'a tab with the key cannot be opened'); if (!bin) return json(res, 501, { error: 'no osascript on this Mac' });
       keyOpenAt = Date.now();
-      execFile(bin, [`${boardUrl()}#ticket=${newTicket()}`], e => { if (e) console.error(`[peixairada] open a tab with the key: ${e.message}`); });
+      const child = execFile(bin, ['-'], e => { if (e) console.error(`[peixairada] open a tab with the key: ${e.message}`); });
+      child.stdin.on('error', () => {}); child.stdin.end(`open location ${JSON.stringify(`${boardUrl()}#ticket=${newTicket()}`)}\n`);
       return json(res, 202, { opening: true });
     }
     if (req.method === 'GET' && p === '/api/key') return json(res, 200, keyState());

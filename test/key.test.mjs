@@ -59,6 +59,7 @@ test('a browser gets the key by a ticket on a tab the server opens itself: one u
     await waitFor(() => opened().length === 1, { what: 'the tab "opened"' });
     const [, ticket] = opened()[0].match(new RegExp(`^${srv.url.replace(/[.]/g, '\\.')}#ticket=([\\w-]+)$`)) || [];
     assert.ok(ticket, `a tab at the board with a ticket: ${opened()[0]}`);
+    assert.equal(readFileSync(join(srv.dir, 'opened.argv'), 'utf8').trim(), '["-"]', 'the ticket rode stdin, no argument another account\'s ps could read (2026-11-06)');
     assert.equal((await bare(srv, 'api/key/open', { method: 'POST' })).status, 429, 'a second tab only after 10 s');
     const claim = t => bare(srv, 'api/key/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket: t }) });
     assert.equal((await claim('made-up')).status, 403);
