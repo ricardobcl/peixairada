@@ -48,6 +48,7 @@
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
+//      · agents: who runs a new chat (2026-11-06, round XXVIII)
 //      · the roots' folders: where the repos live, and cloning one that is not there yet
 //      · the first run: where the repos live, guessed
 //      · idle drawers: ended after DRAWER_IDLE_MS with no page on them
@@ -724,7 +725,7 @@ function newSession(id, file) {
   return {
     id, file, gen: ++sessionGen,
     slug: file ? basename(dirname(file)) : null,
-    cwd: null, gitBranch: null, model: null,
+    cwd: null, gitBranch: null, model: null, agent: null,   // agent: what its transcript says it runs as (2026-11-06)
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [], tickets: [], ticketBranch: null,
     prSeq: 0, prsGone: null, prsHeard: new Map(),   // notePr: the order PRs were heard in, those MAX_PRS put aside, those a listing named (notePrs)
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
@@ -810,6 +811,8 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
     id: s.id, slug: s.slug, cwd, project: basename(projectDir(cwd) || '') || s.slug, worktree: worktreeOf(s, cwd),
     gitBranch: s.gitBranch, model: s.model,
+    // the agent it runs as (2026-11-06): its transcript's word, else its claude's flag while it runs; and its colour
+    ...(a => a && { agent: a, agentColor: agentColor(cwd, a) })(s.agent || s.live?.agent),
     // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
     // branch, standup. A title the user typed still wins over both.
     title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || forkTitle(s) || (!s.lastActivity && s.alive ? '(no messages yet)' : '(untitled)'),
@@ -2310,6 +2313,7 @@ function fold(s, line) {
     case 'ai-title': if (line.aiTitle) s.title = line.aiTitle; return true;
     case 'continued-in': if (line.continuedInSessionId) noteContinued(s, line.continuedInSessionId, ts); return false;
     case 'custom-title': s.customTitle = line.customTitle || line.title || null; return true;
+    case 'agent-setting': s.agent = typeof line.agentSetting === 'string' && line.agentSetting ? line.agentSetting : null; return true;   // the agent it runs as (2026-11-06): --agent, or its folder's setting
     case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = plainSnippet(line.lastPrompt, 200); return true;   // whole, it was a card's and a search's to carry
     case 'pr-link': {
       const url = line.prUrl || line.url;
@@ -2533,6 +2537,7 @@ function headPrs(s, line) {
   noteFirstLine(s, line);
   const ts = line.timestamp || null, c = line.message?.content, blocks = Array.isArray(c) ? c : [];
   if (line.type === 'pr-link') { const url = line.prUrl || line.url; if (url) notePr(s, url, ts, null); return; }
+  if (line.type === 'agent-setting') { fold(s, line); return; }   // the chat's first line: the tail has it again only after a resume
   if ((line.type !== 'user' && line.type !== 'assistant') || line.isSidechain) return;
   if (line.cwd) s.cwd = line.cwd;   // a short reference is the folder's repo's; the tail's lines have the last word
   if (line.type === 'assistant') {
@@ -3250,7 +3255,7 @@ function loadRegistry() {
     if (!reg.sessionId || reg.spare || ownReader(reg)) continue;   // a lunch menu's reader (2026-10-18): the board's own claude, no chat; a spare (2026-11-04): the daemon's, waiting to be given one
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
     found.get(reg.sessionId).push({ pid: reg.pid, procStart: reg.procStart, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, jobId: reg.jobId, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
-      status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
+      status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined, agent: typeof reg.agent === 'string' && reg.agent ? reg.agent : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
   }
   const entries = [...found.values()].flat(), keys = new Set(entries.map(startKey));
   for (const k of startsSeen.keys()) if (!keys.has(k)) startsSeen.delete(k);   // a file gone takes its verdict with it
@@ -5729,6 +5734,87 @@ function launchersFor(cwd) {
   return asking;
 }
 
+// ---- agents: who runs a new chat (2026-11-06, round XXVIII) -------------------------------------------------------
+// `claude --agent <name>` makes the whole chat that agent: its prompt, its tools, its model. ⌥⌘N's ＋ asks which
+// (GET /api/agents?cwd=), read from the files as Claude Code 2.1.319 finds them: `.claude/agents/*.md` in the folder and
+// each above it, to its git root and never the home (whose is the user's), `<CLAUDE_DIR>/agents`, each enabled plugin's
+// `agents/` as `<plugin>:<name>`, and four of its own. Never by running claude, which writes its config. Its fifth,
+// `claude`, is left out: as the chat itself it is the background job's prompt, not Claude as it starts. A folder's
+// settings may name one (`agent`) for every chat there; `--agent ''` turns that off (measured in a lab config).
+const AGENT_NAME = /^[\w.-]{1,80}(?::[\w.-]{1,80})?$/;
+const AGENT_COLORS = new Set(['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink']);
+const AGENTS_OWN = [
+  { name: 'Plan', description: 'Software architect: plans the change step by step, edits nothing' },
+  { name: 'Explore', description: 'Read-only search across many files, the conclusion back' },
+  { name: 'general-purpose', description: 'Researches, searches code and runs multi-step tasks' },
+  { name: 'statusline-setup', description: 'Sets up Claude Code’s status line' },
+];
+const jsonAt = p => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
+/** An agent file's frontmatter: `key: value` lines, a `|` or `>` block's indented lines, quotes dropped. */
+function agentFront(text) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text); if (!m) return null;
+  const out = {}, lines = m[1].split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const kv = /^([A-Za-z][\w-]*):[ \t]*(.*)$/.exec(lines[i]); if (!kv) continue;
+    let v = kv[2];
+    if (/^[|>][+-]?\s*$/.test(v)) {
+      const body = []; while (i + 1 < lines.length && (/^\s/.test(lines[i + 1]) || !lines[i + 1].trim())) body.push(lines[++i].trim());
+      v = body.join(v[0] === '>' ? ' ' : '\n');
+    } else v = v.trim().replace(/^(["'])([\s\S]*)\1$/, '$2');
+    out[kv[1]] = v.trim();
+  }
+  return out;
+}
+/** What a list row says of an agent: its description's first paragraph, before any examples. */
+const agentWords = d => snippet(String(d || '').split(/\n\s*\n|\bExamples?:|<example>/i)[0].replace(/\\n/g, ' '), 200);
+function agentsIn(dir, source, more = {}) {
+  let names; try { names = readdirSync(dir).filter(n => n.endsWith('.md')).sort(); } catch { return []; }
+  const out = [];
+  for (const n of names) {
+    let f; try { f = agentFront(readFileSync(join(dir, n), 'utf8').slice(0, 65536)); } catch { continue; }
+    const name = f?.name || n.slice(0, -3);
+    if (!f || name.includes(':') || !AGENT_NAME.test(name)) continue;
+    out.push({ name: more.plugin ? `${more.plugin}:${name}` : name, description: agentWords(f.description), model: f.model || '', color: AGENT_COLORS.has(f.color) ? f.color : null, source, ...more });
+  }
+  return out;
+}
+/** The folders a chat in `cwd` reads `.claude/agents` in: its own and each above, to the one with `.git`, not the home. */
+function agentDirs(cwd) {
+  const home = homedir(), dirs = [];
+  for (let d = resolve(cwd); d !== home;) {
+    dirs.push(d);
+    if (existsSync(join(d, '.git'))) break;
+    const up = dirname(d); if (up === d) break; d = up;
+  }
+  return dirs;
+}
+/** Every agent a chat in `cwd` can be, nearest first — a name taken once —, and the agent its settings start it as. */
+function agentsFor(cwd) {
+  const settings = [join(CLAUDE_DIR, 'settings.json'), join(cwd, '.claude', 'settings.json'), join(cwd, '.claude', 'settings.local.json')].map(jsonAt);
+  const list = [], seen = new Set(), add = a => { if (!seen.has(a.name)) { seen.add(a.name); list.push(a); } };
+  for (const d of agentDirs(cwd)) agentsIn(join(d, '.claude', 'agents'), 'folder', { at: d }).forEach(add);
+  agentsIn(join(CLAUDE_DIR, 'agents'), 'user').forEach(add);
+  const installed = jsonAt(join(CLAUDE_DIR, 'plugins', 'installed_plugins.json'))?.plugins || {};
+  for (const [key, on] of Object.entries(Object.assign({}, ...settings.map(s => s?.enabledPlugins || {})))) {
+    const at = on === true && (installed[key] || []).find(e => typeof e?.installPath === 'string')?.installPath;
+    if (at) agentsIn(join(at, 'agents'), 'plugin', { plugin: key.split('@')[0] }).forEach(add);
+  }
+  for (const a of AGENTS_OWN) add({ ...a, model: '', color: null, source: 'builtin' });
+  const k = [2, 1, 0].find(i => typeof settings[i]?.agent === 'string' && settings[i].agent);   // local over the folder's over yours
+  return { agents: list, setting: k === undefined ? null : { name: settings[k].agent, from: ['user', 'folder', 'local'][k] } };
+}
+/** The colour Claude Code draws a chat's agent in, for its card (looked up again a minute on). */
+const agentLook = new Map();
+function agentColor(cwd, name) {
+  if (!cwd || !name) return null;
+  const k = `${cwd}\0${name}`, hit = agentLook.get(k);
+  if (hit && Date.now() - hit.at < 60_000) return hit.color;
+  let color = null; try { color = agentsFor(cwd).agents.find(a => a.name === name)?.color || null; } catch {}
+  if (agentLook.size > 500) agentLook.clear();
+  agentLook.set(k, { at: Date.now(), color });
+  return color;
+}
+
 // ---- the roots' folders: where the repos live, and cloning one that is not there yet --------------------------------
 // A project on the board is a folder some chat ran in, so a repo you have not opened a chat in is nowhere to be seen,
 // and one you have not cloned is nowhere at all — which made starting work on a repo the longest thing the board
@@ -5923,7 +6009,7 @@ const VIM_BIN = process.env.VIM_BIN || 'vim';
  * Only the words you wrote in the board's Send box; never logged.
  */
 const PROMPT_MAX = 100_000;
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null, fork = null, attach = null, claudePid = null }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, editor = null, task = null, prompt = null, newId = null, fork = null, attach = null, claudePid = null, agent = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = editor ? VIM_BIN : shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
@@ -5949,7 +6035,10 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   // with `fork`, a copy of that chat under it (Claude Code's --fork-session: the chat itself is not written to)
   // `attach` (2026-11-04): a background session in this drawer, its worker's pid `claudePid`: the client registers nothing, and ending it leaves the session running
   const args = editor ? ['.'] : task ? [task] : shell ? [] : attach ? ['attach', attach] : sessionId ? ['--resume', sessionId] : fork && newId ? ['--resume', fork, '--fork-session', '--session-id', newId] : newId ? ['--session-id', newId] : [];
-  const said = args.join(' ');   // the log's: the prompt is yours, and not the log's to keep
+  // `agent` (2026-11-06): a new chat as that agent, '' as no agent over a folder's own; a resume never — Claude Code puts the
+  // transcript's back itself, and a flag beside --resume would override it
+  if (typeof agent === 'string' && !editor && !task && !shell && !attach && !sessionId && !fork) args.push('--agent', agent);
+  const said = args.map(a => a === '' ? "''" : a).join(' ');   // the log's: the prompt is yours, and not the log's to keep
   if (prompt && !editor && !task && !shell) args.push('--', String(prompt).slice(0, PROMPT_MAX));
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
@@ -6647,6 +6736,11 @@ const server = createServer(async (req, res) => {
       if (!cwd.startsWith('/')) return json(res, 400, { error: 'cwd must be an absolute path' });
       return json(res, 200, { cwd, launchers: await launchersFor(cwd), untrusted: !!taskfileOf(cwd) && !claudeTrusts(cwd) });   // a Taskfile left unasked (2026-10-16)
     }
+    if (req.method === 'GET' && p === '/api/agents') {   // who a new chat there can start as (agentsFor), and whether its Taskfile starts it instead
+      const cwd = url.searchParams.get('cwd') || '';
+      if (!cwd.startsWith('/')) return json(res, 400, { error: 'cwd must be an absolute path' });
+      return json(res, 200, { cwd, ...agentsFor(cwd), launchers: (await launchersFor(cwd)).length });
+    }
     if (req.method === 'GET' && p === '/api/folders') return json(res, 200, { roots: boardConfig().roots, folders: rootFolders() });
     if (req.method === 'POST' && p === '/api/clone') {   // a repo of a root's org, cloned into that root — then the page starts a chat in it
       const body = await jsonBody(req);
@@ -6696,9 +6790,14 @@ const server = createServer(async (req, res) => {
       const prompt = typeof body.prompt === 'string' && body.prompt.trim() ? body.prompt : null;
       const from = Array.isArray(body.from) ? [...new Set(body.from.filter(id => typeof id === 'string' && sessions.has(id)))] : [];
       if ((prompt || from.length) && task) return json(res, 400, { error: 'a launcher takes no first prompt' });
-      if (!prompt && !from.length) { const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task }); return json(res, r.code, r); }
+      // `agent` (2026-11-06): one of the folder's (agentsFor), or '' for none over its settings' own; a folder not there yet
+      // is spawnTerm's to answer (a clone), and the ask after it is checked
+      const agent = typeof body.agent === 'string' ? body.agent : null;
+      if (agent !== null && task) return json(res, 400, { error: `a launcher takes no agent — task ${task} starts claude its own way` });
+      if (agent && cwd && existsSync(cwd) && !(AGENT_NAME.test(agent) && agentsFor(cwd).agents.some(a => a.name === agent))) return json(res, 400, { error: `no agent named ${agent} for a chat in ${tildePath(cwd)}` });
+      if (!prompt && !from.length) { const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task, agent }); return json(res, r.code, r); }
       const newId = randomUUID(); placeholder(newId, cwd);
-      const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, prompt, newId });
+      const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, prompt, newId, agent });
       if (r.code !== 201) { sessions.delete(newId); return json(res, r.code, r); }
       for (const id of from) addLink('merge', id, newId);
       return json(res, r.code, { ...r, sessionId: newId });
@@ -6801,6 +6900,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 export { cronNext, nextWake, pruneWakes, pruneTasks, findTasks, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, prAlertChat, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 export { handoffText };   // chats that talk (2026-10-31)
+export { agentFront, agentsFor };   // a new chat as an agent (2026-11-06)
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();

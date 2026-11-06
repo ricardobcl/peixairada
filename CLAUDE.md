@@ -42,8 +42,8 @@ npm run map                         # rewrite the section maps at the top of ser
   → Findings: *launchd agent*.
 * **Node ≥ 22** (the harness uses the global WebSocket), **`npm install` first.** Runtime deps: `node-pty` (native),
   `ws`, `@xterm/headless` 5.5.0 and `@xterm/addon-serialize` 0.13.0 — pinned exactly to the vendored xterm's version,
-  which `npm run check` compares with `node_modules`. The xterm client packages are dev-only sources for
-  `public/vendor/`; `marked`/`DOMPurify`/`highlight.js` are vendored by hand. Rebuild the app after `npm install` or
+  which `npm run check` compares with `node_modules`. The xterm client packages are dev-only, `public/vendor/`'s
+  sources; the rest of it is vendored by hand. Rebuild the app after `npm install` or
   a node switch (it copies `node_modules` and the node binary).
 * **A session that runs in a drawer**: finish the work, write the notes and the recap first, and run
   `restart --after 20` last. `scripts/board.sh /api/terminals` says which chats are in drawers. `launchd.sh` and `build.sh`
@@ -100,7 +100,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Jira tickets named | `KEY-123` in prose (inline code counts, fenced not), `…/browse/KEY-123` links and the chat's `gitBranch` — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is the site's** (`jiraProjects`, hourly; none before they are known, an answer from before a reset dropped — `jiraGen`) and **shown only once Jira answered** (`shownTickets`); one Jira lacks is let go (`noTicket`). Basic auth: setup.jira `{site, email}`, the token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (by `security -i` from stdin, never argv); polled as PRs are (`prEvery`). → `test/jira.test.mjs` |
 | Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). No five-hour window (2026-11-02): `five_hour` is dropped. → `test/usage.test.mjs`, Findings: *plan usage* |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`); it registers as any CLI run, a new chat tied to its session by pid. **A folder whose Taskfile launches claude** starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`) — only where Claude Code trusts the folder or one above (2026-10-16, `claudeTrusts`, `CLAUDE_JSON`): claude is then a *descendant* of the PTY's pid, as under a wrapper that does not exec (2026-11-04; `untied`), found through `ps` (`linkTermToRegistry`, `t.claudePid`), the launcher's name kept (`noteEnv` → `envs` → `s.env`); a resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder and the chat's live zsh holders, and pushes **both** chats (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10): a process (pid and `procStart`) under another chat (`clearedFrom`, `loadRegistry`) marks the old one done once the new transcript begins with the command at or after its last word (`tickCleared`); not a /resume or a fork. → `test/clear-done.test.mjs` |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`); it registers as any CLI run, tied to its session by pid. **A folder whose Taskfile launches claude** starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`) — only where Claude Code trusts the folder or one above (2026-10-16, `claudeTrusts`, `CLAUDE_JSON`): claude is then a *descendant* of the PTY's pid, as under a wrapper that does not exec (2026-11-04; `untied`), found through `ps` (`linkTermToRegistry`, `t.claudePid`), the launcher's name kept (`noteEnv` → `envs` → `s.env`); a resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder and the chat's live zsh holders, and pushes **both** chats (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10): a process (pid and `procStart`) under another chat (`clearedFrom`, `loadRegistry`) marks the old one done once the new transcript begins with the command at or after its last word (`tickCleared`); not a /resume or a fork. → `test/clear-done.test.mjs` |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The
   fake claude refuses the real one too (by device and inode, at CLAUDE_DIR or above). A chat's folder in it is refused where the board would write (`inClaudeDir`). **Never opened** (2026-10-31): `sessions/*.key` (a chat's peer token), `shell-snapshots/`, `history.jsonl`, team `inboxes/` → `peer-keys.test.mjs`.
@@ -408,7 +408,7 @@ npm run map                         # rewrite the section maps at the top of ser
   the view, lets go. Drawn only when its markup changed (`peopleDrawn`). → `people-row.mjs`.
 * **A card comes in four sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and Claude's last reply —, *medium* the last word, *compact* neither, *one line* (2026-11-03, round XXII; `'line'` → `data-line` beside `data-cards="compact"` and `data-even`): same height's third row is the first of the question, the move (`.rowmove`), the agents (`.agrows`, which still grow it), the live line, the last word. `cardHtml` always writes both `.snip`s (the older `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane* (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height*** (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. **Its words on one line** (2026-11-03; a switch to try, `prefs.cardsSnipOne` → `data-snipone`): each `.snip` clamped to one. → `card-sizes.mjs`, `card-one-line.mjs`, `card-words-line.mjs`.
 * **Every part of a card can go** (2026-11-03, round XXII; `CARD_PART`, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone; the age and the ✓ are *at rest*, off by default): a click on the real card in Settings › Chat list (`#cardPanel`, `cardLabMake`), a part left out faint there. **The list's rules reach it by a copy while the pane shows** (`clabCss`: `#slist`, `#sessions` for `.clab`, `.clabs` at the same weight). → `card-parts.mjs`.
-* **A card is raised** (2026-11-03, round XXII; the one look that afternoon): the ground `--step` (towards the ink on a dark frame), the chat's hairline, `--lo`; under the pointer `translate` and `--hi`, `::before` 2 px lower or the card drops off the pointer. A card's `--side` is its ground, for its chips. A state keeps its edge; a question keeps still. The list's inks are fitted to `--step` (`raisedInks`, by hand for the board's own; INK_CHECK's `step`). → `card-raised.mjs`.
+* **A card is raised** (2026-11-03, round XXII): the ground `--step` (towards the ink on a dark frame), the chat's hairline, `--lo`; under the pointer `translate` and `--hi`, `::before` 2 px lower or the card drops off the pointer. A card's `--side` is its ground, for its chips. A state keeps its edge; a question keeps still. The list's inks are fitted to `--step` (`raisedInks`, by hand for the board's own; INK_CHECK's `step`). → `card-raised.mjs`.
 * **A card's title row reads title · chips · time · F ·
   unread; its top row ends ✓ · PRs** (every card has it, 18 px at least). The age and the ✓ show under the
   pointer only, no room at rest (2026-11-03; the ✓ `width: 0`: focusable), unless kept. The F is Fable (`onFable(s)`: `/fable/i` on `s.model`).
@@ -536,9 +536,8 @@ npm run map                         # rewrite the section maps at the top of ser
 
 ## Hotkeys and the pane
 
-* **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill and the menu bar, the menus'
-  ⌘W ⌘R ⌘F, VS Code Web's ⌘W and keyboard layout, the pane's views, the badge, a drop, the server it adopts, Swift's
-  traps. Here: what the page does across the bridge.
+* **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill and the menu bar, the menus,
+  VS Code Web's keys, the pane's views, the badge, a drop, the server it adopts, Swift's traps. Here: what the page does across the bridge.
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the ? sheet is drawn from it (`keyNotes`: the setup's words), and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
@@ -597,7 +596,9 @@ npm run map                         # rewrite the section maps at the top of ser
   `base`, `worktreeBases`): the default selected, the checkout's if ahead (`prefer`). `newChatOnBranch` makes the worktree and starts the chat.
   **One press, one chat** (2026-11-04): a step answering (`pick.cloning`, the box disabled) dims the rows and `pickChoose` takes
   nothing; `wtStarting`, `prChatting`. A new branch asks origin `WT_ASK_MS` at most (`unasked`, said). `s.env` is a chat's environment (`.chip.env`); the `env` step counts each (`envCounts`). An idle chat's row has the card's ✓ (`button.pkdone`, `canTick(s)`), the picker staying up.
-  → `new-chat-flow.mjs`, `chat-worktree.mjs`, `test/worktree-origin.test.mjs`.
+  **Who runs it** (2026-11-06; `agentChip`, `boxText`): ＋'s chip, or @; the project's last first (`prefs.agentFor`).
+  `agentsFor`; `--agent` only on a new chat; a chat's `agent`: its last `agent-setting`, else the registry's.
+  → `new-chat-flow.mjs`, `chat-worktree.mjs`, `new-chat-agent.mjs`, `test/worktree-origin.test.mjs`.
 * **The project step holds the folders you have no chat in, and clones one you have not got**: after the board's
   projects come the folders under each root on no project (`freeFolders()`; `GET /api/folders`, cached by each
   root's mtime), and a query naming none is offered as **＋ clone `<org>/<name>`** per root with an org (`cloneRows()`,
@@ -658,13 +659,12 @@ npm run map                         # rewrite the section maps at the top of ser
   → `pr-tab-again.mjs`.
 * **A page in the pane behaves like a browser tab** (⌘R, a pinch, ⌘F: the shell's): its address sits in the strip —
   **a page's, clicked, is a box** (2026-10-27, `addrEditAt`: ⏎ nav `go` in that view, esc `keys`) —, `.pcopy` copies it
-  (`copyPaneUrl`, said in the address, `addrSay` — a `note()` there is under the page, 2026-10-20), each navigation told
+  (`copyPaneUrl`, said in the address, `addrSay`: a `note()` is under the page), each navigation told
   as `peixPaneUrl(key, url)` (`paneUrls`).
 * **The trackpad bumps** (`haptic(kind)`): a splitter snapping (`SNAP_PX`), a tab dropped across, the timeline's thumb
   crossing a run; in a browser, `haptic:<kind>` in `motion()`.
-* **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply on a chat
-  with a drawer here *Reply… · Done · In 15 minutes*, elsewhere *Done · In 15 minutes*, a question or a PR's turn the
-  snooze alone. Reply… and Done go to the page
+* **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply *Reply… · Done ·
+  In 15 minutes* (Reply… with a drawer here), a question or a PR's turn the snooze alone. Reply… and Done go to the page
   (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
   `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`; *Mute this chat* on any, `peixMute`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
@@ -775,11 +775,10 @@ npm run map                         # rewrite the section maps at the top of ser
   (`prState`) — a new branch's, the PR opened from it (`prOfBranch`) or its own commits (`ownCommits`) on origin's
   default (`landed`) —, nothing in them (`busyIn`), on the branch it was made for, clean whatever
   `status.showUntrackedFiles` says, no commit no remote has (`keepWorktree`) — `git worktree remove`, never `--force`.
-  *Switch this folder…* types `git switch <branch>` into the chat's zsh, unrun, only when `GET
-  /api/sessions/:id/switch?branch=` (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`), none mid-turn,
-  nothing uncommitted, no merge or rebase, the branch out nowhere else — else the menu's row says why (`ctxRow`'s
-  `off`). In the in-app editor (`openEditorAt`): VS Code Web on a tab of the chat's (`state.paneWt`; `<repo> @
-  <branch>`, `ideLabels`) or vim. **Chat** (the row's, the launcher's) is `chatOnPr`: `newChat` in that tree. →
+  *Switch this folder…* types `git switch <branch>` into the zsh, unrun, only when `switchGuard` (`GET …/switch?branch=`)
+  finds the tree (`treeOf`) free — no other chat or drawer, none mid-turn, nothing uncommitted, no merge or rebase, the
+  branch out nowhere else —, else its row says why (`off`). In the in-app editor (`openEditorAt`): VS Code Web on a tab of the chat's (`state.paneWt`; `<repo> @
+  <branch>`, `ideLabels`) or vim. **Chat ▾** (`prChatMenu`; the launcher's Chat) is `chatOnPr`: `newChat` in that tree. →
   `test/worktrees.test.mjs`, `editor-branch.mjs`, `chat-worktree.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
   the card's live line and the tiles; the raw name its tooltip.
@@ -854,7 +853,7 @@ npm run map                         # rewrite the section maps at the top of ser
   visibility. → Findings: *run off the right edge*, *round two*. **A glyph's width is read to the fraction**
   (`exactGlyphs`, 2026-10-20), **and the fit by the device cell** (`exactFit`, 2026-10-29). → `drawer-fit.mjs`.
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), which clears the screen *it*
-  serializes and echoes the clear back to every page on that drawer. A nudge follows. ⌃L is the shell's own.
+  serializes and echoes it to every page on that drawer. A nudge follows. ⌃L is the shell's own.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is
   *⌥ is Meta* (`prefs.optMeta`, on). → Findings: *Shift+Enter*.
 * **The Mac's line-editing keys are iTerm's Natural Text Editing** (`MAC_EDIT` / `macEdit`): ⌘← ⌘→ ⌃A ⌃E, ⌘⌫ ⌃U,
@@ -869,7 +868,7 @@ npm run map                         # rewrite the section maps at the top of ser
 * **Paths and pages in the chat are links**: a file path in the transcript or a drawer's line — `/absolute`, `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens
   in the editor at that line (`fileUrl`, relative to the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not
   after a `+` or an in-word `@`, or it is quadratic); a web URL opens in the pane on a tab of the chat
-  (`openExternal(url, { ide, s })`). The transcript is linkified as rendered (`linkify`); the drawer has a link
+  (`openExternal`). The transcript is linkified as rendered (`linkify`); the drawer has a link
   provider beside the web-links addon (`termLinks`, `peix.links(y)`). → `chat-links.mjs`.
 * **Two editors, two picks** (Settings › General): the external one (2026-10-13; `prefs.editor`, `EDITORS`, `#edPick`:
   VS Code or Zed — file links, ⌥⌘V `hotEditorApp`, `#zedBtn`) opens `<scheme>://file/<path>:<line>:<col>` (handed
@@ -907,7 +906,7 @@ npm run map                         # rewrite the section maps at the top of ser
   (`#slist > .card { will-change: transform }`).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; the matrix and its mark are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
-  `#sessions`' (whose *column* is placed too: the timeline, the glass and the ends lie over the list's cell). A hidden
+  `#sessions`' (its *column* too: the timeline, the glass and the ends lie over the list's cell). A hidden
   block is `display:none`, which slides its siblings up a row; a body in an `auto` row sizes itself to its terminal. A
   new block means placing it too.
 * **A terminal that grows has to pull its scrollback back down** (`lib/refit.mjs`, and the page's copy in

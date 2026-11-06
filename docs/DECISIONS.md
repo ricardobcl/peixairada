@@ -2,8 +2,54 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-05. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-06. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-06 — a new chat as an agent (round XXVIII)
+
+Ricardo: *"I want to support "--agent" arg on claude, probably in the new chat window, similar to worktree. come with with UI/UX
+and open an artifact."* The study (round XXVIII, https://claude.ai/artifact/NrvbS893aPWux12oRbiH36) put each way over the real
+⌥⌘N on the made-up board; his line: `agent A1 B1 C1 D1 E1 E2 E3`.
+
+* **What `--agent` is, on 2.1.319** (its binary, and a lab config at no cost): the chat itself becomes the agent — its prompt,
+  its tools, its model. The names come from `.claude/agents/*.md` in the folder and each above it, to the one holding `.git` and
+  never the home; `<config>/agents`; each enabled plugin's `agents/` as `<plugin>:<name>`; and Claude Code's own. An unknown name
+  ends the start at once (`--agent 'x' not found. Available agents: …`, 0.7 s, before any API call). The transcript's first line
+  says it (`{type: agent-setting, agentSetting}`, written again later); the registry's `agent` is the flag's
+  (`CLAUDE_CODE_AGENT`). `--resume` puts the transcript's back unless `--agent` is given; `/clear` keeps it.
+* **A folder's settings' `agent` starts every chat there as it, and `--agent ''` turns that off** — measured: a folder with
+  `{"agent": "reviewer"}` wrote `agent-setting reviewer` and sent the reviewer's prompt on sonnet; the same with `--agent ''`
+  wrote no such line and sent the plain prompt on opus. In the binary the setting is read only when no flag was given
+  (`flag ?? settings.agent`), and an empty flag is none. So the list's *Claude* row in such a folder passes `''`; elsewhere,
+  nothing.
+* **Claude Code's fifth, `claude`, is not Claude as it starts**: as the chat itself it appends the background job's prompt
+  (*"This session is a background job…"*). It is left out of the list; *Claude* is no flag.
+* **Read from the files, never by running claude** (`agentsFor`, `GET /api/agents`): `claude -p --agent '?'` names them, but by
+  an error message, with no descriptions, and starting claude writes its config. Read on every ask — a dozen small files —; the
+  card's colour looked up a minute apart (`agentColor`). Frontmatter: `name`, `description` (its first paragraph, before any
+  examples), `model`, `color` (Claude Code's eight).
+* **The picks.** A1: a chip ending ＋'s second line — *as Claude ▾*, or *@reviewer ▾ on sonnet* — its click or `@` in the box
+  listing the agents under ＋, ⏎ taking one and the chats coming back; A1x, the chip beside the worktree switch, cut a new
+  branch's name to four letters. On *new worktree* the box holds the branch and the `@` at once (`boxText`: what is before it). B1:
+  the folder's and yours by name, each plugin's and Claude Code's own a folded row (→, ⏎ or a click opens it); typed, every
+  match. C1: `@name` and Claude Code's colour for it as a pale dot — the card's top row after the project, the header after the
+  title, the chats step where an environment goes, ⌥⌘K after the title; the pickers find a chat by it. D1: ＋ starts on the agent
+  you last took in that project (`prefs.agentFor`, `''` for Claude), only when it was your pick; else the folder's setting, said
+  so. E1: a PR row's *Chat ▾* — a chat on its branch, then as the agent you last took for a PR (`prefs.prAgent`), the folder's
+  and yours, or any through the agent picker (mode `agent`). E2: ⌥⌘L by an agent's name, *New chat as @name* in the project in
+  view. E3: the resume bar's *Resume as @name* — Claude Code does it, the board says it.
+* **Where none goes**: a resume, a fork, an attach (`spawnTerm` adds `--agent` to a new chat only), and a Taskfile's `task <env>`
+  — the chip off, saying so; the server refuses an agent with a task. A name is checked against the folder's list
+  (`AGENT_NAME` first) unless the folder is not there yet, which the clone answers first.
+* **Class names**: the first build named its dot and rows `.agd`, `.agt`, `.agn` — the sub-agent rows' (round XX) — and the list's
+  rows took `.agt`'s `grid-column: 3`, ＋ alone in the left half. Now `.asdot`, `.asrow`, `.runas`; ＋'s second line is `.pkline`
+  (its words `.cur`, as the scenarios read them), `.pk2` where ＋ has no switch.
+* **Harness**: the fake claude takes `--agent` as 2.1.319 does — the folder's, yours, a plugin's, its own, else it ends naming
+  them; `''` none over the folder's setting; the `agent-setting` line with its first word, kept over a resume and `/clear`.
+  A global git excludes file can name `.claude` (this Mac's does), so a scenario committing `.claude/agents` adds them with `-f`.
+  → `test/new-chat-agent.test.mjs`, `new-chat-agent.mjs` (compact, same height).
+* **Open**: E1 lists the agents of the chat's folder; the PR's tree may have others, and the server checks the name against
+  the tree it starts in.
 
 ## Decisions of 2026-11-05 — a drawer that waits for its repaint
 

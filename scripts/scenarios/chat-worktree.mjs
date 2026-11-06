@@ -1,5 +1,5 @@
 // Chats in worktrees (2026-10-13). A chat in a checkout of acme/widgets names PR #14, whose branch is checked out
-// nowhere; another chat is in another folder. What this checks: the PR row's Chat makes a worktree inside the repo for
+// nowhere; another chat is in another folder. What this checks: the PR row's Chat ▾ makes a worktree inside the repo for
 // the branch and starts a chat there (the fake claude); that chat is the repo's — its card says widgets and wears the
 // branch, the project pickers list widgets once and never the worktree, the header's folder narrows the list to both
 // widgets chats; the launcher's PR row has Chat too; and ⌥⌘N's chats step gives ＋ a switch — this folder or a new
@@ -53,8 +53,10 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]')`, { what: 'Chat on #14’s row', timeout: 20000 });
   const termIn = async dir => (await ctx.server.terminals()).find(t => t.cwd === dir && !t.shell);
 
-  // Chat on #14: a worktree for its branch inside the repo, and a chat in it — the repo's
-  await ctx.evaluate(`document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]').click()`);
+  // Chat ▾ on #14, its first row (2026-11-06: the rest are agents): a worktree for its branch inside the repo, and a chat in it — the repo's
+  const chatRow = async () => { await ctx.evaluate(`document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]').click()`); await ctx.waitFor(`document.querySelector('#ctxm').open && document.querySelector('#ctxm button[data-i="0"]')`, { what: 'Chat ▾’s menu' }); };
+  await chatRow();
+  await ctx.evaluate(`document.querySelector('#ctxm button[data-i="0"]').click()`);
   for (let i = 0; i < 150 && !(await termIn(wt('feat-tax-rounding'))); i++) await ctx.sleep(100);
   ctx.assert.ok(await termIn(wt('feat-tax-rounding')), 'a chat started in .claude/worktrees/feat-tax-rounding');
   ctx.assert.equal(git(wt('feat-tax-rounding'), 'branch', '--show-current'), 'feat/tax-rounding');
@@ -98,7 +100,7 @@ export default async function (ctx) {
   out.here = await plus();
   ctx.assert.deepEqual([out.here.n, out.here.say, out.here.on, out.here.wt], ['＋ new chat', 'in widgets as it stands — on main', 'this folder', false], JSON.stringify(out.here));
   await ctx.settle(); await ctx.shot('2-this-folder');
-  ctx.assert.match(out.here.foot, /←→ ＋ new chat in this folder, or in a new worktree/);
+  ctx.assert.match(out.here.foot, /←→ this folder or a new worktree · @ an agent to run it/);
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.branch').length`), 0, 'no row of its own any more');
   await press('ArrowRight');
   out.empty = await plus();
@@ -210,7 +212,8 @@ export default async function (ctx) {
   await ctx.openChat(chat.id);
   await ctx.waitFor(`document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]')`, { what: 'Chat on #14’s row', timeout: 20000 });
   const onPr = await chatsIn(wt('feat-tax-rounding'));
-  await ctx.evaluate(`(b => { b.click(); b.click(); })(document.querySelector('#prlist .pract[data-pract="chat"][data-url="${u14}"]'))`);
+  await chatRow();
+  await ctx.evaluate(`(b => { b.click(); b.click(); })(document.querySelector('#ctxm button[data-i="0"]'))`);
   await noSecond(wt('feat-tax-rounding'), onPr + 1, 'Chat twice on a PR');
   return out;
 }

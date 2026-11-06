@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A stand-in for `claude` in tests: the shapes of the real thing that the board depends on, none of the cost.
-//   fakeclaude.mjs [--resume <id> [--fork-session] | --session-id <uuid>] [-- <prompt>]      (what the server passes)
+//   fakeclaude.mjs [--resume <id> [--fork-session] | --session-id <uuid>] [--agent <name>] [-- <prompt>]      (what the server passes)
 // It registers in $CLAUDE_DIR/sessions/<pid>.json like the CLI, appends user/assistant lines to the chat's
 // transcript under $CLAUDE_DIR/projects/<slug>/<id>.jsonl, and draws a TUI the way Claude Code does: the
 // transcript scrolls above, a live region sits at the bottom (rule · prompt · rule · three status lines), the
@@ -47,6 +47,23 @@ if (arg('--session-id') && arg('--resume') && !args.includes('--fork-session')) 
 const forkOf = args.includes('--fork-session') ? arg('--resume') : null;
 let sessionId = attached?.sessionId || (forkOf ? arg('--session-id') || randomUUID() : arg('--resume') || arg('--session-id') || randomUUID());
 const cwd = process.cwd();
+// `--agent <name>` (2026-11-06): the chat as that agent, as Claude Code 2.1.319 takes it — one of the folder's (its
+// `.claude/agents` and up, to its git root), yours, an enabled plugin's or its own, else it ends at once saying which there
+// are; '' is none, over a folder's settings' own. The transcript's first line says it (`agent-setting`), the registry's
+// `agent` the flag's. A resume keeps the transcript's.
+const jsonAt = p => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
+const mdNames = d => { try { return readdirSync(d).filter(n => n.endsWith('.md')).map(n => (/^name:\s*(\S+)/m.exec(readFileSync(join(d, n), 'utf8')) || [, n.slice(0, -3)])[1]); } catch { return []; } };
+const agentFlag = args.includes('--agent') ? arg('--agent') ?? '' : null;
+const settings = [join(CLAUDE_DIR, 'settings.json'), join(cwd, '.claude', 'settings.json'), join(cwd, '.claude', 'settings.local.json')].map(jsonAt);
+let agent = agentFlag ?? (arg('--resume') && !args.includes('--fork-session') ? null : [2, 1, 0].map(i => settings[i]?.agent).find(a => typeof a === 'string' && a) || null);
+if (agentFlag) {
+  const known = ['claude', 'Explore', 'general-purpose', 'Plan', 'statusline-setup', ...mdNames(join(CLAUDE_DIR, 'agents'))];
+  for (let d = cwd; d !== homedir(); d = dirname(d)) { known.push(...mdNames(join(d, '.claude', 'agents'))); if (existsSync(join(d, '.git')) || dirname(d) === d) break; }
+  const plugins = jsonAt(join(CLAUDE_DIR, 'plugins', 'installed_plugins.json'))?.plugins || {};
+  for (const [key, on] of Object.entries(Object.assign({}, ...settings.map(s => s?.enabledPlugins || {})))) if (on === true && plugins[key]?.[0]?.installPath) known.push(...mdNames(join(plugins[key][0].installPath, 'agents')).map(n => `${key.split('@')[0]}:${n}`));
+  if (!known.includes(agentFlag)) { console.error(`--agent '${agentFlag}' not found. Available agents: ${known.join(', ')}`); process.exit(1); }
+}
+if (!agent) agent = null;
 const slug = cwd.replace(/[/.]/g, '-');
 const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
 const sessDir = join(CLAUDE_DIR, 'sessions'), regFile = join(sessDir, `${process.pid}.json`);
@@ -64,7 +81,8 @@ let owedCopy = !forkOf ? null : () => {
 };
 const now = () => new Date().toISOString();
 let parent = null;
-const line = o => { if (owedCopy) { const copy = owedCopy; owedCopy = null; copy(); } appendFileSync(file, JSON.stringify(o) + '\n'); };
+let owedAgent = agent && !(arg('--resume') && !forkOf);   // a new chat's agent, written with its first line
+const line = o => { if (owedCopy) { const copy = owedCopy; owedCopy = null; copy(); } if (owedAgent) { owedAgent = false; appendFileSync(file, JSON.stringify({ type: 'agent-setting', agentSetting: agent, sessionId }) + '\n'); } appendFileSync(file, JSON.stringify(o) + '\n'); };
 function userLine(text) {
   const uuid = randomUUID();
   line({ parentUuid: parent, isSidechain: false, type: 'user', message: { role: 'user', content: [{ type: 'text', text }] }, uuid, timestamp: now(), userType: 'external', entrypoint: 'cli', cwd, sessionId, version: 'fake', gitBranch: 'main' });
@@ -84,7 +102,7 @@ const reply = text => SCREEN?.replies?.[text] ?? `You said: ${text}\n\nThis is t
 // board holds a pid against before it signals one (sameProcess); without it every check took the no-procStart shortcut.
 const t0reg = Date.now();
 const procStart = (() => { try { return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(process.pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim(); } catch { return undefined; } })();
-const register = (status = 'idle') => attached || writeFileSync(regFile, JSON.stringify({ pid: process.pid, procStart, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now() }));
+const register = (status = 'idle') => attached || writeFileSync(regFile, JSON.stringify({ pid: process.pid, procStart, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now(), ...agentFlag && { agent: agentFlag } }));
 register();
 const bye = code => { try { unlinkSync(regFile); } catch {} out(`${FULL ? '\x1b[?1049l' : ''}\x1b[?2004l\x1b[?1004l\x1b[?25h\n`); process.exit(code); };
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => bye(sig === 'SIGHUP' ? 129 : 143));
@@ -229,16 +247,16 @@ process.stdin.setRawMode?.(true); process.stdin.resume(); process.stdin.setEncod
 out('\x1b[?2004h\x1b[?1004h');   // bracketed paste, focus reporting — the modes the real one sets; the snapshot must carry them
 // History on resume: the transcript's last turns, the way Claude Code prints them back.
 const history = [];
-if (existsSync(file)) for (const raw of readFileSync(file, 'utf8').split('\n')) { try { const j = JSON.parse(raw); const t = j.message?.content?.find?.(c => c.type === 'text')?.text; if (t && (j.type === 'user' || j.type === 'assistant')) history.push(`${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`); } catch {} }
+if (existsSync(file)) for (const raw of readFileSync(file, 'utf8').split('\n')) { try { const j = JSON.parse(raw); if (j.type === 'agent-setting' && agentFlag === null) agent = j.agentSetting || null; const t = j.message?.content?.find?.(c => c.type === 'text')?.text; if (t && (j.type === 'user' || j.type === 'assistant')) history.push(`${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`); } catch {} }
 out(`${FULL ? '\x1b[?1049h' : ''}\x1b[2J\x1b[H`);
-say(SCREEN ? SCREEN.screen : [`\x1b[1mfake claude\x1b[0m · session ${sessionId}${forkOf ? ` (a branch of ${forkOf.slice(0, 8)})` : arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
+say(SCREEN ? SCREEN.screen : [`\x1b[1mfake claude\x1b[0m · session ${sessionId}${forkOf ? ` (a branch of ${forkOf.slice(0, 8)})` : arg('--resume') ? ' (resumed)' : ''}${agent ? ` · as @${agent}` : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
 /** /clear, as Claude Code does it: the same process goes on under a new session id — the registry file says so — with a
  *  fresh transcript and the screen started over. The board must follow the pid to the new chat (2026-09-20). The new
  *  transcript is written at once with the command's own lines — a caveat, the command, its empty output — which are
  *  no one's word (2026-09-28: the board took a chat with a file for one with a start, and the card sank to the bottom);
  *  the file comes before the registry says so, the order the board has to survive. */
 function clearSession() {
-  sessionId = randomUUID(); file = join(projDir, `${sessionId}.jsonl`); parent = null; tokens = 12300; dollars = 0;
+  sessionId = randomUUID(); file = join(projDir, `${sessionId}.jsonl`); parent = null; tokens = 12300; dollars = 0; owedAgent = !!agent;   // /clear keeps the agent
   const base = () => ({ isSidechain: false, timestamp: now(), uuid: randomUUID(), userType: 'external', entrypoint: 'cli', cwd, sessionId, version: 'fake', gitBranch: 'main' });
   line({ ...base(), parentUuid: null, type: 'user', isMeta: true, message: { role: 'user', content: '<local-command-caveat>Caveat: The messages below were generated by the user while running local commands.</local-command-caveat>' } });
   line({ ...base(), type: 'user', message: { role: 'user', content: '<command-name>/clear</command-name>\n            <command-message>clear</command-message>\n            <command-args></command-args>' } });

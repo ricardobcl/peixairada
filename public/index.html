@@ -29,6 +29,7 @@
     --bg: #f1f0ec; --panel: #f5f4f0; --ink: #21211e; --muted: #5c5b54; --line: #d6d5cd; --accent: #ad5030; --frame: #dedcd6; --bar: var(--frame);
     --working: #d9a82a; --working-ink: #795b01; --idle: #116e3d; --needs: #a61e22; --ended: #a1a19a; --unread: #9c4426;   /* --working is a fill; set as text, its ink */
     --watch: #066b6b;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
+    --ag-l: .7; --ag-c: .12;   /* an agent's dot (.asdot): its colour's lightness and chroma, the hue Claude Code's name for it */
     --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
     --prg: 28%;          /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
     --user-bg: #e5e3db; --tool-bg: #e9e8e2; --code-bg: #e7e5de; --code-line: #d5d3ca;
@@ -61,7 +62,7 @@
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
     --pr-open: #3fb950; --pr-merged: #ae81ff; --pr-closed: #ff6258; --needs: #f36464; --pr-draft: #9a9a93; --working-ink: #d9a82a; --idle: #2f9e5b;
-    --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97;
+    --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97; --ag-l: .74; --ag-c: .11;
     --term-bg: #121211; --term-sel: rgba(224, 138, 104, .32);
     --hl-com: #808078; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
@@ -856,6 +857,9 @@
   /* a chat in a worktree of its project's repo (2026-10-13): its branch, beside the project's name */
   .card .top .chip.wtb { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--muted); background: none; padding-left: 0; font-weight: 600; text-transform: none; letter-spacing: 0; }
   .card .top .chip.wtb .ic { width: 10px; height: 10px; fill: currentColor; flex: none; }
+  /* the agent it runs as (2026-11-06, round XXVIII): @name and its dot, after the project, as quiet as the branch */
+  .card .top .chip.runas { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; color: var(--muted); background: none; padding-left: 0; font-weight: 600; text-transform: none; letter-spacing: 0; }
+  .card .top .chip.runas .asdot { width: 6px; height: 6px; }
   /* a chat muted (2026-11-02, muteChip): the word on the top row, whatever the card's size; a click unmutes */
   .card .top .chip.cmute { display: inline-flex; align-items: center; gap: 3px; flex: none; max-width: none; padding: 0 5px 0 3px; font-family: inherit; font-weight: 600; cursor: pointer; color: color-mix(in srgb, var(--working-ink) 80%, var(--ink)); background: color-mix(in srgb, var(--working) 14%, var(--panel)); }   /* its own ground: 4.5:1 in every theme, and on a card asking (chat-mute.mjs) */
   .card .top .chip.cmute:hover { background: color-mix(in srgb, var(--working) 24%, var(--panel)); }
@@ -1404,6 +1408,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead h2 .repo:hover .fun { opacity: .75; }
   .shead h2 .repo.on .fun { opacity: 1; }
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .shead h2.ag .t { flex-grow: 0; }   /* the agent's name right after the title (2026-11-06) */
+  .shead h2 .runas { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-left: -4px; font-size: var(--fs-sm); font-weight: 600; color: var(--hd-muted, var(--muted)); white-space: nowrap; }
+  .shead h2 .runas .asdot { width: 7px; height: 7px; }
   /* a bar between the project and the title (2026-09-26): the header's
      ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
      2 px of room in the row; the bar is its ::before, positioned from the header (.shead is the containing block),
@@ -2691,13 +2698,40 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* …and on a git checkout its switch (2026-10-13): this folder | new worktree, the settings' segmented look; what ⏎
      would do on a line of its own under the name and the switch, both ways, so the row keeps its height as it switches —
      in red where ⏎ would share a tree or git would refuse the name. */
-  .pkrow.chat.sw { row-gap: 1px; }
+  .pkrow.chat:is(.sw, .pk2) { row-gap: 1px; }
   .pkrow.chat.sw .num { max-width: none; overflow: visible; }
-  .pkrow.chat.sw > .cur { grid-column: 2 / -1; font-size: var(--fs-xs); color: var(--muted); min-width: 0; }
+  .pkrow.chat:is(.sw, .pk2) > .pkline { grid-column: 2 / -1; display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--muted); min-width: 0; }
+  .pkline > .cur { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pkline > .cur:empty { display: none; }
   .pkrow .pkmode { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
   .pkrow .pkmode button { font: inherit; font-size: var(--fs-xs); border: 0; background: none; color: var(--muted); padding: 2px 8px; border-radius: var(--r-2); cursor: pointer; }
   .pkrow .pkmode button[aria-checked="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
-  .pkrow.chat.sw > .cur:is(.bad, .warn) { color: var(--needs); }
+  .pkline > .cur:is(.bad, .warn) { color: var(--needs); }
+  /* …and who runs it (2026-11-06, round XXVIII): a chip ending that line — as Claude ▾, or @an-agent ▾ and its model —
+     whose click, or @ in the box, lists the agents under ＋ (pickRender's agent rows); off where a Taskfile starts claude */
+  .pkrow .pkag { flex: none; display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: var(--fs-xs); border: 1px solid transparent; padding: 1px 7px; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
+  .pkrow .pkag:hover { background: var(--ctl-hi); }
+  .pkrow .pkag.on { color: var(--ink); background: var(--panel); border-color: var(--line); }
+  .pkrow .pkag.open { color: var(--ink); border-color: var(--accent); }
+  .pkrow .pkag.off { cursor: default; opacity: .7; }
+  .pkrow .pkag i { font-style: normal; font-size: .8em; opacity: .7; }
+  .pkrow .pkag .asdot { width: 7px; height: 7px; }
+  .pkline > .pkas { flex: none; opacity: .75; }
+  /* an agent's dot: Claude Code's own colour for it, pale; none, a ring — the name beside it says which */
+  .asdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: oklch(var(--ag-l) var(--ag-c) var(--agh, 0)); }
+  .asdot:not([data-c]) { background: none; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--muted) 70%, transparent); }
+  .asdot[data-c="red"] { --agh: 25; } .asdot[data-c="orange"] { --agh: 55; } .asdot[data-c="yellow"] { --agh: 95; } .asdot[data-c="green"] { --agh: 150; }
+  .asdot[data-c="cyan"] { --agh: 200; } .asdot[data-c="blue"] { --agh: 255; } .asdot[data-c="purple"] { --agh: 300; } .asdot[data-c="pink"] { --agh: 350; }
+  .pkrow.asrow { grid-template-columns: 12px minmax(0, 1fr) auto 118px; }
+  .pkrow.asrow .asdot { justify-self: center; }
+  .pkrow.asrow .asdot.own { width: auto; height: auto; background: none; box-shadow: none; color: var(--accent); font: 700 var(--fs-sm)/1 ui-monospace, monospace; }
+  .pkrow.asrow .n { font-weight: 600; }
+  .pkrow.asrow .num { font: 600 var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl); }
+  .pkrow.asrow .num:empty { background: none; padding: 0; }
+  .pkrow.asrow .src { font-size: var(--fs-xs); color: var(--muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pkrow.asrow.fold .n { color: var(--muted); font-weight: 500; }
+  .pkrow .runas { display: inline-flex; align-items: center; gap: 4px; }
+  .pkrow .runas .asdot { width: 6px; height: 6px; }
   .pkrow.env { grid-template-columns: auto auto 1fr auto; }   /* ⌥⌘N's last step: colour · task name · what the Taskfile says it does · how many chats are open under it */
   /* ⌥⌘N's project step carries the org's folders that have no chat yet — a project's weight, the path beside the name —
      and ＋ clone <org>/<name> last, in the accent, for a name that is none of them. */
@@ -3358,6 +3392,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · links in the chat: files and pages
 //   js  · chat header
 //   js  · a right-click menu (2026-10-12)
+//   js  · who runs a new chat: an agent (2026-11-06, round XXVIII)
 //   js  · ⌥⌘N's ＋ on "new worktree" (2026-10-13)
 //   js  · the editor at a PR's branch (2026-10-13)
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
@@ -3419,7 +3454,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix' };
+  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -4325,6 +4360,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (dlg?.id === 'settings' && e.target === $('#sq') && $('#sq').value) { $('#sq').value = ''; settingsFind(); took = true; }   // a search let go first
     else if (dlg?.id === 'room' && chatEscape()) took = true;   // the chat's panel: a question, the people first
     else if (dlg?.id === 'zeGame' && zeCallEnd(false)) took = true;   // Zé's game: a chat's call let go, the game goes on
+    else if (dlg?.id === 'pick' && agentEscape()) took = true;   // ⌥⌘N's agent list shut, the chats back (2026-11-06)
     else if (dlg) { dlg.close(); took = true; }
     else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) took = hotEscape();
     if (!took) return;
@@ -5161,7 +5197,7 @@ const toolName = n => {
   // A chat's PRs and tickets are one, as their chips name them (2026-10-14): `650` finds the chat on `widgets#650`
   // however long ago it was mentioned — the last prompt holds it only while it is the last.
   const chatIds = s => [...(s.prs || []).map(p => p.label), ...(s.tickets || []).map(t => t.key)];
-  const chatFields = s => [s.title, s.project, s.gitBranch || '', chatIds(s).join(' '), s.aiTitle || '', s.lastPrompt || '', s.live?.name || ''];
+  const chatFields = s => [s.title, s.project, s.gitBranch || '', chatIds(s).join(' '), s.aiTitle || '', s.lastPrompt || '', s.live?.name || '', s.agent ? `@${agentShort(s.agent)} ${s.agent}` : ''];
   /** A picker row's word on why it matched: the PRs and tickets that hold a word of the query as typed (a web address
    *  as wordIn finds it), its letters bolded — the title alone does not say why `650` found it. Two at most, then a count. */
   function idsHit(s, q) {
@@ -6564,7 +6600,7 @@ const toolName = n => {
         + (hasRival(s) ? (rivalsIn(s, 'vs') ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : `<span class="chip rival" title="Another claude runs on this chat too — open it to end it">a second claude</span>`) : '');
     const moveLine = moveHtml(s) || answeredHtml(s);
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
+      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${agentTag(s, 'chip runas')}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
       <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -6979,7 +7015,9 @@ const toolName = n => {
   // gen: which opening of the picker; typed: the chats step's box just typed in; git: the chats step's folder's working
   // trees when it is one git checkout (wtOf), wt: its ＋ row on "new worktree", br: the branch typed, as the server found it,
   // asking: ⏎ on it waiting for that answer (wtEnter); named: ⌥⌘K's box holding a PR's link, and the chats that name it (namedAsk)
-  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null, asking: false, named: null };
+  // ag: the chats step's folder's agents (GET /api/agents), agent: the one ＋'s chip has (null: Claude), agentTouched: you
+  // changed it, unfold: the agent list's folded rows opened (2026-11-06, round XXVIII)
+  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null, asking: false, named: null, ag: null, agLoad: null, agent: null, agentTouched: false, unfold: new Set() };
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc',
     pr: ctx => `Pull request — type to filter · ↑↓ · ⏎ opens${ctx.zoom === 'fill' ? ' · ⌥⌘G fills the column' : ctx.zoom === 'back' ? ' · ⌥⌘G gives the column back' : ''} · esc`,
@@ -6995,9 +7033,10 @@ const toolName = n => {
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
     chatpick: ctx => ctx.many ? `${ctx.ask} — ⏎ takes a chat in or out · ${ctx.picked.length} in · esc` : `${ctx.ask} — type to filter · ↑↓ · ⏎ · esc`,   // a chat to send to, fold into, merge (2026-10-31)
+    agent: ctx => `${ctx.title} — which agent? type to filter · ↑↓ · ⏎ · esc`,   // a PR's chat as an agent (2026-11-06)
   };
   const NO_FOLDER = '＋ new chat — no folder';   // ⌥⌘N's first row (2026-10-14)
-  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', chatpick: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch' };   // for "no … matches"; the rest are projects
+  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', chatpick: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch', base: 'branch', agent: 'agent' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => s.done ? 'done' : bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
@@ -7061,7 +7100,8 @@ const toolName = n => {
   // its list, which a placeholder cut off at "@ proje".
   const PICK_FOOT = {
     launch: '<kbd>&gt;</kbd> actions and switches <kbd>#</kbd> PRs <kbd>@</kbd> projects <kbd>!</kbd> tickets <s>·</s> <kbd>→</kbd> into a menu',
-    chats: () => pick.git ? '<kbd>←</kbd><kbd>→</kbd> ＋ new chat in this folder, or in a new worktree on a branch of its own' : '',
+    chats: () => atIn() >= 0 ? '<kbd>⏎</kbd> takes the agent, the chats come back <s>·</s> <kbd>⌫</kbd> on the <kbd>@</kbd> goes back without one'
+      : [pick.git && (agentsHere() ? '<kbd>←</kbd><kbd>→</kbd> this folder or a new worktree' : '<kbd>←</kbd><kbd>→</kbd> ＋ new chat in this folder, or in a new worktree on a branch of its own'), agentsHere() && '<kbd>@</kbd> an agent to run it'].filter(Boolean).join(' <s>·</s> '),
     base: '<kbd>⏎</kbd> a worktree from the branch selected <s>·</s> <kbd>←</kbd> back to its name',
   };
   const pickHint = () => {
@@ -7076,7 +7116,9 @@ const toolName = n => {
       dlg.showModal(); repostPane();        // the pane goes down while it is up, so the dialog is centred and on top
     }
     pick.mode = mode; pick.ctx = ctx; pick.sel = 0; pick.gen++; pick.cloning = false; pick.git = null; pick.wt = false; pick.br = null; pick.named = null; $('#pickq').disabled = false;
+    pick.ag = mode === 'agent' ? ctx.ag : null; pick.agent = null; pick.agentTouched = false; pick.unfold = new Set();
     if (mode === 'new') loadFolders();   // the org's folders, fresh: the rows join the list when the answer lands
+    if (mode === 'chats') pickAgents(); else if (mode === 'launch') launchAgents();
     $('#pickq').value = ''; pickHint();
     pickRender(); $('#pickq').focus();
     // ⌥⌘N starts on the project in view (2026-09-28, with ＋ gone): ⏎ takes it, a second ⏎ is a new chat there
@@ -7108,7 +7150,7 @@ const toolName = n => {
       const found = hunt([...state.sessions.values()].filter(s => (visible(s) && (q || bucket(s) !== 'done')) || (q && s.removed)).sort(order), chatFields, s => doneWorth(s, q));
       const named = (pick.named?.ids || []).map(id => state.sessions.get(id)).filter(s => s && !found.includes(s)).sort(order);   // what the chips did not know
       pick.list = [...found, ...named];
-      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${s.removed ? '<span class="cur">deleted from the board</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
+      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${agentTag(s, 'cur runas')}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${s.removed ? '<span class="cur">deleted from the board</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
     } else if (pick.mode === 'chatpick') {   // a chat to send to (2026-10-31): ⌥⌘K's rows, one it cannot go to dimmed and saying why
       // …or several to merge (`many`): ⏎ takes one in or out, ✓ before it; the first row goes on with those taken in
       const c = pick.ctx;
@@ -7123,24 +7165,32 @@ const toolName = n => {
       // the chats stay as they are, unmarked. ＋ is never filtered out: it is the fallback for a query that matches nothing
       const one = pick.ctx.cwds?.length === 1 && !pick.ctx.env ? pick.ctx.cwds[0] : null, git = one && wtOf(one, () => $('#pick').open && pick.mode === 'chats' && pickRender(true));
       const had = !!pick.git; pick.git = git?.main ? git : null; if (had !== !!pick.git) pickHint();   // the foot names the switch
-      const wt = pick.wt && !!pick.git, typed = $('#pickq').value.trim();
-      const chats = wt ? scopeChats(pick.ctx) : hunt(scopeChats(pick.ctx), chatFields), mk = wt ? t => markHits(t, '') : mark;
-      pick.list = [{ isNew: true }, ...chats];
-      if (pick.typed) { pick.sel = chats.length && !wt ? 1 : 0; pick.typed = false; }   // typing lands on the first match, else on ＋
+      // @ in the box (or the chip's click) lists the agents under ＋ in the chats' place (2026-11-06): what is before it is
+      // still the branch on "new worktree"
+      const at = atIn(), wt = pick.wt && !!pick.git, typed = boxText(), aq = at >= 0 ? $('#pickq').value.slice(at + 1).trim().toLowerCase() : '';
+      const ags = at >= 0 ? agentItems(pick.ag, aq) : [];
+      const chats = at >= 0 ? [] : wt ? scopeChats(pick.ctx) : hunt(scopeChats(pick.ctx), chatFields), mk = wt ? t => markHits(t, '') : mark;
+      pick.list = [{ isNew: true }, ...ags, ...chats];
+      if (pick.typed) { pick.sel = at >= 0 ? agentLand(ags, aq) : chats.length && !wt ? 1 : 0; pick.typed = false; }   // typing lands on the first match, else on ＋
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
       // ✓ ticks the chat done from here (2026-09-28): the card's rule and route, and the row goes when the server says
       // so. Every row keeps the column.
       const tick = x => x.isNew || !canTick(x) ? '<span class="pkdone"></span>' : (e => `<button class="pkdone${e && armedOn(x.id) ? ' armed' : ''}" data-id="${esc(x.id)}" title="${e ? esc(`Tick as done — it ends its watch: ${e}, so it asks once more`) : 'Tick as done — it leaves this list and the board\'s (persisted; comes back on new activity)'}">✓</button>`)(watchEnds(x));
+      const chip = agentChip();   // who runs it (2026-11-06): the chip that ends ＋'s second line
       const plus = (x, i) => {
-        if (!pick.git) return `<div class="pkrow chat ticks new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span>${tick(x)}</div>`;
+        if (!pick.git) return `<div class="pkrow chat ticks new${chip ? ' pk2' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span>${tick(x)}${chip ? `<span class="pkline">${chip}</span>` : ''}</div>`;
         const on = pick.git.worktrees?.find(t => t.path === pick.git.here)?.branch;
         const [n, say, tone] = wt ? wtSay(typed) : ['＋ new chat', `${how} as it stands${on ? ` — on ${on}` : ''}`, ''];
         const sw = `<span class="pkmode" role="radiogroup" aria-label="Where the new chat works"><button type="button" role="radio" tabindex="-1" data-wt="0" aria-checked="${!wt}">this folder</button><button type="button" role="radio" tabindex="-1" data-wt="1" aria-checked="${wt}">new worktree</button></span>`;
         const tip = `${say ? `${say}\n` : ''}This folder, or a new worktree inside the repo (.claude/worktrees/<branch>) on a branch of its own — a new one from the branch picked next, ${pick.git.dflt || 'main'} first — so the chat shares no files with another · ←→ or a click switches`;
-        return `<div class="pkrow chat ticks new sw${wt ? ' wt' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="${esc(tip)}"><span class="sq"></span><span class="n">${n}</span><span class="num">${sw}</span><span class="st"></span><span class="t"></span>${tick(x)}<span class="cur${tone ? ` ${tone}` : ''}">${esc(say)}</span></div>`;
+        return `<div class="pkrow chat ticks new sw${wt ? ' wt' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="${esc(tip)}"><span class="sq"></span><span class="n">${n}</span><span class="num">${sw}</span><span class="st"></span><span class="t"></span>${tick(x)}<span class="pkline"><span class="cur${tone ? ` ${tone}` : ''}">${esc(say)}</span>${chip && say ? '<span class="pkas">·</span>' : ''}${chip}</span></div>`;
       };
-      row = (x, i) => x.isNew ? plus(x, i)
-        : `<div class="pkrow chat ticks${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mk(x.title))}${wt ? '' : idsHit(x, q)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t" data-at="${esc(wordAt(x))}"></span>${tick(x)}</div>`;
+      row = (x, i) => x.isNew ? plus(x, i) : x.ag || x.agClaude || x.agFold ? agentRowHtml(x, i, sel(i), aq, agentCwd(), pick.ag)
+        : `<div class="pkrow chat ticks${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mk(x.title))}${wt ? '' : idsHit(x, q)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${x.env ? esc(x.env) : agentTag(x)}</span><span class="st">${chatState(x)}</span><span class="t" data-at="${esc(wordAt(x))}"></span>${tick(x)}</div>`;
+    } else if (pick.mode === 'agent') {   // a PR's chat as an agent (2026-11-06): every agent of the folder, the chats step's rows
+      const aq = $('#pickq').value.trim().toLowerCase().replace(/^@/, '');
+      pick.list = agentItems(pick.ctx.ag, aq, false);
+      row = (x, i) => agentRowHtml(x, i, sel(i), aq, pick.ctx.cwd, pick.ctx.ag);
     } else if (pick.mode === 'base') {   // what a new worktree's new branch starts from (2026-10-28): the default branch first
       pick.list = hunt(pick.ctx.bases || [], b => [b.name]);
       if (!pick.ctx.bases) { $('#picklist').innerHTML = `<div class="none">${esc(pick.ctx.err || 'reading the branches…')}</div>`; return; }
@@ -7174,7 +7224,7 @@ const toolName = n => {
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
           : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t"${p.last ? ` data-at="${esc(p.last)}"` : ''}></span>${hx(p)}${ed(p)}</div>`;
     }
-    if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.id === was.id); if (i >= 0) pick.sel = i; }
+    if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.ag || x.agFold || x.agClaude ? (x.ag && x.ag === was.ag) || (x.agFold && x.agFold === was.agFold) || (x.agClaude && was.agClaude) : x.id === was.id); if (i >= 0) pick.sel = i; }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
     const asked = pick.mode === 'chat' && pick.named, reading = !asked ? '' : !asked.ids ? 'reading every chat\'s transcript for this PR…' : asked.err ? `the transcripts could not be read: ${asked.err}` : '';
@@ -7187,7 +7237,7 @@ const toolName = n => {
     const x = pick.list[i], dlg = $('#pick');
     if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
     if (pick.mode === 'base') {   // nothing matched: the step stays; ⏎ before the branches are read takes the default once they are
-      if (!pick.ctx.bases) pick.ctx.go = !$('#pickq').value.trim(); else if (x) newChatOnBranch(pick.ctx.cwd, pick.ctx.branch, { base: x.ref });
+      if (!pick.ctx.bases) pick.ctx.go = !$('#pickq').value.trim(); else if (x) newChatOnBranch(pick.ctx.cwd, pick.ctx.branch, { base: x.ref, agent: pick.ctx.agent });
       return;
     }
     if (!x && pick.mode === 'chat' && pick.named && !pick.named.ids) { pick.named.go = true; return; }   // the answer opens the first it names
@@ -7206,9 +7256,12 @@ const toolName = n => {
       else if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
     }
     else if (pick.mode === 'chats') {
-      if (x.isNew && pick.wt && pick.git) wtEnter(pick.ctx.cwds[0], $('#pickq').value.trim());
+      if (x.ag || x.agClaude) return agentTake(x.ag ? x.ag.name : null);   // the chip's, and the chats back (2026-11-06)
+      if (x.agFold) { pick.unfold.add(x.agFold); return pickRender(); }
+      if (x.isNew && pick.wt && pick.git) wtEnter(pick.ctx.cwds[0], boxText());
       else if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id, { locate: true }); }
     }
+    else if (pick.mode === 'agent') { if (x.agFold) { pick.unfold.add(x.agFold); pickRender(); } else { dlg.close(); pick.ctx.then(x.ag.name); } }
     else if (pick.mode === 'folder') newChatIn(x.cwd, pick.ctx.then);
     else if (pick.mode === 'env') {   // from ⌥⌘O the environment scopes the chats step; from ⌥⌘N it was the last thing asked
       if (pick.ctx.then === 'chats') chatsStep({ key: pick.ctx.cwd, name: folderName(pick.ctx.cwd), cwds: [pick.ctx.cwd], env: x.name });
@@ -7224,22 +7277,29 @@ const toolName = n => {
   // What the chats step would show under one environment, split the way the column's pills split a project.
   const envCounts = (cwd, env) => { const l = scopeChats({ key: cwd, env }); return { working: l.filter(s => bucket(s) === 'working').length, ready: l.filter(s => bucket(s) === 'ready').length }; };
   // ＋ new chat, from wherever the flow had got to: the environment is already answered, or the folder is, or neither.
-  function newFromChats(ctx) {
+  async function newFromChats(ctx) {
     if (ctx.env) { $('#pick').close(); newChat(ctx.cwds[0], ctx.env); }
-    else if (ctx.cwds.length === 1) newChatIn(ctx.cwds[0]);
+    else if (ctx.cwds.length === 1) {
+      if (!pick.ag && pick.agLoad) {   // the chip's agent, not none for a quick ⏎ — and a second ⏎ meanwhile is this one (pick.cloning)
+        const gen = pick.gen; pick.cloning = true;
+        await pick.agLoad; if (gen !== pick.gen || !$('#pick').open) return; pick.cloning = false;
+      }
+      newChatIn(ctx.cwds[0], 'new', agentGo());
+    }
     else pickOpen('folder', { cwds: ctx.cwds });
   }
   // Typing filters the chats, not ＋, so the selection moves off it and onto the first match — and falls back to
   // ＋ (the clamp below) when nothing matches, which is the thing to do with a name no chat has yet. On "new worktree"
   // it names the branch: ＋ stays selected, and where that branch is already is asked (brAsk).
-  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick') && !!$('#pickq').value.trim(); namedAsk(); pickRender(); brAsk(); });
+  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick') && !!$('#pickq').value.trim(); namedAsk(); if (pick.mode === 'chats') pickHint(); pickRender(); brAsk(); });
   // ＋'s switch takes ← and → past the box's ends (2026-10-13): → with the caret at the end goes to "new worktree" (and
   // onto ＋, from any row), ← with it at the start back to "this folder"; inside the text they move the caret.
   const caretAt = end => { const q = $('#pickq'); return q.selectionStart === q.selectionEnd && q.selectionStart === (end ? q.value.length : 0); };
   $('#pickq').addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); pick.sel++; pickRender(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); pick.sel--; pickRender(); }
-    else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && pick.mode === 'chats' && pick.git && !(e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) && caretAt(e.key === 'ArrowRight')) { if (pickWt(e.key === 'ArrowRight')) e.preventDefault(); }
+    else if (e.key === 'ArrowRight' && pick.list[pick.sel]?.agFold && caretAt(true)) { e.preventDefault(); pickChoose(pick.sel); }   // → opens a folded row of agents (2026-11-06)
+    else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && pick.mode === 'chats' && pick.git && atIn() < 0 && !(e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) && caretAt(e.key === 'ArrowRight')) { if (pickWt(e.key === 'ArrowRight')) e.preventDefault(); }
     else if (e.key === 'Enter' && e.altKey && pick.list[pick.sel]?.kind === 'pr' && pick.list[pick.sel].pr.refs) { e.preventDefault(); const x = pick.list[pick.sel].pr, s = state.sessions.get(x.chatId); if (s) chatOnPr(s, x.url, $('#pickq')); }   // ⌥⏎ on a PR: a chat on its branch
     else if (e.key === 'Enter') { e.preventDefault(); pickChoose(pick.sel); }
     // the launcher's menus (2026-10-10): → into a row with ›, ← or ⌫ on an empty box back out to where it came from
@@ -7252,6 +7312,8 @@ const toolName = n => {
     if (x) { e.stopPropagation(); hideProject(x.dataset.key); pickRender(); return; }
     const md = e.target.closest('.pkmode button');   // ＋'s switch: this folder or a new worktree, the box keeping the keys
     if (md) { e.stopPropagation(); pickWt(md.dataset.wt === '1'); $('#pickq').focus(); return; }
+    const ag = e.target.closest('.pkag');   // ＋'s chip (2026-11-06): the agents under it, or shut again
+    if (ag) { e.stopPropagation(); if (!ag.classList.contains('off')) agentList(); $('#pickq').focus(); return; }
     // ✓: the chat is ticked done and the picker stays up — the row leaves on the server's `session` event. A double
     // click's second press would land on the row that slid up under the pointer, so only a single one counts.
     const pc = e.target.closest('button.pkchat');   // a PR's Chat (2026-10-13): a new chat on its branch
@@ -7378,9 +7440,10 @@ const toolName = n => {
     const projects = !want('project') ? [] : best(projectList(), p => [p.name]).map(p => ({ kind: 'project', id: 'pj:' + p.key, p }));
     const prs = !want('pr') ? [] : best(allPrs(), pr => [pr.label, pr.title || '', pr.chat || '']).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr }));
     const tickets = !want('ticket') ? [] : best(allTickets(), t => [t.key, t.summary || '', t.chat || '']).map(t => ({ kind: 'ticket', id: 'tk:' + t.key, t }));
+    const agents = !want('action') || !q ? [] : best(agentActs(), a => [agentShort(a.agent.name), a.agent.name]);   // by an agent's name (2026-11-06)
     const actions = !want('action') ? [] : best(actionRows(), a => [a.name, a.sub || '']);
     const toggles = !want('toggle') ? [] : best(toggleRows(), t => [t.name]);
-    return [...chats, ...projects, ...prs, ...tickets, ...actions, ...toggles];
+    return [...chats, ...projects, ...prs, ...tickets, ...agents, ...actions, ...toggles];
   }
   const swHtml = on => `<span class="lsw${on ? ' on' : ''}"><i></i></span>`;
   /** One launcher row; a section's first carries its head — the launcher's, not a new tab's list of pages. */
@@ -7422,7 +7485,7 @@ const toolName = n => {
     ['⌥⌘L', 'Go to', 'anything — chats, projects, PRs, tickets, actions and switches', '> actions and switches, # PRs, @ projects, ! tickets · empty, a menu: → into a row, ← back', ['alt:KeyL']],
     ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', 'pressed twice: every project, and from there back · ✎ edits a named one, ＋ makes one', ['alt:KeyP']],
     ['⌥⌘F', 'Go to', 'the list\'s own search, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
-    ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
+    ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
     ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
@@ -7874,7 +7937,7 @@ const toolName = n => {
     // the two keys the setup names, for the ? sheet: one line each, the rest under it (2026-10-12; a list in the
     // settings' Keys pane until 2026-10-16)
     keyNotes.quickKey = { html: c.quick ? `a new chat in ${esc(c.quick)}` : 'a new chat in the setup\'s quick project — none yet', title: c.quick ? 'its environments first, when its Taskfile launches Claude, then their open chats' : 'Settings › Projects › Quick chat names it' };
-    keyNotes.newKey = { title: `or a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board` };
+    keyNotes.newKey = { title: `or a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board` };
     $('#pextra').placeholder = `${roots[0] ? homePath(roots[0].dir) : '~/code'}/some-repo`;
     $('#sfilePath').textContent = c.file ? homePath(c.file) : 'Kept by the server';
     drawSetup(box, html, force);
@@ -8687,7 +8750,7 @@ const toolName = n => {
   const prLine = (s, pr) => {
     const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs, round = roundLine(s, pr);
     return `<div class="prline${round ? ' withround' : ''}">${prRow(pr)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="timeline" data-url="${esc(pr.url)}" title="Its timeline: this PR’s events and the turns about it, in one order (⌥⌘J)">Timeline</button><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
-      ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own">Chat</button>` : ''}</span>` : ''}</div>${round}`;
+      ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" aria-haspopup="menu" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own; plain, or as an agent">Chat ▾</button>` : ''}</span>` : ''}</div>${round}`;
   };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = t => `<a class="prrow tk" data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span>${COPY_LINK}<span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
@@ -8731,7 +8794,7 @@ const toolName = n => {
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
     const hprs = !prs.length && !tks.length ? '' : `<button class="hgit${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" aria-label="${said}: ${prsOpen ? 'fold the list' : 'list them'}" title="${said} in this chat: click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${ICON.pr}${rn(`hgit:${s.id}`, prs.length + tks.length)}</button>`;
-    const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${scopedOn(s) ? ' on' : ''}" title="${scopedOn(s) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}${REPO_FUN}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
+    const headHtml = `<h2${s.agent ? ' class="ag"' : ''} title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${scopedOn(s) ? ' on' : ''}" title="${scopedOn(s) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}${REPO_FUN}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span>${agentTag(s)}</h2>
       ${driftChip(s)}${diffChip(s)}${headMove(s)}${headMatrix(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${inEdName()}${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
@@ -9171,7 +9234,7 @@ const toolName = n => {
     else if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
     else if (b.dataset.pract === 'timeline') tvOpenOn(s, b.dataset.url);
     else if (b.dataset.pract === 'editor') editorMenu(s, b.dataset.url, b);
-    else if (b.dataset.pract === 'chat') chatOnPr(s, b.dataset.url, b);
+    else if (b.dataset.pract === 'chat') prChatMenu(s, b.dataset.url, b);
   });
   /** One PR's round let go, or taken back (2026-10-15): the server's word redraws the row. */
   function roundGo(s, url, undo, at) {
@@ -9189,16 +9252,151 @@ const toolName = n => {
   /** A new chat on a PR's branch (2026-10-13): in the tree that has it out, else in a worktree made for it — the chat's
    *  folder is then its branch, and its changes, its editor and its zsh are the branch's by construction. */
   const prChatting = new Set();   // the PRs a chat is being started on (2026-11-04): a second press meanwhile is the same press
-  async function chatOnPr(s, url, at) {
+  async function chatOnPr(s, url, at, agent) {   // `agent` (2026-11-06): its Chat ▾'s, prChatMenu
     if (prChatting.has(url)) return;
     prChatting.add(url); note(at, 'Finding its tree…');
     try {
       let t; try { t = await api('POST', '/api/worktrees', { cwd: s.cwd, pr: url }); } catch (e) { return note(at, e.message, true); }
       document.querySelectorAll('.note').forEach(n => n.remove());
       wtData.delete(s.cwd); $('#pick').open && $('#pick').close();
-      await newChat(t.path);
+      await newChat(t.path, null, withAgent(agent));
     } finally { prChatting.delete(url); }
   }
+  /** A PR row's Chat ▾ (2026-11-06, round XXVIII's E1): a chat on its branch, plain or as an agent — the one you last took
+   *  for a PR first, then the folder's and yours, or any of them (the agent picker). */
+  async function prChatMenu(s, url, at) {
+    const v = s.cwd ? await agentsOf(s.cwd) : null, pr = (s.prs || []).find(p => p.url === url);
+    const go = a => { prefs.prAgent = a; savePrefs(); chatOnPr(s, url, at, a); };
+    const rows = [{ t: 'A chat on its branch', sub: 'in the folder that has it out, else a worktree of its own', fn: () => chatOnPr(s, url, at) }];
+    if (v && !v.launchers) {
+      const last = v.agents.find(a => a.name === prefs.prAgent);
+      const offer = [...new Set([last, ...v.agents.filter(a => a.source === 'folder' || a.source === 'user')].filter(Boolean))].slice(0, 4);
+      rows.push({ hr: true }, ...offer.map(a => ({ t: `…as @${agentShort(a.name)}`, sub: [agentFrom(a, s.cwd), agentModel(a), a === last ? 'the agent you last took for a PR' : ''].filter(Boolean).join(' · '), fn: () => go(a.name) })),
+        { t: '…as another agent…', sub: 'the folder’s, yours, the plugins’, Claude Code’s', fn: () => pickOpen('agent', { cwd: s.cwd, ag: v, title: `A chat on ${pr?.label || 'its branch'}`, then: go }) });
+    }
+    const rc = at.getBoundingClientRect();
+    ctxShow(rows, rc.right - 360, rc.bottom + 4, 'prchat');
+  }
+  // ---- who runs a new chat: an agent (2026-11-06, round XXVIII) -------------------------------------------------------
+  // `claude --agent <name>`: the whole chat is that agent — its prompt, its tools, its model. ⌥⌘N's ＋ ends its second line
+  // with a chip, as Claude ▾ or the agent ⏎ starts it as; a click on it, or @ in the box, lists the folder's agents under ＋
+  // (the folder's and yours by name, each plugin's and Claude Code's own a folded row), and ⏎ takes one, the chats back.
+  // It starts on the agent you last took in that project (prefs.agentFor, '' for Claude), else the folder's settings' own.
+  // A PR row's Chat ▾ and ⌥⌘L by an agent's name start one too. The server lists them (GET /api/agents) and checks a name.
+  const agentsSeen = new Map();   // cwd → { at, v }, asked again 15 s on
+  const agentsNow = cwd => { const h = agentsSeen.get(cwd); return h && Date.now() - h.at < 15_000 ? h.v : null; };
+  async function agentsOf(cwd) {
+    const now = agentsNow(cwd); if (now) return now;
+    const v = await api('GET', `/api/agents?cwd=${encodeURIComponent(cwd)}`).catch(() => null);
+    if (v) agentsSeen.set(cwd, { at: Date.now(), v });
+    return v;
+  }
+  const agentShort = n => String(n || '').replace(/^[^:]*:/, '');   // a plugin's, without the plugin
+  const agDot = c => `<span class="asdot"${c ? ` data-c="${esc(c)}"` : ''}></span>`;
+  const agentModel = a => a?.model && a.model !== 'inherit' ? a.model : '';
+  const agentFrom = (a, cwd) => a.source === 'folder' ? (a.at === cwd ? 'this folder' : folderName(a.at)) : a.source === 'user' ? 'yours' : a.source === 'plugin' ? a.plugin : 'Claude Code';
+  /** A chat's agent where the chat is named: its card, its header, a picker's row (C1). */
+  const agentTag = (s, cls = 'runas') => s.agent ? `<span class="${cls}" title="${esc(`Runs as the agent ${s.agent}: claude --agent, or its folder's setting`)}">${agDot(s.agentColor)}@${esc(agentShort(s.agent))}</span>` : '';
+  /** The chats step's one folder, where claude starts bare: where ＋ has the chip. */
+  const agentCwd = () => pick.mode === 'chats' && pick.ctx.cwds?.length === 1 && !pick.ctx.env ? pick.ctx.cwds[0] : null;
+  const agentsHere = () => !!(pick.ag && !pick.ag.launchers && (pick.mode === 'agent' || agentCwd()));
+  /** Where the box's @ is while there are agents to list: before it, the query or the branch; after it, the agent's. */
+  const atIn = () => pick.mode === 'chats' && agentsHere() ? $('#pickq').value.indexOf('@') : -1;
+  const boxText = () => { const v = $('#pickq').value, i = atIn(); return (i >= 0 ? v.slice(0, i) : v).trim(); };
+  function agentStart(key, v) {
+    if (!v || v.launchers) return null;
+    const has = n => !!n && v.agents.some(a => a.name === n), last = prefs.agentFor?.[key];
+    if (last === '') return null;
+    return has(last) ? last : has(v.setting?.name) ? v.setting.name : null;
+  }
+  function pickAgents() {
+    const cwd = agentCwd(); pick.agLoad = null; if (!cwd) return;
+    const take = v => { if (!v || agentCwd() !== cwd) return false; pick.ag = v; if (!pick.agentTouched) pick.agent = agentStart(pick.ctx.key, v); return true; };
+    if (take(agentsNow(cwd))) return;
+    const gen = pick.gen;
+    pick.agLoad = agentsOf(cwd).then(v => {   // ⏎ before it lands waits on it (newFromChats); an @ typed before it lists them now
+      if (gen !== pick.gen || !$('#pick').open || !take(v)) return;
+      pickHint(); if (atIn() >= 0) { pick.typed = true; pickRender(); } else pickRender(true);
+    });
+  }
+  /** What the new chat's command line gets: the agent, '' for Claude over a folder's own, else nothing. */
+  const agentArg = () => !pick.ag || pick.ag.launchers ? undefined : pick.agent || (pick.ag.setting ? '' : undefined);
+  /** …and the project keeps it for next time when it was your pick (D1). */
+  function agentGo() {
+    const a = agentArg();
+    if (pick.agentTouched && pick.ctx.key) { prefs.agentFor = { ...prefs.agentFor, [pick.ctx.key]: pick.agent || '' }; savePrefs(); }
+    return a;
+  }
+  const withAgent = a => a === undefined ? null : { agent: a };
+  /** ⏎ or a click on an agent's row (null: Claude): the chip has it, the box loses the @, the chats are back. */
+  function agentTake(name) {
+    pick.agent = name; pick.agentTouched = true;
+    const q = $('#pickq'), i = q.value.indexOf('@'); if (i >= 0) q.value = q.value.slice(0, i).trimEnd();
+    pick.sel = 0; pickHint(); pickRender(); brAsk(); q.focus();
+  }
+  /** The chip clicked: the list under ＋, as @ typed — or, open, shut. */
+  function agentList() {
+    const q = $('#pickq'), i = q.value.indexOf('@');
+    q.value = i >= 0 ? q.value.slice(0, i).trimEnd() : (q.value.trim() ? q.value.trimEnd() + ' ' : '') + '@';
+    pick.sel = 0; pick.typed = i < 0; pickHint(); pickRender(); q.focus();
+  }
+  function agentEscape() { if (atIn() < 0) return false; agentList(); return true; }   // esc shuts the list, not the picker
+  /** The list for the query after the @ (B1): typed, every agent that matches, best first; else Claude, the folder's and
+   *  yours, and a row for each plugin's and Claude Code's own, opened by ⏎, → or a click. */
+  function agentItems(v, aq, claude = true) {
+    if (aq) {
+      const hits = []; v.agents.forEach((a, i) => { const m = fuzzy([agentShort(a.name), a.name, a.description || ''], aq); if (m) hits.push([m.score, i, a]); });
+      const out = hits.sort((x, y) => y[0] - x[0] || x[1] - y[1]).map(h => ({ ag: h[2] }));
+      return !claude || !fuzzy(['claude'], aq) ? out : 'claude'.startsWith(aq) ? [{ agClaude: true }, ...out] : [...out, { agClaude: true }];
+    }
+    const out = claude ? [{ agClaude: true }] : [], groups = new Map();
+    for (const a of v.agents) {
+      if (a.source === 'folder' || a.source === 'user') { out.push({ ag: a }); continue; }
+      const k = a.source === 'plugin' ? 'p:' + a.plugin : 'own'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(a);
+    }
+    for (const [k, list] of groups) out.push(...pick.unfold.has(k) ? list.map(a => ({ ag: a })) : [{ agFold: k, list }]);
+    return out;
+  }
+  /** Where the list opens: the first match typed; else the chip's agent, else the first agent after Claude (＋ is row 0). */
+  function agentLand(items, aq) {
+    if (aq) return items.length ? 1 : 0;
+    const i = items.findIndex(x => x.ag && x.ag.name === pick.agent), f = items.findIndex(x => x.ag);
+    return 1 + (i >= 0 ? i : f >= 0 ? f : 0);
+  }
+  function agentRowHtml(x, i, selc, aq, cwd, v) {
+    if (x.agClaude) {
+      const set = v.setting && v.agents.find(a => a.name === v.setting.name);
+      return `<div class="pkrow asrow${selc}" data-i="${i}" title="${esc(set ? `No agent — claude --agent '', so not the folder's own, @${set.name}` : 'No agent — claude as it starts')}"><span class="asdot own">✳</span><span class="n">Claude<span class="cur">${set ? `no agent, not the folder’s @${esc(agentShort(set.name))}` : 'no agent: Claude Code as it starts'}</span></span><span class="num"></span><span class="src"></span></div>`;
+    }
+    if (x.agFold) {
+      const names = x.list.map(a => agentShort(a.name));
+      return `<div class="pkrow asrow fold${selc}" data-i="${i}" title="${esc(`${x.list.map(a => a.name).join(', ')} — ⏎, → or a click shows them`)}"><span class="asdot"></span><span class="n">${x.agFold === 'own' ? `${x.list.length} of Claude Code’s own` : `${x.list.length} from ${esc(x.list[0].plugin)}`}<span class="cur">${esc(names.slice(0, 3).join(', '))}${names.length > 3 ? '…' : ''} · → shows them</span></span><span class="num"></span><span class="src"></span></div>`;
+    }
+    const a = x.ag;
+    return `<div class="pkrow asrow${selc}" data-i="${i}" title="${esc(`claude --agent ${a.name}${a.description ? `\n${a.description}` : ''}`)}">${agDot(a.color)}<span class="n">${markHits('@' + agentShort(a.name), aq)}<span class="cur">${esc(a.description || '')}</span></span><span class="num">${esc(a.model || '')}</span><span class="src">${esc(agentFrom(a, cwd))}</span></div>`;
+  }
+  /** ＋'s chip: who ⏎ starts it as, its model, and why it starts there; off where claude starts through a Taskfile. */
+  function agentChip() {
+    if (pick.mode !== 'chats') return '';
+    if (pick.ctx.env) return `<span class="pkag off" title="${esc(`task ${pick.ctx.env} starts claude its own way: it takes no agent`)}">as Claude</span>`;
+    const v = pick.ag; if (!v || !agentCwd()) return '';
+    if (v.launchers) return '<span class="pkag off" title="This folder starts claude through its Taskfile (task &lt;env&gt;), which takes no agent">as Claude</span>';
+    const a = pick.agent && v.agents.find(x => x.name === pick.agent), open = atIn() >= 0;
+    const why = a && !pick.agentTouched ? prefs.agentFor?.[pick.ctx.key] === a.name ? 'the last you took here' : v.setting?.name === a.name ? 'the folder’s setting' : '' : '';
+    const tip = a ? `claude --agent ${a.name}${a.description ? ` — ${a.description}` : ''} · a click or @ for another` : `Claude, no agent${v.setting ? ` (claude --agent '': not the folder's own, @${v.setting.name})` : ''} · a click or @ for an agent`;
+    return `<button type="button" class="pkag${a ? ' on' : ''}${open ? ' open' : ''}" tabindex="-1" aria-haspopup="listbox" aria-expanded="${open}" title="${esc(tip)}">${a ? `${agDot(a.color)}@${esc(agentShort(a.name))}` : 'as Claude'} <i>▾</i></button>${a && agentModel(a) ? `<span class="pkas">on ${esc(agentModel(a))}</span>` : ''}${why ? `<span class="pkas">· ${why}</span>` : ''}`;
+  }
+  /** ⌥⌘L by an agent's name (E2): a new chat as it in the project in view — its one folder, else the open chat's in it. */
+  const launchAg = { cwd: null, v: null };
+  function launchAgents() {
+    const p = prefs.project !== ALL ? projectStub(prefs.project) : null, s = state.sessions.get(state.current);
+    const cwd = p && !p.custom ? p.key : p?.cwds?.length === 1 ? p.cwds[0] : s?.cwd && (!p || inProject(s, p)) ? projDir(s.cwd) : null;
+    Object.assign(launchAg, { cwd, v: cwd ? agentsNow(cwd) : null });
+    if (!cwd || launchAg.v) return;
+    const gen = pick.gen;
+    agentsOf(cwd).then(v => { if (gen !== pick.gen || launchAg.cwd !== cwd) return; launchAg.v = v; if ($('#pick').open && pick.mode === 'launch' && $('#pickq').value.trim()) pickRender(true); });
+  }
+  const agentActs = () => { const { cwd, v } = launchAg; return !v || v.launchers ? [] : v.agents.map(a => ({ kind: 'action', id: 'ag:' + a.name, agent: a, name: `New chat as @${agentShort(a.name)}`, sub: ` — in ${folderName(cwd)}${agentModel(a) ? `, on ${agentModel(a)}` : ''}`, fn: () => newChat(cwd, null, { agent: a.name }) })); };
   // ---- ⌥⌘N's ＋ on "new worktree" (2026-10-13) --------------------------------------------------------------------------
   // The chats step of a git checkout: ＋ in this folder, or in a worktree of its own on the branch typed — made inside
   // the repo, so the chat shares no files with another. The row says what ⏎ would do as the name is typed (brAsk → GET
@@ -9231,11 +9429,11 @@ const toolName = n => {
   /** The branch typed on "new worktree", asked of the server a beat after the last key: where it is already. */
   function brAsk() {
     clearTimeout(brTimer);
-    const name = $('#pickq').value.trim(), cwd = pick.ctx.cwds?.[0], gen = pick.gen;
+    const name = boxText(), cwd = pick.ctx.cwds?.[0], gen = pick.gen;
     if (pick.mode !== 'chats' || !pick.wt || !pick.git || !BRANCH_OK.test(name) || pick.br?.name === name) return;
     brTimer = setTimeout(async () => {
       const v = await api('GET', `/api/worktrees/branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(name)}`).catch(e => ({ error: e.message }));
-      if (gen !== pick.gen || !$('#pick').open || $('#pickq').value.trim() !== name) return;
+      if (gen !== pick.gen || !$('#pick').open || boxText() !== name) return;
       pick.br = { name, v }; pickRender(true);
     }, 120);
   }
@@ -9250,19 +9448,20 @@ const toolName = n => {
       if (pick.asking) return;   // ⏎ again while the first is asked: one answer
       clearTimeout(brTimer); pick.asking = true;
       b = await api('GET', `/api/worktrees/branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(name)}`).catch(e => ({ error: e.message })).finally(() => { pick.asking = false; });
-      if (gen !== pick.gen || !$('#pick').open || $('#pickq').value.trim() !== name) return;
+      if (gen !== pick.gen || !$('#pick').open || boxText() !== name) return;
       pick.br = { name, v: b }; pickRender(true);
     }
     if (b.ok === false) return note(box, `${name} is not a name git takes for a branch`, true);
     if (b.error) return note(box, b.error, true);
-    if (b.local || b.origin || b.tree) return newChatOnBranch(cwd, name, { share: !!b.tree });
-    baseStep(cwd, name, pick.ctx, b);
+    if (b.local || b.origin || b.tree) return newChatOnBranch(cwd, name, { share: !!b.tree, agent: agentGo() });
+    baseStep(cwd, name, pick.ctx, b, agentGo());
   }
   /** The base step: the checkout's branches and origin's (GET /api/worktrees/bases), the one ⏎ takes first — origin's
    *  default branch, or this checkout's when it is ahead. ← or ⌫ on an empty box goes back to the name, as typed. */
-  async function baseStep(cwd, name, chats, br) {
-    const back = () => { pickOpen('chats', chats); $('#pickq').value = name; pick.br = { name, v: br }; pickWt(true); };
-    pickOpen('base', { cwd, branch: name, bases: null, dflt: br.dflt, back });
+  async function baseStep(cwd, name, chats, br, agent) {   // `agent`: the chip's, carried to the chat and back (2026-11-06)
+    const had = { agent: pick.agent, agentTouched: pick.agentTouched };
+    const back = () => { pickOpen('chats', chats); Object.assign(pick, had); $('#pickq').value = name; pick.br = { name, v: br }; pickWt(true); };
+    pickOpen('base', { cwd, branch: name, bases: null, dflt: br.dflt, back, agent });
     const gen = pick.gen, v = await api('GET', `/api/worktrees/bases?cwd=${encodeURIComponent(cwd)}`).catch(e => ({ error: e.message }));
     if (gen !== pick.gen || !$('#pick').open) return;
     if (v.error) { pick.ctx.err = v.error; return pickRender(); }
@@ -9272,7 +9471,7 @@ const toolName = n => {
   }
   /** The worktree made — from `base` when the branch is new — and the chat started in it; `share`: a tree that has it out. */
   const wtStarting = new Set();   // the branches a chat is being started on (2026-11-04): the picker left and the same asked again is the same ask, not a second chat
-  async function newChatOnBranch(cwd, name, { base = null, share = false } = {}) {
+  async function newChatOnBranch(cwd, name, { base = null, share = false, agent } = {}) {
     const key = `${cwd}\0${name}`;
     if (wtStarting.has(key)) { $('#pick').close(); return note($('#shead'), `Already starting a chat on ${name} — it opens once its worktree is there`); }
     wtStarting.add(key);
@@ -9287,7 +9486,7 @@ const toolName = n => {
         pickRender(); box.focus(); return note(box, e.message, true);
       }
       wtData.delete(cwd); if (run === pick.gen) $('#pick').close();
-      await newChat(t.path);
+      await newChat(t.path, null, withAgent(agent));
       if (t.unasked) note($('#shead'), `Origin did not answer: ${name} starts from ${t.from.replace(/^refs\/(heads|remotes)\//, '')}, unchecked against its branches`, true);
     } finally { wtStarting.delete(key); }
   }
@@ -12602,13 +12801,13 @@ const toolName = n => {
   // asked for in the picker, every time; the server says whether the folder has such launchers (GET /api/launchers).
   // The + button, the folder pick-list and ⌥⌘N's ＋ all come through here and start a chat at the end of it.
   // `then` is ⌥⌘O's way through (2026-09-21): the environment scopes a chats step instead of starting anything.
-  async function newChatIn(cwd, then = 'new') {
+  async function newChatIn(cwd, then = 'new', agent) {   // `agent` (2026-11-06): ＋'s chip's — none where a Taskfile starts claude
     let launchers = [];
     if ($('#pick').open) { const q = $('#pickq'); q.placeholder = 'asking the folder how it starts claude…'; q.disabled = true; pick.cloning = true; }   // a step under way: pickChoose (2026-11-04)
     try { launchers = (await api('GET', `/api/launchers?cwd=${encodeURIComponent(cwd)}`)).launchers || []; } catch {}
     if (launchers.length) return pickOpen('env', { cwd, launchers, then });
     if (then === 'chats') return chatsStep({ key: cwd, name: folderName(cwd), cwds: [cwd] });   // no launchers: the folder's own chats, ＋ a new one
-    $('#pick').close(); newChat(cwd);
+    $('#pick').close(); newChat(cwd, null, withAgent(agent));
   }
   // No chat in the column: the page as a load without a #id draws it, or, from newChat, a header and a word of its own.
   // Also the way off an open chat that has left the board — an empty one ticked done (visible()): nothing in it to
@@ -12669,7 +12868,7 @@ const toolName = n => {
     catch (e) { if (!box || box.isConnected) $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`; else note($('#shead'), `Could not start a chat in ${folderName(cwd)}: ${e.message}`, true); return; }
     // cloned while another chat was opened: the new one is on the list, and the open chat keeps its column and its drawer
     if (box && !box.isConnected) { note($('#shead'), `Cloned — the new chat in ${folderName(cwd)} is on the list`); renderBoard(); return; }
-    leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">${more?.from?.length ? `merged from ${more.from.length} chats` : 'new chat'}${task ? ` · task ${esc(task)}` : ''}</span></h2>`,
+    leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">${more?.from?.length ? `merged from ${more.from.length} chats` : 'new chat'}${task ? ` · task ${esc(task)}` : ''}${more?.agent ? ` as @${esc(agentShort(more.agent))}` : ''}</span></h2>`,
       '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>', repoColor(cwd));
     if (!inProject({ cwd }, projectStub(prefs.project))) scopeTo(ALL);   // so the new chat lands in view (2026-11-04, a filter never takes a value you did not give it)
     savePrefs(); renderBoard();
@@ -12732,7 +12931,7 @@ const toolName = n => {
     const going = termAsking.has(s.id), err = drawer.err;
     // cloning its folder first (2026-10-09), or about to: `folderMissing` and `cloneRef` are the server's, on the summary
     const w = cloneWaits.get(s.id), cl = w && (state.clones.get(w.dir) || { phase: null, percent: 0 });
-    const where = `<code>${esc(homePath(s.cwd || ''))}</code>`, label = s.folderMissing && s.cloneRef ? 'Clone and resume' : 'Resume';
+    const where = `<code>${esc(homePath(s.cwd || ''))}</code>`, label = s.folderMissing && s.cloneRef ? 'Clone and resume' : s.agent ? `Resume as @${esc(agentShort(s.agent))}` : 'Resume';   // Claude Code puts the agent back itself (2026-11-06, E3)
     box.hidden = false;
     box.classList.toggle('err', !!err); box.classList.toggle('cloning', !!w);
     if (w) box.style.setProperty('--clone-p', (cl.percent || 0) / 100);
@@ -12759,7 +12958,7 @@ const toolName = n => {
     const on = !err && (id => state.sessions.has(id) && visible(state.sessions.get(id)) && id)(s.links?.find(l => l.k === 'continued' && l.dir === 'out')?.id);
     setHtml(box, `<span class="ric">${ICON.term}</span>
       <span class="t"><b>${err ? 'Could not resume this chat' : off ? 'Deleted from the board' : on ? 'It went on in another chat' : 'Claude isn’t running in this chat'}</b>${off ? '<span>Its transcript stays. Put it back, or resume it, and its card comes back.</span>' : on ? '<span>Resuming this one starts a second line from here.</span>' : more ? `<span>${more}</span>` : ''}</span>
-      ${off ? '<button class="btn" id="undelGo">Put it back</button>' : ''}${on ? '<button class="btn rgo" id="onGo">Open it</button>' : ''}${s.cwd ? `<button class="btn${on ? '' : ' rgo'}" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
+      ${off ? '<button class="btn" id="undelGo">Put it back</button>' : ''}${on ? '<button class="btn rgo" id="onGo">Open it</button>' : ''}${s.cwd ? `<button class="btn${on ? '' : ' rgo'}" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : s.folderMissing && s.back?.tree ? 'git worktree add, then ' : ''}claude --resume on this chat, in a terminal here${s.agent ? ` — as @${esc(s.agent)} again, Claude Code's own doing` : ''} · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     const go = box.querySelector('#resumeGo'); if (go) go.onclick = () => termAction(state.sessions.get(s.id) || s);
     const back = box.querySelector('#undelGo'); if (back) back.onclick = () => restoreChat(s.id);
     const ahead = box.querySelector('#onGo'); if (ahead) ahead.onclick = () => openSession(on);
