@@ -23,14 +23,14 @@ test('the newest build is fetched in the background, once, and serve-web started
   try {
     await waitFor(() => existsSync(join(cli, 'serve-web', 'a'.repeat(40), 'product.json')), { what: 'the newest build in serve-web\'s cache' });
     assert.match(asked[0], /^\/api\/latest\/server-darwin-(arm64|x64)-web\/stable$/, 'the update service asked for the web server build of this Mac');
-    assert.deepEqual(requests(), [`GET /stable-${'a'.repeat(40)}/`], 'serve-web started for it and asked for that build by name — not its root, which starts a server');
+    assert.deepEqual(requests(), [`GET /stable-${'a'.repeat(40)}/ → 403`, `GET /stable-${'a'.repeat(40)}/`], 'serve-web started for it and asked for that build by name — not its root, which starts a server —, first with no token, which it refuses: nothing is handed the token before its listener is shown to be the board\'s (2026-11-06)');
     assert.match(srv.logText(), /VS Code Web: 1\.142\.0 is out — serve-web fetching it in the background, started for it/);
     await sleep(1500);
     assert.ok(asked.length >= 3, 'asked again on every tick');
-    assert.equal(requests().length, 1, 'the cache has it: serve-web is asked nothing more');
+    assert.equal(requests().length, 2, 'the cache has it: serve-web is asked nothing more');
     newest = { name: '1.143.0', version: 'b'.repeat(40) };   // a release comes out
     await waitFor(() => existsSync(join(cli, 'serve-web', 'b'.repeat(40), 'product.json')), { what: 'the next build' });
-    assert.deepEqual(requests(), [`GET /stable-${'a'.repeat(40)}/`, `GET /stable-${'b'.repeat(40)}/`], 'the next one fetched the same way, from the serve-web already running');
+    assert.deepEqual(requests().slice(1), [`GET /stable-${'a'.repeat(40)}/`, `GET /stable-${'b'.repeat(40)}/`], 'the next one fetched the same way, from the serve-web already running — shown the board\'s already');
   } finally {
     await srv.stop(); upd.close();
   }
@@ -52,6 +52,19 @@ test('VS Code Web wants a token of the board\'s own (2026-10-16): kept in the st
     const again = await srv.post('api/vscode-web', {});
     assert.equal(again.status, 200, JSON.stringify(again.body)); assert.equal(again.body.token, r.body.token, 'a restart keeps it — the pane\'s cookie with it');
   } finally { await srv.stop(); }
+});
+
+test('what holds the port and wants a token is handed none unless it is the board\'s own serve-web or this user\'s VS Code (2026-11-06)', { timeout: 40_000 }, async () => {
+  const port = await freePort(), got = [];
+  const squat = createServer((req, res) => { got.push(req.headers.cookie || ''); res.writeHead(403); res.end(); });   // refuses as serve-web does, and keeps what it is sent
+  await new Promise(r => squat.listen(port, '127.0.0.1', r));
+  const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
+  try {
+    const r = await srv.post('api/vscode-web', {});
+    assert.equal(r.status, 409, JSON.stringify(r.body)); assert.match(r.body.error, /listens on port \d+, not VS Code Web/);
+    assert.equal(r.body.token, undefined);
+    assert.ok(got.length >= 1 && got.every(c => !/vscode-tkn/.test(c)), `no cookie went to it: ${JSON.stringify(got)}`);
+  } finally { await srv.stop(); squat.close(); }
 });
 
 test('a VS Code Web on the port that wants no token — one started before 2026-10-16 that outlived its board — is not taken for the board\'s', { timeout: 40_000 }, async () => {

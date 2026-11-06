@@ -5109,27 +5109,42 @@ function endVsWebWithUs() {
 // `path` is what is asked of it: the root by default — which starts the newest build's server —, a build by name for
 // freshenVsWeb, which only has it fetched. With the token's cookie, unless `bare`.
 const vswebAnswers = (path = '', bare = false) => fetch(VSWEB_URL + path, { headers: bare ? {} : { cookie: `vscode-tkn=${vswebToken()}` }, signal: AbortSignal.timeout(1500) }).then(r => { r.body?.cancel(); return r.status; }, () => 0);
-/** Why what answered `status` on the port is not this board's VS Code Web, or null. One the board did not start is
- *  asked once without the token: a serve-web that answers that — one started before 2026-10-16 that outlived its board,
- *  or anyone's — is not adopted, nor is one that refuses the token. */
+/** Who listens on `port`: the first listener's {pid, pgid, uid, comm}, or null — none, or one lsof cannot see (another
+ *  account's). lsof and ps by their own paths. */
+async function portListener(port) {
+  try {
+    const { stdout } = await execFileP('/usr/sbin/lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-Fpc'], { timeout: 5000 });
+    const pid = Number(/^p(\d+)$/m.exec(stdout)?.[1]); if (!pid) return null;
+    const [pgid, uid] = (await execFileP('/bin/ps', ['-o', 'pgid=,uid=', '-p', String(pid)], { timeout: 5000 })).stdout.trim().split(/\s+/).map(Number);
+    return { pid, pgid, uid, comm: /^c(.*)$/m.exec(stdout)?.[1] || '' };
+  } catch { return null; }   // lsof exits 1 when nothing listens
+}
+/** Why what answers on the port is not this board's VS Code Web, or null. Nothing is handed the token before that is
+ *  known (2026-11-06: the first look carried the cookie, so whatever held the port — another account, a container's
+ *  published port — was handed it). Asked bare first: a serve-web that answers that — one started before 2026-10-16 that
+ *  outlived its board, or anyone's — is not this board's. One that wants a token is, when its listener is the serve-web
+ *  this server started (its process group), or this user's own VS Code CLI — a serve-web an earlier run of the board
+ *  left. `status`: what the bare look answered. */
 async function vswebWhyNot(status) {
-  if (status === 403) return `something on port ${VSWEB_PORT} refuses this board's token — another VS Code Web; stop it, or set VSWEB_PORT`;
-  if (vsweb || vswebSure) return null;
-  const bare = await vswebAnswers('', true);
-  if (bare && bare !== 403) return `something on port ${VSWEB_PORT} serves VS Code Web with no token — not this board's; stop it (lsof -iTCP:${VSWEB_PORT} -sTCP:LISTEN), or set VSWEB_PORT`;
-  vswebSure = bare === 403; return null;
+  if (status && status !== 403) return `something on port ${VSWEB_PORT} serves VS Code Web with no token — not this board's; stop it (lsof -iTCP:${VSWEB_PORT} -sTCP:LISTEN), or set VSWEB_PORT`;
+  const l = await portListener(VSWEB_PORT);
+  if (!l || l.uid !== process.getuid()) return `something on port ${VSWEB_PORT} that is not yours answers — not this board's VS Code Web; set VSWEB_PORT`;
+  if (!(vsweb && l.pgid === vsweb.pid) && !/^code(-tunnel)?$/.test(basename(l.comm))) return `${l.comm} (pid ${l.pid}) listens on port ${VSWEB_PORT}, not VS Code Web — stop it, or set VSWEB_PORT`;
+  vswebSure = true; return null;
 }
 async function ensureVsWeb(path = '') {
   let token; try { token = vswebToken(); } catch (e) { return { code: 500, error: `could not keep VS Code Web's token in ${VSWEB_TOKEN_FILE}: ${e.message}` }; }
-  const now = await vswebAnswers(path);
-  if (now) { const why = await vswebWhyNot(now); return why ? { code: 409, error: why } : { ok: true, url: VSWEB_URL, token, started: false }; }
+  const bare = vswebSure ? null : await vswebAnswers(path, true);
+  if (bare) { const why = await vswebWhyNot(bare); if (why) return { code: 409, error: why }; }
+  const now = bare === 0 ? 0 : await vswebAnswers(path);
+  if (now) return now === 403 ? { code: 409, error: `something on port ${VSWEB_PORT} refuses this board's token — another VS Code Web; stop it, or set VSWEB_PORT` } : { ok: true, url: VSWEB_URL, token, started: false };
   vswebSure = false;
   const code = codeBin();
   if (!code) return { code: 501, error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' };
   if (!vsweb) {
     try {
       vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--connection-token-file', VSWEB_TOKEN_FILE, '--accept-server-license-terms'], { stdio: 'ignore', env: drawerEnv(), detached: true });
-      vsweb.on('exit', c => { console.log(`[peixairada] code serve-web exited (${c})`); vsweb = null; });
+      vsweb.on('exit', c => { console.log(`[peixairada] code serve-web exited (${c})`); vsweb = null; vswebSure = false; });
       // a spawn that fails is an 'error' and no 'exit' — and an 'error' nobody listens for ends the server
       vsweb.on('error', e => { console.error(`[peixairada] code serve-web: ${e.message}`); vsweb = null; binCache.delete('code'); });
     } catch (e) { vsweb = null; return { code: 500, error: `could not start code serve-web: ${e.message}` }; }
@@ -5137,8 +5152,8 @@ async function ensureVsWeb(path = '') {
   const t0 = Date.now();
   while (Date.now() - t0 < 60_000) {   // the first run downloads the server build
     await new Promise(r => setTimeout(r, 500));
-    const status = await vswebAnswers(path);
-    if (status) { const why = await vswebWhyNot(status); return why ? { code: 409, error: why } : { ok: true, url: VSWEB_URL, token, started: true, status }; }
+    const first = await vswebAnswers(path, true);
+    if (first) { const why = await vswebWhyNot(first); if (why) return { code: 409, error: why }; return { ok: true, url: VSWEB_URL, token, started: true, status: await vswebAnswers(path) }; }
     if (!vsweb) return { code: 500, error: 'code serve-web exited before it answered' };
   }
   return { code: 504, error: `code serve-web did not answer on ${VSWEB_PORT} within 60 s` };
