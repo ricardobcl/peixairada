@@ -213,6 +213,7 @@ let autoUpdate = false, updateLast = null, updateHeld = null, appBuild = null;
 // sweepWorktrees.
 let worktreesMade = {};
 let keyEnforced = false;   // the board's key required of every ask (2026-10-16; see keyWant): once on, for good
+let jiraTokenSite = null;   // the Jira site the kept token was saved for (2026-11-06; jiraToken)
 let peacockMoved = null;   // when Peacock's colours went into the setup (2026-10-15; movePeacock): once
 // The chat (2026-10-17; see chatTick): `owner/repo#room` -> the newest message shown there — after it, someone else's are
 // unread; and the chat repos whose GitHub mails were turned off (chatBoot), once each.
@@ -272,6 +273,7 @@ function loadState() {
     worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
     peacockMoved = typeof st.peacockMoved === 'string' ? st.peacockMoved : null;
     keyEnforced = st.keyEnforced === true;
+    jiraTokenSite = typeof st.jiraTokenSite === 'string' ? st.jiraTokenSite : null;
     chatSeen = st.chatSeen && typeof st.chatSeen === 'object' ? st.chatSeen : {};
     chatQuiet = Array.isArray(st.chatQuiet) ? st.chatQuiet.filter(r => typeof r === 'string') : [];
     chatLinks = Array.isArray(st.links) ? st.links.filter(l => LINK_KINDS.has(l?.k) && typeof l.from === 'string' && typeof l.to === 'string') : []; linkIdx = null;
@@ -293,7 +295,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, removed: removedMarks, unlinked, seen, seenSince, driftAcks, mutedChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, removed: removedMarks, unlinked, seen, seenSince, driftAcks, mutedChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, jiraTokenSite, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body, { mode: 0o600 });
@@ -1930,8 +1932,18 @@ async function sweepTickets() {
   }
   for (const key of dueTickets(sessions.values())) queueTicket(key, 0);
 }
+// The token kept is for the site it was saved for (2026-11-06): the setup's site is a line of a file, and changing it
+// sent the same Basic token to whatever https host it named. The site it was saved for is kept beside it
+// (`jiraTokenSite`; a token from before that, the site at the first read); another site has no token until one is
+// pasted for it. JIRA_API_TOKEN is yours to point where you like.
 async function jiraToken() {
   if (process.env.JIRA_API_TOKEN) return { token: process.env.JIRA_API_TOKEN, from: 'env' };
+  const t = await jiraKept(), site = setup.jira?.site || null;
+  if (!t.token || !site) return t;
+  if (!jiraTokenSite) { jiraTokenSite = site; saveState(); }
+  return jiraTokenSite === site ? t : { token: null, from: null, why: `the token kept is for ${jiraTokenSite} — paste one for ${site}`, at: t.at };
+}
+async function jiraKept() {
   if (jiraToken.cache && (jiraToken.cache.token || Date.now() - jiraToken.cache.at < 5 * 60_000)) return jiraToken.cache;
   const email = setup.jira?.email; let token = null, why = 'no API token yet';   // the page says where to paste one, from where it says it (2026-10-16)
   if (process.env.JIRA_TOKEN_FILE) { try { token = readFileSync(process.env.JIRA_TOKEN_FILE, 'utf8').trim() || null; } catch {} }
@@ -1951,6 +1963,7 @@ async function saveJiraToken(token) {
     const out = await new Promise((res, rej) => { const p = execFile('/usr/bin/security', ['-i'], { timeout: 30_000 }, (err, so, se) => err ? rej(new Error(String(se || err.message).trim())) : res(String(se || '') + String(so || ''))); p.stdin.end(cmd); });
     if (token && /error|could not/i.test(out)) throw new Error(out.trim().split('\n')[0]);
   }
+  jiraTokenSite = token ? setup.jira?.site || null : null; saveState();
   jiraReset();
 }
 /** One request to the site, as you: JSON in, JSON out, a throw with Jira's own words. */

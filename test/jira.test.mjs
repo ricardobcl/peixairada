@@ -2,6 +2,7 @@
 // (cleanSetup), and end to end against a fake Jira — a key said in prose, a link, the branch; a key whose project the
 // site has not got, never asked; one Jira has no issue for, never shown; the token kept apart from the setup file.
 import { test } from 'node:test';
+import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -82,6 +83,18 @@ test('the token from the Setup: kept apart (the keychain; a file in a test), and
     info = (await put('api/jira/token', { token: jira.token })).body;
     assert.deepEqual([info.token, info.me, info.error], ['file', 'Me Myself', null]);
     assert.equal(readFileSync(join(srv.dir, 'jira-token'), 'utf8'), jira.token);
+    // another site in the setup (2026-11-06): the token kept is the first site's, and goes nowhere else
+    const auth = []; const other = createServer((req, res) => { auth.push(req.headers.authorization || null); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); });
+    await new Promise(r => other.listen(0, '127.0.0.1', r));
+    try {
+      await put('api/config', { jira: { site: `http://127.0.0.1:${other.address().port}`, email: jira.email } });
+      info = (await srv.api('api/jira')).body;
+      assert.deepEqual([info.token, info.me], [null, null]); assert.match(info.error, /the token kept is for http:\/\/127\.0\.0\.1:\d+ — paste one for/);
+      assert.ok(auth.every(a => a === null), `no token went to the other site: ${JSON.stringify(auth)}`);
+      await put('api/config', { jira: { site: jira.url, email: jira.email } });
+      info = (await srv.api('api/jira')).body;
+      assert.deepEqual([info.token, info.me, info.error], ['file', 'Me Myself', null], 'back on its own site');
+    } finally { other.close(); }
     info = (await srv.api('api/jira/token', { method: 'DELETE' })).body;
     assert.equal(info.token, null); assert.ok(!existsSync(join(srv.dir, 'jira-token')));
   } finally { await srv.stop(); await jira.close(); }
