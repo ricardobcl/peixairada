@@ -8518,7 +8518,11 @@ const toolName = n => {
   /** `ide`: the folder's editor, which only the editor's own row opens (2026-10-03; any http://127.0.0.1:<port>/ was
    *  taken for it before — a dev server's link replaced the folder's editor). `s`: the chat it is for, the open one
    *  unless said — an answer that comes after that chat was left records its tab there and shows nothing. */
+  // What the board hands on (2026-11-06): a web page, mail, an editor's file — nothing else. In a browser it went by a
+  // link's click (a javascript: one would have run here), in the app as `external`, which gives the system any scheme.
+  const OUT_OK = /^(?:https?:\/\/|mailto:|(?:vscode|vscode-insiders|zed):\/\/file\/)/i;
   function openExternal(url, { ide = false, s = state.sessions.get(state.current), folder = s?.cwd } = {}) {
+    if (!OUT_OK.test(String(url || ''))) { note($('#shead'), 'Not opened: the board opens web pages, mail and files in the editor', true); return; }
     // in a browser an app's URL (vscode://, zed://) is followed as a link is — the browser hands it over, or asks —, not
     // in a tab of its own, which stays blank (2026-10-13)
     if (!inApp) { if (IN_PANE.test(url)) window.open(url, '_blank', 'noopener'); else { const a = document.createElement('a'); a.href = url; a.click(); } return; }
@@ -9537,7 +9541,7 @@ const toolName = n => {
     rows.push({ t: r.fork ? `Review it, detached, ${inEd}` : 'Review only, detached', sub: `at ${r.headOid ? r.headOid.slice(0, 7) : 'its head'} — nothing to commit to; removed once the PR is merged or closed and nothing is in it`, fn: () => worktreeFor(s, { pr: url, detach: true }, `${name} @ #${pr.number}`, at) });
     if (tree?.modules === 'same') rows.push({ t: `Link node_modules from ${name}`, sub: 'its lockfile is the same — nothing installed', fn: () => api('POST', '/api/worktrees/modules', { path: tree.path }).then(() => { wtData.delete(s.cwd); note(at, 'node_modules linked'); }, e => note(at, e.message, true)) });
     else if (tree?.modules === 'differ') rows.push({ t: 'npm ci there…', sub: `its lockfile differs — typed into the ${shName()}, not run`, fn: () => typeInShell(s, `cd ${shellWord(tree.path)} && npm ci`, at) });
-    if (guard) rows.push({ hr: true }, { t: `Switch this folder to ${b}…`, off: !guard.ok, sub: guard.ok ? `git switch ${b} typed into its ${shName()}, not run` : `not offered: ${guard.why.join(' · ')}`, fn: () => typeInShell(s, `git switch ${b}`, at) });
+    if (guard) rows.push({ hr: true }, { t: `Switch this folder to ${b}…`, off: !guard.ok, sub: guard.ok ? `git switch ${shArg(b)} typed into its ${shName()}, not run` : `not offered: ${guard.why.join(' · ')}`, fn: () => typeInShell(s, `git switch ${shArg(b)}`, at) });
     else if (r.fork) rows.push({ hr: true }, { t: 'Switch this folder…', off: true, sub: 'not offered: a fork’s branch' });
     const rc = at.getBoundingClientRect();
     ctxShow(rows, rc.right - 360, rc.bottom + 4, 'editor');
@@ -13013,6 +13017,8 @@ const toolName = n => {
   // that key is sent for it; in a browser elsewhere the clipboard is that machine's, so the image is uploaded.
   const atMention = p => '@' + p.replace(/ /g, '\\ ');
   const shellWord = p => `'${p.replace(/'/g, `'\\''`)}'`;
+  /** A word as a shell reads it: as it is when nothing in it is the shell's, else quoted (2026-11-06: a branch's name). */
+  const shArg = p => /^[\w./@%+=:,-]+$/.test(p) ? p : shellWord(p);
   function attachPaths(paths) {
     if (!paths.length) return false;
     // a name with a control character in it would be keys, not a name (2026-11-06): refused whole, said where the drop went

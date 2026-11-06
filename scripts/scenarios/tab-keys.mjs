@@ -106,6 +106,13 @@ export default async function (ctx) {
   // esc in the box: what was typed goes first, then the tab; ⌘T on a blank tab is another; ⌘W closes one
   await ctx.cmd('KeyT');
   await ctx.waitFor(`/^new:/.test(window.peix.state().tab)`, { what: 'a blank tab again' });
+  // an address the board does not hand on (2026-11-06): a file: one typed is no `external` — the app gives the system any
+  // scheme it gets —, and the board says so
+  await ctx.evaluate(`window.__posts.length = 0`);
+  await ctx.fill('#ptabsB .paddr', 'file:///etc/hosts'); await press('Enter'); await ctx.sleep(300);
+  ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'external'))`).then(JSON.parse), [], 'a file: address is not handed to the system');
+  ctx.assert.match(await ctx.evaluate(`[...document.querySelectorAll('.note')].map(n => n.textContent).join(' | ')`), /Not opened/, '…and the board says so');
+  if (!/^new:/.test(await ctx.peix('state().tab'))) { await ctx.cmd('KeyT'); await ctx.waitFor(`/^new:/.test(window.peix.state().tab)`, { what: 'a blank tab again' }); }
   await ctx.fill('#ptabsB .paddr', 'abc');
   await press('Escape');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabsB .paddr').value`), '', 'esc empties the box');
