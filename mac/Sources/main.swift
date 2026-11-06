@@ -562,6 +562,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     paneOverlay.layer?.backgroundColor = NSColor.clear.cgColor
     paneDelegate.open = { [weak self] w, url in self?.paneOpen(w, url) }
     paneDelegate.linkOut = { [weak self] url, done in self?.paneLinkOut(url, done) ?? done(false) }
+    paneDelegate.gestured = { [weak self] w in self?.gestureAt[ObjectIdentifier(w)].map { Date().timeIntervalSince($0) < 1 } ?? false }
   }
   /// What a report wants of the window (2026-11-04; the page's detailsText): its shape and where the pages' views really
   /// are, in the window's terms, from its top; never a page's address. Their places hold while a dialog has them hidden.
@@ -630,6 +631,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     // Every navigation, a link followed or a pushState inside GitHub included: the strip shows where the view is.
     paneObs[key] = w.observe(\.url) { [weak self] v, _ in self?.tellPaneUrl(key, v.url?.absoluteString) }
     while paneViews.count > AppDelegate.paneViewsMax, let old = paneOrder.first(where: { !paneKeys.contains($0) && $0 != key }) {
+      if let v = paneViews[old] { gestureAt[ObjectIdentifier(v)] = nil }
       paneViews[old]?.removeFromSuperview(); paneViews[old] = nil; paneOrder.removeAll { $0 == old }
       paneObs[old]?.invalidate(); paneObs[old] = nil
       paneFrameC[old] = nil; paneRects[old] = nil
@@ -937,13 +939,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // A click on a page in the pane takes the keys to its half (2026-09-28): the board hears a click on its own halves,
   // but a page is a native view over them, so ⌘W, ⌥⌘W and the half's rule went on naming the half the keys were in
   // before. The page answers with a `pane` message, as for any change of half; the click goes on to the page.
+  // A press or a key of the user's in a page (2026-11-06): what a page may hand to another app follows one (PaneDelegate's
+  // `gestured`). A script's click() arrives as a link clicked in the main frame — WebKit cannot tell them apart.
+  var gestureAt: [ObjectIdentifier: Date] = [:]
   private func installPaneClickMonitor() {
-    NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] e in
+    NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp, .keyDown]) { [weak self] e in
       guard let self = self, e.window === self.window, !self.paneOverlay.isHidden else { return e }
+      if e.type == .keyDown {
+        if let fr = self.window.firstResponder as? NSView, let v = self.paneViews.values.first(where: { fr.isDescendant(of: $0) }) { self.gestureAt[ObjectIdentifier(v)] = Date() }
+        return e
+      }
       let key = self.paneShownKeys.first { k in
         guard let v = self.paneViews[k], !v.isHidden else { return false }
         return v.bounds.contains(v.convert(e.locationInWindow, from: nil))
       }
+      if let key, let v = self.paneViews[key] { self.gestureAt[ObjectIdentifier(v)] = Date() }
+      guard e.type == .leftMouseDown else { return e }
       if let key = key {   // always (2026-10-14): the board's half is its own to compare, a click on the half it has already moves nothing
         self.toBoard("window.peixPaneFocus && window.peixPaneFocus(\(jsLit(key)))", completionHandler: nil)
       }
@@ -2019,6 +2030,7 @@ final class BoardWebView: WKWebView {
 final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   var open: ((WKWebView, URL) -> Void)?   // a new window's web page, to the board (AppDelegate.paneOpen)
   var linkOut: ((URL, @escaping (Bool) -> Void) -> Void)?   // whether a link out goes to the browser, the board's word (AppDelegate.paneLinkOut)
+  var gestured: ((WKWebView) -> Bool)?   // a press or a key of the user's in that view within the second (AppDelegate.gestureAt)
   /// A page's new window — a link with target=_blank, a window.open — is a tab of the chat's own, as a browser's new tab
   /// (2026-10-21). It was loaded in the view it came from: VS Code Web opens every link out that way, and the editor's
   /// tab has no strip, so GitHub filled its half with no address and no way back. Not a web page: loaded here, where
@@ -2031,21 +2043,22 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   }
   /// What a page in the pane may hand to another app (2026-10-14): a link clicked in its own main frame — not a script, a
   /// redirect or a frame inside it — and only to these, mail, the editors and GitHub Desktop. Any other scheme not the
-  /// web's is cancelled: every one went to NSWorkspace, file: included, with no click at all.
+  /// web's is cancelled: every one went to NSWorkspace, file: included, with no click at all. A script's click() is a
+  /// link clicked to WebKit, so the click must be the user's (2026-11-06): a press or a key in that view a moment before.
   static let outSchemes = kHandOn.subtracting(["http", "https"])
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, let scheme = url.scheme?.lowercased(), !["http", "https", "about", "blob", "data"].contains(scheme) {
-      let clicked = action.navigationType == .linkActivated && action.sourceFrame.isMainFrame
-      if clicked && PaneDelegate.outSchemes.contains(scheme) { handOn(url, from: "a page in the pane") }
-      else { logLine("pane: \(scheme): not opened, from \(webView.url?.host ?? "?") — \(clicked ? "not a scheme handed on" : "no link clicked in the page")") }
+      let clicked = action.navigationType == .linkActivated && action.sourceFrame.isMainFrame, yours = gestured?(webView) ?? false
+      if clicked && yours && PaneDelegate.outSchemes.contains(scheme) { handOn(url, from: "a page in the pane") }
+      else { logLine("pane: \(scheme): not opened, from \(webView.url?.host ?? "?") — \(!clicked ? "no link clicked in the page" : !yours ? "no click or key of yours there" : "not a scheme handed on")") }
       return decisionHandler(.cancel)
     }
     // A link to another site clicked in a page (2026-10-21): the board says whether it goes to the browser — Settings ›
     // General › Links, *in the browser* but for the sites it keeps. The page's own site, a script, a redirect, a frame:
     // here, as ever. A new window's link is the board's already (open, above).
     if let url = action.request.url, let ask = linkOut, action.navigationType == .linkActivated, action.targetFrame?.isMainFrame == true,
-       url.host?.lowercased() != webView.url?.host?.lowercased() {
+       url.host?.lowercased() != webView.url?.host?.lowercased(), gestured?(webView) ?? false {   // a script's: here, as a redirect
       return ask(url) { out in
         if out { logLine("pane: a link to \(url.host ?? "?") — to the browser"); handOn(url, from: "a page in the pane") }
         decisionHandler(out ? .cancel : .allow)
