@@ -279,6 +279,25 @@ follows —, and `mac/build.sh install` when `mac/` changed. After
 switching Node versions, or installing a CLI outside the `PATH` you installed with, run the last two install lines
 again.
 
+**A rewritten history** (November 2026): `main` was rewritten once — every commit made again and signed, the files as
+they were. A board updated since 2026-11-06 follows it by itself (*History rewritten* · *Update now*). One older says
+*diverged* and stops updating; **don't take its `git pull --rebase` hint**, which replays the old commits over the new
+ones. Instead, once, in the checkout:
+
+```sh
+git fetch origin
+# commits of your own the move would drop — normally none:
+git rev-list origin/main..HEAD | grep -vxFf <(git show origin/main:.github/rewritten | grep -E '^[0-9a-f]{40}$')
+git reset --keep origin/main   # onto the new history, your uncommitted changes kept
+npm ci
+scripts/launchd.sh restart     # the server first…
+mac/build.sh install           # …then the app
+```
+
+A commit the second line names is yours: `git branch my-work` before the reset, `git cherry-pick <commit>…` after it.
+`git reset --keep` refusing (*not uptodate*) is a change of yours in a file the new history changes too: commit or
+stash it first. From then on Settings › Updates says *Up to date* and the updates come as before.
+
 **Removing**: `scripts/launchd.sh uninstall`, then delete `/Applications/peixAIrada.app` — and `~/.config/peixairada`
 and `~/Library/Application Support/peixAIrada` to forget your setup and the board's state.
 
