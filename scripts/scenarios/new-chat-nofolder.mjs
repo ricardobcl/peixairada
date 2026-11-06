@@ -8,8 +8,9 @@ import { join } from 'node:path';
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
-// Each row as it reads: the name without the path badge, the badge, its kind and whether it is the selection.
-const rows = ctx => ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => { const n = r.querySelector('.n').cloneNode(true); const cur = n.querySelector('.cur'); const path = cur?.textContent || ''; cur?.remove(); return { name: n.textContent, path, none: r.classList.contains('nofolder'), x: !!r.querySelector('.pkx'), sel: r.classList.contains('sel') }; })`);
+// Each row as it reads: the name without the path badge, the badge (no folder's on its second line, before the agent's chip
+// — 2026-11-06), its kind and whether it is the selection.
+const rows = ctx => ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => { const n = r.querySelector('.n').cloneNode(true); const cur = n.querySelector('.cur'); const path = cur?.textContent || r.querySelector(':scope > .pkline > .cur')?.textContent || ''; cur?.remove(); return { name: n.textContent, path, none: r.classList.contains('nofolder'), x: !!r.querySelector('.pkx'), sel: r.classList.contains('sel') }; })`);
 
 export default async function (ctx) {
   const out = {};

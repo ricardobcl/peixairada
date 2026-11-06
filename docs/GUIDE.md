@@ -67,7 +67,7 @@ setup file, and how the pictures are made.
 - 📊 **A status bar** — along the window's foot: the search, the connection, what asks you, the board's own update,
   the faces on your PRs, your plan's limits (or its monthly spend cap) as small pies, keeping the Mac awake (with the
   lid closed too, by Touch ID where sudo takes it), CPU and memory, and the time.
-- 🎭 **A new chat as an agent** — ⌥⌘N's *＋ new chat* ends its line with *as Claude ▾*: click it, or type `@`, for the
+- 🎭 **A new chat as an agent** — ⌥⌘N's *＋ new chat* (and its *new chat — no folder*) ends its line with *as Claude ▾*: click it, or type `@`, for the
   agents a chat there can be — the folder's own (`.claude/agents`), yours, your plugins' and Claude Code's — and ⏎ takes
   one: the chat runs as it from its first word (`claude --agent`), its prompt, tools and model. The next new chat in that
   project starts on the agent you took. A PR's *Chat ▾* and ⌥⌘L by an agent's name start one too; the chat wears `@name`

@@ -2698,9 +2698,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* …and on a git checkout its switch (2026-10-13): this folder | new worktree, the settings' segmented look; what ⏎
      would do on a line of its own under the name and the switch, both ways, so the row keeps its height as it switches —
      in red where ⏎ would share a tree or git would refuse the name. */
-  .pkrow.chat:is(.sw, .pk2) { row-gap: 1px; }
+  .pkrow:is(.chat.sw, .pk2) { row-gap: 1px; }
   .pkrow.chat.sw .num { max-width: none; overflow: visible; }
-  .pkrow.chat:is(.sw, .pk2) > .pkline { grid-column: 2 / -1; display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--muted); min-width: 0; }
+  .pkrow:is(.chat.sw, .pk2) > .pkline { grid-column: 2 / -1; display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--muted); min-width: 0; }
   .pkline > .cur { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pkline > .cur:empty { display: none; }
   .pkrow .pkmode { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
@@ -7103,6 +7103,7 @@ const toolName = n => {
     chats: () => atIn() >= 0 ? '<kbd>⏎</kbd> takes the agent, the chats come back <s>·</s> <kbd>⌫</kbd> on the <kbd>@</kbd> goes back without one'
       : [pick.git && (agentsHere() ? '<kbd>←</kbd><kbd>→</kbd> this folder or a new worktree' : '<kbd>←</kbd><kbd>→</kbd> ＋ new chat in this folder, or in a new worktree on a branch of its own'), agentsHere() && '<kbd>@</kbd> an agent to run it'].filter(Boolean).join(' <s>·</s> '),
     base: '<kbd>⏎</kbd> a worktree from the branch selected <s>·</s> <kbd>←</kbd> back to its name',
+    new: () => atIn() >= 0 ? '<kbd>⏎</kbd> takes the agent for a chat in no folder <s>·</s> <kbd>⌫</kbd> on the <kbd>@</kbd> goes back without one' : '',
   };
   const pickHint = () => {
     const h = PICK_HINT[pick.mode], t = typeof h === 'function' ? h(pick.ctx) : h; $('#pickq').placeholder = pick.ctx.back && !/← back/.test(t) ? t.replace(/ · esc$/, ' · ← back · esc') : t;
@@ -7118,7 +7119,7 @@ const toolName = n => {
     pick.mode = mode; pick.ctx = ctx; pick.sel = 0; pick.gen++; pick.cloning = false; pick.git = null; pick.wt = false; pick.br = null; pick.named = null; $('#pickq').disabled = false;
     pick.ag = mode === 'agent' ? ctx.ag : null; pick.agent = null; pick.agentTouched = false; pick.unfold = new Set();
     if (mode === 'new') loadFolders();   // the org's folders, fresh: the rows join the list when the answer lands
-    if (mode === 'chats') pickAgents(); else if (mode === 'launch') launchAgents();
+    if (mode === 'chats' || mode === 'new') pickAgents(); else if (mode === 'launch') launchAgents();
     $('#pickq').value = ''; pickHint();
     pickRender(); $('#pickq').focus();
     // ⌥⌘N starts on the project in view (2026-09-28, with ＋ gone): ⏎ takes it, a second ⏎ is a new chat there
@@ -7208,14 +7209,18 @@ const toolName = n => {
       const board = projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length));
       const items = pick.mode === 'new' ? [...board, ...freeFolders()] : board;
       const none = pick.mode === 'new' && state.about.scratch ? [{ noFolder: true, name: NO_FOLDER, cwd: state.about.scratch }] : [];   // ＋ a chat in no folder, first (2026-10-14)
-      pick.list = hunt([...none, ...items], p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
-      if (pick.mode === 'new') pick.list = [...pick.list, ...cloneRows(items)];
+      // …as Claude or an agent (2026-11-06): its chip, as ＋'s in the chats step — a click or @ lists them under it, alone
+      const at = atIn(), aq = at >= 0 ? $('#pickq').value.slice(at + 1).trim().toLowerCase() : '', ags = at >= 0 ? agentItems(pick.ag, aq) : null;
+      pick.list = ags ? [...none, ...ags] : hunt([...none, ...items], p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
+      if (ags && pick.typed) { pick.sel = agentLand(ags, aq); pick.typed = false; }
+      if (pick.mode === 'new' && !ags) pick.list = [...pick.list, ...cloneRows(items)];
+      const chip = none.length ? agentChip() : '';
       if (pick.mode === 'project') pick.list = [...pick.list, { newProject: true }];   // ＋ new project, last and never filtered out
       // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
       const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the settings (⌘,) put it back">✕</button>`;
       const ed = p => pick.mode === 'project' && p.custom ? `<button class="pked" data-id="${esc(p.id)}" title="Edit ${esc(p.name)} — its name and folders">✎</button>` : '';
-      row = (p, i) => p.noFolder
-        ? `<div class="pkrow nofolder${sel(i)}" data-i="${i}" title="A chat that belongs to no folder — claude starts at once in the board's own, ${esc(homePath(p.cwd))}"><span class="sq"></span><span class="n">${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`
+      row = (p, i) => p.ag || p.agClaude || p.agFold ? agentRowHtml(p, i, sel(i), aq, agentCwd(), pick.ag) : p.noFolder
+        ? `<div class="pkrow nofolder pk2${sel(i)}" data-i="${i}" title="A chat that belongs to no folder — claude starts at once in the board's own, ${esc(homePath(p.cwd))}${chip ? ' · the chip, or @, for an agent to run it' : ''}"><span class="sq"></span><span class="n">${ags ? esc(p.name) : mark(p.name)}</span><span class="pills"></span><span class="t"></span><span class="pkline"><span class="cur">${esc(homePath(p.cwd))}</span>${chip ? `<span class="pkas">·</span>${chip}` : ''}</span></div>`
         : p.newProject
         ? `<div class="pkrow newproj${sel(i)}" data-i="${i}" title="A name over one or more folders — multi-repo work, an investigation"><span class="sq"></span><span class="n">＋ new project<span class="cur">a name over several folders</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.clone
@@ -7224,7 +7229,10 @@ const toolName = n => {
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
           : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t"${p.last ? ` data-at="${esc(p.last)}"` : ''}></span>${hx(p)}${ed(p)}</div>`;
     }
-    if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.ag || x.agFold || x.agClaude ? (x.ag && x.ag === was.ag) || (x.agFold && x.agFold === was.agFold) || (x.agClaude && was.agClaude) : x.id === was.id); if (i >= 0) pick.sel = i; }
+    const same = (x, w) => x.isNew ? w.isNew : x.ag || x.agFold || x.agClaude ? (x.ag && x.ag === w.ag) || (x.agFold && x.agFold === w.agFold) || (x.agClaude && w.agClaude)
+      : pick.mode !== 'new' && pick.mode !== 'project' ? x.id === w.id   // ⌥⌘N's and ⌥⌘P's rows: a project by its key (a folder's has no id), no folder and a clone as themselves
+      : x.noFolder || w.noFolder ? !!(x.noFolder && w.noFolder) : x.clone || w.clone ? !!(x.clone && w.clone) && x.root === w.root : x.newProject || w.newProject ? !!(x.newProject && w.newProject) : x.key === w.key;
+    if (was) { const i = pick.list.findIndex(x => same(x, was)); if (i >= 0) pick.sel = i; }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
     const asked = pick.mode === 'chat' && pick.named, reading = !asked ? '' : !asked.ids ? 'reading every chat\'s transcript for this PR…' : asked.err ? `the transcripts could not be read: ${asked.err}` : '';
@@ -7252,7 +7260,9 @@ const toolName = n => {
       dlg.close(); c.then(x);
     }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
-      if (x.noFolder) { dlg.close(); newChat(x.cwd); }   // straight in: no chats step, and no Taskfile to ask
+      if (x.ag || x.agClaude) return agentTake(x.ag ? x.ag.name : null);   // no folder's chip's (2026-11-06)
+      if (x.agFold) { pick.unfold.add(x.agFold); return pickRender(); }
+      if (x.noFolder) noFolderChat(x.cwd);   // straight in: no chats step, and no Taskfile to ask
       else if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
     }
     else if (pick.mode === 'chats') {
@@ -7276,6 +7286,14 @@ const toolName = n => {
   const chatsStep = ctx => pickOpen('chats', ctx);   // even with nothing to choose between: ＋ new chat alone, and esc
   // What the chats step would show under one environment, split the way the column's pills split a project.
   const envCounts = (cwd, env) => { const l = scopeChats({ key: cwd, env }); return { working: l.filter(s => bucket(s) === 'working').length, ready: l.filter(s => bucket(s) === 'ready').length }; };
+  /** ⌥⌘N's chat in no folder, as its chip says (2026-11-06) — the agents waited on for a quick ⏎, as newFromChats does. */
+  async function noFolderChat(cwd) {
+    if (!pick.ag && pick.agLoad) {
+      const gen = pick.gen; pick.cloning = true;
+      await pick.agLoad; if (gen !== pick.gen || !$('#pick').open) return; pick.cloning = false;
+    }
+    const a = agentGo(); $('#pick').close(); newChat(cwd, null, withAgent(a));
+  }
   // ＋ new chat, from wherever the flow had got to: the environment is already answered, or the folder is, or neither.
   async function newFromChats(ctx) {
     if (ctx.env) { $('#pick').close(); newChat(ctx.cwds[0], ctx.env); }
@@ -7291,7 +7309,7 @@ const toolName = n => {
   // Typing filters the chats, not ＋, so the selection moves off it and onto the first match — and falls back to
   // ＋ (the clamp below) when nothing matches, which is the thing to do with a name no chat has yet. On "new worktree"
   // it names the branch: ＋ stays selected, and where that branch is already is asked (brAsk).
-  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick') && !!$('#pickq').value.trim(); namedAsk(); if (pick.mode === 'chats') pickHint(); pickRender(); brAsk(); });
+  $('#pickq').addEventListener('input', () => { pick.sel = 0; pick.typed = (pick.mode === 'chats' || pick.mode === 'chatpick' || pick.mode === 'new' && atIn() >= 0) && !!$('#pickq').value.trim(); namedAsk(); if (pick.mode === 'chats' || pick.mode === 'new') pickHint(); pickRender(); brAsk(); });
   // ＋'s switch takes ← and → past the box's ends (2026-10-13): → with the caret at the end goes to "new worktree" (and
   // onto ＋, from any row), ← with it at the start back to "this folder"; inside the text they move the caret.
   const caretAt = end => { const q = $('#pickq'); return q.selectionStart === q.selectionEnd && q.selectionStart === (end ? q.value.length : 0); };
@@ -9297,11 +9315,14 @@ const toolName = n => {
   const agentFrom = (a, cwd) => a.source === 'folder' ? (a.at === cwd ? 'this folder' : folderName(a.at)) : a.source === 'user' ? 'yours' : a.source === 'plugin' ? a.plugin : 'Claude Code';
   /** A chat's agent where the chat is named: its card, its header, a picker's row (C1). */
   const agentTag = (s, cls = 'runas') => s.agent ? `<span class="${cls}" title="${esc(`Runs as the agent ${s.agent}: claude --agent, or its folder's setting`)}">${agDot(s.agentColor)}@${esc(agentShort(s.agent))}</span>` : '';
-  /** The chats step's one folder, where claude starts bare: where ＋ has the chip. */
-  const agentCwd = () => pick.mode === 'chats' && pick.ctx.cwds?.length === 1 && !pick.ctx.env ? pick.ctx.cwds[0] : null;
+  /** Where claude starts bare, so a row has the chip: the chats step's one folder (＋), or ⌥⌘N's chat in no folder
+   *  (2026-11-06, its first row: the board's own folder, straight in). */
+  const agentCwd = () => pick.mode === 'chats' ? (pick.ctx.cwds?.length === 1 && !pick.ctx.env ? pick.ctx.cwds[0] : null) : pick.mode === 'new' ? state.about.scratch || null : null;
+  /** …and what keeps the agent last taken there (prefs.agentFor): the project's key — no folder's, that folder's, as its chats' project is. */
+  const agentKey = () => pick.mode === 'new' ? state.about.scratch : pick.ctx.key;
   const agentsHere = () => !!(pick.ag && !pick.ag.launchers && (pick.mode === 'agent' || agentCwd()));
   /** Where the box's @ is while there are agents to list: before it, the query or the branch; after it, the agent's. */
-  const atIn = () => pick.mode === 'chats' && agentsHere() ? $('#pickq').value.indexOf('@') : -1;
+  const atIn = () => (pick.mode === 'chats' || pick.mode === 'new') && agentsHere() ? $('#pickq').value.indexOf('@') : -1;
   const boxText = () => { const v = $('#pickq').value, i = atIn(); return (i >= 0 ? v.slice(0, i) : v).trim(); };
   function agentStart(key, v) {
     if (!v || v.launchers) return null;
@@ -9311,12 +9332,12 @@ const toolName = n => {
   }
   function pickAgents() {
     const cwd = agentCwd(); pick.agLoad = null; if (!cwd) return;
-    const take = v => { if (!v || agentCwd() !== cwd) return false; pick.ag = v; if (!pick.agentTouched) pick.agent = agentStart(pick.ctx.key, v); return true; };
+    const take = v => { if (!v || agentCwd() !== cwd) return false; pick.ag = v; if (!pick.agentTouched) pick.agent = agentStart(agentKey(), v); return true; };
     if (take(agentsNow(cwd))) return;
     const gen = pick.gen;
     pick.agLoad = agentsOf(cwd).then(v => {   // ⏎ before it lands waits on it (newFromChats); an @ typed before it lists them now
       if (gen !== pick.gen || !$('#pick').open || !take(v)) return;
-      pickHint(); if (atIn() >= 0) { pick.typed = true; pickRender(); } else pickRender(true);
+      pickHint(); if (atIn() >= 0) { pick.typed = true; pickRender(); } else pickRender(pick.mode === 'chats');   // ⌥⌘N's rows stay where they were: the chip alone is new
     });
   }
   /** What the new chat's command line gets: the agent, '' for Claude over a folder's own, else nothing. */
@@ -9324,20 +9345,20 @@ const toolName = n => {
   /** …and the project keeps it for next time when it was your pick (D1). */
   function agentGo() {
     const a = agentArg();
-    if (pick.agentTouched && pick.ctx.key) { prefs.agentFor = { ...prefs.agentFor, [pick.ctx.key]: pick.agent || '' }; savePrefs(); }
+    const key = agentKey(); if (pick.agentTouched && key) { prefs.agentFor = { ...prefs.agentFor, [key]: pick.agent || '' }; savePrefs(); }
     return a;
   }
   const withAgent = a => a === undefined ? null : { agent: a };
   /** ⏎ or a click on an agent's row (null: Claude): the chip has it, the box loses the @, the chats are back. */
   function agentTake(name) {
     pick.agent = name; pick.agentTouched = true;
-    const q = $('#pickq'), i = q.value.indexOf('@'); if (i >= 0) q.value = q.value.slice(0, i).trimEnd();
-    pick.sel = 0; pickHint(); pickRender(); brAsk(); q.focus();
+    const q = $('#pickq'), i = q.value.indexOf('@'); if (pick.mode === 'new') q.value = ''; else if (i >= 0) q.value = q.value.slice(0, i).trimEnd();
+    pick.sel = 0; pickHint(); pickRender(); brAsk(); q.focus();   // ⌥⌘N: the box empty, no folder is the first row
   }
   /** The chip clicked: the list under ＋, as @ typed — or, open, shut. */
   function agentList() {
     const q = $('#pickq'), i = q.value.indexOf('@');
-    q.value = i >= 0 ? q.value.slice(0, i).trimEnd() : (q.value.trim() ? q.value.trimEnd() + ' ' : '') + '@';
+    q.value = pick.mode === 'new' ? i >= 0 ? '' : '@' : i >= 0 ? q.value.slice(0, i).trimEnd() : (q.value.trim() ? q.value.trimEnd() + ' ' : '') + '@';   // ⌥⌘N's projects are no folder's agents' business
     pick.sel = 0; pick.typed = i < 0; pickHint(); pickRender(); q.focus();
   }
   function agentEscape() { if (atIn() < 0) return false; agentList(); return true; }   // esc shuts the list, not the picker
@@ -9357,7 +9378,7 @@ const toolName = n => {
     for (const [k, list] of groups) out.push(...pick.unfold.has(k) ? list.map(a => ({ ag: a })) : [{ agFold: k, list }]);
     return out;
   }
-  /** Where the list opens: the first match typed; else the chip's agent, else the first agent after Claude (＋ is row 0). */
+  /** Where the list opens: the first match typed; else the chip's agent, else the first agent after Claude (＋, or no folder, is row 0). */
   function agentLand(items, aq) {
     if (aq) return items.length ? 1 : 0;
     const i = items.findIndex(x => x.ag && x.ag.name === pick.agent), f = items.findIndex(x => x.ag);
@@ -9377,12 +9398,12 @@ const toolName = n => {
   }
   /** ＋'s chip: who ⏎ starts it as, its model, and why it starts there; off where claude starts through a Taskfile. */
   function agentChip() {
-    if (pick.mode !== 'chats') return '';
-    if (pick.ctx.env) return `<span class="pkag off" title="${esc(`task ${pick.ctx.env} starts claude its own way: it takes no agent`)}">as Claude</span>`;
+    if (pick.mode !== 'chats' && pick.mode !== 'new') return '';
+    if (pick.mode === 'chats' && pick.ctx.env) return `<span class="pkag off" title="${esc(`task ${pick.ctx.env} starts claude its own way: it takes no agent`)}">as Claude</span>`;
     const v = pick.ag; if (!v || !agentCwd()) return '';
     if (v.launchers) return '<span class="pkag off" title="This folder starts claude through its Taskfile (task &lt;env&gt;), which takes no agent">as Claude</span>';
     const a = pick.agent && v.agents.find(x => x.name === pick.agent), open = atIn() >= 0;
-    const why = a && !pick.agentTouched ? prefs.agentFor?.[pick.ctx.key] === a.name ? 'the last you took here' : v.setting?.name === a.name ? 'the folder’s setting' : '' : '';
+    const why = a && !pick.agentTouched ? prefs.agentFor?.[agentKey()] === a.name ? 'the last you took here' : v.setting?.name === a.name ? 'the folder’s setting' : '' : '';
     const tip = a ? `claude --agent ${a.name}${a.description ? ` — ${a.description}` : ''} · a click or @ for another` : `Claude, no agent${v.setting ? ` (claude --agent '': not the folder's own, @${v.setting.name})` : ''} · a click or @ for an agent`;
     return `<button type="button" class="pkag${a ? ' on' : ''}${open ? ' open' : ''}" tabindex="-1" aria-haspopup="listbox" aria-expanded="${open}" title="${esc(tip)}">${a ? `${agDot(a.color)}@${esc(agentShort(a.name))}` : 'as Claude'} <i>▾</i></button>${a && agentModel(a) ? `<span class="pkas">on ${esc(agentModel(a))}</span>` : ''}${why ? `<span class="pkas">· ${why}</span>` : ''}`;
   }

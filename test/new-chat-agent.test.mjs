@@ -4,7 +4,7 @@
 import './env.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
@@ -90,6 +90,25 @@ test('a new chat as an agent: --agent on its command line, the registry\'s and t
     assert.ok(r.status === 200 || r.status === 201, JSON.stringify(r.body));
     const resumed = await waitFor(() => srv.holders().find(h => !h.shell && h.args?.[0] === '--resume') || null, { what: 'the resume' });
     assert.deepEqual(resumed.args, ['--resume', id], 'no --agent beside --resume');
+  } finally { await srv.stop(); }
+});
+
+test('a chat in no folder as an agent: yours, a plugin\'s, Claude Code\'s — checked before the board\'s folder for it is made', { timeout: 30_000 }, async () => {
+  const w = world();
+  const srv = await startTestServer({ claudeDir: w.claude, fake: true });
+  const scratch = join(realpathSync(srv.dir), 'no folder');
+  try {
+    assert.equal(existsSync(scratch), false, 'not made yet');
+    for (const [agent, why] of [['reviewer', 'a folder\'s, not here'], ['../x', 'not a name'], ['nosuch', 'no one\'s']]) {
+      const r = await srv.post('api/terminals', { cwd: scratch, agent, cols: 90, rows: 24 });
+      assert.equal(r.status, 400, `${agent}: ${why}`);
+    }
+    assert.equal(existsSync(scratch), false, 'a refusal makes nothing');
+    assert.deepEqual((await srv.api(`api/agents?cwd=${encodeURIComponent(scratch)}`)).body.agents.map(a => a.name), ['scout', 'kit:code-reviewer', 'Plan', 'Explore', 'general-purpose', 'statusline-setup']);
+    const r = await srv.post('api/terminals', { cwd: scratch, agent: 'scout', cols: 90, rows: 24 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const h = await waitFor(() => srv.holders().find(x => !x.shell && x.cwd === scratch) || null, { what: 'its holder' });
+    assert.deepEqual(h.args, ['--agent', 'scout']);
   } finally { await srv.stop(); }
 });
 

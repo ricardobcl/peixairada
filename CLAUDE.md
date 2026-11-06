@@ -596,7 +596,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `base`, `worktreeBases`): the default selected, the checkout's if ahead (`prefer`). `newChatOnBranch` makes the worktree and starts the chat.
   **One press, one chat** (2026-11-04): a step answering (`pick.cloning`, the box disabled) dims the rows and `pickChoose` takes
   nothing; `wtStarting`, `prChatting`. A new branch asks origin `WT_ASK_MS` at most (`unasked`, said). `s.env` is a chat's environment (`.chip.env`); the `env` step counts each (`envCounts`). An idle chat's row has the card's ✓ (`button.pkdone`, `canTick(s)`), the picker staying up.
-  **Who runs it** (2026-11-06; `agentChip`, `boxText`): ＋'s chip, or @; the project's last first (`prefs.agentFor`).
+  **Who runs it** (2026-11-06; `agentChip`): ＋'s chip or @, no folder's row's too; the project's last first (`prefs.agentFor`).
   `agentsFor`; `--agent` only on a new chat; a chat's `agent`: its last `agent-setting`, else the registry's.
   → `new-chat-flow.mjs`, `chat-worktree.mjs`, `new-chat-agent.mjs`, `test/worktree-origin.test.mjs`.
 * **The project step holds the folders you have no chat in, and clones one you have not got**: after the board's

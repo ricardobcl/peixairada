@@ -6791,10 +6791,11 @@ const server = createServer(async (req, res) => {
       const from = Array.isArray(body.from) ? [...new Set(body.from.filter(id => typeof id === 'string' && sessions.has(id)))] : [];
       if ((prompt || from.length) && task) return json(res, 400, { error: 'a launcher takes no first prompt' });
       // `agent` (2026-11-06): one of the folder's (agentsFor), or '' for none over its settings' own; a folder not there yet
-      // is spawnTerm's to answer (a clone), and the ask after it is checked
+      // is spawnTerm's to answer (a clone), and the ask after it is checked — but the no-folder chats' own, which spawnTerm
+      // makes, is checked at once: yours, the plugins', Claude Code's
       const agent = typeof body.agent === 'string' ? body.agent : null;
       if (agent !== null && task) return json(res, 400, { error: `a launcher takes no agent — task ${task} starts claude its own way` });
-      if (agent && cwd && existsSync(cwd) && !(AGENT_NAME.test(agent) && agentsFor(cwd).agents.some(a => a.name === agent))) return json(res, 400, { error: `no agent named ${agent} for a chat in ${tildePath(cwd)}` });
+      if (agent && (!AGENT_NAME.test(agent) || cwd && (existsSync(cwd) || cwd === SCRATCH_DIR) && !agentsFor(cwd).agents.some(a => a.name === agent))) return json(res, 400, { error: `no agent named ${agent} for a chat in ${cwd ? tildePath(cwd) : 'no folder'}` });
       if (!prompt && !from.length) { const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task, agent }); return json(res, r.code, r); }
       const newId = randomUUID(); placeholder(newId, cwd);
       const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, prompt, newId, agent });

@@ -50,6 +50,16 @@ and open an artifact."* The study (round XXVIII, https://claude.ai/artifact/Nrvb
   → `test/new-chat-agent.test.mjs`, `new-chat-agent.mjs` (compact, same height).
 * **Open**: E1 lists the agents of the chat's folder; the PR's tree may have others, and the server checks the name against
   the tree it starts in.
+* **⌥⌘N's chat in no folder has the chip too** (later that day). Ricardo: *"the agent selection show appear on the new chat
+  (no folder) also right?"* That row starts claude at once, with no chats step, so its own second line ends with the chip:
+  the board's folder, then *as Claude ▾*. A click or `@` lists the agents under it in the projects' place (yours, the
+  plugins', Claude Code's — the folder has none); ⏎ takes one, the box empties and no folder is selected again; ⏎ there
+  starts it as that agent (`noFolderChat`, which waits on the list for a quick ⏎ as ＋ does). In that step `@` belongs to
+  no folder alone: what was typed before it goes. The agent last taken there is kept under the folder's path
+  (`agentKey`), the key its chats' project has, so their chats step's ＋ starts on it too. The server checks the name
+  against that folder's list before the folder exists (`SCRATCH_DIR`), and checks any name's form even where the folder is
+  still to be cloned. A redraw on the agents' answer keeps ⌥⌘N's selection by row (`same`: a folder's project has no id,
+  so the first row without one took it). → the no-folder step of `new-chat-agent.mjs`, `test/new-chat-agent.test.mjs`.
 
 ## Decisions of 2026-11-05 — a drawer that waits for its repaint
 

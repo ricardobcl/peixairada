@@ -5,7 +5,8 @@
 // chip says it and its model; ⏎ on ＋ starts the fake claude with --agent; the next ⌥⌘N starts on that agent; esc shuts the
 // list and not the picker; on "new worktree" the box takes the branch and the @ together. A chat that ran as an agent wears
 // it on its card, in its header, in ⌥⌘K and on its resume bar. A PR row's Chat ▾ offers the agents and any of them through
-// the agent picker, the one taken first next time; ⌥⌘L offers a new chat by an agent's name.
+// the agent picker, the one taken first next time; ⌥⌘L offers a new chat by an agent's name; ⌥⌘N's chat in no folder has
+// the chip and the @ list too.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -180,6 +181,31 @@ export default async function (ctx) {
   out.launch = await q(`[...document.querySelectorAll('#picklist .pkrow.action .n')].map(n => n.textContent).filter(t => /^New chat as/.test(t))`);
   ctx.assert.match(out.launch[0], /New chat as @reviewer — in storefront, on sonnet/, JSON.stringify(out.launch));
   await ctx.settle(); await ctx.shot('7-launcher');
+  await q(`document.querySelector('#pick').close()`);
+
+  // ⌥⌘N's chat in no folder: its row ends with the chip too; @ lists yours, the plugin's and Claude Code's under it alone;
+  // ⏎ takes one and puts no folder first again, ⏎ there starts it as it; the next ⌥⌘N starts on it
+  const noRow = `document.querySelector('#picklist .pkrow.nofolder')`;
+  await ctx.key('KeyN'); await ctx.waitFor(`document.querySelector('#pick').open && ${noRow}?.querySelector('.pkag')`, { what: 'no folder with its chip', timeout: 10000 });
+  out.none = await q(`JSON.stringify({ chip: ${noRow}.querySelector('.pkag').textContent.trim(), line: ${noRow}.querySelector('.pkline .cur').textContent })`).then(JSON.parse);
+  ctx.assert.equal(out.none.chip, 'as Claude ▾');
+  ctx.assert.match(out.none.line, /no folder$/, 'its line says where');
+  await ctx.settle(); await ctx.shot('8-no-folder-chip');
+  await ctx.fill('#pickq', '@');
+  out.noneList = await rows();
+  ctx.assert.deepEqual(out.noneList.map(r => r.n), ['＋ new chat — no folder', 'Claude', '@scout', '2 from kit', '4 of Claude Code’s own'], JSON.stringify(out.noneList));
+  ctx.assert.match(out.noneList[2].cls, /\bsel\b/, 'the first agent selected');
+  ctx.assert.match(await q(`document.querySelector('#pickfoot').textContent`), /takes the agent for a chat in no folder/);
+  await ctx.settle(); await ctx.shot('9-no-folder-list');
+  await press('Enter');
+  out.noneTaken = await q(`JSON.stringify({ chip: ${noRow}.querySelector('.pkag').textContent.trim(), sel: ${noRow}.classList.contains('sel'), box: document.querySelector('#pickq').value, rows: document.querySelectorAll('#picklist > .pkrow').length })`).then(JSON.parse);
+  ctx.assert.deepEqual([out.noneTaken.chip, out.noneTaken.sel, out.noneTaken.box], ['@scout ▾', true, ''], JSON.stringify(out.noneTaken));
+  ctx.assert.ok(out.noneTaken.rows > 1, 'the projects are back');
+  await press('Enter');
+  const [h4] = await holderWith(h => /\/no folder$/.test(h.cwd || ''));
+  ctx.assert.deepEqual(h4?.args, ['--agent', 'scout'], JSON.stringify(h4));
+  await ctx.key('KeyN'); await ctx.waitFor(`document.querySelector('#pick').open && ${noRow}?.querySelector('.pkag.on')`, { what: 'no folder on @scout', timeout: 10000 });
+  ctx.assert.match(await q(`${noRow}.querySelector('.pkline').textContent`), /@scout ▾.*the last you took here/);
   await q(`document.querySelector('#pick').close()`);
   return out;
 }
