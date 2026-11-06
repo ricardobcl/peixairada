@@ -372,9 +372,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   func applicationWillTerminate(_ note: Notification) { server.stop() }
   /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
-  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; lightsUp("the app in the back"); web?.evaluateJavaScript("window.peixFront?.(false)", completionHandler: nil) }
+  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; lightsUp("the app in the back"); toBoard("window.peixFront?.(false)", completionHandler: nil) }
   func applicationDidBecomeActive(_ note: Notification) {
-    web?.evaluateJavaScript("window.peixFront?.(true)", completionHandler: nil)   // While you were out (2026-11-01, round XIX's M3)
+    toBoard("window.peixFront?.(true)", completionHandler: nil)   // While you were out (2026-11-01, round XIX's M3)
     if fillSaved != nil && fillTick == nil && !window.isMiniaturized { startDockTick() }; tuckMenuBarSoon()   // down in the Dock, it waits for the window (windowDidDeminiaturize)
     if !away.isEmpty { away.removeAll(); showAway() }   // in front again: someone is looking, whatever was missed
     // In front with the keys nowhere (2026-10-28): ⌘-Tab to the board now and then left typing going nowhere, or to the
@@ -431,7 +431,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     if hide { awayResponder = window.firstResponder }
     content.isHidden = hide
     if !hide, let r = awayResponder { window.makeFirstResponder(r); awayResponder = nil }
-    web.evaluateJavaScript("window.peixAway?.(\(hide))", completionHandler: nil)   // lunch's sign and fish (2026-10-18): a lock at lunch time is lunch
+    toBoard("window.peixAway?.(\(hide))", completionHandler: nil)   // lunch's sign and fish (2026-10-18): a lock at lunch time is lunch
     logLine(hide ? "away: \(away.sorted().joined(separator: ", ")) — the board hidden" : "away: back — the board shown")
   }
 
@@ -456,7 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     web.underPageBackgroundColor = ground
     // A file dragged in from the Finder: the page gets its path (a browser page never could) and hands
     // it to the chat as an @-mention; while it hovers, the page marks the chat pane.
-    web.onDragging = { [weak self] on in self?.web.evaluateJavaScript("window.peixDragging && window.peixDragging(\(on))") }
+    web.onDragging = { [weak self] on in self?.toBoard("window.peixDragging && window.peixDragging(\(on))") }
     // A drop brings the board forward with the keys in it (2026-10-28): macOS activates no app a drop lands on, so a
     // screenshot's thumbnail dragged in from another screen left that screen's app with the keys, and what was typed
     // after the @-mention went there. The page puts the keys in the drawer the path went to (attachPaths).
@@ -466,7 +466,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       self.window.makeKeyAndOrderFront(nil)
       if #available(macOS 14, *) { NSApp.activate() } else { NSApp.activate(ignoringOtherApps: true) }
       if self.window.firstResponder !== self.web { self.window.makeFirstResponder(self.web) }
-      self.web.evaluateJavaScript("window.peixDrop && window.peixDrop(\(json))")
+      self.toBoard("window.peixDrop && window.peixDrop(\(json))")
       // whether the system let it come forward: cooperative activation may refuse, and the log is where that shows
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
         logLine("drop: \(paths.count) file(s)\(was ? "" : NSApp.isActive ? " — the app brought forward" : " — the app NOT brought forward")")
@@ -576,7 +576,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     ]
     if let s = window.screen { d["screen"] = [s.frame.width, s.frame.height, s.backingScaleFactor]; d["housing"] = s.safeAreaInsets.top > 0 }
     guard let data = try? JSONSerialization.data(withJSONObject: d), let json = String(data: data, encoding: .utf8) else { return }
-    web.evaluateJavaScript("window.peixDetails?.(\(json))", completionHandler: nil)
+    toBoard("window.peixDetails?.(\(json))", completionHandler: nil)
   }
   /// The overlay's top where WebKit puts the page's: under what the title bar takes of the window (2026-11-04). By the
   /// rect's height, never its origin: AppKit says an origin a window's height off while it lays the bar out, and an
@@ -591,7 +591,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// the open chat's), loaded where it came from, as before.
   private func paneOpen(_ w: WKWebView, _ url: URL) {
     guard let key = paneViews.first(where: { $0.value === w })?.key else { w.load(URLRequest(url: url)); return }
-    web.evaluateJavaScript("window.peixPaneOpen ? !!window.peixPaneOpen(\(jsLit(key)), \(jsLit(url.absoluteString))) : false") { [weak w] v, _ in
+    toBoard("window.peixPaneOpen ? !!window.peixPaneOpen(\(jsLit(key)), \(jsLit(url.absoluteString))) : false") { [weak w] v, _ in
       let taken = (v as? Bool) == true
       logLine("pane: a new window from \(key) — \(url.host ?? "?") \(taken ? "on a tab of its own" : "loaded where it was asked")")
       if !taken { w?.load(URLRequest(url: url)) }
@@ -600,7 +600,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// Whether a link out of a page goes to the browser (2026-10-21): the board's rule (`peixLinkOut`, its Links setting).
   /// No board to ask, or no answer: the page keeps it, as before.
   private func paneLinkOut(_ url: URL, _ done: @escaping (Bool) -> Void) {
-    web.evaluateJavaScript("window.peixLinkOut ? !!window.peixLinkOut(\(jsLit(url.absoluteString))) : false") { v, _ in done((v as? Bool) == true) }
+    toBoard("window.peixLinkOut ? !!window.peixLinkOut(\(jsLit(url.absoluteString))) : false") { v, _ in done((v as? Bool) == true) }
   }
   /// The web view for a page, made on first use (and then loaded by the caller). Touches the recency order
   /// and lets the oldest go once there are too many — never one of the current chat's.
@@ -674,13 +674,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// the focused one starts (points, which are the board view's CSS px). window.peix reports it for the harness.
   func tellPane() {
     let left = (paneTarget.flatMap { paneRects[$0]?.minX } ?? 0) / zoom
-    web.evaluateJavaScript("window.peixPane && window.peixPane(\(paneOverlay.isHidden ? "false" : "true"), \(Int(left)))", completionHandler: nil)
+    toBoard("window.peixPane && window.peixPane(\(paneOverlay.isHidden ? "false" : "true"), \(Int(left)))", completionHandler: nil)
   }
   /// Where a page is now, for the strip to show and copy — with the key it belongs to, since the board may have
   /// moved on to another tab by the time a load finishes. Sent on every pane message too: a board reload forgets it.
   func tellPaneUrl(_ key: String, _ url: String?) {
     guard let url = url, !url.isEmpty else { return }
-    web.evaluateJavaScript("window.peixPaneUrl && window.peixPaneUrl(\(jsLit(key)), \(jsLit(url)))", completionHandler: nil)
+    toBoard("window.peixPaneUrl && window.peixPaneUrl(\(jsLit(key)), \(jsLit(url)))", completionHandler: nil)
   }
   /// ⌘W: the board's business first — the half of the chat column the keys are in, or a picker that is up — and
   /// the window only when it says it took neither (2026-09-22).
@@ -691,7 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   @objc func closeHalfOrWindow(_ sender: Any?) {
     // another window in front (the About panel): it is the one ⌘W closes, not a half of the board
     guard NSApp.keyWindow == nil || NSApp.keyWindow === window else { NSApp.keyWindow?.performClose(sender); return }
-    web.evaluateJavaScript("window.peixKey ? !!window.peixKey('KeyW', 'cmd') : false") { [weak self] v, _ in
+    toBoard("window.peixKey ? !!window.peixKey('KeyW', 'cmd') : false") { [weak self] v, _ in
       guard let self, (v as? Bool) != true else { return }
       if self.fillSaved != nil { self.toggleFill(nil) }   // borderless, the window has no close button for performClose to press
       self.window.performClose(nil)
@@ -727,12 +727,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     guard let key = paneViews.first(where: { $0.value === m.webView })?.key, key.hasPrefix("ide:"),
           let page = URL(string: String(key.dropFirst(4))), m.frameInfo.isMainFrame, o.host == page.host, o.port == page.port ?? 0 else { return }
     logLine("pane: ⌘W on an empty editor — \(key) closed")
-    web.evaluateJavaScript("window.peixPaneClose && window.peixPaneClose(\(jsLit(key)))", completionHandler: nil)
+    toBoard("window.peixPaneClose && window.peixPaneClose(\(jsLit(key)))", completionHandler: nil)
   }
   /// ⌘, — the board's settings dialog (2026-09-28: they left the list's cog for the chat header's ···). A menu item's
   /// key equivalent comes before any responder, so it asks the page itself, as ⌘W does.
   @objc func openSettings(_ sender: Any?) {
-    web.evaluateJavaScript("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil)
+    toBoard("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil)
   }
   /// ‹ › ↻ ↗ from the strip, for the page on top — or for the page `key` names: its address edited in the strip
   /// (2026-10-27), `go` loads what was typed in that view, its history kept, and `keys` hands the page the keys back.
@@ -899,7 +899,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       }
       guard e.keyCode == 53, !self.paneOverlay.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
       guard fr.isDescendant(of: self.paneOverlay) else { return e }
-      self.web.evaluateJavaScript("window.peixKey && window.peixKey('Escape')", completionHandler: nil)
+      self.toBoard("window.peixKey && window.peixKey('Escape')", completionHandler: nil)
       return nil
     }
   }
@@ -945,7 +945,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
         return v.bounds.contains(v.convert(e.locationInWindow, from: nil))
       }
       if let key = key {   // always (2026-10-14): the board's half is its own to compare, a click on the half it has already moves nothing
-        self.web.evaluateJavaScript("window.peixPaneFocus && window.peixPaneFocus(\(jsLit(key)))", completionHandler: nil)
+        self.toBoard("window.peixPaneFocus && window.peixPaneFocus(\(jsLit(key)))", completionHandler: nil)
       }
       return e
     }
@@ -967,9 +967,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       // a key held down is one press, as the board's own listener has it — the arrows walk on (2026-10-14: ⌥⌘G held on a
       // page filled the column and gave it back over and over, ⌥⌘R reloaded the board as many times); a repeat is swallowed
       if e.isARepeat && !hot.code.hasPrefix("Arrow") { return nil }
-      self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(hot.code)', '\(hot.mods)')", completionHandler: nil)
+      self.toBoard("window.peixKey && window.peixKey('\(hot.code)', '\(hot.mods)')", completionHandler: nil)
       return nil
     }
+  }
+
+  /// The board's own page: the server's origin (2026-11-06).
+  static func isBoard(_ u: URL?) -> Bool { u?.scheme == "http" && u?.host == "127.0.0.1" && u?.port == kPort }
+  /// Every word the shell says to the board's page — a reply's text, a dropped path, the folder chosen, a page's address —
+  /// goes only to the board (2026-11-06): its view kept off every other origin (decidePolicyFor), and not said to whatever
+  /// else it shows (a message, a page between two loads). Unsaid, `done` hears nothing, as from a page without the call.
+  func toBoard(_ js: String, completionHandler done: ((Any?, Error?) -> Void)? = nil) {
+    guard let web, AppDelegate.isBoard(web.url) else { done?(nil, nil); return }
+    web.evaluateJavaScript(js, completionHandler: done)
   }
 
   private func showMessage(_ text: String) {
@@ -1590,7 +1600,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     let js = "window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))"
     if js == fillSaid { return }
     fillSaid = js
-    web.evaluateJavaScript(js, completionHandler: nil)
+    toBoard(js, completionHandler: nil)
   }
   @objc func restartServer(_ sender: Any?) {
     guard !recovering else { return }   // a start or a restart is already on its way
@@ -1645,14 +1655,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       }
     }
   }
-  @objc func notificationsOn(_ sender: Any?) { web.evaluateJavaScript("window.peixNotifyOn?.()", completionHandler: nil) }
-  @objc func fishingFromMenu(_ sender: Any?) { web.evaluateJavaScript("window.peixFishing?.(\(fishingUntil.isEmpty))", completionHandler: nil) }
+  @objc func notificationsOn(_ sender: Any?) { toBoard("window.peixNotifyOn?.()", completionHandler: nil) }
+  @objc func fishingFromMenu(_ sender: Any?) { toBoard("window.peixFishing?.(\(fishingUntil.isEmpty))", completionHandler: nil) }
   @objc func markReadFromMenu(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
-    web.evaluateJavaScript("window.peixMarkRead?.(\(jsLit(id)))", completionHandler: nil)
+    toBoard("window.peixMarkRead?.(\(jsLit(id)))", completionHandler: nil)
   }
-  @objc func settingsFromMenu(_ sender: Any?) { showWindow(nil); web.evaluateJavaScript("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil) }
-  @objc func overviewFromMenu(_ sender: Any?) { showWindow(nil); web.evaluateJavaScript("window.peixKey && window.peixKey('KeyA', 'altcmd')", completionHandler: nil) }
+  @objc func settingsFromMenu(_ sender: Any?) { showWindow(nil); toBoard("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil) }
+  @objc func overviewFromMenu(_ sender: Any?) { showWindow(nil); toBoard("window.peixKey && window.peixKey('KeyA', 'altcmd')", completionHandler: nil) }
   @objc func openFromMenu(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
     open(sessionId: id)
@@ -1660,7 +1670,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
 
   private func open(sessionId: String, hash: String = "") {
     showWindow(nil)
-    web.evaluateJavaScript("location.hash = \(jsLit(hash.isEmpty ? sessionId : hash))", completionHandler: nil)
+    toBoard("location.hash = \(jsLit(hash.isEmpty ? sessionId : hash))", completionHandler: nil)
   }
 
   private func refreshBadges() {
@@ -1802,7 +1812,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       if !dir.isEmpty { panel.directoryURL = URL(fileURLWithPath: dir, isDirectory: true) }
       panel.beginSheetModal(for: window) { [weak self] r in
         let path = r == .OK ? panel.url?.path : nil
-        self?.web.evaluateJavaScript("window.peixFolder && window.peixFolder(\(path.map(jsLit) ?? "null"))", completionHandler: nil)
+        self?.toBoard("window.peixFolder && window.peixFolder(\(path.map(jsLit) ?? "null"))", completionHandler: nil)
       }
     default: break
     }
@@ -1887,21 +1897,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     switch response.actionIdentifier {
     case "lunch-going", "lunch-snooze":
       logLine("notify: lunch \(response.actionIdentifier)")
-      web.evaluateJavaScript("window.peixLunch?.(\(jsLit(response.actionIdentifier == "lunch-going" ? "going" : "snooze")))", completionHandler: nil)
+      toBoard("window.peixLunch?.(\(jsLit(response.actionIdentifier == "lunch-going" ? "going" : "snooze")))", completionHandler: nil)
     case "lunch-menus":
-      showWindow(nil); web.evaluateJavaScript("window.peixLunch?.('menus')", completionHandler: nil)
+      showWindow(nil); toBoard("window.peixLunch?.('menus')", completionHandler: nil)
     case _ where kind == "lunch":   // the banner itself: the menus
-      showWindow(nil); web.evaluateJavaScript("window.peixLunch?.('menus')", completionHandler: nil)
+      showWindow(nil); toBoard("window.peixLunch?.('menus')", completionHandler: nil)
     case "reply" where !id.isEmpty:   // into the chat's Claude, by the page (peixReply): the drawer's socket is the page's to speak
       let text = (response as? UNTextInputNotificationResponse)?.userText ?? ""
       logLine("notify: reply to \(id.prefix(8)) (\(text.count) chars)")
-      if !text.isEmpty { web.evaluateJavaScript("window.peixReply?.(\(jsLit(id)), \(jsLit(text)))", completionHandler: nil) }
+      if !text.isEmpty { toBoard("window.peixReply?.(\(jsLit(id)), \(jsLit(text)))", completionHandler: nil) }
     case "done" where !id.isEmpty:
       logLine("notify: done \(id.prefix(8))")
-      web.evaluateJavaScript("window.peixDone?.(\(jsLit(id)))", completionHandler: nil)
+      toBoard("window.peixDone?.(\(jsLit(id)))", completionHandler: nil)
     case "mute" where !id.isEmpty:
       logLine("notify: mute \(id.prefix(8))")
-      web.evaluateJavaScript("window.peixMute?.(\(jsLit(id)))", completionHandler: nil)
+      toBoard("window.peixMute?.(\(jsLit(id)))", completionHandler: nil)
     case "snooze":
       let again = UNNotificationRequest(identifier: (id.isEmpty ? UUID().uuidString : id) + "-later", content: response.notification.request.content,
                                         trigger: UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false))
@@ -1921,15 +1931,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // ---- navigation ---------------------------------------------------------------------------------
 
   /// Keep the app on the board; anything external (PR links, docs) opens in the real browser — a dev server on another
-  /// port of this Mac included: only the board's own origin stays in its view, where the bridge is (2026-10-03).
+  /// port of this Mac included: only the board's own origin stays in its view, where the bridge is (2026-10-03). Every
+  /// other way there is refused too (2026-11-06): a redirect, a script's `location`, a form, a frame — the board has none —
+  /// took its view to another origin, which got no key and no bridge but every word the shell went on saying to the
+  /// page there. The messages (`showMessage`) are about:blank pages of the shell's own.
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
-    if let url = action.request.url, action.navigationType == .linkActivated,
-       url.host != "127.0.0.1" || url.port != kPort {
-      handOn(url, from: "a link on the board")
-      return decisionHandler(.cancel)
-    }
-    decisionHandler(.allow)
+    guard let url = action.request.url, !AppDelegate.isBoard(url) else { return decisionHandler(.allow) }
+    if url.absoluteString == "about:blank" && action.targetFrame?.isMainFrame != false { return decisionHandler(.allow) }
+    if action.navigationType == .linkActivated { handOn(url, from: "a link on the board") }
+    else { logLine("board: a navigation to \(url.scheme ?? "?")://\(url.host ?? "") refused — the board's view shows the board") }
+    decisionHandler(.cancel)
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -1947,7 +1959,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// the terminal's screen-reader mode, a switch in Settings › Terminal before, which a page alone cannot know to turn on.
   /// Sent when the board has loaded and on every change.
   func tellVoiceOver() {
-    web.evaluateJavaScript("window.peixVoiceOver && window.peixVoiceOver(\(NSWorkspace.shared.isVoiceOverEnabled))", completionHandler: nil)
+    toBoard("window.peixVoiceOver && window.peixVoiceOver(\(NSWorkspace.shared.isVoiceOverEnabled))", completionHandler: nil)
   }
   /// The board's web process gone (killed under memory pressure, crashed): WebKit leaves the view blank and reloads
   /// nothing, and the watchdog only asks the server.
