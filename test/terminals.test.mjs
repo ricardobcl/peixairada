@@ -139,6 +139,9 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
     assert.deepEqual(runs(), [], 'and task was never run there');
     assert.match(srv.logText(), /its Taskfile is not asked for launchers — Claude Code has not trusted the folder/);
     writeFileSync(join(fx.dir, '.claude.json'), JSON.stringify({ projects: { [realpathSync(dirname(cwd))]: { hasTrustDialogAccepted: true } } }));   // the folder above it, as Claude Code takes it
+    // a repository under a trusted folder is not trusted by it (2026-11-06): the walk stops at the folder holding .git
+    const repo = join(cwd, 'cloned'); mkdirSync(join(repo, '.git'), { recursive: true }); writeFileSync(join(repo, 'Taskfile.yml'), 'version: "3"\n');
+    assert.equal((await srv.api(`api/launchers?cwd=${encodeURIComponent(repo)}`)).body.untrusted, true, 'a clone in a trusted folder: its Taskfile not asked');
     const l = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
     assert.equal(l.body.untrusted, false); assert.deepEqual(runs(), ['--list --json'], 'trusted, task is asked');
     assert.deepEqual(l.body.launchers, [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }], 'only the task whose description mentions Claude');

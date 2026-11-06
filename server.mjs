@@ -5784,7 +5784,9 @@ function claudeTrusts(cwd) {
     trustRead = { mtime, dirs: new Set(Object.entries(projects).filter(([, p]) => p?.hasTrustDialogAccepted === true).map(([d]) => d)) };
   }
   let real = cwd; try { real = realpathSync(cwd); } catch {}
-  for (let d of new Set([resolve(cwd), real])) for (;;) { if (trustRead.dirs.has(d)) return true; const up = dirname(d); if (up === d) break; d = up; }
+  // up to the repository's own folder and no further (2026-11-06), as Claude Code walks it: a trusted folder of repos (an
+  // org's root) trusts none of them, nor a fresh clone in it whose Taskfile would run before claude ever asked
+  for (let d of new Set([resolve(cwd), real])) for (;;) { if (trustRead.dirs.has(d)) return true; if (existsSync(join(d, '.git'))) break; const up = dirname(d); if (up === d) break; d = up; }
   return false;
 }
 const TASKFILES = ['Taskfile.yml', 'Taskfile.yaml', 'taskfile.yml', 'taskfile.yaml', 'Taskfile.dist.yml', 'Taskfile.dist.yaml'];
