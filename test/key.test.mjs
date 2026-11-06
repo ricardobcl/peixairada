@@ -1,8 +1,8 @@
 // The board's key (2026-10-16): every route but the page itself wants it — a container, another account or the LAN that
 // reaches the port writes its own Host and Origin, so foreign() alone let them read every transcript and type into a
 // drawer. A wrong key is refused always; none, once the key is required: at once on a test server (KEY_MODE enforce),
-// else from the app's page coming with it or a boot with no app to wait for. A browser gets it by a ticket on a tab the
-// server opens itself (a fake `open` here, scripts/fakeopen.mjs).
+// else — KEY_MODE lax alone since 2026-11-06 — from the app's page coming with it or a boot with no app to wait for. A
+// browser gets it by a ticket on a tab the server opens itself (a fake osascript here, scripts/fakeopen.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
@@ -79,10 +79,10 @@ test('a new key turns every page away but the one that asked for it, the open st
   } finally { await srv.stop(); }
 });
 
-test('on a board updated to it: no key is still answered while the app runs from before — until its page comes with the key, and for good', { timeout: 40_000 }, async () => {
+test('KEY_MODE lax, the grace a board updated to the key had (the default until 2026-11-06): no key is answered while the app runs from before — until its page comes with the key, and for good', { timeout: 40_000 }, async () => {
   const dir = tmpDir('peix-');
   mkdirSync(join(dir, 'peixAIrada.app'));   // an app installed (BOARD_APP), one that may not hand its page the key yet
-  const srv = await startTestServer({ dir, env: { KEY_MODE: '' } });
+  const srv = await startTestServer({ dir, env: { KEY_MODE: 'lax' } });
   try {
     assert.equal((await bare(srv, 'api/sessions')).status, 200, 'no key: answered while it is not required');
     assert.match(srv.logText(), /answered GET \/api\/sessions with no key — not required until the app's page brings it/);
@@ -102,16 +102,25 @@ test('on a board updated to it: no key is still answered while the app runs from
 });
 
 test('with no app installed the key is required from the first boot; Settings can require it any time', { timeout: 40_000 }, async () => {
-  const srv = await startTestServer({ env: { KEY_MODE: '' } });   // BOARD_APP: an app the test server never has
+  const srv = await startTestServer({ env: { KEY_MODE: 'lax' } });   // BOARD_APP: an app the test server never has
   try {
     assert.equal((await bare(srv, 'api/sessions')).status, 401);
     assert.match(srv.logText(), /the board's key is required from now on — no app at .* to wait for/);
   } finally { await srv.stop(); }
   const dir = tmpDir('peix-'); mkdirSync(join(dir, 'peixAIrada.app'));
-  const two = await startTestServer({ dir, env: { KEY_MODE: '' } });
+  const two = await startTestServer({ dir, env: { KEY_MODE: 'lax' } });
   try {
-    assert.deepEqual((await two.api('api/key')).body, { required: false, mode: null, file: join(dir, 'key') });
+    assert.deepEqual((await two.api('api/key')).body, { required: false, mode: 'lax', file: join(dir, 'key') });
     assert.equal((await two.api('api/key', { method: 'PUT' })).body.required, true);
     assert.equal((await bare(two, 'api/sessions')).status, 401);
   } finally { await two.stop(); }
+});
+
+test('by default (2026-11-06) the key is required from the first boot, an app installed or not', { timeout: 40_000 }, async () => {
+  const dir = tmpDir('peix-'); mkdirSync(join(dir, 'peixAIrada.app'));
+  const srv = await startTestServer({ dir, env: { KEY_MODE: '' } });
+  try {
+    assert.equal((await bare(srv, 'api/sessions')).status, 401);
+    assert.equal((await srv.api('api/key')).body.required, true);
+  } finally { await srv.stop(); }
 });

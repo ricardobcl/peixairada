@@ -6322,7 +6322,10 @@ const foreign = foreignTo(HOST, PORT);
 // /api/alive and those two. A wrong key is refused always; **none is refused once the key is required** — at once with
 // KEY_MODE `enforce` (every test server) or a HOST past loopback, else from the first keyed ask of the app's own page
 // (`x-peix-app`), a boot with no app installed, or Settings' switch, kept in the state file (`keyEnforced`). So a board
-// updated to this still answers its old app, which sends no key, until the rebuilt one opens with it.
+// updated to this still answered its old app, which sends no key, until the rebuilt one opened with it. Since 2026-11-06
+// that grace is KEY_MODE `lax`'s alone: by default the key is required from the first boot — a new install's agent
+// answered every account and container on the Mac until its app first opened, and an app from before 2026-10-16 is
+// behind its checkout's mac/ anyway, rebuilt by the update.
 const KEY_FILE = join(dirname(STATE_FILE), 'key');
 const KEY_MODE = process.env.KEY_MODE || '';
 const LOOPBACK_BIND = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(HOST);
@@ -6354,7 +6357,7 @@ function writeKey(file) {
   writeFileSync(tmp, t, { mode: 0o600 }); renameSync(tmp, file);
   return t;
 }
-const keyRequired = () => KEY_MODE === 'enforce' || !LOOPBACK_BIND || keyEnforced;
+const keyRequired = () => KEY_MODE !== 'lax' || !LOOPBACK_BIND || keyEnforced;
 const keyState = () => ({ required: keyRequired(), mode: KEY_MODE || null, file: KEY_FILE });
 function requireKey(why) {
   if (keyEnforced) return;
