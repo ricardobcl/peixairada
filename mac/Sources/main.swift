@@ -84,6 +84,19 @@ func jsLit(_ s: String) -> String {
   return lit
 }
 
+/// What the app hands to another app, from anywhere — the board's `external`, a link off the board, the strip's ↗, a page
+/// in the pane (2026-11-06): the web, mail, the editors and GitHub Desktop, nothing else. Every one went to NSWorkspace
+/// as it came from the board's side — file:, an .app, a .command, x-apple.systempreferences:, ssh: — and the pane had
+/// the only list (2026-10-14). `from` names the asker in the log; a refusal is logged and nothing opens.
+let kHandOn: Set<String> = ["http", "https", "mailto", "vscode", "vscode-insiders", "zed", "x-github-client"]
+@discardableResult
+func handOn(_ url: URL, from: String) -> Bool {
+  let scheme = url.scheme?.lowercased() ?? ""
+  guard kHandOn.contains(scheme) else { logLine("open: \(scheme.isEmpty ? "no scheme" : scheme + ":") refused — from \(from)"); return false }
+  NSWorkspace.shared.open(url)
+  return true
+}
+
 // ---------------------------------------------------------------------------------------------
 // Server lifecycle
 // ---------------------------------------------------------------------------------------------
@@ -632,6 +645,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     var shown: [String] = []
     for pl in places {
       guard let url = URL(string: String(pl.key.drop(while: { $0 != ":" }).dropFirst())) else { continue }
+      // a pane's page is a web page (2026-11-06): the board names its keys, and a key's URL is loaded as it is named
+      guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { logLine("pane: \(url.scheme ?? "no scheme"): not loaded — a pane shows web pages"); continue }
       if !paneKeys.contains(pl.key) { paneKeys.append(pl.key) }
       let (w, fresh) = paneView(for: pl.key)
       if fresh { w.load(URLRequest(url: url)) }
@@ -727,7 +742,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     case "back": w.goBack()
     case "forward": w.goForward()
     case "reload": w.reload()
-    case "external": if let u = w.url { NSWorkspace.shared.open(u) }
+    case "external": if let u = w.url { handOn(u, from: "the strip's ↗") }   // a data: or blob: page has nowhere to go
     case "go":
       guard let u = url.flatMap({ URL(string: $0) }), ["http", "https"].contains(u.scheme?.lowercased() ?? "") else { return }
       w.load(URLRequest(url: u)); if !w.isHidden { window.makeFirstResponder(w) }
@@ -1777,7 +1792,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       }
       NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     case "external":
-      if let s = body["url"] as? String, let url = URL(string: s) { NSWorkspace.shared.open(url) }
+      if let s = body["url"] as? String, let url = URL(string: s) { handOn(url, from: "the board") }
     case "chooseFolder":   // the first run's Choose… (2026-10-01): the system's folder panel, its path back to the page
       let panel = NSOpenPanel()
       panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false
@@ -1911,7 +1926,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, action.navigationType == .linkActivated,
        url.host != "127.0.0.1" || url.port != kPort {
-      NSWorkspace.shared.open(url)
+      handOn(url, from: "a link on the board")
       return decisionHandler(.cancel)
     }
     decisionHandler(.allow)
@@ -2005,12 +2020,12 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   /// What a page in the pane may hand to another app (2026-10-14): a link clicked in its own main frame — not a script, a
   /// redirect or a frame inside it — and only to these, mail, the editors and GitHub Desktop. Any other scheme not the
   /// web's is cancelled: every one went to NSWorkspace, file: included, with no click at all.
-  static let outSchemes: Set<String> = ["mailto", "vscode", "vscode-insiders", "zed", "x-github-client"]
+  static let outSchemes = kHandOn.subtracting(["http", "https"])
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, let scheme = url.scheme?.lowercased(), !["http", "https", "about", "blob", "data"].contains(scheme) {
       let clicked = action.navigationType == .linkActivated && action.sourceFrame.isMainFrame
-      if clicked && PaneDelegate.outSchemes.contains(scheme) { NSWorkspace.shared.open(url) }
+      if clicked && PaneDelegate.outSchemes.contains(scheme) { handOn(url, from: "a page in the pane") }
       else { logLine("pane: \(scheme): not opened, from \(webView.url?.host ?? "?") — \(clicked ? "not a scheme handed on" : "no link clicked in the page")") }
       return decisionHandler(.cancel)
     }
@@ -2020,7 +2035,7 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
     if let url = action.request.url, let ask = linkOut, action.navigationType == .linkActivated, action.targetFrame?.isMainFrame == true,
        url.host?.lowercased() != webView.url?.host?.lowercased() {
       return ask(url) { out in
-        if out { logLine("pane: a link to \(url.host ?? "?") — to the browser"); NSWorkspace.shared.open(url) }
+        if out { logLine("pane: a link to \(url.host ?? "?") — to the browser"); handOn(url, from: "a page in the pane") }
         decisionHandler(out ? .cancel : .allow)
       }
     }
