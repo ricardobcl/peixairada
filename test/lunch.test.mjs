@@ -12,11 +12,21 @@ import { parseProfile, parseStories, pkOfCode, timeOfPk, storyItems } from '../l
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { cleanSetup, lunchPhase, dishesOn, closedOn, dayKey } = await import('../server.mjs');
+const { cleanSetup, lunchPhase, dishesOn, closedOn, dayKey, readerArgs } = await import('../server.mjs');
 
 const DAY = 86_400_000;
 const at = (h, m = 0, from = Date.now()) => new Date(from).setHours(h, m, 0, 0);
 const earlier = () => Math.max(at(0, 1), Date.now() - 3600_000);   // today, before now — just after midnight too
+
+test('readerArgs: a reader may only read — dontAsk always, the Slack one denies its connector\'s writes, the picture one has no MCP (2026-11-06)', () => {
+  const val = (a, flag) => a[a.indexOf(flag) + 1];
+  const pic = readerArgs({ schema: {} }), slack = readerArgs({ schema: {}, tools: ['mcp__claude_ai_Slack__slack_read_channel'] });
+  for (const a of [pic, slack]) { assert.equal(val(a, '--permission-mode'), 'dontAsk'); assert.equal(val(a, '--tools'), ''); }
+  assert.ok(pic.includes('--strict-mcp-config') && !pic.includes('--allowedTools'));
+  assert.equal(val(slack, '--allowedTools'), 'mcp__claude_ai_Slack__slack_read_channel');
+  assert.match(val(slack, '--disallowedTools'), /mcp__claude_ai_Slack__slack_send_message(,|$)/);
+  assert.ok(!val(slack, '--disallowedTools').includes('read'), 'no read denied');
+});
 
 test('cleanSetup: lunch shaped — a time, the days, places with an Instagram account, a Slack channel; null is none', () => {
   const ok = cleanSetup({ lunch: { at: '9:05', places: [{ name: ' Casa ', instagram: 'https://www.instagram.com/restaurante.acasa/' }, { name: 'Trotas' }, { name: 'casa', instagram: '@dup' }], slack: 'lunch-braga', stories: true } }, true);

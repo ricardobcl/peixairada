@@ -4829,6 +4829,18 @@ const whenSaid = (t, time = true) => new Date(t).toLocaleString('en-GB', { weekd
 const READ_ASK = `Is it this restaurant's lunch menu — a menu of the day, an executive menu, a week's or a month's lunch menu? A dish's advert, an event, a promotion or opening hours are not.
 If it is: kind is "day" for one day's menu, "week" for several days, "month" for a month's dishes with no day to each. days lists each day it covers: its date as YYYY-MM-DD (the year is the post's) when one is written or follows from the post's own date, else null; the weekday as written (sun, mon, tue, wed, thu, fri, sat) or null; and that day's dishes exactly as written, one item per dish, starters, soups and desserts included, in the order shown. A "day" card with no date written has date null. price as written, or null.
 Whatever it is: closed is a closure it announces — {from, to} as YYYY-MM-DD — or null.`;
+// The Slack connector's tools that write — denied by name too, beside dontAsk (2026-11-06).
+const SLACK_WRITES = ['slack_send_message', 'slack_send_message_draft', 'slack_schedule_message', 'slack_add_reaction', 'slack_create_canvas', 'slack_update_canvas', 'slack_create_conversation', 'slack_create_list', 'slack_update_list', 'slack_add_list_record', 'slack_update_list_record', 'slack_get_file_upload_url', 'slack_complete_file_upload'].map(t => `mcp__claude_ai_Slack__${t}`);
+/** A reader's argv. Whatever a reader reads is somebody else's words — a story's caption, a coworker's post in the
+ *  channel —, so it may do nothing but read (2026-11-06): `--tools ''` drops only the built-in tools, and the Slack
+ *  read comes up with the user's settings, every connector with them (Slack's send, Jira's edit…) and the user's
+ *  own default mode (`auto` lets a classifier approve what it calls). So every reader is `--permission-mode dontAsk`
+ *  — what no allow rule names is denied, never asked — and the Slack one denies that connector's writes by name. */
+function readerArgs({ schema, tools = null, model = 'haiku' }) {
+  return ['-p', '--no-session-persistence', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', model,
+    '--json-schema', JSON.stringify(schema), '--permission-mode', 'dontAsk',
+    ...tools ? ['--allowedTools', tools.join(','), '--disallowedTools', SLACK_WRITES.join(',')] : ['--strict-mcp-config', '--setting-sources', 'project'], '--tools', ''];
+}
 /** One reader: a claude -p in LUNCH_WORK, the content (text, and pictures as base64) on stdin as one stream-json
  *  message, its structured answer back. `tools`: the connector's tools it may use (the Slack read), with the user's
  *  settings — the connectors come up with them —; without, no tool and no MCP at all. */
@@ -4837,8 +4849,7 @@ function runReader({ content, schema, tools = null, timeout = 120_000 }) {
     const bin = process.env.READER_BIN || claudeBin();
     if (!bin) return reject(new Error('claude is not installed here'));
     try { mkdirSync(LUNCH_WORK, { recursive: true }); lunch.workReal ||= realpathSync(LUNCH_WORK); } catch (e) { return reject(e); }
-    const args = ['-p', '--no-session-persistence', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', lunchCfg()?.model || 'haiku',
-      '--json-schema', JSON.stringify(schema), ...tools ? ['--allowedTools', tools.join(',')] : ['--strict-mcp-config', '--setting-sources', 'project'], '--tools', ''];
+    const args = readerArgs({ schema, tools, model: lunchCfg()?.model || 'haiku' });
     let child; try { child = spawn(bin, args, { cwd: LUNCH_WORK, env: drawerEnv(), stdio: ['pipe', 'pipe', 'pipe'] }); } catch (e) { return reject(e); }
     lunch.readers.add(child.pid);
     let out = '', err = '', done = false;
@@ -6904,6 +6915,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 export { cronNext, nextWake, pruneWakes, pruneTasks, findTasks, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, prAlertChat, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 export { handoffText };   // chats that talk (2026-10-31)
 export { agentFront, agentsFor };   // a new chat as an agent (2026-11-06)
+export { readerArgs };   // a reader reads, and does nothing else (2026-11-06)
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();
