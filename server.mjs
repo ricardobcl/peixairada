@@ -6969,7 +6969,7 @@ const server = createServer(async (req, res) => {
     }
     json(res, 404, { error: 'not found' });
   } catch (e) {
-    console.error(`[peixairada] ${req.method} ${req.url}:`, e);
+    console.error(`[peixairada] ${req.method} ${String(req.url).replace(/([?&](?:key|tkn|ticket)=)[^&#]*/gi, '$1…')}:`, e);   // the key never in the log (2026-11-06)
     if (res.headersSent) res.destroy(); else json(res, 500, { error: String(e?.stack || e) });
   }
 });
