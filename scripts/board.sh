@@ -8,4 +8,6 @@ set -eu
 P="${1#/}"; shift
 STATE="${STATE_FILE:-$HOME/Library/Application Support/peixAIrada/state.json}"
 KEY=$(cat "$(dirname "$STATE")/key" 2>/dev/null || true)
-exec curl -s -H "x-peix-key: $KEY" "http://127.0.0.1:${PORT:-7331}/$P" "$@"
+# The key goes to curl as a config line on its stdin, never an argument (2026-11-06): ps shows every account's arguments.
+# printf is the shell's own, no process of its own.
+printf 'header = "x-peix-key: %s"\n' "$KEY" | curl -s -K - "http://127.0.0.1:${PORT:-7331}/$P" "$@"
