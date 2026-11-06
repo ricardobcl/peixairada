@@ -9270,7 +9270,7 @@ const toolName = n => {
     const pr = s.prs?.find(p => p.url === url); if (!pr?.turn) return;
     const text = `${pr.turn.why} on ${pr.url} — read it and address it`, tm = claudeTm(s);
     if (!tm) { const ok = await copyText(text); return note(at, `No claude of this chat in a drawer here${ok ? ' — the prompt is copied' : ''} · ⌥⌘C starts one`, true); }
-    showChat(s); termSend(tm, text); focusTerm();
+    showChat(s); termSend(tm, forClaude(text)); focusTerm();
     note(at, 'Typed into Claude — ⏎ sends it');
   }
   /** A new chat on a PR's branch (2026-10-13): in the tree that has it out, else in a worktree made for it — the chat's
@@ -9703,6 +9703,18 @@ const toolName = n => {
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel'), ...(ansi ? Object.fromEntries(ANSI.map((n, i) => [n, ansi[i]])) : {}) };
   }
   const termSend = (tm, d) => { if (tm.ws?.readyState === 1 && tm.exited === null) tm.ws.send(JSON.stringify({ t: 'in', d })); };
+  // What the board types for you (2026-11-06) — a review's quoted lines and paths, a PR's words, a handoff, a banner's
+  // reply, a command left unrun — goes through one of these, never straight to termSend: a PTY reads every byte as a key,
+  // and a carriage return in a stranger's diff line submitted the prompt there and then, an ESC [Z cycled the permission
+  // mode, a ⌃U wiped what came before. Text as a person could type it: line breaks kept (a lone CR is one), a tab two
+  // spaces (Tab is a key to Claude Code and to zsh), every other C0 control, DEL and C1 gone. Your own keys never pass here.
+  const CTL = /[\x00-\x08\x0b-\x1f\x7f-\x9f]/g;
+  const typable = t => String(t ?? '').replace(/\r\n?/g, '\n').replace(/\t/g, '  ').replace(CTL, '');
+  /** For Claude's prompt: its newlines as Claude Code's own (ESC CR), so nothing is sent before the ⏎ the caller adds. */
+  const forClaude = t => typable(t).replace(/\n/g, '\x1b\r');
+  /** For a shell's line, left unrun: one line. */
+  const forShell = t => typable(t).replace(/\n+/g, ' ');
+  const hasCtl = t => /[\x00-\x1f\x7f-\x9f]/.test(t);
   // ⌘K clears the terminal, as Terminal.app and iTerm do — a key xterm.js does not ship and zsh cannot bind
   // (⌃L is the shell's own, and keeps the scrollback). The holder clears its screen too and echoes the clear
   // back, which is what wipes the page: every attached page drops the same rows, and a re-attach or a server
@@ -11044,7 +11056,7 @@ const toolName = n => {
   async function sendToClaude(s, text, at) {
     const tm = claudeTm(s);
     if (!tm) { const ok = await copyText(text); note(at, `No claude of this chat in a drawer here${ok ? ' — the text is copied' : ''} · ⌥⌘C starts one`, true); return false; }
-    termSend(tm, text.replace(/\r?\n/g, '\x1b\r')); setTimeout(() => termSend(tm, '\r'), 60);
+    termSend(tm, forClaude(text)); setTimeout(() => termSend(tm, '\r'), 60);
     note(at, 'Sent to Claude');
     return true;
   }
@@ -11053,7 +11065,7 @@ const toolName = n => {
     const sh = await hotShell(); if (!sh) return;
     for (let i = 0; i < 60; i++) {
       const tm = termFor(sh.id);
-      if (tm?.ws?.readyState === 1) { await new Promise(r => setTimeout(r, 350)); termSend(tm, cmd); focusTerm(); return; }
+      if (tm?.ws?.readyState === 1) { await new Promise(r => setTimeout(r, 350)); termSend(tm, forShell(cmd)); focusTerm(); return; }
       await new Promise(r => setTimeout(r, 100));
     }
     note(at, `The ${shName()} did not come up — ⌥⌘T`, true);
@@ -12110,6 +12122,7 @@ const toolName = n => {
   /** An answer from the overview: the chat opened, and once its drawer is attached, the answer's digit typed into it. */
   async function answerInDrawer(s, digit) {
     await openSession(s.id);
+    if (!/^\d$/.test(String(digit))) return;   // an answer's number, one key
     for (let i = 0; i < 60; i++) { const tm = claudeTm(s); if (tm) { focusTerm(); termSend(tm, String(digit)); return; } await new Promise(r => setTimeout(r, 100)); }
     note($('#shead'), 'Its drawer did not come up — answer it in the chat', true);
   }
@@ -13002,6 +13015,8 @@ const toolName = n => {
   const shellWord = p => `'${p.replace(/'/g, `'\\''`)}'`;
   function attachPaths(paths) {
     if (!paths.length) return false;
+    // a name with a control character in it would be keys, not a name (2026-11-06): refused whole, said where the drop went
+    if (paths.some(p => hasCtl(String(p)))) { note($('#shead'), 'Not typed: a dropped file\u2019s name has a control character in it', true); return false; }
     const text = paths.map(atMention).join(' ') + ' ';
     const s = state.sessions.get(state.current);
     // the drawer in the half with the keys, else the claude one: a zsh holder carries the chat's id too, and a drop
@@ -13044,7 +13059,7 @@ const toolName = n => {
    *  (ESC CR), then ⏎ when `send` (unsent: there for you to read and send): over the page's own socket to it when it is
    *  attached, else one opened for the words and closed after them, which sends no size, so the drawer is not resized. */
   async function drawerType(s, text, send) {
-    const d = drawerOf(s), body = String(text || '').replace(/\r?\n/g, '\x1b\r'); if (!d || !body) return false;
+    const d = drawerOf(s), body = forClaude(text); if (!d || !body) return false;
     const tm = claudeTm(s); if (tm) { termSend(tm, body); if (send) setTimeout(() => termSend(tm, '\r'), 60); return true; }
     const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`));
     return new Promise(res => {
