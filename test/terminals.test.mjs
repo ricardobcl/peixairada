@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { alive, sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
-import { defaultFixture } from '../scripts/fixture.mjs';
+import { chatLines, defaultFixture, slugOf } from '../scripts/fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 /** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. `p.opened`
@@ -447,4 +447,18 @@ test('a WebSocket reset while the boot waits on a mute holder ends that socket, 
       assert.doesNotMatch(log(), /Unhandled 'error'/);
     } finally { await srv.stop(); }
   } finally { mute.close(); }
+});
+
+test('a chat whose id would read as an option of claude\'s is never resumed (2026-11-06)', { timeout: 30_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const id = '--dangerously-skip-permissions', dir = join(fx.dir, 'projects', slugOf(process.cwd()));
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${id}.jsonl`), chatLines({ id, cwd: process.cwd(), prompt: 'hi', reply: 'hello' }).map(l => JSON.stringify(l)).join('\n') + '\n');
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  try {
+    await waitFor(async () => (await srv.api('api/sessions')).body.sessions.some(s => s.id === id), { what: 'the crafted chat on the board' });
+    const r = await srv.post(`api/sessions/${id}/terminal`, { cols: 90, rows: 24 });
+    assert.deepEqual([r.status, r.body.error], [400, 'not a chat id']);
+    assert.deepEqual(await srv.terminals(), [], 'nothing spawned');
+  } finally { await srv.stop(); }
 });

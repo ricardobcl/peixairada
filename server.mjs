@@ -6120,6 +6120,8 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   // `newId` (2026-10-31): a new chat under an id the board picked — `--session-id` — so it is known before claude registers;
   // with `fork`, a copy of that chat under it (Claude Code's --fork-session: the chat itself is not written to)
   // `attach` (2026-11-04): a background session in this drawer, its worker's pid `claudePid`: the client registers nothing, and ending it leaves the session running
+  // a chat's id is a file's name, and one that began with - would be read as an option of claude's (2026-11-06)
+  if ([sessionId, fork, newId].some(id => id != null && !/^[\w][\w-]{0,127}$/.test(String(id)))) return { code: 400, error: 'not a chat id' };
   const args = editor ? ['.'] : task ? [task] : shell ? [] : attach ? ['attach', attach] : sessionId ? ['--resume', sessionId] : fork && newId ? ['--resume', fork, '--fork-session', '--session-id', newId] : newId ? ['--session-id', newId] : [];
   // `agent` (2026-11-06): a new chat as that agent, '' as no agent over a folder's own; a resume never — Claude Code puts the
   // transcript's back itself, and a flag beside --resume would override it
