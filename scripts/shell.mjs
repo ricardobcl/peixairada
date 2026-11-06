@@ -12,7 +12,8 @@
 // run on a throwaway server and a fixture, its home a temp folder (CFFIXED_USER_HOME: the key, the logs, no launchd agent
 // to find) — out of the way of the app in use: never in front, one pixel on the screen (scripts/shell-probe.swift).
 // A check is an ES module: `export const meta = {}` and `export default async function (ctx) { … return result }`; `ctx`
-// is listed below. Exit 0 all passed, 1 one failed, 3 could not be run (the screen locked or asleep: WebKit runs no frames).
+// is listed below; `meta.stranger` points the shell at a port held by something that is not the board (2026-11-06), what it
+// was asked in `ctx.stranger.asked`. Exit 0 all passed, 1 one failed, 3 could not be run (the screen locked or asleep: WebKit runs no frames).
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -65,6 +66,19 @@ function pagesServer() {
   return new Promise(ok => srv.listen(0, '127.0.0.1', () => ok(srv)));
 }
 
+/** What holds the port in the board's place (2026-11-06, `meta.stranger`): it answers every ask, the probe's with no
+ *  proof, and keeps what it was asked and with which key. */
+function strangerServer() {
+  const asked = [];
+  const srv = createServer((req, res) => {
+    asked.push({ url: req.url, key: req.headers['x-peix-key'] || null, nonce: req.headers['x-peix-nonce'] || null });
+    if (req.url.startsWith('/api/alive')) { res.writeHead(204); return res.end(); }
+    res.writeHead(200, { 'content-type': req.url.startsWith('/api/') ? 'application/json' : 'text/html' });
+    res.end(req.url.startsWith('/api/') ? '{}' : '<!doctype html><title>not the board</title>a stranger');
+  });
+  return new Promise(ok => srv.listen(0, '127.0.0.1', () => ok(Object.assign(srv, { asked }))));
+}
+
 /** The shell as a process: a line of JSON each way. */
 function startShell(bin, { port, home, space: inSpace }) {
   const child = spawn(bin, ['-peixairada.fill', 'NO', ...(inSpace ? [] : ['-peixairada.space', 'NO'])], {
@@ -104,16 +118,17 @@ async function runCheck(file, bin) {
   const fixture = defaultFixture(tmpDir('peix-fixture-'), { cwdA, cwdB: realpathSync(tmpdir()) });
   const server = await startTestServer({ claudeDir: fixture.dir, env: meta.env || {} }); cleanups.push(() => server.stop());
   const pages = await pagesServer(); cleanups.push(() => pages.close());
+  const stranger = meta.stranger ? await strangerServer() : null; if (stranger) cleanups.push(() => stranger.close());
   for (const d of ['Library/Application Support/peixAIrada', 'Library/Logs']) mkdirSync(join(home, d), { recursive: true });
   writeFileSync(join(home, 'Library/Application Support/peixAIrada/key'), server.key);
   wipeDefaults();
-  const shell = startShell(bin, { port: server.port, home, space: !!meta.space }); cleanups.push(() => shell.stop());
+  const shell = startShell(bin, { port: stranger ? stranger.address().port : server.port, home, space: !!meta.space }); cleanups.push(() => shell.stop());
   const appLog = () => { try { return readFileSync(join(home, 'Library/Logs/peixairada-app.log'), 'utf8'); } catch { return ''; } };
   try {
     const hello = await shell.up;
     if (hello.unseen) return { name, skipped: hello.unseen };
     const ctx = {
-      name, log, assert, fixture, server, appLog, ask: shell.ask, shots, aside: !meta.space,
+      name, log, assert, fixture, server, stranger, appLog, ask: shell.ask, shots, aside: !meta.space,
       /** A body of script on the board, what it returns (JSON). */
       js: code => shell.ask('js', { code }).then(v => JSON.parse(v)),
       /** …on a page in the pane, by its key. */

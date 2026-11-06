@@ -59,7 +59,7 @@
 // Map ▴
 
 
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
   accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, cpSync, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
@@ -6410,6 +6410,17 @@ function newTicket() {
   const now = Date.now(); for (const [t, at] of tickets) if (at < now) tickets.delete(t);
   const t = randomBytes(18).toString('base64url'); tickets.set(t, now + 60_000); return t;
 }
+// The app proves the server before it trusts it (2026-11-06): it adopted whatever answered on the port, sent it the key
+// on every probe and gave its page the key and the bridge — so another account, or a container publishing the port,
+// that held 7331 while this server was down (a login, a restart, a crash) had the key. Now the app's probe sends a nonce
+// and no key, and this answers with an HMAC of it under the key, which only a server that can read the key file can
+// write; the app checks it before anything else (`ServerController.probe` in main.swift). Open as /api/alive is: an
+// HMAC tells nothing of its key.
+const ALIVE_NONCE = /^[0-9a-f]{32,128}$/;
+const aliveProof = req => {
+  const n = String(req.headers['x-peix-nonce'] || '');
+  return boardKey && ALIVE_NONCE.test(n) ? { 'x-peix-proof': createHmac('sha256', boardKey).update(`peix-alive:${n}`).digest('hex') } : {};
+};
 /** The address this Mac's browser reaches the board at. */
 const boardUrl = () => `http://${LOOPBACK_BIND || HOST === '0.0.0.0' || HOST === '::' ? '127.0.0.1' : HOST.includes(':') && !HOST.startsWith('[') ? `[${HOST}]` : HOST}:${PORT}/`;
 
@@ -6511,7 +6522,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "frame-ancestors 'none'", 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
       return res.end(body);
     }
-    if (req.method === 'GET' && p === '/api/alive') { res.writeHead(204); return res.end(); }   // up and booted: the app's probe, launchd.sh
+    if (req.method === 'GET' && p === '/api/alive') { res.writeHead(204, aliveProof(req)); return res.end(); }   // up and booted: the app's probe, launchd.sh
     if (req.method === 'POST' && p === '/api/key/claim') {   // a ticket for the key (see keyWant), once
       const { ticket } = await jsonBody(req), at = typeof ticket === 'string' ? tickets.get(ticket) : null;
       tickets.delete(ticket);

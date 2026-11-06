@@ -5,6 +5,7 @@
 // browser gets it by a ticket on a tab the server opens itself (a fake osascript here, scripts/fakeopen.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
@@ -46,6 +47,18 @@ test('every route but the page wants the key: missing and wrong are 401s that sa
     assert.equal(await socket(`${srv.url.replace(/^http/, 'ws')}api/terminals/nothing/ws?key=${'0'.repeat(64)}`), 'refused', '…or a wrong one');
     const t = await srv.post('api/sessions/none/shell', {});   // no chat: a 404, past the key
     assert.equal(t.status, 404);
+  } finally { await srv.stop(); }
+});
+
+test('the probe proves the server: an HMAC of the app\'s nonce under the key, and nothing for no nonce or a bad one', { timeout: 30_000 }, async () => {
+  const srv = await startTestServer();
+  try {
+    const nonce = randomBytes(16).toString('hex');
+    const r = await fetch(srv.url + 'api/alive', { headers: { 'x-peix-nonce': nonce } });
+    assert.equal(r.status, 204, 'open, as the probe always was');
+    assert.equal(r.headers.get('x-peix-proof'), createHmac('sha256', srv.key).update(`peix-alive:${nonce}`).digest('hex'), 'the proof only the key\'s holder can write');
+    assert.equal((await fetch(srv.url + 'api/alive')).headers.get('x-peix-proof'), null, 'no nonce, no proof (launchd.sh, the tests)');
+    for (const bad of ['xyz', 'ab'.repeat(8), 'A'.repeat(32)]) assert.equal((await fetch(srv.url + 'api/alive', { headers: { 'x-peix-nonce': bad } })).headers.get('x-peix-proof'), null, `none for ${bad}`);
   } finally { await srv.stop(); }
 });
 

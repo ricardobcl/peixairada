@@ -10,6 +10,7 @@
 
 import Carbon
 import Cocoa
+import CryptoKit
 import WebKit
 import UserNotifications
 
@@ -126,26 +127,48 @@ final class ServerController {
     FileManager.default.isExecutableFile(atPath: path)
   }
 
-  /// The smallest answer the server has had from the start — every session summarized, 584 KB, was the probe until
-  /// 2026-09-27, twelve times a minute from the watchdog.
-  static func isServing(_ completion: @escaping (Bool) -> Void) {
-    var req = URLRequest(url: kURL.appendingPathComponent("api/projects"))
-    req.timeoutInterval = 1.2
-    if let key = boardKey() { req.setValue(key, forHTTPHeaderField: "X-Peix-Key") }   // a server from before the key ignores it
+  /// What answers on the port: the board, nothing, or something that could not prove it is the board.
+  enum Answer { case ours, silent, stranger }
+  /// The server proves itself before anything is trusted to it (2026-11-06): the probe sends a fresh nonce and no key, and
+  /// only an answer carrying the HMAC of it under the key file's key is the board (`aliveProof` in server.mjs). Whatever
+  /// answered on the port was adopted before, sent the key on every probe, and its page got the key and the bridge —
+  /// another account or a container holding 7331 while the server was down had them. No key file yet (a first boot):
+  /// nothing can be proved, so nothing is up until the server has written it. Never cached: a 204 may be.
+  static func probe(_ completion: @escaping (Answer) -> Void) {
+    guard let key = boardKey() else { return completion(.silent) }
+    let nonce = (0..<16).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
+    var req = URLRequest(url: kURL.appendingPathComponent("api/alive"), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 1.2)
+    req.setValue(nonce, forHTTPHeaderField: "X-Peix-Nonce")
     URLSession.shared.dataTask(with: req) { _, resp, _ in
-      completion((resp as? HTTPURLResponse)?.statusCode == 200)
+      guard let r = resp as? HTTPURLResponse else { return completion(.silent) }
+      let want = HMAC<SHA256>.authenticationCode(for: Data("peix-alive:\(nonce)".utf8), using: SymmetricKey(data: Data(key.utf8))).map { String(format: "%02x", $0) }.joined()
+      completion(r.statusCode == 204 && r.value(forHTTPHeaderField: "X-Peix-Proof") == want ? .ours : .stranger)
     }.resume()
   }
+  /// Whether the board answers: proved (probe). The smallest answer the server has (2026-09-27: every session summarized,
+  /// 584 KB, twelve times a minute from the watchdog, before).
+  static func isServing(_ completion: @escaping (Bool) -> Void) { probe { completion($0 == .ours) } }
+  static let strangerText = """
+    Something answers on port \(kPort) that is not your board: it could not prove it holds this Mac's board key, so it \
+    gets neither the key nor this window. If it is your own server from before 2026-11-06, restart it \
+    (scripts/launchd.sh restart). The app keeps looking.
+    """
 
   /// Calls back with nil on success, or a message to show the user. On the main thread throughout: `process` and
   /// `adopted` are read and written by stop() and restart() there, and the probe answers on URLSession's own queue.
   func start(_ done: @escaping (String?) -> Void) {
-    ServerController.isServing { [weak self] running in DispatchQueue.main.async {
+    ServerController.probe { [weak self] answer in DispatchQueue.main.async {
       guard let self else { return }
-      if running {                        // a server is already up (launchd, or a terminal) — use it
+      if answer == .ours {                // a server is already up (launchd, or a terminal) — use it
         self.adopted = true
         done(nil)
         return
+      }
+      // the port held by what is not the board: neither adopted nor raced — the agent, or the next start, takes it back
+      // once it is let go (the server waits on a busy port)
+      if answer == .stranger, self.process?.isRunning != true {
+        logLine("server: :\(kPort) answers without the board's proof — not adopted, and given nothing")
+        return done(ServerController.strangerText)
       }
       // One of its own at a time (2026-10-03): a start while the last one was still coming up — ⇧⌘R twice, the
       // watchdog during a slow boot — spawned another and dropped the first, which then outlived the app.
@@ -1650,9 +1673,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
 
   private func checkServer() {
     guard !recovering else { return }
-    ServerController.isServing { [weak self] ok in
+    ServerController.probe { [weak self] answer in
       DispatchQueue.main.async {
         guard let self, !self.recovering else { return }
+        let ok = answer == .ours
         // A message up while the server answers — ⌘R mid-restart, a boot slower than the wait — went on saying so until
         // a reload by hand (2026-10-03): the board comes back on its own.
         if ok && !self.boardShown { logLine("watchdog: the server answers — the board again"); self.loadBoard() }
@@ -1660,8 +1684,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
         if ok { self.setServerDown(false) }
         guard self.misses >= 3 else { return }   // ~15 s of silence, not one slow answer
         self.setServerDown(true)
-        logLine("watchdog: nothing answering on :\(kPort) — starting the server")
-        self.showMessage("The server stopped — starting it again…")
+        logLine(answer == .stranger ? "watchdog: :\(kPort) answers without the board's proof" : "watchdog: nothing answering on :\(kPort) — starting the server")
+        if answer == .silent { self.showMessage("The server stopped — starting it again…") }   // a stranger's: start() says so
         self.bringUpServer()
       }
     }
@@ -1948,7 +1972,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// page there. The messages (`showMessage`) are about:blank pages of the shell's own.
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
-    guard let url = action.request.url, !AppDelegate.isBoard(url) else { return decisionHandler(.allow) }
+    guard let url = action.request.url else { return decisionHandler(.allow) }
+    // Every page the board's view loads from the board's origin is proved first (2026-11-06): the key's script and the
+    // bridge are that origin's, and the port may have changed hands since the last probe — a reload, an update's, the
+    // page's own. A move inside the page (its #hash) is no new page; a frame is none of the board's.
+    if AppDelegate.isBoard(url) {
+      let sans = { (u: URL) in u.absoluteString.split(separator: "#", maxSplits: 1).first.map(String.init) ?? "" }
+      if action.targetFrame?.isMainFrame == false || (action.navigationType != .reload && url.fragment != nil
+          && webView.url.map { AppDelegate.isBoard($0) && sans($0) == sans(url) } == true) { return decisionHandler(.allow) }
+      ServerController.probe { [weak self] answer in DispatchQueue.main.async {
+        guard answer != .ours else { return decisionHandler(.allow) }
+        decisionHandler(.cancel)
+        logLine(answer == .stranger ? "board: :\(kPort) answers without the board's proof — its page not loaded" : "board: nothing answering on :\(kPort) — the board not loaded")
+        self?.showMessage(answer == .stranger ? ServerController.strangerText : "The server is not answering on port \(kPort) — the board comes back once it does.")
+      } }
+      return
+    }
     if url.absoluteString == "about:blank" && action.targetFrame?.isMainFrame != false { return decisionHandler(.allow) }
     if action.navigationType == .linkActivated { handOn(url, from: "a link on the board") }
     else { logLine("board: a navigation to \(url.scheme ?? "?")://\(url.host ?? "") refused — the board's view shows the board") }
