@@ -29,7 +29,7 @@ use every day (the server takes its `PATH`, which is how it finds `claude`, `gh`
 
 ```sh
 git clone https://github.com/ricardobcl/peixairada.git && cd peixairada
-npm install
+npm ci                         # the packages exactly as the lockfile pins them
 scripts/launchd.sh install     # the server, started at login, on 127.0.0.1:7331
 mac/build.sh install           # the Mac app, in /Applications (optional — any browser works)
 scripts/launchd.sh open        # …or the board in your browser

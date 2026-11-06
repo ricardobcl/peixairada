@@ -73,12 +73,33 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   asleep, the screen saver up or the session switched away hides the window's content (WebKit stops every web view's
   frames) until all have cleared or the app comes forward; the first responder is put back (logged `away:`).
 
+## What the shell trusts (2026-11-06, the security audit)
+
+* **The server proves itself before it is trusted**: every probe (`ServerController.probe`: ours · silent · stranger) sends
+  `x-peix-nonce` and never the key; only an `x-peix-proof` that is the HMAC of it under the key file's key
+  (`aliveProof` in server.mjs) is the board — adopted, its page loaded, the key script and the hub given. A listener
+  that fails it gets nothing, and the window says so. Every load of the board's origin is proved in `decidePolicyFor`.
+  → `test/key.test.mjs`, `shell-checks/port-stranger.mjs` (`meta.stranger`).
+* **The board's view never leaves the board's origin**, by any kind of navigation (the shell's own `about:blank`
+  messages aside), and every call into its page goes through `toBoard`, which says nothing off the board.
+  → `board-stays.mjs`.
+* **Everything handed to another app goes through `handOn`** (`kHandOn`: http, https, mailto, vscode, vscode-insiders,
+  zed, x-github-client) — `external`, a link on the board, the strip's ↗, a pane page; a refusal is logged
+  `open: <scheme>: refused`. `setPane` loads http(s) keys only. A pane page hands one on only within 1 s of a press or
+  key of yours in that view (`gestureAt`, `PaneDelegate.gestured`): WebKit calls a script's `click()` `.linkActivated`.
+  → `scheme-out.mjs`, `pane-gesture.mjs`.
+* **Hardened runtime, no entitlements** (`build.sh`'s codesign; the bundled node keeps its own signature).
+  `PEIXAIRADA_PORT` and `PEIXAIRADA_NODE` only under `PEIX_PROBE`; the bundled server's environment drops `DYLD_*` and
+  `NODE_OPTIONS`. Reply…, Done and Mute are `.authenticationRequired`. `logLine` writes through `redacted()` (no
+  `tkn=`, `key=`, `token=`, `ticket=` value). build.sh's lock, log and index and launchd.sh's detached log live in
+  `getconf DARWIN_USER_TEMP_DIR` (else `~/Library/Caches/peixairada`, 0700), never `/tmp`. → `log-secrets.mjs`.
+
 ## The server and the build
 
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time, its
   log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to
-  fail first; the 5 s watchdog probes `/api/projects` and brings the board back once the server answers
+  fail first; the 5 s watchdog probes (`probe`, `/api/alive` with a nonce) and brings the board back once the server proves itself
   (`boardShown`). A web process that dies is loaded again. The bridge answers the board's own main frame only.
 * **`npm run shell` runs this very file** (2026-11-04; `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/`): with the probe beside it
   and `-D PEIX_PROBE`, which build.sh does not set, on a throwaway server and fixture, a line of JSON each way; `ctx` is at the runner's

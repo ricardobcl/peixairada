@@ -5,6 +5,77 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-06. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-06 — the security audit
+
+Ricardo: *"we need to take this project more serious, with all the recent cyber-attacks and exploits happening. do a depp
+audit on dependencies and security issues that you find"*, then, on the report, *"do it all"*. Four reviewers read the
+server's HTTP surface, what it executes, the page and the shell, each finding traced and the most proved on a throwaway
+server; the dependencies were checked against the registry byte for byte. The report itself stayed out of the repo
+(public) until the fixes landed. What held up: every route behind foreign() and the key, DNS rebinding refused, no
+CORS, no script injection in some thirty untrusted fields over twenty views, argv everywhere the server runs a CLI,
+branch names validated, the tokens never in a response or the server's log. What did not, and what was done:
+
+* **The dependencies.** The eight npm packages matched the registry (integrity, signatures, `node_modules` byte for
+  byte, node-pty's prebuilt binaries too) and had no advisory. The vendored three did not show in `npm audit` at all:
+  DOMPurify 3.4.14 had five advisories by 3.4.17 (a critical and a high among them, none reachable with md()'s config),
+  and marked was jsDelivr's minification of 18.0.11 with its licence header cut. They are pinned devDependencies now,
+  copied from `node_modules` and held to it by `npm run check`; every version in package.json is exact. Upgrades wait out
+  npm's seven-day cooldown (`min-release-age` in the user's npmrc), so marked is 18.1.2, not 18.1.3.
+* **The runtime.** The agent and the app ran Node 24.21.0; 24.22.1 (2026-10-20) was a security release. The plist names
+  the resolved binary, so a Node upgrade never reached the agent: `scripts/launchd.sh install` again after one, as the
+  guide says, and the app rebuilt.
+* **The self-update ran whatever the upstream held** (high, for every board that follows origin): npm with install
+  scripts, the new commit's pre-flight inside the live server before it was judged, a restart, the app rebuilt and signed
+  with the user's identity — and the repo is public, `main` was unprotected, no commit was signed. Now only a tip signed
+  by a key in `.github/allowed_signers`, as HEAD has it, is taken (`signedBy`): a key is added only by a commit a trusted
+  one signed. The packages are `npm ci --ignore-scripts`. The repo signs its commits (`commit.gpgsign`, ssh, this Mac's
+  key); GitHub has Dependabot alerts, secret scanning with push protection, and a ruleset on main against force-pushes
+  and deletion.
+* **A reply's own HTML borrowed the board's classes, ids and `data-*`** (high, proved): DOMPurify keeps them by default, and
+  `<span class="lgo" data-url="file:///…">` in a `.chalk` reached the lunch link's click handler on `#log`, which handed
+  the URL to the app's `external`, which opened anything — one click anywhere on the transcript, `id="tour"` lending it
+  the whole column; `id="webBtn"` took ⌥⌘E the same way, and a `.vh` span hid half a command the copy button still
+  copied. A Claude that read the wrong web page was enough. md() keeps none of them now (`MD_PURIFY`), its links only
+  http(s), mailto and relative; the delegated handlers answer their own boxes; the shell hands on only `kHandOn`'s
+  schemes and the page only `OUT_OK`'s (in a browser `openExternal` had followed any URL by an anchor's click).
+* **A real content security policy** (`pageCsp`): the page's two inline scripts by their hashes, worked out as it is
+  served, connections and images as listed, styles inline (the custom properties in `style=""`). The sanitiser is the
+  first wall, this the second — it would not have stopped the gadget above, which ran no script. A violation fails any
+  scenario now.
+* **The lunch's Slack reader had every connector and the user's `auto` mode**: `--tools ''` drops only built-ins. Every
+  reader is `--permission-mode dontAsk` now, the Slack one denying that connector's writes by name too.
+* **Untrusted bytes were typed into claude as keys**: a PR's diff lines and paths quoted by a review, a handoff's words, a
+  dropped file's name — a carriage return submitted mid-prompt, ESC[Z cycled the permission mode. What the board types is
+  text now, and a spawn's prompt loses its control characters.
+* **The shell trusted whatever answered on 7331**: it sent the key on every probe and gave that page the key and the
+  bridge. The server proves itself now (`/api/alive`'s HMAC of a nonce under the key), and the app sends nothing before.
+  The board's view never leaves its origin; a pane page hands a scheme on only after a real press (WebKit calls a
+  script's `click()` a link activation); hardened runtime; the port and node overrides only in the probe; Reply…, Done
+  and Mute want the Mac unlocked; the app log writes no token.
+* **Secrets on argv**: `ps` is setuid root on macOS and shows every account's arguments. The key's ticket (`open
+  <url>#ticket=`) and board.sh's `curl -H` carried them; another account could claim the key before the browser did. Now
+  osascript's stdin and `curl -K -`.
+* **An open Chrome debugging port**: the harness's and the lunch's Chrome listened on loopback with no key — any local
+  client could read any file as the user through it, the key included. A pipe now.
+* **Smaller**: the state folder 0700 and refused when not the user's (a TERMS_DIR in /tmp could be pre-made by another
+  account and its specs adopted); the key required from the first boot (`KEY_MODE=lax` keeps the old grace); VS Code
+  Web's token sent only to a listener that is the board's serve-web or this user's VS Code; the Jira token only to the
+  site it was saved for; a fork's PR checked out in the state folder's `reviews/`, out of any VS Code trust given the
+  repo; the launcher's trust walk stopping at the repo's root, as Claude Code's does; a chat id never an option; osascript's
+  words after `--`; build.sh's and launchd.sh's lock and logs out of /tmp; a failed route's log line without the key.
+
+**Not done, on purpose**:
+
+* **A handoff's prompt still rides claude's argv**, for the drawer's life — readable by another account. Claude Code takes
+  a first prompt only as an argument; a file would make the chat's first words `@<path>`, and typing it in after the
+  start races the TUI. One account on this Mac; said here for a shared one.
+* **The real org's name is in the public history** (six lines, quoted requests of 2026-10-09). Rewriting main would
+  turn every other board's update into *diverged*; left for Ricardo to decide.
+* **The ruleset does not yet require signed commits**: GitHub must know the signing key first, which wants a token
+  scope (`admin:ssh_signing_key`) this Mac's gh has not got. The board's own check does not depend on it.
+* **The Instagram profile keeps Chrome's mock keychain**: the login window and the headless runs share cookies by it.
+  The state folder's 0700 is what guards them now.
+
 ## Decisions of 2026-11-06 — a new chat as an agent (round XXVIII)
 
 Ricardo: *"I want to support "--agent" arg on claude, probably in the new chat window, similar to worktree. come with with UI/UX

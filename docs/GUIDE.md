@@ -272,8 +272,10 @@ the *Claude Code-credentials* keychain item (your plan usage — *Always Allow*)
 your own changes as they are — and restarts only what they changed: the packages, the server (your chats stay open),
 the page, the app. When a file you changed is one the commits change too, or your branch has commits of its own,
 Settings › Updates & access says so, with the command that clears the way under Details. *Update automatically* pulls on its own once you've left the
-board be for two minutes, and never while a file is changed here. By hand: `git pull && npm install &&
-scripts/launchd.sh restart` — the board's page follows —, and `mac/build.sh install` when `mac/` changed. After
+board be for two minutes, and never while a file is changed here. **Only signed commits are taken**: the newest one
+must be signed by a key in `.github/allowed_signers`, as your checkout has it — anything else is said (*not signed*)
+and left, *Update now* too. By hand: `git pull --ff-only && npm ci && scripts/launchd.sh restart` — the board's page
+follows —, and `mac/build.sh install` when `mac/` changed. After
 switching Node versions, or installing a CLI outside the `PATH` you installed with, run the last two install lines
 again.
 
@@ -340,7 +342,7 @@ read: keep the server on `127.0.0.1` — past it, the key crosses your network u
 | `CLAUDE_BIN` `GH_BIN` `CODE_BIN` `TASK_BIN` | from `PATH` | where the CLIs are |
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
 | `CONFIG_FILE` | `~/.config/peixairada/config.json` (beside `STATE_FILE` when that is set) | the setup |
-| `KEY_MODE` | — | `enforce`: the key from the first request, before the app has opened with it |
+| `KEY_MODE` | — | `lax`: requests without the key answered until the app's page first brings it (the default before 2026-11-06) |
 
 The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh install`.
 
