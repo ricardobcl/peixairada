@@ -13,10 +13,14 @@ echo "› the tests: their environment, their temp dirs, every route named"
 node scripts/check-tests.mjs
 # The holder's headless xterm is pinned to the vendored client's version (the screen is drawn by one and read by the
 # other), and public/vendor is copied from node_modules by hand: a drift on either side shows here, not in a drawer.
-echo "› vendored xterm = node_modules"
+# The page's markdown, its sanitiser and its highlighter too (2026-11-06): pinned in package.json, so npm audit and
+# Dependabot see them, and the copy is the registry's file byte for byte — a hand-picked CDN build is no longer one.
+echo "› vendored libraries = node_modules"
 # The nearest node_modules up the folders, as Node finds it: a worktree inside the repo has none of its own (2026-10-14).
 NM=$PWD; while [ ! -d "$NM/node_modules" ] && [ "$NM" != / ]; do NM=$(dirname "$NM"); done; NM="$NM/node_modules"
-for p in @xterm/xterm/lib/xterm.js:xterm.js @xterm/xterm/css/xterm.css:xterm.css @xterm/addon-fit/lib/addon-fit.js:xterm-addon-fit.js @xterm/addon-web-links/lib/addon-web-links.js:xterm-addon-web-links.js; do
+for p in @xterm/xterm/lib/xterm.js:xterm.js @xterm/xterm/css/xterm.css:xterm.css @xterm/addon-fit/lib/addon-fit.js:xterm-addon-fit.js @xterm/addon-web-links/lib/addon-web-links.js:xterm-addon-web-links.js \
+    dompurify/dist/purify.min.js:purify.min.js marked/lib/marked.umd.js:marked.min.js @highlightjs/cdn-assets/highlight.min.js:highlight.min.js; do
+  [ -f "$NM/${p%%:*}" ] || { echo "$NM/${p%%:*} is missing — npm install" >&2; exit 1; }
   cmp -s "$NM/${p%%:*}" "public/vendor/${p##*:}" || { echo "public/vendor/${p##*:} differs from $NM/${p%%:*}" >&2; exit 1; }
 done
 echo "› shell"
