@@ -296,7 +296,7 @@ function saveState() {
     const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, removed: removedMarks, unlinked, seen, seenSince, driftAcks, mutedChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
-    writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body);
+    writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body, { mode: 0o600 });
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -6108,7 +6108,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
   const sock = join(TERMS_DIR, `${id}.sock`);
   if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
-  try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
+  try { privateDir(TERMS_DIR); } catch (e) { return { code: 500, error: e.message }; }
   const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!(sessionId || fork), ...fork && { fork }, ...attach && { attach, claudePid }, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
@@ -6146,6 +6146,8 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
  *  one after another, every holder that does not answer cost its whole wait before the board could start. */
 async function adoptHolders() {
   if (!existsSync(TERMS_DIR)) return;
+  // a folder not this user's alone is nobody's drawers to adopt (2026-11-06): its specs would name sockets of anyone's
+  try { privateDir(TERMS_DIR); } catch (e) { console.error(`[peixairada] no drawers adopted: ${e.message}`); return; }
   await Promise.allSettled(readdirSync(TERMS_DIR).filter(f => f.endsWith('.json')).map(adoptHolder));
 }
 async function adoptHolder(f) {
@@ -6327,6 +6329,17 @@ const LOOPBACK_BIND = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(HOST);
 const KEY_OPEN = /^\/(index\.html|vendor\/[\w.-]+|api\/alive|api\/key\/(claim|open))?$/;
 let boardKey = '', keylessSaid = false, keyOpenAt = 0;
 const tickets = new Map();   // ticket → when it expires
+/** `dir`, made if need be and kept this user's alone (2026-11-06): the state folder holds the key, the tokens, every
+ *  drawer's socket and screen, the lunch's logged-in Chrome — made 0755 before, readable by every account on the Mac
+ *  but for ~/Library's own mode, and a TERMS_DIR set to a shorter folder outside it (/tmp) by whoever made it first.
+ *  One that is not a folder of this user's is refused (a throw), never used. */
+function privateDir(dir) {
+  try { mkdirSync(dir, { recursive: true, mode: 0o700 }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+  const st = statSync(dir);
+  if (!st.isDirectory() || st.uid !== process.getuid()) throw new Error(`${dir} is not a folder of this user's — not used`);
+  if (st.mode & 0o077) chmodSync(dir, 0o700);
+  return dir;
+}
 /** A key of 64 hex digits kept in `file`: the file's, else a new one written there, this user's alone. */
 function keyFile(file) {
   try {
@@ -6993,6 +7006,7 @@ server.on('error', e => {
 });
 await new Promise(res => server.listen(PORT, HOST, res));
 console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`);
+privateDir(dirname(STATE_FILE));   // before anything is read or written in it (2026-11-06)
 loadState();   // now, not at import: what a server busy on the port saved while this one waited is in it
 boardKey = keyFile(KEY_FILE);
 if (!keyRequired() && !existsSync(APP_DIR)) requireKey(`no app at ${APP_DIR} to wait for`);

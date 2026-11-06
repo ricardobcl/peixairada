@@ -1,7 +1,7 @@
 // Project input, Peacock's colours moved into the setup once (2026-10-15), and the state file itself.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { tmpDir } from '../lib/testserver.mjs';
@@ -126,4 +126,19 @@ test('an import with no STATE_FILE neither moves the legacy state file nor reads
   const out = execFileSync(process.execPath, ['--input-type=module', '-e', `const m = await import(${JSON.stringify(new URL('../server.mjs', import.meta.url).href)}); console.log(JSON.stringify(m.doneMarks)); process.exit(0);`], { env, encoding: 'utf8' });
   assert.equal(out.trim().split('\n').at(-1), '{}', 'nothing read');
   assert.ok(existsSync(legacy) && !existsSync(now), 'nothing moved');
+});
+
+test('the state folder is this user\'s alone (2026-11-06): made 0700 at boot, the state file 0600, the drawers\' folder refused when it is not a folder of this user\'s', { timeout: 60_000 }, async () => {
+  const { startTestServer } = await import('../lib/testserver.mjs');
+  const dir = tmpDir('peix-'); chmodSync(dir, 0o755);
+  const notDir = join(tmpDir('peix-terms-'), 'a file'); writeFileSync(notDir, '');
+  const srv = await startTestServer({ dir, env: { TERMS_DIR: notDir } });
+  try {
+    assert.equal(statSync(dir).mode & 0o777, 0o700, 'the folder, closed');
+    await srv.post('api/seen', {}).catch(() => {});
+    await srv.api('api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins: [] }) });   // a save
+    assert.equal(statSync(join(dir, 'state.json')).mode & 0o777, 0o600, 'the state file, written this user\'s alone');
+    const r = await srv.post('api/terminals', { cwd: dir, shell: true });
+    assert.equal(r.status, 500); assert.match(r.body.error, /is not a folder of this user's — not used/);
+  } finally { await srv.stop(); }
 });
