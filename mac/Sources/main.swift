@@ -81,8 +81,14 @@ func logLine(_ s: String) {
   let when = Date()
   logQueue.async {
     if logHandle == nil { logHandle = appendHandle(kAppLog) }
-    try? logHandle?.write(contentsOf: Data("\(logStamp.string(from: when)) \(s)\n".utf8))
+    try? logHandle?.write(contentsOf: Data("\(logStamp.string(from: when)) \(redacted(s))\n".utf8))
   }
+}
+/// A secret in an address is never written down (2026-11-06): VS Code Web's `tkn=` rode the pane's keys into this log,
+/// readable by every process of the user's, dozens of times a day; a key's or a ticket's would have too.
+private let secretInURL = try! NSRegularExpression(pattern: "([?&#](?:tkn|key|token|ticket)=)[^&#\\s'\"]+", options: [.caseInsensitive])
+func redacted(_ s: String) -> String {
+  secretInURL.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "$1…")
 }
 
 /// A Swift string as a JavaScript literal — JSON's own escaping, so a quote, a backslash or a line break in a path or
