@@ -77,7 +77,12 @@ branch names validated, the tokens never in a response or the server's log. What
   is moved onto it by `git reset --keep`, signed as any update must be, never over a change the new history changes
   too, said as *History rewritten* (`fresh`: what is new besides). A commit of the checkout's own keeps it *diverged*.
   The rewrite itself waits until the other boards have taken this; a board that has not is *diverged* and needs `git
-  fetch && git reset --keep origin/main` by hand once.
+  fetch && git reset --keep origin/main` by hand once. **Two passes, run end to end with the real code** (Ricardo: *"can
+  we make sure the updater goes with this current version update first, so if there is force pushes after, only does it
+  in a second pass and it works?"*): boards at ca0cf11 (before the audit) and at 3b472cf (signed updates, no rewrites)
+  each took the version that follows rewrites by their own old updater — a fast-forward, the restart asked —, then, on
+  the new code, followed a rewrite made as it will be (filter-repo, every commit signed again, the list) onto a tree
+  the same as before but the list, the name nowhere in its history; a board left on the old code was *diverged*.
 * **The Instagram profile keeps Chrome's mock keychain**: the login window and the headless runs share cookies by it.
   The state folder's 0700 is what guards them now.
 
