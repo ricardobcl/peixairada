@@ -365,6 +365,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var menuOut = false                     // the menu bar let out after a hold at the top edge, until it has hidden again (every screen since 2026-11-01)
   var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
   var topSince: TimeInterval?             // when the pointer reached the top edge
+  var elsewhere = false                   // the pointer on another screen than the fill's: the menu bar and the Dock as any window's (2026-11-07)
+  var awaySince: TimeInterval?            // when the pointer left the fill's screen
+  static let elsewhereAfter: TimeInterval = 0.25   // …and how long it stays off it before it is elsewhere
+  var clickedOut: TimeInterval?           // the last click outside the app (handBack)
+  var cameForward: (app: NSRunningApplication, at: TimeInterval)?   // the last other app come forward, and when (handBack)
+  var handedBack: TimeInterval?           // the click handBack last answered: once a click
+  static let handBackWithin: TimeInterval = 0.5   // the board brought forward this soon after a click elsewhere is no one's doing
   var tuck: DispatchWorkItem?             // a tuckMenuBar pending after the app came forward or the Space changed
   var dockSide = "bottom"                 // the Dock's edge, read when the fill starts and when the app comes back (dockEdge)
   static let dockHold: TimeInterval = 0.7 // how long the pointer is held at the edge before the Dock comes out
@@ -395,8 +402,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                            object: window, queue: .main) { [weak self] _ in
       self?.refreshBadges()
-      self?.keysBack("key")
+      // A turn later, and never to make it key (2026-11-07): on 27.2 NSApp.keyWindow is still nil while the window's own
+      // didBecomeKey is posted, so every activation logged "no key window" and made the board key from inside the
+      // notification — which posted it again, up to twenty deep in one second.
+      DispatchQueue.main.async { self?.keysBack("key", makeKey: false) }
     }
+    watchFront()
 
     // `kill -USR1 $(pgrep -x peixAIrada)` is ⌃⌘F from a shell: a session in a drawer has no way to press a key in the
     // app short of an Accessibility grant, and the fill is checked from there (the app log says the frame it took).
@@ -413,8 +424,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   func applicationWillTerminate(_ note: Notification) { server.stop() }
   /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
-  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; lightsUp("the app in the back"); toBoard("window.peixFront?.(false)", completionHandler: nil) }
+  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; awaySince = nil; lightsUp("the app in the back"); toBoard("window.peixFront?.(false)", completionHandler: nil) }
   func applicationDidBecomeActive(_ note: Notification) {
+    if handBack() { return }   // brought forward by no one: in front for a moment, nothing to do there
     toBoard("window.peixFront?.(true)", completionHandler: nil)   // While you were out (2026-11-01, round XIX's M3)
     if fillSaved != nil && fillTick == nil && !window.isMiniaturized { startDockTick() }; tuckMenuBarSoon()   // down in the Dock, it waits for the window (windowDidDeminiaturize)
     if !away.isEmpty { away.removeAll(); showAway() }   // in front again: someone is looking, whatever was missed
@@ -425,12 +437,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   }
   /// The board's window key with a view holding the keys, if the app is in front without: no key window at all (a
   /// panel, the About box or a menu keeps them as they should), or the window itself holding them, which no view hears.
-  func keysBack(_ why: String) {
+  /// `makeKey` false when the window has just become key itself.
+  func keysBack(_ why: String, makeKey: Bool = true) {
     guard NSApp.isActive, window.isVisible, !window.isMiniaturized, content?.isHidden != true else { return }
-    if NSApp.keyWindow == nil { logLine("focus: \(why) with no key window — the board made key"); window.makeKeyAndOrderFront(nil) }
+    if makeKey, NSApp.keyWindow == nil, !window.isKeyWindow { logLine("focus: \(why) with no key window — the board made key"); window.makeKeyAndOrderFront(nil) }
     guard window.isKeyWindow, window.firstResponder === window else { return }
     logLine("focus: \(why) with the keys on no view — given to the \(paneFocus != nil ? "page" : "board")")
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)
+  }
+  /// Who comes forward, and the clicks that land outside the app (2026-11-07), for handBack. A click elsewhere is heard
+  /// by a global monitor, which mouse events need no grant for (key events would).
+  func watchFront() {
+    NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil,
+                                                      queue: .main) { [weak self] note in
+      guard let self, let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+      if app.processIdentifier == getpid() { DispatchQueue.main.async { self.handBack() } }
+      else if app.activationPolicy == .regular { self.cameForward = (app, Date().timeIntervalSinceReferenceDate) }
+    }
+    NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+      self?.clickedOut = Date().timeIntervalSinceReferenceDate
+    }
+  }
+  /// The front given back to the app a click on another screen gave it (2026-11-07). Filled on one screen of two, a
+  /// click on another app's window on the other one brought that app forward, and a tenth of a second later the board was
+  /// in front again — no code of the board's asks for it: on macOS 27 the menu bars' own process (MenuBarAgent, its
+  /// `SetMenuBars` in the window server's log) makes an app front after such a click, one the click was not for, with
+  /// the menu bar hidden by an app's custom full screen — a game's the same (docs/DECISIONS.md). So within
+  /// handBackWithin of a click outside the app, the app that click brought forward running and the pointer off the
+  /// board's window (a click on the board itself is the board's), the board hands the front back, once a click.
+  /// One screen never: the pointer is always over the fill there. Logged `focus:`; true when handed back.
+  @discardableResult func handBack() -> Bool {
+    let now = Date().timeIntervalSinceReferenceDate
+    guard fillSaved != nil, NSApp.isActive, let click = clickedOut, click != handedBack, now - click <= AppDelegate.handBackWithin,
+          let came = cameForward, came.at >= click - 0.1, !came.app.isTerminated,
+          !window.frame.contains(NSEvent.mouseLocation) else { return false }
+    handedBack = click
+    let ok: Bool
+    if #available(macOS 14, *) { ok = came.app.activate(from: .current, options: []) } else { ok = came.app.activate(options: []) }
+    logLine("focus: in front \(Int((now - click) * 1000)) ms after a click that brought \(came.app.localizedName ?? "another app") forward, the pointer on another screen — \(ok ? "handed back" : "handing back refused")")
+    return ok
   }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
   func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -1402,7 +1447,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     if let saved = fillSaved {
       fillSaved = nil
       lightsUp("fill off")
-      fillTick?.invalidate(); fillTick = nil; dockOut = false; edgeSince = nil; menuOut = false; topSince = nil
+      fillTick?.invalidate(); fillTick = nil; dockOut = false; edgeSince = nil; menuOut = false; topSince = nil; elsewhere = false; awaySince = nil
       NSApp.presentationOptions = saved.opts
       window.styleMask = saved.mask
       window.fill = false
@@ -1443,8 +1488,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// The fill's options as things stand: the Dock hidden unless let out; the menu bar hidden outright unless let out
   /// (menuOut), when it is auto-hidden — and auto-hidden whenever the Dock is out, since AppKit refuses hideMenuBar
   /// without hideDock (an exception, not a no-op). With the lights down the menu bar is not hidden at all, so it stays
-  /// out over their strip while the pointer goes down to them (lightsDown).
+  /// out over their strip while the pointer goes down to them (lightsDown). With the pointer on another screen, none
+  /// (elsewhere): the menu bars and the Dock are every screen's, and that one's are as any window's (pointerCrossed).
   func fillOptions() -> NSApplication.PresentationOptions {
+    if elsewhere { return [] }
     let dock: NSApplication.PresentationOptions = dockOut ? .autoHideDock : .hideDock
     if lightsOut { return dock }
     let menu: NSApplication.PresentationOptions = menuOut || dockOut ? .autoHideMenuBar : .hideMenuBar
@@ -1496,8 +1543,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   func dockTick() {
     guard fillSaved != nil, let screen = window.screen else { return }
     let p = NSEvent.mouseLocation, f = screen.frame, now = Date().timeIntervalSinceReferenceDate
+    let here = f.insetBy(dx: -2, dy: -2).contains(p)
+    if here { awaySince = nil; if elsewhere { pointerCrossed(back: true) } }
+    else if let since = awaySince { if !elsewhere, now - since >= AppDelegate.elsewhereAfter { pointerCrossed(back: false) } }
+    else { awaySince = now }   // an overshoot past the edge is not a stay
     lightsTick(p, f)
-    guard f.insetBy(dx: -2, dy: -2).contains(p) else { return }   // on another screen
+    guard here else { return }   // on another screen
     let at: Bool, off: Bool
     switch dockSide {
     case "left": at = p.x <= f.minX + 2; off = p.x > f.minX + 100
@@ -1518,6 +1569,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
         menuOut = true; topSince = nil; NSApp.presentationOptions = fillOptions(); logLine("menu bar: out")
       } else if topSince == nil { topSince = now }
     } else { topSince = nil }
+  }
+  /// The pointer gone to another screen, or back to the fill's (2026-11-07). The fill's options hide the menu bar and
+  /// the Dock on every screen, so a second screen had neither while the board was in front; and a click there, giving
+  /// another app the front out of that state, is when macOS brought the board forward again (handBack) — a custom full
+  /// screen's state, never a window's. Off the fill's screen the board asks for nothing — its screen shows the menu bar
+  /// over the head row meanwhile, as it does with any other app in front —, back on it the fill's options again; what
+  /// was let out is put back.
+  func pointerCrossed(back: Bool) {
+    elsewhere = !back
+    dockOut = false; menuOut = false; edgeSince = nil; topSince = nil
+    if lightsOut { lightsUp("the pointer left") }
+    let options = fillOptions()
+    if NSApp.presentationOptions != options { NSApp.presentationOptions = options }
+    logLine("fill: the pointer \(back ? "back — the menu bar and the Dock hidden" : "on another screen — the menu bar and the Dock as any window's")")
   }
   // ---- the lights ----------------------------------------------------------------------------------
   // (2026-10-13) Filled, the window is borderless: no title bar, no lights, and the one way out in sight was View's item

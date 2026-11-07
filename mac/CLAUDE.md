@@ -45,6 +45,12 @@ server.mjs, build.sh's `SOURCE`).
   (`windowShouldZoom`); ⌘W leaves it first. `NSFullScreenMenuItemEverywhere` and
   `NSPrefersDisplaySafeAreaCompatibilityMode` are false; *Exit Full Screen* (View's, the fish's) is retitled in
   `validateMenuItem`. The page is told `peixFill(on, notch)`, the housing in CSS px. → `full-screen-pick.mjs`.
+* **Filled on one screen of two, the fill's options hold only while the pointer is on its screen** (2026-11-07;
+  `pointerCrossed`, `elsewhere`, `elsewhereAfter`): elsewhere `[]` — the menu bars and the Dock as with any window —, what
+  was let out put back. **A front no one gave the board is handed back** (`handBack`, `watchFront`): filled, in front within
+  `handBackWithin` of a click outside the app that brought another regular app forward, the pointer off the window, it goes
+  back to that app, once a click — macOS 27's MenuBarAgent (`SetMenuBars`) makes such an app front. One screen, neither.
+  Logged `fill: the pointer`, `focus:`; who made what front is the window server's log (docs/DECISIONS.md, 2026-11-07).
 * **The lights come down with the menu bar** (2026-10-13; `lightsTick`): a strip under it, over the pane too — the
   lights (`LightButton`), the title —, the menu bar held out over it (`lightsOut`) until the pointer is below. Both
   cover the head row, so only a hold brings them — the menu bar's own, or the Dock's (with the Dock out AppKit
@@ -68,7 +74,8 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
 * **About's Copy details asks the shell** (2026-11-04; `details` → `tellDetails` → `peixDetails`): macOS, the window's shape and inset, the
   screen, where each page's view really is in the window's terms, never its address. → `shell-checks/details.mjs`.
 * **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
-  front, a view has the keys (`keysBack`, logged `focus:`).
+  front, a view has the keys (`keysBack`, logged `focus:`) — **never made key from its own `didBecomeKey`**: on 27.2
+  `NSApp.keyWindow` is nil there, and it posted it again (2026-11-07).
 * **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display
   asleep, the screen saver up or the session switched away hides the window's content (WebKit stops every web view's
   frames) until all have cleared or the app comes forward; the first responder is put back (logged `away:`).

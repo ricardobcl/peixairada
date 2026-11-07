@@ -2,8 +2,58 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-06. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-07. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-07 — the fill on two screens, and who brings an app forward
+
+Ricardo, of another user's board: *"there's a bug where the focus is somehow captured by this app when in fullscreen (the
+fake fullscreen we have). the user had 2 monitors, not mirrored, and when clicking on the other app on the other monitor,
+this app captured focus again. deeply investigate this. not the first time our custom fullscreen has weird quirks"*; a day
+on, with no second screen to try it on: *"fix everything"*.
+
+* **Who brought an app forward is in the window server's log**, at the default level, kept about a day:
+  `log show --predicate 'subsystem == "com.apple.SkyLight.processes" AND category == "Focus"'` (`/usr/bin/log`: zsh has a
+  `log` of its own), lines `<connection>[<call>]: … Making <psn> the front process`. The connection is the asker's —
+  `new foreground connection <id> <bundle id>` names an app's, the Dock's makes ⌘-Tab, a Dock click and a change of
+  Space (`SetFrontProcess`, `SetManagedDisplayCurrentSpace`), an app clicked into makes itself front
+  (`DoDeferredOrdering`), and the menu bars' process, MenuBarAgent, `SetMenuBars`. `log stream --level info` adds AppKit's
+  window ordering in the app.
+* **The board asks for the front only when told to** — a launch, its Dock icon, the fish's rows, a notification's
+  actions, a drop —, and nothing it runs once behind (the screen handlers, the tuck, the lights, `keysBack`) activates it.
+  Recorded on one screen (2026-11-06, 15:15 to 18:48, the 2560×1440 mirror): the board came forward 114 times, 100 by the
+  Dock, 4 by clicks on it, 2 at a launch, the rest macOS's own (the login window after an unlock, a panel closing, a
+  change of Space). Never by itself.
+* **MenuBarAgent makes apps front that no one picked.** In those hours its `SetMenuBars` made an app front 13 times —
+  VS Code 11 —, with Slack's own full-screen Space in front, or the board filled: VS Code's windows came over the board
+  until it was clicked again (16:53, 18:01). Never the board, on one screen. On two, the same call is the bug: a game's
+  forum has it on macOS 27.0.1 with the game in its own full screen — the menu bar hidden by the app, as the fill's —
+  and mirroring off (https://us.forums.blizzard.com/en/wow/t/2378497): a click on an app on another monitor brings it
+  forward (`DoDeferredOrdering`), and 110–160 ms later MenuBarAgent's `SetMenuBars` makes another app front; windowed,
+  never. In the report here the app it made front was the board. It is macOS's; two answers here, neither tried on two
+  screens yet (none here; a drawer has no Accessibility, so no click can be made for it):
+* **Off the fill's screen the board asks for nothing** (`pointerCrossed`, `elsewhere`; `elsewhereAfter` 0.25 s, so an
+  overshoot is not a stay): the fill's options hide the menu bar and the Dock on every screen at once, so the other
+  screen had neither while the board was in front, and a click there left that state. With the pointer on another
+  screen they are `[]` — every menu bar and the Dock as with any window, the board's screen with the menu bar over its
+  head row, as whenever another app is in front —, back on it the fill's again; what was let out goes back. Logged
+  `fill: the pointer …`. One screen (or a mirror), never.
+* **A front no one gave the board is handed back** (`handBack`, `watchFront`): filled, in front within
+  `handBackWithin` (0.5 s) of a click outside the app (a global monitor: mouse events need no grant, measured — key events would) that
+  brought another regular app forward (`NSWorkspace`'s), the pointer off the board's window — the front goes back to that
+  app (`activate(from:)`), once a click, and the board does nothing of its coming forward. Not a click on the board (the
+  pointer is on it), its Dock icon or a notification (no app came forward after that click), nor ⌘-Tab (no click). On
+  one screen the pointer is always over the fill. Logged `focus: in front N ms after a click that brought X forward…`.
+* **`keysBack` made the board key from inside its own `didBecomeKey`** (2026-10-28's): on 27.2 `NSApp.keyWindow` is
+  still nil while that is posted, so every activation since logged `focus: key with no key window — the board made key`
+  (1597 lines) and called `makeKeyAndOrderFront`, which posted it again — 20 in one second after one ⌘-Tab (17:52). The
+  window's becoming key now gives a view the keys a turn later and never makes it key; the app's coming forward makes it
+  key only with no key window and the window not key. So a `focus: … no key window` line is real again.
+* **"Displays have separate Spaces" is on, on this Mac** (`com.apple.spaces` has no `spans-displays`: the default), not
+  off as 2026-10-14 says.
+* **Open**: whether either answer holds on two screens. To try: mirroring off, the board filled on one, clicks on
+  another app on the other — the app log's `fill: the pointer` and `focus:` lines, and the window server's for who made
+  what front. If the board still comes back with no `focus: … handed back`, the cause is not the click's.
 
 ## Decisions of 2026-11-06 — the security audit
 
