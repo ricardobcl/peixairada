@@ -130,7 +130,7 @@ extension AppDelegate {
       }
       reply(["w": window.frame.width, "h": h, "titled": window.styleMask.contains(.titled), "fill": fillSaved != nil, "full": window.styleMask.contains(.fullScreen),
              "inset": paneTopC.constant, "zoom": zoom, "active": NSApp.isActive, "seen": window.occlusionState.contains(.visible), "unseen": probeUnseen() as Any,
-             "panes": panes], nil)
+             "webTop": content.bounds.height - web.frame.maxY, "barClear": window.titlebarAppearsTransparent, "panes": panes], nil)
     case "shot":   // optionIncludingWindow (1 << 3), boundsIgnoreFraming (1 << 0)
       guard let img = capture(.null, 1 << 3, UInt32(window.windowNumber), 1)?.takeRetainedValue(), let s = Shot(img, points: window.frame.width) else { return reply(nil, "no image of the window") }
       shot = s

@@ -4045,6 +4045,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       hl: ['#5f5e57', '#9c27a0', '#3c7832', '#82560f', '#2560be', '#8a6310', '#b83c2e', '#6b7f9e'], proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
       tok: { '--tool-bg': '#e9e8e2', '--code-line': '#d5d3ca', '--inline-bg': 'rgb(40 38 30 / .07)', '--snip-claude': '#42413b', '--nocolor': '#b1b0a8', '--ended': '#9f9e96',
         '--term-bg': '#eae8e2', '--unread': '#9c4426' }, codeInk: '#9e3f1f', you: '#21756a' },
+    // Flashbang (2026-11-16): a traditional light theme, every ground white — the list, home and the frame too; the drawer
+    // the default iTerm2 profile's Light set (Tango) on white, its selection macOS's blue; the window's title bar white too.
+    flashbang: { name: 'Flashbang', dark: false, asSet: true, titlebar: true, bg: '#ffffff', panel: '#ffffff', raise: '#f2f2f2', crust: '#ffffff', ink: '#1f1f1f', muted: '#5e5e5e', line: '#e3e3e3', accent: '#ad5030',
+      working: '#d9a82a', idle: '#237a48', needs: '#b42e2e', watch: '#0a7474', spend: '#e8782a', code: '#f6f6f6',
+      hl: ['#5f5e57', '#9c27a0', '#3c7832', '#82560f', '#2560be', '#8a6310', '#b83c2e', '#6b7f9e'], proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
+      ansi: ['#000000', '#cc0000', '#4e9a06', '#c4a000', '#3465a4', '#75507b', '#06989a', '#d3d7cf', '#555753', '#ef2929', '#8ae234', '#fce94f', '#729fcf', '#ad7fa8', '#34e2e2', '#eeeeec'],
+      tok: { '--term-bg': '#ffffff', '--term-sel': '#b5d5ff' } },
     'catppuccin-latte': { name: 'Catppuccin Latte', dark: false, bg: '#eff1f5', panel: '#ffffff', raise: '#e6e9ef', crust: '#dce0e8', ink: '#4c4f69', muted: '#6c6f85', line: '#ccd0da', accent: '#8839ef',
       working: '#df8e1d', idle: '#40a02b', needs: '#d20f39', watch: '#179299', spend: '#fe640b', code: '#e6e9ef',
       hl: ['#9ca0b0', '#8839ef', '#40a02b', '#fe640b', '#1e66f5', '#df8e1d', '#d20f39', '#179299'], proj: ['#1e66f5', '#8839ef', '#40a02b', '#fe640b', '#d20f39', '#179299', '#df8e1d'],
@@ -4090,8 +4097,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // A theme is a family of two halves (2026-11-01, round XVII's A1; two slots, a dark theme and a light one picked apart,
   // before — Auto paired strangers): the appearance (Auto · Dark · Light) picks the half, the family the same day and
   // night (prefs.theme). The halves a palette lacked are its own published variant (Tokyo Night Day, Gruvbox Light, Rosé
-  // Pine Dawn, Everforest Light, Kanagawa Lotus, Flexoki Dark; Nord Light Nord's Snow Storm); Black, Matte Black and
-  // Softened have one half, the other the board's own. In the picker's order.
+  // Pine Dawn, Everforest Light, Kanagawa Lotus, Flexoki Dark; Nord Light Nord's Snow Storm); Black, Matte Black,
+  // Softened and Flashbang have one half, the other the board's own. In the picker's order.
   const FAMILIES = {
     own: { name: 'peixAIrada', dark: 'own-dark', light: 'own-light' },
     'tokyo-night': { name: 'Tokyo Night', dark: 'tokyo-night', light: 'tokyo-day' },
@@ -4105,6 +4112,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     black: { name: 'Black', dark: 'black', light: 'own-light' },
     'matte-black': { name: 'Matte Black', dark: 'matte-black', light: 'own-light' },
     softened: { name: 'Softened', dark: 'own-dark', light: 'softened' },
+    flashbang: { name: 'Flashbang', dark: 'own-dark', light: 'flashbang' },
   };
   /** A half's family — the first that has it, so the board's own is the board's own family's. */
   const famOf = k => k ? Object.keys(FAMILIES).find(f => FAMILIES[f].dark === k || FAMILIES[f].light === k) || null : null;
@@ -4255,7 +4263,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /** The theme and its appearance on the root, and its name in the settings. The terminals and the board's colours
    *  follow (reskin). The app's window wears the appearance picked — its pages, its find bar, its ground — or macOS's
    *  while the board follows it, so the board's own media query still says macOS's then. */
-  let lookPosted;
+  let lookPosted, barPosted;
   function applySkin() {
     const k = wornKey(), root = document.documentElement, look = skinDarkOf(k) ? 'dark' : 'light';
     root.dataset.theme = look;
@@ -4263,6 +4271,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     root.dataset.frame = look === 'light' && prefs.darkFrame ? 'dark' : look;
     const want = prefs.skinFollow ? null : prefs.look === 'dark';
     if (want !== lookPosted) { lookPosted = want; window.webkit?.messageHandlers?.hub?.postMessage({ type: 'appearance', dark: want }); }   // post is declared further down
+    // a theme that asks for it (2026-11-16, Flashbang) paints the window's title bar its frame; none, macOS's own
+    const bar = SKINS[k]?.titlebar && root.dataset.frame === 'light' ? SKINS[k].crust : null;
+    if (bar !== barPosted) { barPosted = bar; window.webkit?.messageHandlers?.hub?.postMessage({ type: 'titlebar', color: bar }); }
     showLook();
   }
   /** Settings › Appearance (2026-10-16; a switch, *follow macOS*, off by default before): Auto — the half of macOS's
