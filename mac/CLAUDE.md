@@ -118,6 +118,8 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
   **The board's web view draws no ground** (`drawsBackground` off): the window's `backgroundColor` and
-  `underPageBackgroundColor` are the page's `--frame` per appearance (2026-11-01), two hex pairs in `buildWindow`.
+  `underPageBackgroundColor` are the page's `--frame` per appearance (2026-11-01), two hex pairs in `buildWindow`. A theme with
+  `titlebar` (2026-11-16, Flashbang) posts its frame (`titlebar`): the bar clear over that ground, the board
+  under every bar (`webTopC` from `paneTop`: WebKit insets no clear bar; so a switch moves nothing); null puts back macOS's and `ground`. → `titlebar-theme.mjs`.
 * Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
   node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).

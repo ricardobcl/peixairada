@@ -309,6 +309,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var web: BoardWebView!
   var content: NSView!
   var paneOverlay: PaneOverlay!
+  var ground: NSColor!                          // the window's own ground, the board's --frame per appearance (buildWindow)
+  var webTopC: NSLayoutConstraint!             // the board's top: under the title bar, where the overlay's is (paneTop)
   var paneTopC: NSLayoutConstraint!            // the overlay's top: where the page's own y = 0 is, under a title bar (paneTop)
   var paneTopObs: NSKeyValueObservation?
   // A web view per page (`key`: gh:<a PR's url>, ide:<a folder's editor url>), kept loaded; the page's strip has the tabs.
@@ -535,7 +537,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     // the window's is the page's --frame for the appearance in force (its --bg until 2026-11-01, when the board's own
     // themes laid the chat in a frame), so what shows first is what the page will show; underPageBackgroundColor is the
     // same colour for the moments WebKit paints its own ground (an overscroll).
-    let ground = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    ground = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
       ? NSColor(srgbRed: 0x28 / 255, green: 0x28 / 255, blue: 0x25 / 255, alpha: 1)
       : NSColor(srgbRed: 0xde / 255, green: 0xdc / 255, blue: 0xd6 / 255, alpha: 1) }
     web.setValue(false, forKey: "drawsBackground")
@@ -581,9 +583,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     paneOverlay.translatesAutoresizingMaskIntoConstraints = false
     content.addSubview(web); content.addSubview(paneOverlay)
     paneTopC = paneOverlay.topAnchor.constraint(equalTo: content.topAnchor)
+    webTopC = web.topAnchor.constraint(equalTo: content.topAnchor)
     NSLayoutConstraint.activate([
       web.leadingAnchor.constraint(equalTo: content.leadingAnchor), web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-      web.topAnchor.constraint(equalTo: content.topAnchor), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+      webTopC, web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
       paneOverlay.leadingAnchor.constraint(equalTo: content.leadingAnchor), paneTopC,
       paneOverlay.trailingAnchor.constraint(equalTo: content.trailingAnchor), paneOverlay.bottomAnchor.constraint(equalTo: content.bottomAnchor)
     ])
@@ -593,7 +596,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     window.contentView = content
     // In a window WebKit insets the page by the title bar on its own, from contentLayoutRect, so the page's y = 0 is below
     // the bar while the overlay's was above it (2026-11-04): every page sat that much too high, over its half's strip,
-    // and short of the half's foot. The fill and macOS's full screen have no inset, so the overlay goes by the same word.
+    // and short of the half's foot. The fill and macOS's full screen have no inset, so the overlay goes by the same word
+    // — and the board too, under the bar itself since 2026-11-16 (paneTop), so WebKit insets nothing.
     paneTopObs = window.observe(\.contentLayoutRect, options: [.initial]) { [weak self] w, _ in self?.paneTop(w) }
     installEscapeMonitor()
     installHotkeyForwarder()
@@ -670,6 +674,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   /// inset past the window's height makes the constraints grow the window.
   private func paneTop(_ w: NSWindow) {
     let inset = max(0, w.frame.height - w.contentLayoutRect.height)
+    // The board itself starts under the bar (2026-11-16), so WebKit insets nothing: a clear bar (a theme's) is no inset to
+    // it, and the board ran under the lights and took the window's drags — and a theme turning the bar moves nothing.
+    webTopC.constant = inset
     guard paneTopC.constant != inset else { return }
     paneTopC.constant = inset
     logLine("pane: the page starts \(inset) pt down the window")
@@ -1912,6 +1919,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       window.appearance = dark.flatMap { NSAppearance(named: $0 ? .darkAqua : .aqua) }
       if let dark { UserDefaults.standard.set(dark, forKey: kDarkKey) } else { UserDefaults.standard.removeObject(forKey: kDarkKey) }
       logLine("appearance: \(dark.map { $0 ? "dark" : "light" } ?? "macOS's")")
+    case "titlebar":   // a theme's title bar in its frame (2026-11-16, Flashbang): the bar clear over that ground; null, macOS's own
+      let hex = (body["color"] as? String).flatMap { $0.count == 7 && $0.hasPrefix("#") ? UInt32($0.dropFirst(), radix: 16) : nil }
+      window.titlebarAppearsTransparent = hex != nil
+      window.backgroundColor = hex.map { NSColor(srgbRed: CGFloat($0 >> 16 & 255) / 255, green: CGFloat($0 >> 8 & 255) / 255, blue: CGFloat($0 & 255) / 255, alpha: 1) } ?? ground
+      web.underPageBackgroundColor = window.backgroundColor   // WebKit's own ground, the strip under the bar included
+      logLine("titlebar: \(body["color"] as? String ?? "macOS's")")
     case "haptic":   // a bump on the trackpad (2026-10-11): a divider at a stop, a tab dropped, a run of days crossed
       let pattern: NSHapticFeedbackManager.FeedbackPattern = switch body["kind"] as? String {
         case "levelChange": .levelChange
