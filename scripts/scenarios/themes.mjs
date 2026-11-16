@@ -54,7 +54,7 @@ export default async function (ctx) {
   // ⌥⌘Y: a tile a family, on the board's own; typed, Black (2026-10-30), the board's own on true black, its projects'
   // colours as set; then Tokyo Night, the board behind wearing its dark half
   await ctx.key('KeyY');
-  await ctx.waitFor(`document.querySelector('#themes').open && document.querySelectorAll('#themegrid .tt').length === 12`, { what: 'the grid of families' });
+  await ctx.waitFor(`document.querySelector('#themes').open && document.querySelectorAll('#themegrid .tt').length === 13`, { what: 'the grid of families' });
   ctx.assert.match(await ctx.evaluate(`document.querySelector('#themegrid .tt.sel .nm').textContent`), /^peixAIrada.*worn.*dark$/, 'the board’s own, worn, is selected');
   await keyIn('ArrowRight');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'tokyo-night'`, { what: 'the preview' });
@@ -123,7 +123,7 @@ export default async function (ctx) {
 
   // a swatch in Settings: the family, its half of the appearance at once
   ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#themePick [data-fam]')].map(b => b.textContent)`),
-    ['peixAIrada', 'Tokyo Night', 'Catppuccin', 'Gruvbox', 'Rosé Pine', 'Everforest', 'Kanagawa', 'Flexoki', 'Nord', 'Black', 'Matte Black', 'Softened'], 'a swatch a family, named');
+    ['peixAIrada', 'Tokyo Night', 'Catppuccin', 'Gruvbox', 'Rosé Pine', 'Everforest', 'Kanagawa', 'Flexoki', 'Nord', 'Black', 'Matte Black', 'Softened', 'Flashbang'], 'a swatch a family, named');
   await ctx.evaluate(`document.querySelector('#themePick [data-fam="rose-pine"]').click()`);
   await ctx.waitFor(`document.documentElement.dataset.skin === 'rose-pine'`, { what: 'Rosé Pine from its swatch' });
   ctx.assert.equal((await prefs('theme')).theme, 'rose-pine', 'kept');
