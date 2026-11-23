@@ -32,6 +32,8 @@ bash -n mac/build.sh
 echo "› CLAUDE.md size"
 node -e 'for (const [f, max] of [["CLAUDE.md", 120000], ["mac/CLAUDE.md", 20000]]) { const n = require("fs").readFileSync(f, "utf8").length;
 if (n > max) { console.error(`${f} is ${n} characters, over its ${max}: pare its bullets to their rules, the stories go to docs/DECISIONS.md`); process.exit(1); } }'
+# the drawers' launcher (2026-11-23): the server builds it as it runs, where an error is only a drawer with no microphone
+if [ -d "$(xcode-select -p 2>/dev/null)" ]; then echo "› cc lib/disclaim.c"; cc -fsyntax-only -Wall -Wextra -Werror lib/disclaim.c; fi
 if command -v swiftc >/dev/null 2>&1; then
   MIN_OS=$(sed -n 's/^MIN_OS=\(.*\)$/\1/p' mac/build.sh)
   echo "› swiftc -typecheck (macOS $MIN_OS)"

@@ -2,8 +2,43 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-07. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-23. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-23 — a drawer's claude asks for the microphone itself
+
+Ricardo, in a drawer: *"why does audio to text not work on this chat? can this app ask for micro access?"*
+
+* **Why it did not**: macOS asks the *responsible* process for the microphone — the app a process was started under,
+  inherited by every spawn below it unless one disclaims it. A drawer's chain is launchd → `node server.mjs` (the agent)
+  → the holder → zsh → claude, so the responsible process was the server's node: mise's, signed by its team, with the
+  hardened runtime and no `com.apple.security.device.audio-input`. tccd then refuses without a dialog or a row in System
+  Settings: `Prompting policy for hardened runtime; service: kTCCServiceMicrophone requires entitlement
+  com.apple.security.device.audio-input but it is missing for responsible={… identifier=node, pid=<the server's> …}`
+  (`/usr/bin/log show --predicate 'subsystem == "com.apple.TCC"'`; zsh has a `log` builtin). The same line
+  came for the harness's Chrome, the camera too, and Automation: 25 Apple Events refused unasked in two days.
+* **Why not the app**: the app is in no drawer's chain — the agent is launchd's own, and the app only adopts what
+  answers on the port —, so a grant to peixAIrada would reach no claude; and it is hardened with no entitlements and no
+  usage string, so it could not ask either. Making it the asker means every holder started under the app's identity
+  (the agent's program a launcher in the bundle, the board tied to the app being installed): not done.
+* **Claude Code asks for itself.** Its binary (2.1.330, `com.anthropic.claude-code`) carries `audio-input` and
+  `apple-events` and an embedded Info.plist with `NSMicrophoneUsageDescription` — built to be its own responsible
+  process. `lib/disclaim.c` execs it so: `posix_spawn` with `POSIX_SPAWN_SETEXEC` (an exec: the same pid, the
+  terminal, every descriptor) and `responsibility_spawnattrs_setdisclaim` (libsystem's, in no SDK header; Chromium and
+  Qt Creator call it); refused, a plain `execvp`. The holder runs `exec "$0" "$@"` with the launcher before claude
+  (`spec.disclaim`). Measured: a probe under the server answers to the server's pid, through the launcher to its own
+  (`responsibility_get_pid_responsible_for_pid`), and tccd's attribution for it names no other responsible process.
+* **Built where it runs**: the server compiles it with `cc` into `<state dir>/bin/disclaim-<hash of the source>` on
+  the first drawer of a boot (`disclaimBin`, 0.07 s), an older build removed. `/usr/bin/cc` without developer tools
+  raises Apple's install dialog, so `xcode-select -p` must name a folder first; none, and a drawer starts as before.
+  No binary in the repo: an update is a signed commit of source. `npm run check` compiles it (`-fsyntax-only -Werror`).
+* **Only claude.** A zsh tab, vim and a Taskfile launcher (claude a descendant of `task`) answer to the server as before
+  — a disclaimed zsh would be its own, and zsh carries no usage string. A claude started in a zsh tab has no microphone.
+* **What moves with it**: every privacy check from a drawer's claude and what it runs is claude's now. Apple Events
+  refused unasked for node are asked for *claude* (one answer per app it targets); a protected folder (Desktop,
+  Documents) granted to node is asked once more. `DISCLAIM=off` puts it back as it was.
+* **Open**: `/voice` itself in a drawer, by a person talking: the first press should raise macOS's dialog for
+  *claude*. Hold-to-talk reads the space key's repeats, which xterm passes to the PTY.
 
 ## Decisions of 2026-11-07 — the fill on two screens, and who brings an app forward
 

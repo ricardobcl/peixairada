@@ -61,6 +61,7 @@ npm run map                         # rewrite the section maps at the top of ser
 |---|---|
 | `server.mjs` | The backend: transcript tailing, sessions, SSE, HTTP, notifications, the holder proxy. A **section map** at its top (`npm run map`); boots only when run as the program, exports its pure parts for the tests |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
+| `lib/disclaim.c` | A drawer's claude exec'd as its own responsible process to macOS (2026-11-23); the server builds it with cc |
 | `lib/instagram.mjs` | Lunch's Instagram, in Chrome: a profile, the stories, the login |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup, `waitFor`, `post` |
 | `lib/refit.mjs` | A terminal's refit, the holder's copy |
@@ -895,6 +896,12 @@ npm run map                         # rewrite the section maps at the top of ser
   words after `--` (`spawnTerm`'s `prompt`, never logged); a merge or a branch (`fork`) gets the board's id (`newId`);
   `links` ties chats (`addLink`). **A fork writes no line until its first word** (2026-11-04): closed before it, no card, no link, no resume (`noneLeft`, `leaveEmpty`, `linksShown`). → `handoffs.test.mjs`, `branch-chat.mjs`. **A card dragged onto another** (2026-11-02; `cdLift`, `cdHit`, `cdEnd`, `#cdghost`) is Fold
   into…: the list held still (`renderBoard.held`), and the box asks. → `card-drag-fold.mjs`.
+* **A drawer's claude answers to macOS for itself** (2026-11-23; `disclaimBin`, `spec.disclaim`, `lib/disclaim.c`):
+  the microphone, camera and Automation are asked of the *responsible* process, inherited down the spawns — this
+  server's node, hardened, no audio-input entitlement, so `/voice` was refused unasked. Claude Code carries the entitlement:
+  exec'd through the launcher (SETEXEC, the same pid) it asks for *claude*. Built by `cc` into `<state dir>/bin` per
+  source; no developer tools, none; never a zsh, vim or a launcher; `DISCLAIM=off`. tccd's words: `/usr/bin/log show
+  --predicate 'subsystem == "com.apple.TCC"'`. → `test/disclaim.test.mjs`.
 * **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.

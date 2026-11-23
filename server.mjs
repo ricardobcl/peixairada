@@ -5676,8 +5676,8 @@ const BOARD_ENV = new Set(['WT_ASK_MS', 'PORT', 'HOST', 'NOTIFY', 'USAGE', 'STAT
   'MAX_ENTRIES', 'TAIL_BYTES', 'HEAD_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'AGENT_WORDS_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
-  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN',
-  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'osascript'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
+  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN', 'DISCLAIM',
+  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'osascript', 'cc'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
@@ -6098,6 +6098,37 @@ const RUN_SHELL = /\/(zsh|bash)$/.test(LOGIN_SHELL) ? LOGIN_SHELL : '/bin/zsh';
 // The in-app editor's other pick (2026-10-21): vim in the chat's folder, on a tab as a zsh is — run as claude is, through
 // the login shell, so the vim its PATH finds. VIM_BIN for another one, or the tests' stand-in.
 const VIM_BIN = process.env.VIM_BIN || 'vim';
+// A drawer's claude answers to macOS for itself (2026-11-23): the microphone, the camera and Automation are asked of the
+// *responsible* process, and a drawer's was this server's node — launchd's, a hardened binary with no audio-input
+// entitlement —, so tccd refused /voice without asking anyone. Claude Code carries the entitlement and the usage string:
+// through lib/disclaim.c (an exec, the same pid) it is its own, and macOS asks for "claude". Built with cc into the state
+// folder, once per source; no developer tools, none — a drawer starts as before. DISCLAIM=off for none.
+const DISCLAIM_SRC = join(__dirname, 'lib', 'disclaim.c');
+let disclaimAt = null;
+function disclaimBin() {
+  if (process.platform !== 'darwin' || process.env.DISCLAIM === 'off') return Promise.resolve(null);
+  return disclaimAt ??= buildDisclaim().catch(e => { console.error(`[peixairada] a drawer's claude cannot ask macOS for the microphone: ${errText(e)}`); return null; });
+}
+async function buildDisclaim() {
+  const src = readFileSync(DISCLAIM_SRC);
+  const dir = privateDir(join(dirname(STATE_FILE), 'bin'));
+  const out = join(dir, `disclaim-${createHash('sha256').update(src).digest('hex').slice(0, 12)}`);
+  if (!canRun(out)) {
+    const cc = findBin('cc', "a drawer's claude cannot ask macOS for the microphone");
+    if (!cc) return null;
+    // /usr/bin/cc with no developer tools asks to install them, in a dialog: not a server's to raise, unasked
+    if (cc === '/usr/bin/cc') {
+      const dev = await execFileP('/usr/bin/xcode-select', ['-p'], { timeout: 10_000 }).then(r => r.stdout.trim(), () => '');
+      if (!dev || !existsSync(dev)) throw new Error('no developer tools to build lib/disclaim.c (xcode-select --install)');
+    }
+    const tmp = `${out}.${process.pid}`;
+    await execFileP(cc, ['-O2', '-o', tmp, DISCLAIM_SRC], { timeout: 120_000 });
+    renameSync(tmp, out);
+  }
+  // the build an older source made: a claude it started has exec'd past it
+  for (const f of readdirSync(dir)) if (/^disclaim-[0-9a-f]{12}$/.test(f) && join(dir, f) !== out) try { unlinkSync(join(dir, f)); } catch {}
+  return out;
+}
 
 /**
  * Start `claude` (or `claude --resume <id>`, or `task <name>` — a launcher, see above) in `cwd`: write the spec, spawn
@@ -6151,7 +6182,9 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   const sock = join(TERMS_DIR, `${id}.sock`);
   if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
   try { privateDir(TERMS_DIR); } catch (e) { return { code: 500, error: e.message }; }
-  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!(sessionId || fork), ...fork && { fork }, ...attach && { attach, claudePid }, startedAt: new Date().toISOString() };
+  // claude itself, never a zsh, vim or a launcher: what they run answers to this server as before (see disclaimBin)
+  const disclaim = !shell && !editor && !task ? await disclaimBin() : null;
+  const spec = { id, sessionId: sessionId || (!shell && !editor && !task && newId) || null, cwd, bin, args, shell, editor, sh: shell && !editor ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!(sessionId || fork), ...fork && { fork }, ...attach && { attach, claudePid }, ...disclaim && { disclaim }, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
