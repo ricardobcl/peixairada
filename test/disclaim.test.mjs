@@ -32,11 +32,19 @@ function build() {
   return built = { probe: join(dir, 'probe'), disclaim: join(dir, 'disclaim') };
 }
 const responsible = (probe, pid) => Number(execFileSync(probe, [String(pid)], { encoding: 'utf8' }).trim().split(' ')[1]);
+// The controls want a program started here to answer to someone else (2026-11-23). Run from a Claude Code session on
+// this Mac it already answers to itself — the tests pass as a launchd job and failed only there —, so nothing tells
+// disclaim's apart from no disclaim: the controls are skipped, said so, and what disclaim does is checked all the same.
+const ownAlready = !skip && (() => { const [own, resp] = execFileSync(build().probe, { encoding: 'utf8' }).trim().split(' ').map(Number); return resp === own; })();
+const noControl = ownAlready && 'a program started here already answers to itself (a Claude Code session): no control for disclaim';
+
+test('a program started here answers to whoever started this test: the control', { skip: skip || noControl }, () => {
+  const [own, resp] = execFileSync(build().probe, { encoding: 'utf8' }).trim().split(' ').map(Number);
+  assert.notEqual(resp, own);
+});
 
 test('disclaim runs a program in its own pid, responsible for itself; a program not there is 127', { skip }, () => {
   const { probe, disclaim } = build();
-  const [own, resp] = execFileSync(probe, { encoding: 'utf8' }).trim().split(' ').map(Number);
-  assert.notEqual(resp, own, 'a program started here answers to whoever started this test');
   const [own2, resp2] = execFileSync(disclaim, [probe], { encoding: 'utf8' }).trim().split(' ').map(Number);
   assert.equal(resp2, own2, 'through disclaim, to itself');
   // an exec, not a child: the pid the shell had is the program's
@@ -46,7 +54,7 @@ test('disclaim runs a program in its own pid, responsible for itself; a program 
   assert.equal(gone.status, 127); assert.match(gone.stderr, /disclaim: peix-no-such-program: No such file/);
 });
 
-test('a drawer\'s claude is its own responsible process, a zsh tab is not (2026-11-23)', { skip, timeout: 60_000 }, async () => {
+test('a drawer\'s claude is its own responsible process, a zsh tab is not (2026-11-23)', { skip, timeout: 60_000 }, async ctx => {
   const { probe } = build();
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const chat = fx.chats[1];
@@ -64,6 +72,7 @@ test('a drawer\'s claude is its own responsible process, a zsh tab is not (2026-
     assert.equal(z.status, 201, JSON.stringify(z.body));
     const zs = JSON.parse(readFileSync(join(srv.dir, 'terms', `${z.body.terminal.id}.json`), 'utf8'));
     assert.equal(zs.disclaim, undefined, 'a zsh runs as it did');
-    assert.notEqual(responsible(probe, z.body.terminal.pid), z.body.terminal.pid, 'and answers to the board');
+    if (noControl) ctx.diagnostic(`the zsh tab's own answer not checked: ${noControl}`);
+    else assert.notEqual(responsible(probe, z.body.terminal.pid), z.body.terminal.pid, 'and answers to the board');
   } finally { await srv.stop(); }
 });

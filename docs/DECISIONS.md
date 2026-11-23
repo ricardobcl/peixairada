@@ -69,6 +69,11 @@ Ricardo, in a drawer: *"why does audio to text not work on this chat? can this a
 * **What moves with it**: every privacy check from a drawer's claude and what it runs is claude's now. Apple Events
   refused unasked for node are asked for *claude* (one answer per app it targets); a protected folder (Desktop,
   Documents) granted to node is asked once more. `DISCLAIM=off` puts it back as it was.
+* **The tests' controls** (later that day): run from a Claude Code session on this Mac, a program the test starts
+  already answers to itself, so "a program started here answers to whoever started this test" and "a zsh tab answers
+  to the board" failed there — and passed, with the rest, run as a launchd job. The control is a test of its own,
+  skipped and said so where a probe without disclaim answers to itself; the zsh tab's answer is checked only where it
+  holds. What disclaim does is checked everywhere.
 * **Open**: `/voice` itself in a drawer, by a person talking: the first press should raise macOS's dialog for
   *claude*. Hold-to-talk reads the space key's repeats, which xterm passes to the PTY.
 
