@@ -62,7 +62,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `server.mjs` | The backend: transcript tailing, sessions, SSE, HTTP, notifications, the holder proxy. A **section map** at its top (`npm run map`); boots only when run as the program, exports its pure parts for the tests |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/disclaim.c` | A drawer's claude exec'd as its own responsible process to macOS (2026-11-23); the server builds it with cc |
-| `lib/instagram.mjs` | Lunch's Instagram, in Chrome: a profile, the stories, the login |
+| `lib/instagram.mjs` | Lunch's Instagram, in headless Chrome: a profile, logged out |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup, `waitFor`, `post` |
 | `lib/refit.mjs` | A terminal's refit, the holder's copy |
 | `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since; the server's per HEAD, build.sh's into the app |
@@ -236,9 +236,9 @@ npm run map                         # rewrite the section maps at the top of ser
   No repo: invitations every `CHAT_INVITES_MS`, never at boot; `chatPlaces`. One GitHub hides is `missing`; `use` asks
   first. → `test/chat.test.mjs`.
 * **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places not `settled`
-  (a month's dishes are not, 2026-10-20), the profile logged out, the stories logged in (`lib/instagram.mjs`),
-  the Slack channel at `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's
-  `dishesOn`'s, a week's story kept (`lunchKept`); **a reader is no chat** (`ownReader`) **and only reads** (2026-11-06; `readerArgs`: `dontAsk`, Slack's writes denied); alert kind `lunch`.
+  (a month's dishes are not, 2026-10-20), the profile logged out (`lib/instagram.mjs`; **never logged in**,
+  2026-11-23), the Slack channel at `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's
+  `dishesOn`'s; **a reader is no chat** (`ownReader`) **and only reads** (2026-11-06; `readerArgs`: `dontAsk`, Slack's writes denied); alert kind `lunch`.
   → `test/lunch.test.mjs`.
 
 ## The board
@@ -973,10 +973,8 @@ Look at the screenshots. **After any edit to the page, load it**: `check-page` o
 the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `npm run verify` reads the live one.
 
 * `npm run verify -- "<js>"` evaluates one expression on the live board, handed its key; `--hash`, `--shot`, `URL=` at its head. Drive
-  Chrome over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot. **Over a pipe, never a port**
+  Chrome (`CHROME`) over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot. **Over a pipe, never a port**
   (2026-11-06; `--remote-debugging-pipe`, the page flat by `sessionId`).
-* **`CHROME` names the harness's browser** (2026-11-23, `lib/cdp.mjs`), Google Chrome's by default. Under
-  chrome-headless-shell (`HEADLESS_SHELL`) a scenario with `meta.newHeadless` exits 77: `SKIP` in `npm run scenarios`.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView`;
   `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. What a body can ask (`burst()`, 2026-11-05) and `WK_BORDERS` are at its head. On screen by one pixel (off a screen WebKit runs no

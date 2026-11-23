@@ -1,14 +1,14 @@
 // Lunch (2026-10-18): the setup's lunch (cleanLunch through cleanSetup), where the day stands (lunchPhase), what a read
 // of a picture says of today (dishesOn, closedOn), a rendered Instagram profile read (lib/instagram.mjs), and end to end
-// against the fakes — a week's card from a post, a story's menu once logged in, the Slack channel for a place with no
-// Instagram, each picture read once, the reminder at lunch time, Going and In 15 min, and the readers' own claudes kept
-// off the board.
+// against the fakes — a week's card from a post, a story's menu from the Slack channel, a place with no Instagram from
+// it too, each picture read once, the reminder at lunch time, Going and In 15 min, and the readers' own claudes kept
+// off the board. Instagram is only ever looked at logged out: its login went (2026-11-23).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
-import { parseProfile, parseStories, pkOfCode, timeOfPk, storyItems } from '../lib/instagram.mjs';
+import { parseProfile, pkOfCode, timeOfPk } from '../lib/instagram.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
@@ -28,9 +28,9 @@ test('readerArgs: a reader may only read — dontAsk always, the Slack one denie
   assert.ok(!val(slack, '--disallowedTools').includes('read'), 'no read denied');
 });
 
-test('cleanSetup: lunch shaped — a time, the days, places with an Instagram account, a Slack channel; null is none', () => {
+test('cleanSetup: lunch shaped — a time, the days, places with an Instagram account, a Slack channel; null is none; no stories (2026-11-23)', () => {
   const ok = cleanSetup({ lunch: { at: '9:05', places: [{ name: ' Casa ', instagram: 'https://www.instagram.com/restaurante.acasa/' }, { name: 'Trotas' }, { name: 'casa', instagram: '@dup' }], slack: 'lunch-braga', stories: true } }, true);
-  assert.deepEqual(ok.setup.lunch, { on: true, at: '09:05', days: [1, 2, 3, 4, 5], places: [{ name: 'Casa', instagram: 'restaurante.acasa' }, { name: 'Trotas' }], stories: true, slack: '#lunch-braga', model: null });
+  assert.deepEqual(ok.setup.lunch, { on: true, at: '09:05', days: [1, 2, 3, 4, 5], places: [{ name: 'Casa', instagram: 'restaurante.acasa' }, { name: 'Trotas' }], slack: '#lunch-braga', model: null }, 'an old setup\'s `stories` dropped');
   assert.equal(cleanSetup({ lunch: { at: '12:30', days: [6, 0, 9, 1.5, 1], on: false } }, true).setup.lunch.days.join(), '0,1,6');
   assert.match(cleanSetup({ lunch: { at: '25:00' } }, true).error, /not a time/);
   assert.match(cleanSetup({ lunch: { places: [{ name: 'x', instagram: 'no spaces here' }] } }, true).error, /not an Instagram account/);
@@ -69,7 +69,7 @@ test('dishesOn: a dated day, an undated card the day it went up, a week by date 
   assert.equal(closedOn({ closed: null }, today), null);
 });
 
-test('lib/instagram.mjs: a post\'s time from its id, a profile\'s own posts and its story\'s time, a story\'s biggest picture', () => {
+test('lib/instagram.mjs: a post\'s time from its id, a profile\'s own posts and its story\'s time', () => {
   assert.equal(new Date(timeOfPk(pkOfCode('DeYx_VNE7fz'))).toISOString().slice(0, 16), '2026-10-12T08:15', 'the time a post went up, from its code');
   const node = (code, user, caption) => JSON.stringify({ node: { __typename: 'XIGPolarisMedia', code, user: { username: user }, caption: { text: caption }, accessibility_caption: 'May be an image of text', display_uri: `https://cdn/${code}.jpg`, media_type: 1 } });
   const html = `<script>{"x":[${node('DeYx_VNE7fz', 'casa', 'Ementa "da" semana')},${node('DeM2L2oDqEK', 'casa', 'older')},${node('DebMe5ViR23', 'friend', 'a collab')}]}</script>
@@ -79,14 +79,6 @@ test('lib/instagram.mjs: a post\'s time from its id, a profile\'s own posts and 
   assert.equal(p.storyAt, 1792270415_000, 'its own story\'s time, not a suggested account\'s');
   assert.deepEqual(p.posts.map(x => x.code), ['DeYx_VNE7fz', 'DeM2L2oDqEK'], 'its own, newest first — not a collaborator\'s');
   assert.equal(p.posts[0].caption, 'Ementa "da" semana');
-  const items = storyItems({ items: [{ pk: '9', taken_at: 1792270415, image_versions2: { candidates: [{ url: 'small', width: 320 }, { url: 'big', width: 1080 }] } }] }, 'casa');
-  assert.deepEqual(items, [{ pk: '9', at: 1792270415_000, image: 'big', video: false, url: 'https://www.instagram.com/stories/casa/9/' }]);
-  // a logged-in story page: the account's stories in the page's own data, before View story — another account's reel not its
-  const reel = (user, pk, t) => ({ id: '1', user: { username: user }, items: [{ id: `${pk}_1`, pk, taken_at: t, media_type: 1, image_versions2: { candidates: [{ url: `https://cdn/${pk}.jpg`, width: 1080 }] } }] });
-  const page = `<script type="application/json">{"require":[["x",{"__bbox":{"result":{"data":{"xdt_api__v1__feed__reels_media":{"reels_media":[${JSON.stringify(reel('casa', '41', 1792270415))},${JSON.stringify(reel('other', '42', 1792270999))}]}}}}]]}</script>`
-    + `<script>{"xdt_api__v1__feed__reels_media":{"reels_media":[${JSON.stringify(reel('casa', '43', 1792271000))}]}}</script>`;
-  assert.deepEqual(parseStories(page, 'Casa').map(x => [x.pk, x.at, x.image]), [['43', 1792271000_000, 'https://cdn/43.jpg'], ['41', 1792270415_000, 'https://cdn/41.jpg']]);
-  assert.deepEqual(parseStories('<p>no stories</p>', 'casa'), []);
 });
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -98,20 +90,19 @@ async function stream(srv) {
 }
 const hm = t => `${String(new Date(t).getHours()).padStart(2, '0')}:${String(new Date(t).getMinutes()).padStart(2, '0')}`;
 
-test('end to end: a week\'s post, a story once logged in, the channel, each picture read once, the reminder and what you say to it', { timeout: 60_000 }, async t => {
+test('end to end: a week\'s post, a story through the channel, each picture read once, the reminder and what you say to it', { timeout: 60_000 }, async t => {
   if (new Date().getHours() === 0 && new Date().getMinutes() < 3) return t.skip('a minute past midnight: lunch time a minute ago would be yesterday\'s');
   const srv = await startTestServer(), now = Date.now(), today = dayKey(now), before = earlier();
   const sse = await stream(srv);
   try {
-    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ loggedIn: false, profiles: {
+    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ profiles: {
       'casa.place': { id: '11', storyAt: 0, posts: [{ code: 'C1', pk: '7001', at: now - 2 * DAY, caption: 'Partilhamos a ementa desta semana', alt: 'May be an image of text', image: PNG, url: 'https://www.instagram.com/p/C1/' }] },
       'ramen.place': { id: '22', storyAt: before, posts: [{ code: 'R1', pk: '7002', at: now - 3 * DAY, caption: 'Vem jantar', alt: 'A bowl', image: PNG, url: 'https://www.instagram.com/p/R1/' }] },
       'late.place': { id: '33', storyAt: 0, posts: [] },
-    }, stories: { 'ramen.place': [{ pk: '9001', at: before, image: PNG, url: 'https://www.instagram.com/stories/ramen.place/9001/' }] } }));
+    } }));
     writeFileSync(srv.env.FAKEREADER_FILE, JSON.stringify({
-      reads: { 'ementa desta semana': { isMenu: true, kind: 'week', days: [{ date: dayKey(now - DAY), dishes: ['Ontem'] }, { date: today, dishes: ['Sopa de penca', 'Salmão grelhado'] }], price: '14,00 €', closed: null },
-        'put this story': { isMenu: true, kind: 'day', days: [{ date: null, weekday: null, dishes: ['Tofu tikka masala'] }], price: '12 €', closed: null } },
-      slack: { places: [{ name: 'trotas', dishes: ['Bitoque'], price: '11 €', postedAt: '11:40' }] } }));
+      reads: { 'ementa desta semana': { isMenu: true, kind: 'week', days: [{ date: dayKey(now - DAY), dishes: ['Ontem'] }, { date: today, dishes: ['Sopa de penca', 'Salmão grelhado'] }], price: '14,00 €', closed: null } },
+      slack: { places: [{ name: 'trotas', dishes: ['Bitoque'], price: '11 €', postedAt: '11:40' }, { name: 'Ramen', dishes: ['Tofu tikka masala'], price: '12 €', postedAt: '11:20' }] } }));
     const places = [{ name: 'Casa', instagram: 'casa.place' }, { name: 'Ramen', instagram: 'ramen.place' }, { name: 'Late', instagram: 'late.place' }, { name: 'Trotas' }];
     const put = lunch => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lunch }) });
     const cfg = { at: '23:59', days: [0, 1, 2, 3, 4, 5, 6], places };
@@ -122,32 +113,28 @@ test('end to end: a week\'s post, a story once logged in, the channel, each pict
     await waitFor(async () => (await place('Casa')).state === 'menu' && !(await lunch()).busy, { what: 'Casa\'s week read from its post' });
     const casa = await place('Casa');
     assert.deepEqual([casa.dishes, casa.price, casa.src, casa.url], [['Sopa de penca', 'Salmão grelhado'], '14,00 €', 'post', 'https://www.instagram.com/p/C1/'], 'today\'s row of the week');
-    assert.equal((await place('Ramen')).state, 'story', 'a story is up, unread with no login');
+    assert.equal((await place('Ramen')).state, 'story', 'a story is up, unread: there is no login');
     assert.equal((await place('Late')).state, 'waiting');
     assert.equal((await place('Trotas')).state, 'none', 'no Instagram, no channel');
     const reads = () => readFileSync(srv.env.FAKEREADER_LOG, 'utf8').trim().split('\n');
     assert.deepEqual(reads(), ['ementa desta semana'], 'the week\'s post alone — not Ramen\'s dinner post, days old and no menu\'s words, nor Late, with nothing posted');
 
-    // stories, once logged in: the window (fake) logs in, and the round that follows reads Ramen's
-    assert.equal((await put({ ...cfg, stories: true })).status, 200);
-    await srv.post('api/lunch', { act: 'login' });
-    await waitFor(async () => (await place('Ramen')).state === 'menu', { what: 'Ramen\'s story read once logged in' });
-    const ramen = await place('Ramen');
-    assert.deepEqual([ramen.dishes, ramen.src, ramen.url], [['Tofu tikka masala'], 'story', 'https://www.instagram.com/stories/ramen.place/9001/']);
-    assert.equal((await lunch()).login.state, 'in');
+    assert.equal((await srv.post('api/lunch', { act: 'login' })).status, 400, 'no Instagram login to ask for (2026-11-23)');
 
-    // the channel, for the place with no Instagram — matched by its name whatever its case
-    assert.equal((await put({ ...cfg, stories: true, slack: '#lunch' })).status, 200);
+    // the channel: Ramen's story as a colleague posted it, and the place with no Instagram — matched by its name whatever its case
+    assert.equal((await put({ ...cfg, slack: '#lunch' })).status, 200);
     await waitFor(async () => !(await lunch()).busy, { what: 'the round done' });
     await srv.post('api/lunch', { act: 'read' });
-    await waitFor(async () => (await place('Trotas')).state === 'menu', { what: 'Trotas from the channel' });
+    await waitFor(async () => (await place('Trotas')).state === 'menu' && (await place('Ramen')).state === 'menu', { what: 'Trotas and Ramen from the channel' });
     assert.deepEqual([(await place('Trotas')).dishes, (await place('Trotas')).src], [['Bitoque'], 'slack']);
+    assert.deepEqual([(await place('Ramen')).dishes, (await place('Ramen')).src], [['Tofu tikka masala'], 'slack']);
     await waitFor(async () => !(await lunch()).busy, { what: 'the round done' });
     assert.equal(reads().filter(r => r === 'ementa desta semana').length, 1, 'a picture read once, whatever the rounds');
+    assert.deepEqual([...new Set(readFileSync(srv.env.FAKEIG_LOG, 'utf8').trim().split('\n').map(l => l.split(' ')[0]))], ['look'], 'Instagram only looked at, logged out');
 
     // lunch time: the reminder, then what you say to it
     const was = sse.text.length;
-    assert.equal((await put({ ...cfg, stories: true, slack: '#lunch', at: hm(now - 60_000) })).status, 200);
+    assert.equal((await put({ ...cfg, slack: '#lunch', at: hm(now - 60_000) })).status, 200);
     await waitFor(() => /event: alert\ndata: .*"kind":"lunch"/.test(sse.text.slice(was)), { what: 'the lunch alert' });
     const alert = JSON.parse(sse.text.slice(was).match(/event: alert\ndata: (.*"kind":"lunch".*)/)[1]);
     assert.equal(alert.title, '3 menus in');
@@ -168,47 +155,37 @@ test('end to end: a week\'s post, a story once logged in, the channel, each pict
   } finally { sse.close(); await srv.stop(); }
 });
 
-test('a month\'s dishes stand until a story says which is today\'s, and the week\'s story is kept for the days after it is gone', { timeout: 60_000 }, async () => {
-  const now = Date.now(), today = dayKey(now), before = earlier();
+test('a month\'s dishes stand until the channel says which is today\'s, and Read again keeps the day\'s', { timeout: 60_000 }, async () => {
+  const now = Date.now();
   const month = { isMenu: true, kind: 'month', days: [{ date: null, weekday: null, dishes: ['Tortilha e aioli', 'Hummus e vegetais', 'Okonomiyaki'] }], price: '12€', closed: null };
-  const week = { isMenu: true, kind: 'week', price: '12€', closed: null,
-    days: [{ date: dayKey(now - DAY), weekday: null, dishes: ['Tortilha e aioli'] }, { date: today, weekday: null, dishes: ['Hummus e vegetais'] }, { date: dayKey(now + DAY), weekday: null, dishes: ['Okonomiyaki'] }] };
   const post = { code: 'M1', pk: '7101', at: now - 3 * DAY, caption: 'Almoços de outubro', alt: '', image: PNG, url: 'https://www.instagram.com/p/M1/' };
-  const lunch = { at: '23:59', days: [0, 1, 2, 3, 4, 5, 6], places: [{ name: 'Ramen', instagram: 'ramen.place' }], stories: true };
-  const put = srv => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lunch }) });
+  const lunch = { at: '23:59', days: [0, 1, 2, 3, 4, 5, 6], places: [{ name: 'Ramen', instagram: 'ramen.place' }] };
+  const put = (srv, more = {}) => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lunch: { ...lunch, ...more } }) });
   const ramen = async srv => (await srv.api('api/lunch')).body.places[0], idle = async srv => !(await srv.api('api/lunch')).body.busy;
-  const lines = file => { try { return readFileSync(file, 'utf8').trim().split('\n').filter(Boolean); } catch { return []; } };
-
-  // today: the month's post, then the week's story once logged in — and Read again keeps the day's
-  let srv = await startTestServer();
+  const srv = await startTestServer();
   try {
-    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ loggedIn: false, profiles: { 'ramen.place': { id: '22', storyAt: before, posts: [post] } },
-      stories: { 'ramen.place': [{ pk: '9101', at: before, image: PNG, url: 'https://www.instagram.com/stories/ramen.place/9101/' }] } }));
-    writeFileSync(srv.env.FAKEREADER_FILE, JSON.stringify({ reads: { 'Almoços de outubro': month, 'put this story': week } }));
+    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ profiles: { 'ramen.place': { id: '22', storyAt: earlier(), posts: [post] } } }));
+    writeFileSync(srv.env.FAKEREADER_FILE, JSON.stringify({ reads: { 'Almoços de outubro': month }, slack: { places: [{ name: 'ramen', dishes: ['Hummus e vegetais'], price: '12€', postedAt: '11:30' }] } }));
     assert.equal((await put(srv)).status, 200);
     await waitFor(async () => (await ramen(srv)).state === 'menu' && await idle(srv), { what: 'the month\'s dishes' });
     assert.deepEqual([(await ramen(srv)).dishes.length, (await ramen(srv)).month, (await ramen(srv)).src], [3, true, 'post']);
-    await srv.post('api/lunch', { act: 'login' });
-    await waitFor(async () => (await ramen(srv)).src === 'story' && await idle(srv), { what: 'the story read over the month\'s' });
+    assert.equal((await put(srv, { slack: '#lunch' })).status, 200);
+    await srv.post('api/lunch', { act: 'read' });
+    await waitFor(async () => (await ramen(srv)).src === 'slack' && await idle(srv), { what: 'the channel\'s over the month\'s' });
     let r = await ramen(srv);
-    assert.deepEqual([r.dishes, r.month, r.storyAt, r.url], [['Hummus e vegetais'], false, before, 'https://www.instagram.com/stories/ramen.place/9101/'], 'today\'s row of the week');
+    assert.deepEqual([r.dishes, r.month], [['Hummus e vegetais'], false], 'today\'s, from the channel');
     await srv.post('api/lunch', { act: 'read' });
     await waitFor(() => idle(srv), { what: 'Read again done' });
     r = await ramen(srv);
-    assert.deepEqual([r.dishes, r.src], [['Hummus e vegetais'], 'story'], 'the month\'s post, looked at again, does not take the day\'s place');
+    assert.deepEqual([r.dishes, r.src], [['Hummus e vegetais'], 'slack'], 'the month\'s post, looked at again, does not take the day\'s place');
   } finally { await srv.stop(); }
+});
 
-  // the day after: the story gone from Instagram, its read kept says the day's — no Instagram, no reader
-  srv = await startTestServer();
+test('the Instagram login\'s Chrome profile is gone at boot (2026-11-23)', async () => {
+  const dir = tmpDir('peix-'), profile = join(dir, 'lunch', 'chrome', 'Default');
+  mkdirSync(profile, { recursive: true }); writeFileSync(join(profile, 'Cookies'), 'a session');
+  const srv = await startTestServer({ dir });
   try {
-    mkdirSync(join(srv.dir, 'lunch'), { recursive: true });
-    writeFileSync(join(srv.dir, 'lunch', 'reads.json'), JSON.stringify({ s9100: { at: now - DAY, r: week, place: 'ramen.place', kind: 'story', posted: now - DAY, url: 'https://www.instagram.com/stories/ramen.place/9100/' } }));
-    writeFileSync(srv.env.FAKEIG_FILE, JSON.stringify({ loggedIn: true, profiles: { 'ramen.place': { id: '22', storyAt: 0, posts: [post] } } }));
-    writeFileSync(srv.env.FAKEREADER_FILE, JSON.stringify({ reads: { 'Almoços de outubro': month } }));
-    assert.equal((await put(srv)).status, 200);
-    await waitFor(async () => (await ramen(srv)).state === 'menu' && await idle(srv), { what: 'the kept story\'s day' });
-    const r = await ramen(srv);
-    assert.deepEqual([r.dishes, r.month, r.src, r.at], [['Hummus e vegetais'], false, 'story', now - DAY]);
-    assert.deepEqual([lines(srv.env.FAKEIG_LOG), lines(srv.env.FAKEREADER_LOG)], [[], []], 'nothing asked of Instagram nor read');
+    assert.equal(existsSync(join(dir, 'lunch', 'chrome')), false);
   } finally { await srv.stop(); }
 });

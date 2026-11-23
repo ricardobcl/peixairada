@@ -26,6 +26,14 @@ whatever is best and lightest (with less security concerns)"*.
   hour never comes), ze-sound-off (its helpers' command lines name no profile: `pgrep -f <profile>` finds one process).
   They say `meta.newHeadless`; under the shell (`HEADLESS_SHELL`, by CHROME's file name) scenario.mjs exits 77 before
   anything starts, and scenarios.mjs says SKIP — not run again, apart in the verdict.
+* **Lunch never logs in** — Ricardo: *"remove the auth flow for instagram"*. The login opened a Chrome window to type an
+  Instagram account into: a browser of the board's own, the thing the Mac's policy is about. Gone with it: the stories
+  (only a login sees one), *Read the stories*, *Log in to Instagram…*, `lib/instagram.mjs`'s `stories`, `login` and
+  `check`, the kept stories (`lunchKept`), and the logged-in profile in `<state>/lunch/chrome` — removed at boot. The
+  profile look stays, headless in a throwaway profile (on the shell: a real account's 12 posts and story time in 8 s);
+  a story reaches the board through the Slack channel, and a place whose story went up says so.
+* **The agent carries CHROME**: the server runs under launchd, which reads no `~/.zshenv`, and lunch's looks are its
+  spawns. `scripts/launchd.sh install` bakes this shell's CHROME into the plist, as it does PATH.
 * **Open**: `launchChrome`'s `close()` waits for the helpers by the profile in their command lines, and scenarios.mjs's
   LEAK looks the same way — under the shell neither sees a helper.
 

@@ -191,10 +191,8 @@ An optional reminder that it's lunch time, and the day's menus of the places you
 turns it on. Give it a time (the reminder's), the days, and each place with its Instagram account.
 
 - **Before lunch**, through the morning, the board reads each place's menu: its posts as anyone sees them — a week's
-  card, a month's dishes, a closure — and, with *Read the stories* on and an Instagram account logged in
-  (*Log in to Instagram…* opens a window; it closes itself once you're in), its stories, where most places post the
-  day's menu. A Slack channel where colleagues post the menus as screenshots is read too, if you name one. Claude reads
-  each picture once, on your plan (*Read by*: Haiku unless you pick Sonnet).
+  card, a month's dishes, a closure. A Slack channel where colleagues post the menus as screenshots is read too, if you
+  name one. Claude reads each picture once, on your plan (*Read by*: Haiku unless you pick Sonnet).
 - **⌥⌘M** shows them on a chalkboard, any time; home shows it too until lunch. A place's name opens its Instagram in
   your browser. *Read again* reads them now. With the chat on, *Ask the chat* asks who's going, and where, as a poll.
 - **At lunch time** a sign drops into the status bar's lane over the fish — *LUNCH* — and the day's dishes scroll under
@@ -202,8 +200,8 @@ turns it on. Give it a time (the reminder's), the days, and each place with its 
 - **Going**: the sign says *ENJOY* and the fish swims off the bar. Lock the Mac and it reads *BACK SOON*; come back
   (ten minutes on, at least) and the fish swims in fed, burps, and the sign says how long you were out.
 
-The stories need a login because Instagram shows a story to no one logged out. A second account just for this is wiser
-than your own: one that watches stories on a schedule can be challenged.
+Most places post the day's menu only as a story, and Instagram shows a story to no one logged out: the board never logs
+in, so a story reaches it through the Slack channel, as a colleague's screenshot. A place whose story went up says so.
 
 ## Zé's game
 
@@ -359,11 +357,12 @@ read: keep the server on `127.0.0.1` — past it, the key crosses your network u
 | `DRAWER_IDLE_MS` | 24 h | an unwatched idle Claude in the pane ends itself; `0` never |
 | `VSWEB_FRESH_MS` | 1 h | how often VS Code Web's newest build is fetched ahead of time; `0` never |
 | `CLAUDE_BIN` `GH_BIN` `CODE_BIN` `TASK_BIN` | from `PATH` | where the CLIs are |
+| `CHROME` | Google Chrome | the headless Chrome lunch's Instagram looks and the browser checks run — chrome-headless-shell where Google Chrome is blocked |
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
 | `CONFIG_FILE` | `~/.config/peixairada/config.json` (beside `STATE_FILE` when that is set) | the setup |
 | `KEY_MODE` | — | `lax`: requests without the key answered until the app's page first brings it (the default before 2026-11-06) |
 
-The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh install`.
+The login agent takes `PORT`, `NOTIFY`, `CHROME` and your `PATH` at `scripts/launchd.sh install`.
 
 </details>
 
@@ -373,7 +372,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 (`scripts/readme-board.mjs`), never yours: `npm run scenario -- scripts/readme-shots.mjs` redraws the stills, and
 `npm run scenario -- scripts/readme-clips.mjs --timeout 900000 [-- <clip>…]` the README's clips (animated WebP, by
 libwebp's `img2webp` — `brew install webp`); VS Code Web's want the `code` CLI. The browser checks drive Google Chrome
-(`CHROME` points at another); `npm run webkit` runs the board in WebKit, the app's engine, and `npm run perf` measures
+(`CHROME` points at another; under chrome-headless-shell three scenarios that need Chrome's newer headless are skipped); `npm run webkit` runs the board in WebKit, the app's engine, and `npm run perf` measures
 what it costs there on a busy made-up board (`-- --against <commit>` beside an older one, `-- --app` the app as it
 runs). The API from a terminal wants the key too: `scripts/board.sh /api/terminals` sends it; `npm run verify` and
 `npm run webkit` hand the page the live board's (`KEY=` for another). [CLAUDE.md](../CLAUDE.md) holds the working

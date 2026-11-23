@@ -4716,38 +4716,37 @@ async function chatRoute(req, res, what, url) {
 // ---------------------------------------------------------------------------------------------
 // Lunch: the reminder, and the menus of the places you go (2026-10-18)
 // ---------------------------------------------------------------------------------------------
-// Off until the setup names it (setup.lunch: {on, at, days, places: [{name, instagram, color}], stories, slack, model}).
+// Off until the setup names it (setup.lunch: {on, at, days, places: [{name, instagram, color}], slack, model}).
 // On a lunch day the board reads each place's menu through the morning and says when it is lunch time — the status
 // bar's sign, the dishes in the fish's lane, a notification with Menus · Going · In 15 minutes, ⌥⌘M's chalkboard. Where
 // a menu comes from (docs/DECISIONS.md, 2026-10-18, and the study behind it):
 //   · the place's Instagram profile, logged out (lib/instagram.mjs look, headless Chrome): its newest posts — a week's
 //     card, a month's dishes in a caption, a menu posted today, a closure — and when its newest story went up;
-//   · its stories, through the board's own Instagram login (`stories`; the Chrome profile in LUNCH_DIR/chrome): most
-//     places post the day's menu only there, and Instagram shows no story to anyone logged out;
-//   · the setup's Slack channel (`slack`), where colleagues post those stories as screenshots, read by claude -p with
-//     Claude's Slack connector and its read tools alone.
+//   · the setup's Slack channel (`slack`), where colleagues post the places' stories as screenshots, read by claude -p
+//     with Claude's Slack connector and its read tools alone.
+// No Instagram login (2026-11-23): most places post the day's menu only as a story, which Instagram shows to no one
+// logged out, and a login wants a browser window of the board's own — gone, its stories with it; the channel has them.
 // Every picture is read by claude -p (`model`, haiku unless the setup says) into the days and dishes it shows, once:
-// LUNCH_DIR/reads.json keeps each read by the post's or the story's id — a story's with its place and time, so a week's
-// card still says the day's dishes once Instagram has let the story go (lunchKept). A month's dishes are a place's
-// until something says which is today's: a story, a post, the channel (2026-10-20). A reader is a claude of its own in
+// LUNCH_DIR/reads.json keeps each read by the post's id. A month's dishes are a place's until something says which is
+// today's: a post, the channel (2026-10-20). A reader is a claude of its own in
 // LUNCH_DIR/work, with no transcript (--no-session-persistence); the registry lists it while it runs, and
 // loadRegistry passes over it (ownReader). The day — its menus, Going, In 15 min, back — is the state file's.
 const LUNCH_DIR = join(dirname(STATE_FILE), 'lunch');
-const LUNCH_WORK = join(LUNCH_DIR, 'work'), LUNCH_CHROME = join(LUNCH_DIR, 'chrome'), LUNCH_READS = join(LUNCH_DIR, 'reads.json');
+const LUNCH_WORK = join(LUNCH_DIR, 'work'), LUNCH_READS = join(LUNCH_DIR, 'reads.json');
 const LUNCH_TICK_MS = Number(process.env.LUNCH_TICK_MS || 30_000);
 const LUNCH_SPAN_MS = 90 * 60_000;        // lunch time: from `at`, this long — the sign, the dishes in the lane
 const LUNCH_SNOOZE_MS = 15 * 60_000;
 const LUNCH_LOOKS = [-75, -40, -10, 5];   // minutes from `at`: Instagram looked at for the places still without a menu
 const LUNCH_SLACKS = [-10, 10];           // …and the channel read
 const LUNCH_RECENT_MS = 35 * 86_400_000;  // a post older than this is no menu of today's
-const LUNCH_READ_MAX = 6, LUNCH_STORY_MAX = 5, LUNCH_AGAIN_MS = 6 * 3_600_000;   // posts read per place a look; stories; a failed read asked again after
+const LUNCH_READ_MAX = 6, LUNCH_AGAIN_MS = 6 * 3_600_000;   // posts read per place a look; a failed read asked again after
 const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 // a post worth reading though not posted today: a menu's words, a closure's, or a picture Instagram says is text
 const MENU_WORDS = /menu|ementa|almo[cç]o|prato|sugest|semana|di[aá]ria|executiv|buffet|encerrad|fechad|f[eé]rias|closed/i;
-const lunch = { busy: null, again: null, error: null, login: { state: 'unknown' }, loginRun: null, said: '', workReal: null, readers: new Set(), reads: null };
+const lunch = { busy: null, again: null, error: null, said: '', workReal: null, readers: new Set(), reads: null };
 const IG_HANDLE = /^[A-Za-z0-9._]{1,30}$/;
-/** The setup's lunch, shaped: {on, at 'HH:MM', days [0–6], places [{name, instagram?, color?}], stories, slack '#name'?,
- *  model?} — or why not. */
+/** The setup's lunch, shaped: {on, at 'HH:MM', days [0–6], places [{name, instagram?, color?}], slack '#name'?, model?}
+ *  — or why not. */
 function cleanLunch(v) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return { error: 'expected {at, days, places}' };
   const at = typeof v.at === 'string' ? v.at.trim() : '12:00', hm = at.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
@@ -4768,7 +4767,7 @@ function cleanLunch(v) {
   if (slack && !/^#[\w.-]{1,80}$/.test(slack)) return { error: `"${v.slack}" is not a Slack channel — #lunch` };
   const model = typeof v.model === 'string' && v.model.trim() ? v.model.trim() : null;
   if (model && !/^[\w.[\]-]{1,60}$/.test(model)) return { error: `"${model}" is not a model — haiku, sonnet` };
-  return { lunch: { on: v.on !== false, at: `${hm[1].padStart(2, '0')}:${hm[2]}`, days, places, stories: v.stories === true, slack, model } };
+  return { lunch: { on: v.on !== false, at: `${hm[1].padStart(2, '0')}:${hm[2]}`, days, places, slack, model } };
 }
 const lunchCfg = () => setup.lunch || null;
 const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -4823,10 +4822,10 @@ function setMenu(p, m) {
  *  from, or why there are none yet. In the snapshot and every `lunch` event. */
 function lunchSummary(t = Date.now()) {
   const cfg = lunchCfg();
-  if (!cfg) return { on: false, set: false, login: lunch.login };
+  if (!cfg) return { on: false, set: false };
   const st = lunchToday(t);
   return { on: cfg.on, set: true, at: cfg.at, days: cfg.days, phase: lunchPhase(cfg, st, t), day: st.day, went: st.went || null, snooze: st.snooze || null, back: st.back || null,
-    readAt: st.readAt || null, busy: lunch.busy, error: lunch.error, login: lunch.login, stories: cfg.stories, slack: cfg.slack, model: cfg.model || 'haiku',
+    readAt: st.readAt || null, busy: lunch.busy, error: lunch.error, slack: cfg.slack, model: cfg.model || 'haiku',
     places: cfg.places.map(p => {
       const m = st.menus[p.name] || {};
       const state = m.dishes?.length ? 'menu' : m.closed ? 'closed' : m.storyAt ? 'story' : !p.instagram && !cfg.slack ? 'none' : 'waiting';
@@ -4958,40 +4957,6 @@ async function lunchLook(places, today) {
     saveState(); lunchSay();
   });
 }
-/** The stories, through the board's login: of the places whose story went up today (or whose profile said nothing),
- *  each one's story page — today's, newest first, until one is the menu or a closure. */
-async function lunchStories(places, today) {
-  const want = places.filter(p => p.instagram && !settled(p) && (menuOf(p).storyAt || menuOf(p).error));
-  if (!lunchCfg()?.stories || !want.length || lunch.loginRun) return;
-  lunch.busy = 'stories'; lunchSay();
-  const r = await igRun(['stories', '--profile', LUNCH_CHROME, ...want.map(p => p.instagram)], 4 * 60_000);
-  lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : r.loggedIn === false ? { state: 'out' } : lunch.login;
-  if (!r.loggedIn) { if (r.error) lunch.error = `stories: ${r.error}`; return; }
-  if (r.error) lunch.error = `stories: ${r.error}`;
-  for (const [h, why] of Object.entries(r.errors || {})) { const p = want.find(q => q.instagram.toLowerCase() === h.toLowerCase()); if (p && !menuOf(p).storyAt) menuOf(p).error = `its stories: ${why}`; }
-  lunch.busy = 'reading'; lunchSay();
-  await pool(want, 3, async p => {
-    const items = (Object.entries(r.stories || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1] || []).filter(s => dayKey(s.at) === today);
-    if (items.length) menuOf(p).storyAt = Math.max(menuOf(p).storyAt || 0, items[0].at);
-    for (const s of items.slice(0, LUNCH_STORY_MAX)) {
-      let read; try { read = await readPicture({ id: `s${s.pk}`, image: s.image, place: p, at: s.at, kind: 'story', url: s.url }); } catch (e) { menuOf(p).error = e.message; continue; }
-      const closed = closedOn(read, today); if (closed) { setMenu(p, { closed, src: 'story', at: s.at, url: s.url, dishes: [] }); return; }
-      const d = dishesOn(read, today, s.at); if (d) { setMenu(p, { ...d, src: 'story', at: s.at, url: s.url }); return; }
-    }
-  });
-}
-/** The stories read on the days before that still say today's: a week's card or a closure, gone from Instagram a day
- *  after it went up (2026-10-20) — the newest first, no network. */
-function lunchKept(places, today) {
-  const kept = [...lunchReads().values()].filter(v => v.kind === 'story' && v.r && v.posted).sort((a, b) => b.posted - a.posted);
-  for (const p of places) {
-    if (!p.instagram || settled(p)) continue;
-    for (const v of kept.filter(v => v.place === p.instagram.toLowerCase())) {
-      const closed = closedOn(v.r, today); if (closed) { setMenu(p, { closed, src: 'story', at: v.posted, url: v.url || null, dishes: [] }); break; }
-      const d = dishesOn(v.r, today, v.posted); if (d && !d.month) { setMenu(p, { ...d, src: 'story', at: v.posted, url: v.url || null }); break; }
-    }
-  }
-}
 /** The setup's Slack channel: the day's screenshots, read for the places still without a menu. */
 async function lunchSlack(places, today) {
   const ch = lunchCfg()?.slack, want = places.filter(p => !settled(p));
@@ -5012,20 +4977,18 @@ Copy each dish as written, one item per dish, in the order shown — starters, s
     if (p && Array.isArray(x.dishes) && x.dishes.length) setMenu(p, { dishes: x.dishes.map(String), price: x.price || null, src: 'slack', at: hm ? new Date().setHours(+hm[1], +hm[2], 0, 0) : Date.now(), url: null });
   }
 }
-/** One round: the stories kept, the profiles, the stories, the channel (`slack`) — for the places still without today's
+/** One round: the profiles, then the channel (`slack`) — for the places still without today's
  *  menu, or all of them (`all`, Read again). One at a time; asked while one runs, it runs again after. */
 async function lunchRun({ slack = false, all = false } = {}) {
   const cfg = lunchCfg();
   if (!cfg?.places.length) return;
   if (lunch.busy) { lunch.again = { slack: slack || !!lunch.again?.slack, all: all || !!lunch.again?.all }; return; }
   const today = lunchToday().day;
-  lunchKept(cfg.places, today);
   const places = all ? cfg.places : cfg.places.filter(p => !settled(p));
   if (all) for (const p of places) { const m = menuOf(p); if (!m.dishes?.length) delete m.error; }
   lunch.error = null; lunch.busy = 'starting'; lunchSay();
   try {
     await lunchLook(places, today);
-    await lunchStories(places, today);
     if (slack) await lunchSlack(places, today);
   } catch (e) { lunch.error = e.message; console.error('[peixairada] lunch:', e); }
   finally { lunch.busy = null; lunchToday().readAt = Date.now(); saveState(); lunchSay(); }
@@ -5060,37 +5023,17 @@ function lunchAlert(cfg) {
   broadcast('alert', evt);
   if (notificationsOn) nativeNotify(evt.heading, title, snippet);
 }
-/** The board's Instagram login: a window to log in with (lib/instagram.mjs login), the stories read once it is in. */
-function lunchLogin() {
-  if (lunch.loginRun) return;
-  mkdirSync(LUNCH_CHROME, { recursive: true, mode: 0o700 });
-  lunch.login = { state: 'opening' }; lunchSay();
-  lunch.loginRun = igRun(['login', '--profile', LUNCH_CHROME], 16 * 60_000).then(r => {
-    lunch.loginRun = null;
-    lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : { state: 'out', ...r.error && { error: r.error } };
-    lunchSay();
-    if (r.loggedIn) lunchRun();
-  });
-}
 async function lunchRoute(req, res, url) {
-  if (req.method === 'GET') {
-    if (url.searchParams.has('login') && lunch.login.state === 'unknown' && !lunch.loginRun && existsSync(LUNCH_CHROME)) {   // Settings › Lunch open: whether the profile is logged in
-      const r = await igRun(['check', '--profile', LUNCH_CHROME], 60_000);
-      if (typeof r.loggedIn === 'boolean') lunch.login = r.loggedIn ? { state: 'in', user: r.user || null } : { state: 'out' };
-    } else if (url.searchParams.has('login') && lunch.login.state === 'unknown' && !existsSync(LUNCH_CHROME)) lunch.login = { state: 'out' };
-    return json(res, 200, lunchSummary());
-  }
+  if (req.method === 'GET') return json(res, 200, lunchSummary());
   if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST' });
   const body = await jsonBody(req), cfg = lunchCfg(), act = body.act, t = Date.now();
-  if (!cfg && act !== 'logout') return json(res, 409, { error: 'lunch is not set up — Settings › Lunch' });
+  if (!cfg) return json(res, 409, { error: 'lunch is not set up — Settings › Lunch' });
   const st = lunchToday(t);
   if (act === 'going') { st.went = t; st.snooze = 0; }
   else if (act === 'snooze') { st.snooze = t + LUNCH_SNOOZE_MS; st.went = 0; }
   else if (act === 'back') { st.back = t; }
   else if (act === 'read') lunchRun({ slack: !!cfg.slack, all: true });
-  else if (act === 'login') lunchLogin();
-  else if (act === 'logout') { if (lunch.loginRun) return json(res, 409, { error: 'the login window is open' }); rmSync(LUNCH_CHROME, { recursive: true, force: true }); lunch.login = { state: 'out' }; }
-  else return json(res, 400, { error: 'expected {act: going | snooze | back | read | login | logout}' });
+  else return json(res, 400, { error: 'expected {act: going | snooze | back | read}' });
   saveState(); lunchSay();
   return json(res, 200, lunchSummary());
 }
@@ -7118,6 +7061,7 @@ if (!keyRequired() && !existsSync(APP_DIR)) requireKey(`no app at ${APP_DIR} to 
 const t0 = Date.now();
 if (!seenSince) { seenSince = new Date().toISOString(); saveState(); }   // a reply before the board kept what it showed is no new one (2026-10-12)
 loadConfig();
+rmSync(join(LUNCH_DIR, 'chrome'), { recursive: true, force: true });   // lunch's Instagram login, a Chrome profile, gone with the login (2026-11-23)
 // The transcripts are watched before they are read (2026-10-14): FSEvents tells only of what comes after the watch
 // starts, and a reply written while the scan or the adoption ran stayed unread until the file's next line.
 const pendingFiles = new Map();

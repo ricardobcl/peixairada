@@ -1,6 +1,6 @@
-// Lunch (2026-10-18): the morning's menus read by the server (the fakes: a week's post, a story through the login, the
-// Slack channel for a place with no Instagram), and what the page does with them — ⌥⌘M's chalkboard and again closing
-// it, home's chalkboard before lunch time, Settings › Lunch (the places, the login, a place added), and at lunch time
+// Lunch (2026-10-18): the morning's menus read by the server (the fakes: a week's post, a story and a place with no
+// Instagram through the Slack channel — no login, 2026-11-23), and what the page does with them — ⌥⌘M's chalkboard and
+// again closing it, home's chalkboard before lunch time, Settings › Lunch (the places, no login, a place added), and at lunch time
 // the sign in the fish's lane with the day's dishes scrolling under it, the sign opening the chalkboard, Going (ENJOY,
 // the fish off the bar), a lock (BACK SOON), and back an hour later (FED, the fish swimming in, the server told).
 import { writeFileSync } from 'node:fs';
@@ -15,16 +15,15 @@ const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${String
 
 export default async function (ctx) {
   const out = {}, now = Date.now(), env = ctx.server.env;
-  writeFileSync(env.FAKEIG_FILE, JSON.stringify({ loggedIn: true, user: '4242', profiles: {
+  writeFileSync(env.FAKEIG_FILE, JSON.stringify({ profiles: {
     'casa.place': { id: '11', storyAt: 0, posts: [{ code: 'C1', pk: '7001', at: now - 2 * DAY, caption: 'Partilhamos a ementa desta semana', alt: 'May be an image of text', image: PNG, url: 'https://www.instagram.com/p/C1/' }] },
     'ramen.place': { id: '22', storyAt: now - 3600_000, posts: [] },
-  }, stories: { 'ramen.place': [{ pk: '9001', at: now - 3600_000, image: PNG, url: 'https://www.instagram.com/stories/ramen.place/9001/' }] } }));
+  } }));
   writeFileSync(env.FAKEREADER_FILE, JSON.stringify({
-    reads: { 'ementa desta semana': { isMenu: true, kind: 'week', days: [{ date: dayKey(now), dishes: ['Sopa de penca', 'Salmão grelhado, batata e legumes', 'Pá de porco no forno com laranja'] }], price: '14,00 €', closed: null },
-      'put this story': { isMenu: true, kind: 'day', days: [{ date: null, weekday: null, dishes: ['Creme de legumes', 'Tofu tikka masala', 'Brownie'] }], price: '12 €', closed: null } },
-    slack: { places: [{ name: 'Trotas', dishes: ['Arroz de pato'], price: '11 €', postedAt: '11:40' }] } }));
+    reads: { 'ementa desta semana': { isMenu: true, kind: 'week', days: [{ date: dayKey(now), dishes: ['Sopa de penca', 'Salmão grelhado, batata e legumes', 'Pá de porco no forno com laranja'] }], price: '14,00 €', closed: null } },
+    slack: { places: [{ name: 'Trotas', dishes: ['Arroz de pato'], price: '11 €', postedAt: '11:40' }, { name: 'Ramen', dishes: ['Creme de legumes', 'Tofu tikka masala', 'Brownie'], price: '12 €', postedAt: '11:20' }] } }));
   const places = [{ name: 'Casa', instagram: 'casa.place' }, { name: 'Ramen', instagram: 'ramen.place' }, { name: 'Trotas' }];
-  const lunchCfg = { at: hm(now + 45 * 60_000), days: [0, 1, 2, 3, 4, 5, 6], places, stories: true, slack: '#lunch' };
+  const lunchCfg = { at: hm(now + 45 * 60_000), days: [0, 1, 2, 3, 4, 5, 6], places, slack: '#lunch' };
   const put = lunch => ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lunch }) });
   ctx.assert.equal((await put(lunchCfg)).status, 200);
   await ctx.server.post('api/lunch', { act: 'read' });
@@ -40,9 +39,9 @@ export default async function (ctx) {
   out.board = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#lunchBoard .lp')].map(p => [p.querySelector('h4').textContent, [...p.querySelectorAll('p.cdish > span:first-child')].map(x => x.textContent), p.querySelector('.cfrom')?.textContent]))`).then(JSON.parse);
   ctx.assert.deepEqual(out.board.map(p => p[0]), ['Casa', 'Ramen', 'Trotas']);
   ctx.assert.deepEqual(out.board[0][1], ['Sopa de penca', 'Salmão grelhado, batata e legumes', 'Pá de porco no forno com laranja']);
-  ctx.assert.match(out.board[1][2], /^from its story · \d\d:\d\d$/);
+  ctx.assert.match(out.board[1][2], /^from #lunch/, 'its story, as the channel has it');
   ctx.assert.match(out.board[2][2], /^from #lunch/);
-  ctx.assert.match(await ctx.evaluate(`document.querySelector('#lunchFoot').textContent`), /Read at \d\d:\d\d, from Instagram, stories, #lunch.*Going/, 'the foot: when and where, and Going before lunch time');
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('#lunchFoot').textContent`), /Read at \d\d:\d\d, from Instagram, #lunch.*Going/, 'the foot: when and where, and Going before lunch time');
   await ctx.settle(); await ctx.shot('1-chalkboard');
   await ctx.key('KeyM');
   await ctx.waitFor(`!document.querySelector('#lunchd').open`, { what: '⌥⌘M again closing it' });
@@ -53,14 +52,15 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#log .home .hlunch .lp').length`), 3);
   await ctx.settle(); await ctx.shot('2-home');
 
-  // Settings › Lunch: the places as rows, the stories on and logged in; a place added from the empty row
+  // Settings › Lunch: the places as rows, no stories switch nor Instagram login (2026-11-23); a place added from the empty row
   await ctx.cmd('Comma');
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="lunch"]').click()`);
-  await ctx.waitFor(`document.querySelectorAll('#lunchSet .srow.lplace:not(.add)').length === 3 && /Logged in/.test(document.querySelector('#lunchLoginRow')?.textContent)`, { what: 'the pane, logged in' });
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#lunchStories').checked && document.querySelector('#lunchAt').value`), lunchCfg.at);
-  // a pane longer than the dialog scrolls, down to the login (2026-10-18: the dialog's row was its content's height, cut off)
-  out.scroll = await ctx.evaluate(`JSON.stringify((b => { const r = document.querySelector('#lunchLoginRow'); r.scrollIntoView({ block: 'center' }); const a = b.getBoundingClientRect(), c = r.getBoundingClientRect(); return { over: b.scrollHeight > b.clientHeight, top: b.scrollTop, seen: c.top >= a.top && c.bottom <= a.bottom, inDialog: b.getBoundingClientRect().bottom <= document.querySelector('#settings').getBoundingClientRect().bottom + 1 }; })(document.querySelector('#sbody')))`).then(JSON.parse);
-  ctx.assert.deepEqual([out.scroll.over, out.scroll.top > 0, out.scroll.seen, out.scroll.inDialog], [true, true, true, true], `the pane scrolls to the login: ${JSON.stringify(out.scroll)}`);
+  await ctx.waitFor(`document.querySelectorAll('#lunchSet .srow.lplace:not(.add)').length === 3 && !!document.querySelector('#lunchStatRow')`, { what: 'the pane' });
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#lunchAt').value`), lunchCfg.at);
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#lunchStories, #lunchLoginRow, #lunchSet [data-lunch="login"]')`), false, 'no login to ask for');
+  // a pane longer than the dialog scrolls, down to its last row (2026-10-18: the dialog's row was its content's height, cut off)
+  out.scroll = await ctx.evaluate(`JSON.stringify((b => { const r = document.querySelector('#lunchStatRow'); r.scrollIntoView({ block: 'center' }); const a = b.getBoundingClientRect(), c = r.getBoundingClientRect(); return { over: b.scrollHeight > b.clientHeight, top: b.scrollTop, seen: c.top >= a.top && c.bottom <= a.bottom, inDialog: b.getBoundingClientRect().bottom <= document.querySelector('#settings').getBoundingClientRect().bottom + 1 }; })(document.querySelector('#sbody')))`).then(JSON.parse);
+  ctx.assert.deepEqual([out.scroll.over, out.scroll.top > 0, out.scroll.seen, out.scroll.inDialog], [true, true, true, true], `the pane scrolls to its last row: ${JSON.stringify(out.scroll)}`);
   await ctx.evaluate(`(r => { r.querySelector('.lname').value = 'Semente'; r.querySelector('.lig').value = '@semente.place'; r.querySelector('.lig').dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#lunchSet .srow.lplace.add'))`);
   await waitFor(async () => (await ctx.server.api('api/config')).body.lunch?.places?.length === 4, { what: 'the place added' });
   const cfg = (await ctx.server.api('api/config')).body.lunch;

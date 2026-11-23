@@ -10,7 +10,9 @@
 #   scripts/launchd.sh logs        # tail the log
 #   scripts/launchd.sh print       # show the plist that would be installed
 # PORT / NOTIFY env vars, this shell's PATH and its node are baked into the plist at install time — after switching
-# Node versions or moving a CLI, install again. PORT defaults to 7331. NOTIFY defaults to `off` when the app is
+# Node versions or moving a CLI, install again. CHROME, when this shell has one, too (2026-11-23): lunch's Instagram looks
+# run lib/cdp.mjs's Chrome, Google's unless it names another — on a Mac whose Google Chrome is blocked, the server would
+# reach the one it cannot run. PORT defaults to 7331. NOTIFY defaults to `off` when the app is
 # installed — the app adopts this server and posts its own (richer) notifications, and would stay quiet if the server
 # posted native ones — and to `native` for a bare-server setup.
 # Why an agent at all: the app's own server dies with the app, and every drawer's claude with it. The
@@ -48,7 +50,7 @@ plist() {
   <dict>
     <key>PORT</key><string>$(xml "$PORT")</string>
     <key>NOTIFY</key><string>$(xml "$NOTIFY")</string>
-    <key>PATH</key><string>$AGENT_PATH</string>
+    <key>PATH</key><string>$AGENT_PATH</string>$(if [ -n "${CHROME:-}" ]; then printf '\n    <key>CHROME</key><string>%s</string>' "$(xml "$CHROME")"; fi)
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

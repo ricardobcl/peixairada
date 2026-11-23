@@ -14290,7 +14290,7 @@ const toolName = n => {
       return `${p.month ? 'this month\'s dishes · ' : ''}from ${p.src === 'story' ? 'its story' : p.src === 'slack' ? (l.slack || 'Slack') : 'its post'}${when ? ` · ${when}` : ''}`;
     }
     if (p.state === 'closed') return `closed${p.closed?.to ? ` until ${fmtDay(p.closed.to)}` : ' today'}`;
-    if (p.state === 'story') return `its story went up at ${lunchTime(p.storyAt)}${l.stories ? (l.login?.state === 'in' ? ' — not read yet' : ' — reading stories needs Instagram logged in (Settings › Lunch)') : ' — stories are read only with a login (Settings › Lunch)'}`;
+    if (p.state === 'story') return `its story went up at ${lunchTime(p.storyAt)} — not read here: its name opens it`;
     if (p.state === 'none') return 'nothing online — ask at the table';
     return p.error ? `not read — ${p.error}` : 'not up yet';
   }
@@ -14305,7 +14305,7 @@ const toolName = n => {
   }
   function lunchFootHtml(l) {
     if (!l?.set) return '';
-    const from = ['Instagram', l.stories && 'stories', l.slack].filter(Boolean).join(', ');
+    const from = ['Instagram', l.slack].filter(Boolean).join(', ');
     const st = l.busy ? `Reading the menus — ${l.busy}…` : l.readAt ? `Read at ${lunchTime(l.readAt)}, from ${from}` : `Not read yet today — from ${from}`;
     const now = ['before', 'lunch', 'snoozed'].includes(l.phase) && l.on;
     return `<span class="lstat">${esc(st)}${l.error ? ` · <span class="serr">${esc(l.error)}</span>` : ''}</span>`
@@ -14350,8 +14350,8 @@ const toolName = n => {
   }
   /** What the server said changed: the lane, the chalkboard, home, Settings › Lunch. */
   function lunchChanged() { lunchBar(); drawLunch(); homeSoon(); renderLunchSet(); }
-  // Settings › Lunch: on, the time and the days; the places; where the menus come from — stories through a login of the
-  // board's own, a Slack channel —, which model reads them, and how the last round went
+  // Settings › Lunch: on, the time and the days; the places; where the menus come from — their posts, a Slack channel —,
+  // which model reads them, and how the last round went
   function lunchSetHtml() {
     const l = state.lunch || {}, c = state.config.lunch, text = 'type="text" spellcheck="false" autocomplete="off"';
     const group = (title, kw, rows, foot) => `<section class="sgrp" data-kw="${kw}">${title ? `<h6 class="sgh">${title}</h6>` : ''}<div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
@@ -14359,8 +14359,6 @@ const toolName = n => {
     if (!c) return group('', 'lunch', on);
     const days = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']].map(([d, n]) => `<button type="button" data-day="${d}" aria-pressed="${c.days.includes(d)}">${n}</button>`).join('');
     const place = (p, i) => `<div class="srow lplace" data-i="${i}"><i class="lsq" style="--c:${lunchColor(p, i)}"></i><input ${text} class="lname" value="${esc(p.name)}" aria-label="The place's name"><label class="ligw" title="Its Instagram account — where its menus are read">@<input ${text} class="lig" value="${esc(p.instagram || '')}" placeholder="its Instagram" aria-label="${esc(p.name)}'s Instagram account"></label><button type="button" class="sdel" title="Forget ${esc(p.name)}" aria-label="Forget ${esc(p.name)}">×</button></div>`;
-    const login = l.login?.state === 'in' ? `Logged in${l.login.user ? ` (account ${esc(l.login.user)})` : ''}` : l.login?.state === 'opening' ? 'A Chrome window is open — log in there; it closes by itself' : l.login?.state === 'out' ? `Not logged in${l.login.error ? ` — ${esc(l.login.error)}` : ''}` : 'Asking…';
-    const loginBtn = l.login?.state === 'in' ? '<button type="button" class="btn" data-lunch="logout">Log out</button>' : `<button type="button" class="btn" data-lunch="login"${l.login?.state === 'opening' ? ' disabled' : ''}>Log in to Instagram…</button>`;
     const models = [...new Set(['haiku', 'sonnet', c.model || 'haiku'])].map(m => `<option value="${esc(m)}"${(c.model || 'haiku') === m ? ' selected' : ''}>${esc(m[0].toUpperCase() + m.slice(1))}</option>`).join('');
     const stat = l.busy ? `Reading — ${esc(l.busy)}…` : l.readAt ? `Read at ${lunchTime(l.readAt)} · ${l.places?.filter(p => p.dishes.length).length || 0} of ${l.places?.length || 0} menus in` : 'Not read yet today';
     return group('', 'lunch', on
@@ -14368,17 +14366,14 @@ const toolName = n => {
         + `<div class="srow set sub" data-kw="days weekdays week"><span class="sl" id="slLunchDays"><b>Days</b><small>No reminder, nothing read, on the others</small></span><span class="sseg ldays" role="group" aria-labelledby="slLunchDays">${days}</span></div>`)
       + group('Places', 'lunch places restaurants instagram account', c.places.map(place).join('')
         + `<div class="srow lplace add"><i class="lsq">＋</i><input ${text} class="lname" placeholder="A place you go" aria-label="A new place's name"><label class="ligw">@<input ${text} class="lig" placeholder="its Instagram" aria-label="Its Instagram account"></label><span></span></div>`,
-        'Each one\'s menu is read off its Instagram: its posts as anyone sees them, its stories through the login below.')
-      + group('Where the menus come from', 'lunch stories instagram login slack channel model claude read', 
-        `<div class="srow set" data-kw="stories instagram"><label class="sl" for="lunchStories"><b>Read the stories</b><small>Most places post the day's menu only as a story, which Instagram shows only to someone logged in</small></label><input type="checkbox" class="sw" role="switch" id="lunchStories"${c.stories ? ' checked' : ''}></div>`
-        + `<div class="srow set sub${c.stories ? '' : ' off'}" data-kw="instagram login account" id="lunchLoginRow"><span class="sl"><b>Instagram</b><small>${login}</small></span>${loginBtn}</div>`
-        + `<div class="srow set" data-kw="slack channel colleagues screenshots"><label class="sl" for="lunchSlack"><b>Slack channel</b><small>Where colleagues post the menus — read by Claude's Slack connector, nothing written</small></label><input ${text} class="lslack" id="lunchSlack" value="${esc(c.slack || '')}" placeholder="#lunch"></div>`
+        'Each one\'s menu is read off its Instagram posts, as anyone sees them. Not its stories, which Instagram shows only to someone logged in: the Slack channel below has those.')
+      + group('Where the menus come from', 'lunch stories slack channel model claude read',
+        `<div class="srow set" data-kw="slack channel colleagues screenshots"><label class="sl" for="lunchSlack"><b>Slack channel</b><small>Where colleagues post the menus — read by Claude's Slack connector, nothing written</small></label><input ${text} class="lslack" id="lunchSlack" value="${esc(c.slack || '')}" placeholder="#lunch"></div>`
         + `<div class="srow set" data-kw="model claude reader haiku sonnet"><label class="sl" for="lunchModel"><b>Read by</b><small>The Claude model that reads each picture once, on your plan</small></label><span class="ssel"><select id="lunchModel">${models}</select></span></div>`
-        + `<div class="srow set stat" data-kw="read now menus status" id="lunchStatRow"><span class="sl"><b>${stat}</b><small>${l.error ? `<span class="serr">${esc(l.error)}</span>` : 'Read again any time; on its own each lunch day'}</small></span><button type="button" class="btn" data-lunch="read"${l.busy ? ' disabled' : ''}>Read now</button></div>`,
-        'A second Instagram account just for this is wiser than your own: one that looks at stories on a schedule can be challenged.');
+        + `<div class="srow set stat" data-kw="read now menus status" id="lunchStatRow"><span class="sl"><b>${stat}</b><small>${l.error ? `<span class="serr">${esc(l.error)}</span>` : 'Read again any time; on its own each lunch day'}</small></span><button type="button" class="btn" data-lunch="read"${l.busy ? ' disabled' : ''}>Read now</button></div>`);
   }
   function renderLunchSet(force = false) { drawSetup($('#lunchSet'), lunchSetHtml(), force); }
-  function loadLunchSet() { api('GET', '/api/lunch?login=1').then(d => { state.lunch = d; lunchChanged(); }, () => {}); }
+  function loadLunchSet() { api('GET', '/api/lunch').then(d => { state.lunch = d; lunchChanged(); }, () => {}); }
   /** The setup's lunch as it would be with `patch`: the whole of it, as a PUT replaces it. */
   const lunchPut = (patch, anchor) => putConfig({ lunch: patch === null ? null : { ...(state.config.lunch || { at: '12:00', days: [1, 2, 3, 4, 5], places: [] }), ...patch } }, anchor);
   const lunchPlacesInBox = () => [...$('#lunchSet').querySelectorAll('.srow.lplace')].map(r => ({ name: r.querySelector('.lname').value.trim(), instagram: r.querySelector('.lig').value.trim(),
@@ -14389,7 +14384,6 @@ const toolName = n => {
     const t = e.target;
     if (t.id === 'lunchOn') return lunchPut({ on: t.checked }, t);
     if (t.id === 'lunchAt') return t.value && lunchPut({ at: t.value }, t);
-    if (t.id === 'lunchStories') return lunchPut({ stories: t.checked }, t);
     if (t.id === 'lunchSlack') return lunchPut({ slack: t.value.trim() || null }, t);
     if (t.id === 'lunchModel') return lunchPut({ model: t.value }, t);
     if (t.closest('.srow.lplace')) { if (t.closest('.add') && !t.closest('.add').querySelector('.lname').value.trim()) return; return lunchPut({ places: lunchPlacesInBox() }, t); }

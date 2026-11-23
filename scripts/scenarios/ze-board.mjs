@@ -33,9 +33,9 @@ export default async function (ctx) {
   try {
     // the setup: the chat's room, and a lunch read from Slack's channel
     await ctx.server.api('api/config', { ...json, body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }) });
-    writeFileSync(env.FAKEIG_FILE, JSON.stringify({ loggedIn: true, user: '4242', profiles: {}, stories: {} }));
+    writeFileSync(env.FAKEIG_FILE, JSON.stringify({ profiles: {} }));
     writeFileSync(env.FAKEREADER_FILE, JSON.stringify({ reads: {}, slack: { places: [{ name: 'Trotas', dishes: ['Sopa de penca', 'Rojões à minhota', 'Bacalhau com natas', 'Pudim'], price: '11 €', postedAt: '11:40' }] } }));
-    ctx.assert.equal((await ctx.server.api('api/config', { ...json, body: JSON.stringify({ lunch: { at: hm(Date.now() + 45 * 60_000), days: [0, 1, 2, 3, 4, 5, 6], places: [{ name: 'Trotas' }], stories: false, slack: '#lunch' } }) })).status, 200);
+    ctx.assert.equal((await ctx.server.api('api/config', { ...json, body: JSON.stringify({ lunch: { at: hm(Date.now() + 45 * 60_000), days: [0, 1, 2, 3, 4, 5, 6], places: [{ name: 'Trotas' }], slack: '#lunch' } }) })).status, 200);
     await ctx.server.post('api/lunch', { act: 'read' });
     await waitFor(async () => (await ctx.server.api('api/lunch')).body.places.every(p => p.dishes?.length), { what: 'the menu read' });
     await waitFor(async () => (await ctx.server.api('api/chat')).body.room != null, { what: 'the room found' });
