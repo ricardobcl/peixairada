@@ -13,12 +13,14 @@
 // noon now, so a fixture minutes to hours old never straddles a midnight (a day line between its chats) nor a DST change;
 // `meta.tz` names another zone, or `false` keeps the Mac's — from the setup on: the module's top level ran at noon.
 // The page's policy holds (2026-11-06): a CSP violation on any document of the run fails it (`meta.csp: false` reads one).
+// `meta.newHeadless` (2026-11-23): Chrome's new headless only — under chrome-headless-shell (lib/cdp.mjs) the scenario is
+// skipped, said so, exit 77: scenarios.mjs's SKIP, neither a pass nor a failure.
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { launchChrome, liveKey, openBoard, openChat, sleep, SOFT_GL } from '../lib/cdp.mjs';
+import { HEADLESS_SHELL, launchChrome, liveKey, openBoard, openChat, sleep, SOFT_GL } from '../lib/cdp.mjs';
 import { startTestServer } from '../lib/testserver.mjs';
 import { defaultFixture } from './fixture.mjs';
 import { FRAME_WATCH } from '../lib/framewatch.mjs';
@@ -40,6 +42,7 @@ if (fixtureOpt) meta.fixture = fixtureOpt; if (wantServer) meta.server = true; i
 if (meta.tz === false) { if (macTz === undefined) delete process.env.TZ; else process.env.TZ = macTz; } else if (meta.tz) process.env.TZ = meta.tz;
 const tz = meta.tz === false ? null : process.env.TZ;
 const name = basename(file, '.mjs');
+if (meta.newHeadless && HEADLESS_SHELL) { console.error(`[${name}] SKIPPED: needs Chrome's newer headless mode (CHROME is chrome-headless-shell)`); process.exit(77); }
 const shots = shotsDir || join(tmpdir(), 'peixairada-shots'); mkdirSync(shots, { recursive: true });
 const log = (...a) => console.error(`[${name}]`, ...a);
 

@@ -6,7 +6,7 @@
 // nunchaku's sweep, the awning and the sign stood on (and a trophy), the double jump, a dash through a green, the
 // trackpad's bump on a kick, the Avó da Horta beaten, the dossier on pause, the K.O.'s Bruce Lee and today's best, the
 // day's round the same twice, and the galo as player two — run by A D, stealing his meat in VERSUS.
-export const meta = { server: true };
+export const meta = { server: true, newHeadless: true };   // not under chrome-headless-shell (2026-11-23, lib/cdp.mjs)
 
 export default async function (ctx) {
   const out = {};

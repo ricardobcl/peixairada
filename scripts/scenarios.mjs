@@ -14,6 +14,9 @@
 // forgiven: the suite still exits 0 — a browser scenario that passes on the second go is usually the machine,
 // not the board — but the line stays in the output and in the summary, so a flake that becomes a habit is seen.
 // --no-retry is the honest gate for a bisect.
+//
+// A scenario that needs Chrome's new headless, run under chrome-headless-shell, exits 77 (2026-11-23; `meta.newHeadless`):
+// SKIP, never run again, counted apart — the verdict says which and why.
 import { execFileSync, spawn } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -52,21 +55,22 @@ const leftovers = out => {
   return ps.split('\n').filter(l => marks.some(m => l.includes(m))).map(l => l.trim().slice(0, 160));
 };
 const secs = ms => `${(ms / 1000).toFixed(1)}s`;
+const SKIP = 77;   // scenario.mjs's exit for a scenario this Chrome cannot run
 const results = [];
 for (const file of names) {
   const name = file.replace('.mjs', '');
   process.stdout.write(`${name.padEnd(22)} … `);
   let r = await run(file);
   let flaky = null;
-  if (r.code !== 0 && retry) {
+  if (r.code !== 0 && r.code !== SKIP && retry) {
     process.stdout.write(`failed — again … `);
     const again = await run(file);
     if (again.code === 0) flaky = why(r.out);   // what it failed on the first time: a flake nobody can see is no use
     r = { ...again, first: r.out };
   }
-  const state = r.code !== 0 ? 'FAIL' : flaky ? 'FLAKY' : 'ok';
+  const state = r.code === SKIP ? 'SKIP' : r.code !== 0 ? 'FAIL' : flaky ? 'FLAKY' : 'ok';
   console.log(`${state} ${secs(r.ms)}${r.code !== 0 ? ` — ${why(r.out)}` : flaky ? ` — first run: ${flaky}` : ''}`);
-  if (r.code !== 0) console.log(r.out.split('\n').filter(l => !/^\[peixairada\]/.test(l)).join('\n').trimEnd().split('\n').slice(-25).join('\n'));
+  if (state === 'FAIL') console.log(r.out.split('\n').filter(l => !/^\[peixairada\]/.test(l)).join('\n').trimEnd().split('\n').slice(-25).join('\n'));
   await new Promise(res => setTimeout(res, 500));   // a process on its way out is not a leak
   const leaks = [...(r.first ? leftovers(r.first) : []), ...leftovers(r.out)];
   for (const l of leaks) console.log(`  LEAK ${l}`);
@@ -76,8 +80,10 @@ for (const file of names) {
 const bad = results.filter(r => r.state === 'FAIL');
 const flaky = results.filter(r => r.state === 'FLAKY');
 const leaky = results.filter(r => r.leaks);
+const skipped = results.filter(r => r.state === 'SKIP');
 const total = results.reduce((n, r) => n + r.ms, 0);
-console.log(`\n${results.length - bad.length}/${results.length} passed in ${secs(total)}` +
+console.log(`\n${results.length - skipped.length - bad.length}/${results.length - skipped.length} passed in ${secs(total)}` +
+  (skipped.length ? ` · skipped (need Chrome's newer headless mode, CHROME is chrome-headless-shell): ${skipped.map(r => r.name).join(', ')}` : '') +
   (flaky.length ? ` · flaky (passed on the second run): ${flaky.map(r => r.name).join(', ')}` : '') +
   (bad.length ? ` · failed: ${bad.map(r => r.name).join(', ')}` : '') +
   (leaky.length ? ` · left processes running: ${leaky.map(r => r.name).join(', ')}` : ''));

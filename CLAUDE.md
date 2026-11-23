@@ -975,6 +975,8 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * `npm run verify -- "<js>"` evaluates one expression on the live board, handed its key; `--hash`, `--shot`, `URL=` at its head. Drive
   Chrome over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot. **Over a pipe, never a port**
   (2026-11-06; `--remote-debugging-pipe`, the page flat by `sessionId`).
+* **`CHROME` names the harness's browser** (2026-11-23, `lib/cdp.mjs`), Google Chrome's by default. Under
+  chrome-headless-shell (`HEADLESS_SHELL`) a scenario with `meta.newHeadless` exits 77: `SKIP` in `npm run scenarios`.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView`;
   `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. What a body can ask (`burst()`, 2026-11-05) and `WK_BORDERS` are at its head. On screen by one pixel (off a screen WebKit runs no

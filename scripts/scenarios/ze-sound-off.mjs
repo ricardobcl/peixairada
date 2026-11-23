@@ -6,7 +6,7 @@
 // Chrome holds no audio output even with the band running (2026-11-01), so a test run makes no sound.
 import { execFileSync } from 'node:child_process';
 
-export const meta = { server: true };
+export const meta = { server: true, newHeadless: true };   // not under chrome-headless-shell (2026-11-23, lib/cdp.mjs)
 
 const COUNT = `window.__acs = []; window.__made = 0;
   const AC = window.AudioContext;

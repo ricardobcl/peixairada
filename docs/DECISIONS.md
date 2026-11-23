@@ -5,6 +5,30 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-23. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-23, later — Google Chrome blocked: the harness on chrome-headless-shell
+
+Ricardo: *"I keep seeing this popup on my mac: 'Browser Blocked' … the block itself is expected, the org that controls
+my mac is tightening security policies"*, then *"use Playwright's 'Chrome for Testing' or chrome-headless-shell,
+whatever is best and lightest (with less security concerns)"*.
+
+* **What the popup was**: the Mac's endpoint agent (Island) kills every launch of `/Applications/Google Chrome.app`
+  (exit 143) and says *Chrome was blocked*. Two things here launch it: the harness (`lib/cdp.mjs`, `npm test`, verify,
+  every scenario) and lunch's Instagram looks (10:30, 11:05, 11:35, 11:50 for an 11:45 lunch — each place's
+  *Chrome devtools never came up*).
+* **Not Island's own browser**: its policy turns DevTools off (*DevTools remote debugging is disallowed by the system
+  admin.*), the pipe too, and a headless `--dump-dom` goes through DevTools and hangs. Nothing can drive it.
+* **chrome-headless-shell, not Chrome for Testing**: Chrome for Testing's build of the old headless, one binary that
+  opens no window — no browser to browse with —, 218 MB, up in 0.7 s. The current stable from Chrome for Testing's
+  downloads, outside the repo (`~/.local/share/chrome-headless-shell/current`), named by `CHROME` in `~/.zshenv`; not
+  the copy in Playwright's cache, another project's and five releases old.
+* **Measured on it**: `npm test` 302/302, `npm run scenarios` 155/158. The three fail every time on it and pass on
+  Chrome for Testing (the new headless): focus-seen (focus emulation off, its page keeps the keys), ze-play (the blue
+  hour never comes), ze-sound-off (its helpers' command lines name no profile: `pgrep -f <profile>` finds one process).
+  They say `meta.newHeadless`; under the shell (`HEADLESS_SHELL`, by CHROME's file name) scenario.mjs exits 77 before
+  anything starts, and scenarios.mjs says SKIP — not run again, apart in the verdict.
+* **Open**: `launchChrome`'s `close()` waits for the helpers by the profile in their command lines, and scenarios.mjs's
+  LEAK looks the same way — under the shell neither sees a helper.
+
 ## Decisions of 2026-11-23 — a drawer's claude asks for the microphone itself
 
 Ricardo, in a drawer: *"why does audio to text not work on this chat? can this app ask for micro access?"*

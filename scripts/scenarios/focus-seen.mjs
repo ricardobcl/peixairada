@@ -6,7 +6,7 @@
 import { appendFileSync } from 'node:fs';
 import { replyLines } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+export const meta = { server: true, fixture: 'auto', newHeadless: true };   // not under chrome-headless-shell (2026-11-23, lib/cdp.mjs)
 
 export default async function (ctx) {
   const out = {}, chat = ctx.fixture.chats[1];
