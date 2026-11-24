@@ -1130,7 +1130,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #mxtip .agi dt { color: var(--muted); } #mxtip .agi dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
   /* an agent's card in Space (2026-11-18, later): its type in its colour, the error in red, what is still being read faint */
   #mxtip .spch { color: var(--ink); }
-  #mxtip .spct { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 750; color: #141413; background: oklch(.72 .13 var(--h)); }
+  #mxtip .spct { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 750; color: #141413; background: oklch(.72 .13 var(--h)); }   /* dark ink: the chip is .72 light in every theme */
   #mxtip .spck { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); color: oklch(.78 .12 var(--h)); }
   :root[data-theme="light"] #mxtip .spck { color: oklch(.48 .13 var(--h)); }
   #mxtip .spcm { flex: none; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); }
@@ -2497,13 +2497,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #spdiv:hover::before, #spdiv.drag::before { background: var(--muted); }
   #space .sphd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
   #space .sphd h1 { margin: 0; font-size: var(--fs-lg); }
+  main.notch #space.npad .sphd { padding-top: calc(10px + var(--notch-top, 0px)); }   /* filled on a notched screen: the bar below the strip (layoutNotch) */
   #space .spfs { display: flex; flex-wrap: wrap; gap: 6px; }
-  #space .spf { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; }
+  #space .spf { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border: 1px solid transparent; border-radius: 999px; background: var(--ctl); color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; }
   #space .spf i { width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--c); }
   #space .spf b { font-weight: 650; }
-  #space .spf[aria-pressed="true"] { background: var(--ctl); border-color: transparent; color: var(--ink); }
+  #space .spf[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 16%, var(--ctl)); color: var(--ink); }   /* a fill, never a grey edge: on, a tint of its colour */
   #space .spf[aria-pressed="true"] i { background: var(--c); }
   #space .spf:hover { background: var(--ctl-hi); }
+  #space .spf[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--c) 24%, var(--ctl-hi)); }
   #space .spsub { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
   #space .spbody { position: relative; min-height: 0; min-width: 0; }
   #space .spfield { height: 100%; box-sizing: border-box; overflow: auto; overscroll-behavior: contain; padding: 8px 10px 56px; background: color-mix(in srgb, var(--ink) 3%, var(--bg)); }
@@ -2529,19 +2531,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #space .spt { display: block; min-width: 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-5); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   #space .spt:hover { background: var(--ctl); }
   #space .spt.on { background: var(--panel); border-color: var(--line); }
-  #space { --spw: 304px; --sph: 216px; }   /* a node's tile: its box and a pod each side (spPods' SP_GEO) */
+  #space { --spw: 304px; --sph: 216px; --spr: 16px; }   /* --spr a node's corner: the tokens stop at 14 px, small on a 160 × 100 box; its ring and ping concentric */   /* a node's tile: its box and a pod each side (spPods' SP_GEO) */
   #space .spo { position: relative; display: block; width: var(--spw); height: var(--sph); margin: 0 auto; }
-  #space .spbox { position: absolute; left: 72px; top: 58px; width: 160px; height: 100px; box-sizing: border-box; padding: 6px 12px; border-radius: 16px; border: 2px solid var(--c); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; z-index: 1; }   /* a rounded box, its words in the middle (2026-11-18, v9; a circle in v7 held too little) */
-  #space .spbox::after { content: ""; position: absolute; inset: -6px; border-radius: 20px; border: 2px solid var(--c); opacity: 0; pointer-events: none; }   /* the ping lies over the box: never in a click's way (2026-11-18, v12) */
+  #space .spbox { position: absolute; left: 72px; top: 58px; width: 160px; height: 100px; box-sizing: border-box; padding: 6px 12px; border-radius: var(--spr); border: 2px solid var(--c); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; z-index: 1; }   /* a rounded box, its words in the middle (2026-11-18, v9; a circle in v7 held too little) */
+  #space .spbox::after { content: ""; position: absolute; inset: -6px; border-radius: calc(var(--spr) + 4px); border: 2px solid var(--c); opacity: 0; pointer-events: none; }   /* the ping lies over the box: never in a click's way (2026-11-18, v12) */
   #space .spbox[data-st="ask"]::after { animation: spsonar 1.5s ease-out infinite; }
   /* at work, a light turns round the node (2026-11-24): a bright arc on its edge and its bloom with it — each a square
      turned by a transform under a still mask (the sidebar card's .rg), the edge's a 2 px band, the bloom's a soft one
      drawn once; the project's colour (a watching node's cyan, slower); `ring` is phased, so a redraw never restarts it */
   #space .spt { --spg: var(--repo, var(--working-ink)); --sptip: var(--spg); }
-  :root[data-theme="dark"] #space .spt { --spg: oklch(from var(--repo, var(--working-ink)) calc(l + (1 - l) * .55) c h); --sptip: #fff; }
+  :root[data-theme="dark"] #space .spt { --spg: oklch(from var(--repo, var(--working-ink)) calc(l + (1 - l) * .55) c h); --sptip: var(--ink); }
   #space [data-st="watch"] { --spg: var(--watch); --sps: 10s; }
   #space .spbox:is([data-st="work"], [data-st="watch"]) { border-color: color-mix(in srgb, var(--c) 28%, transparent); }
-  #space .sprg { position: absolute; inset: -2px; padding: 2px; border-radius: 16px; overflow: hidden; pointer-events: none;
+  #space .sprg { position: absolute; inset: -2px; padding: 2px; border-radius: var(--spr); overflow: hidden; pointer-events: none;
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
   #space .sphl { position: absolute; left: 58px; top: 44px; width: 188px; height: 128px; overflow: hidden; pointer-events: none; opacity: .56;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 188 128' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Crect x='12' y='12' width='164' height='104' rx='18' fill='none' stroke='white' stroke-width='9' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 188 128' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Crect x='12' y='12' width='164' height='104' rx='18' fill='none' stroke='white' stroke-width='9' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
@@ -2586,7 +2588,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #spqd span { color: var(--muted); } #spqd em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
   /* several at once (2026-11-24): ⇧-click, ⇧-arrows; a mark on each, a bar for all of them */
   #space .spt.chosen .spbox { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
-  #space .spt.chosen .spbox::before { content: "✓"; position: absolute; left: -9px; top: -9px; z-index: 3; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+  #space .spt.chosen .spbox::before { content: "✓"; position: absolute; left: -9px; top: -9px; z-index: 3; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: var(--fs-xs); font-weight: 800; display: grid; place-items: center; }
   #spbar { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .6); font-size: var(--fs-sm); white-space: nowrap; }
   #spbar[hidden] { display: none; }
   #spbar button { padding: 4px 10px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
@@ -2625,7 +2627,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #space .spgrid { position: relative; z-index: 1; }
   #space .splinks { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
   #space .splinks line { stroke: color-mix(in oklab, var(--accent) 55%, var(--muted)); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .55; }
-  #space .splinks text { fill: var(--muted); font-size: 10px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
+  #space .splinks text { fill: var(--muted); font-size: var(--fs-2xs); font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
   #space .splinks .lit line { opacity: 1; stroke: var(--accent); } #space .splinks .lit text { fill: var(--ink); }
   /* the nodes by project (2026-11-24; prefs.spArrange): a head over each project's run, a row of its own */
   #space .spar { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
@@ -2679,13 +2681,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #space .spbf { display: flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; min-width: 0; font: var(--fs-2xs)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #space .spbf i { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--repo, var(--nocolor)); }
   #space .spwire { position: absolute; background: oklch(.72 .13 var(--h)); opacity: .6; }
-  #space .sppod { position: absolute; box-sizing: border-box; height: 34px; padding: 0 6px; border-radius: 17px; display: flex; align-items: center; justify-content: center; gap: 5px; background: oklch(.72 .13 var(--h) / .14); border: 1.5px solid oklch(.72 .13 var(--h) / .55); }
+  #space .sppod { position: absolute; box-sizing: border-box; height: 34px; padding: 0 6px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 5px; background: oklch(.72 .13 var(--h) / .14); border: 1.5px solid oklch(.72 .13 var(--h) / .55); }
   #space .spl { position: absolute; font-size: var(--fs-2xs); font-weight: 600; white-space: nowrap; color: oklch(.76 .12 var(--h)); }
   :root[data-theme="light"] #space .spl { color: oklch(.48 .13 var(--h)); }
   #space .spl { translate: -50% 0; }
   #space .sppod.col { flex-direction: column; padding: 6px 0; }
   /* an agent: its type's two letters in its type's colour, its state a badge on the corner, an arc that turns while it works */
-  #space .spa { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 700; color: #141413; background: oklch(.72 .13 var(--h)); }
+  #space .spa { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 700; color: #141413; background: oklch(.72 .13 var(--h)); }   /* dark ink: the mark is .72 light in every theme */
   #space .spa[data-st="run"]::before, #space .spa[data-st="quiet"]::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--working-ink) 25%, transparent); border-top-color: var(--working-ink); border-right-color: var(--working-ink); }
   #space .spa[data-st="run"]::before { animation: spspin 1.1s linear infinite; }
   #space .spa[data-st="quiet"] { opacity: .7; }
@@ -2700,7 +2702,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #space .spa[data-st="wait"] > i { background: var(--bg); border: 2px dashed var(--watch); }
   #space .spa[data-st="stop"] > i { border-radius: 3px; background: var(--muted); }
   #space .spmore { flex: none; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
-  #space .spx { flex: none; min-width: 26px; height: 22px; padding: 0 5px; display: grid; place-items: center; border-radius: 11px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted);
+  #space .spx { flex: none; min-width: 26px; height: 22px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted);
     background: var(--ctl); border: 1px solid oklch(.72 .13 var(--h) / .5); cursor: pointer; }
   #space .spx:hover { background: var(--ctl-hi); color: var(--ink); }
   /* the chat open: its agents as lanes on one clock */
@@ -2715,8 +2717,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #space .spld { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
   #space .splane[data-st="run"] .spld { color: var(--working-ink); } #space .splane[data-st="wait"] .spld { color: var(--watch); } #space .splane[data-st="fail"] .spld { color: var(--needs); } #space .splane[data-st="done"] .spld { color: var(--idle); }
   #space .splt { display: grid; min-width: 0; }
-  #space .sptrack { position: relative; height: 7px; border-radius: 4px; background: var(--ctl); }
-  #space .spbar { position: absolute; top: 0; bottom: 0; min-width: 4px; border-radius: 4px; box-sizing: border-box; background: var(--c, var(--muted)); }
+  #space .sptrack { position: relative; height: 7px; border-radius: var(--r-2); background: var(--ctl); }
+  #space .spbar { position: absolute; top: 0; bottom: 0; min-width: 4px; border-radius: var(--r-2); box-sizing: border-box; background: var(--c, var(--muted)); }
   #space .spbar[data-st="run"] { --c: var(--working-ink); } #space .spbar[data-st="quiet"] { --c: color-mix(in srgb, var(--working-ink) 55%, transparent); } #space .spbar[data-st="done"] { --c: var(--idle); } #space .spbar[data-st="fail"] { --c: var(--needs); }
   #space .spbar[data-st="wait"] { background: color-mix(in srgb, var(--watch) 16%, transparent); border: 1.5px dashed var(--watch); }
   #space .spnow { position: absolute; right: 0; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; background: var(--accent); }
@@ -2964,12 +2966,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #news { width: min(480px, 94vw); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 80px rgba(0, 0, 0, .5); }
   #news::backdrop { background: rgba(0, 0, 0, .5); }
   #news .nwpic { position: relative; height: 210px; overflow: hidden; background: radial-gradient(55% 60% at 18% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), color-mix(in srgb, var(--ink) 5%, var(--bg)); }
-  :root[data-theme="dark"] #news .nwpic { background: radial-gradient(55% 60% at 18% 10%, rgba(98, 84, 160, .3), transparent 70%), radial-gradient(40% 50% at 85% 90%, color-mix(in srgb, var(--watch) 14%, transparent), transparent 70%), #121318; }
+  :root[data-theme="dark"] #news .nwpic { background: radial-gradient(55% 60% at 18% 10%, rgba(98, 84, 160, .3), transparent 70%), radial-gradient(40% 50% at 85% 90%, color-mix(in srgb, var(--watch) 14%, transparent), transparent 70%), var(--bg); }
   #news .nwpic .st { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: var(--ink); opacity: .35; }
   #news .nwtag { position: absolute; left: 16px; top: 14px; z-index: 2; display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 22%, var(--panel)); color: var(--ink); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
   #news .nwx { position: absolute; right: 12px; top: 12px; z-index: 2; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: var(--r-3); font-size: var(--fs-lg); line-height: 1; color: var(--ink); background: color-mix(in srgb, var(--panel) 70%, transparent); }
   #news .nwx:hover { background: var(--panel); }
-  #news .nn { position: absolute; box-sizing: border-box; width: 136px; height: 78px; padding: 6px 10px; border-radius: 14px; border: 2px solid var(--c, var(--idle)); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; color: var(--ink); }
+  #news .nn { position: absolute; box-sizing: border-box; width: 136px; height: 78px; padding: 6px 10px; border-radius: var(--r-5); border: 2px solid var(--c, var(--idle)); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; color: var(--ink); }
   #news .nn[data-st="ask"] { --c: var(--needs); box-shadow: 0 0 0 6px color-mix(in srgb, var(--needs) 22%, transparent); } #news .nn[data-st="work"] { --c: var(--working-ink); } #news .nn[data-st="ready"] { --c: var(--idle); }
   #news .nn b { font-size: var(--fs-xs); font-weight: 650; line-height: 1.25; }
   #news .nn small { font: var(--fs-2xs) ui-monospace, monospace; color: var(--muted); }
@@ -8172,10 +8174,10 @@ const toolName = n => {
     redraw();
     return false;
   }
-  function tickDone(id, done, anchor, mark = null, forGood = false, stay = false) {
+  function tickDone(id, done, anchor, mark = null, forGood = false) {
     if (done && !tickGate(id, mark || anchor)) return;
     const go = () => {
-      if (done && id === state.current && !stay) moveOn(id);   // stay: Space's ✓, which has no list to move on to (2026-11-23)
+      if (done && id === state.current && !prefs.space) moveOn(id);   // Space has no list to move on to: any tick there leaves the chat open (2026-11-23; every one, 2026-11-24)
       api('POST', `/api/sessions/${id}/done`, forGood && done ? { done, forGood } : { done })   // the card the click was on is redrawn by the move
         .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
     };
@@ -8201,7 +8203,7 @@ const toolName = n => {
   function removeChat(id, anchor, mark = null) {
     if (!removeGate(id, mark || anchor)) return;
     const go = () => {
-      if (id === state.current) { moveOn(id); if (state.current === id) leaveChat(); }
+      if (id === state.current) { if (!prefs.space) moveOn(id); if (state.current === id) leaveChat(); }   // Space: nothing to move on to, the chat leaves
       api('POST', `/api/sessions/${id}/remove`, {}).catch(err => note(anchor?.isConnected ? anchor : $('#shead'), `Could not delete it: ${err.message}`, true));
     };
     if (!mark || REDUCED.matches) return go();
@@ -8702,12 +8704,15 @@ const toolName = n => {
   ] };
   const news = { i: 0, hold: false, timer: 0, later: false };
   function newsDone() { return (prefs.newsSeen || []).includes(NEWS.id); }
-  function newsOpen(i = 0) {
+  /** self: opened by itself — the app not brought forward, the keys on the dialog, not on Next, so a ⏎ or a space meant
+   *  for where they were presses nothing (2026-11-24, review). */
+  function newsOpen(i = 0, self = false) {
     const dlg = $('#news');
-    if (!dlg.open) { for (const d of document.querySelectorAll('dialog[open]')) d.close(); news.later = false; dlg.showModal(); repostPane(); if (inApp) post({ type: 'focus' }); }
-    newsShow(i);
+    if (!dlg.open) { for (const d of document.querySelectorAll('dialog[open]')) d.close(); news.later = false; dlg.showModal(); repostPane(); if (inApp && !self) post({ type: 'focus' }); }
+    newsShow(i, !self);
+    if (self) { dlg.tabIndex = -1; dlg.focus({ preventScroll: true }); }
   }
-  function newsShow(i) {
+  function newsShow(i, keys = true) {
     const n = NEWS.pages.length; news.i = Math.max(0, Math.min(n - 1, i));
     const pg = NEWS.pages[news.i], last = news.i === n - 1;
     $('#newsPic').innerHTML = NEWS_STARS + pg.pic();
@@ -8718,7 +8723,7 @@ const toolName = n => {
     $('#newsNext').textContent = last ? NEWS.goSay : 'Next'; $('#newsNext').title = last ? `${NEWS.goSay} · ⏎` : 'The next page · →';
     $('#newsSay').textContent = `Page ${news.i + 1} of ${n}: ${pg.title}`;
     const b = $('#newsBody'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
-    $('#newsNext').focus({ preventScroll: true });
+    if (keys) $('#newsNext').focus({ preventScroll: true });
   }
   /** Shown once it is quiet; called on every board draw, so it only looks. */
   function newsSoon() {
@@ -8727,7 +8732,10 @@ const toolName = n => {
       news.timer = 0;
       if (newsDone() || news.hold || document.hidden || Date.now() < (prefs.newsLater || 0) || document.querySelector('dialog[open]')) return;
       if ([...state.sessions.values()].some(askingLoud)) return;   // a question first: it comes back on the next draw
-      newsOpen(0);
+      // nor under your hands: the window not in front (a pane page has the keys), a terminal or a box with them (review) —
+      // looked at again in a moment, not on the next draw, which a board at rest may not have
+      if (!document.hasFocus() || document.activeElement?.closest?.('input, textarea, select, [contenteditable], .xterm')) return newsSoon();
+      newsOpen(0, true);
     }, 1500);
   }
   $('#newsNext').onclick = () => { if (news.i < NEWS.pages.length - 1) return newsShow(news.i + 1); $('#news').close(); NEWS.go(); };
@@ -9433,7 +9441,7 @@ const toolName = n => {
     if (!n && !main.classList.contains('notch')) return;   // no housing, and nothing laid around one to undo
     const NP = notchPad();
     // every read, then every write (2026-09-27): a read after a write is a layout each
-    const lr = n ? list.getBoundingClientRect().right : 0, hr = n ? head.getBoundingClientRect() : null;
+    const lr = n ? list.getBoundingClientRect().right : 0, hr = n ? head.getBoundingClientRect() : null, space = $('#space'), sr = n && !space.hidden ? space.getBoundingClientRect() : null;
     const gap = n && h2 ? parseFloat(getComputedStyle(head).columnGap) || 0 : 0, x = n && h2 ? h2.getBoundingClientRect().left : 0;
     const hole = !!(n && h2) && hr.left + NOTCH_TITLE <= n.left && n.right + NOTCH_TAIL <= hr.right;
     // The title left of the housing when the whole of it fits there, else right of it (2026-09-28): its margin jumps
@@ -9446,6 +9454,7 @@ const toolName = n => {
     main.classList.toggle('notch', !!n);
     main.style.setProperty('--notch-top', `${n ? n.top : 0}px`);
     list.classList.toggle('npad', !!n && lr > n.left - NP);
+    space.classList.toggle('npad', !!sr && sr.width > 0 && sr.left < n.right + NP && sr.right > n.left - NP);   // Space in the list's place (2026-11-24, review)
     if (hole && !over) { const w = n.left - NP - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NP - x - w - gap}px`; }
     else if (under) { h2.style.flex = `1 0 ${n.right + NP - x}px`; h2.style.marginRight = ''; }   // past the housing at least: the chips stay right of it
     else if (h2) { h2.style.flex = ''; h2.style.marginRight = ''; }
@@ -10545,8 +10554,8 @@ const toolName = n => {
     alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
     details: () => detailsText(),   // About's Copy details (2026-11-04), its text with no clipboard touched
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
-    spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length),
-    spVisit: () => (spVisit(true), document.querySelector('#spsky .spvis')?.className || ''),   // a planet or comet, now (2026-11-19)   // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
+    spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length),   // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
+    spVisit: () => (spVisit(true), document.querySelector('#spsky .spvis')?.className || ''),   // a planet or comet, now (2026-11-19)
     ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
     // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
@@ -12317,7 +12326,7 @@ const toolName = n => {
     syncTerm(s);
   }
   function agvHead(s) {
-    const el = $('#agv'), r = s.agentRows?.find(x => x.id === agv.id), name = agTabName(s, 'agent:' + agv.id, true);
+    const el = $('#agv'), is = x => x.id === agv.id, r = s.agentRows?.find(is) || s.agentAll?.find(is), name = agTabName(s, 'agent:' + agv.id, true);   // one from a round before, or a claude before: Space's pods open those too
     const st = r ? (agQuiet(r) ? 'quiet' : r.st) : 'done', at = st === 'run' || st === 'quiet' || st === 'wait';
     el.classList.toggle('working', at);
     const html = `${ICON.lock}<b>${esc(name)}</b><span class="say${st === 'fail' ? ' fail' : ''}">${at ? `${esc(AG_SAID[st])} · read-only, it reports to the chat when it ends` : st === 'fail' ? esc(r?.why || 'It ended on an error') : `${esc(AG_SAID[st] || 'done')} · read-only`}</span><button type="button" class="agvx" title="Close this tab — the agent carries on · ⌘W">${ICON.close}</button>`;
@@ -12625,7 +12634,16 @@ const toolName = n => {
   async function answerInDrawer(s, digit) {
     await openSession(s.id);
     if (!/^\d$/.test(String(digit))) return;   // an answer's number, one key
-    for (let i = 0; i < 60; i++) { const tm = claudeTm(s); if (tm) { focusTerm(); termSend(tm, String(digit)); setTimeout(() => termSend(tm, '\r'), SP_ENTER_MS); return; } await new Promise(r => setTimeout(r, 100)); }   // the number, then ⏎ (2026-11-24)
+    // the number, then ⏎ once the select shows it ringed (2026-11-24, spEnter) — none for an answer that wants words
+    const words = SP_WORDS.test(s.ask?.labels?.[digit - 1] || ''), sleep = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 60; i++) {
+      const tm = claudeTm(s); if (!tm) { await sleep(100); continue; }
+      let ask = null;   // its select off the drawer's screen, given a moment to come up after the attach
+      for (let j = 0; j < 15 && !(ask = await new Promise(r => tm.xt.write('', () => r(spAskOf(spScreen(tm.xt)))))); j++) await sleep(100);
+      focusTerm(); termSend(tm, String(digit));
+      if (ask && !words) setTimeout(() => spEnter(tm.xt, () => termSend(tm, '\r'), ask, +digit), SP_ENTER_MS);
+      return;
+    }
     note($('#shead'), 'Its drawer did not come up — answer it in the chat', true);
   }
 
@@ -12767,11 +12785,12 @@ const toolName = n => {
     // quiet for days (2026-11-24): faded by its days since the last word, a ready, idle or done one — never one at work or asking
     const quiet = ['ready', 'idle', 'done'].includes(st), days = quiet ? (Date.now() - Date.parse(wordAt(s))) / 86_400_000 : 0, age = quiet && prefs.spFade !== false && days >= 1 ? wordAt(s) : '';
     const fade = age ? Math.max(.5, Math.round((1 - .06 * Math.min(days, 9)) * 20) / 20) : 1;
-    const tick = st === 'done' ? ['Back to its lane (D)', SP_BACK] : armed ? [`Done ends its watch — ${watchEnds(s)}. Tick it again to end it`, SP_TICK] : ['Mark as done (D)', SP_TICK];
+    // a ✓ only where the card has one (canTick): never on a chat at work or asking you, whose claude Done would end
+    const tick = st === 'done' ? ['Back to its lane (D)', SP_BACK] : !canTick(s) ? null : armed ? [`Done ends its watch — ${watchEnds(s)}. Tick it again to end it`, SP_TICK] : ['Mark as done (D)', SP_TICK];
     const lit = st === 'work' || st === 'watch';   // a light that turns round it (2026-11-24): its bloom under the box, its arc on the edge
     return `<button type="button" class="spt" data-id="${esc(s.id)}" aria-label="${esc(said)}" style="${color ? `--repo:${color};` : ''}${fade < 1 ? `--fade:${fade}` : ''}"><span class="spo">${spPods(s)}`
       + `${lit ? `<i class="sphl" data-st="${st}" aria-hidden="true"></i>` : ''}<span class="spbox" data-st="${st}">${lit ? '<i class="sprg" aria-hidden="true"></i>' : ''}<span class="spstar" role="button" tabindex="-1" aria-pressed="${!!s.fav}" aria-label="${s.fav ? 'Unstar it' : 'Star it'} (F)" title="${s.fav ? 'Unstar' : 'Star'} (F)">${SP_STAR}</span>`
-      + `<span class="spdone${armed ? ' armed' : ''}" role="button" tabindex="-1" aria-label="${esc(tick[0])}" title="${esc(tick[0])}">${tick[1]}</span>`
+      + (tick ? `<span class="spdone${armed ? ' armed' : ''}" role="button" tabindex="-1" aria-label="${esc(tick[0])}" title="${esc(tick[0])}">${tick[1]}</span>` : '')
       + `${s.agent ? `<span class="spra" title="${esc(`Runs as the agent ${s.agent}`)}" style="--h:${spHue(agentShort(s.agent), s.agentColor)}">@${esc(agentShort(s.agent))}</span>` : ''}<span class="spbt">${q ? markHits(spCut(s.title), q) : ticks(esc(spCut(s.title)))}</span>${folder || age ? `<span class="spbf" title="${esc(s.cwd || '')}">${folder ? `<i></i>${q ? markHits(folder, q) : esc(folder)}` : ''}${age ? `<span class="spag">${folder ? ' · ' : ''}<span data-at="${esc(age)}"></span></span>` : ''}</span>` : ''}${spAskPill(s)}${spPills(s)}</span></span></button>`;
   }
   // ---- a question answered from its node (2026-11-24; Settings › Space › Answer from the node, `prefs.spAnswer`) -------
@@ -12782,7 +12801,7 @@ const toolName = n => {
   // own drawer, as ⌥⌘A's tiles type it; an answer that wants words (Type something, tell Claude…) opens the chat after.
   // A screen that does not parse is shown as its text, the keys still going. A chat asking elsewhere: a pill saying where.
   const SP_ENTER_MS = 120;   // between an answer's number and its ⏎: the select takes the one before the other
-  const SP_OPT = /^(\s*)(?:[❯›>▶]\s*)?(\d{1,2})[.)]\s+(\S.*?)\s*$/, SP_HINT = /enter to|esc to|↑\/↓|to navigate|to select|tab to|ctrl\+/i;
+  const SP_OPT = /^(\s*)(?:([❯›>▶])\s*)?(\d{1,2})[.)]\s+(\S.*?)\s*$/, SP_HINT = /enter to|esc to|↑\/↓|to navigate|to select|tab to|ctrl\+/i;
   const SP_RULE = /^[─━═╌┄╭╮╰╯┌┐└┘-]{4,}$/, SP_WORDS = /type something|tell claude|chat about/i;
   /** The screen's lines, a row the terminal wrapped joined to the one before; a box's side bars off. */
   const spScreen = xt => {
@@ -12798,12 +12817,12 @@ const toolName = n => {
    *  at most, a tab's ☐ header and rules left out. */
   function spAskOf(lines) {
     let start = -1;
-    for (let y = lines.length - 1; y >= 0; y--) { const m = SP_OPT.exec(lines[y]); if (m && m[2] === '1') { start = y; break; } }
+    for (let y = lines.length - 1; y >= 0; y--) { const m = SP_OPT.exec(lines[y]); if (m && m[3] === '1') { start = y; break; } }
     if (start < 0) return null;
     const opts = []; let cur = null;
     for (let y = start; y < lines.length; y++) {
       const l = lines[y], m = SP_OPT.exec(l);
-      if (m && +m[2] === opts.length + 1) { opts.push(cur = { k: +m[2], t: m[3], d: [], at: (m[1] || '').length }); continue; }
+      if (m && +m[3] === opts.length + 1) { opts.push(cur = { k: +m[3], t: m[4], d: [], on: !!m[2] }); continue; }
       if (!l.trim()) continue;
       if (SP_HINT.test(l) || SP_RULE.test(l.trim())) break;
       if (cur && /^\s{2,}/.test(l)) cur.d.push(l.trim()); else break;
@@ -12818,7 +12837,20 @@ const toolName = n => {
       paras[0].unshift(l); n++;
     }
     const q = paras.filter(p => p.length).map(p => p.join(' ')).join('\n');
-    return { q, opts: opts.map(o => ({ k: o.k, t: o.t, d: o.d.join(' ') })) };
+    return { q, opts: opts.map(o => ({ k: o.k, t: o.t, d: o.d.join(' ') })), sel: opts.find(o => o.on)?.k || 0 };   // sel: the ringed one
+  }
+  // ⏎ after an answer's number only onto that answer (2026-11-24, review): the same select still up — its question and its
+  // answers — with the number's answer ringed, read once xterm has parsed what came. The select gone (the number took it),
+  // or another prompt in its place, gets nothing: a blind ⏎ would take that one's default, Yes. Tried a few times, the
+  // screen being a round trip behind the key; never sent, the select waits for a hand.
+  const SP_ENTER_TRIES = 6;
+  function spEnter(xt, send, ask, k, n = 0) {
+    xt.write('', () => {
+      const now = spAskOf(spScreen(xt)), same = !!now && now.q === ask.q && now.opts.length === ask.opts.length && now.opts.every((o, i) => o.t === ask.opts[i].t);
+      if (!same) return;
+      if (now.sel === k) return send();
+      if (n < SP_ENTER_TRIES) setTimeout(() => spEnter(xt, send, ask, k, n + 1), SP_ENTER_MS);
+    });
   }
   function spAskPill(s) {
     if (prefs.spAnswer === false || !asking(s)) return '';
@@ -12854,7 +12886,9 @@ const toolName = n => {
     const html = ask ? (ask.q ? `<p class="spaq">${esc(ask.q)}</p>` : '') + rows.map((o, i) => `<button type="button" class="spao${a.sent === o.k ? ' sent' : a.sel === i ? ' sel' : ''}" data-k="${o.k}"><span class="k">${o.k}</span><span>${esc(o.t)}${o.d ? `<small>${esc(o.d)}</small>` : ''}</span></button>`).join('')
       : late ? `<pre class="spapre">${esc((read?.lines || []).join('\n').replace(/\s+$/, '').split('\n').slice(-16).join('\n'))}</pre>` : '<p class="spaq">Reading its screen…</p>';
     const foot = `<div class="spaf"><button type="button" class="spaty">Type an answer…</button><span>${ask ? `<kbd>1–${rows.length}</kbd> answer · ` : late ? '<kbd>1–9</kbd> · ' : ''}<kbd>esc</kbd></span></div>`;
+    const had = el.contains(document.activeElement);
     setHtml(el, `<p class="spah">Asking you</p>${html}${foot}`);
+    if (had && !el.contains(document.activeElement)) el.focus({ preventScroll: true });   // a redraw keeps the keys in it
     spAskPlace();
   }
   function spAskPlace() {
@@ -12866,7 +12900,11 @@ const toolName = n => {
   }
   function spAskOpen(id, tid) {
     let el = $('#spaskp');
-    if (!el) { el = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'spaskp', role: 'dialog', tabIndex: -1 })); el.setAttribute('aria-label', 'Its question'); }
+    if (!el) {
+      el = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'spaskp', role: 'dialog', tabIndex: -1 })); el.setAttribute('aria-label', 'Its question');
+      // the keys gone elsewhere — ⌘F, ⌥⌘C, a tab — take it down (2026-11-24, review); its own pill toggles it itself
+      el.addEventListener('focusout', e => { const to = e.relatedTarget; if (sp.ask && to && !el.contains(to) && !to.closest?.('.spask[data-tid]')) spAskClose(); });
+    }
     sp.ask = { id, tid, at: performance.now(), sel: 0, sent: 0, n: 0 };
     el.hidden = false; spAskRead(); el.focus({ preventScroll: true });
   }
@@ -12878,18 +12916,18 @@ const toolName = n => {
   /** The answer's key into the chat's drawer; one that wants words opens the chat with the keys in its drawer. */
   function spAnswer(k) {
     const a = sp.ask; if (!a || a.sent) return;
-    const m = sp.minis.get(a.tid), o = sp.asks.get(a.tid)?.ask?.opts.find(x => x.k === k);
+    const m = sp.minis.get(a.tid), ask = sp.asks.get(a.tid)?.ask, o = ask?.opts.find(x => x.k === k);
     if (m?.ws.readyState !== 1) return note($('#spaskp'), 'Its drawer is not answering — open the chat', true);
-    // the number moves Claude Code's select onto the answer, ⏎ takes it (2026-11-24: the number alone left it waiting);
-    // one that wants words gets no ⏎ — its box comes up, and the chat opens on it
+    // the number moves Claude Code's select onto the answer, ⏎ takes it (2026-11-24: the number alone left it waiting) —
+    // once the screen shows it there (spEnter); one that wants words gets no ⏎: its box comes up, and the chat opens on it
     const words = o && SP_WORDS.test(o.t), id = a.id;
     m.ws.send(JSON.stringify({ t: 'in', d: String(k) })); a.sent = k; noteMotion(a.id, 'answer'); spAskDraw();
-    if (!words) setTimeout(() => { if (m.ws.readyState === 1) m.ws.send(JSON.stringify({ t: 'in', d: '\r' })); }, SP_ENTER_MS);
+    if (ask && !words) setTimeout(() => spEnter(m.xt, () => { if (m.ws.readyState === 1) m.ws.send(JSON.stringify({ t: 'in', d: '\r' })); }, ask, k), SP_ENTER_MS);
     setTimeout(() => { if (sp.ask === a) spAskClose(); if (words) spAskChat(id); }, REDUCED.matches ? 0 : 450);
   }
   const spAskChat = id => { spAskClose(); Promise.resolve(id === state.current ? null : openSession(id)).then(() => { const s = state.sessions.get(id); if (s) { showChat(s); focusTerm(); } }); };
-  document.addEventListener('keydown', e => {
-    if (!sp.ask || e.metaKey || e.ctrlKey || e.altKey) return;
+  document.addEventListener('keydown', e => {   // the panel's keys only while it has them: a digit typed into ⌘F's box or a drawer is that box's (2026-11-24, review)
+    if (!sp.ask || e.metaKey || e.ctrlKey || e.altKey || !$('#spaskp')?.contains(document.activeElement)) return;
     const a = sp.ask, n = a.n || 9;
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); return spAskClose(); }
     if (/^[1-9]$/.test(e.key) && +e.key <= n) { e.preventDefault(); e.stopPropagation(); return spAnswer(+e.key); }
@@ -12903,11 +12941,12 @@ const toolName = n => {
     const o = e.target.closest?.('#spaskp .spao[data-k]'); if (o) return spAnswer(+o.dataset.k);
     if (e.target.closest?.('#spaskp .spaty')) spAskChat(sp.ask.id);
   });
-  /** The node's ✓ or ↩: a tick as the card's, the chat open on the right left open — Space has no list to move on to. */
+  /** The node's ✓ or ↩, or D: a tick as the card's — only where the card has one (canTick) —, the chat on the right left open. */
   function spTick(id, mark) {
     const s = state.sessions.get(id); if (!s) return;
     if (s.done) return tickDone(id, false, mark);
-    tickDone(id, true, mark, mark, false, true);
+    if (canTick(s)) return tickDone(id, true, mark, mark);
+    note(document.querySelector(`#spgrid .spt[data-id="${CSS.escape(id)}"]`) || $('#space'), asking(s) ? 'It is asking you — answer it first' : 'It is at work — tick it once it is idle');
   }
   /** One agent's lane: its span on the clock (to now while it works), how long, its last step. */
   function spLane(r, s, W, now) {
@@ -13030,13 +13069,13 @@ const toolName = n => {
       el._fav = !!s.fav; prev = el;
     }
     for (const e of had.values()) e.remove();
-    if (made) phaseAnims();   // a node made anew: its pings and arcs onto the clock the old ones kept, no jump
     if (keys && document.activeElement === document.body) grid.querySelector(`.spt[data-id="${CSS.escape(keys)}"]`)?.focus();
     $('#spempty').hidden = !!list.length;
     $('#spempty').textContent = q ? `No chat matches “${[...sp.toks, sp.q.trim()].filter(Boolean).join(' ')}”. Esc clears it.` : 'No chat in the states picked above.';
     const lane = document.activeElement?.closest?.('#spside .splane')?.dataset.ag, side = $('#spside'), cur = state.sessions.get(state.current);
     side.hidden = !cur;
-    if (setHtml(side, spSide(cur)) && lane) $(`#spside .splane[data-ag="${CSS.escape(lane)}"]`)?.focus();
+    const lanes = setHtml(side, spSide(cur)); if (lanes && lane) $(`#spside .splane[data-ag="${CSS.escape(lane)}"]`)?.focus();
+    if (made || lanes) phaseAnims();   // a node or the lanes made anew: their pings and arcs onto the clock the old ones kept, no jump
     spZoomShow();
     spMinis(list);
     fillAges(grid);
@@ -13096,6 +13135,7 @@ const toolName = n => {
     spLook(); if (on !== !!sp.fall) spFall(); if (on !== !!sp.visit) spVisit();   // a falling star now and then while Space is on
     if (on) renderSpace();
     const s = state.sessions.get(state.current); if (s) { drawn.head = null; renderHead(s); syncTerm(s); } else repostPane();   // the header's × is Space's
+    if (state.notch) layoutNotch();   // Space's bar round the housing, or the list's
   }
   function spToggle() { prefs.space = !prefs.space; savePrefs(); applySpace(); }
   // Settings › Space (2026-11-18, v5): the sky, its twinkle and its falling stars; the agent card, the pods' agents and
@@ -13284,7 +13324,14 @@ const toolName = n => {
     if (r) agOpen(s, r);
   });
   // a pinch over the nodes is theirs: Chrome's comes as a wheel with ⌃, WebKit's as gesture events; ⌘-wheel too
-  $('#spfield').addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); spZoom(spZoomNow() * Math.exp(-e.deltaY / 300)); }, { passive: false });
+  // the gesture's own zoom, unrounded (2026-11-24, review): a slow pinch's small steps add up, where each rounded to tenths
+  // came back to where it was; an event's step at most a tenth, a mouse's notch
+  { let raw = null, rest = 0;
+    $('#spfield').addEventListener('wheel', e => {
+      if (!e.ctrlKey && !e.metaKey) return; e.preventDefault();
+      clearTimeout(rest); rest = setTimeout(() => { raw = null; }, 300);
+      raw = Math.min(1.5, Math.max(.5, (raw ?? spZoomNow()) * Math.exp(-Math.max(-30, Math.min(30, e.deltaY)) / 300))); spZoom(raw);
+    }, { passive: false }); }
   { let at = 1; const field = $('#spfield');
     field.addEventListener('gesturestart', e => { e.preventDefault(); at = spZoomNow(); });
     field.addEventListener('gesturechange', e => { e.preventDefault(); spZoom(at * e.scale); }); }
@@ -13319,7 +13366,7 @@ const toolName = n => {
   $('#spbar').addEventListener('click', e => {
     const b = e.target.closest('button[data-do]'); if (!b) return;
     const chosen = [...sp.chosen].map(id => state.sessions.get(id)).filter(Boolean), what = b.dataset.do;
-    if (what === 'done') { const back = chosen.every(s => s.done); for (const s of chosen) if (back || canTick(s)) tickDone(s.id, !back, b, null, false, true); }
+    if (what === 'done') { const back = chosen.every(s => s.done); for (const s of chosen) if (back || canTick(s)) tickDone(s.id, !back, b); }
     if (what === 'star') { const on = !chosen.every(s => s.fav); for (const s of chosen) if (!!s.fav !== on) setFav(s.id, on); }
     if (what === 'mute') { const on = !chosen.every(s => s.muted); for (const s of chosen) if (!!s.muted !== on) setMuted(s.id, on); }
     sp.chosen.clear(); renderSpace();

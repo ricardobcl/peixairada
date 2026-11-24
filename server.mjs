@@ -828,8 +828,10 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
     peerIn: peerInOf(s), peerQueue: peerQueueOf(s),   // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
-    agentRows: s.alive ? s.agentRows || null : null,
-    agentAll: s.agentAll || null,   // a chat with no claude: its past agents, Space's pods (2026-11-24)   // and every agent of its claude's, when the rows are its last round only (Space, 2026-11-18)   // a row per sub-agent of its last round, while its claude runs (noteAgents, 2026-11-02)
+    agentRows: s.alive ? s.agentRows || null : null,   // a row per sub-agent of its last round, while its claude runs (noteAgents, 2026-11-02)
+    // every agent of its claude's when the rows are its last round only, a resume's past too (Space's pods, 2026-11-18);
+    // a chat with no claude, its past alone (pastAgents, 2026-11-24)
+    agentAll: s.agentAll || null,
     // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you; the next
     // wake-up it set itself; and how its last turn stopped short, while nothing runs
     woken: status === 'working' && !!s.woke, wake: nextWake(s), stopped: status === 'working' || status === 'needs-input' ? null : s.stopped,
@@ -846,8 +848,8 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s), removed: isRemoved(s),
-    muted: !!mutedChats[s.id],
-    fav: !!favChats[s.id],   // starred in Space (2026-11-18, v11)   // no banner, sound or count from it, till you unmute it (2026-11-02)
+    muted: !!mutedChats[s.id],   // no banner, sound or count from it, till you unmute it (2026-11-02)
+    fav: !!favChats[s.id],   // starred in Space (2026-11-18, v11)
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
     ...linksShown(s.id) && { links: linksShown(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
     // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
@@ -2726,14 +2728,22 @@ const peerQueueOf = s => s.alive && s.peerQueue?.length ? s.peerQueue.slice(-5).
 const AGENT_STALE_MS = Number(process.env.AGENT_STALE_MS || 15 * 60_000);
 const isHandback = (line, id) => line?.type === 'assistant' && Array.isArray(line.message?.content) && line.message.content.some(b => b?.type === 'tool_use' && b.name === 'SubagentHandback' && b.id === id);
 /** A chat with no claude, its agents as they were (2026-11-24): Space's pods, a resume's. Read again only when its folder of
- *  agents changed, and only for a chat with a word in the last AGENT_PAST_DAYS — the rest wait for a look of their own. */
-const AGENT_PAST_DAYS = Number(process.env.AGENT_PAST_DAYS ?? 14);
+ *  agents changed, and only for a chat with a word in the last AGENT_PAST_DAYS — the rest wait for a look of their own. On
+ *  the poll alone, PAST_PER_POLL chats a poll (2026-11-24, review): a boot with a hundred such chats read them all before
+ *  it answered, and a backlog is spread out; the newest first (pastSweep). */
+const AGENT_PAST_DAYS = Number(process.env.AGENT_PAST_DAYS ?? 14), PAST_PER_POLL = Number(process.env.PAST_PER_POLL || 20);
 function pastAgents(s) {
-  if (s.alive || !s.file || !(Date.now() - Date.parse(s.lastActivity || 0) < AGENT_PAST_DAYS * 86_400_000)) return;
+  if (s.alive || !s.file || !(Date.now() - Date.parse(s.lastActivity || 0) < AGENT_PAST_DAYS * 86_400_000)) return false;
   let at; try { at = statSync(agentsDir(s)).mtimeMs; } catch { at = 0; }
-  if (at === s.agentDirAt) return;
+  if (at === s.agentDirAt) return false;
   s.agentDirAt = at;
-  if (at || s.agentAll || s.agentRows) scanAgents(s);
+  if (!at && !s.agentAll && !s.agentRows) return false;   // none, and none before: nothing read
+  scanAgents(s); return true;
+}
+function pastSweep() {
+  let left = PAST_PER_POLL;
+  const todo = [...sessions.values()].filter(s => !s.alive && s.file).sort((a, b) => String(b.lastActivity || '').localeCompare(String(a.lastActivity || '')));
+  for (const s of todo) { if (left <= 0) break; if (pastAgents(s)) left--; }
 }
 function agentRunning(file, now = Date.now(), since = 0) {
   let st; try { st = statSync(file); } catch { return false; }
@@ -2805,10 +2815,10 @@ const isLead = m => m.agentType === 'team-lead' || m.name === 'team-lead' || Str
 const rosterOf = s => jsonOnce(join(TEAMS_DIR, `session-${s.id.slice(0, 8)}`, 'config.json'), c => (c?.leadSessionId && c.leadSessionId !== s.id) || !Array.isArray(c?.members) ? []
   : c.members.filter(m => m && typeof m === 'object' && pstr(m.name) && !isLead(m)).map(m => ({ name: m.name, kind: pstr(m.agentType) }))) || [];
 const TM_SUMMARY = /^\s*<teammate-message\b[^>]*\bsummary="([^"]*)"/;
-const mateSeen = new Map();   // a teammate's transcript → { mtimeMs, size, last }
+const mateSeen = new Map(), SEEN_MAX = 2000;   // a teammate's transcript → { mtimeMs, size, last }; in the order used
 /** A teammate's last line: the last thing it said or called, else what the lead last asked of it. */
 function mateLast(file, st) {
-  const hit = mateSeen.get(file); if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.last;
+  const hit = mateSeen.get(file); if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) { mateSeen.delete(file); mateSeen.set(file, hit); return hit.last; }   // the newest last
   const len = Math.min(st.size, 65536), buf = Buffer.alloc(len);
   try { const fd = openSync(file, 'r'); try { readSync(fd, buf, 0, len, st.size - len); } finally { closeSync(fd); } } catch { return hit?.last ?? null; }
   let last = null;
@@ -2826,7 +2836,7 @@ function mateLast(file, st) {
     if (m) { last = { kind: 'asked', text: snippet(unXml(m[1]), 140) }; break; }
   }
   last ??= hit?.last ?? null;   // a tail that is one long tool result, cut: nothing to read in it (2026-11-02)
-  if (mateSeen.size > 2000) mateSeen.clear();
+  mateSeen.delete(file); if (mateSeen.size >= SEEN_MAX) mateSeen.delete(mateSeen.keys().next().value);   // the one used longest ago goes, never all (2026-11-24)
   mateSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, last });
   return last;
 }
@@ -2858,7 +2868,7 @@ const agentPrompt = text => { const t = cleanPrompt(String(text || '')); return 
 const bornSeen = new Map();   // an agent's transcript → { at, prompt }: its first line, read once
 /** When it began and what it was asked: its first line's. Past the first 64 KB, its file's birth. */
 function agentBorn(file, st) {
-  const hit = bornSeen.get(file); if (hit) return hit;
+  const hit = bornSeen.get(file); if (hit) { bornSeen.delete(file); bornSeen.set(file, hit); return hit; }
   let at = null, prompt = null;
   try {
     const fd = openSync(file, 'r'), buf = Buffer.alloc(Math.min(st.size, 65536));
@@ -2867,7 +2877,7 @@ function agentBorn(file, st) {
     at = pstr(l.timestamp); prompt = agentPrompt(textOf(l.message?.content));
   } catch {}
   const v = { at: at || new Date(st.birthtimeMs || st.mtimeMs).toISOString(), prompt };
-  if (bornSeen.size > 2000) bornSeen.clear();
+  if (bornSeen.size >= SEEN_MAX) bornSeen.delete(bornSeen.keys().next().value);
   bornSeen.set(file, v);
   return v;
 }
@@ -7173,7 +7183,7 @@ readCheckout().then(async co => { Object.assign(upd, co); if (co.checkout) { upd
 setInterval(lookApp, APP_LOOK_MS);
 watchBuild();   // an app's rebuild that outlived the restart it came with   // where the checkout stands, for the settings, before the first look
 if (UPDATE_EVERY_MS > 0) { setTimeout(checkUpdate, Math.min(60_000, UPDATE_EVERY_MS)); setInterval(checkUpdate, UPDATE_EVERY_MS); }   // the board's own new commits (checkUpdate)
-for (const s of sessions.values()) if (s.alive) scanAgents(s); else pastAgents(s);
+for (const s of sessions.values()) if (s.alive) scanAgents(s);   // the past agents of the chats with no claude: the poll's, a few at a time (pastSweep)
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
 // a chat whose last word was "monitor started" has nothing else to push.
 setInterval(() => {
@@ -7184,8 +7194,9 @@ setInterval(() => {
   for (const s of sessions.values()) {
     if (pruneTasks(s) + pruneWakes(s)) schedulePush(s);   // both asked, each its own pruning
     if (s.alive) { scanAgents(s); s.agentDirAt = null; }
-    else { if (s.agentsRunning) { s.agentsRunning = 0; schedulePush(s); } pastAgents(s); }   // its claude is gone, and its agents with it — a stale card read "2 agents" until a restart
+    else if (s.agentsRunning) { s.agentsRunning = 0; schedulePush(s); }   // its claude is gone, and its agents with it — a stale card read "2 agents" until a restart
   }
+  pastSweep();
   sweepTasks();
   sweepDrawers();
   sweepHeads();

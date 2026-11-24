@@ -5,6 +5,40 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-24. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-24 — Space's review
+
+Ricardo's review of Space (eight bugs, seven nits), then *"do all the changes, clean the commits, approve and merge"*.
+
+* **A node's ✓ only where the card has one** (`canTick`): it ticked a chat at work or asking, and Done ends its claude.
+  D on such a node says why instead.
+* **Every tick in Space leaves the open chat open** (`tickDone` reads `prefs.space`; the `stay` argument gone): Done for
+  good in a node's menu, the header's, the launcher's, a notification's Done all walked the hidden list and opened the
+  chat below. A delete leaves the chat (`leaveChat`), nothing opened in its place.
+* **The answer panel's keys are its own**: its capture listener took 1–9 and ⏎ wherever the keys were, so a digit
+  typed into ⌘F's box or a drawer answered the question, ⏎ in the box *Yes*. Now only with the keys in the panel; the
+  keys gone elsewhere take it down (`focusout`; its own pill still toggles it), and a redraw keeps them in it.
+* **⏎ after a number only onto its ring** (`spEnter`; the overview's `answerInDrawer` too): the number, then a ⏎ 120 ms
+  later blind. A select the number takes alone, and the next prompt up in those 120 ms, got that one's default, *Yes*.
+  The ⏎ goes only while the same select (its question and answers) shows with the number's answer ringed (`sel`, the
+  `❯` read by `spAskOf`), re-read up to six times; never, the select waits for a hand. The overview's skips an answer
+  that wants words (`SP_WORDS`), as the node's did.
+* **Space's bar under the notch's strip**: `layoutNotch` laid out the list, `display: none` in Space, and Space's bar
+  ran under the housing in the fill. `#space.npad` when its box reaches the housing.
+* **A slow pinch zooms**: each event's step was rounded to tenths and came back where it was. The gesture keeps its own
+  value, rounded only to show and keep, and a step is a tenth at most (a mouse's ⌘-wheel jumped .3 a notch).
+* **What's new opened under your hands**: 1.5 s after a draw, Next focused, the app brought forward, so a ⏎ meant for a
+  drawer took the last page's *Open Space*. It waits for the window in front with no box or terminal holding the keys,
+  and opened by itself it posts no `focus` and puts the keys on the dialog, not on a button.
+* **An agent's tab from a pod** finds its row in `agentAll` too (`agvHead`): one from a round or a claude before read
+  *done* instead of its error.
+* **Nits**: the lanes' arcs phased when the lanes are redrawn (every 5 s, by the clock), not only a node; the past
+  agents read on the poll, `PAST_PER_POLL` a poll, newest first, not all at boot before the first answer (`pastSweep`),
+  and the two agent caches let the oldest go, never all (a live chat's went with them); the comments spliced onto the
+  wrong lines put back; the state chips a fill, a tint of their colour when on; tokens for the radii and sizes, a
+  comment where a value is its own (`--spr`, the marks' dark ink); CLAUDE.md's Space bullet pared to its rules, this file
+  the rest.
+* Two commits: the PR's twenty-seven squashed into one, its author's, and this one.
+
 ## Decisions of 2026-11-24, last of all — a working node in Space wears a turning light
 
 * **Of three** (a light on the edge, a halo that turns, both), **both**: a crisp arc running the border, clear up close,

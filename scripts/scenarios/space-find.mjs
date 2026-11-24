@@ -2,7 +2,7 @@
 // a chat's title, folder, agents and PRs; while typed only the matches show, best first, from every state, the letters
 // marked, the chips counting them; ↑↓ ring one, ⏎ opens it, esc clears and then leaves. A node's ✓ (its top right,
 // under the pointer; D on it) ticks the chat as the card's does — it leaves while Done is off, the chat stays open —, a
-// done one's ↩ brings it back. A pill on the node's edge counts its PRs open or in draft, amber at your move, a red dot
+// done one's ↩ brings it back. Any tick of the open chat leaves it open: Space has no list to move on along. A pill on the node's edge counts its PRs open or in draft, amber at your move, a red dot
 // for a failing CI; pointed at, their list, a row its PR on a tab beside the chat.
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
@@ -105,5 +105,14 @@ export default async function (ctx) {
   await key('d', 'KeyD', 68);
   await ctx.waitFor(`peix.session('${queue.id}')?.done === true && !${node(queue.id)}`, { what: 'D: done' });
   await ctx.server.api(`api/sessions/${queue.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: false }) });
+
+  // any tick of the open chat leaves it open in Space — a notification's Done as the node's ✓: the list it would move on
+  // along is hidden (2026-11-24, review)
+  ctx.assert.equal(await ctx.evaluate(`peix.state().current`), retry.id);
+  await ctx.evaluate(`window.peixDone('${retry.id}')`);
+  await ctx.waitFor(`peix.session('${retry.id}')?.done === true`, { what: 'Done from a notification' });
+  await ctx.sleep(300);
+  ctx.assert.equal(await ctx.evaluate(`peix.state().current`), retry.id, 'no list to move on to: the chat stays open');
+  await ctx.server.api(`api/sessions/${retry.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: false }) });
   return out;
 }
