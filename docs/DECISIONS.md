@@ -10,9 +10,11 @@ by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-1
 Ricardo's review of Flashbang: one bug, the drawer's selection, and nits — *"under Flashbang every launch flashes"*, *"not
 checked in macOS's own full screen"*, *"the cards lose their ground"*, *"nothing tests when the page posts `titlebar`"*.
 
-* **The drawer's selection is the accent, as everywhere**: Flashbang's `--term-sel` was macOS's blue, opaque, and xterm
-  5.5 turns an opaque `selectionBackground` down to 30 % (`_setTheme`), which on white is `#e9f2ff`, about 1.13:1. The
-  override is gone; the theme wears `skinCss`'s accent mix, as `::selection` does.
+* **The drawer's selection stays macOS's blue** (`--term-sel: #b5d5ff`), against the review: measured in WebKit,
+  xterm's DOM renderer draws it whole (181, 213, 255), not at 30 %. The accent mix `skinCss` writes in its place,
+  `color-mix(…)`, is a string xterm cannot parse there: it drew no selection at all. **The page's follows it**
+  (`--page-sel`, which `::selection` reads before the accent; not on the dark frame), so every selection under Flashbang
+  is the one blue, as the small print's rule wants: the transcript, the timeline and the drawers alike.
 * **The bar is kept for the next launch** (`peixairada.titlebar`, beside `peixairada.dark`): `buildWindow` wears it
   before the window shows (`wearBar`), so Flashbang no longer opens on macOS's opaque bar over the board's `--frame` and
   turns once the page has run. Only in a light launch: a bar is a light frame's, and under Auto macOS may have gone dark

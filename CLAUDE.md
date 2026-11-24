@@ -295,8 +295,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   Increase Contrast, Reduce Transparency and forced colours have a block each; a new fill-only control joins the
   first's list.
 * **The small print is one CSS section** (before the reduced-motion block): `text-wrap`, tabular figures for every
-  count and age, `::selection` in the accent (`--term-sel` to match), one `:where(…):focus-visible` ring, and
-  `overscroll-behavior: contain` on every scroller. A new number, list or control joins those lists.
+  count and age, `::selection` a theme's `--page-sel` or the accent (`--term-sel` alike), one `:where(…):focus-visible`
+  ring, and `overscroll-behavior: contain` on every scroller. A new number, list or control joins those lists.
 * **Every animation has its line in the one `@media (prefers-reduced-motion: reduce)` block** at the end of the CSS
   (`drawCards` reads `REDUCED`), and in `reduced-motion.mjs` if it is a state's.
 * **The card's edge is one ring with four readings**: `--lit` what runs, `--seg` how much of the edge one light owns

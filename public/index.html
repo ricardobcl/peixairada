@@ -2885,14 +2885,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
      hyphens) rather than anywhere, a snippet keeps `anywhere` for its paths. Every count, age and number sits in
      tabular figures, so a digit changing under it moves nothing beside it. The selection is the accent's — the
-     default blue was the one foreign colour left on the board — and the terminal's matches it (--term-sel). One focus
+     default blue was the one foreign colour left on the board — and the terminal's matches it (--term-sel); a theme may
+     name its own for both (--page-sel, 2026-11-24: Flashbang's macOS blue), never on the dark frame. One focus
      ring for the keyboard, the accent's, on every control; the text boxes keep their border as their focus (their own
      :focus rules out-specify :where). A fling at the end of a list stays in it. */
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
   .badge, .chip, .shead .hgit, :is(.card, .shead) .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b, #stitle > .cn, #stitle .ask { font-variant-numeric: tabular-nums; }
-  ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+  ::selection { background: var(--page-sel, color-mix(in srgb, var(--accent) 28%, transparent)); }
+  :root[data-frame="dark"] :is(#sessions, #sbar) { --page-sel: initial; }   /* a light theme's selection is not the dark frame's */
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
   #slist, #log, #picklist, #pfolders, #prScroll, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
@@ -4046,13 +4048,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       tok: { '--tool-bg': '#e9e8e2', '--code-line': '#d5d3ca', '--inline-bg': 'rgb(40 38 30 / .07)', '--snip-claude': '#42413b', '--nocolor': '#b1b0a8', '--ended': '#9f9e96',
         '--term-bg': '#eae8e2', '--unread': '#9c4426' }, codeInk: '#9e3f1f', you: '#21756a' },
     // Flashbang (2026-11-16): a traditional light theme, every ground white — the list, home and the frame too; the drawer
-    // the default iTerm2 profile's Light set (Tango) on white, its selection the accent as everywhere; the window's title bar
+    // the default iTerm2 profile's Light set (Tango) on white, every selection macOS's blue (--page-sel too); the window's title bar
     // white too. Its frame is level with the chat and the cards are white on white, raised by their shadow alone (2026-11-24).
     flashbang: { name: 'Flashbang', dark: false, asSet: true, titlebar: true, bg: '#ffffff', panel: '#ffffff', raise: '#f2f2f2', crust: '#ffffff', ink: '#1f1f1f', muted: '#5e5e5e', line: '#e3e3e3', accent: '#ad5030',
       working: '#d9a82a', idle: '#237a48', needs: '#b42e2e', watch: '#0a7474', spend: '#e8782a', code: '#f6f6f6',
       hl: ['#5f5e57', '#9c27a0', '#3c7832', '#82560f', '#2560be', '#8a6310', '#b83c2e', '#6b7f9e'], proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
       ansi: ['#000000', '#cc0000', '#4e9a06', '#c4a000', '#3465a4', '#75507b', '#06989a', '#d3d7cf', '#555753', '#ef2929', '#8ae234', '#fce94f', '#729fcf', '#ad7fa8', '#34e2e2', '#eeeeec'],
-      tok: { '--term-bg': '#ffffff' } },
+      tok: { '--term-bg': '#ffffff', '--term-sel': '#b5d5ff', '--page-sel': '#b5d5ff' } },
     'catppuccin-latte': { name: 'Catppuccin Latte', dark: false, bg: '#eff1f5', panel: '#ffffff', raise: '#e6e9ef', crust: '#dce0e8', ink: '#4c4f69', muted: '#6c6f85', line: '#ccd0da', accent: '#8839ef',
       working: '#df8e1d', idle: '#40a02b', needs: '#d20f39', watch: '#179299', spend: '#fe640b', code: '#e6e9ef',
       hl: ['#9ca0b0', '#8839ef', '#40a02b', '#fe640b', '#1e66f5', '#df8e1d', '#d20f39', '#179299'], proj: ['#1e66f5', '#8839ef', '#40a02b', '#fe640b', '#d20f39', '#179299', '#df8e1d'],
