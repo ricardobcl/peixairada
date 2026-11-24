@@ -19,7 +19,7 @@ export default async function (ctx) {
   const out = {}, [one, two] = ctx.fixture.chats;
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the fixture\'s two chats' });
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('.fchip').length`), 0, 'no state chips any more, in the bar or the list\'s foot');
-  ctx.assert.deepEqual((await ctx.peix('prefs()')).lanesShut, ['done', 'idle'], 'Done folded to begin with, and Idle once with it');
+  ctx.assert.deepEqual((await ctx.peix('prefs()')).lanesShut, ['done', 'idle', 'snoozed'], 'Done folded to begin with, Idle once with it, and Snoozed (2026-11-24)');
 
   // a chat ticked done goes into the folded Done lane: its card folds away, the lane's head counts it
   await ctx.server.post(`api/sessions/${two.id}/done`, { done: true });

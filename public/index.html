@@ -590,6 +590,37 @@
   .gsep.lane.shut > :is(i, .ln, b) { opacity: .7; }   /* the head's ground stays whole: cards pass under it */
   .gsep.lane.shut:hover > :is(i, .ln, b) { opacity: 1; }
   .gsep.lane.still { cursor: default; } .gsep.lane.still .lc { display: none; }   /* under a filter: every match shown, nothing to fold */
+  /* Top priority and snooze (2026-11-24, round XXX): the section's head an arrow, its tally and Clear done; the empty
+     section a place to drop; a card's number in it, ticked there dimmed and struck; snoozed, when it wakes; back from
+     one, a tag; and the two marks under the pointer (card parts, off by default) */
+  .gsep.lane.prio { --lanec: var(--accent); }
+  .gsep.lane.prio > i { border: 0; border-radius: 0; background: var(--lanec); clip-path: polygon(50% 6%, 94% 52%, 66% 52%, 66% 94%, 34% 94%, 34% 52%, 6% 52%); }
+  .gsep.lane.snoozed > i { border: 0; background: radial-gradient(circle at 74% 28%, transparent 40%, var(--lanec) 43%); }
+  .gsep.lane .tally { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+  .gsep.lane .tally em { font-style: normal; color: var(--needs); } .gsep.lane .tally u { text-decoration: none; color: var(--working-ink); }
+  .gsep.lane .ln + .tally::before, .gsep.lane .tally + .tally::before { content: "· "; }
+  .gsep.lane .clr { font: inherit; color: var(--ink); background: none; border: 0; padding: 0 2px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 2px; }
+  .gsep.lane .clr:hover { text-decoration-color: currentColor; }
+  .gsep.pempty { margin: 0 2px 4px; padding: 12px; border: 1.5px dashed var(--line); border-radius: var(--r-3); font: 500 var(--fs-sm)/1.35 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0; color: var(--muted); white-space: normal; text-align: center; }
+  .gsep.pempty.cdin { border-color: var(--accent); color: var(--ink); }
+  .card .trow .pn { flex: none; align-self: flex-start; min-width: 1.1em; margin-right: 2px; font: 700 var(--fs-xs)/18px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }   /* the accent is no small ink on the list's grounds: 3.8:1 in the light themes */
+  .card.active .trow .pn { color: inherit; }
+  .card.pdone { filter: saturate(.2); } .card.pdone .title { text-decoration: line-through; text-decoration-thickness: 1px; }
+  .card .lback { flex: none; align-self: flex-start; margin: 2px 0 0 4px; padding: 0 5px; border-radius: var(--r-1); font: 700 var(--fs-2xs)/15px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .4px; text-transform: uppercase; color: var(--idle); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--idle) 50%, transparent); }   /* a new reply's colour, on the ground as it is */
+  .card.active .lback { color: inherit; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 50%, transparent); }
+  .card .snz { flex: none; display: inline-flex; align-items: center; gap: 4px; max-width: 50%; margin-left: 4px; overflow: hidden; white-space: nowrap; font: 600 var(--fs-2xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--muted); }
+  .card.active .snz { color: inherit; } .card .snz > span { overflow: hidden; text-overflow: ellipsis; }
+  :is(.card .snz, .ax, #stitle .n, #ctxm, .pkrow .zzt) .ic { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #stitle .n .ic { margin-right: 5px; }
+  .card.slept { filter: saturate(.45); }
+  .ax { font: inherit; width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); cursor: pointer; flex: none; opacity: .7; display: none; place-items: center; }
+  .card .top .ax { height: 18px; }
+  #sessions:not([data-hide~="pin"]) #slist .card:hover .top .ax.pin, #sessions:not([data-hide~="nap"]) #slist .card:hover .top .ax.zz, .ax:focus-visible { display: inline-grid; }
+  .ax:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); } .ax.on { color: var(--accent); }
+  #settings .clabs .clab .card .top .ax { display: inline-grid; }
+  .pkrow .cur.zzt { display: inline-flex; align-items: center; gap: 3px; }
+  #cdgap { position: fixed; left: 0; top: 0; z-index: 69; height: 0; border-top: 2px solid var(--accent); border-radius: 2px; pointer-events: none; }
+  #cdgap::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
   /* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
      and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
      stays over it. Phased with the rings (phaseAnims). */
@@ -1327,11 +1358,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .act.armed .tk { flex: none; }
   .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hgit, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle > .t, #stitle > .out button) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hgit, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .ax, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle > .t, #stitle > .out button) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane], #stitle > .out button):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .ax, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane], #stitle > .out button):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1470,6 +1501,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ctxm .cmk { flex: none; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; }
   #ctxm .cmk.move { background: var(--accent); border-radius: var(--r-1); rotate: 45deg; scale: .85; }
   #ctxm .cmk.replied { background: var(--idle); }
+  #ctxm button:not(.two):has(> .ck) { display: flex; align-items: center; }   /* its time at the row's end, as a count's */
+  #ctxm .ck { display: inline-block; min-width: 16px; margin-right: 8px; padding: 0 3px; border-radius: var(--r-1); background: var(--ctl); font: 600 var(--fs-2xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); text-align: center; }   /* a row's digit (2026-11-24) */
   #ctxm .cn { margin-left: auto; padding-left: 18px; color: var(--muted); font-variant-numeric: tabular-nums; }
   /* a row with a second line (2026-10-13): what it is, then where or why — the PR pickers */
   #ctxm button.two, #ctxm.checks button.two { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline; white-space: normal; }
@@ -1481,6 +1514,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ctxm.wide { max-width: 380px; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
   #hmenu #muteBtn .ic { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  #hmenu :is(#prioBtn, #zzBtn) .ic { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }   /* Top priority and snooze (2026-11-24) */
   #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
   #hmenu .hmi .gl { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); font-weight: 700; letter-spacing: -1px; justify-self: center; }
@@ -3101,7 +3135,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #picklist .none { padding: 12px; color: var(--muted); font-size: var(--fs-sm); text-align: center; }
   dialog h3 { margin: 0 0 10px; font-size: var(--fs-lg); }
   dialog p.help { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--muted); }
-  dialog input[type=text], dialog textarea { font: inherit; font-size: var(--fs-md); width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); }
+  #zzPick { width: min(380px, 92vw); } #zzPick .help { margin: 0 0 10px; } #zzPick input { color-scheme: inherit; }   /* a snooze's own time (2026-11-24) */
+  dialog input[type=text], dialog input[type=datetime-local], dialog textarea { font: inherit; font-size: var(--fs-md); width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); }
   dialog textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-sm); min-height: 48px; resize: vertical; }
   #pfolders { max-height: 38vh; overflow-y: auto; margin: 8px 0 10px; display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--line); border-radius: var(--r-3); padding: 6px 8px; }
   #pfolders label { display: flex; gap: 7px; align-items: baseline; font-size: var(--fs-md); cursor: pointer; min-width: 0; }
@@ -3246,7 +3281,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
     :root[data-theme][data-frame] :is(#sessions, #sbar) { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
       --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }   /* the frame's own, under the dark frame */
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hgit, .pfold, .ptl, .act, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt, #stitle > .out) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hgit, .pfold, .ptl, .act, .ax, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt, #stitle > .out) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -3418,7 +3453,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
     .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
-    .card:active, :is(.btn, .ptab, .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .ax, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -3484,7 +3519,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="resume" hidden></div>
   </section>
 </main>
-<span class="vh" role="status" id="agSay"></span>
+<span class="vh" role="status" id="agSay"></span><span class="vh" role="status" id="prioSay"></span>
 <footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><button class="fsearch" id="sbSpace" aria-controls="space" aria-pressed="false" title="Space — every chat as a node of its agents (⌥⌘X)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4" stroke="currentColor" stroke-width="1.5"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-28 8 8)" stroke="currentColor" stroke-width="1.5"/></svg>Space</button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-labelledby="spTitle" tabindex="-1">
   <aside class="snav">
@@ -3558,6 +3593,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
             </div>
           </div>
         </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgPrio">Top priority and snooze</h6><div class="slist" role="group" aria-labelledby="sgPrio">
+          <div class="srow set" data-kw="top priority section pin pinned order focus release important first"><label class="sl" for="prioOn"><b>Top priority section</b><small>Chats you put first, in your order, above every lane — nothing moves them but you. ⌥⌘I puts the open chat in, ⌥⌘U shows the section alone</small></label><input type="checkbox" class="sw" role="switch" id="prioOn"></div>
+          <div class="srow set" data-kw="snooze later tomorrow morning next week wake hour"><label class="sl" for="mornings"><b>Mornings start at</b><small>Where a snooze till tomorrow morning or next week ends</small></label><span class="ssel"><select id="mornings"><option value="6">06:00</option><option value="7">07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option></select></span></div>
+        </div><p class="sgf">A chat snoozed waits in Snoozed, counted nowhere, and comes back at the top of its lane, marked back. A question from it or a word of yours wakes it sooner.</p></section>
       </div>
       <div class="spane" data-tab="space" hidden role="tabpanel" id="spSpace" aria-labelledby="stSpace">
         <h5 class="sph">Space</h5>
@@ -3690,6 +3729,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
   <div id="picklist"></div>
   <div id="pickfoot" hidden></div>
+</dialog>
+<dialog id="zzPick" aria-labelledby="zzPickT">
+  <h3 id="zzPickT">Snooze till</h3>
+  <p class="help" id="zzFor"></p>
+  <input type="datetime-local" id="zzAt" aria-label="When it comes back">
+  <div class="dfoot"><span class="err" id="zzErr"></span><span class="spacer"></span><button class="btn" id="zzCancel">Cancel</button><button class="btn" id="zzGo">Snooze</button></div>
 </dialog>
 <dialog id="pdlg">
   <h3 id="pdlgTitle">New project</h3>
@@ -3827,8 +3872,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     a.finished.then(() => endSoon(a), () => endSoon(a));
     return a;
   };
-  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { space: false, spaceAt: .52, spZoom: 1, spLanes: true, spOff: ['idle', 'done'], spWin: 30, spSky: true, spTwinkle: true, spFalls: 'some', spVisits: true, spAnswer: true, spFade: true, spLinks: true, spArrange: 'state', spCard: true, spBusy: false, spNames: 'zoom', agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, newsSeen: [], newsLater: 0, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null };
+  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] }, priority: [] };
+  const prefs = { space: false, spaceAt: .52, spZoom: 1, spLanes: true, spOff: ['idle', 'done'], spWin: 30, spSky: true, spTwinkle: true, spFalls: 'some', spVisits: true, spAnswer: true, spFade: true, spLinks: true, spArrange: 'state', spCard: true, spBusy: false, spNames: 'zoom', agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, newsSeen: [], newsLater: 0, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null, prio: false, mornings: 9, zzLane: 0, focusSince: 0 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3857,7 +3902,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar', 'layout', 'sidebarStyle']) delete prefs[k];   // layout: Tiles · Sidebar, sidebarStyle: Ring · Glass, until 2026-11-01
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
-  if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
+  if (!['move', 'replied', 'prio'].includes(prefs.listFilter)) prefs.listFilter = null;
+  // the Snoozed lane folded to begin with (2026-11-24, round XXX's W1), as Idle and Done are, on a board that had prefs before it
+  if (!prefs.zzLane) { if (!prefs.lanesShut.includes('snoozed')) prefs.lanesShut.push('snoozed'); prefs.zzLane = 1; }
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
@@ -4268,8 +4315,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // under the pointer when left out. On this list, what the card in Settings › Chat list says of each: where it is, its name, what off means.
   const CARD_PART = { tab: ['.top .repo', 'The project'], branch: ['.top .chip.wtb', 'Its branch'], where: ['.top .chip.elsewhere', 'Running elsewhere'], tick: ['.top .act', '✓', 'only under the pointer'], tickets: ['.top .ttks', 'Tickets'],
     prs: ['.top .tmx', 'PRs'], watch: ['.trow .chip.watch', 'What it watches'], age: ['.trow .time', 'Its age', 'only under the pointer'], fable: ['.trow .fable', 'The F for Fable'], unread: ['.trow .badge', 'Unread count'],
-    agents: [':is(.trow .chip.agents, .agl)', 'Agents'], live: ['.state.live', 'What it is doing'], move: ['.state.prmove', 'Your move'], rounds: ['.prpips', 'Rounds'] };
-  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick'];
+    agents: [':is(.trow .chip.agents, .agl)', 'Agents'], live: ['.state.live', 'What it is doing'], move: ['.state.prmove', 'Your move'], rounds: ['.prpips', 'Rounds'],
+    pin: ['.top .ax.pin', 'Top priority’s mark, under the pointer', null, true], nap: ['.top .ax.zz', 'The snooze’s mark, under the pointer', null, true] };   // 2026-11-24, round XXX's A5 and S5: extras, off to begin with
+  const CARD_PARTS = ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick', 'pin', 'nap'];
   const clab = { on: false, made: false };
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
@@ -4280,7 +4328,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#sessions').toggleAttribute('data-even', line || (prefs.cards === 'compact' && !!prefs.cardsEven));   // compact's own switch, and one line's rule
     // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
     // the same, so a change redraws no card
-    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => k !== 'age' && k !== 'tick');
+    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => !['age', 'tick', 'pin', 'nap'].includes(k));
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
     $('#cardsEven').checked = !!prefs.cardsEven;
     $('#sessions').toggleAttribute('data-snipone', !!prefs.cardsSnipOne); $('#cardsSnipOne').checked = !!prefs.cardsSnipOne;
@@ -4331,11 +4379,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     box.toggleAttribute('data-snipone', !!prefs.cardsSnipOne);
     if (!clab.made) { clab.made = true; box.firstElementChild.replaceChildren(cardLabMake()); }
     for (const el of box.querySelectorAll('[data-part]')) {
-      const k = el.dataset.part, [, name, off] = CARD_PART[k], here = on.includes(k);
+      const k = el.dataset.part, [, name, off, extra] = CARD_PART[k], here = on.includes(k);
       el.classList.toggle('cpoff', !here); el.setAttribute('aria-checked', String(here));
-      el.title = here ? `${name}: click to ${off ? 'keep it to the pointer' : 'hide it on every card'}` : `${name}: ${off || 'hidden'}. Click to ${off ? 'keep it at rest' : 'bring it back'}`;
+      el.title = extra ? `${name}: ${here ? 'on — click to take it off every card' : 'off — click to put it on every card'}`
+        : here ? `${name}: click to ${off ? 'keep it to the pointer' : 'hide it on every card'}` : `${name}: ${off || 'hidden'}. Click to ${off ? 'keep it at rest' : 'bring it back'}`;
     }
-    const gone = CARD_PARTS.filter(k => !on.includes(k) && !CARD_PART[k][2]).map(k => CARD_PART[k][1]);
+    const gone = CARD_PARTS.filter(k => !on.includes(k) && !CARD_PART[k][2] && !CARD_PART[k][3]).map(k => CARD_PART[k][1]);   // an extra off is no part hidden
     $('#cardLabSay').textContent = `Click a part to hide it or bring it back. This card has them all at once, which no real one does.${gone.length ? ` Hidden: ${gone.join(', ')}.` : ''}`;
   }
   function cardLabShow(on) {
@@ -4360,6 +4409,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#cardsSize').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); renderBoard(); });
   $('#cardsSnipOne').addEventListener('change', e => { prefs.cardsSnipOne = e.target.checked; savePrefs(); applyCards(); });
+  // Top priority's switch (2026-11-24, round XXX's T7): the order is the server's and stays, so on again it is as it was;
+  // off in focus, the catch is said. When mornings start, for a snooze's Tomorrow morning and Next week (Z3).
+  $('#prioOn').checked = !!prefs.prio; $('#mornings').value = String(prefs.mornings ?? 9);
+  $('#prioOn').addEventListener('change', e => { const was = prioFocus(); prefs.prio = e.target.checked; savePrefs(); renderBoard(); if (was && !prioFocus()) focusCatch(); const cs = state.sessions.get(state.current); if (cs) renderHead(cs); });
+  $('#mornings').addEventListener('change', e => { prefs.mornings = Number(e.target.value) || 9; savePrefs(); });
   applyCards();
   // A theme's colours are drawn again on the list and the open chat's header.
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
@@ -4854,7 +4908,9 @@ const toolName = n => {
     // the tab strip's glyphs, drawn (2026-10-11, the studies' Q1; ‹ › ↻ ↗ ◫ ⊟ ⨯ × in text before): strokes, .st
     back: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5"/></svg>',
     forward: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>',
-    up: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10.25 8 5.75 12.5 10.25"/></svg>',   // the PR list's foot: fold it (2026-10-13)
+    up: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10.25 8 5.75 12.5 10.25"/></svg>',
+    prio: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.25V3.5M3.75 7.5 8 3.25l4.25 4.25"/></svg>',   // Top priority (2026-11-24)
+    moon: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.9 10.1A5.25 5.25 0 0 1 5.9 3.1a5.25 5.25 0 1 0 7 7Z"/></svg>',   // a snooze (2026-11-24)   // the PR list's foot: fold it (2026-10-13)
     reload: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 6.4A4.9 4.9 0 1 0 12.9 9.6"/><path d="M13 3v3.5H9.5"/></svg>',
     external: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5h6v6M12.5 3.5 4 12"/></svg>',
     copyAddr: '<svg class="ic st cp" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>',   // the address's copy (2026-10-20): two sheets…
@@ -5524,10 +5580,11 @@ const toolName = n => {
   // A PR come round to you is a word too (2026-09-28): the chat rises to the top of its group, under today's line, from
   // when the board learnt of the move (the server's turn.movedAt) — the server's copy agrees.
   // Not on a chat done for good (2026-10-11): its PRs are forgotten.
+  // A snooze ended by itself is one too (2026-11-24, round XXX's H1: the server's `wokeAt`): back at the top of its lane.
   const movedAt = s => s.forGood ? '' : (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
   // Kept per summary (a new object with every update): the sort asked it twice a comparison, a thousand times a render.
   const words = new WeakMap();
-  const wordAt = s => { let w = words.get(s); if (w === undefined) { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = movedAt(s); w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); if (m > w) w = m; words.set(s, w); } return w; };   // an empty chat: its start
+  const wordAt = s => { let w = words.get(s); if (w === undefined) { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = movedAt(s); w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); if (m > w) w = m; if (String(s.wokeAt || '') > w) w = String(s.wokeAt); words.set(s, w); } return w; };   // an empty chat: its start
   const byWord = (a, b) => { const x = wordAt(a), y = wordAt(b); return x < y ? 1 : x > y ? -1 : 0; };   // ISO strings: no collation needed
   const timeTip = s => !s.lastActivity ? (s.startedAt ? `started ${rel(s.startedAt)} ago · no messages yet` : '') : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}${movedAt(s) ? ` · a PR came round to you ${rel(movedAt(s))} ago` : ''}`;
   // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
@@ -5542,6 +5599,21 @@ const toolName = n => {
   // A muted chat keeps its card's truth, the red edge too, and calls you on nothing else (2026-11-02): not the Dock, the
   // title, the menu bar, Next, the bar's red, the lines of news or Zé's game.
   const askingLoud = s => asking(s) && !s.muted;
+  // ---- Top priority and snooze (2026-11-24, round XXX) -----------------------------------------------------------------
+  // Top priority: a section above every lane holding the chats you put there, in your order — the one order on the board
+  // nothing changes by itself. A word, a reply, a PR come round leave a card in its slot; its edge says what it does. One
+  // order for the board, the server's (state.priority, PUT /api/priority, carried to the new id over a /clear), shown for
+  // the project in view; the section's switch is this page's (prefs.prio, Settings › Chat list), off to begin with — the
+  // list is clauding first. Focus is the funnel's third row (FILTERS.prio, ⌥⌘U): the section alone, the project tab
+  // saying so, the rest quiet as when fishing but for questions.
+  // Snooze: a chat put away till a time or till something happens (the server's `snooze`, which it ends): in the Snoozed
+  // lane, folded, counted nowhere; a question from it or a word of yours wakes it. Back by itself it is at the top of its
+  // lane (wordAt takes `wokeAt`), marked back and counted a new reply till you open it, with one banner.
+  const prioOn = () => !!prefs.prio;
+  const inPrio = s => !!s && prioOn() && state.priority.includes(s.id);
+  const asleep = s => !!s?.snooze && !s.done;
+  const back = s => !!s.wokeAt && !s.snooze && s.wokeAt > (s.seenAt || '');
+  const prioFocus = () => prioOn() && prefs.listFilter === 'prio';
   // The model Claude last answered with is the one the chat runs on: `claude-fable-5-1`, `claude-fable-5[1m]`… mark
   // the card (2026-09-27).
   const onFable = s => /fable/i.test(s.model || '');
@@ -5558,11 +5630,13 @@ const toolName = n => {
   // list since (FILTERS): the main view is the clauding chats first and the rest by their last word.
   // Watching after Clauding (2026-10-31, round XIII): a chat with work out behind the turn — a monitor, a command left
   // running — is a rank of its own, the counts still `bucket()`'s.
-  const RANK = { asking: 0, working: 1, watching: 2, ready: 3, idle: 4, done: 5 };
+  // Snoozed last (2026-11-24, round XXX's W1): put away till a time or something happens, folded, counted nowhere.
+  const RANK = { asking: 0, working: 1, watching: 2, ready: 3, idle: 4, done: 5, snoozed: 6 };
   const IDLE_DAYS = 3;   // the days before today a chat stays Ready
   const yourMove = s => !s.forGood && (s.prs || []).some(p => p.turn?.you && (p.state === 'open' || p.state === 'draft' || !p.state));
   // a reply after the board last showed the chat (`seenAt`, the server's, kept in its state file)
-  const replied = s => !!s.seenAt && !!s.lastReplyAt && s.lastReplyAt >= (s.lastUserAt || '') && s.lastReplyAt > s.seenAt;
+  // …or back from a snooze since (2026-11-24, round XXX's H2): marked back, and counted as one, till you open it
+  const replied = s => back(s) || (!!s.seenAt && !!s.lastReplyAt && s.lastReplyAt >= (s.lastUserAt || '') && s.lastReplyAt > s.seenAt);
   const idleSince = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - IDLE_DAYS); return d.toISOString(); };
   // Watching, whatever its age: a live claude with work out behind the turn, nothing more pressing — a question beats a
   // watch, work beats it too, as the ring ranks them; but a turn the chat's own task notice woke (the server's `woken`)
@@ -5570,22 +5644,33 @@ const toolName = n => {
   // A wake-up it set itself is a watch too (2026-10-31, later: ScheduleWakeup, CronCreate — the server's `wake`, gone once
   // its turn comes or its time is well past).
   const inWatch = s => !s.done && s.alive && ((s.tasks?.length || 0) > 0 || !!s.wake) && (s.status !== 'working' || (s.woken && !s.agents));
-  const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : inWatch(s) ? 'watching' : b !== 'ready' ? b : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
+  const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : asleep(s) ? 'snoozed' : inWatch(s) ? 'watching' : b !== 'ready' ? b : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
   // What Done would end on a watching chat — the ✓ names it and asks once more (tickGate) —, or ''.
   const watchEnds = s => !inWatch(s) ? '' : [...(s.tasks || []).map(t => `${t.kind === 'monitor' ? 'monitor' : 'running'}${t.what ? ` · ${t.what}` : ''}`), ...s.wake ? [`the wake-up at ${hhmm(s.wake.at)}`] : []].join(' and ');
   // a time of day as the board writes one, and how far off it is (a wake-up's: `data-in`, written by fillAges)
   const hhmm = ts => { const d = new Date(ts); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  // when a snooze ends, as the card and the menu say it (2026-11-24, round XXX): `14:30`, `tomorrow 09:00`, `Tue 09:00`, a date
+  const WD3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const whenSay = ts => { const d = new Date(ts); if (isNaN(d)) return ''; const n = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000); return n === 0 ? hhmm(d) : n === 1 ? `tomorrow ${hhmm(d)}` : n > 1 && n < 7 ? `${WD3[d.getDay()]} ${hhmm(d)}` : `${fmtDate(d)} ${hhmm(d)}`; };
+  const prLabelOf = url => { for (const s of state.sessions.values()) { const p = (s.prs || []).find(x => x.url === url); if (p) return p.label.replace(/^.*?#/, '#'); } return 'its PR'; };
+  const ZZ_ON = { pr: z => `when ${prLabelOf(z.pr)} comes round`, ci: () => 'when its checks finish', reply: () => 'when Claude replies', mon: () => 'when its monitor ends' };
+  const snoozeSay = z => !z ? '' : [z.until ? `till ${whenSay(z.until)}` : '', z.on ? ZZ_ON[z.on]?.(z) || '' : ''].filter(Boolean).join(' or ');
+  const ordinal = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
   const relIn = ts => { const m = Math.round((new Date(ts) - Date.now()) / 60000); return !(m > 0) ? 'due now' : m < 60 ? `in ${m} min` : `in ${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`; };
   const tickArmed = new Map(), armedOn = id => (tickArmed.get(id) || 0) > performance.now();   // chat id → until when its ✓ is armed
   const delArmed = new Map(), delArmedOn = id => (delArmed.get(id) || 0) > performance.now();   // …and its ✕ (2026-11-04)
   const DEL_TIP = '⌥-click: delete from the board — its claude ends, the transcript stays';
   // The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the chats with a PR at your
   // move — clauding ones too, the PR waits on you all the same — or the ready ones with a new reply. Done chats never.
+  // …and Top priority only (2026-11-24, round XXX's F1), while the section is on (`on`): the list is the section alone.
+  // A snoozed chat is in none of them (W4).
   const FILTERS = {
-    move: { name: 'Your move', none: 'No PR at your move', tip: 'chats with a PR waiting on you', test: s => bucket(s) !== 'done' && yourMove(s) },
-    replied: { name: 'New replies', none: 'No new replies', tip: 'chats Claude answered since you last looked', test: s => bucket(s) === 'ready' && replied(s) },
+    move: { name: 'Your move', none: 'No PR at your move', tip: 'chats with a PR waiting on you', test: s => bucket(s) !== 'done' && !asleep(s) && yourMove(s) },
+    replied: { name: 'New replies', none: 'No new replies', tip: 'chats Claude answered since you last looked', test: s => bucket(s) === 'ready' && !asleep(s) && replied(s) },
+    prio: { name: 'Top priority only', none: 'Nothing in Top priority', tip: 'chats in Top priority, in your order', on: prioOn, test: s => inPrio(s) && !asleep(s) },
   };
-  const listFilter = () => FILTERS[prefs.listFilter] || null;
+  const filterList = () => Object.entries(FILTERS).filter(([, f]) => !f.on || f.on());
+  const listFilter = () => { const f = FILTERS[prefs.listFilter]; return f && (!f.on || f.on()) ? f : null; };
   // the cards large with cards by lane on: a chat asking you, clauding, at your move or with a new reply
   const roomy = s => asking(s) || bucket(s) === 'working' || FILTERS.move.test(s) || FILTERS.replied.test(s);
   // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
@@ -5624,7 +5709,7 @@ const toolName = n => {
     }
     for (const k of state.pins) if (k.startsWith('/') && !folders.has(k)) folders.set(k, { key: k, name: folderName(k), cwds: [k], sessions: [] });
     const stat = p => {
-      const undone = p.sessions.filter(s => !s.done);   // the same rule as the chips: not ticked is working or ready
+      const undone = p.sessions.filter(s => !s.done && !asleep(s));   // the same rule as the chips: not ticked is working or ready
       p.working = undone.filter(s => s.status === 'working').length;
       p.ready = undone.length - p.working;   // a pending question is ready-for-you too, and so is a stale chat
       p.unread = p.sessions.reduce((n, s) => n + (state.unread.get(s.id) || 0), 0);
@@ -5684,7 +5769,9 @@ const toolName = n => {
   const askedAt = s => (s.live?.status === 'waiting' && s.live.statusAt) || Date.parse(s.statusSince || wordAt(s) || '') || Date.now();
   const byWait = (a, b) => askedAt(a) - askedAt(b);
   const waitWord = ms => { const m = Math.floor(ms / 60_000); return m < 1 ? '' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`; };
-  const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && askingLoud(s)), replied: all.filter(s => visible(s) && !s.done && !s.muted && !asking(s) && replied(s)).sort(byWord) }; };
+  // Neither a snoozed chat (2026-11-24, round XXX's W4) nor, in focus, a chat out of Top priority but for its question (F3).
+  const quietNow = s => asleep(s) || (prioFocus() && !inPrio(s));
+  const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && askingLoud(s)), replied: all.filter(s => visible(s) && !s.done && !s.muted && !asking(s) && !quietNow(s) && replied(s)).sort(byWord) }; };
   // The plan usage in a line, for the fish's menu (2026-11-01, round XIX's S5): each window's tag and percent, the next reset
   function planLine() {
     const ws = (usage.data?.windows || []).filter(w => !uGrant(w)); if (usage.off || !ws.length) return '';
@@ -5696,9 +5783,9 @@ const toolName = n => {
     const needs = [...w.needs].sort(byWait).map(s => ({ ...brief(s), since: String(askedAt(s)) })), replies = w.replied.map(brief);
     // …and for the status menu alone (2026-10-12, P2): the PRs at your move, by chat, and what is clauding
     const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
-    const moves = live.filter(s => !asking(s) && !s.muted && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
-    const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
-    const watching = live.filter(s => inWatch(s) && bucket(s) !== 'working').sort(byWord).map(brief);
+    const moves = live.filter(s => !asking(s) && !s.muted && !quietNow(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`, why: movedPrs(s)[0]?.turn?.why || '' }));
+    const working = live.filter(s => bucket(s) === 'working' && !asleep(s)).sort(byWord).map(brief);
+    const watching = live.filter(s => inWatch(s) && bucket(s) !== 'working' && !asleep(s)).sort(byWord).map(brief);
     const muted = !state.notifications, plan = planLine(), nx = nextQueue()[0], gone = fishing.until ? new Date(fishing.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : '';
     const next = nx ? { id: nx.s.id, verb: `${NEXT_VERB[nx.k]}${nx.k === 'ask' ? ' ' : ': '}${nextName(nx)}`, sub: nx.k === 'ask' ? nx.s.title : nx.k === 'move' ? `${nx.s.project} · ${movedPrs(nx.s)[0]?.turn?.why || ''}` : nx.s.project, since: nx.k === 'ask' ? String(askedAt(nx.s)) : '' } : null;
     const mutes = [...state.sessions.values()].filter(s => s.muted).map(s => s.id);   // the app takes back what it still holds for one (a snooze)
@@ -5713,7 +5800,7 @@ const toolName = n => {
     const all = [...state.sessions.values()].filter(visible), seen = new Set(), once = k => s => seen.has(s.id) ? null : (seen.add(s.id), { s, k });
     const by = at => (a, b) => String(at(a)).localeCompare(String(at(b)));
     return [...all.filter(askingLoud).sort(byWait).map(once('ask')),
-      ...all.filter(s => !s.done && !s.muted && yourMove(s)).sort(by(movedAt)).map(once('move')),
+      ...all.filter(s => !s.done && !s.muted && !quietNow(s) && yourMove(s)).sort(by(movedAt)).map(once('move')),
       ...wanting().replied.slice().sort(by(s => s.lastReplyAt)).map(once('read'))].filter(Boolean);
   }
   // A line over the lane (round XIX's M3, M4): news for a few seconds, and a click is Next. Under the pointer it stays.
@@ -5781,7 +5868,7 @@ const toolName = n => {
     setTimeout(() => { const line = outLine(since); if (line) laneNews(line); }, 400);   // the stream's news of the moment first
   }
   function outLine(since) {
-    const iso = new Date(since).toISOString(), all = [...state.sessions.values()].filter(s => visible(s) && !s.done && !s.muted);
+    const iso = new Date(since).toISOString(), all = [...state.sessions.values()].filter(s => visible(s) && !s.done && !s.muted && !asleep(s));
     const landed = all.filter(s => !asking(s) && s.status !== 'working' && (s.lastReplyAt || '') > iso).length;
     const moved = all.filter(s => yourMove(s) && movedAt(s) > iso), asks = all.filter(asking).length;
     if (!landed && !moved.length && !asks) return '';
@@ -5834,7 +5921,8 @@ const toolName = n => {
   // glyph (Linear's states since 2026-10-31; Claude's mark in pixels was the Clauding head's) and how many cards it
   // holds. Under a query, which ranks by the match, none; under a filter, which shows every match, a head that does not
   // fold (`still`).
-  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running, or a wake-up it set'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
+  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running, or a wake-up it set'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'],
+    snoozed: ['Snoozed', 'chats put away till a time or till something happens'], prio: ['Top priority', 'chats you put first, in your order'] };
   // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
@@ -5845,7 +5933,7 @@ const toolName = n => {
   // query and a filter show every match.
   const LANE_CAP = 30, CAPPED = new Set(['idle', 'done']), laneMore = new Set();
   const moreHtml = (g, n) => `<div class="gsep more" data-more="${g}" role="button" tabindex="0" title="Show the other ${n} ${LANES[g][1]}"><span class="mn">${n} more ${LANES[g][0].toLowerCase()} chat${n === 1 ? '' : 's'}</span><span class="ms">+${n}</span></div>`;
-  const laneHtml = (g, n, shut = false, still = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}"><i aria-hidden="true"></i><span class="ln">${LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
+  const laneHtml = (g, n, shut = false, still = false, extra = '') => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}"><i aria-hidden="true"></i><span class="ln">${LANES[g][0]}</span>${extra}<b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
   const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no question, no chat ready">${PIX}<span class="ln">All caught up</span><span class="zewalk"><span class="zw"><i title="Zé — his game, ⌥⌘Z"></i><i title="Zé — his game, ⌥⌘Z"></i></span></span></div>`;
@@ -5964,19 +6052,29 @@ const toolName = n => {
     const q = $('#q').value.trim().toLowerCase();
     const score = new Map();
     // a filter (FILTERS) narrows the list before anything else counts it, and shows every match, folded or not
-    const flt = listFilter(), pool = flt ? p.sessions.filter(flt.test) : p.sessions, inView = s => !!(q || flt) || !laneShut(rankOf(s));
+    const flt = listFilter(), pool = flt ? p.sessions.filter(flt.test) : p.sessions;
+    // Top priority (2026-11-24, round XXX): its chats in your order, above every lane and out of them — on the list as it
+    // stands and in focus (FILTERS.prio, the section alone), never under a query or another filter, which order by
+    // something else. The project in view's alone (T5); a snoozed one keeps its slot out of sight (X1), in Snoozed.
+    const focus = flt === FILTERS.prio, sec = prioOn() && !q && (!flt || focus), pIds = new Set(p.sessions.map(s => s.id));
+    const secIds = new Set(sec ? state.priority.filter(id => pIds.has(id) && !asleep(state.sessions.get(id))) : []);
+    const secZz = sec ? state.priority.filter(id => pIds.has(id) && asleep(state.sessions.get(id))).length : 0;
+    const inView = s => !!(q || flt) || !laneShut(secIds.has(s.id) ? 'prio' : rankOf(s));
     const who = renderPeople(pool.filter(inView)) ? prefs.person : null;   // may let go of a person no longer in view
     // the query and the face narrow the project's chats, not only the filter's — the funnel counts with them (2026-10-14)
     if (q) for (const s of p.sessions) { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); }
     const narrow = s => (!q || score.has(s.id)) && (!who || hasPerson(s, who));
-    const list = pool.filter(narrow);
+    const list = pool.filter(narrow), secCards = state.priority.map(id => secIds.has(id) && state.sessions.get(id)).filter(s => s && narrow(s));
+    const rest = secIds.size ? list.filter(s => !secIds.has(s.id)) : list;
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
     // clauding on top, then ready, done last (2026-09-20: one rule between the live cards and the ready ones, which
     // needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
-    const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
-    const ordered = list.slice().sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
+    // Snoozed by when each wakes, the soonest first, one waiting on something after (2026-11-24, round XXX's W1)
+    const wakeOrder = (a, b) => rankOf(a) !== 'snoozed' ? 0 : String(a.snooze?.until || '~').localeCompare(String(b.snooze?.until || '~'));
+    const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || wakeOrder(a, b) || byWord(a, b);
+    const ordered = rest.slice().sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
     const held = {}, seen = {};   // a long lane's newest LANE_CAP (laneMore lets one go), not under a query or a filter
     const shown = ordered.filter(inView).filter(s => {   // a query shows every match, folded or not, and so does a filter
       const g = rankOf(s); if (q || flt || !CAPPED.has(g) || laneMore.has(g)) return true;
@@ -5994,19 +6092,33 @@ const toolName = n => {
     for (const g of every) inLane[g] = (inLane[g] || 0) + 1;
     // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
     tl.runs = [];
-    if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
+    const secOpen = sec && (focus || !laneShut('prio')) && secCards.length;   // the section's cards come first in the list: one run of their own
+    if (secOpen) tl.runs.push({ g: 'prio', day: '', at: wordAt(secCards[0]), i: 0, n: secCards.length });
+    const k0 = secOpen ? secCards.length : 0;
+    if (!q && !focus) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i: i + k0, n: 1 }); });
     const dayBefore = i => !q && days[i] && days[i] !== 'Today' && (i === 0 || b[i - 1] !== b[i] || days[i - 1] !== days[i]) ? dayHtml(days[i]) : '';
     // All caught up (2026-10-11): nothing in the project waits on you — no question and no ready chat — while the list
     // still holds something (the clauding, the idle, the done): a still head where the Ready lane goes, before the idle
     // and done lanes. Not under a filter, which is about something else.
-    const zero = !q && !flt && !ordered.some(s => ['asking', 'ready'].includes(rankOf(s))) && ordered.length > 0;
+    const zero = !q && !flt && !list.some(s => ['asking', 'ready'].includes(rankOf(s))) && list.length > 0;
     const items = [];
+    // the section's head tallies what its cards do, since nothing sorts them by it (T4), and what is ticked in it (D2)
+    if (sec) {
+      const n = secCards.length, done = secCards.filter(s => s.done).length, live = secCards.filter(s => !s.done);
+      const ask = live.filter(asking).length, work = live.filter(s => bucket(s) === 'working').length;
+      const bits = [ask ? `<em>${ask} asking</em>` : '', work ? `<u>${work} clauding</u>` : '', secZz ? `+${secZz} snoozed` : ''].filter(Boolean);
+      const extra = (bits.length ? `<span class="tally">${bits.join(' · ')}</span>` : '') + (done ? `<span class="tally">${done} of ${n} done <button type="button" class="clr" title="Take the ticked chats out of Top priority">Clear done</button></span>` : '');
+      const shut = !focus && laneShut('prio');
+      items.push({ key: 'lane:prio', html: laneHtml('prio', n, shut, focus, extra) });
+      if (!shut && !n) items.push({ key: 'prio:empty', html: `<div class="gsep pempty" data-pempty>${secZz ? 'Every chat in it is snoozed: each comes back to its place' : 'Drag a card here, or right-click one › Top priority'}</div>` });
+      if (!shut) secCards.forEach((s, i) => items.push({ id: s.id, html: cardHtml(s, q, i) }));
+    }
     // The project in view (2026-11-04, round XXV): its tab atop the list, its name a click on ⌥⌘P's picker, how many of
     // the chats not done are here, and Show all; a chat asking you elsewhere is counted there, a click going to the one
     // waiting longest (a line over the lanes from 2026-10-12). Drawn inside drawCards, so the cards slide by its height.
-    drawCards.cue = () => cueDraw(p, ordered);
+    drawCards.cue = () => cueDraw(p, focus ? secCards : ordered, focus);
     if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, q) }));
-    else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
+    else if (!focus) for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
       if (zero && (g === 'idle' || g === 'done') && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
       // a lane's lines keyed by the lane (2026-11-01): its head one node, folded or not, and a day's line the lane's own
       items.push({ key: `lane:${g}`, html: laneHtml(g, inLane[g], !flt && laneShut(g), !!flt) });
@@ -6101,16 +6213,20 @@ const toolName = n => {
     const squares = [...by.values()].sort((a, b) => b.n - a.n).slice(0, OTHERS_SQUARES).map(b => `<i style="${repoStyle(repoColor(b.cwd))}"></i>`).join('');
     return `<div class="gsep others" data-others role="button" tabindex="0" title="Every project again (ALL)"><span class="sqs" aria-hidden="true">${squares}</span><span class="ln">${rest.length} more in ${by.size === 1 ? 'another project' : 'other projects'}</span><b>Show all</b></div>`;
   }
-  const askingElsewhere = p => [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && !inProject(s, p));
-  function cueDraw(p, here) {
-    const box = $('#stitle'), on = p.key !== ALL;
-    box.hidden = !on; $('#sessions').classList.toggle('scoped', on);
+  // …and in focus (2026-11-24, round XXX's F2), a question out of Top priority
+  const askingElsewhere = p => [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && (!inProject(s, p) || (prioFocus() && !inPrio(s))));
+  /** The tab atop the list: the project in view, or Top priority alone (F2) — what is hidden, and the way back. */
+  function cueDraw(p, here, focus = false) {
+    const box = $('#stitle'), on = p.key !== ALL || focus;
+    box.hidden = !on; $('#sessions').classList.toggle('scoped', on); box.classList.toggle('focus', focus);
+    if (focus && p.key === ALL) $('#sessions').style.setProperty('--repo', 'var(--accent)');
     if (!on) { setHtml(box, ''); return; }
     const n = here.filter(notDone).length, all = [...state.sessions.values()].filter(notDone).length, ask = askingElsewhere(p).length;
-    const tip = `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — a click or ⌥⌘P for another`;
-    setHtml(box, `<button type="button" class="t" title="${esc(tip)}"><span class="n">${projIcon(p.name)}${esc(p.name)}</span>${CUE_CHEV}</button>`
+    const tip = focus ? `Only the chats in Top priority, in your order${p.key !== ALL ? `, in ${p.name}` : ''} — the rest is quiet but for its questions · ⌥⌘U for every chat` : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — a click or ⌥⌘P for another`;
+    const name = focus ? `${ICON.prio}Top priority${p.key !== ALL ? ` · ${esc(p.name)}` : ''}` : `${projIcon(p.name)}${esc(p.name)}`;
+    setHtml(box, (focus ? `<span class="t" title="${esc(tip)}"><span class="n">${name}</span></span>` : `<button type="button" class="t" title="${esc(tip)}"><span class="n">${name}</span>${CUE_CHEV}</button>`)
       + `<span class="cn" role="status" title="${n} of the ${all} chats not done">${rn('cue:n', n)} of ${rn('cue:all', all)}</span>`
-      + `<span class="out">${ask ? `<button type="button" class="ask" title="Go to the one waiting longest"><i></i>${rn('cue:ask', ask)} asking</button>·` : ''}<button type="button" class="sx" title="Every project again (ALL)">Show all</button></span>`);
+      + `<span class="out">${ask ? `<button type="button" class="ask" title="Go to the one waiting longest"><i></i>${rn('cue:ask', ask)} asking</button>·` : ''}<button type="button" class="sx" title="${focus ? 'Every chat again (⌥⌘U)' : 'Every project again (ALL)'}">Show all</button></span>`);
   }
   const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
   // The cue's row comes or goes after drawCards has read where the cards stood, so they slide by its height too
@@ -6418,7 +6534,7 @@ const toolName = n => {
   // edge when filled — for TL_DWELL_MS brings it out, as the menu bar comes out when filled; it goes TL_HIDE_MS after
   // the pointer has left it.
   const TL_EDGE = 4, TL_DWELL_MS = 1000, TL_HIDE_MS = 500;
-  const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done' };
+  const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done', snoozed: 'snoozed', prio: 'top priority' };
   /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
   function tlDay(iso) {
     const d = new Date(iso); if (isNaN(d)) return '';
@@ -6974,7 +7090,7 @@ const toolName = n => {
     const t = s.tickets || []; if (!t.length) return '';
     return chipStack(t, (k, style) => `<a class="ctk"${style} data-cat="${esc(k.cat)}" data-url="${esc(k.url)}" title="${esc(ticketTip(k))}">${esc(k.key)}</a>`, ' ttks');
   }
-  function cardHtml(s, q = '') {
+  function cardHtml(s, q = '', slot = null) {   // `slot`: its place in Top priority, when drawn there (2026-11-24)
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
     // Which of the two words is the older, for the cog's *medium* cards: Claude's reply is the last word once it came
@@ -7001,9 +7117,17 @@ const toolName = n => {
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${attachable(s) ? 'Running in the background — ⌥⌘C opens it here' : `${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here`}">${ICON.term}</span>`)
         + (hasRival(s) ? (rivalsIn(s, 'vs') ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : `<span class="chip rival" title="Another claude runs on this chat too — open it to end it">a second claude</span>`) : '');
     const moveLine = moveHtml(s) || answeredHtml(s);
-    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${agentTag(s, 'chip runas')}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardMatrix(s)}</div>
-      <div class="trow"><div class="title">${ticks(markHits(s.title, q))}</div>${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
+    // Top priority and snooze (2026-11-24, round XXX): its number in the section (T3), ticked there it stays dimmed (D2);
+    // snoozed, when it wakes (W1); back from one, till opened (H2); and the two marks under the pointer, card parts (A5, S5)
+    const inSec = slot != null, slept = asleep(s);
+    const pn = inSec ? `<span class="pn" title="${esc(`${ordinal(slot + 1)} in Top priority`)}">${slot + 1}</span>` : '';
+    const zz = (slept ? `<span class="snz" title="${esc(`Snoozed ${snoozeSay(s.snooze)} — a question from it or a word of yours wakes it sooner`)}">${ICON.moon}<span>${esc(snoozeSay(s.snooze))}</span></span>` : '')
+      + (back(s) ? `<span class="lback" title="${esc(`Back from a snooze${s.wokeWhy ? `: ${s.wokeWhy}` : ''} — till you open it`)}">back</span>` : '');
+    const marks = (prioOn() ? `<button type="button" class="ax pin${inPrio(s) ? ' on' : ''}" title="${inPrio(s) ? 'Out of Top priority' : 'Into Top priority, at its end'} · ⌥⌘I">${ICON.prio}</button>` : '')
+      + (asking(s) ? '' : `<button type="button" class="ax zz${slept ? ' on' : ''}" title="${slept ? 'Wake it now' : 'Snooze it… · ⌥⌘S'}">${ICON.moon}</button>`);
+    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}${inSec ? ` inprio${s.done ? ' pdone' : ''}` : ''}${slept ? ' slept' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
+      <div class="top"><span class="vh">${inSec ? `Top priority, ${slot + 1}: ` : ''}${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${agentTag(s, 'chip runas')}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${marks}${act}${cardTickets(s)}${cardMatrix(s)}</div>
+      <div class="trow">${pn}<div class="title">${ticks(markHits(s.title, q))}</div>${zz}${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
@@ -7554,7 +7678,7 @@ const toolName = n => {
       const found = hunt([...state.sessions.values()].filter(s => (visible(s) && (q || bucket(s) !== 'done')) || (q && s.removed)).sort(order), chatFields, s => doneWorth(s, q));
       const named = (pick.named?.ids || []).map(id => state.sessions.get(id)).filter(s => s && !found.includes(s)).sort(order);   // what the chips did not know
       pick.list = [...found, ...named];
-      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${agentTag(s, 'cur runas')}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${s.removed ? '<span class="cur">deleted from the board</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
+      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${agentTag(s, 'cur runas')}${idsHit(s, q)}${named.includes(s) ? '<span class="cur ids">named in its transcript</span>' : ''}${asleep(s) ? `<span class="cur zzt">${ICON.moon}snoozed ${esc(snoozeSay(s.snooze))}</span>` : ''}${s.removed ? '<span class="cur">deleted from the board</span>' : ''}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
     } else if (pick.mode === 'chatpick') {   // a chat to send to (2026-10-31): ⌥⌘K's rows, one it cannot go to dimmed and saying why
       // …or several to merge (`many`): ⏎ takes one in or out, ✓ before it; the first row goes on with those taken in
       const c = pick.ctx;
@@ -7753,7 +7877,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
-    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar'], ['skyOn', 'Space’s night sky'], ['agCardOn', 'Space’s agent card']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['prioOn', 'Top priority section'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar'], ['skyOn', 'Space’s night sky'], ['agCardOn', 'Space’s agent card']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -7770,7 +7894,7 @@ const toolName = n => {
       { name: 'Send to a chat…', sub: ' — a message of yours, as its prompt', fn: sendPick, stay: true },   // chats that talk (2026-10-31)
       { name: 'Merge chats into a new one…', sub: ' — where each stands, its first prompt', fn: () => mergePick(state.current ? [state.current] : [], 'launch'), stay: true },
       { name: 'Search the chat list', hint: '⌥⌘F', fn: hotFind },
-      ...Object.entries(FILTERS).filter(([k]) => prefs.listFilter !== k).map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
+      ...filterList().filter(([k]) => prefs.listFilter !== k).map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
       ...(prefs.listFilter ? [{ name: 'Show every chat again', sub: ` — no ${listFilter().name.toLowerCase()} filter`, fn: () => setFilter(null) }] : []),
       { name: prefs.listHidden ? 'Show the chat list' : 'Hide the chat list', hint: '⌥⌘B', fn: toggleList },
       { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
@@ -7796,6 +7920,8 @@ const toolName = n => {
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         s.removed ? { name: 'Put it back on the board', sub: of, fn: () => restoreChat(s.id) } : { name: 'Delete it from the board — its claude ends, the transcript stays', sub: of, fn: () => removeChat(s.id, $('#shead')) },
         { name: s.muted ? 'Unmute it' : 'Mute it — no banner, sound or count, questions too', sub: of, fn: () => setMuted(s.id, !s.muted) },
+        ...(prioOn() ? [{ name: inPrio(s) ? 'Out of Top priority' : 'Top priority — the section up top, in your order', sub: of, hint: '⌥⌘I', fn: () => prioPut(s, !inPrio(s), null, $('#shead')) }] : []),   // 2026-11-24, round XXX's A4
+        ...(asking(s) ? [] : [asleep(s) ? { name: 'Wake it now', sub: ` — snoozed ${snoozeSay(s.snooze)}`, fn: () => snoozeIt(s, { undo: true }, $('#shead')) } : { name: 'Snooze it…', sub: ' — till a time, or till something happens', hint: '⌥⌘S', fn: () => setTimeout(() => snoozeMenu(s), 0) }]),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
         ...(!foldFromWhy(s) ? [{ name: 'Fold it into another chat…', sub: of, fn: () => foldPick(s, 'launch'), stay: true }] : []),   // 2026-10-31
@@ -7913,6 +8039,7 @@ const toolName = n => {
     ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
+    ['⌥⌘U', 'Go to', 'Top priority only, and every chat again', 'the list is the section alone, its tab atop it says what is hidden · the rest is quiet as when fishing, its questions still ring · the funnel\'s third row · with the section on', ['alt:KeyU']],
     ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘X', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyX']],
@@ -7928,6 +8055,9 @@ const toolName = n => {
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several — from one of them, the next selected, and ⌥⌘G once more fills the column · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘J', 'This chat', 'its timeline, on a tab — the chat and its PRs in one order', 'your prompts, each of Claude\'s turns as a line, the PRs\' events between them, a lane per PR · the Now bar says each one\'s round · a turn clicked shows it in the transcript · again from it: its half fills the column, and back', ['alt:KeyJ']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
+    ['⌥⌘I', 'This chat', 'into Top priority, or out of it', 'the section atop the list, in your order, that nothing moves but you · Settings › Chat list switches it on · a card\'s right-click and the header\'s ··· too', ['alt:KeyI']],
+    ['⌥⌘⇧↑↓', 'This chat', 'its card a place up / down in Top priority', 'a card\'s right-click: to the top, to the bottom · or drag it between two cards of the section', ['shift:ArrowUp', 'shift:ArrowDown']],
+    ['⌥⌘S', 'This chat', 'snooze it — till a time, or till something happens', '1–9 pick · it waits in Snoozed, counted nowhere, and comes back at the top of its lane, marked back · a question from it or a word of yours wakes it · Settings › Chat list says when mornings start', ['alt:KeyS']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page goes, VS Code Web once no editor is open in it (its ⌘W closes them first) · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
     ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
@@ -7991,7 +8121,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, KeyX: spToggle, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, KeyX: spToggle, Digit0: hotHome, KeyI: hotPrio, KeyS: hotSnooze, KeyU: hotFocus, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -7999,12 +8129,14 @@ const toolName = n => {
   // so it is still what it always was — the chat's size back to normal.
   // ⌘T and ⌘W are the tabs' (2026-10-13), a browser's and iTerm's: a new one of the kind the keys are in, and that one closed.
   const CMDKEYS = { Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyT: hotNewTab, KeyW: hotClose, Comma: settingsToggle };
+  // ⌥⌘⇧ (2026-11-24, round XXX's R3): the open chat's card a place up or down in Top priority — ⌥⌘↑↓ walk the cards.
+  const SHIFTKEYS = { ArrowUp: () => hotPrioMove(-1), ArrowDown: () => hotPrioMove(1) };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
   // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
   // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
   const runHotkey = (code, mods = 'altcmd') => {
     if (code === 'Escape') return hotEscape();
-    const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
+    const fn = (mods === 'cmd' ? CMDKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[code];
     if (!fn) return false;
     if ($('#hmenu').open) { $('#hmenu').close(); if (fn === hotClose) return true; }   // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
     if ($('#room').open) { $('#room').close(); if (fn === hotClose) return true; }   // …nor is the chat's panel (2026-10-17): a key is back to work
@@ -8014,9 +8146,9 @@ const toolName = n => {
     return fn() !== false;
   };
   document.addEventListener('keydown', e => {
-    if (e.ctrlKey || e.shiftKey || !e.metaKey) return;
-    const mods = e.altKey ? 'altcmd' : 'cmd';
-    if (!(mods === 'cmd' ? CMDKEYS : HOTKEYS)[e.code]) return;
+    if (e.ctrlKey || !e.metaKey || (e.shiftKey && !(e.altKey && SHIFTKEYS[e.code]))) return;
+    const mods = e.shiftKey ? 'shift' : e.altKey ? 'altcmd' : 'cmd';
+    if (!(mods === 'cmd' ? CMDKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[e.code]) return;
     e.stopPropagation();
     if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault();   // a key held down is one press — the arrows walk on
     // ⌘W the board did not take — one half, on the chat's tab, nothing up — is left alone (2026-10-14): in the app the
@@ -8174,6 +8306,106 @@ const toolName = n => {
     redraw();
     return false;
   }
+  // ---- Top priority and snooze, by hand (2026-11-24, round XXX) -------------------------------------------------------
+  // The order is the server's, written whole (PUT /api/priority) and drawn at once from the copy here; a move is said to a
+  // reader (#prioSay, R5), as GitHub's sortable lists do. What the section shows is the order's chats in view — the project
+  // in view's, none snoozed —, so a move is among those, and lands beside them in the whole order.
+  async function setPriority(ids, say = '') {
+    const was = state.priority; state.priority = ids; renderBoard();
+    if (say) $('#prioSay').textContent = say;
+    try { state.priority = (await api('PUT', '/api/priority', { ids })).priority || ids; }
+    catch (e) { state.priority = was; note($('#slist'), `Top priority not kept: ${e.message}`, true); }
+    renderBoard();
+  }
+  function secList() {
+    const p = prefs.project === ALL ? null : projectStub(prefs.project);
+    return state.priority.map(id => state.sessions.get(id)).filter(s => s && visible(s) && !asleep(s) && (!p || inProject(s, p)));
+  }
+  const prioOff = anchor => (note(anchor || $('#slist'), 'Top priority is off — Settings › Chat list switches it on', true), false);
+  /** `s` into the order before the chat `before` (null: at its end), or out of it. */
+  function prioPut(s, on, before = null, anchor = null) {
+    if (!s) return false;
+    if (!prioOn()) return prioOff(anchor);
+    const ids = state.priority.filter(id => id !== s.id);
+    if (on) { const i = before ? ids.indexOf(before) : -1; ids.splice(i < 0 ? ids.length : i, 0, s.id); }
+    const shown = on ? secList().map(x => x.id).filter(id => id !== s.id) : [];
+    if (on) { const i = before ? shown.indexOf(before) : -1; shown.splice(i < 0 ? shown.length : i, 0, s.id); }
+    setPriority(ids, on ? `${s.title}, ${shown.indexOf(s.id) + 1} of ${shown.length} in Top priority` : `${s.title}, out of Top priority`);
+    return true;
+  }
+  /** One place up or down among the section's cards (d ±1), or to its top or bottom (d ±Infinity). */
+  function prioMove(s, d, anchor = null) {
+    if (!prioOn()) return prioOff(anchor);
+    const list = secList(), i = list.indexOf(s);
+    if (i < 0) return (note(anchor || $('#slist'), 'Not in Top priority — ⌥⌘I puts it there', true), false);
+    const j = Math.max(0, Math.min(list.length - 1, d === Infinity ? list.length - 1 : d === -Infinity ? 0 : i + d));
+    if (j === i) { $('#prioSay').textContent = `${s.title}, already ${i ? 'last' : 'first'}`; return true; }
+    return prioPut(s, true, d < 0 ? list[j].id : list[j + 1]?.id || null, anchor);
+  }
+  const clearDone = () => setPriority(state.priority.filter(id => !state.sessions.get(id)?.done), 'The ticked chats are out of Top priority');
+  /** A snooze sent (`{until} | {on, pr}`), or `{undo: true}`: awake now. */
+  async function snoozeIt(s, body, anchor = null) {
+    const at = anchor?.isConnected ? anchor : cardNodes.get(s.id)?.el?.isConnected ? cardNodes.get(s.id).el : $('#shead');
+    try {
+      const r = await api('POST', `/api/sessions/${encodeURIComponent(s.id)}/snooze`, body), cur = state.sessions.get(s.id);
+      if (cur) cur.snooze = r.snooze || null;
+      renderBoard();
+      const el = cardNodes.get(s.id)?.el, there = el?.isConnected ? el : at.isConnected && at.closest('#shead') ? at : $('#sessions');   // its card where it went, else the list
+      note(there, body.undo ? 'Awake: it is back on its lane' : `Snoozed ${snoozeSay(r.snooze)} — in Snoozed, counted nowhere`);
+    } catch (e) { note(at, `${body.undo ? 'Not woken' : 'Not snoozed'}: ${e.message}`, true); }
+  }
+  /** The times and the things to wait for (Z1, Z2): a menu of its own, 1 to 9 picking (S2). */
+  function snoozeRows(s) {
+    const now = new Date(), H = 3_600_000, m = Number(prefs.mornings ?? 9);
+    const morning = new Date(now); morning.setHours(m, 0, 0, 0); const early = now < morning; if (!early) morning.setDate(morning.getDate() + 1);
+    const monday = new Date(now); monday.setHours(m, 0, 0, 0); monday.setDate(monday.getDate() + ((8 - monday.getDay()) % 7 || 7));
+    const until = t => ({ until: new Date(t).toISOString() }), rows = [];
+    if (asleep(s)) rows.push({ t: 'Wake it now', sub: `snoozed ${snoozeSay(s.snooze)}`, fn: () => snoozeIt(s, { undo: true }) }, { hr: true });
+    [['In 1 hour', +now + H], ['In 3 hours', +now + 3 * H], [early ? 'This morning' : 'Tomorrow morning', +morning], ['Next week', +monday]]
+      .forEach(([t, at]) => rows.push({ t, n: whenSay(at), key: rows.filter(r => r.key).length + 1, fn: () => snoozeIt(s, until(at)) }));
+    rows.push({ t: 'Pick a time…', key: 5, fn: () => zzPickOpen(s) }, { hr: true });
+    const prs = (s.prs || []).filter(p => p.url && (!p.state || p.state === 'open' || p.state === 'draft')), short = p => p.label.replace(/^.*?#/, '#');
+    const ev = [
+      ...prs.filter(p => !p.turn?.you).slice(0, 2).map(p => ({ t: `Until ${short(p)} comes round to you`, sub: 'your move on it brings it back', fn: () => snoozeIt(s, { on: 'pr', pr: p.url }) })),
+      ...prs.filter(p => p.checks === 'pending').slice(0, 1).map(p => ({ t: `Until ${short(p)}’s checks finish`, sub: 'pass or fail brings it back', fn: () => snoozeIt(s, { on: 'ci', pr: p.url }) })),
+      ...(s.status === 'working' ? [{ t: 'Until Claude replies', sub: 'the end of this turn brings it back', fn: () => snoozeIt(s, { on: 'reply' }) }] : []),
+      ...((s.tasks || []).length ? [{ t: 'Until its monitor ends', sub: s.tasks.map(t => t.what).filter(Boolean)[0] || 'what it watches', fn: () => snoozeIt(s, { on: 'mon' }) }] : []),
+    ].slice(0, 4).map((r, i) => ({ ...r, key: 6 + i }));
+    rows.push(...ev.length ? ev : [{ t: 'Until something happens', sub: 'no PR, turn or monitor to wait on in it', off: true }]);
+    return rows;
+  }
+  /** The snooze menu at a point, or, from a key, by the chat's card — else under the header's ···. */
+  function snoozeMenu(s, x, y, above = false) {
+    if (!s) return;
+    if (asking(s)) return note(cardNodes.get(s.id)?.el || $('#shead'), 'It is asking you — a question wakes a snooze, so answer it first', true);
+    if (x == null) {
+      const c = cardNodes.get(s.id)?.el, r = (c?.isConnected && c.getClientRects().length ? c : $('#moreBtn') || $('#shead')).getBoundingClientRect();
+      x = r.left + 16; y = r.bottom + 4;
+    }
+    ctxShow(snoozeRows(s), x, y, 'snooze', above);
+  }
+  function zzPickOpen(s) {
+    const dlg = $('#zzPick'), at = new Date(Date.now() + 3_600_000), local = d => new Date(d - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+    at.setMinutes(0, 0, 0);
+    $('#zzFor').textContent = s.title; $('#zzErr').textContent = ''; dlg.dataset.id = s.id;
+    $('#zzAt').min = local(new Date()); $('#zzAt').value = local(at);
+    dlg.showModal(); repostPane(); $('#zzAt').focus();
+  }
+  function zzPickGo() {
+    const dlg = $('#zzPick'), s = state.sessions.get(dlg.dataset.id), t = new Date($('#zzAt').value);
+    if (!s) return dlg.close();
+    if (isNaN(t) || t <= Date.now()) { $('#zzErr').textContent = 'A time to come'; return; }
+    dlg.close(); snoozeIt(s, { until: t.toISOString() });
+  }
+  $('#zzGo').onclick = zzPickGo; $('#zzCancel').onclick = () => $('#zzPick').close();
+  $('#zzAt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); zzPickGo(); } });
+  // the keys (2026-11-24, round XXX): ⌥⌘I in or out (A2), ⌥⌘⇧↑↓ a place (R3), ⌥⌘S its snooze (S2), ⌥⌘U focus (F6)
+  const openChat = () => state.sessions.get(state.current) || null;
+  function hotPrio() { const s = openChat(); if (!s) { note($('#shead'), 'No chat open'); return true; } prioPut(s, !inPrio(s), null, cardNodes.get(s.id)?.el || $('#shead')); return true; }
+  function hotPrioMove(d) { const s = openChat(); if (!s) { note($('#shead'), 'No chat open'); return true; } prioMove(s, d, cardNodes.get(s.id)?.el || $('#shead')); return true; }
+  function hotSnooze() { const s = openChat(); if (!s) { note($('#shead'), 'No chat open'); return true; } snoozeMenu(s); return true; }
+  function hotFocus() { if (!prioOn()) { prioOff($('#fBtn')); return true; } setFilter(prioFocus() ? null : 'prio'); return true; }
+  window.peixSnooze = id => { const s = state.sessions.get(id); if (s && !asking(s)) snoozeIt(s, { until: new Date(Date.now() + 3_600_000).toISOString() }); };   // the banner's In an hour (S3)
   function tickDone(id, done, anchor, mark = null, forGood = false) {
     if (done && !tickGate(id, mark || anchor)) return;
     const go = () => {
@@ -8849,7 +9081,7 @@ const toolName = n => {
     drawCards.lane = { g, shut: shut.has(g) };
     renderBoard(); if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true });   // the same node, but a render may draw it anew
   }
-  $('#slist').addEventListener('keydown', e => { const l = e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
+  $('#slist').addEventListener('keydown', e => { const l = !e.target.closest?.('.clr') && e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
   const moreLane = g => { laneMore.add(g); noteMotion(g, 'more'); renderBoard(); };   // a long lane's rest (LANE_CAP)
   $('#slist').addEventListener('keydown', e => { const m = e.target.closest?.('.gsep.more[data-more]'); if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); moreLane(m.dataset.more); } });
   $('#slist').addEventListener('keydown', e => { if (e.target.closest?.('.gsep.others') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showAll(); } });
@@ -8860,10 +9092,11 @@ const toolName = n => {
   }
   for (const box of [$('#stitle'), $('#slist')]) box.addEventListener('mousedown', e => { if (e.target.closest('#stitle button, .gsep.others')) e.preventDefault(); });
   $('#sessions').addEventListener('click', e => {
-    if (e.target.closest('#stitle .sx')) { showAll(); return; }
+    if (e.target.closest('#stitle .sx')) { if (prioFocus()) setFilter(null); else showAll(); return; }   // in focus, every chat again first (2026-11-24)
     if (e.target.closest('#stitle .ask')) { const s = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0]; if (s) openSession(s.id, { locate: true }); return; }
-    if (e.target.closest('#stitle .t')) { pickOpen('project'); return; }
+    if (e.target.closest('#stitle .t')) { if (!prioFocus()) pickOpen('project'); return; }
     if (e.target.closest('#slist > .gsep.others')) { showAll(); return; }
+    if (e.target.closest('#slist > .gsep.lane.prio .clr')) { clearDone(); return; }   // Top priority's ticked chats out (2026-11-24, round XXX's D2)
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
@@ -8881,6 +9114,8 @@ const toolName = n => {
     const ctk = e.target.closest('.ctk');
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
     if (e.target.closest('.chip.cmute')) { e.stopPropagation(); setMuted(card.dataset.id, false); return; }
+    const ax = e.target.closest('.ax'), as = ax && state.sessions.get(card.dataset.id);   // the marks under the pointer (2026-11-24, round XXX's A5, S5)
+    if (ax && as) { e.stopPropagation(); if (ax.classList.contains('pin')) prioPut(as, !inPrio(as), null, card); else if (asleep(as)) snoozeIt(as, { undo: true }, card); else { const r = ax.getBoundingClientRect(); snoozeMenu(as, r.left, r.bottom + 4); } return; }
     const act = e.target.closest('.act');
     if (act) { e.stopPropagation(); if (e.altKey || act.dataset.act === 'del') removeChat(card.dataset.id, card, act); else tickDone(card.dataset.id, act.dataset.act === 'done', card, act); return; }
     const mv = e.altKey && e.target.closest('.prmove');
@@ -9331,6 +9566,9 @@ const toolName = n => {
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       `<button class="hmi${s.muted ? ' on' : ''}" id="muteBtn" aria-pressed="${!!s.muted}" title="No banner, sound or count from this chat, questions too, till you unmute it — its card says so and still shows what it does">${ICON.bellOff}<span>mute notifications</span><span class="k">${s.muted ? 'on' : 'off'}</span></button>`,
+      // Top priority, in or out, and a snooze (2026-11-24, round XXX's A4, S4)
+      prioOn() ? `<button class="hmi${inPrio(s) ? ' on' : ''}" id="prioBtn" aria-pressed="${inPrio(s)}" title="${inPrio(s) ? 'Out of Top priority' : 'Into Top priority, at its end — the section atop the list, in your order'}">${ICON.prio}<span>top priority</span><span class="k">${inPrio(s) ? 'on' : '⌥⌘I'}</span></button>` : '',
+      asking(s) ? '' : `<button class="hmi${asleep(s) ? ' on' : ''}" id="zzBtn" title="${asleep(s) ? esc(`Snoozed ${snoozeSay(s.snooze)} — click to wake it now`) : 'Put it away till a time, or till something happens — it comes back at the top of its lane'}">${ICON.moon}<span>${asleep(s) ? 'wake it now' : 'snooze…'}</span><span class="k">${asleep(s) ? 'snoozed' : '⌥⌘S'}</span></button>`,
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.tick}<span>done for good</span><span class="k"></span></button>` : '',
       s.removed ? `<button class="hmi" id="undelBtn" title="Its card back on the list">${ICON.tick}<span>put it back on the board</span><span class="k"></span></button>`
         : `<button class="hmi" id="delBtn" title="Off the list and every count, whatever it is doing: its claude ends, the transcript stays. ⌥⌘K, typed, finds it">${ICON.forget}<span>delete from the board</span><span class="k">⌥-click ✓</span></button>`,
@@ -9400,6 +9638,8 @@ const toolName = n => {
     const spx = $('#spClose'); if (spx) spx.onclick = spCloseChat;   // Space's ×: the chat closed, Claude left running (2026-11-18)
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#muteBtn').onclick = () => setMuted(s.id, !state.sessions.get(s.id)?.muted);   // a toggle: the menu stays up
+    const pib = $('#prioBtn'); if (pib) pib.onclick = () => { const cur = state.sessions.get(s.id) || s; prioPut(cur, !inPrio(cur), null, $('#shead')); };   // a toggle too
+    const zzb = $('#zzBtn'); if (zzb) zzb.onclick = () => { const cur = state.sessions.get(s.id) || s; menu.close(); if (asleep(cur)) snoozeIt(cur, { undo: true }, $('#shead')); else snoozeMenu(cur); };
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(scopedOn(s) ? ALL : projDir(s.cwd)); };   // a toggle (2026-10-08), a named project's too (2026-11-04)
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
@@ -9547,6 +9787,15 @@ const toolName = n => {
   const unlinkUrl = (s, url) => { const el = document.querySelector(`#shead .mxs[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`); if (el) return unlinkPr(s, el); api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => note($('#shead'), `Could not take it off: ${err.message}`, true)); };
   const moveFocused = s => { const k = tabOf(s); if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0); else note($('#shead'), 'The chat stays in its half — pick a tab to move', true); };
   const clearColor = name => { colorAt = '#shead'; colorWas.set(name, projCfg(name).color ?? null); written.delete(name); previewColor(name, null); setColor(name, null); };
+  /** A card's Top priority rows: in, or out and a place up, down, to the top or the bottom — the way without a drag (WCAG 2.5.7). */
+  function prioRows(s, card) {
+    if (!prioOn()) return [];
+    if (!inPrio(s)) return [{ hr: true }, { t: 'Top priority', sub: 'the section up top, in your order · ⌥⌘I', fn: () => prioPut(s, true, null, card) }];
+    const list = secList(), i = list.indexOf(s), n = list.length;
+    return [{ hr: true }, { t: 'Out of Top priority', n: '⌥⌘I', fn: () => prioPut(s, false, null, card) },
+      { t: 'Move up', n: '⌥⌘⇧↑', off: i <= 0, fn: () => prioMove(s, -1, card) }, { t: 'Move down', n: '⌥⌘⇧↓', off: i < 0 || i >= n - 1, fn: () => prioMove(s, 1, card) },
+      { t: 'To the top', off: i <= 0, fn: () => prioMove(s, -Infinity, card) }, { t: 'To the bottom', off: i < 0 || i >= n - 1, fn: () => prioMove(s, Infinity, card) }];
+  }
   function ctxRows(e) {
     // the status bar: what else it says, ticked, and its settings (2026-10-16 — as the menu bar's and the Dock's are set
     // from a right-click on them)
@@ -9594,6 +9843,9 @@ const toolName = n => {
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
       ...(s.cwd ? [scopedOn(s) ? { t: 'Every project', sub: 'show all · ⌥⌘P ⌥⌘P', fn: () => selectProject(ALL) } : { t: `Only ${s.project}`, sub: 'narrow the list to it', fn: () => selectProject(projDir(s.cwd)) }] : []),
       ...talkRows(s, card),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
+      ...prioRows(s, card),   // Top priority, in or out, and its place (2026-11-24, round XXX's A1, R4)
+      asleep(s) ? { t: 'Wake it now', sub: `snoozed ${snoozeSay(s.snooze)}`, fn: () => snoozeIt(s, { undo: true }, card) }   // …and a snooze (S1)
+        : asking(s) ? { t: 'Snooze…', sub: 'it is asking you — a question wakes a snooze', off: true } : { t: 'Snooze…', sub: 'till a time, or till something happens · ⌥⌘S', fn: () => snoozeMenu(s, ...$('#ctxm')._at) },
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tick(false) }]
         : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tick(true) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tick(true, true) }] : [])] : []),
       { t: 'Delete from the board', sub: `${removeEnds(s) ? `ends ${removeEnds(s)}, asks once more` : 'its claude ends'}; the transcript stays · ⌥-click ✓`, warn: true, fn: () => removeChat(s.id, card) },
@@ -9621,16 +9873,19 @@ const toolName = n => {
   // The menu's rows at a point — or ending at it, `above` (a control at the window's foot) — and from what (`m._from`):
   // a row with `on` is a choice, ticked when on; `mark` and `n` a mark before it and a count after.
   // `sub` a second line — where a PR's branch is, why a row is `off` (disabled) — 2026-10-13
-  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn || r.sub ? ` class="${r.warn ? 'warn' : ''}${r.warn && r.sub ? ' ' : ''}${r.sub ? 'two' : ''}"` : ''}${r.off ? ' disabled' : ''}${'on' in r ? ` role="${r.check ? 'menuitemcheckbox' : 'menuitemradio'}" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${r.sub ? `<span class="ct">${esc(r.t)}</span>` : esc(r.t)}${r.n != null ? `<span class="cn">${esc(String(r.n))}</span>` : ''}${r.sub ? `<span class="csub">${esc(r.sub)}</span>` : ''}</button>`;
+  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn || r.sub ? ` class="${r.warn ? 'warn' : ''}${r.warn && r.sub ? ' ' : ''}${r.sub ? 'two' : ''}"` : ''}${r.off ? ' disabled' : ''}${'on' in r ? ` role="${r.check ? 'menuitemcheckbox' : 'menuitemradio'}" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${r.sub ? `<span class="ct">${r.key ? `<kbd class="ck">${r.key}</kbd>` : ''}${esc(r.t)}</span>` : `${r.key ? `<kbd class="ck">${r.key}</kbd>` : ''}${esc(r.t)}`}${r.n != null ? `<span class="cn">${esc(String(r.n))}</span>` : ''}${r.sub ? `<span class="csub">${esc(r.sub)}</span>` : ''}</button>`;
   function ctxShow(rows, x, y, from, above = false) {
     const m = $('#ctxm'); m.innerHTML = rows.map(ctxRow).join(''); m.classList.toggle('checks', rows.some(r => 'on' in r)); m.classList.toggle('wide', rows.some(r => r.sub));
-    m._rows = rows; m._from = from; if (!m.open) m.show();
+    m._rows = rows; m._from = from; m._at = [x, y, above]; if (!m.open) m.show();
     const w = m.offsetWidth, h = m.offsetHeight;
     m.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`; m.style.top = `${Math.max(8, Math.min(above ? y - h : y, innerHeight - h - 8))}px`;
     (m.querySelector('[aria-checked="true"]') || m.querySelector('button'))?.focus({ preventScroll: true }); repostPane();
   }
   $('#ctxm').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; const r = $('#ctxm')._rows[+b.dataset.i]; $('#ctxm').close(); r?.fn?.(); });
   $('#ctxm').addEventListener('keydown', e => {
+    // a row's digit picks it (2026-11-24, round XXX's S2: the snooze menu's times and things to wait for)
+    const k = /^Digit([1-9])$/.exec(e.code), m = $('#ctxm'), pick = k && !e.metaKey && !e.altKey && !e.ctrlKey ? (m._rows || []).findIndex(r => r.key === +k[1] && !r.off) : -1;
+    if (pick >= 0) { e.preventDefault(); m.close(); m._rows[pick].fn?.(); return; }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return; e.preventDefault();
     const bs = [...$('#ctxm').querySelectorAll('button')], i = bs.indexOf(document.activeElement); bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length]?.focus();
   });
@@ -9640,10 +9895,21 @@ const toolName = n => {
   // face narrowing it too (2026-10-14; the project's alone before, a count the list did not show). A press on the funnel
   // that closed its own menu leaves it closed.
   let fCounts = {};
-  function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); if (prefs.listFilter) showList(true); renderBoard(); $('#slist').scrollTop = 0; }
+  function setFilter(k) {
+    const was = prioFocus(); prefs.listFilter = FILTERS[k] ? k : null;
+    if (prioFocus() && !was) prefs.focusSince = Date.now();   // focus (2026-11-24, round XXX): from when its catch counts
+    savePrefs(); if (prefs.listFilter) showList(true); renderBoard(); $('#slist').scrollTop = 0;
+    if (was && !prioFocus()) focusCatch();
+  }
+  /** Out of focus: what came meanwhile in one line, as fishing's catch (F3) — unless fishing, whose catch will say it. */
+  function focusCatch() {
+    const since = prefs.focusSince; prefs.focusSince = 0; savePrefs();
+    if (!since || fishing.until) return;
+    const line = outLine(since); if (line) laneNews(`<b>While in focus:</b>${line}`);
+  }
   function drawFilter(p, narrow = () => true) {
     const f = listFilter(), b = $('#fBtn'), fl = b.querySelector('.fl');
-    fCounts = Object.fromEntries(Object.entries(FILTERS).map(([k, x]) => [k, p.sessions.filter(s => x.test(s) && narrow(s)).length]));
+    fCounts = Object.fromEntries(filterList().map(([k, x]) => [k, p.sessions.filter(s => x.test(s) && narrow(s)).length]));
     const label = f ? `${f.name} · ${fCounts[prefs.listFilter]}` : '';
     if (fl.textContent !== label) fl.textContent = label;
     b.classList.toggle('on', !!f); b.setAttribute('aria-pressed', String(!!f));
@@ -9653,7 +9919,7 @@ const toolName = n => {
     const m = $('#ctxm'), b = $('#fBtn'); if (m._from === 'filter' && performance.now() - (m._shut || 0) < 400) return;
     const r = b.getBoundingClientRect(), up = r.top > innerHeight / 2;
     ctxShow([{ t: 'Every chat', on: !prefs.listFilter, fn: () => setFilter(null) }, { hr: true },
-      ...Object.entries(FILTERS).map(([k, f]) => ({ t: f.name, tip: `Only the ${f.tip}`, mark: k, n: fCounts[k] || 0, on: prefs.listFilter === k, fn: () => setFilter(prefs.listFilter === k ? null : k) }))],
+      ...filterList().map(([k, f]) => ({ t: f.name, tip: `Only the ${f.tip}`, mark: k, n: fCounts[k] || 0, on: prefs.listFilter === k, fn: () => setFilter(prefs.listFilter === k ? null : k) }))],
       r.left, up ? r.top - 6 : r.bottom + 6, 'filter', up);
   });
   $('#ctxm').addEventListener('close', () => repostPane());   // an arrow: repostPane is a const further down
@@ -10552,6 +10818,7 @@ const toolName = n => {
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
+    priority: () => [...state.priority],   // Top priority's order as this page holds it (2026-11-24)
     details: () => detailsText(),   // About's Copy details (2026-11-04), its text with no clipboard touched
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
     spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length),   // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
@@ -12519,7 +12786,7 @@ const toolName = n => {
   // for shows its answers; with the chat in a drawer here a click on one opens it and types that answer's digit.
   const ov = { sel: 0, list: [], minis: new Map(), timer: 0, raf: 0, downOn: null };
   function ovColumns() {
-    const live = [...state.sessions.values()].filter(s => visible(s) && !s.done).sort(byWord), used = new Set();
+    const live = [...state.sessions.values()].filter(s => visible(s) && !s.done && !asleep(s)).sort(byWord), used = new Set();
     const take = f => live.filter(s => !used.has(s.id) && f(s)).map(s => (used.add(s.id), s));
     return [
       ['ask', 'Asking you', take(s => asking(s))],
@@ -14449,7 +14716,42 @@ const toolName = n => {
   const CD_PX = 6, CD_EDGE = 44, CD_SPEED = 18, CD_SPRING_MS = 600, CD_IN_MS = 170, CD_BACK_MS = 180;
   const CD_CONTROLS = 'button, a, input, .act, .ctk, .tmx, .tprs, .chip.agents, .agr, .prmove, .prpips, .peerin';
   const CD_HINT = 'Drop it on another chat to fold it in · esc puts it back';
-  const cd = { press: null, on: false, from: null, over: null, x: 0, y: 0, ghost: null, was: null, raf: 0, lane: null, springT: 0 };
+  const CD_HINT_PRIO = 'Drop it on another chat to fold it in, or between two in Top priority · esc puts it back';
+  const cd = { press: null, on: false, from: null, over: null, x: 0, y: 0, ghost: null, was: null, raf: 0, lane: null, springT: 0, noFold: null, place: null };
+  // Top priority's places (2026-11-24, round XXX's A3, R1): with the section on, a card held over the section goes between
+  // two of its cards — a card's top or bottom third, a line saying where — or folds into one, its middle third, as it does
+  // anywhere; over the section's head first, over its empty line in. The ghost says which. A chat that cannot be folded
+  // comes up for this alone. `cd.place`: where in the section's cards as shown (`k`, the hand's own left out), or null.
+  function cdPrioAt(el) {
+    if (!prioOn() || !el || (listFilter() && !prioFocus()) || $('#q').value.trim()) return null;
+    const list = $('#slist'), cards = [...list.querySelectorAll(':scope > .card.inprio')].filter(c => c.dataset.id !== cd.from);
+    if (el.closest('#slist > .gsep.lane.prio')) return { k: 0, cards, head: true };
+    if (el.closest('#slist > .gsep.pempty')) return { k: 0, cards, empty: el.closest('.gsep.pempty') };
+    const card = el.closest('#slist > .card.inprio');
+    if (card && card.dataset.id !== cd.from) {
+      const r = card.getBoundingClientRect(), f = (cd.y - r.top) / r.height, i = cards.indexOf(card), other = state.sessions.get(card.dataset.id);
+      const folds = !cd.noFold && !sendWhy(other);
+      if (folds && f > 1 / 3 && f < 2 / 3) return null;   // its middle: Fold into…, as anywhere
+      return { k: f < .5 ? i : i + 1, cards };
+    }
+    if (!cards.length || (el !== list && !el.closest('#slist > .card.cdfrom, #slist > .leaving'))) return null;
+    const top = cards[0].getBoundingClientRect().top, bottom = cards.at(-1).getBoundingClientRect().bottom;
+    if (cd.y < top - 6 || cd.y > bottom + 6) return null;
+    return { k: cards.filter(c => { const r = c.getBoundingClientRect(); return r.top + r.height / 2 < cd.y; }).length, cards };
+  }
+  /** The line between the two cards a place falls between — or the empty line lit — and the ghost's words. */
+  function cdPrioShow(pl) {
+    let gap = $('#cdgap'); document.querySelector('#slist > .gsep.pempty.cdin')?.classList.remove('cdin');
+    if (!pl || pl.empty) { gap?.remove(); if (pl?.empty) pl.empty.classList.add('cdin'); return; }
+    if (!gap) { gap = document.createElement('div'); gap.id = 'cdgap'; gap.setAttribute('aria-hidden', 'true'); document.body.append(gap); }
+    const lr = $('#slist').getBoundingClientRect(), a = pl.cards[pl.k - 1]?.getBoundingClientRect(), b = pl.cards[pl.k]?.getBoundingClientRect();
+    const y = a && b ? (a.bottom + b.top) / 2 : a ? a.bottom + 3 : b ? b.top - 3 : lr.top + 4;
+    gap.style.translate = `${Math.round(lr.left + 10)}px ${Math.round(y - 1)}px`; gap.style.width = `${Math.round(lr.width - 20)}px`;
+  }
+  function cdPrioSay(pl) {
+    const ids = pl.cards.map(c => c.dataset.id), was = secList().map(s => s.id).indexOf(cd.from);
+    return was < 0 ? `Into Top priority, ${ordinal(pl.k + 1)}` : was === pl.k ? 'Stays where it is in Top priority' : `To ${ordinal(pl.k + 1)} of ${ids.length + 1} in Top priority`;
+  }
   function cdPlace(measure) {
     const g = cd.ghost; if (measure) { g._w = g.offsetWidth; g._h = g.offsetHeight; }
     const x = Math.max(8, Math.min(innerWidth - g._w - 8, cd.x + 14)), y = cd.y + 16 + g._h > innerHeight - 8 ? cd.y - g._h - 10 : cd.y + 16;
@@ -14457,21 +14759,23 @@ const toolName = n => {
   }
   /** What is under the pointer, as the list stands: the card lit, the ghost's words. */
   function cdHit() {
-    const el = document.elementFromPoint(cd.x, cd.y), id = el?.closest('#slist > .card')?.dataset.id, head = el?.closest('#slist > .gsep.lane.shut:not(.still)');
+    const el = document.elementFromPoint(cd.x, cd.y), pl = cd.place = cdPrioAt(el);
+    cdPrioShow(pl);
+    const id = pl ? null : el?.closest('#slist > .card')?.dataset.id, head = pl ? null : el?.closest('#slist > .gsep.lane.shut:not(.still)');
     cdSpring(head);
-    const other = id && id !== cd.from ? state.sessions.get(id) : null, why = other ? sendWhy(other) : null, over = other && !why ? id : null;
+    const other = id && id !== cd.from ? state.sessions.get(id) : null, why = other ? cd.noFold || sendWhy(other) : null, over = other && !why ? id : null;
     if (over !== cd.over) {
       cardNodes.get(cd.over)?.el.classList.remove('cdover'); cardNodes.get(over)?.el.classList.add('cdover');
       cd.over = over; if (over) haptic();
     }
-    const say = over ? `Fold into “${other.title}”` : why ? `Not here — ${why}` : head ? `Hold to open ${LANES[head.dataset.lane][0]}` : CD_HINT, g = cd.ghost;
+    const say = pl ? cdPrioSay(pl) : over ? `Fold into “${other.title}”` : why ? `Not here — ${why}` : head ? `Hold to open ${LANES[head.dataset.lane][0]}` : prioOn() ? CD_HINT_PRIO : CD_HINT, g = cd.ghost;
     if (g._say === say) return;
-    g._say = say; g.classList.toggle('go', !!over); document.body.classList.toggle('cdno', !!why);
+    g._say = say; g.classList.toggle('go', !!over || !!pl); document.body.classList.toggle('cdno', !!why && !pl);
     g.querySelector('.cdsay').textContent = say; cdPlace(true);
   }
   /** The marks on the cards — from renderBoard too while it holds: a chat may have come to take it, or stopped. */
   function cdMark() {
-    for (const [id, c] of cardNodes) { const cl = c.el.classList; cl.toggle('cdfrom', id === cd.from); cl.toggle('cdoff', id !== cd.from && !!sendWhy(state.sessions.get(id))); cl.toggle('cdover', id === cd.over); }
+    for (const [id, c] of cardNodes) { const cl = c.el.classList; cl.toggle('cdfrom', id === cd.from); cl.toggle('cdoff', id !== cd.from && !cl.contains('inprio') && (!!cd.noFold || !!sendWhy(state.sessions.get(id)))); cl.toggle('cdover', id === cd.over); }
     cdHit();
   }
   /** A shut lane's head held on opens — its chats are chats to drop on. */
@@ -14498,8 +14802,8 @@ const toolName = n => {
   }
   function cdLift(p, e) {
     const a = state.sessions.get(p.id), no = foldFromWhy(a);
-    if (no) return note(p.card, `Not folded: ${no}`);
-    Object.assign(cd, { on: true, from: p.id, over: null, x: e.clientX, y: e.clientY, lane: null });
+    if (no && !prioOn()) return note(p.card, `Not folded: ${no}`);   // with Top priority on, it comes up to be placed (2026-11-24)
+    Object.assign(cd, { on: true, from: p.id, over: null, x: e.clientX, y: e.clientY, lane: null, noFold: no, place: null });
     renderBoard.held = true; renderBoard.owed = false;
     getSelection()?.removeAllRanges();
     try { $('#slist').setPointerCapture(p.pid); } catch {}   // its release is heard off the window too, and no card under it lights or fans
@@ -14511,6 +14815,8 @@ const toolName = n => {
   /** Let go: `drop` on what is under the pointer — the box, if that can take it — else back where it came from. */
   function cdEnd(drop) {
     if (!cd.on) return;
+    const pl = drop ? cd.place : null; cdPrioShow(null); cd.place = null;
+    if (pl) return cdPlaceEnd(pl);
     const { from, over, ghost: g, was } = cd, a = state.sessions.get(from), b = drop && over ? state.sessions.get(over) : null;
     const no = b ? foldFromWhy(a) || sendWhy(b) : null, into = b && !no;   // it may have changed while the list stood still
     const el = cardNodes.get(into ? over : from)?.el, r = el?.getBoundingClientRect(), lr = $('#slist').getBoundingClientRect(), gr = g.getBoundingClientRect();
@@ -14526,6 +14832,23 @@ const toolName = n => {
     const seen = r && r.bottom > lr.top && r.top < lr.bottom, to = !seen ? g.style.translate : into ? `${r.left + r.width / 2 - gr.width * .15}px ${r.top + r.height / 2 - gr.height * .15}px` : `${r.left}px ${r.top}px`;
     const ms = into ? CD_IN_MS : CD_BACK_MS, fly = g.animate([{ translate: g.style.translate, scale: 1, opacity: 1 }, { translate: to, scale: into ? .3 : .96, opacity: 0 }], { duration: ms, easing: into ? 'ease-in' : EASE_OUT, fill: 'forwards', id: into ? 'cardfold' : 'cardback' });
     fly.onfinish = fly.oncancel = then; setTimeout(then, ms + 150);   // a window out of sight may never finish it
+  }
+  /** Let go on a place in Top priority: the chat goes there, between the two cards the line was between. */
+  function cdPlaceEnd(pl) {
+    const { from, ghost: g, was } = cd, s = state.sessions.get(from), vis = pl.cards.map(c => c.dataset.id);
+    cd.on = false; cancelAnimationFrame(cd.raf); cd.raf = 0; cdSpring(null);
+    for (const c of cardNodes.values()) c.el.classList.remove('cdfrom', 'cdoff', 'cdover');
+    document.body.classList.remove('carddrag', 'cdno');
+    renderBoard.held = false; renderBoard.owed = false;
+    noteMotion(from, 'cardplace'); haptic('levelChange');
+    if (was?.isConnected) was.focus({ preventScroll: true });
+    const ids = state.priority.filter(id => id !== from), at = vis[pl.k] ? ids.indexOf(vis[pl.k]) : vis.length ? ids.indexOf(vis.at(-1)) + 1 : ids.length;
+    ids.splice(at < 0 ? ids.length : at, 0, from);
+    const shown = [...vis]; shown.splice(pl.k, 0, from);
+    if (s) setPriority(ids, `${s.title}, ${pl.k + 1} of ${shown.length} in Top priority`); else renderBoard();
+    if (REDUCED.matches) return g.remove();
+    const fade = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CD_BACK_MS, easing: EASE_OUT, fill: 'forwards', id: 'cardplace' });
+    fade.onfinish = fade.oncancel = () => g.remove(); setTimeout(() => g.remove(), CD_BACK_MS + 150);
   }
   $('#slist').addEventListener('pointerdown', e => {
     if (e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.pointerType === 'touch') return;
@@ -15420,9 +15743,11 @@ const toolName = n => {
     if (a.kind === 'chat') return chatAlert(a);   // the chat's (2026-10-17): its own rules
     if (a.kind === 'lunch') return lunchAlert(a);   // lunch's (2026-10-18)
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
-    if (fishing.until && (a.kind === 'reply' || a.kind === 'pr')) a = { ...a, quiet: true, held: true };   // gone fishing (M4): it counts, and says nothing yet
-    if (!viewing && !a.held && !a.muted && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
-    if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
+    const as = a.sessionId ? state.sessions.get(a.sessionId) : null;
+    if (fishing.until && (a.kind === 'reply' || a.kind === 'pr' || a.kind === 'back')) a = { ...a, quiet: true, held: true };   // gone fishing (M4): it counts, and says nothing yet
+    else if (prioFocus() && as && !inPrio(as) && a.kind !== 'needs-input') a = { ...a, quiet: true, held: true };   // in focus, the rest says nothing yet but its questions (2026-11-24, round XXX's F3)
+    if (!viewing && !a.held && !a.muted && !a.snoozed && !(as && asleep(as)) && document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
+    if (a.sessionId && !viewing && !(as && asleep(as))) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);   // a snoozed chat counted nowhere (W4)
     if (viewing && a.kind === 'reply') markSeen(a.sessionId);
     renderBoard();
     // the badge that just came, or grew, pops in — a one-shot on the node the render made
@@ -18212,7 +18537,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++; if (state.snapshots === 1) setTimeout(cueWave, 600);   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
-      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
+      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.priority = d.priority || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
       for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats, reviews, agentTabs]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);
       for (const id of Object.keys(prefs.agentCards)) if (!state.sessions.has(id)) delete prefs.agentCards[id];   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
@@ -18241,13 +18566,15 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
       const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s); sessionSeen.set(s.id, (sessionSeen.get(s.id) || 0) + 1);
       const landed = was?.status === 'working' && s.status === 'idle' && !s.done;
       if (landed) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
+      const woke = !!was && !!s.wokeAt && s.wokeAt !== was.wokeAt;   // back from a snooze: its card flares once as it arrives (2026-11-24, round XXX's H4)
+      if (woke) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'woke'); }
       const heard = was && asking(was) && !asking(s) && s.alive && !s.done;
       if (heard) { heardAt.set(s.id, performance.now()); noteMotion(s.id, 'heard'); }   // the question answered: its card hears it (flareLanded)
       if (s.id === state.current && s.removed) { if (!was?.removed) { moveOn(s.id); if (state.current === s.id) leaveChat(); } }   // deleted from another page; found by ⌥⌘K, it stays open
       else if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
       else if (s.id === state.current && noneLeft(s)) leaveEmpty(s);
       if (s.id === state.current && String(s.lastUserAt || '') > String(was?.lastUserAt || '')) followCard.id = s.id;   // your word: the next draw takes the list to its card
-      if (landed || heard) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
+      if (landed || heard || woke) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
       zeHeard(s, was, landed);   // Zé's game, if it is up: a question pauses it
       ovSoon();   // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up
       homeSoon(landed);   // …and the home its facts, the day again when a turn lands
@@ -18260,6 +18587,7 @@ precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoardSoon(); });
     es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
+    es.addEventListener('priority', e => { state.priority = JSON.parse(e.data).priority || []; renderBoardSoon(); });   // Top priority's order (2026-11-24), another page's or a /clear's
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
     es.addEventListener('update', e => takeUpdate(JSON.parse(e.data)));

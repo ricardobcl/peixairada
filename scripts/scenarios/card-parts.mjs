@@ -36,18 +36,19 @@ export default async function (ctx) {
   const flip = async k => { await ctx.evaluate(`document.querySelector('#cardLab [data-part="${k}"]').click()`); await ctx.settle(); };
   await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
 
-  // by default all but the age and the ✓ at rest; the card in the pane has every part, and its rules are a copy that goes with the pane
+  // by default all but the age and the ✓ at rest, and Top priority's and the snooze's marks under the pointer (2026-11-24);
+  // the card in the pane has every part, and its rules are a copy that goes with the pane
   out.on = await look();
-  a.deepEqual(out.on, { hide: 'age tick', prs: true, node: true }, 'everything shown by default');
+  a.deepEqual(out.on, { hide: 'age tick pin nap', prs: true, node: true }, 'everything shown by default');
   const parts = await ctx.evaluate(`[...new Set([...document.querySelectorAll('#cardLab [data-part]')].map(e => e.dataset.part))].sort().join(' ')`);
-  a.equal(parts, 'age agents branch fable live move prs rounds tab tick tickets unread watch where', 'every part on it');
+  a.equal(parts, 'age agents branch fable live move nap prs rounds tab tick tickets unread watch where', 'every part on it (Top priority\'s mark too, with the section on)');
   a.deepEqual(await ctx.evaluate(`JSON.stringify((c => [getComputedStyle(c.querySelector('.top .repo')).fontWeight, c.querySelector('[data-part="age"]').classList.contains('cpoff'), c.querySelector('[data-part="age"]').getAttribute('aria-checked'), document.querySelectorAll('#slist > .card[data-id="cardlab"]').length])(document.querySelector('#cardLab .card')))`).then(JSON.parse), ['700', true, 'false', 0], 'the board\'s rules reach it; the age faint; nothing of it in the list');
   await ctx.shot('1-pane', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
 
   // each click hides its part, the card's node kept
   await flip('prs');
   out.bare = await look();
-  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.node], ['prs age tick', false, true], 'the PRs gone, no card redrawn');
+  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.node], ['prs age tick pin nap', false, true], 'the PRs gone, no card redrawn');
   a.deepEqual(await ctx.evaluate(`JSON.stringify((e => [e.classList.contains('cpoff'), e.getAttribute('aria-checked'), +getComputedStyle(e).opacity < .5])(document.querySelector('#cardLab [data-part="prs"]')))`).then(JSON.parse), [true, 'false', true], 'faint on the card in the pane, to be clicked back');
   a.match(await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`), /Hidden: PRs\./, 'and named under it');
 
@@ -98,7 +99,7 @@ export default async function (ctx) {
 
   // a pref: the same after a reload
   const hidden = await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
-  a.equal(hidden, 'prs', 'the age and the ✓ kept, the PRs left out');
+  a.equal(hidden, 'prs pin nap', 'the age and the ✓ kept, the PRs left out (the two extras off, as they start)');
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
   a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), hidden, 'kept across a reload');
@@ -107,6 +108,6 @@ export default async function (ctx) {
   await ctx.evaluate(`(p => { p.cardParts = ['prs', 'agents']; p.cardPartsSeen = 1; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`);
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
-  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets age tick', 'older prefs: their choice, the rest of the parts shown');
+  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets age tick pin nap', 'older prefs: their choice, the rest of the parts shown');
   return out;
 }

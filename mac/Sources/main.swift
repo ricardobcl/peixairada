@@ -1029,13 +1029,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to hide the chat
   // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes, A the overview and 0 the home (2026-10-10), R the
   // board reloaded (2026-10-13 — VS Code Web's ⌥⌘R, reveal in Finder, has no Finder to reveal in), V the folder in VS Code's
-  // own window (2026-10-14), J the chat's timeline (2026-10-17), M lunch's menus (2026-10-18), Z Zé's game (2026-10-30), X Space (2026-11-18; ⌥⌘S until 2026-11-24);
+  // own window (2026-10-14), J the chat's timeline (2026-10-17), M lunch's menus (2026-10-18), Z Zé's game (2026-10-30), X Space (2026-11-18; ⌥⌘S until 2026-11-24),
+  // I a chat into Top priority or out, S its snooze, U the section alone (2026-11-24, round XXX — VS Code Web's ⌥⌘S, Save
+  // All, is given up for it; its ⌘S saves) and ⌥⌘⇧↑↓ a card's place in it;
   // and ⌘ + one of the
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column, and T a new tab (2026-10-13 — VS Code Web's
   // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog, or a page's address is edited (2026-10-27).
-  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x"]
+  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x", "i", "s", "u"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -1050,6 +1052,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       if e.keyCode == 19 { return ("Digit2", "altcmd") }
       if e.keyCode == 29 { return ("Digit0", "altcmd") }   // ⌥⌘0, the home (2026-10-10)
       if let ch = ch, boardKeys.contains(ch) { return ("Key" + ch.uppercased(), "altcmd") }
+    }
+    if held == [.command, .option, .shift] {   // Top priority's place (2026-11-24): the page's SHIFTKEYS
+      if e.keyCode == 126 { return ("ArrowUp", "shift") }
+      if e.keyCode == 125 { return ("ArrowDown", "shift") }
     }
     if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
     return nil
@@ -1985,16 +1991,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     // drawer runs here —, done (the card's ✓), or later (the same alert again in 15 minutes). A question is opened, or
     // put off; a ✓ is not offered on it, since a tick ends the chat's processes and a question is Claude waiting. Any of
     // them can mute the chat that sent it (2026-11-02).
+    // Later on a reply, a PR's turn or a chat back is the chat snoozed for an hour (2026-11-24, round XXX's S3, `peixSnooze`):
+    // its card leaves the list and comes back with a banner of its own. A question's stays the banner again in 15 minutes:
+    // a question wakes a snooze.
     let later = UNNotificationAction(identifier: "snooze", title: "In 15 minutes", options: [])
+    let hour = UNNotificationAction(identifier: "snooze-hour", title: "In an hour", options: [])
     // What acts on a chat asks for the Mac unlocked first (2026-11-06): Reply… types into its claude and presses ⏎, Done
     // ends its processes, Mute quiets it — none of them anybody's at a locked screen. The snooze changes nothing.
     let done = UNNotificationAction(identifier: "done", title: "Done", options: [.authenticationRequired])
     let mute = UNNotificationAction(identifier: "mute", title: "Mute this chat", options: [.authenticationRequired])
     let reply = UNTextInputNotificationAction(identifier: "reply", title: "Reply…", options: [.authenticationRequired], textInputButtonTitle: "Send", textInputPlaceholder: "to Claude, in its drawer")
     center.setNotificationCategories([
-      UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, later, mute], intentIdentifiers: [], options: []),
-      UNNotificationCategory(identifier: "reply", actions: [done, later, mute], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, hour, mute], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "reply", actions: [done, hour, mute], intentIdentifiers: [], options: []),
       UNNotificationCategory(identifier: "later", actions: [later, mute], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "hour", actions: [hour, mute], intentIdentifiers: [], options: []),
       // lunch time (2026-10-18): the menus (the board in front, ⌥⌘M's chalkboard), Going, or the reminder again in 15
       // minutes — the server's In 15 min, so every page's sign agrees, and its alert comes back by itself
       UNNotificationCategory(identifier: "lunch", actions: [
@@ -2028,7 +2039,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     content.body = body
     content.sound = .default
     content.userInfo = ["sessionId": sessionId, "hash": hash, "kind": kind]
-    content.categoryIdentifier = kind == "lunch" ? "lunch" : sessionId.isEmpty ? "" : kind == "reply" ? (drawer ? "reply-drawer" : "reply") : "later"
+    content.categoryIdentifier = kind == "lunch" ? "lunch" : sessionId.isEmpty ? "" : kind == "reply" || kind == "back" ? (drawer ? "reply-drawer" : "reply") : kind == "needs-input" ? "later" : "hour"
     let req = UNNotificationRequest(identifier: kind == "lunch" ? "lunch" : sessionId.isEmpty ? UUID().uuidString : sessionId,
                                     content: content, trigger: nil)
     UNUserNotificationCenter.current().add(req) { [weak self] err in
@@ -2071,6 +2082,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     case "mute" where !id.isEmpty:
       logLine("notify: mute \(id.prefix(8))")
       toBoard("window.peixMute?.(\(jsLit(id)))", completionHandler: nil)
+    case "snooze-hour" where !id.isEmpty:   // the chat snoozed an hour, by the page (2026-11-24): the server wakes it, with its own banner
+      logLine("notify: snooze \(id.prefix(8)) an hour")
+      toBoard("window.peixSnooze?.(\(jsLit(id)))", completionHandler: nil)
     case "snooze":
       let again = UNNotificationRequest(identifier: (id.isEmpty ? UUID().uuidString : id) + "-later", content: response.notification.request.content,
                                         trigger: UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false))

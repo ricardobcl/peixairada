@@ -39,14 +39,15 @@ if (unlowered.length) { console.error(`${file}: a showModal() with no repostPane
 }
 if (file.endsWith('public/index.html')) {
   const keysOf = name => { const m = html.match(new RegExp(`const ${name} = \\{(.*?)\\};`)); return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null; };
-  const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), table = html.match(/const KEYS = \[([\s\S]*?)\n  \];/);
+  const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), shift = keysOf('SHIFTKEYS') || [], table = html.match(/const KEYS = \[([\s\S]*?)\n  \];/);
   const fail = msg => { console.error(`${file}: ${msg}`); process.exitCode = 1; };
   if (!hot || !cmd || !table) fail('HOTKEYS, CMDKEYS or KEYS not found');
   else {
-    const rows = [...table[1].matchAll(/'((?:alt|cmd):\w+)'/g)].map(x => x[1]);
+    const rows = [...table[1].matchAll(/'((?:alt|cmd|shift):\w+)'/g)].map(x => x[1]);
     for (const c of hot) if (!rows.includes('alt:' + c)) fail(`⌥⌘ ${c} is in HOTKEYS but has no row in KEYS`);
     for (const c of cmd) if (!rows.includes('cmd:' + c)) fail(`⌘ ${c} is in CMDKEYS but has no row in KEYS`);
-    for (const r of rows) { const [m, c] = r.split(':'); if (!(m === 'alt' ? hot : cmd).includes(c)) fail(`KEYS names ${r}, which no map answers`); }
+    for (const c of shift) if (!rows.includes('shift:' + c)) fail(`⌥⌘⇧ ${c} is in SHIFTKEYS but has no row in KEYS`);   // (2026-11-24) Top priority's ⌥⌘⇧↑↓
+    for (const r of rows) { const [m, c] = r.split(':'); if (!(m === 'alt' ? hot : m === 'shift' ? shift : cmd).includes(c)) fail(`KEYS names ${r}, which no map answers`); }
     // (2026-10-14) A row that promises the key "again from" its tab fills the column is answered by a hot…Key handler
     // (zoomAgain before the plain one), and every hot…Key the page defines is in HOTKEYS — ⌥⌘D's sat unbound, its
     // plain hotDiff in the map, and the promise was the row's alone.
@@ -79,7 +80,11 @@ if (file.endsWith('public/index.html')) {
         if (!hot.includes(c)) fail(`main.swift forwards ⌥⌘ ${c} (key code ${n}), which HOTKEYS does not answer`);
       }
       for (const c of hot.filter(c => /^(Digit\d|Arrow\w+|Enter)$/.test(c))) if (!byCode.some(([, x]) => x === c)) fail(`⌥⌘ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
+      // …and ⌥⌘⇧ (2026-11-24): each forwarded by its key code as "shift", each answered by SHIFTKEYS
+      const byShift = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "shift"\) \}/g)].map(([, n, c]) => [+n, c]);
+      for (const [n, c] of byShift) { if (KVK[n] !== c) fail(`main.swift's hotkeyCode sends ⌥⌘⇧ key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit, an arrow nor Return'}`); if (!shift.includes(c)) fail(`main.swift forwards ⌥⌘⇧ ${c} (key code ${n}), which SHIFTKEYS does not answer`); }
+      for (const c of shift) if (!byShift.some(([, x]) => x === c)) fail(`⌥⌘⇧ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
     }
-    if (!process.exitCode) console.log(`${file}: ${hot.length} ⌥⌘ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`);
+    if (!process.exitCode) console.log(`${file}: ${hot.length} ⌥⌘, ${shift.length} ⌥⌘⇧ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`);
   }
 }
