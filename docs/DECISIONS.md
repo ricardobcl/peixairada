@@ -5,6 +5,12 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-24. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-24 — a theme's drawer selection
+
+* **Every theme's `--term-sel` is an `rgba()` with commas** (`skinCss`, the accent's `rgbOf` at .3), as Flashbang's review
+  found: xterm parses a hex or that and nothing else, so `color-mix(…)` drew no selection in a drawer under any theme but
+  the board's own and Flashbang's. Read back from xterm in Chrome: Tokyo Night's `#7aa2f7` at `4d`. → `themes.mjs`.
+
 ## Decisions of 2026-11-24 — Space's review
 
 Ricardo's review of Space (eight bugs, seven nits), then *"do all the changes, clean the commits, approve and merge"*.

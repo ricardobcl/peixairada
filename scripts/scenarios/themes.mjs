@@ -59,6 +59,7 @@ export default async function (ctx) {
   await keyIn('ArrowRight');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'tokyo-night'`, { what: 'the preview' });
   ctx.assert.equal(await root('--bg'), '#1a1b26', "Tokyo Night's ground");
+  ctx.assert.equal(await root('--term-sel'), 'rgba(122, 162, 247, .3)', 'the drawer’s selection the accent at 30 %, written as xterm reads one: it parses no color-mix(), and drew none');
   ctx.assert.equal(await repo(), '#7aa2f7', 'the blue project in the theme’s blue');
   ctx.assert.deepEqual(await grounds(), ['rgb(22, 22, 30)', 'rgb(22, 22, 30)', 'rgb(22, 22, 30)', 'rgb(26, 27, 38)', '8px'], 'the frame its crust — the window, the list, the status bar —, the chat a sheet in it');
   await ctx.settle(); await ctx.shot('preview');

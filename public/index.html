@@ -4549,7 +4549,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const f = themeInks(t);
     return `--bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${f.muted}; --line: ${t.line}; --accent: ${f.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
     --user-bg: ${t.raise}; --tool-bg: color-mix(in srgb, ${t.raise} 60%, ${t.panel}); --code-bg: ${t.code}; --code-line: ${t.line}; --inline-bg: color-mix(in srgb, ${t.ink} 8%, transparent);
-    --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: color-mix(in srgb, ${t.accent} 30%, transparent);
+    --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: rgba(${rgbOf(t.accent).join(', ')}, .3);   /* as xterm reads a colour: it parses no color-mix(), and drew no selection (2026-11-24) */
     --crust: ${t.crust}; --bar: ${t.crust}; --frame: ${t.crust}; --hd-ink: ${t.ink}; --hd-muted: ${f.muted}; --hd-line: ${t.line}; --hd-panel: ${t.panel}; --hd-inline: color-mix(in srgb, ${t.ink} 8%, transparent);
     --working: ${t.working}; --idle: ${f.idle}; --spend: ${t.spend}; ${Object.entries(f).filter(([n]) => !['muted', 'accent', 'idle'].includes(n)).map(([n, v]) => `--${n}: ${v};`).join(' ')}
     ${Object.entries(t.tok || {}).map(([n, v]) => `${n}: ${v};`).join(' ')}`;   // a theme's own where the rule above would guess (Softened's)
