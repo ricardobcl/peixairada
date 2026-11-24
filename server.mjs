@@ -167,6 +167,19 @@ let driftAcks = {};
 // the chat's id, so a /clear or a branch starts loud: that is another chat.
 let mutedChats = {};
 let favChats = {};   // starred in Space, first in its grid (2026-11-18, v11): id → when starred
+// Top priority (2026-11-24, round XXX): the chats lifted to the head of the list, in the order you put them — one order
+// for the whole board, kept as the project pins are. By the chat's id: a /clear or /resume in the same claude carries the
+// slot to the chat it went on in (carryPriority), a chat deleted from the board leaves it.
+let priority = [];
+// Snoozed chats (2026-11-24, round XXX): sessionId -> { at, until?, on?, pr? } — put away until a time, or an event of its
+// own (`on`: `pr` that PR come round to you, `ci` its checks done, `reply` Claude's reply, `mon` its monitors ended),
+// whichever comes first. A snoozed chat calls you on nothing (hushOf); your word, a tick, a question or its deletion ends
+// it with no mark (wakeWhy).
+let snoozed = {};
+// Snoozes that ended by themselves (2026-11-24, round XXX): sessionId -> { at, why }. The chat comes back marked, its
+// `at` a word for the list's order (wordAt), with one alert (`back`) — the reply's own when it was Claude's reply.
+let woke = {};
+const PRIORITY_MAX = 200, SNOOZE_MAX_MS = 366 * 86_400_000, SNOOZE_ON = new Set(['pr', 'ci', 'reply', 'mon']);
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
@@ -258,6 +271,9 @@ function loadState() {
     driftAcks = st.driftAcks && typeof st.driftAcks === 'object' ? st.driftAcks : {};
     mutedChats = st.mutedChats && typeof st.mutedChats === 'object' ? st.mutedChats : {};
     favChats = st.favChats && typeof st.favChats === 'object' ? st.favChats : {};
+    priority = Array.isArray(st.priority) ? [...new Set(st.priority.filter(k => typeof k === 'string' && /^[\w-]+$/.test(k)))].slice(0, PRIORITY_MAX) : [];
+    snoozed = Object.fromEntries(Object.entries(st.snoozed && typeof st.snoozed === 'object' ? st.snoozed : {}).filter(([, z]) => typeof z?.at === 'string'));
+    woke = Object.fromEntries(Object.entries(st.woke && typeof st.woke === 'object' ? st.woke : {}).filter(([, w]) => typeof w?.at === 'string'));
     projects = st.projects || {};
     titles = st.titles || {};
     pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
@@ -297,7 +313,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, removed: removedMarks, unlinked, seen, seenSince, driftAcks, mutedChats, favChats, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, jiraTokenSite, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
+    const body = JSON.stringify({ done: doneMarks, forGood: forGoodMarks, removed: removedMarks, unlinked, seen, seenSince, driftAcks, mutedChats, favChats, priority, snoozed, woke, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs: {}, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced, jiraTokenSite, chatSeen, chatQuiet, links: chatLinks, lunch: lunchDay }, null, 1);
     // a PR's ledger on one line (2026-10-17): up to LOG_EV_MAX events each, a quarter fewer bytes than laid out
     const logs = Object.entries(prLogs).map(([url, log]) => `  ${JSON.stringify(url)}: ${JSON.stringify(log)}`);
     writeFileSync(tmp, logs.length ? body.replace('\n "prLogs": {},', () => `\n "prLogs": {\n${logs.join(',\n')}\n },`) : body, { mode: 0o600 });
@@ -749,7 +765,8 @@ function newSession(id, file) {
     opening: new Map(),   // its Bash calls with a `gh pr create` in them, waiting on their result (noteOpening)
     headNow: null, diskDrift: null, diskSeen: null, headOk: null, peers: [],      // its checkout's HEAD as read on the poll, and what that says (noteHead)
     linesIn: 0,   // its own lines come in since the read (noteBranch): a disk move under a chat at work waits for one (noteHead)
-    pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []   // the kinds of alert owed (queueNotify), a Set
+    pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],   // the kinds of alert owed (queueNotify), a Set
+    backOwed: null   // a snooze's end, its `back` alert owed to the next push (wakeCheck, 2026-11-24)
   };
 }
 
@@ -850,6 +867,8 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s), removed: isRemoved(s),
     muted: !!mutedChats[s.id],   // no banner, sound or count from it, till you unmute it (2026-11-02)
     fav: !!favChats[s.id],   // starred in Space (2026-11-18, v11)
+    // put away till a time or an event (2026-11-24, round XXX), and the last time a snooze ended by itself, and why
+    snooze: snoozed[s.id] || null, wokeAt: woke[s.id]?.at || null, wokeWhy: woke[s.id]?.why || null,
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
     ...linksShown(s.id) && { links: linksShown(s.id) },   // merged, folded, branched — by your hand (2026-10-31)
     // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
@@ -1839,9 +1858,10 @@ function pushRounds(url) {
   for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr && (pr.logged !== logged || JSON.stringify(pr.rounds ?? null) !== rs)) { pr.rounds = rounds; pr.logged = logged; schedulePush(s); } }
 }
 
-/** Who says a PR's alert: the chat touched last of those that mention it, a muted one only when all are (2026-11-02). */
+/** Who says a PR's alert: the chat touched last of those that mention it, a muted one only when all are (2026-11-02) —
+ *  nor a snoozed one (2026-11-24, round XXX): it calls you on nothing. */
 function prAlertChat(chats) {
-  const loud = chats.filter(s => !mutedChats[s.id]);
+  const loud = chats.filter(s => !mutedChats[s.id] && !snoozed[s.id]);
   return (loud.length ? loud : chats).reduce((a, b) => (!a || touchedAt(b) > touchedAt(a) ? b : a), null);
 }
 /** A PR come round to you: one alert, on the chat `prAlertChat` picks. */
@@ -2528,7 +2548,7 @@ function indexFile(file, { full = false } = {}) {
   const s = newSession(id, file);
   s.bornAt = st.birthtimeMs;
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'agentRows', 'agentAll', 'agentSig', 'agentSaid', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'agentRows', 'agentAll', 'agentSig', 'agentSaid', 'headNow', 'headOk', 'peers', 'tasksGone', 'forkAt', 'backOwed']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
@@ -3340,7 +3360,7 @@ function loadRegistry() {
       if (pstr(l.name) && procAlive(l)) peerNames.set(l.name, id);   // the name another chat's SendMessage reaches it by (2026-10-31)
       linkTermToRegistry(l.pid, s, ppids, regPids);   // a new chat's terminal learns its session id here
       const was = held.get(`${l.pid}:${l.procStart}`);
-      if (was && was !== s && procAlive(l)) { clearedFrom.set(s.id, was.id); tickCleared(s); }
+      if (was && was !== s && procAlive(l)) { clearedFrom.set(s.id, was.id); tickCleared(s); carryPriority(was, s); }
     }
     // Several processes can hold one chat: VS Code mounts a chat twice on its own, or reopens one that was
     // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
@@ -3387,8 +3407,9 @@ function nativeNotify(title, subtitle, body) {
   ], () => {});
 }
 
-/** What an alert of this chat says of itself (2026-11-02): off for every chat (the cog), or this chat muted. */
-const hushOf = s => ({ quiet: !notificationsOn || !!mutedChats[s.id], muted: !!mutedChats[s.id] });
+/** What an alert of this chat says of itself (2026-11-02): off for every chat (the cog), or this chat muted — or snoozed
+ *  (2026-11-24, round XXX): what does not wake it calls you on nothing. */
+const hushOf = s => ({ quiet: !notificationsOn || !!mutedChats[s.id] || !!snoozed[s.id], muted: !!mutedChats[s.id], ...snoozed[s.id] && { snoozed: true } });
 
 function queueNotify(s, kind) {
   if (indexing || s.silent || isRemoved(s)) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news; one deleted from the board calls nobody
@@ -3433,12 +3454,117 @@ function agentFailNotify(s) {
   if (!evt.quiet) nativeNotify(heading, sum.title, text);
 }
 
+// ---- a snooze's end (2026-11-24, round XXX) ----------------------------------------------------------------------------
+// A snoozed chat wakes by itself at its time, or on the event it waits for — said once, by a `back` alert (the reply's own
+// when that was it) — and ends with no mark when something of yours or a question came first. Looked at on every push
+// of the chat (so the snooze is gone before a reply's or a question's alert, 400 ms on, reads hushOf), on the registry
+// poll (a Mac asleep through the time) and by one timer to the nearest time (armSnoozes).
+const QUIET_WAKE = Object.freeze({ quiet: true });
+const isoMs = t => Date.parse(t || '') || 0;
+/** Why the snooze `z` of chat `s` ends now: null (it holds), `{ quiet }` (it ends with no mark and no alert) or
+ *  `{ kind, why }`. Reads only. */
+function wakeWhy(s, z, now = Date.now()) {
+  const at = isoMs(z.at);
+  if (isRemoved(s)) return QUIET_WAKE;
+  if (isDone(s) && isoMs(doneMarks[s.id]) > at) return QUIET_WAKE;   // ticked since
+  if (statusOf(s) === 'needs-input') return QUIET_WAKE;   // the question's own alert speaks
+  if (isoMs(s.lastUserAt) > at) return QUIET_WAKE;   // you were back in it yourself
+  if (z.until && isoMs(z.until) <= now) return { kind: 'time', why: 'its time came' };
+  const pr = z.pr ? s.prs.find(p => p.url === z.pr && shownPr(p)) : null;
+  if (z.on === 'pr' && pr?.turn?.you && isoMs(pr.turn.movedAt) > at) return { kind: 'pr', why: `${pr.label} came round to you` };
+  if (z.on === 'pr' && (!pr || pr.state === 'merged' || pr.state === 'closed')) return { kind: 'pr', why: !pr ? 'its PR left the chat' : `${pr.label} was ${pr.state}` };
+  if (z.on === 'ci' && pr?.checks !== 'pending') return { kind: 'ci', why: pr?.checks === 'pass' ? 'its checks passed' : pr?.checks === 'fail' ? 'its checks failed' : 'its checks finished' };
+  if (z.on === 'reply' && statusOf(s) !== 'working') return s.alive ? { kind: 'reply', why: 'Claude replied' } : { kind: 'ended', why: 'its claude ended' };
+  if (z.on === 'mon' && !runningTasks(s).length) return { kind: 'mon', why: 'its monitor ended' };
+  return null;
+}
+/** The snooze ended, if it has: dropped, the mark kept (`woke`) and the `back` alert owed to the chat's next push — after
+ *  the summary that says it. True when it ended; the caller pushes the chat (the push's own call pushes on). Not while
+ *  the boot reads, nor on a chat being re-read. A reply's wake owes nothing: its alert is queued already. */
+function wakeCheck(s, now = Date.now()) {
+  const z = snoozed[s.id];
+  if (!z || indexing || s.silent) return false;
+  const w = wakeWhy(s, z, now);
+  if (!w) return false;
+  delete snoozed[s.id];
+  if (!w.quiet) {
+    woke[s.id] = { at: new Date(now).toISOString(), why: w.why };
+    if (!(w.kind === 'reply' && s.pendingNotify?.has('reply'))) s.backOwed = w.why;
+    console.log(`[peixairada] chat ${s.id}: back from its snooze — ${w.why}`);
+  }
+  saveState(); armSnoozes();
+  return true;
+}
+/** Every snoozed chat looked at: the poll's, and the timer's. One the board no longer has is let go. */
+function wakeAll() {
+  for (const id of Object.keys(snoozed)) { const s = sessions.get(id); if (!s) { delete snoozed[id]; continue; } if (wakeCheck(s)) schedulePush(s); }
+  armSnoozes();
+}
+let snoozeTimer = null;
+/** One timer, to the nearest snooze's time (setTimeout's cap at most); a time already past is looked at again a moment on,
+ *  so a check the boot or a re-read held back is not a loop. */
+function armSnoozes() {
+  clearTimeout(snoozeTimer); snoozeTimer = null;
+  const next = Math.min(...Object.values(snoozed).map(z => isoMs(z.until) || Infinity));
+  if (Number.isFinite(next)) snoozeTimer = setTimeout(wakeAll, Math.min(Math.max(next - Date.now() + 20, 250), 2 ** 31 - 1));
+}
+/** A snooze as asked (`POST …/snooze`): `{ snooze }`, or `{ code, error }`. */
+function snoozeOf(s, body, now = Date.now()) {
+  if (isRemoved(s)) return { code: 409, error: 'it is deleted from the board' };
+  if (statusOf(s) === 'needs-input') return { code: 409, error: 'it is asking you: a question wakes it' };
+  const z = { at: new Date(now).toISOString() };
+  if (body.until != null) {
+    const t = typeof body.until === 'number' ? body.until : typeof body.until === 'string' ? Date.parse(body.until) : NaN;
+    if (!Number.isFinite(t)) return { code: 400, error: 'until: not a time' };
+    if (t <= now) return { code: 400, error: 'until: that time is past' };
+    if (t - now > SNOOZE_MAX_MS) return { code: 400, error: 'until: more than a year away' };
+    z.until = new Date(t).toISOString();
+  }
+  if (body.on != null) {
+    if (!SNOOZE_ON.has(body.on)) return { code: 400, error: `on: one of ${[...SNOOZE_ON].join(', ')}` };
+    if (body.on === 'pr' || body.on === 'ci') {
+      const pr = typeof body.pr === 'string' ? s.prs.find(p => p.url === body.pr && shownPr(p)) : null;
+      if (!pr) return { code: 404, error: 'not a PR of this chat' };
+      if (body.on === 'ci' && pr.checks !== 'pending') return { code: 409, error: 'its checks are not running' };
+      z.pr = pr.url;
+    }
+    if (body.on === 'reply' && statusOf(s) !== 'working') return { code: 409, error: 'Claude is not at work in it' };
+    if (body.on === 'mon' && !runningTasks(s).length) return { code: 409, error: 'no monitor runs in it' };
+    z.on = body.on;
+  }
+  if (!z.until && !z.on) return { code: 400, error: 'expected {until} or {on}' };
+  return { snooze: z };
+}
+/** The chat's back alert, once its summary is out: as a moved branch's, with a heading of its own. */
+function backNotify(s, why) {
+  const sum = summary(s), heading = `Back · ${sum.project}`;
+  const evt = { kind: 'back', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet: why, ts: new Date().toISOString(), ...hushOf(s) };
+  broadcast('alert', evt);
+  if (!evt.quiet) nativeNotify(heading, sum.title, why);
+}
+/** The top-priority slot, and snoozes and marks, of chats the board no longer has; true when any went. */
+function pruneChatMarks() {
+  const n = priority.length + Object.keys(snoozed).length + Object.keys(woke).length;
+  priority = priority.filter(id => sessions.has(id));
+  for (const m of [snoozed, woke]) for (const id of Object.keys(m)) if (!sessions.has(id)) delete m[id];
+  return n !== priority.length + Object.keys(snoozed).length + Object.keys(woke).length;
+}
+/** A /clear or /resume in the same claude: the chat it left had a top-priority slot, the chat it went on in takes it. */
+function carryPriority(from, to) {
+  const i = priority.indexOf(from.id);
+  if (i < 0 || priority.includes(to.id)) return;
+  priority = priority.with(i, to.id);
+  saveState(); broadcast('priority', { priority });
+}
+
 function schedulePush(s) {
   clearTimeout(s.pushTimer);
   s.pushTimer = setTimeout(() => {
+    wakeCheck(s);   // a snooze its own news ended (2026-11-24, round XXX): the summary says so, and the alert follows it
     broadcast('session', summary(s));
     // `upto`: the entries folded so far — these are the last of them, so the page can tell what it already has
     if (s.newEntries.length) { resolvePeers(s, s.newEntries); broadcast('entries', { sessionId: s.id, gen: s.gen, upto: s.entryCount, entries: s.newEntries }); s.newEntries = []; }
+    if (s.backOwed) { const why = s.backOwed; s.backOwed = null; backNotify(s, why); }
   }, 80);
 }
 
@@ -6538,7 +6664,8 @@ const jsonBody = req => readRaw(req, BODY_MAX).then(b => { const v = JSON.parse(
 const wordAt = s => {
   const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = s.forGood ? '' : s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
   const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || '');   // an empty chat: its start (the page's copy agrees)
-  return m > w ? m : w;
+  const k = String(s.wokeAt || '');   // a snooze that ended by itself is a word too: back at the top of its lane (2026-11-24, round XXX)
+  return [m, k].reduce((a, b) => (b > a ? b : a), w);
 };
 function sortedSummaries() {
   const ti = termIndex();
@@ -6622,7 +6749,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(body);
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY, notifications: notificationsOn });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, priority, hidden: hiddenProjects, repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY, notifications: notificationsOn });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -6734,6 +6861,13 @@ const server = createServer(async (req, res) => {
       saveState(); broadcast('pins', { pins: pinned });
       return json(res, 200, { ok: true, pins: pinned });
     }
+    if (req.method === 'PUT' && p === '/api/priority') {   // top priority (2026-11-24, round XXX): the chats at the list's head, in order — the whole list each time
+      const body = await jsonBody(req);
+      if (!Array.isArray(body.ids)) return json(res, 400, { error: 'expected {ids: [chat id]}' });
+      priority = [...new Set(body.ids.filter(k => typeof k === 'string' && /^[\w-]+$/.test(k) && sessions.has(k) && !isRemoved(sessions.get(k))))].slice(0, PRIORITY_MAX);
+      saveState(); broadcast('priority', { priority });
+      return json(res, 200, { ok: true, priority });
+    }
     if (req.method === 'PUT' && p === '/api/hidden') {   // the projects taken off the board, the whole list each time — same keys as the pins
       const body = await jsonBody(req);
       if (!Array.isArray(body.hidden)) return json(res, 400, { error: 'expected {hidden: [key]}' });
@@ -6793,6 +6927,7 @@ const server = createServer(async (req, res) => {
       if (done) {
         const at = doneMarks[s.id] = new Date().toISOString();
         if (body.forGood === true) forGoodMarks[s.id] = at; else delete forGoodMarks[s.id];   // done for good (2026-10-11)
+        if (snoozed[s.id]) { delete snoozed[s.id]; armSnoozes(); }   // done is no snooze (2026-11-24, round XXX)
         // Done means done: the claude behind it stops too (2026-09-20) — the drawer's, and one live elsewhere (SIGTERM,
         // as closing that terminal would; a VS Code tab goes dead). Not awaited: the registry notices on its own.
         for (const t of terms.values()) if (t.sessionId === s.id && t.exited === null) killTerm(t);
@@ -6820,7 +6955,10 @@ const server = createServer(async (req, res) => {
       loadRegistry(); removing.delete(s.id);
       const stuck = ended.find(r => !r.ok && r.code !== 409)?.error || (s.alive && `pid ${s.live?.pid} is still running`) || (vim.some(t => t.exited === null) && 'vim has unsaved work: save or quit it first');
       if (stuck) { putBackOnBoard(s); return json(res, 409, { error: stuck }); }
-      markRemoved(s); saveState(); schedulePush(s);
+      markRemoved(s);
+      if (snoozed[s.id]) { delete snoozed[s.id]; armSnoozes(); }   // gone, it is neither put away nor at the top (2026-11-24, round XXX)
+      if (priority.includes(s.id)) { priority = priority.filter(id => id !== s.id); broadcast('priority', { priority }); }
+      saveState(); schedulePush(s);
       return json(res, 200, { ok: true, removed: isRemoved(s) });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/fold$/))) {   // folded into another chat (2026-10-31): the tie, said to both — the page ticks it done
@@ -6867,6 +7005,20 @@ const server = createServer(async (req, res) => {
       for (const id of Object.keys(mutedChats)) if (!sessions.has(id)) delete mutedChats[id];
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, muted: !!mutedChats[s.id] });
+    }
+    // Snoozed (2026-11-24, round XXX): {until} a time (ISO or epoch ms), {on} an event of its own — `pr` with {pr}: that PR
+    // come round to you, `ci` with {pr}: its checks done, `reply`, `mon` —, or both, whichever first; {undo} wakes it, no mark.
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/snooze$/))) {
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const body = await jsonBody(req);
+      if (body.undo === true) { delete snoozed[s.id]; saveState(); armSnoozes(); schedulePush(s); return json(res, 200, { ok: true, snooze: null }); }
+      const r = snoozeOf(s, body);
+      if (r.error) return json(res, r.code, { error: r.error });
+      snoozed[s.id] = r.snooze; delete woke[s.id];
+      for (const k of [snoozed, woke]) for (const id of Object.keys(k)) if (!sessions.has(id)) delete k[id];
+      saveState(); armSnoozes(); schedulePush(s);
+      return json(res, 200, { ok: true, snooze: r.snooze });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/waive$/))) {   // the chat's PRs at your move, let go this round (2026-10-12)
       const s = sessions.get(m[1]);
@@ -7071,7 +7223,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), chat: chatSummary(), lunch: lunchSummary(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, priority, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), chat: chatSummary(), lunch: lunchSummary(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       res.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key'));   // one come in with no key goes when it is required (requireKey)
@@ -7095,7 +7247,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { cronNext, nextWake, pruneWakes, pruneTasks, findTasks, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, prReview, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, favChats, prAlertChat, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { cronNext, nextWake, pruneWakes, pruneTasks, findTasks, stopOf, pollBody, pollOf, cleanLunch, lunchPhase, dishesOn, closedOn, dayKey, sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, worktreeBases, prRefs, ensureWorktree, folderBack, putBack, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, prReview, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, ciEvent, logEvents, noteRounds, roundsOf, prLogs, pruneLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, mutedChats, favChats, prAlertChat, wakeWhy, snoozeOf, snoozed, priority, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 export { handoffText };   // chats that talk (2026-10-31)
 export { agentFront, agentsFor };   // a new chat as an agent (2026-11-06)
 export { readerArgs };   // a reader reads, and does nothing else (2026-11-06)
@@ -7166,6 +7318,8 @@ if (!peacockMoved && !configError) {   // once, every folder known (2026-10-15);
   }
 }
 indexing = false;
+if (pruneChatMarks()) saveState();   // the top priority and snoozes of chats the board no longer has (2026-11-24, round XXX)
+armSnoozes();   // the nearest snooze's time; one that came while the board was down, a moment on
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
 // board needs them up front. Batched 40 to a GraphQL call, in the background, the recent chats' first.
 sweepPrs();
@@ -7200,6 +7354,7 @@ setInterval(() => {
   sweepTasks();
   sweepDrawers();
   sweepHeads();
+  wakeAll();   // a snooze whose time came while the Mac slept, or whose event no push told of (2026-11-24, round XXX)
   if (Date.now() - wtSweptAt > WT_SWEEP_MS) sweepWorktrees();   // the trees made for a PR since merged or closed
   sweepPrs();
   sweepTickets();
