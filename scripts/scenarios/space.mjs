@@ -1,9 +1,9 @@
-// Space (⌥⌘S, 2026-11-18): the board's other layout. Off at first; the status bar's Space or ⌥⌘S puts it on: Space on the
+// Space (⌥⌘X, 2026-11-18): the board's other layout. Off at first; the status bar's Space or ⌥⌘X puts it on: Space on the
 // left, the chat on the right (v3), the header's × or ⌘W closing it; the nodes zoom (−, +, Fit, ⌘+ in Space). Each chat of the project in view a node — its name, its folder, its edge its state — with a pod per
 // agent type docked to it, each agent its type's letters in its type's colour (the definition's), its state a badge or a
 // turning arc; the states on top filter it (Idle and Done off at first). No chat open, Space takes the column; a click on
 // a node opens the chat below it, whose agents become lanes on one clock; a lane opens its agent's tab. Every key is the
-// board's: ⌥⌘N's picker comes up over Space. The divider's place and Space itself outlive a reload. ⌥⌘S again leaves it.
+// board's: ⌥⌘N's picker comes up over Space. The divider's place and Space itself outlive a reload. ⌥⌘X again leaves it.
 // Pods named by type, capitalised; an agent pointed at shows its card, its name only there (v4); a dark theme's sky, a
 // falling star by transform and opacity; none in light. Shots dark and light.
 import { spawn } from 'node:child_process';
@@ -311,16 +311,16 @@ export default async function (ctx) {
     await drag(d2, r2.back);
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#spzv').textContent`), `${Math.round(out.fit * 100)}%`, 'its zoom kept');
 
-    // the list's button leaves Space for the list; ⌥⌘S takes its place again
+    // the list's button leaves Space for the list; ⌥⌘X takes its place again
     await ctx.evaluate(`document.querySelector('#sbList').click()`);
     await ctx.waitFor(`!document.querySelector('#main').classList.contains('space') && getComputedStyle(document.querySelector('#sessions')).display !== 'none'`, { what: 'the list back, Space gone' });
     ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#sbList').getAttribute('aria-pressed'), document.querySelector('#sbSpace').getAttribute('aria-pressed'), peix.prefs().space]`), ['true', 'false', false], 'each button says which');
-    await ctx.key('KeyS');
+    await ctx.key('KeyX');
     await ctx.waitFor(`document.querySelector('#main').classList.contains('space') && getComputedStyle(document.querySelector('#sessions')).display === 'none'`, { what: 'Space in the list\u2019s place again' });
-    // ⌥⌘S leaves it: the board as it was
-    await ctx.key('KeyS');
+    // ⌥⌘X leaves it: the board as it was
+    await ctx.key('KeyX');
     await ctx.waitFor(`!document.querySelector('#main').classList.contains('space') && document.querySelector('#space').hidden`, { what: 'Space off' });
-    await ctx.key('KeyS');
+    await ctx.key('KeyX');
     await ctx.waitFor(`document.querySelector('#main').classList.contains('space')`, { what: 'on again' });
     await ctx.openChat(infra.id);
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });

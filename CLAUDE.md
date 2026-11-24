@@ -369,7 +369,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   the edge unless asking — `footRows`, `placeMini`), else its tail (`tailHtml`, `GET /api/tails?ids=`, every 2 s). A
   question's answers (`ask.labels`) come once the transcript has it; one clicked types its digit into the drawer, ⏎
   only onto its ring (`answerInDrawer`, `spEnter`). → `overview.mjs`.
-* **⌥⌘S is Space** (2026-11-18; `main.space`, `renderSpace`, `spNode`): the list's place, a node per chat, the chat
+* **⌥⌘X is Space** (2026-11-18, X since 2026-11-24; `main.space`, `renderSpace`, `spNode`): the list's place, a node per chat, the chat
   right; pods by each agent's type over every round (`agentAll`, `mateType`), folded to who works (`+N`); a chat
   starred first (`favChats` → `fav`, `POST …/favorite`); ⌘F `#spq` with `is:` `pr:` `@` `#`; a node's PRs, menu
   (`spMenu`, the card's `chatRows`), ✓ where `canTick`; the sky by transform and opacity; Settings › Space; filled, its bar under the notch's strip (`npad`). **A tick

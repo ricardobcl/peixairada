@@ -2483,7 +2483,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .ans { display: flex; flex-wrap: wrap; gap: 6px; }
   #ov .ans button { font: inherit; font-size: var(--fs-sm); padding: 4px 9px; border: 0; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
   #ov .ans button:hover:not(:disabled) { background: color-mix(in srgb, var(--needs) 24%, transparent); }
-  /* ---- ⌥⌘S: Space, the board's other layout — every chat as a node of its agents (2026-11-18) ---- */
+  /* ---- ⌥⌘X: Space, the board's other layout — every chat as a node of its agents (2026-11-18) ---- */
   main.space { display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: clamp(min(var(--sp-min), 100%), calc(var(--sp, .52) * 100%), max(var(--sp-min), 100% - var(--chat-min) - 8px)) 8px minmax(0, 1fr); --sp-min: 340px; --chat-min: 360px; }   /* Space down to one tile's column, the chat never under its own floor (2026-11-18, v12) */
   main.space > :is(#sessions, #splitter) { display: none; }   /* Space or the list, never both: it takes the list's place */
   main.space > #space { grid-row: 1; grid-column: 1; }
@@ -3369,7 +3369,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
-    #space .spbox::after, #space .spa::before { animation: none !important; }   /* Space (⌥⌘S): the marks keep their shapes, still */
+    #space .spbox::after, #space .spa::before { animation: none !important; }   /* Space (⌥⌘X): the marks keep their shapes, still */
     #space .sprg::before, #space .sphl::before { animation: none !important; rotate: .3turn; }   /* a working node's light stands, part way round */
     #space .spsky > b { animation: none !important; }   /* its sky: the stars still, none falls (spFall) */
     #news .nwbody.in { animation: none; }   /* what's new: a page comes in at once */
@@ -3485,7 +3485,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   </section>
 </main>
 <span class="vh" role="status" id="agSay"></span>
-<footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><button class="fsearch" id="sbSpace" aria-controls="space" aria-pressed="false" title="Space — every chat as a node of its agents (⌥⌘S)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4" stroke="currentColor" stroke-width="1.5"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-28 8 8)" stroke="currentColor" stroke-width="1.5"/></svg>Space</button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
+<footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><button class="fsearch" id="sbSpace" aria-controls="space" aria-pressed="false" title="Space — every chat as a node of its agents (⌥⌘X)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4" stroke="currentColor" stroke-width="1.5"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-28 8 8)" stroke="currentColor" stroke-width="1.5"/></svg>Space</button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-labelledby="spTitle" tabindex="-1">
   <aside class="snav">
     <label class="sfind"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg><input type="search" id="sq" placeholder="Search" aria-label="Search the settings" aria-controls="sbody" autocomplete="off" spellcheck="false"></label>
@@ -3732,7 +3732,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   css · the timeline tab: the chat and its PRs in one order (2026-10-17)
 //   css · home (2026-10-10): the column with no chat open — fastfetch's block, then the day
 //   css · ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column
-//   css · ⌥⌘S: Space, the board's other layout — every chat as a node of its agents (2026-11-18)
+//   css · ⌥⌘X: Space, the board's other layout — every chat as a node of its agents (2026-11-18)
 //   css · project editor
 //   css · the chat (2026-10-17): a GitHub repo's issue, in a panel over the board's foot
 //   css · the small print: wrapping, figures, selection, focus, overscroll
@@ -3778,7 +3778,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
 //   js  · tiles: the board's panels laid out as Hyprland's (2026-10-10)
 //   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
-//   js  · ⌥⌘S: Space, the board's other layout (2026-11-18)
+//   js  · ⌥⌘X: Space, the board's other layout (2026-11-18)
 //   js  · home: the chat column with no chat open (2026-10-10)
 //   js  · home's sea (2026-10-12): an ASCII sunset at sea, the board's fish leaping in it
 //   js  · a chat's folder not checked out: cloned first (2026-10-09)
@@ -5660,7 +5660,7 @@ const toolName = n => {
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
-    renderSessionList(cur); renderHidden(); spSoon();   // Space (⌥⌘S) draws what the list draws, the project in view's
+    renderSessionList(cur); renderHidden(); spSoon();   // Space (⌥⌘X) draws what the list draws, the project in view's
     const w = wanting(), total = w.needs.length + w.replied.length;   // what wants you, as the Dock counts it (2026-10-12; the alerts this page saw before)
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
     if (inApp) postState();
@@ -7779,7 +7779,7 @@ const toolName = n => {
       { name: 'Take the tour', sub: ' — the board’s main parts, one at a time', fn: tourStart },
       { name: 'What’s new', sub: ` — ${NEWS.name}, four examples`, fn: () => newsOpen(0) },
       { name: 'The overview — every live chat', hint: '⌥⌘A', fn: ovOpen },
-      { name: prefs.space ? 'Leave Space' : 'Space — every chat as a node of its agents', hint: '⌥⌘S', fn: spToggle },
+      { name: prefs.space ? 'Leave Space' : 'Space — every chat as a node of its agents', hint: '⌥⌘X', fn: spToggle },
       { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
       { name: 'Zé, the Bruce Lee of Barcelos — a game', hint: '⌥⌘Z', fn: zeOpen },
@@ -7822,7 +7822,7 @@ const toolName = n => {
       { name: 'What’s new', hint: NEWS.name, icon: '✦', go: () => newsOpen(0), leaf: true },
       { name: 'Home', hint: '⌥⌘0', icon: '⌂', go: hotHome, leaf: true },
       { name: 'Overview', hint: '⌥⌘A', icon: '▦', go: ovOpen, leaf: true },
-      { name: 'Space', hint: '⌥⌘S', icon: '◎', go: spToggle, leaf: true },
+      { name: 'Space', hint: '⌥⌘X', icon: '◎', go: spToggle, leaf: true },
       { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
     ].map(m => ({ kind: 'menu', id: 'mn:' + m.name, ...m }));
   };
@@ -7915,7 +7915,7 @@ const toolName = n => {
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
     ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
-    ['⌥⌘S', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyS']],
+    ['⌥⌘X', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyX']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['⌥⌘M', 'Go to', 'lunch — today\'s menus, on a chalkboard', 'the places you go, read each morning · Going and In 15 min at lunch time · again closes it · Settings › Lunch sets it up', ['alt:KeyM']],
     ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'meat makes him buff, greens thin — down to his bones · three meats in a row bring a Ford Focus, three greens a Mercedes A-Class · four ways to play, ← → on the title, G a second player (the galo, on A D W) · level 3 is ENTER THE DRAGON, every fifth the Avó da Horta · ← → run (twice: a dash), ↑ jumps, ↓ drops, space kicks (held: the nunchaku), P pauses, M the sound, T the music · a chat asking you stops it: ⏎ goes to it · again closes it', ['alt:KeyZ']],
@@ -7991,7 +7991,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, KeyS: spToggle, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, KeyX: spToggle, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -8687,7 +8687,7 @@ const toolName = n => {
   const NEWS_STARS = [[40, 30], [120, 176], [300, 22], [420, 58], [440, 170], [230, 196], [70, 120]].map(([x, y]) => `<i class="st" style="left:${x}px;top:${y}px"></i>`).join('');
   const NEWS = { id: 'space', name: 'Space', go: () => { if (!prefs.space) spToggle(); }, goSay: 'Open Space', pages: [
     { title: 'Answer without opening the chat',
-      text: '<b>Space</b> (<kbd>⌥⌘S</kbd>) lays every chat out as a node, its agents round it. A node asking you rings red: click its pill and press a number — the answer reaches the chat, and you stay where you were.',
+      text: '<b>Space</b> (<kbd>⌥⌘X</kbd>) lays every chat out as a node, its agents round it. A node asking you rings red: click its pill and press a number — the answer reaches the chat, and you stay where you were.',
       pic: () => `<div class="nn" data-st="ask" style="left:28px;top:64px"><b>Queue for invoice webhooks</b><small>billing-api</small></div><span class="npill q" style="left:46px;top:152px">? 3 answers</span>`
         + `<div class="nbox" style="left:196px;top:44px;width:244px"><p class="q">Which queue should the invoice webhooks go on?</p><div class="o"><kbd>1</kbd>SQS</div><div class="o on"><kbd>2</kbd>Kafka topic — billing reads it</div><div class="o"><kbd>3</kbd>Postgres and a worker</div></div>` },
     { title: 'Find what needs a look',
@@ -12647,7 +12647,7 @@ const toolName = n => {
     note($('#shead'), 'Its drawer did not come up — answer it in the chat', true);
   }
 
-  // ---- ⌥⌘S: Space, the board's other layout (2026-11-18) ----------------------------------------------------------------
+  // ---- ⌥⌘X: Space, the board's other layout (2026-11-18) ----------------------------------------------------------------
   // The list's and the chat's place, split: Space on the left, the chat itself on the right (v3) — the board's own #chat, so every key,
   // tab, drawer and picker is the same (main.space, a grid). Space or the list, never both: ⌥⌘B, the list's button, the
   // magnifier or the funnel leave Space for the list; Space hides it, and its own hidden-or-not is kept for after. Space: a node per chat of the
@@ -12657,7 +12657,7 @@ const toolName = n => {
   // the open chat's agents as lanes on one clock under the nodes (15 m · 30 m · 1 h, `prefs.spWin`), a lane its agent's tab
   // (agOpen). A click on a node opens the chat on the right, its header's × closes it; none open, Space takes the width. Read from the summaries alone,
   // drawn with the board (renderBoard → spSoon) and every 5 s for the clock while on (`prefs.space`, the status bar's
-  // #sbSpace, ⌥⌘S); the divider's place `prefs.spaceAt`.
+  // #sbSpace, ⌥⌘X); the divider's place `prefs.spaceAt`.
   const sp = { raf: 0, timer: 0, fall: 0, visit: 0, list: [], open: new Map(), q: '', sel: 0, minis: new Map(), asks: new Map(), ask: null, askT: 0, lraf: 0, over: null, toks: [], dsel: 0, dshut: '', chosen: new Set() };   // open: a pod's `<chat>:<type>` → its fold timer
   const SP_BUSY = ['run', 'wait', 'joined'], SP_OPEN_MS = 20_000;
   const SP_WINS = [15, 30, 60], SP_ORDER = ['run', 'quiet', 'wait', 'fail', 'done', 'stop', 'joined'], SP_POD = 6, SP_PODS = 4, SP_CAP = 30;
@@ -13129,7 +13129,7 @@ const toolName = n => {
     applyList();   // the list's button: off while Space has its place
     $('#space').hidden = $('#spdiv').hidden = !on;
     main.style.setProperty('--sp', String(Math.min(.9, Math.max(.05, Number(prefs.spaceAt) || .52))));   // CSS holds the floors: one tile, the chat's
-    const b = $('#sbSpace'); b.setAttribute('aria-pressed', String(on)); b.title = `${on ? 'Leave' : 'Open'} Space — every chat as a node of its agents (⌥⌘S)`;
+    const b = $('#sbSpace'); b.setAttribute('aria-pressed', String(on)); b.title = `${on ? 'Leave' : 'Open'} Space — every chat as a node of its agents (⌥⌘X)`;
     clearInterval(sp.timer); sp.timer = on ? setInterval(spSoon, 5000) : 0;
     if (!on) { spAskClose(); sweepMinis(sp.minis, true); clearInterval(sp.askT); sp.askT = 0; }
     spLook(); if (on !== !!sp.fall) spFall(); if (on !== !!sp.visit) spVisit();   // a falling star now and then while Space is on
