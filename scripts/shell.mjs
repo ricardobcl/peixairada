@@ -109,7 +109,7 @@ function startShell(bin, { port, home, space: inSpace }) {
 
 // What a scenario's page starts from (lib/cdp.mjs): the tour taken, the timeline seen, and every page in the board, so
 // none goes to the browser of the Mac this runs on; and the fill's word on the way in said, a pill over the strip.
-const PREFS = { toured: true, tvSeen: true, lanesShut: [], skinFollow: true, cards: 'large', cardsMoved: true, pagesOut: false, linksMoved: true, fillHints: 99 };
+const PREFS = { toured: true, tvSeen: true, newsSeen: ['space'], lanesShut: [], skinFollow: true, cards: 'large', cardsMoved: true, pagesOut: false, linksMoved: true, fillHints: 99 };
 
 async function runCheck(file, bin) {
   const name = basename(file, '.mjs'), mod = await import(pathToFileURL(file).href), meta = mod.meta || {};

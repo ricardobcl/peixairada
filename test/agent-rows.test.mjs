@@ -3,7 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { agentFiles, agentNoteLine, makeFixture, toolLines } from '../scripts/fixture.mjs';
 
@@ -162,4 +163,57 @@ test('an agent that fails is an alert, once, with what it was asked and why; one
     await new Promise(res => setTimeout(res, 900));
     assert.equal(a.seen.filter(x => x.kind === 'agent-failed').length, 1, 'said once; the failure before the server came up, never');
   } finally { a?.stop(); await srv.stop(); p.kill(); }
+});
+
+test('a row says its type and the colour its definition gives, none for a built-in (Space\'s pods, 2026-11-18)', { timeout: 30_000 }, async () => {
+  const { p, fx, chat } = setup([
+    { id: 'sec', asked: 'Look for open ingress', kind: 'security', ago: 5 * MIN, steps: ['Grep the modules'] },
+    { id: 'look', asked: 'Find the modules', kind: 'Explore', ago: 4 * MIN, steps: ['List them'] },
+  ]);
+  mkdirSync(join(fx.dir, 'agents'), { recursive: true });
+  writeFileSync(join(fx.dir, 'agents', 'security.md'), '---\nname: security\ndescription: Reviews for security\ncolor: red\n---\nLook.\n');
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    const rows = await waitFor(async () => { const r = await rowsOf(srv, chat.id); return r?.length === 2 && r; }, { what: 'the rows' });
+    assert.deepEqual(rows.map(r => [r.id, r.type, r.color]).sort(), [['look', 'Explore', null], ['sec', 'security', 'red']]);
+  } finally { await srv.stop(); p.kill(); }
+});
+
+test('every agent its claude ran, for Space: the rows a card shows are the last round, `agentAll` every round (2026-11-18, v9)', { timeout: 30_000 }, async () => {
+  const { p, fx, chat } = setup([
+    { id: 'spec', asked: 'Specify it', kind: 'specifier', ago: 30 * MIN, quiet: 25 * MIN, report: '## Spec ready', finished: true, tool: 'toolu_spec' },
+    { id: 'expl', asked: 'Explore it', kind: 'explorer', ago: 10 * MIN, steps: ['Grep the client'] },
+  ]);
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    const sum = await waitFor(async () => { const x = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id); return x?.agentAll?.length === 2 && x; }, { what: 'both rounds' });
+    assert.deepEqual(sum.agentRows.map(r => r.id), ['expl'], 'a card: the last round');
+    assert.deepEqual(sum.agentAll.map(r => [r.id, r.type]), [['spec', 'specifier'], ['expl', 'explorer']], 'Space: every round, each by its type');
+  } finally { await srv.stop(); p.kill(); }
+});
+
+test('a resume starts its rows over, but the agents of the claudes before stay in agentAll, past; a chat with no claude keeps them', { timeout: 30_000 }, async () => {
+  const p = standIn(), dir = tmpDir('peix-fx-'), now = new Date();
+  const fx = makeFixture(dir, [
+    { cwd: '/tmp/acme/infra', title: 'Resumed', prompt: 'carry on', reply: 'On it.', at: new Date(Date.now() - 5 * MIN), live: { pid: p.pid, startedAt: Date.now() - 20 * MIN } },
+    { cwd: '/tmp/acme/ledger', title: 'Ended', prompt: 'look', reply: 'Looked.', at: new Date(Date.now() - 60 * MIN) },
+  ]);
+  const [live, ended] = fx.chats;
+  agentFiles({ dir, lead: live, at: now, agents: [
+    { id: 'before', kind: 'security', asked: 'Before the resume', ago: 50 * MIN, quiet: 45 * MIN, report: 'Clean.', finished: true },
+    { id: 'beforefail', asked: 'Failed before', ago: 48 * MIN, quiet: 44 * MIN, steps: ['Look'], finished: true },
+    { id: 'after', asked: 'After the resume', ago: 10 * MIN, quiet: 9 * MIN, report: 'Done.', finished: true },
+  ] });
+  agentFiles({ dir, lead: ended, at: now, agents: [{ id: 'gone', kind: 'code-reviewer', asked: 'Its review', ago: 80 * MIN, quiet: 70 * MIN, report: 'Fine.', finished: true }] });
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    const of = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    const s = await waitFor(async () => { const x = await of(live.id); return x?.agentAll?.length === 3 && x; }, { what: 'every agent, the earlier ones too' });
+    assert.deepEqual(s.agentRows.map(r => r.id), ['after'], 'the rows: this claude’s alone');
+    assert.deepEqual(s.agentAll.map(r => [r.id, !!r.past]), [['before', true], ['beforefail', true], ['after', false]], 'all of them, oldest first, the earlier ones past');
+    assert.ok(s.agentAll.filter(r => r.past).every(r => r.st === 'done' || r.st === 'fail'), 'a past agent is never at work');
+    assert.equal(s.agents, 0);
+    const e = await waitFor(async () => { const x = await of(ended.id); return x?.agentAll?.length === 1 && x; }, { what: 'the ended chat’s' });
+    assert.deepEqual([e.agentRows, e.agentAll[0].id, e.agentAll[0].past, e.agentAll[0].kind], [null, 'gone', true, 'code-reviewer'], 'no claude: no rows, its past in agentAll');
+  } finally { await srv.stop(); p.kill(); }
 });

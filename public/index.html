@@ -1128,6 +1128,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #mxtip .mts[data-state="run"] { --prc: var(--working-ink); } #mxtip .mts[data-state="quiet"] { --prc: var(--working-ink); } #mxtip .mts[data-state="wait"] { --prc: var(--watch); } #mxtip .mts[data-state="done"] { --prc: var(--idle); } #mxtip .mts[data-state="fail"] { --prc: var(--needs); }
   #mxtip .agi { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 9px; margin: 0; font-size: var(--fs-xs); }
   #mxtip .agi dt { color: var(--muted); } #mxtip .agi dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  /* an agent's card in Space (2026-11-18, later): its type in its colour, the error in red, what is still being read faint */
+  #mxtip .spch { color: var(--ink); }
+  #mxtip .spct { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 750; color: #141413; background: oklch(.72 .13 var(--h)); }
+  #mxtip .spck { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); color: oklch(.78 .12 var(--h)); }
+  :root[data-theme="light"] #mxtip .spck { color: oklch(.48 .13 var(--h)); }
+  #mxtip .spcm { flex: none; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); }
+  #mxtip .spcn { margin: -4px 0 0 30px; font: var(--fs-2xs)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+  #mxtip .spcp { padding-top: 0; border-top: 0; margin-top: -4px; }
+  #mxtip .spcw dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+  #mxtip .spcw dd:has(.spce) { white-space: normal; }
+  #mxtip .spce { color: var(--needs); }
+  #mxtip .spcv { padding-top: 7px; border-top: 1px solid var(--line); }
+  #mxtip .spcr { color: var(--muted); opacity: .7; }
   #mxtip .agp { margin: 0; padding-top: 7px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
   #mxtip .mth { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); color: var(--muted); }
   #mxtip .mtr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2470,6 +2483,277 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .ans { display: flex; flex-wrap: wrap; gap: 6px; }
   #ov .ans button { font: inherit; font-size: var(--fs-sm); padding: 4px 9px; border: 0; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
   #ov .ans button:hover:not(:disabled) { background: color-mix(in srgb, var(--needs) 24%, transparent); }
+  /* ---- ⌥⌘S: Space, the board's other layout — every chat as a node of its agents (2026-11-18) ---- */
+  main.space { display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: clamp(min(var(--sp-min), 100%), calc(var(--sp, .52) * 100%), max(var(--sp-min), 100% - var(--chat-min) - 8px)) 8px minmax(0, 1fr); --sp-min: 340px; --chat-min: 360px; }   /* Space down to one tile's column, the chat never under its own floor (2026-11-18, v12) */
+  main.space > :is(#sessions, #splitter) { display: none; }   /* Space or the list, never both: it takes the list's place */
+  main.space > #space { grid-row: 1; grid-column: 1; }
+  main.space > #spdiv { grid-row: 1; grid-column: 2; }
+  main.space > #chat { grid-row: 1; grid-column: 3; min-width: 0; }   /* the chat on the right, the whole height (2026-11-18, v3) */
+  main.space.spfull { grid-template-columns: minmax(0, 1fr) 0 0; } main.space.spfull > :is(#chat, #spdiv) { display: none; }
+  #space { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--bg); color: var(--ink); }   /* never wider than its column, however zoomed (2026-11-18, v12) */
+  #space[hidden], #spdiv[hidden] { display: none; }
+  #spdiv { display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; border-inline: 1px solid var(--line); background: var(--bg); }
+  #spdiv::before { content: ""; width: 3px; height: 44px; border-radius: 2px; background: var(--line); }
+  #spdiv:hover::before, #spdiv.drag::before { background: var(--muted); }
+  #space .sphd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  #space .sphd h1 { margin: 0; font-size: var(--fs-lg); }
+  #space .spfs { display: flex; flex-wrap: wrap; gap: 6px; }
+  #space .spf { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; }
+  #space .spf i { width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--c); }
+  #space .spf b { font-weight: 650; }
+  #space .spf[aria-pressed="true"] { background: var(--ctl); border-color: transparent; color: var(--ink); }
+  #space .spf[aria-pressed="true"] i { background: var(--c); }
+  #space .spf:hover { background: var(--ctl-hi); }
+  #space .spsub { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
+  #space .spbody { position: relative; min-height: 0; min-width: 0; }
+  #space .spfield { height: 100%; box-sizing: border-box; overflow: auto; overscroll-behavior: contain; padding: 8px 10px 56px; background: color-mix(in srgb, var(--ink) 3%, var(--bg)); }
+  #space .spgrid { display: grid; grid-template-columns: repeat(auto-fill, var(--spw)); justify-content: center; gap: 6px; zoom: var(--spz, 1); }   /* zoomed whole, so the grid reflows: more a row as it shrinks; each node its own size, never stretched to the row (2026-11-18, v7) */
+  #space:not([data-names="always"]) .spgrid.small .spl, #space[data-names="never"] .spl { display: none; }   /* under 75 %: the pods' names go, the letters and badges stay */
+  #space .spzoom { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 24px -12px rgb(0 0 0 / .5); }
+  #space .spzoom button { min-width: 28px; height: 26px; padding: 0 8px; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-base); cursor: pointer; }
+  #space .spzoom button:hover { background: var(--ctl); }
+  #space .spzoom .fit { font-size: var(--fs-sm); color: var(--muted); }
+  #space .spzoom output { min-width: 42px; text-align: center; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #space .spempty { margin: 40px auto; max-width: 46ch; text-align: center; color: var(--muted); font-size: var(--fs-md); }
+  #space .spside { min-width: 0; border-top: 1px solid var(--line); background: var(--bg); }   /* the open chat's agents, a strip under the nodes */
+  #space .spside[hidden] { display: none; }
+  #space .spsh { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 7px 16px; }
+  #space .spfold { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border: 0; border-radius: var(--r-2); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  #space .spfold:hover { color: var(--ink); }
+  #space .spfold svg { width: 10px; height: 10px; transition: rotate .15s var(--ease-out); } #space .spfold[aria-expanded="false"] svg { rotate: -90deg; }
+  #space .spls { max-height: 196px; overflow: auto; overscroll-behavior: contain; padding: 0 16px 8px; }
+  /* the chats' state, the colour its node's edge and its filter wear */
+  #space [data-st="ask"] { --c: var(--needs); } #space [data-st="work"] { --c: var(--working-ink); } #space [data-st="watch"] { --c: var(--watch); }
+  #space [data-st="ready"] { --c: var(--idle); } #space [data-st="idle"] { --c: var(--muted); } #space [data-st="done"] { --c: var(--ended); }
+  /* a chat: its node (the name, the folder) and a pod per agent type docked to it */
+  #space .spt { display: block; min-width: 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-5); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  #space .spt:hover { background: var(--ctl); }
+  #space .spt.on { background: var(--panel); border-color: var(--line); }
+  #space { --spw: 304px; --sph: 216px; }   /* a node's tile: its box and a pod each side (spPods' SP_GEO) */
+  #space .spo { position: relative; display: block; width: var(--spw); height: var(--sph); margin: 0 auto; }
+  #space .spbox { position: absolute; left: 72px; top: 58px; width: 160px; height: 100px; box-sizing: border-box; padding: 6px 12px; border-radius: 16px; border: 2px solid var(--c); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; z-index: 1; }   /* a rounded box, its words in the middle (2026-11-18, v9; a circle in v7 held too little) */
+  #space .spbox::after { content: ""; position: absolute; inset: -6px; border-radius: 20px; border: 2px solid var(--c); opacity: 0; pointer-events: none; }   /* the ping lies over the box: never in a click's way (2026-11-18, v12) */
+  #space .spbox[data-st="ask"]::after { animation: spsonar 1.5s ease-out infinite; }
+  /* at work, a light turns round the node (2026-11-24): a bright arc on its edge and its bloom with it — each a square
+     turned by a transform under a still mask (the sidebar card's .rg), the edge's a 2 px band, the bloom's a soft one
+     drawn once; the project's colour (a watching node's cyan, slower); `ring` is phased, so a redraw never restarts it */
+  #space .spt { --spg: var(--repo, var(--working-ink)); --sptip: var(--spg); }
+  :root[data-theme="dark"] #space .spt { --spg: oklch(from var(--repo, var(--working-ink)) calc(l + (1 - l) * .55) c h); --sptip: #fff; }
+  #space [data-st="watch"] { --spg: var(--watch); --sps: 10s; }
+  #space .spbox:is([data-st="work"], [data-st="watch"]) { border-color: color-mix(in srgb, var(--c) 28%, transparent); }
+  #space .sprg { position: absolute; inset: -2px; padding: 2px; border-radius: 16px; overflow: hidden; pointer-events: none;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  #space .sphl { position: absolute; left: 58px; top: 44px; width: 188px; height: 128px; overflow: hidden; pointer-events: none; opacity: .56;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 188 128' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Crect x='12' y='12' width='164' height='104' rx='18' fill='none' stroke='white' stroke-width='9' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 188 128' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Crect x='12' y='12' width='164' height='104' rx='18' fill='none' stroke='white' stroke-width='9' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+  :root[data-theme="dark"] #space .sphl { opacity: .63; }   /* 30 % under the first (2026-11-24) */
+  #space .sprg::before, #space .sphl::before { content: ''; position: absolute; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; margin: -100% 0 0 -100%;
+    background: conic-gradient(transparent 0 50%, color-mix(in srgb, var(--spg) 35%, transparent) 68%, var(--spg) 88%, var(--sptip) 93%, transparent 94%); animation: ring var(--sps, 2.4s) linear infinite; }
+  #space .sphl::before { background: conic-gradient(transparent 0 45%, color-mix(in srgb, var(--spg) 40%, transparent) 70%, var(--spg) 92%, transparent 95%); }
+  #space .spbox[data-st="done"] { filter: saturate(.4); }
+  #space .spbt { max-width: 100%; font-size: var(--fs-sm); font-weight: 650; line-height: 1.25; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  #space .spstar { position: absolute; left: 7px; top: 6px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-2); color: var(--muted); cursor: pointer; visibility: hidden; z-index: 1; }   /* favourites (2026-11-18, v11): shown, not faded */
+  #space .spstar svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; }
+  #space .spt:hover .spstar, #space .spt:focus-visible .spstar, #space .spstar[aria-pressed="true"] { visibility: visible; }
+  #space .spstar:hover { background: var(--ctl-hi); color: var(--ink); }
+  #space .spstar[aria-pressed="true"] { color: var(--working-ink); }
+  #space .spstar[aria-pressed="true"] svg { fill: currentColor; }
+  #space .spt.spfirst { grid-column-start: 1; }
+  #space .spf.fav { --c: var(--working-ink); }
+  #space .spf.fav svg { width: 12px; height: 12px; fill: none; stroke: var(--c); stroke-width: 1.5; stroke-linejoin: round; }
+  #space .spf.fav[aria-pressed="true"] svg { fill: var(--c); }
+  #space .spf:disabled { cursor: default; }
+  /* find (2026-11-23): ⌘F's box at the top bar's end; the ringed match, ↑↓'s; the letters it landed on */
+  #space .spq { display: flex; align-items: center; gap: 6px; flex: 0 1 260px; min-width: 140px; height: 28px; box-sizing: border-box; padding: 0 6px 0 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--ctl); }
+  #space .spq:focus-within { border-color: var(--accent); }
+  #space .spq svg { flex: none; width: 13px; height: 13px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; }
+  #space .spq input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-sm); }
+  #space .spq input::-webkit-search-cancel-button { display: none; }
+  #space .spqn { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #space .spq kbd { font: var(--fs-2xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); padding: 3px 5px; border-radius: var(--r-1); background: var(--ctl); }
+  #space .spq:focus-within kbd, #space .spqn:empty { display: none; }
+  /* the box's filters (2026-11-24): chips before the words, what a prefix can be under it */
+  #space .spq { position: relative; flex-wrap: nowrap; }
+  #space .sptoks { display: contents; }
+  #space .spq.toks { flex-basis: 420px; }   /* chips in it: room for the words still */
+  #space .sptok { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 3px 0 6px; border-radius: var(--r-1); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--ink); font: var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+  #space .sptok button { width: 14px; height: 14px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: inherit; line-height: 1; cursor: pointer; }
+  #space .sptok button:hover { background: var(--ctl-hi); color: var(--ink); }
+  #spqd { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; width: 300px; padding: 5px; border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .6); }
+  #spqd[hidden] { display: none; }
+  #spqd .dr { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 7px; border-radius: var(--r-2); font-size: var(--fs-xs); cursor: pointer; }
+  #spqd .dr.on, #spqd .dr:hover { background: var(--ctl-hi); }
+  #spqd code { font: var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+  #spqd span { color: var(--muted); } #spqd em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* several at once (2026-11-24): ⇧-click, ⇧-arrows; a mark on each, a bar for all of them */
+  #space .spt.chosen .spbox { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+  #space .spt.chosen .spbox::before { content: "✓"; position: absolute; left: -9px; top: -9px; z-index: 3; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+  #spbar { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .6); font-size: var(--fs-sm); white-space: nowrap; }
+  #spbar[hidden] { display: none; }
+  #spbar button { padding: 4px 10px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  #spbar button:hover { background: var(--ctl-hi); }
+  #spbar button.go { background: var(--idle); color: var(--bg); }
+  #spbar kbd { color: var(--muted); font: var(--fs-2xs) ui-monospace, Menlo, monospace; }
+  #space .spt.hit .spbox { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+  #space .spbt b { font-weight: inherit; background: color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 2px; }
+  /* done (2026-11-23): the card's ✓ in the corner the star mirrors; ↩ on a done chat, armed while a watching one asks again */
+  #space .spdone { position: absolute; right: 7px; top: 6px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-2); color: var(--muted); cursor: pointer; visibility: hidden; z-index: 1; }
+  #space .spdone svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #space .spt:hover .spdone, #space .spt:focus-visible .spdone, #space .spbox[data-st="done"] .spdone, #space .spdone:is(.armed, .tk) { visibility: visible; }
+  #space .spdone:hover { background: var(--ctl-hi); color: var(--idle); }
+  #space .spbox[data-st="done"] .spdone:hover { color: var(--ink); }
+  #space .spdone.armed { color: var(--watch); background: var(--ctl-hi); }
+  #space .spdone.tk { color: var(--bg); background: var(--idle); }
+  /* the open PRs (2026-11-23): a pill on the box's bottom edge, open and draft counted; pointed at, their list, a row its PR on a tab */
+  #space .spt:hover .spbox { z-index: 3; }   /* its list over the next row's nodes */
+  #space .sppills { position: absolute; right: 10px; bottom: -11px; z-index: 2; display: flex; gap: 4px; }   /* the PRs' pill and the tickets' (2026-11-24) */
+  #space .sppr { position: relative; cursor: default; }
+  #space .sptk { display: inline-flex; align-items: center; gap: 4px; height: 20px; box-sizing: border-box; padding: 0 7px 0 6px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--tk-doing); color: var(--ink); font-size: var(--fs-2xs); font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
+  #space .sptk[data-cat="todo"] { border-color: var(--tk-todo); } #space .sptk[data-cat="done"] { border-color: var(--tk-done); }
+  #space .sptk svg { width: 10px; height: 10px; fill: currentColor; }
+  /* a node with no word for days fades (2026-11-24; prefs.spFade): by opacity, back under the pointer or the keys; its age in its folder's line */
+  #space .spt[style*="--fade"] { opacity: var(--fade); transition: opacity var(--t-hover) var(--ease-out); }
+  #space .spt:is(:hover, :focus-visible, .on, .hit) { opacity: 1; }
+  #space .spag { flex: none; color: var(--muted); }
+  /* the chat's card, its title pointed at (2026-11-24) */
+  #mxtip .spcc { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 5px 8px; margin: 8px 0 0; font-size: var(--fs-xs); }
+  #mxtip .spcc dt { color: var(--muted); } #mxtip .spcc dd { margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  #mxtip .spcs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--muted); font-size: var(--fs-2xs); }
+  #mxtip .spcs b { color: var(--c); font-weight: 650; }
+  #mxtip .spcs code { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  /* constellations (2026-11-24): chats tied together — merged, folded, branched, gone on — a faint dashed line under the nodes, named on it */
+  #space .spfield { position: relative; }
+  #space .spgrid { position: relative; z-index: 1; }
+  #space .splinks { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
+  #space .splinks line { stroke: color-mix(in oklab, var(--accent) 55%, var(--muted)); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .55; }
+  #space .splinks text { fill: var(--muted); font-size: 10px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
+  #space .splinks .lit line { opacity: 1; stroke: var(--accent); } #space .splinks .lit text { fill: var(--ink); }
+  /* the nodes by project (2026-11-24; prefs.spArrange): a head over each project's run, a row of its own */
+  #space .spar { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
+  #space .spar button { padding: 2px 9px; border: 0; border-radius: var(--r-2); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+  #space .spar button[aria-pressed="true"] { background: var(--ctl-hi); color: var(--ink); }
+  #space .sphead { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; margin: 10px 6px 0; padding: 0 0 4px; border-bottom: 1px dashed var(--line); color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
+  #space .sphead:first-child { margin-top: 0; }
+  #space .sphead i { width: 9px; height: 9px; border-radius: 2px; background: var(--repo, var(--nocolor)); }
+  #space .sphead b { color: var(--muted); font-weight: 600; }
+  #space .sppn { display: inline-flex; align-items: center; gap: 4px; height: 20px; box-sizing: border-box; padding: 0 7px 0 6px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--pr-open); color: var(--ink); font-size: var(--fs-2xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+  #space .sppn svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  #space .sppr.you .sppn { border-color: var(--working-ink); color: var(--working-ink); }
+  #space .sppn i { width: 6px; height: 6px; border-radius: 50%; background: var(--needs); }
+  #space .sppop { position: absolute; left: 50%; translate: -50% 0; top: 100%; width: 440px; max-width: 80vw; padding-top: 6px; display: none; text-align: left; }
+  #space .sppr:hover .sppop { display: block; }
+  #space .sppl { display: block; padding: 6px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -12px rgb(0 0 0 / .6); }
+  #space .spph { display: block; padding: 3px 6px 5px; color: var(--muted); font-size: var(--fs-2xs); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+  #space .spprr { display: grid; grid-template-columns: 10px auto minmax(0, 1fr) auto; align-items: baseline; gap: 7px; padding: 5px 6px; border-radius: var(--r-2); color: var(--ink); font-size: var(--fs-xs); cursor: pointer; }
+  #space .spprr:hover { background: var(--ctl-hi); }
+  #space .spprr .sq { width: 9px; height: 9px; border-radius: 2px; background: var(--pr-open); }
+  #space .spprr[data-state="draft"] .sq { background: none; box-shadow: inset 0 0 0 1.5px var(--pr-draft); }
+  #space .spprr .no { font: var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: nowrap; }
+  #space .spprr .ti { overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }   /* up to 72 characters, on two lines (2026-11-23) */
+  #space .spprr .sq { align-self: start; margin-top: 3px; }
+  #space .spprr .tg { display: flex; align-items: center; gap: 5px; font-size: var(--fs-2xs); font-weight: 650; white-space: nowrap; }
+  #space .spprr .ym { color: var(--working-ink); }
+  /* a question answered from its node (2026-11-24): its pill on the box's edge, left; the panel under it, read off the drawer's screen */
+  #space .spask { position: absolute; left: 10px; bottom: -11px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 20px; box-sizing: border-box; padding: 0 8px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--needs); color: var(--needs); font-size: var(--fs-2xs); font-weight: 700; white-space: nowrap; cursor: pointer; }
+  #space .spask:hover, #space .spask[aria-expanded="true"] { background: color-mix(in srgb, var(--needs) 16%, var(--panel)); }
+  #space .spask.off { border-style: dashed; color: var(--muted); border-color: var(--line); cursor: default; }
+  #spaskp { position: fixed; z-index: 60; width: 360px; max-width: calc(100vw - 24px); max-height: 60vh; overflow: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 10px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .7); color: var(--ink); font-size: var(--fs-sm); }
+  #spaskp[hidden] { display: none; }
+  #spaskp .spah { margin: 0 2px 4px; color: var(--needs); font-size: var(--fs-2xs); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+  #spaskp .spaq { margin: 0 2px 8px; font-weight: 600; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; }
+  #spaskp .spao { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; width: 100%; padding: 6px; border: 1px solid transparent; border-radius: var(--r-2); background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+  #spaskp .spao:hover, #spaskp .spao.sel { background: var(--ctl-hi); }
+  #spaskp .spao small { display: block; margin-top: 1px; color: var(--muted); font-size: var(--fs-xs); }
+  #spaskp .spao .k { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--needs) 18%, transparent); color: var(--needs); font: 700 var(--fs-2xs) ui-monospace, Menlo, monospace; }
+  #spaskp .spao.sent { background: color-mix(in srgb, var(--idle) 22%, transparent); }
+  #spaskp .spao.sent .k { background: var(--idle); color: var(--bg); }
+  #spaskp .spapre { margin: 0; max-height: 40vh; overflow: auto; padding: 8px; border-radius: var(--r-2); background: var(--bg); font: var(--fs-xs)/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+  #spaskp .spaf { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 2px 0; color: var(--muted); font-size: var(--fs-xs); }
+  #spaskp .spaty { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+  #spaskp kbd { font: var(--fs-2xs)/1 ui-monospace, Menlo, monospace; padding: 2px 5px; border-radius: var(--r-1); background: var(--ctl); }
+  #spminis { position: fixed; left: -10000px; top: 0; width: 1200px; visibility: hidden; pointer-events: none; }
+  #space .spprr .rv { font-weight: 600; color: var(--muted); } #space .spprr .rv[data-rv="open"], #space .spprr .rv[data-rv="chg"] { color: var(--needs); } #space .spprr .rv[data-rv="ok"] { color: var(--idle); }
+  #space .spprr .ck[data-ck="pass"] { color: var(--idle); } #space .spprr .ck[data-ck="fail"] { color: var(--needs); } #space .spprr .ck[data-ck="pending"] { color: var(--working-ink); }
+  #space .spra { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-2xs); font-weight: 700; color: oklch(.78 .12 var(--h)); }   /* the agent the chat runs as (2026-11-18, v8) */
+  :root[data-theme="light"] #space .spra { color: oklch(.48 .13 var(--h)); }
+  #space .spgrid .spa[data-ag]:not([data-st="joined"]) { cursor: pointer; }
+  #space .spbf { display: flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; min-width: 0; font: var(--fs-2xs)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #space .spbf i { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--repo, var(--nocolor)); }
+  #space .spwire { position: absolute; background: oklch(.72 .13 var(--h)); opacity: .6; }
+  #space .sppod { position: absolute; box-sizing: border-box; height: 34px; padding: 0 6px; border-radius: 17px; display: flex; align-items: center; justify-content: center; gap: 5px; background: oklch(.72 .13 var(--h) / .14); border: 1.5px solid oklch(.72 .13 var(--h) / .55); }
+  #space .spl { position: absolute; font-size: var(--fs-2xs); font-weight: 600; white-space: nowrap; color: oklch(.76 .12 var(--h)); }
+  :root[data-theme="light"] #space .spl { color: oklch(.48 .13 var(--h)); }
+  #space .spl { translate: -50% 0; }
+  #space .sppod.col { flex-direction: column; padding: 6px 0; }
+  /* an agent: its type's two letters in its type's colour, its state a badge on the corner, an arc that turns while it works */
+  #space .spa { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 700; color: #141413; background: oklch(.72 .13 var(--h)); }
+  #space .spa[data-st="run"]::before, #space .spa[data-st="quiet"]::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--working-ink) 25%, transparent); border-top-color: var(--working-ink); border-right-color: var(--working-ink); }
+  #space .spa[data-st="run"]::before { animation: spspin 1.1s linear infinite; }
+  #space .spa[data-st="quiet"] { opacity: .7; }
+  #space .spa.past { filter: saturate(.3); }   /* a claude before this one's (2026-11-24): greyed, never faded — its letters keep their contrast */
+  #space .spa[data-st="joined"] { background: transparent; border: 1.5px dashed oklch(.72 .13 var(--h)); color: var(--muted); }
+  #space .spa > i { position: absolute; right: -4px; bottom: -4px; width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--bg); display: flex; align-items: center; justify-content: center; }
+  #space .spa[data-st="done"] > i { background: var(--idle); }
+  #space .spa[data-st="done"] > i::after { content: ""; width: 2.5px; height: 5px; margin-top: -1.5px; border: solid var(--bg); border-width: 0 1.5px 1.5px 0; rotate: 45deg; }
+  #space .spa[data-st="fail"] > i { background: var(--needs); }
+  #space .spa[data-st="fail"] > i::before, #space .spa[data-st="fail"] > i::after { content: ""; position: absolute; width: 6px; height: 1.5px; background: var(--bg); rotate: 45deg; }
+  #space .spa[data-st="fail"] > i::after { rotate: -45deg; }
+  #space .spa[data-st="wait"] > i { background: var(--bg); border: 2px dashed var(--watch); }
+  #space .spa[data-st="stop"] > i { border-radius: 3px; background: var(--muted); }
+  #space .spmore { flex: none; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
+  #space .spx { flex: none; min-width: 26px; height: 22px; padding: 0 5px; display: grid; place-items: center; border-radius: 11px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted);
+    background: var(--ctl); border: 1px solid oklch(.72 .13 var(--h) / .5); cursor: pointer; }
+  #space .spx:hover { background: var(--ctl-hi); color: var(--ink); }
+  /* the chat open: its agents as lanes on one clock */
+  #space .spstate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: var(--fs-sm); color: var(--muted); }
+  #space .spw { color: var(--c); font-weight: 600; }
+  #space .spwin { display: flex; gap: 2px; margin-left: auto; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
+  #space .spwin button { font: inherit; font-size: var(--fs-xs); padding: 2px 8px; border: 0; border-radius: var(--r-2); background: transparent; color: var(--muted); cursor: pointer; }
+  #space .spwin button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 600; }
+  #space .splane { display: grid; grid-template-columns: 26px minmax(140px, 2fr) minmax(80px, 3fr) auto; gap: 0 12px; align-items: center; padding: 6px 6px 6px 0; border-top: 1px solid var(--line); border-radius: var(--r-2); }
+  #space .splane[data-ag] { cursor: pointer; } #space .splane[data-ag]:hover { background: var(--ctl); }
+  #space .spla { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); font-weight: 600; }
+  #space .spld { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
+  #space .splane[data-st="run"] .spld { color: var(--working-ink); } #space .splane[data-st="wait"] .spld { color: var(--watch); } #space .splane[data-st="fail"] .spld { color: var(--needs); } #space .splane[data-st="done"] .spld { color: var(--idle); }
+  #space .splt { display: grid; min-width: 0; }
+  #space .sptrack { position: relative; height: 7px; border-radius: 4px; background: var(--ctl); }
+  #space .spbar { position: absolute; top: 0; bottom: 0; min-width: 4px; border-radius: 4px; box-sizing: border-box; background: var(--c, var(--muted)); }
+  #space .spbar[data-st="run"] { --c: var(--working-ink); } #space .spbar[data-st="quiet"] { --c: color-mix(in srgb, var(--working-ink) 55%, transparent); } #space .spbar[data-st="done"] { --c: var(--idle); } #space .spbar[data-st="fail"] { --c: var(--needs); }
+  #space .spbar[data-st="wait"] { background: color-mix(in srgb, var(--watch) 16%, transparent); border: 1.5px dashed var(--watch); }
+  #space .spnow { position: absolute; right: 0; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; background: var(--accent); }
+  #space .spll { margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-xs)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  #space .spll b { font-weight: 600; color: var(--ink); }
+  #space .splane[data-st="fail"] .spll { color: var(--needs); }
+  #space .spnone { color: var(--muted); font-size: var(--fs-md); }
+  .shead .hspx { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin: -2px -4px -2px 2px; border: 0; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
+  .shead .hspx:hover { background: var(--ctl-hi); color: var(--ink); }
+  .shead .hspx svg { width: 11px; height: 11px; }
+  #sbSpace { align-self: center; height: 20px; margin-right: 4px; gap: 5px; font-size: var(--fs-xs); } #sbSpace .ic { width: 14px; height: 14px; fill: none; }
+  #sbSpace[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  @keyframes spspin { to { transform: rotate(360deg); } }
+  /* Space's sky (2026-11-18, later): a dark theme's night behind the nodes — the ground a shade under the theme's own, two
+     faint glows, a few stars in four layers (one still, three breathing on clocks of their own: opacity alone, on the
+     compositor), and now and then a falling star (spFall). Behind the field, which scrolls and zooms over it; none on a light theme. */
+  #space .spfield { position: relative; }
+  #space .spsky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: none; }
+  :root[data-theme="dark"] #space:not(.nosky) .spsky { display: block; background: radial-gradient(60% 50% at 18% 12%, oklch(.42 .1 285 / .12), transparent 70%), radial-gradient(50% 45% at 85% 80%, oklch(.45 .07 230 / .09), transparent 70%), color-mix(in oklab, var(--bg) 62%, oklch(.15 .03 270)); }
+  :root[data-theme="dark"] #space:not(.nosky) .spfield { background: transparent; }
+  #space.still .spsky > b { animation: none; }   /* Settings › Space: the stars, untwinkling */
+  #space .spsky > b { position: absolute; inset: 0; }
+  #space .spsky i { position: absolute; border-radius: 50%; background: color-mix(in oklab, var(--ink) 75%, white); }
+  #space .spsky .tw1 { animation: sptw 7s ease-in-out infinite; }
+  #space .spsky .tw2 { animation: sptw 11s ease-in-out -4s infinite; }
+  #space .spsky .tw3 { animation: sptw 13s ease-in-out -9s infinite; }
+  @keyframes sptw { 50% { opacity: .35; } }
+  #space .spsky .big { animation: sptw 17s ease-in-out -6s infinite; }   /* bigger stars (2026-11-19): a glow, slow */
+  #space .spsky .big i { background: color-mix(in oklab, var(--ink) 40%, white); box-shadow: 0 0 8px 2px color-mix(in oklab, var(--ink) 40%, transparent); }
+  #space .spsky .spvis { position: absolute; left: 0; opacity: 0; will-change: transform; border-radius: 0; background: none; }   /* a planet or a comet passing (spVisit) */
+  #space .spsky .spplanet s { position: absolute; width: var(--d); height: var(--d); translate: -50% -50%; border-radius: 50%;
+    background: radial-gradient(circle at 32% 30%, oklch(.85 .08 var(--h)), oklch(.55 .12 var(--h)) 55%, oklch(.22 .05 var(--h)) 100%); box-shadow: 0 0 14px 2px oklch(.7 .1 var(--h) / .25); }
+  #space .spsky .spplanet.ringed s::after { content: ""; position: absolute; left: -45%; right: -45%; top: 42%; height: 16%; border-radius: 50%; border: 1.5px solid oklch(.82 .06 var(--h) / .7); rotate: -18deg; }
+  #space .spsky .spcomet s { position: absolute; width: 5px; height: 5px; translate: -50% -50%; border-radius: 50%; background: white; box-shadow: 0 0 8px 3px oklch(.85 .08 220 / .7); }
+  #space .spsky .spcomet s::before { content: ""; position: absolute; top: 50%; right: 2px; width: 110px; height: 3px; translate: 0 -50%; border-radius: 3px; background: linear-gradient(90deg, transparent, oklch(.85 .08 220 / .55)); }
+  #space .spsky .spfall { position: absolute; width: 130px; height: 1.5px; border-radius: 2px; transform-origin: 0 50%; opacity: 0; background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ink) 35%, transparent) 60%, color-mix(in oklab, var(--ink) 40%, white)); }
+  @keyframes spsonar { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.07); opacity: 0; } }
   #ov .ans button:disabled { opacity: .6; cursor: default; }
   #ov .ans b { font: 700 var(--fs-xs) ui-monospace, monospace; color: var(--needs); margin-right: 6px; }
   #ov .ot footer { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--muted); min-width: 0; }
@@ -2674,7 +2958,52 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tour .tskip { background: none; color: var(--muted); } #tour .tskip:hover { background: var(--ctl); color: var(--ink); }
   #tour .tnext { background: var(--accent); color: var(--bg); font-weight: 600; }
   #tour .tnext:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
-  #keysheet .kshd #ksTour { flex: none; }
+  #keysheet .kshd :is(#ksTour, #ksNews) { flex: none; }
+  /* What's new (2026-11-24; `NEWS`, `newsOpen`): a page per example, its picture that example at work — in the board's
+     tokens, its own classes alone, nothing that moves but the page coming in */
+  #news { width: min(480px, 94vw); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 80px rgba(0, 0, 0, .5); }
+  #news::backdrop { background: rgba(0, 0, 0, .5); }
+  #news .nwpic { position: relative; height: 210px; overflow: hidden; background: radial-gradient(55% 60% at 18% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), color-mix(in srgb, var(--ink) 5%, var(--bg)); }
+  :root[data-theme="dark"] #news .nwpic { background: radial-gradient(55% 60% at 18% 10%, rgba(98, 84, 160, .3), transparent 70%), radial-gradient(40% 50% at 85% 90%, color-mix(in srgb, var(--watch) 14%, transparent), transparent 70%), #121318; }
+  #news .nwpic .st { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: var(--ink); opacity: .35; }
+  #news .nwtag { position: absolute; left: 16px; top: 14px; z-index: 2; display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 22%, var(--panel)); color: var(--ink); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  #news .nwx { position: absolute; right: 12px; top: 12px; z-index: 2; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: var(--r-3); font-size: var(--fs-lg); line-height: 1; color: var(--ink); background: color-mix(in srgb, var(--panel) 70%, transparent); }
+  #news .nwx:hover { background: var(--panel); }
+  #news .nn { position: absolute; box-sizing: border-box; width: 136px; height: 78px; padding: 6px 10px; border-radius: 14px; border: 2px solid var(--c, var(--idle)); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; color: var(--ink); }
+  #news .nn[data-st="ask"] { --c: var(--needs); box-shadow: 0 0 0 6px color-mix(in srgb, var(--needs) 22%, transparent); } #news .nn[data-st="work"] { --c: var(--working-ink); } #news .nn[data-st="ready"] { --c: var(--idle); }
+  #news .nn b { font-size: var(--fs-xs); font-weight: 650; line-height: 1.25; }
+  #news .nn small { font: var(--fs-2xs) ui-monospace, monospace; color: var(--muted); }
+  #news .nn.on { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--accent); }
+  #news .nbox { position: absolute; padding: 8px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .6); font-size: var(--fs-xs); color: var(--ink); }
+  #news .nbox .q { margin: 0 2px 6px; font-weight: 600; line-height: 1.35; }
+  #news .nbox .o { display: flex; gap: 6px; padding: 4px 6px; border-radius: var(--r-2); color: var(--muted); white-space: nowrap; }
+  #news .nbox .o.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--ink); }
+  #news .nbox .o kbd { font: 700 var(--fs-xs) ui-monospace, monospace; color: var(--ink); background: none; padding: 0; }
+  #news .npill { position: absolute; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: var(--fs-2xs); font-weight: 700; white-space: nowrap; background: var(--panel); color: var(--ink); border: 1.5px solid var(--c, var(--pr-open)); }
+  #news .npill.q { --c: var(--needs); background: var(--needs); color: var(--bg); }
+  #news .nfind { position: absolute; left: 24px; right: 24px; top: 58px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 9px; border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--accent); font-size: var(--fs-sm); color: var(--ink); }
+  #news .nfind code, #news .nwbody code { font: var(--fs-xs) ui-monospace, monospace; padding: 1px 6px; border-radius: var(--r-2); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--ink); }
+  #news .nfind .n { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #news .nbox .pr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 6px; white-space: nowrap; }
+  #news .nbox .pr i { width: 8px; height: 8px; border-radius: 2px; background: var(--pr-open); }
+  #news .nbox .pr span { overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  #news .nbox .pr em { font-style: normal; font-weight: 600; } #news .nbox .pr em.chg { color: var(--needs); } #news .nbox .pr em.ok { color: var(--pr-open); }
+  #news .nbar { position: absolute; display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .6); font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; }
+  #news .nbar span { padding: 3px 9px; border-radius: var(--r-2); background: var(--ctl-hi); font-weight: 600; }
+  #news .nbar span.go { background: var(--accent); color: var(--bg); }
+  #news .nwbody { padding: 16px 20px 4px; }
+  #news .nwbody.in { animation: newsIn .24s var(--ease-out); }
+  @keyframes newsIn { from { opacity: 0; translate: 6px 0; } }
+  #news h3 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; text-wrap: balance; }
+  #news p { margin: 6px 0 0; font-size: var(--fs-md); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
+  #news p b { color: var(--ink); font-weight: 600; }
+  #news kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
+  #news .nwfoot { display: flex; align-items: center; gap: 8px; padding: 14px 20px 16px; }
+  #news .nwfoot [hidden] { display: none; }
+  #news .nwdots { display: flex; gap: 5px; margin-right: auto; } #news .nwdots button { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 3px; background: var(--ctl-hi); } #news .nwdots button.on { width: 18px; background: var(--accent); }
+  #news .nwskip { background: none; color: var(--muted); } #news .nwskip:hover { background: var(--ctl); color: var(--ink); }
+  #news .nwnext { background: var(--accent); color: var(--bg); font-weight: 600; }
+  #news .nwnext:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
@@ -3038,6 +3367,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
     #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
+    #space .spbox::after, #space .spa::before { animation: none !important; }   /* Space (⌥⌘S): the marks keep their shapes, still */
+    #space .sprg::before, #space .sphl::before { animation: none !important; rotate: .3turn; }   /* a working node's light stands, part way round */
+    #space .spsky > b { animation: none !important; }   /* its sky: the stars still, none falls (spFall) */
+    #news .nwbody.in { animation: none; }   /* what's new: a page comes in at once */
     .gsep.lane .lc { transition: none; }   /* a lane's caret turns at once (its head kept since 2026-11-01; the lane itself folds at once: drawCards reads REDUCED) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     .agr[data-st="run"] > .agd::before { animation: none; border-color: var(--glow, var(--working)); }   /* an agent's arc: a whole circle, still */
@@ -3116,6 +3449,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
+  <section id="space" hidden aria-label="Space — every chat as a node of its agents">
+    <div class="sphd"><h1>Space</h1><div class="spfs" id="spfs" role="group" aria-label="Show chats by state"></div><span class="spar" id="spar" role="group" aria-label="Lay the nodes out by"><button type="button" data-arr="state" aria-pressed="true">State</button><button type="button" data-arr="project" aria-pressed="false">Project</button><button type="button" data-arr="word" aria-pressed="false">Last word</button></span><span class="spsub" id="spsub"></span><label class="spq"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4 14 14"/></svg><span class="sptoks" id="sptoks"></span><input id="spq" type="search" autocomplete="off" spellcheck="false" placeholder="Find a chat" aria-label="Find a chat in Space — title, folder, agents, PRs" title="Its title, folder, agents' types, PRs and tickets · ↑↓ the matches, ⏎ opens, esc clears"><span class="spqn" id="spqn" aria-live="polite"></span><kbd>⌘F</kbd><div id="spqd" role="listbox" aria-label="Filters" hidden></div></label></div>
+    <div class="spbody"><div class="spsky" id="spsky" aria-hidden="true"></div><div class="spfield" id="spfield"><h2 class="vh">Chats</h2><svg class="splinks" id="splinks" aria-hidden="true"></svg><div class="spgrid" id="spgrid"></div><p class="spempty" id="spempty" hidden>No chat in the states picked above.</p></div><div id="spbar" role="toolbar" aria-label="The chats chosen" hidden></div>
+      <div class="spzoom" role="group" aria-label="Zoom the nodes"><button type="button" data-z="-1" aria-label="Zoom out (⌘−)" title="Zoom out · ⌘−">−</button><output id="spzv">100%</output><button type="button" data-z="1" aria-label="Zoom in (⌘+)" title="Zoom in · ⌘+">+</button><button type="button" class="fit" data-z="fit" title="Every node in sight · ⌘0 is 100 %">Fit</button></div></div>
+    <aside class="spside" id="spside" hidden aria-label="The open chat's agents"></aside>
+  </section>
+  <div id="spdiv" hidden role="separator" aria-orientation="vertical" aria-label="Drag to size Space and the chat" title="Drag to size Space and the chat"></div>
   <section id="chat">
     <div class="shead" id="shead"><h2>Home</h2><button class="hmore" id="noChatMore" title="Settings · ⌘,"></button></div>
     <div id="prlist" hidden></div>
@@ -3143,7 +3483,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   </section>
 </main>
 <span class="vh" role="status" id="agSay"></span>
-<footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
+<footer id="sbar"><div id="sbFind"><button class="fsearch" id="sbList" aria-controls="sessions" aria-pressed="true" title="Hide the chat list (⌥⌘B)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.25 3.5v9" stroke="currentColor" stroke-width="1.5"/><rect class="lpane" x="2.5" y="3.5" width="3" height="9"/></svg></button><button class="fsearch" id="sbSpace" aria-controls="space" aria-pressed="false" title="Space — every chat as a node of its agents (⌥⌘S)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4" stroke="currentColor" stroke-width="1.5"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-28 8 8)" stroke="currentColor" stroke-width="1.5"/></svg>Space</button><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-labelledby="spTitle" tabindex="-1">
   <aside class="snav">
     <label class="sfind"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg><input type="search" id="sq" placeholder="Search" aria-label="Search the settings" aria-controls="sbody" autocomplete="off" spellcheck="false"></label>
@@ -3151,6 +3491,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <button role="tab" data-tab="general" class="on" aria-selected="true" aria-controls="spGeneral" id="stGeneral" style="--sic: var(--muted)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M7.1 1h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6L8.9 15H7.1l-.4-1.9c-.4-.15-.8-.35-1.15-.6l-1.85.65-1.3-2.2 1.45-1.3a4.6 4.6 0 0 1 0-1.2L2.4 7.15l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6ZM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg><span>General</span><b class="sn"></b></button>
       <button role="tab" data-tab="look" aria-selected="false" aria-controls="spLook" id="stLook" tabindex="-1" style="--sic: var(--accent)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5v11a5.5 5.5 0 0 0 0-11Z"/></svg><span>Appearance</span><b class="sn"></b></button>
       <button role="tab" data-tab="list" aria-selected="false" aria-controls="spList" id="stList" tabindex="-1" style="--sic: var(--working)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2.5h12v4.5H2Zm0 6.5h12v4.5H2Z"/></svg><span>Chat list</span><b class="sn"></b></button>
+      <button role="tab" data-tab="space" aria-selected="false" aria-controls="spSpace" id="stSpace" tabindex="-1" style="--sic: var(--watch)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-28 8 8)" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>Space</span><b class="sn"></b></button>
       <button role="tab" data-tab="term" aria-selected="false" aria-controls="spTerm" id="stTerm" tabindex="-1" style="--sic: var(--ink)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg><span>Terminal</span><b class="sn"></b></button>
       <button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1" style="--sic: var(--vscode)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2A1.25 1.25 0 0 0 .5 3.25v9.5C.5 13.44 1.06 14 1.75 14h12.5c.69 0 1.25-.56 1.25-1.25v-7.5C15.5 4.56 14.94 4 14.25 4H7.6L6.2 2.4A1.25 1.25 0 0 0 5.27 2Z"/></svg><span>Projects</span><b class="sn"></b></button>
       <button role="tab" data-tab="jira" aria-selected="false" aria-controls="spJira" id="stJira" tabindex="-1" style="--sic: var(--watch)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 3.5h13v3a1.5 1.5 0 0 0 0 3v3h-13v-3a1.5 1.5 0 0 0 0-3Zm1.5 1.5v.9a3 3 0 0 1 0 4.2V11h10v-.9a3 3 0 0 1 0-4.2V5Zm6 0h1.2v6H9Z"/></svg><span>Jira</span><b class="sn"></b></button>
@@ -3214,6 +3555,26 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
               <label class="csub" id="snipRow"><span class="sl"><b>Its words on one line</b><small data-d="The last word, or the prompt and the reply, a line each" data-off="Only where a card shows its words"></small></span><input type="checkbox" class="sw" role="switch" id="cardsSnipOne"></label>
             </div>
           </div>
+        </div></section>
+      </div>
+      <div class="spane" data-tab="space" hidden role="tabpanel" id="spSpace" aria-labelledby="stSpace">
+        <h5 class="sph">Space</h5>
+        <section class="sgrp"><h6 class="sgh" id="sgSky">Sky</h6><div class="slist" role="group" aria-labelledby="sgSky">
+          <div class="srow set" data-kw="space sky night stars background dark"><label class="sl" for="skyOn"><b>Night sky</b><small>Stars behind the nodes, on a dark theme</small></label><input type="checkbox" class="sw" role="switch" id="skyOn"></div>
+          <div class="srow set sub" id="twinkleRow" data-kw="space sky stars twinkle blink shimmer motion"><label class="sl" for="twinkleOn"><b>Twinkling</b><small data-d="A few stars brighten and dim, slowly" data-off="Only with the night sky"></small></label><input type="checkbox" class="sw" role="switch" id="twinkleOn"></div>
+          <div class="srow set sub" id="fallRow" data-kw="space sky falling shooting stars meteor motion often rarely"><label class="sl" for="fallPick"><b>Falling stars</b><small data-d="One now and then, at a random moment" data-off="Only with the night sky"></small></label><span class="ssel"><select id="fallPick"><option value="off">Never</option><option value="rare">Rarely · 1–3 min</option><option value="some">Now and then · 20–60 s</option><option value="often">Often · 5–20 s</option></select></span></div>
+          <div class="srow set sub" id="visitRow" data-kw="space sky planets comets passing motion"><label class="sl" for="visitOn"><b>Planets and comets</b><small data-d="One drifts by now and then, behind the nodes" data-off="Only with the night sky"></small></label><input type="checkbox" class="sw" role="switch" id="visitOn"></div>
+        </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgSpQ">Nodes</h6><div class="slist" role="group" aria-labelledby="sgSpQ">
+          <div class="srow set" id="fadeRow" data-kw="space fade old stale age days quiet node"><label class="sl" for="fadeOn"><b>Fade the quiet ones</b><small>A node with no word for days fades, its age beside its folder</small></label><input type="checkbox" class="sw" role="switch" id="fadeOn"></div>
+          <div class="srow set" id="linkRow" data-kw="space constellations lines links branch merge fold"><label class="sl" for="linksOn"><b>Constellations</b><small>A line between chats tied together — merged, folded, branched</small></label><input type="checkbox" class="sw" role="switch" id="linksOn"></div>
+          <div class="srow set" id="askRow" data-kw="space question answer asking node pill permission"><label class="sl" for="askOn"><b>Answer from the node</b><small>A node asking you has a pill; its question and answers open from it, a key or a click answers in its drawer</small></label><input type="checkbox" class="sw" role="switch" id="askOn"></div>
+        </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgSpAg">Agents</h6><div class="slist" role="group" aria-labelledby="sgSpAg">
+          <div class="srow set" data-kw="space agent card hover tooltip pointer model tokens"><label class="sl" for="agCardOn"><b>Agent card</b><small>Pointing at an agent shows its type, state, what it was asked and does now</small></label><input type="checkbox" class="sw" role="switch" id="agCardOn"></div>
+          <div class="srow set" data-kw="space agents finished done failed running pods busy only"><label class="sl" for="busyOnly"><b>Only agents at work</b><small>Pods leave out the ones that ended; the lanes keep them</small></label><input type="checkbox" class="sw" role="switch" id="busyOnly"></div>
+          <div class="srow set" data-kw="space pod names labels type zoom"><label class="sl" for="podNames"><b>Pod names</b><small>Each pod's type, beside it</small></label><span class="ssel"><select id="podNames"><option value="always">Always</option><option value="zoom">Not zoomed out</option><option value="never">Never</option></select></span></div>
+          <div class="srow set" data-kw="space lanes clock span window minutes hour strip under chat"><label class="sl" for="laneSpan"><b>Lanes' span</b><small>How far back the open chat's lanes reach</small></label><span class="ssel"><select id="laneSpan"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">An hour</option></select></span></div>
         </div></section>
       </div>
       <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
@@ -3295,6 +3656,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   </div>
   <span class="vh" role="status" id="tourSay"></span>
 </dialog>
+<dialog id="news" aria-labelledby="newsTitle" aria-describedby="newsText">
+  <div class="nwpic" id="newsPic" aria-hidden="true"></div>
+  <span class="nwtag" id="newsTag"></span><button class="btn nwx" id="newsX" title="Close · esc" aria-label="Close">×</button>
+  <div class="nwbody" id="newsBody"><h3 id="newsTitle"></h3><p id="newsText"></p></div>
+  <div class="nwfoot"><span class="nwdots" id="newsDots"></span><button class="btn nwskip" id="newsLater" title="Again tomorrow, once">Later</button><button class="btn" id="newsBack" title="The page before · ←">Back</button><button class="btn nwnext" id="newsNext" title="The next page · →">Next</button></div>
+  <span class="vh" role="status" id="newsSay"></span>
+</dialog>
 <dialog id="themes" aria-label="Theme">
   <div class="thin"><input type="text" id="themeq" placeholder="Theme — type to filter · ←↑↓→ the board follows · ⏎ keeps it · esc" autocomplete="off" spellcheck="false"></div>
   <div id="themegrid"></div>
@@ -3313,7 +3681,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="zefoot"><span><kbd>←</kbd> <kbd>→</kbd> run, twice a dash</span><span><kbd>↑</kbd> jump</span><span><kbd>↓</kbd> drop</span><span><kbd>space</kbd> kick, held the nunchaku</span><span><kbd>P</kbd> pause</span><span><kbd>M</kbd> <span id="zeSnd">sound on</span></span><span class="spacer"></span><button type="button" class="btn" id="zeTune" title="The music — T">♪ funk</button><span><kbd>esc</kbd> or <kbd>⌥⌘Z</kbd> closes</span></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
-  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
+  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksNews" title="What's new, an example a page">What's new</button><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
   <div id="ksbody"></div><p class="none" id="ksnone" hidden>no key matches</p>
 </dialog>
 <dialog id="pick">
@@ -3362,6 +3730,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   css · the timeline tab: the chat and its PRs in one order (2026-10-17)
 //   css · home (2026-10-10): the column with no chat open — fastfetch's block, then the day
 //   css · ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column
+//   css · ⌥⌘S: Space, the board's other layout — every chat as a node of its agents (2026-11-18)
 //   css · project editor
 //   css · the chat (2026-10-17): a GitHub repo's issue, in a panel over the board's foot
 //   css · the small print: wrapping, figures, selection, focus, overscroll
@@ -3407,6 +3776,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
 //   js  · tiles: the board's panels laid out as Hyprland's (2026-10-10)
 //   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
+//   js  · ⌥⌘S: Space, the board's other layout (2026-11-18)
 //   js  · home: the chat column with no chat open (2026-10-10)
 //   js  · home's sea (2026-10-12): an ASCII sunset at sea, the board's fish leaping in it
 //   js  · a chat's folder not checked out: cloned first (2026-10-09)
@@ -3456,7 +3826,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] } };
-  const prefs = { agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null };
+  const prefs = { space: false, spaceAt: .52, spZoom: 1, spLanes: true, spOff: ['idle', 'done'], spWin: 30, spSky: true, spTwinkle: true, spFalls: 'some', spVisits: true, spAnswer: true, spFade: true, spLinks: true, spArrange: 'state', spCard: true, spBusy: false, spNames: 'zoom', agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, newsSeen: [], newsLater: 0, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3559,7 +3929,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
     return on ? cards[qsel.i] || null : null;
   }
-  const qShow = on => { const inp = $('#q'); if (on) showList(); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
+  const qShow = on => { const inp = $('#q'); if (on) showList(true); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
   // the box and the filter, on #filters itself (the status bar's)
   {
     const btn = $('#qBtn'), inp = $('#q');
@@ -4400,11 +4770,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     list.style.width = prefs.sessionsWidth + 'px';
     if (hide && list.classList.contains('kf')) { list.classList.remove('kf'); $('#chat').classList.add('kf'); }   // the keys' border on what is left
     if (!hide && applyList.top != null) { $('#slist').scrollTop = applyList.top; applyList.top = null; followCard(); phaseAnims(); }
-    b.setAttribute('aria-pressed', String(!hide)); b.title = `${hide ? 'Show' : 'Hide'} the chat list (⌥⌘B)`;
+    const shown = !hide && !prefs.space;   // Space takes the list's place (2026-11-18): its button says so
+    b.setAttribute('aria-pressed', String(shown)); b.title = `${shown ? 'Hide' : 'Show'} the chat list (⌥⌘B)`;
   }
   function setList(show) { if (show === !prefs.listHidden) return; prefs.listHidden = !show; savePrefs(); applyList(); }
-  function toggleList() { setList(!!prefs.listHidden); }
-  function showList() { setList(true); }
+  function toggleList() { if (prefs.space) return showList(true); setList(!!prefs.listHidden); }
+  /** The list back. In Space (2026-11-18) only when asked for it — its button, ⌥⌘B, the magnifier, the funnel —, which leaves
+   *  Space; a project or a face picked narrows Space as it does the list. */
+  function showList(leave = false) {
+    if (prefs.space) { if (!leave) return; prefs.space = false; savePrefs(); applySpace(); }
+    setList(true); applyList();
+  }
   $('#sbList').onclick = toggleList;
   applyList();
   {
@@ -5282,11 +5658,12 @@ const toolName = n => {
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
-    renderSessionList(cur); renderHidden();
+    renderSessionList(cur); renderHidden(); spSoon();   // Space (⌥⌘S) draws what the list draws, the project in view's
     const w = wanting(), total = w.needs.length + w.replied.length;   // what wants you, as the Dock counts it (2026-10-12; the alerts this page saw before)
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
     if (inApp) postState();
     renderBar(); rollSoon();
+    if (!newsDone.asked) newsDone.asked = setTimeout(() => { newsDone.asked = 0; newsSoon(); });   // what's new, once the board is quiet (2026-11-24)
   }
   // The app's badge and status menu, from the board's own state (2026-09-27): the shell's bridge used to open a second
   // SSE stream and keep its own copy of every session for four counts, three of which it only logged. What it needs is
@@ -5917,7 +6294,7 @@ const toolName = n => {
   // animationName, so it is left alone. getAnimations() is the document's running animations, a few dozen at most, and
   // the style flush it forces is the one the frame was about to do. (Each card at a start of its own, hashed from the
   // chat's id, was a switch from 2026-09-27 to 2026-10-14.)
-  const PHASED = new Set(['ring', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi']);
+  const PHASED = new Set(['ring', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi', 'spsonar', 'spspin']);   // Space's pings and arcs too (2026-11-18, v11)
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
   // each time. `now`: at once, and read at once.
   // The phase is set as the current time that start would mean first, and the start after it (2026-10-11): WebKit — the
@@ -6547,21 +6924,24 @@ const toolName = n => {
   }
   // The pointer on a square or the number (2026-11-01, later): its PR's card after MXT_IN, at once from one square to
   // the next while a card is up; off them MXT_OUT, it goes. The square it is for is lifted (.hot) — the number's too.
-  const MX_AT = '.tmx [data-url], .card .agr[data-ag]', MXT_IN = 120, MXT_OUT = 140, MXT_W = 290;
+  const MX_AT = '.tmx [data-url], .card .agr[data-ag], #space .spa[data-ag], #space .spbt', MXT_IN = 120, MXT_CHAT = 450, MXT_OUT = 140, MXT_W = 290;
   const mxt = { el: null, a: null, sq: null, timer: 0, out: 0 };
   function mxtShow() {
-    const a = mxt.a, c = a?.isConnected && a.closest('#slist > .card'), head = a?.isConnected && a.closest('#shead'), s = c ? state.sessions.get(c.dataset.id) : head && state.sessions.get(state.current);
-    const ag = a?.dataset.ag && s?.agentRows?.find(r => r.id === a.dataset.ag);   // a row of its agents': that one's card (2026-11-02)
-    const pr = !ag && s?.prs?.find(p => p.url === a.dataset.url); if (!pr && !ag) return mxtHide();
+    const a = mxt.a, c = a?.isConnected && a.closest('#slist > .card'), head = a?.isConnected && a.closest('#shead'), inSpace = a?.isConnected && a.closest('#space');   // Space's marks name their chat (2026-11-18)
+    const chat = inSpace && a.matches('.spbt') ? state.sessions.get(a.closest('.spt')?.dataset.id) : null;   // a node's title: its chat's card (2026-11-24)
+    const s = chat || (c ? state.sessions.get(c.dataset.id) : inSpace ? state.sessions.get(a.dataset.sid) : head && state.sessions.get(state.current));
+    const ag = !chat && a?.dataset.ag && (inSpace ? spRows(s) : s?.agentRows || []).find(r => r.id === a.dataset.ag);   // a row of its agents': that one's card (2026-11-02); Space's, any round's
+    const pr = !ag && !chat && s?.prs?.find(p => p.url === a.dataset.url); if (!pr && !ag && !chat) return mxtHide();
     rpopHide(); restOff();
     const el = mxt.el ||= Object.assign(document.createElement('div'), { id: 'mxtip', role: 'tooltip' });
     if (!el.isConnected) document.body.append(el);
     if (ag) agInfoSoon(s, ag, a);
-    const html = ag ? agCardHtml(ag, s) : mxCardHtml(pr, prGroups(s.prs).find(g => g.includes(pr)) || [pr]);
+    if (inSpace && prefs.spCard === false) return mxtHide();   // Settings › Space: no card
+    const html = chat ? spChatHtml(chat) : ag ? (inSpace ? spCardHtml(ag, s) : agCardHtml(ag, s)) : mxCardHtml(pr, prGroups(s.prs).find(g => g.includes(pr)) || [pr]);
     if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
-    const sq = ag ? null : a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
+    const sq = ag || chat ? null : a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
     if (mxt.sq !== sq) { mxt.sq?.classList.remove('hot'); sq?.classList.add('hot'); mxt.sq = sq; }
-    const r = a.getBoundingClientRect(), list = (head || $('#sessions')).getBoundingClientRect(), w = Math.min(MXT_W, list.width - 12);
+    const r = a.getBoundingClientRect(), list = (head || (inSpace ? $('#space') : $('#sessions'))).getBoundingClientRect(), w = Math.min(inSpace ? SP_CARD_W : MXT_W, list.width - 12);
     el.style.setProperty('--w', `${w}px`);
     const h = el.offsetHeight, cx = r.left + r.width / 2, left = Math.max(list.left + 6, Math.min(cx - w / 2, list.right - 6 - w));
     const above = r.top - 10 - h >= 8, y = above ? r.top - 10 - h : r.bottom + 10;
@@ -6577,13 +6957,14 @@ const toolName = n => {
     const a = e.target.closest?.(MX_AT); if (!a || e.pointerType === 'touch') return;
     clearTimeout(mxt.out); if (a === mxt.a) return;
     mxt.a = a; clearTimeout(mxt.timer);
-    if (mxt.el?.classList.contains('on')) mxtShow(); else mxt.timer = setTimeout(mxtShow, MXT_IN);
+    if (mxt.el?.classList.contains('on')) mxtShow(); else mxt.timer = setTimeout(mxtShow, a.matches('.spbt') ? MXT_CHAT : MXT_IN);   // a node's title: a moment's rest first
   };
   const mxtOut = e => {
     const a = e.target.closest?.(MX_AT); if (!a || a.contains(e.relatedTarget) || e.relatedTarget?.closest?.(MX_AT)) return;
     clearTimeout(mxt.timer); mxt.out = setTimeout(mxtHide, MXT_OUT);
   };
-  for (const box of [$('#slist'), $('#shead')]) { box.addEventListener('pointerover', mxtOver); box.addEventListener('pointerout', mxtOut); }
+  for (const box of [$('#slist'), $('#shead'), $('#space')]) { box.addEventListener('pointerover', mxtOver); box.addEventListener('pointerout', mxtOut); }
+  const SP_CARD_W = 320;   // Space's agent card: what it was asked wants the room
   /** The card's Jira tickets (2026-10-08): chips in their status category's colour, the first — the branch's, else the
    *  last one named — on top; a stack as the PRs are since 2026-10-11 (a chip and a count before). */
   const ticketTip = t => `${t.key} — ${t.summary}\n${t.status}${t.type ? ` · ${t.type}` : ''}${t.assignee ? ` · ${t.assignee.me ? 'yours' : t.assignee.name}` : ' · unassigned'}${t.branch ? '\nthe chat\'s branch' : ''}`;
@@ -7370,7 +7751,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
-    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar'], ['skyOn', 'Space’s night sky'], ['agCardOn', 'Space’s agent card']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -7394,7 +7775,9 @@ const toolName = n => {
       { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
       { name: 'Every key', hint: '?', fn: keysOpen },
       { name: 'Take the tour', sub: ' — the board’s main parts, one at a time', fn: tourStart },
+      { name: 'What’s new', sub: ` — ${NEWS.name}, four examples`, fn: () => newsOpen(0) },
       { name: 'The overview — every live chat', hint: '⌥⌘A', fn: ovOpen },
+      { name: prefs.space ? 'Leave Space' : 'Space — every chat as a node of its agents', hint: '⌥⌘S', fn: spToggle },
       { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
       { name: 'Zé, the Bruce Lee of Barcelos — a game', hint: '⌥⌘Z', fn: zeOpen },
@@ -7434,8 +7817,10 @@ const toolName = n => {
       { name: 'Settings', hint: '⌘,', icon: ICON.cog, go: () => settingsOpen(true), leaf: true },
       { name: 'Keys', hint: '?', icon: ICON.key, go: keysOpen, leaf: true },
       { name: 'Tour', hint: 'the main parts', icon: '⇢', go: tourStart, leaf: true },
+      { name: 'What’s new', hint: NEWS.name, icon: '✦', go: () => newsOpen(0), leaf: true },
       { name: 'Home', hint: '⌥⌘0', icon: '⌂', go: hotHome, leaf: true },
       { name: 'Overview', hint: '⌥⌘A', icon: '▦', go: ovOpen, leaf: true },
+      { name: 'Space', hint: '⌥⌘S', icon: '◎', go: spToggle, leaf: true },
       { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
     ].map(m => ({ kind: 'menu', id: 'mn:' + m.name, ...m }));
   };
@@ -7528,6 +7913,7 @@ const toolName = n => {
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
     ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
+    ['⌥⌘S', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyS']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['⌥⌘M', 'Go to', 'lunch — today\'s menus, on a chalkboard', 'the places you go, read each morning · Going and In 15 min at lunch time · again closes it · Settings › Lunch sets it up', ['alt:KeyM']],
     ['⌥⌘Z', 'Go to', 'Zé, the Bruce Lee of Barcelos — a game', 'meat makes him buff, greens thin — down to his bones · three meats in a row bring a Ford Focus, three greens a Mercedes A-Class · four ways to play, ← → on the title, G a second player (the galo, on A D W) · level 3 is ENTER THE DRAGON, every fifth the Avó da Horta · ← → run (twice: a dash), ↑ jumps, ↓ drops, space kicks (held: the nunchaku), P pauses, M the sound, T the music · a chat asking you stops it: ⏎ goes to it · again closes it', ['alt:KeyZ']],
@@ -7603,7 +7989,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { Enter: hotNext, KeyZ: zeToggle, KeyM: lunchToggle, KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotEditorApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleList, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, KeyS: spToggle, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -7786,10 +8172,10 @@ const toolName = n => {
     redraw();
     return false;
   }
-  function tickDone(id, done, anchor, mark = null, forGood = false) {
+  function tickDone(id, done, anchor, mark = null, forGood = false, stay = false) {
     if (done && !tickGate(id, mark || anchor)) return;
     const go = () => {
-      if (done && id === state.current) moveOn(id);
+      if (done && id === state.current && !stay) moveOn(id);   // stay: Space's ✓, which has no list to move on to (2026-11-23)
       api('POST', `/api/sessions/${id}/done`, forGood && done ? { done, forGood } : { done })   // the card the click was on is redrawn by the move
         .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
     };
@@ -8124,7 +8510,7 @@ const toolName = n => {
       return;
     }
     configChanged();   // the board in the new setup; welcomeSync puts the dialog away
-    if (!prefs.toured) setTimeout(tourStart, 200);   // and once, the tour (2026-10-14) — after the dialog's own fade
+    if (!prefs.toured) { news.hold = true; setTimeout(tourStart, 200); }   // and once, the tour (2026-10-14) — after the dialog's own fade; what's new waits for it
   }
   $('#wok').onclick = () => {
     const dir = $('#wdir').value.trim();
@@ -8286,10 +8672,82 @@ const toolName = n => {
   // Left before the end — Skip, esc, a key that closes dialogs —, it says where it waits.
   $('#tour').addEventListener('close', () => {
     clearInterval(tour.timer); tour.timer = 0; removeEventListener('resize', tourPlace);
-    prefs.toured = true; savePrefs(); $('#tourPic').innerHTML = '';   // its pictures borrow the board's own classes (.ymove): none left behind
+    prefs.toured = true; savePrefs(); $('#tourPic').innerHTML = ''; news.hold = false;   // its pictures borrow the board's own classes (.ymove): none left behind
     if (!tour.done) note(onScreen($('#home .hgo[data-go="tour"]')) || $('#shead'), 'The tour waits in Settings (⌘,), ⌥⌘L and home, whenever you want it');
   });
   for (const b of ['#tourBtn', '#ksTour']) $(b).onclick = tourStart;
+  $('#ksNews').onclick = () => newsOpen(0);
+  // ---- what's new (2026-11-24) -------------------------------------------------------------
+  // Once per news (`NEWS.id` into prefs.newsSeen): a page per example, its picture that example at work, the last page's
+  // button the thing itself. It waits for a quiet board — the welcome and the tour first, no dialog up, no chat asking
+  // you, the window in sight —, and Later brings it back once, the next day (prefs.newsLater). ⌥⌘L and the keys' sheet
+  // open it again whenever.
+  const NEWS_STARS = [[40, 30], [120, 176], [300, 22], [420, 58], [440, 170], [230, 196], [70, 120]].map(([x, y]) => `<i class="st" style="left:${x}px;top:${y}px"></i>`).join('');
+  const NEWS = { id: 'space', name: 'Space', go: () => { if (!prefs.space) spToggle(); }, goSay: 'Open Space', pages: [
+    { title: 'Answer without opening the chat',
+      text: '<b>Space</b> (<kbd>⌥⌘S</kbd>) lays every chat out as a node, its agents round it. A node asking you rings red: click its pill and press a number — the answer reaches the chat, and you stay where you were.',
+      pic: () => `<div class="nn" data-st="ask" style="left:28px;top:64px"><b>Queue for invoice webhooks</b><small>billing-api</small></div><span class="npill q" style="left:46px;top:152px">? 3 answers</span>`
+        + `<div class="nbox" style="left:196px;top:44px;width:244px"><p class="q">Which queue should the invoice webhooks go on?</p><div class="o"><kbd>1</kbd>SQS</div><div class="o on"><kbd>2</kbd>Kafka topic — billing reads it</div><div class="o"><kbd>3</kbd>Postgres and a worker</div></div>` },
+    { title: 'Find what needs a look',
+      text: '<kbd>⌘F</kbd> in Space finds a chat by its words, and a word with a colon is a filter: <code>is:asking</code>, <code>pr:changes</code>, <code>@security</code> an agent’s type, <code>#storefront</code> a project.',
+      pic: () => `<div class="nfind"><code>is:asking</code><code>pr:changes</code><span>retry</span><span class="n">1 of 14</span></div><div class="nn" data-st="ask" style="left:170px;top:112px"><b>Retry declined card payments</b><small>storefront</small></div>` },
+    { title: 'See where each PR stands',
+      text: 'A node’s PR pill counts its PRs still open. Point at it: each one’s review — <b>changes requested</b>, <b>approved</b>, threads left open — and which are at your move. A row opens the PR beside the chat.',
+      pic: () => `<div class="nn" data-st="work" style="left:28px;top:66px"><b>Retry declined card payments</b><small>storefront</small></div><span class="npill" style="left:52px;top:154px">⎇ 2 PRs</span>`
+        + `<div class="nbox" style="left:190px;top:60px;width:256px"><div class="pr"><i></i><span><b>store#11</b> Retry declined cards</span><em class="chg">changes</em></div><div class="pr"><i></i><span><b>store#13</b> Backoff on 429s</span><em class="ok">approved</em></div></div>` },
+    { title: 'Tidy up in one go',
+      text: '<kbd>⇧</kbd>-click the chats you are finished with — or <kbd>⇧</kbd> and the arrows — and the bar marks them <b>Done</b>, stars or mutes them all at once. <kbd>D</kbd> on one node does the same for it.',
+      pic: () => `<div class="nn on" data-st="ready" style="left:48px;top:44px"><b>Product grid theme</b><small>storefront</small></div><div class="nn on" data-st="ready" style="left:206px;top:44px"><b>Write the retry docs</b><small>docs</small></div>`
+        + `<div class="nbar" style="left:104px;top:146px"><b style="padding:0 4px">2 chosen</b><span class="go">✓ Done</span><span>★</span><span>Mute</span></div>` },
+  ] };
+  const news = { i: 0, hold: false, timer: 0, later: false };
+  function newsDone() { return (prefs.newsSeen || []).includes(NEWS.id); }
+  function newsOpen(i = 0) {
+    const dlg = $('#news');
+    if (!dlg.open) { for (const d of document.querySelectorAll('dialog[open]')) d.close(); news.later = false; dlg.showModal(); repostPane(); if (inApp) post({ type: 'focus' }); }
+    newsShow(i);
+  }
+  function newsShow(i) {
+    const n = NEWS.pages.length; news.i = Math.max(0, Math.min(n - 1, i));
+    const pg = NEWS.pages[news.i], last = news.i === n - 1;
+    $('#newsPic').innerHTML = NEWS_STARS + pg.pic();
+    $('#newsTag').textContent = `New in ${NEWS.name} · ${news.i + 1} of ${n}`;
+    $('#newsTitle').textContent = pg.title; $('#newsText').innerHTML = pg.text;
+    $('#newsDots').innerHTML = NEWS.pages.map((p, k) => `<button type="button" class="${k === news.i ? 'on' : ''}" data-i="${k}" tabindex="-1" aria-label="${k + 1}: ${esc(p.title)}"></button>`).join('');
+    $('#newsBack').hidden = !news.i; $('#newsLater').hidden = last;
+    $('#newsNext').textContent = last ? NEWS.goSay : 'Next'; $('#newsNext').title = last ? `${NEWS.goSay} · ⏎` : 'The next page · →';
+    $('#newsSay').textContent = `Page ${news.i + 1} of ${n}: ${pg.title}`;
+    const b = $('#newsBody'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
+    $('#newsNext').focus({ preventScroll: true });
+  }
+  /** Shown once it is quiet; called on every board draw, so it only looks. */
+  function newsSoon() {
+    if (news.timer || newsDone() || news.hold) return;
+    news.timer = setTimeout(() => {
+      news.timer = 0;
+      if (newsDone() || news.hold || document.hidden || Date.now() < (prefs.newsLater || 0) || document.querySelector('dialog[open]')) return;
+      if ([...state.sessions.values()].some(askingLoud)) return;   // a question first: it comes back on the next draw
+      newsOpen(0);
+    }, 1500);
+  }
+  $('#newsNext').onclick = () => { if (news.i < NEWS.pages.length - 1) return newsShow(news.i + 1); $('#news').close(); NEWS.go(); };
+  $('#newsBack').onclick = () => newsShow(news.i - 1);
+  $('#newsX').onclick = () => $('#news').close();
+  $('#newsLater').onclick = () => { news.later = true; $('#news').close(); };
+  $('#newsDots').addEventListener('click', e => { const d = e.target.closest('button[data-i]'); if (d) newsShow(+d.dataset.i); });
+  $('#news').addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight' && news.i < NEWS.pages.length - 1) { e.preventDefault(); newsShow(news.i + 1); }
+    else if (e.key === 'ArrowLeft' && news.i) { e.preventDefault(); newsShow(news.i - 1); }
+  });
+  // closed any way but Later — ×, esc, a key that closes dialogs, the last page's button — it is seen; Later once, then seen
+  $('#news').addEventListener('close', () => {
+    $('#newsPic').innerHTML = '';
+    if (newsDone()) return;
+    if (news.later && !prefs.newsLater) { const d = new Date(); d.setHours(24, 0, 0, 0); prefs.newsLater = d.getTime(); }
+    else prefs.newsSeen = [...(prefs.newsSeen || []), NEWS.id];
+    savePrefs();
+  });
   // ---- the colour picker ------------------------------------------------------------------
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
@@ -8841,7 +9299,7 @@ const toolName = n => {
     const headHtml = `<h2${s.agent ? ' class="ag"' : ''} title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${scopedOn(s) ? ' on' : ''}" title="${scopedOn(s) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}${REPO_FUN}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span>${agentTag(s)}</h2>
       ${driftChip(s)}${diffChip(s)}${headMove(s)}${headMatrix(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${inEdName()}${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
+      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${inEdName()}${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>${prefs.space ? '<button type="button" class="hspx" id="spClose" aria-label="Close the chat — Claude keeps running" title="Close the chat — Claude keeps running (⌘W)"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>' : ''}
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -8931,6 +9389,7 @@ const toolName = n => {
     const ub = $('#undelBtn'); if (ub) ub.onclick = () => { menu.close(); restoreChat(s.id); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
+    const spx = $('#spClose'); if (spx) spx.onclick = spCloseChat;   // Space's ×: the chat closed, Claude left running (2026-11-18)
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#muteBtn').onclick = () => setMuted(s.id, !state.sessions.get(s.id)?.muted);   // a toggle: the menu stays up
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(scopedOn(s) ? ALL : projDir(s.cwd)); };   // a toggle (2026-10-08), a named project's too (2026-11-04)
@@ -9107,22 +9566,42 @@ const toolName = n => {
     const hm = e.target.closest('#shead .hmove');
     if (hm) { const s = state.sessions.get(state.current); return s && [{ t: 'Let this round go — the next move tells you', fn: () => letGo(s, $('#shead .hmove')) }]; }
     if (sq) return projCfg(sq.dataset.name).color ? [{ t: 'Pick a colour…', fn: () => sq.click() }, { t: 'Let go of the colour', fn: () => clearColor(sq.dataset.name) }] : [{ t: 'Pick a colour…', fn: () => sq.click() }];
+    // a node in Space (2026-11-24): the card's rows, what its state wants first — its question, its resume —, its tick
+    // Space's own (the chat open beside it stays), its star; an agent's mark its agent's menu
+    const spa = e.target.closest('#spgrid .spa[data-ag]');
+    if (spa) { const s = state.sessions.get(spa.dataset.sid), r = s && spRows(s).find(x => x.id === spa.dataset.ag); return r ? agMenu(s, r, spa) : null; }
+    const spt = e.target.closest('#spgrid .spt[data-id]');
+    if (spt) { const s = state.sessions.get(spt.dataset.id); return s ? spMenu(s, spt) : null; }
     if (!card) return null;
     const s = state.sessions.get(card.dataset.id); if (!s) return null;
+    return chatRows(s, card);
+  }
+  /** A chat's rows, the card's menu and a node's: `space` ticks it as Space does, the chat beside it left open. */
+  function chatRows(s, card, space = false) {
+    const tick = (done, forGood = false) => space && !forGood ? spTick(s.id, card.querySelector('.spdone') || card) : tickDone(s.id, done, card, null, forGood);
     return [
       { t: 'Open', fn: () => openSession(s.id) },
       ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
       ...(s.cwd ? [scopedOn(s) ? { t: 'Every project', sub: 'show all · ⌥⌘P ⌥⌘P', fn: () => selectProject(ALL) } : { t: `Only ${s.project}`, sub: 'narrow the list to it', fn: () => selectProject(projDir(s.cwd)) }] : []),
       ...talkRows(s, card),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
-      ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
-        : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
+      ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tick(false) }]
+        : canTick(s) ? [{ t: 'Done', ...(watchEnds(s) ? { sub: `ends its watch — ${watchEnds(s)}` } : {}), fn: () => tick(true) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tick(true, true) }] : [])] : []),
       { t: 'Delete from the board', sub: `${removeEnds(s) ? `ends ${removeEnds(s)}, asks once more` : 'its claude ends'}; the transcript stays · ⌥-click ✓`, warn: true, fn: () => removeChat(s.id, card) },
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
       s.muted ? { t: 'Unmute', fn: () => setMuted(s.id, false) } : { t: 'Mute', sub: 'no banner, sound or count, questions too', fn: () => setMuted(s.id, true) },
       ...((s.prs || []).length ? [{ hr: true }, ...(s.prs || []).slice(0, 6).map(pr => ({ t: `Take ${pr.label.replace(/^.*?#/, '#')} off this chat`, fn: () => unlinkUrl(s, pr.url) }))] : []),
       { hr: true }, { t: 'Copy its link', fn: () => copyText(`${location.origin}/#${s.id}`).then(ok => note(card, ok ? 'Link copied' : 'Could not copy it', !ok)) },
     ];
+  }
+  function spMenu(s, node) {
+    const pill = node.querySelector('.spask[data-tid]');
+    const first = [
+      ...(pill ? [{ t: 'Answer its question…', sub: 'its answers, read off its drawer · ⏎', fn: () => spAskOpen(s.id, pill.dataset.tid) }] : asking(s) ? [{ t: 'Answer its question…', sub: `it asks in ${entryLabel(s)}`, off: true }] : []),
+      ...(resumable(s) ? [{ t: 'Resume here', sub: 'its claude in a drawer · ⌥⌘C', fn: async () => { await openSession(s.id); const c = state.sessions.get(s.id); if (c) termAction(c); } }] : []),
+    ];
+    const rows = chatRows(s, node, true);
+    return [...first, ...(first.length ? [{ hr: true }] : []), ...rows.slice(0, 1), s.fav ? { t: 'Unstar', sub: 'F', fn: () => setFav(s.id, false) } : { t: 'Star', sub: 'first, a row of its own · F', fn: () => setFav(s.id, true) }, ...rows.slice(1)];
   }
   document.addEventListener('contextmenu', e => {
     if (e.target.closest('input, textarea, .tbody, #log .text, #log pre')) return;   // a box, a terminal, the words: the system's menu
@@ -9152,7 +9631,7 @@ const toolName = n => {
   // face narrowing it too (2026-10-14; the project's alone before, a count the list did not show). A press on the funnel
   // that closed its own menu leaves it closed.
   let fCounts = {};
-  function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); if (prefs.listFilter) showList(); renderBoard(); $('#slist').scrollTop = 0; }
+  function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); if (prefs.listFilter) showList(true); renderBoard(); $('#slist').scrollTop = 0; }
   function drawFilter(p, narrow = () => true) {
     const f = listFilter(), b = $('#fBtn'), fl = b.querySelector('.fl');
     fCounts = Object.fromEntries(Object.entries(FILTERS).map(([k, x]) => [k, p.sessions.filter(s => x.test(s) && narrow(s)).length]));
@@ -10066,6 +10545,8 @@ const toolName = n => {
     alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
     details: () => detailsText(),   // About's Copy details (2026-11-04), its text with no clipboard touched
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
+    spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length),
+    spVisit: () => (spVisit(true), document.querySelector('#spsky .spvis')?.className || ''),   // a planet or comet, now (2026-11-19)   // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
     ze: () => ze,   // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
     // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
@@ -10079,6 +10560,7 @@ const toolName = n => {
       reload: reload.want ? { to: reload.want, why: reload.why } : null,
       editor: prefs.editor, editors: state.editors, audio: audio?.state ?? null,
       swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0, dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
+    spMini: tid => sp.minis.get(tid) || null,   // Space's hidden xterm of a drawer asking (2026-11-24), live
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
     motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
@@ -10742,7 +11224,7 @@ const toolName = n => {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
     const s = state.sessions.get(state.current), k = s && tabOf(s);
     if (k && k !== 'chat') { dropTab(s, k); return true; }
-    if (!splitNow()) return false;
+    if (!splitNow()) { if (prefs.space && s) { spCloseChat(); return true; } return false; }   // Space: ⌘W on the chat closes its panel
     closeHalf(focusG);
     return true;
   }
@@ -12143,9 +12625,718 @@ const toolName = n => {
   async function answerInDrawer(s, digit) {
     await openSession(s.id);
     if (!/^\d$/.test(String(digit))) return;   // an answer's number, one key
-    for (let i = 0; i < 60; i++) { const tm = claudeTm(s); if (tm) { focusTerm(); termSend(tm, String(digit)); return; } await new Promise(r => setTimeout(r, 100)); }
+    for (let i = 0; i < 60; i++) { const tm = claudeTm(s); if (tm) { focusTerm(); termSend(tm, String(digit)); setTimeout(() => termSend(tm, '\r'), SP_ENTER_MS); return; } await new Promise(r => setTimeout(r, 100)); }   // the number, then ⏎ (2026-11-24)
     note($('#shead'), 'Its drawer did not come up — answer it in the chat', true);
   }
+
+  // ---- ⌥⌘S: Space, the board's other layout (2026-11-18) ----------------------------------------------------------------
+  // The list's and the chat's place, split: Space on the left, the chat itself on the right (v3) — the board's own #chat, so every key,
+  // tab, drawer and picker is the same (main.space, a grid). Space or the list, never both: ⌥⌘B, the list's button, the
+  // magnifier or the funnel leave Space for the list; Space hides it, and its own hidden-or-not is kept for after. Space: a node per chat of the
+  // project in view — its name (60 characters at most, wrapped) and its folder, its edge the chat's state — with a pod
+  // per agent type docked to it, each agent its type's two letters in its type's colour (the definition's, else one from
+  // its name), its state a badge on the corner, an arc that turns while it works. Filters by state on top (`prefs.spOff`);
+  // the open chat's agents as lanes on one clock under the nodes (15 m · 30 m · 1 h, `prefs.spWin`), a lane its agent's tab
+  // (agOpen). A click on a node opens the chat on the right, its header's × closes it; none open, Space takes the width. Read from the summaries alone,
+  // drawn with the board (renderBoard → spSoon) and every 5 s for the clock while on (`prefs.space`, the status bar's
+  // #sbSpace, ⌥⌘S); the divider's place `prefs.spaceAt`.
+  const sp = { raf: 0, timer: 0, fall: 0, visit: 0, list: [], open: new Map(), q: '', sel: 0, minis: new Map(), asks: new Map(), ask: null, askT: 0, lraf: 0, over: null, toks: [], dsel: 0, dshut: '', chosen: new Set() };   // open: a pod's `<chat>:<type>` → its fold timer
+  const SP_BUSY = ['run', 'wait', 'joined'], SP_OPEN_MS = 20_000;
+  const SP_WINS = [15, 30, 60], SP_ORDER = ['run', 'quiet', 'wait', 'fail', 'done', 'stop', 'joined'], SP_POD = 6, SP_PODS = 4, SP_CAP = 30;
+  const SP_WORD = { run: 'running', quiet: 'quiet', wait: 'waiting', fail: 'failed', done: 'done', stop: 'stopped', joined: 'joined' };
+  const SP_ST = { ask: 'Asking you', work: 'Clauding', watch: 'Watching', ready: 'Ready', idle: 'Idle', done: 'Done' };
+  const SP_OF = { asking: 'ask', working: 'work', watching: 'watch', ready: 'ready', idle: 'idle', done: 'done' };
+  const SP_HUE = { red: 25, orange: 55, yellow: 95, green: 150, cyan: 200, blue: 255, purple: 300, pink: 350 };   // Claude Code's names, as .asdot's
+  const spWin = () => SP_WINS.includes(prefs.spWin) ? prefs.spWin : 30;
+  const spOff = () => Array.isArray(prefs.spOff) ? prefs.spOff : ['idle', 'done'];
+  const spSt = r => agQuiet(r) ? 'quiet' : r.st;
+  const spState = s => SP_OF[s.done ? 'done' : rankOf(s)] || 'ready';
+  // every agent the chat has run, not the last round alone (2026-11-18, v9) — nor its claude's alone: a resume's claude starts
+  // its rows over, its past agents stay in the pods, and a chat with no claude has them too (2026-11-24, `past`)
+  const spRows = s => s?.alive ? s.agentAll || s.agentRows || [] : s?.agentAll || [];
+  const spCount = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const spCut = t => { t = String(t || ''); return t.length > 60 ? t.slice(0, 60).trimEnd() + '…' : t; };
+  // an agent by its type, a teammate by the category it was spawned as (the server's mateType) — never "teammate": its name is
+  // its card's, never Space's (2026-11-18, later; v6); capitalised where it is a word
+  const spKind = r => r.type || (r.mate ? 'general-purpose' : 'agent');
+  const spCap = t => String(t).charAt(0).toUpperCase() + String(t).slice(1);
+  const spHue = (name, color) => SP_HUE[color] ?? [...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+  const spTwo = name => { const p = String(name).split(/[^A-Za-z0-9]+/).filter(Boolean); return p.length ? (p.length > 1 ? p.map(x => x[0]).join('') : p[0].slice(0, 2)).toUpperCase().slice(0, 2) : '·'; };
+  const spTally = rows => SP_ORDER.map(k => [k, rows.filter(r => spSt(r) === k).length]).filter(([, n]) => n).map(([k, n]) => `${n} ${SP_WORD[k]}`).join(' · ');
+  const spFolder = s => !s.cwd || s.cwd === state.about?.scratch ? '' : s.cwd.replace(/\/+$/, '').split('/').pop() || '/';   // its last name only (2026-11-18, v7); the whole path its tooltip
+  /** An agent's mark: its type's letters and colour, its state for a screen reader too. */
+  const spAgent = (r, kind, hue, s) => { const st = spSt(r); return `<span class="spa${r.past ? ' past' : ''}" data-st="${st}" data-ag="${esc(r.id)}" data-sid="${esc(s.id)}" style="--h:${hue}" role="img" aria-label="${esc(`${spCap(kind)}${r.mate ? ' teammate' : ''}: ${SP_WORD[st]}${r.past ? ', an earlier run' : ''}`)}">${esc(spTwo(kind))}${['done', 'fail', 'wait', 'stop'].includes(st) ? '<i></i>' : ''}</span>`; };
+  /** An agent pointed at in Space (2026-11-18, later): #mxtip's card in Space's words — its type in its colour and letters
+   *  ("teammate" when one), its state and time, what it was asked (the first line, the rest under it), what it does now (or
+   *  did last, or the error), then what is read when pointed at — model, tool calls and tokens, its worktree. Its name is
+   *  here and nowhere else in Space. */
+  /** A chat's card, its node's title pointed at (2026-11-24): its state and the age of its last word, its folder and
+   *  branch, the whole title, then your last word, Claude's, what it does now, its open PRs where their review stands,
+   *  its tickets. Read from the summary alone. */
+  function spChatHtml(s) {
+    const st = spState(s), at = wordAt(s), branch = s.worktree || s.headNow || s.gitBranch || '', live = liveOf(s).html;
+    const prs = spOpenPrs(s).map(p => `${esc((prRepo(p).split('/')[1] || '') + prNum(p))}${spStageText(p) ? ` ${esc(spStageText(p))}` : ''}`).join(' · ');
+    const kv = [['You', s.lastPrompt && esc(s.lastPrompt)], ['Claude', s.lastReply && ticks(esc(s.lastReply))], ['Now', live], ['PRs', prs], ['Ticket', (s.tickets || []).map(t => `${esc(t.key)} · ${esc(t.status || '')}`).join(' — ')]].filter(([, v]) => v);
+    const ink = { ask: '--needs', work: '--working-ink', watch: '--watch', ready: '--idle', idle: '--muted', done: '--ended' }[st];
+    return `<div class="spcs" style="--c:var(${ink})"><b>${SP_ST[st]}${at ? ` · <span data-at="${esc(at)}"></span>` : ''}</b><span>${esc(spFolder(s) || 'no folder')}${branch ? ` · <code>${esc(branch)}</code>` : ''}</span></div>`
+      + `<div class="mtt">${ticks(esc(s.title || ''))}</div>`
+      + (kv.length ? `<dl class="spcc">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '');
+  }
+  function spCardHtml(r, s) {
+    const d = agInfo.get(`${s.id}:${r.id}`)?.d, st = spSt(r), kind = spKind(r), hue = spHue(kind, r.color), ended = !!r.end;
+    const since = t => agDur(Date.now() - Date.parse(t));
+    const said = st === 'run' ? `at work ${since(r.at)}` : st === 'quiet' ? `quiet ${since(r.lastAt)}` : st === 'wait' ? `waiting ${since(r.at)}`
+      : st === 'done' ? `done in ${agDur(Date.parse(r.end) - Date.parse(r.at))}` : st === 'stop' ? `stopped after ${agDur(Date.parse(r.end) - Date.parse(r.at))}` : AG_SAID[st] || '';
+    const asked = String(d?.prompt || r.asked || '').trim(), nl = asked.indexOf('\n'), first = nl < 0 ? asked : asked.slice(0, nl), rest = nl < 0 ? '' : asked.slice(nl + 1).trim();
+    const now = st === 'fail' ? ['Error', `<span class="spce">${esc(r.why || 'It ended on an error')}</span>`] : st === 'joined' ? null : [ended ? 'Last' : 'Now', agNow(r, s)];
+    const reading = '<span class="spcr">reading…</span>', tree = r.branch || r.tree;
+    const kv = [['Model', d ? esc(d.model || '—') : reading],
+      [ended ? 'In all' : 'So far', d ? (d.tools || d.tokens ? esc(`${d.tools} tool call${d.tools === 1 ? '' : 's'}${d.tokens ? ` · ${agTok(d.tokens)} tokens` : ''}`) : 'nothing yet') : reading],
+      tree && ['Worktree', esc(tree)]].filter(Boolean);
+    return `<div class="mth spch" style="--h:${hue}"><span class="spct">${esc(spTwo(kind))}</span><b class="spck">${esc(spCap(kind))}</b>${r.mate ? '<span class="spcm">teammate</span>' : ''}<span class="mts" data-state="${esc(st)}">${esc(said)}</span></div>`
+      + (r.name && r.name !== kind ? `<div class="spcn">${esc(r.name)}</div>` : '')
+      + `<div class="mtt">${first ? esc(first) : '<i>What it was asked is on its way…</i>'}</div>`
+      + (rest ? `<p class="agp spcp">${esc(rest.slice(0, 400))}</p>` : '')
+      + (now?.[1] ? `<dl class="agi spcw"><dt>${now[0]}</dt><dd>${now[1]}</dd></dl>` : '')
+      + `<dl class="agi spcv">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  }
+  // a node's box in its tile (#space's --spw × --sph, .spbox's place): its centre and half sizes, a pod's thickness, a wire's length (2026-11-18, v9)
+  const SP_GEO = { cx: 152, cy: 108, hw: 80, hh: 50, pt: 34, w: 8 }, SP_TILE = [304, 216];
+  /** A chat's agents by type, the most first, each docked to its node on a side of its own: top, bottom, right, left. */
+  function spPods(s) {
+    const groups = [];
+    for (const r of spRows(s)) { if (prefs.spBusy && !SP_BUSY.includes(r.st)) continue; const k = spKind(r); let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, rows: [], color: r.color }); g.rows.push(r); g.color ||= r.color; }
+    groups.sort((a, b) => b.rows.length - a.rows.length);
+    const shown = groups.slice(0, SP_PODS), left = groups.slice(SP_PODS).reduce((n, g) => n + g.rows.length, 0);
+    return shown.map((g, i) => {
+      // folded, a pod is its agents at work, else its newest; +N the rest, opened for SP_OPEN_MS (2026-11-18, v10)
+      const busy = g.rows.filter(r => SP_BUSY.includes(r.st)), last = g.rows.reduce((a, r) => (r.lastAt || r.at || 0) > (a.lastAt || a.at || 0) ? r : a, g.rows[0]);
+      const key = `${s.id}:${g.k}`, base = busy.length ? busy : [last], hid = g.rows.length - base.length, open = hid > 0 && sp.open.has(key), all = open ? g.rows : base;
+      const hue = spHue(g.k, g.color), more = all.length > SP_POD ? all.length - (SP_POD - 1) : 0, rows = more ? all.slice(0, SP_POD - 1) : all;
+      const tog = hid > 0 ? `<span class="spx" role="button" tabindex="-1" data-pod="${esc(g.k)}" aria-expanded="${open}" aria-label="${open ? `Fold ${esc(spCap(g.k))}` : `${hid} more ${esc(spCap(g.k))}, done or idle`}">${open ? '−' : `+${hid}`}</span>` : '';
+      // top and bottom a row, the sides a column: x, y, width, height of the pod; of its wire; where its label is
+      const n = rows.length + (more ? 1 : 0) + (tog ? 1 : 0), len = n * 26 + (n - 1) * 5 + 12, side = ['top', 'bottom', 'right', 'left'][i];
+      const { cx, cy, hw, hh, pt, w } = SP_GEO, top = cy - hh - w - pt, bot = cy + hh + w, lft = cx - hw - w - pt, rgt = cx + hw + w;
+      const at = { top: [cx - len / 2, top, len, pt, cx - 1, cy - hh - w, 2, w, cx, top - 14], bottom: [cx - len / 2, bot, len, pt, cx - 1, cy + hh, 2, w, cx, bot + pt + 2],
+        right: [rgt, cy - len / 2, pt, len, cx + hw, cy - 1, w, 2, rgt + pt / 2, cy + len / 2 + 3], left: [lft, cy - len / 2, pt, len, lft + pt, cy - 1, w, 2, lft + pt / 2, cy + len / 2 + 3] }[side];
+      const label = `${spCap(g.k)}${i === SP_PODS - 1 && left ? ` · +${left} more` : ''}`;
+      return `<span class="spwire" style="--h:${hue};left:${at[4]}px;top:${at[5]}px;width:${at[6]}px;height:${at[7]}px"></span>`
+        + `<span class="sppod${side === 'right' || side === 'left' ? ' col' : ''}" style="--h:${hue};left:${at[0]}px;top:${at[1]}px;width:${at[2]}px;height:${at[3]}px">${rows.map(r => spAgent(r, g.k, hue, s)).join('')}${more ? `<span class="spmore">+${more}</span>` : ''}${tog}</span>`
+        + `<span class="spl" style="--h:${hue};left:${at[8]}px;top:${at[9]}px">${esc(label)}</span>`;
+    }).join('');
+  }
+  // The node's ✓ (2026-11-23): the card's tick — tickDone, a watching chat's armed first (tickGate) —, D on its node; a done
+  // chat's ↩ back to its lane. Its PRs still open or in draft, a pill on the box's edge: amber when one is at your move, a red
+  // dot when one's CI fails; pointed at, their list, a row its PR on a tab beside the chat (spPrRow).
+  const SP_TICK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.6 8.3 6.6 11.2 12.4 4.9"/></svg>';
+  const SP_BACK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4 3 7l3 3M3 7h6.5a3.5 3.5 0 0 1 0 7H8"/></svg>';
+  const SP_PR = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="12.5" r="1.6"/><path d="M4 5.1v5.8M12 10.9V7a2.5 2.5 0 0 0-2.5-2.5H7.5M9 3 7.5 4.5 9 6"/></svg>';
+  const SP_CK = { pass: '✓', fail: '✕', pending: '◌' };
+  // where its review stands (2026-11-23; the server's pr.review): changes asked for, threads left open, approved, or a review
+  // still awaited — one word, the open threads beside a decision
+  const SP_STAGE = { changes: ['changes requested', 'chg'], approved: ['approved', 'ok'], required: ['awaiting review', 'wait'] };
+  const spStageText = pr => { const r = pr.review; if (!r || pr.state === 'draft') return ''; const d = r.decision === 'required' || (!r.decision && r.asked) ? 'required' : r.decision;
+    return [SP_STAGE[d] && !(d === 'required' && r.open) ? SP_STAGE[d][0] : '', r.open ? `${r.open} unresolved` : ''].filter(Boolean).join(', '); };
+  function spStage(pr) {
+    const r = pr.review; if (!r || pr.state === 'draft') return '';
+    const d = r.decision === 'required' || (!r.decision && r.asked) ? 'required' : r.decision, w = SP_STAGE[d];
+    const open = r.open ? `<span class="rv" data-rv="open">${r.open} unresolved</span>` : '';
+    return (w && !(d === 'required' && r.open) ? `<span class="rv" data-rv="${w[1]}">${w[0]}</span>` : '') + open;
+  }
+  const spOpenPrs = s => (s.prs || []).filter(p => p.state === 'open' || p.state === 'draft');
+  const spPrRow = pr => `<span class="spprr" role="link" data-url="${esc(pr.url)}" data-state="${esc(pr.state)}" title="${esc(`${pr.title || ''}\nOpens on a tab beside the chat`)}"><i class="sq"></i>`
+    + `<span class="no">${esc((prRepo(pr).split('/')[1] || '') + prNum(pr))}</span><span class="ti">${esc(pr.title ? (pr.title.length > 72 ? pr.title.slice(0, 72).trimEnd() + '…' : pr.title) : 'its title on its way…')}</span>`
+    + `<span class="tg">${spStage(pr)}${pr.turn?.you ? '<span class="ym">your move</span>' : ''}${prCk(pr) ? `<span class="ck" data-ck="${prCk(pr)}" title="${CK_SAID[prCk(pr)]}">${SP_CK[prCk(pr)]}</span>` : ''}</span></span>`;
+  // its Jira tickets (2026-11-24): a pill beside the PRs', in the first one's status colour; a click its page beside the chat
+  const SP_TK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5z"/></svg>';
+  function spTkPill(s) {
+    const tks = s.tickets || []; if (!tks.length) return '';
+    return `<span class="sptk" role="link" data-cat="${esc(tks[0].cat || '')}" data-url="${esc(tks[0].url || '')}" title="${esc(tks.map(ticketTip).join('\n\n'))}">${SP_TK}${tks.length}<span class="vh"> Jira ticket${tks.length === 1 ? '' : 's'}</span></span>`;
+  }
+  const spPills = s => { const h = spTkPill(s) + spPrPill(s); return h ? `<span class="sppills">${h}</span>` : ''; };
+  function spPrPill(s) {
+    const open = spOpenPrs(s).sort((a, b) => !!b.turn?.you - !!a.turn?.you), n = open.length; if (!n) return '';   // your move's first, else the chat's order
+    const gone = (s.prs || []).length - n, you = open.some(p => p.turn?.you), fail = open.some(p => prCk(p) === 'fail');
+    return `<span class="sppr${you ? ' you' : ''}"><span class="sppn">${SP_PR}${n}${fail ? '<i></i>' : ''}<span class="vh"> open PR${n === 1 ? '' : 's'}${you ? ', one at your move' : ''}</span></span>`
+      + `<span class="sppop"><span class="sppl"><span class="spph">${n} open PR${n === 1 ? '' : 's'}${gone ? ` · ${gone} merged or closed` : ''}</span>${open.map(spPrRow).join('')}</span></span></span>`;
+  }
+  /** A chat's node — what is open is a class set after, so opening a chat redraws no node and stops no arc turning. */
+  function spNode(s) {
+    const st = spState(s), rows = spRows(s), color = repoColor(s.cwd), folder = spFolder(s), q = spQuery(), armed = st !== 'done' && armedOn(s.id);
+    const said = `${s.fav ? 'Starred: ' : ''}${s.title}${s.agent ? `, as @${agentShort(s.agent)}` : ''} — ${folder || 'no folder'}, ${SP_ST[st]}${rows.length ? `, ${spTally(rows)}` : ''}`;
+    // quiet for days (2026-11-24): faded by its days since the last word, a ready, idle or done one — never one at work or asking
+    const quiet = ['ready', 'idle', 'done'].includes(st), days = quiet ? (Date.now() - Date.parse(wordAt(s))) / 86_400_000 : 0, age = quiet && prefs.spFade !== false && days >= 1 ? wordAt(s) : '';
+    const fade = age ? Math.max(.5, Math.round((1 - .06 * Math.min(days, 9)) * 20) / 20) : 1;
+    const tick = st === 'done' ? ['Back to its lane (D)', SP_BACK] : armed ? [`Done ends its watch — ${watchEnds(s)}. Tick it again to end it`, SP_TICK] : ['Mark as done (D)', SP_TICK];
+    const lit = st === 'work' || st === 'watch';   // a light that turns round it (2026-11-24): its bloom under the box, its arc on the edge
+    return `<button type="button" class="spt" data-id="${esc(s.id)}" aria-label="${esc(said)}" style="${color ? `--repo:${color};` : ''}${fade < 1 ? `--fade:${fade}` : ''}"><span class="spo">${spPods(s)}`
+      + `${lit ? `<i class="sphl" data-st="${st}" aria-hidden="true"></i>` : ''}<span class="spbox" data-st="${st}">${lit ? '<i class="sprg" aria-hidden="true"></i>' : ''}<span class="spstar" role="button" tabindex="-1" aria-pressed="${!!s.fav}" aria-label="${s.fav ? 'Unstar it' : 'Star it'} (F)" title="${s.fav ? 'Unstar' : 'Star'} (F)">${SP_STAR}</span>`
+      + `<span class="spdone${armed ? ' armed' : ''}" role="button" tabindex="-1" aria-label="${esc(tick[0])}" title="${esc(tick[0])}">${tick[1]}</span>`
+      + `${s.agent ? `<span class="spra" title="${esc(`Runs as the agent ${s.agent}`)}" style="--h:${spHue(agentShort(s.agent), s.agentColor)}">@${esc(agentShort(s.agent))}</span>` : ''}<span class="spbt">${q ? markHits(spCut(s.title), q) : ticks(esc(spCut(s.title)))}</span>${folder || age ? `<span class="spbf" title="${esc(s.cwd || '')}">${folder ? `<i></i>${q ? markHits(folder, q) : esc(folder)}` : ''}${age ? `<span class="spag">${folder ? ' · ' : ''}<span data-at="${esc(age)}"></span></span>` : ''}</span>` : ''}${spAskPill(s)}${spPills(s)}</span></span></button>`;
+  }
+  // ---- a question answered from its node (2026-11-24; Settings › Space › Answer from the node, `prefs.spAnswer`) -------
+  // The line that asks reaches the transcript only with its answer, so the question is read off the drawer's own screen:
+  // a read-only xterm per asking chat whose claude runs in a drawer here (mountMini into a hidden host, `sp.minis`, never a
+  // resize), parsed for Claude Code's select — the question above, numbered answers, a description under each (`spAskOf`,
+  // `sp.asks`). The node's pill opens the panel (`#spaskp`); a digit or a click is that key on the same socket — the chat's
+  // own drawer, as ⌥⌘A's tiles type it; an answer that wants words (Type something, tell Claude…) opens the chat after.
+  // A screen that does not parse is shown as its text, the keys still going. A chat asking elsewhere: a pill saying where.
+  const SP_ENTER_MS = 120;   // between an answer's number and its ⏎: the select takes the one before the other
+  const SP_OPT = /^(\s*)(?:[❯›>▶]\s*)?(\d{1,2})[.)]\s+(\S.*?)\s*$/, SP_HINT = /enter to|esc to|↑\/↓|to navigate|to select|tab to|ctrl\+/i;
+  const SP_RULE = /^[─━═╌┄╭╮╰╯┌┐└┘-]{4,}$/, SP_WORDS = /type something|tell claude|chat about/i;
+  /** The screen's lines, a row the terminal wrapped joined to the one before; a box's side bars off. */
+  const spScreen = xt => {
+    const b = xt.buffer.active, out = [];
+    for (let y = 0; y < xt.rows; y++) {
+      const line = b.getLine(b.viewportY + y), t = (line?.translateToString(true) || '').replace(/^\s*[│┃]\s?/, '').replace(/\s*[│┃]\s*$/, '');
+      if (line?.isWrapped && out.length) out[out.length - 1] += t; else out.push(t);
+    }
+    return out;
+  };
+  /** Claude Code's question as its screen has it: { q, opts: [{ k, t, d }] }, or null. The last run of answers 1, 2, 3…
+   *  down the screen; a description the indented lines under one; the question the lines over the first, two paragraphs
+   *  at most, a tab's ☐ header and rules left out. */
+  function spAskOf(lines) {
+    let start = -1;
+    for (let y = lines.length - 1; y >= 0; y--) { const m = SP_OPT.exec(lines[y]); if (m && m[2] === '1') { start = y; break; } }
+    if (start < 0) return null;
+    const opts = []; let cur = null;
+    for (let y = start; y < lines.length; y++) {
+      const l = lines[y], m = SP_OPT.exec(l);
+      if (m && +m[2] === opts.length + 1) { opts.push(cur = { k: +m[2], t: m[3], d: [], at: (m[1] || '').length }); continue; }
+      if (!l.trim()) continue;
+      if (SP_HINT.test(l) || SP_RULE.test(l.trim())) break;
+      if (cur && /^\s{2,}/.test(l)) cur.d.push(l.trim()); else break;
+    }
+    if (opts.length < 2) return null;
+    const paras = [[]];   // from the first answer up: a paragraph's lines one sentence, two paragraphs at most
+    for (let y = start - 1, n = 0; y >= 0 && n < 10; y--) {
+      const l = lines[y].trim();
+      if (!l) { if (paras[0].length) { if (paras.length === 2) break; paras.unshift([]); } continue; }
+      if (SP_RULE.test(l) || SP_HINT.test(l)) break;
+      if (/^[☐☒✔◻■□]/.test(l)) continue;
+      paras[0].unshift(l); n++;
+    }
+    const q = paras.filter(p => p.length).map(p => p.join(' ')).join('\n');
+    return { q, opts: opts.map(o => ({ k: o.k, t: o.t, d: o.d.join(' ') })) };
+  }
+  function spAskPill(s) {
+    if (prefs.spAnswer === false || !asking(s)) return '';
+    const t = spDrawer(s);
+    if (!t) return `<span class="spask off" title="${esc(`It asks in ${entryLabel(s)} — answer it there, or take it over here (⌥⌘C)`)}">? In ${esc(entryLabel(s))}</span>`;
+    return `<span class="spask" role="button" tabindex="-1" data-tid="${esc(t.id)}" aria-haspopup="dialog" aria-expanded="false" title="Its question (⏎ on the node)">? <span class="spakn">Answer</span></span>`;
+  }
+  // the drawer a question is read from; the harness's stand-in (`window.peixSpDrawer`, by chat) where no drawer can run
+  const spDrawer = s => drawerOf(s) || window.peixSpDrawer?.[s.id] || null;
+  const spMiniHost = () => document.getElementById('spminis') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'spminis', ariaHidden: 'true' }));
+  /** A hidden xterm for each asking chat in a drawer here; the rest let go. Read every 400 ms while any is up. */
+  function spMinis(list) {
+    if (prefs.space && prefs.spAnswer !== false) for (const s of list) { const t = asking(s) && spDrawer(s); if (t) mountMini(sp.minis, spMiniHost(), t, false); }
+    sweepMinis(sp.minis);
+    if (sp.ask && !sp.minis.has(sp.ask.tid)) spAskClose();
+    clearInterval(sp.askT); sp.askT = sp.minis.size ? setInterval(spAskRead, 400) : 0;
+    spAskRead();
+  }
+  function spAskRead() {
+    for (const [tid, m] of sp.minis) { const lines = spScreen(m.xt); sp.asks.set(tid, { lines, ask: spAskOf(lines) }); }
+    for (const tid of [...sp.asks.keys()]) if (!sp.minis.has(tid)) sp.asks.delete(tid);
+    for (const p of document.querySelectorAll('#spgrid .spask[data-tid]')) {
+      const a = sp.asks.get(p.dataset.tid)?.ask, said = a ? `${a.opts.length} answers` : 'Answer';
+      const n = p.querySelector('.spakn'); if (n && n.textContent !== said) n.textContent = said;
+      p.setAttribute('aria-expanded', String(sp.ask?.tid === p.dataset.tid));
+    }
+    if (sp.ask) spAskDraw();
+  }
+  function spAskDraw() {
+    const el = $('#spaskp'), a = sp.ask, read = sp.asks.get(a.tid), ask = read?.ask;
+    const late = !ask && performance.now() - a.at > 1500, rows = ask?.opts || [];
+    a.n = rows.length;
+    const html = ask ? (ask.q ? `<p class="spaq">${esc(ask.q)}</p>` : '') + rows.map((o, i) => `<button type="button" class="spao${a.sent === o.k ? ' sent' : a.sel === i ? ' sel' : ''}" data-k="${o.k}"><span class="k">${o.k}</span><span>${esc(o.t)}${o.d ? `<small>${esc(o.d)}</small>` : ''}</span></button>`).join('')
+      : late ? `<pre class="spapre">${esc((read?.lines || []).join('\n').replace(/\s+$/, '').split('\n').slice(-16).join('\n'))}</pre>` : '<p class="spaq">Reading its screen…</p>';
+    const foot = `<div class="spaf"><button type="button" class="spaty">Type an answer…</button><span>${ask ? `<kbd>1–${rows.length}</kbd> answer · ` : late ? '<kbd>1–9</kbd> · ' : ''}<kbd>esc</kbd></span></div>`;
+    setHtml(el, `<p class="spah">Asking you</p>${html}${foot}`);
+    spAskPlace();
+  }
+  function spAskPlace() {
+    const el = $('#spaskp'), p = sp.ask && document.querySelector(`#spgrid .spask[data-tid="${CSS.escape(sp.ask.tid)}"]`);
+    if (!p) return spAskClose();
+    const r = p.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    const left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)), below = r.bottom + 6 + h <= innerHeight - 12;
+    el.style.left = `${Math.round(left)}px`; el.style.top = `${Math.round(below ? r.bottom + 6 : Math.max(12, r.top - 6 - h))}px`;
+  }
+  function spAskOpen(id, tid) {
+    let el = $('#spaskp');
+    if (!el) { el = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'spaskp', role: 'dialog', tabIndex: -1 })); el.setAttribute('aria-label', 'Its question'); }
+    sp.ask = { id, tid, at: performance.now(), sel: 0, sent: 0, n: 0 };
+    el.hidden = false; spAskRead(); el.focus({ preventScroll: true });
+  }
+  function spAskClose() {
+    if (!sp.ask) return;
+    sp.ask = null; const el = $('#spaskp'); if (el) { el.hidden = true; el._drawn = null; }
+    for (const p of document.querySelectorAll('#spgrid .spask[aria-expanded="true"]')) p.setAttribute('aria-expanded', 'false');
+  }
+  /** The answer's key into the chat's drawer; one that wants words opens the chat with the keys in its drawer. */
+  function spAnswer(k) {
+    const a = sp.ask; if (!a || a.sent) return;
+    const m = sp.minis.get(a.tid), o = sp.asks.get(a.tid)?.ask?.opts.find(x => x.k === k);
+    if (m?.ws.readyState !== 1) return note($('#spaskp'), 'Its drawer is not answering — open the chat', true);
+    // the number moves Claude Code's select onto the answer, ⏎ takes it (2026-11-24: the number alone left it waiting);
+    // one that wants words gets no ⏎ — its box comes up, and the chat opens on it
+    const words = o && SP_WORDS.test(o.t), id = a.id;
+    m.ws.send(JSON.stringify({ t: 'in', d: String(k) })); a.sent = k; noteMotion(a.id, 'answer'); spAskDraw();
+    if (!words) setTimeout(() => { if (m.ws.readyState === 1) m.ws.send(JSON.stringify({ t: 'in', d: '\r' })); }, SP_ENTER_MS);
+    setTimeout(() => { if (sp.ask === a) spAskClose(); if (words) spAskChat(id); }, REDUCED.matches ? 0 : 450);
+  }
+  const spAskChat = id => { spAskClose(); Promise.resolve(id === state.current ? null : openSession(id)).then(() => { const s = state.sessions.get(id); if (s) { showChat(s); focusTerm(); } }); };
+  document.addEventListener('keydown', e => {
+    if (!sp.ask || e.metaKey || e.ctrlKey || e.altKey) return;
+    const a = sp.ask, n = a.n || 9;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); return spAskClose(); }
+    if (/^[1-9]$/.test(e.key) && +e.key <= n) { e.preventDefault(); e.stopPropagation(); return spAnswer(+e.key); }
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && a.n) { e.preventDefault(); e.stopPropagation(); a.sel = (a.sel + (e.key === 'ArrowDown' ? 1 : a.n - 1)) % a.n; return spAskDraw(); }
+    if (e.key === 'Enter' && a.n) { e.preventDefault(); e.stopPropagation(); return spAnswer(a.sel + 1); }
+  }, true);
+  document.addEventListener('pointerdown', e => { if (sp.ask && !e.target.closest?.('#spaskp, .spask[data-tid]')) spAskClose(); }, true);
+  addEventListener('resize', () => { if (sp.ask) spAskPlace(); });
+  document.addEventListener('click', e => {
+    if (!sp.ask) return;
+    const o = e.target.closest?.('#spaskp .spao[data-k]'); if (o) return spAnswer(+o.dataset.k);
+    if (e.target.closest?.('#spaskp .spaty')) spAskChat(sp.ask.id);
+  });
+  /** The node's ✓ or ↩: a tick as the card's, the chat open on the right left open — Space has no list to move on to. */
+  function spTick(id, mark) {
+    const s = state.sessions.get(id); if (!s) return;
+    if (s.done) return tickDone(id, false, mark);
+    tickDone(id, true, mark, mark, false, true);
+  }
+  /** One agent's lane: its span on the clock (to now while it works), how long, its last step. */
+  function spLane(r, s, W, now) {
+    const st = spSt(r), from = Date.parse(r.at), end = r.end ? Date.parse(r.end) : now, took = end - from, kind = spKind(r), hue = spHue(kind, r.color);
+    const a = Math.max(0, 1 - (now - from) / W), b = Math.max(0, 1 - (now - end) / W);
+    const bar = !Number.isFinite(from) || now - end >= W ? '' : `<span class="spbar" data-st="${st}" style="left:${(a * 100).toFixed(2)}%;width:${Math.max(0.8, (b - a) * 100).toFixed(2)}%"></span>`;
+    const dur = !Number.isFinite(from) ? SP_WORD[st] : st === 'run' ? `at work · ${agDur(now - from)}` : st === 'quiet' ? `quiet ${agDur(now - Date.parse(r.lastAt))}` : st === 'wait' ? `waiting · ${agDur(now - from)}`
+      : st === 'done' ? `done in ${agDur(took)}` : st === 'fail' ? `failed after ${agDur(took)}` : st === 'stop' ? `stopped after ${agDur(took)}` : SP_WORD[st];
+    const open = AG_ID.test(String(r.id)) && r.st !== 'joined';
+    return `<div class="splane" data-st="${st}"${open ? ` data-ag="${esc(r.id)}" role="button" tabindex="0"` : ''}>${spAgent(r, kind, hue, s)}<span class="splt"><span class="spla">${esc(r.asked || 'An agent')}</span><span class="spll">${agNow(r, s) || (st === 'joined' ? 'In the team, nothing asked of it yet' : esc(spCap(kind)))}</span></span><span class="sptrack">${bar}<i class="spnow"></i></span><span class="spld">${esc(dur)}</span></div>`;
+  }
+  /** The open chat's agents, a strip under the nodes (2026-11-18, v3): folded to its head by `prefs.spLanes`. */
+  function spSide(s) {
+    if (!s) return '';
+    const rows = spRows(s), st = spState(s), mates = rows.filter(r => r.mate).length, w = spWin(), W = w * 60_000, now = Date.now(), open = prefs.spLanes !== false;
+    const lanes = [...rows].sort((a, b) => (a.at ? Date.parse(a.at) : Infinity) - (b.at ? Date.parse(b.at) : Infinity)).map(r => spLane(r, s, W, now)).join('');
+    const who = !rows.length ? 'no agents' : mates ? `an agent team · ${spCount(mates, 'teammate')}${rows.length > mates ? ` · ${spCount(rows.length - mates, 'agent')}` : ''}` : spCount(rows.length, 'agent');
+    return `<div class="spsh"><button type="button" class="spfold" aria-expanded="${open}" aria-controls="spls"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Agents · ${esc(s.project)}</button>`
+      + `<span class="spstate"><span class="spw" data-st="${st}">${SP_ST[st]}</span><span>· ${who}</span></span>`
+      + `<span class="spwin" role="group" aria-label="The lanes' span: the last…">${SP_WINS.map(x => `<button type="button" data-w="${x}" aria-pressed="${x === w}">${x === 60 ? '1h' : `${x}m`}</button>`).join('')}</span></div>`
+      + (!open ? '' : `<div class="spls" id="spls">${rows.length ? lanes : `<p class="spnone">${s.alive ? 'No agents in its last round. They show here as they start.' : 'Not running: agents show while its claude runs.'}</p>`}</div>`);
+  }
+  /** The chats of the project in view, in the states picked: by state as the list's lanes go, then by the last word. Idle and Done hold back, as a long lane does. */
+  // Favourites (2026-11-18, v11): a chat starred — its node's ★, or F on its node; the server's `fav` — is a category of
+  // its own: first, a row of its own, whatever its state, in or out by the ★ chip on top. The state chips count the rest.
+  const spCat = s => s.fav ? 'fav' : spState(s);
+  // Find (2026-11-23; ⌘F with the keys in Space, its box on top): the list's fuzzy match over the chat's fields, its agents'
+  // types and its folder; while typed, only the matches, best first, from every state — a done one at half its worth, as
+  // ⌥⌘K's —, the chips counting them. ↑↓ ring one (sp.sel), ⏎ opens it, esc clears, then leaves the box.
+  const spQuery = () => sp.q.trim().toLowerCase();
+  // ---- the box's filters (2026-11-24): a word with a colon, an @ or a # is a filter — a chip once a space follows it —,
+  // the rest the fuzzy match; every filter must hold. is: a state or starred; pr: where its open PRs stand; @ an agent's
+  // type its claude ran; # its project. A prefix typed lists what it can be, each with how many chats it would keep.
+  const SP_IS = { asking: s => spState(s) === 'ask', working: s => spState(s) === 'work', watching: s => spState(s) === 'watch', ready: s => spState(s) === 'ready', idle: s => spState(s) === 'idle', done: s => spState(s) === 'done', star: s => !!s.fav };
+  const SP_IS_SAY = { asking: 'asking you', working: 'clauding', watching: 'watching', ready: 'ready', idle: 'idle', done: 'done', star: 'starred' };
+  const SP_PRS = { mine: s => spOpenPrs(s).some(p => p.turn?.you), open: s => spOpenPrs(s).length > 0, changes: s => spOpenPrs(s).some(p => p.review?.decision === 'changes'),
+    unresolved: s => spOpenPrs(s).some(p => p.review?.open > 0), approved: s => spOpenPrs(s).some(p => p.review?.decision === 'approved'), review: s => spOpenPrs(s).some(p => p.review && (p.review.decision === 'required' || (!p.review.decision && p.review.asked))) };
+  const SP_PRS_SAY = { mine: 'a PR at your move', open: 'a PR open', changes: 'changes requested', unresolved: 'threads left open', approved: 'approved', review: 'awaiting review' };
+  const spTypes = s => [...new Set(spRows(s).map(r => spKind(r).toLowerCase()))];
+  function spTokTest(t) {
+    const m = /^(is|pr):(\w+)$/.exec(t); if (m) return (m[1] === 'is' ? SP_IS : SP_PRS)[m[2]] || null;
+    if (/^@\S+$/.test(t)) { const w = t.slice(1).toLowerCase(); return s => spTypes(s).some(k => k.startsWith(w)); }
+    if (/^#\S+$/.test(t)) { const w = t.slice(1).toLowerCase(); return s => String(s.project || '').toLowerCase().includes(w); }
+    return null;
+  }
+  const spOn = () => !!(spQuery() || sp.toks.length);
+  const spTokOk = s => sp.toks.every(t => spTokTest(t)?.(s) ?? true);
+  const spFields = s => [...chatFields(s), spFolder(s), [...new Set(spRows(s).map(spKind))].join(' ')];
+  function spChats() {
+    const p = projectList().find(x => x.key === prefs.project), off = spOff(), rank = ['fav', ...Object.keys(SP_ST)], by = {}, q = spQuery();
+    if (q) return (p?.sessions || []).filter(spTokOk).map(s => [s, fuzzy(spFields(s), q)]).filter(([, m]) => m).map(([s, m]) => [s, m.score * (s.done ? .5 : 1)])
+      .sort((a, b) => b[1] - a[1] || byWord(a[0], b[0])).map(([s]) => s);
+    if (sp.toks.length) { const at = Object.keys(SP_ST); return (p?.sessions || []).filter(spTokOk).sort((a, b) => at.indexOf(spState(a)) - at.indexOf(spState(b)) || byWord(a, b)); }   // filters alone: every state, by state
+    for (const s of p?.sessions || []) { const k = spCat(s); if (!off.includes(k)) (by[k] ||= []).push(s); }
+    const shown = rank.flatMap(k => (by[k] || []).sort(byWord).slice(0, k === 'idle' || k === 'done' ? SP_CAP : Infinity));
+    // laid out (2026-11-24, `prefs.spArrange`): by state as above; by the last word, the favourites still first; by project,
+    // a run per project — the one with the newest word first —, by state inside it
+    if (spArr() === 'word') return [...shown.filter(s => s.fav), ...shown.filter(s => !s.fav).sort(byWord)];
+    if (spArr() === 'project') {
+      const runs = new Map(); for (const s of shown) { const k = s.project || '—'; if (!runs.has(k)) runs.set(k, []); runs.get(k).push(s); }
+      const newest = r => r.reduce((a, s) => (wordAt(s) > a ? wordAt(s) : a), '');
+      return [...runs.values()].sort((a, b) => newest(b).localeCompare(newest(a))).flat();
+    }
+    return shown;
+  }
+  const spArr = () => ['state', 'project', 'word'].includes(prefs.spArrange) && !spOn() ? prefs.spArrange : 'state';
+  const SP_STAR = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.95 3.95 4.36.63-3.16 3.08.75 4.34L8 11.55l-3.9 2.05.75-4.34L1.69 6.18l4.36-.63z"/></svg>';
+  function setFav(id, on) {
+    const show = v => { const s = state.sessions.get(id); if (s) { s.fav = v; renderSpace(); } };
+    if (on && spOff().includes('fav')) { prefs.spOff = spOff().filter(k => k !== 'fav'); savePrefs(); }   // a star just given never hides its node
+    show(on);
+    api('POST', `/api/sessions/${id}/favorite`, { on }).catch(e => {
+      show(!on);
+      const old = e.status === 404 && e.message === 'not found';   // a server started before this has no such route
+      note($('#space'), old ? 'Stars need the server restarted (scripts/launchd.sh restart)' : `Could not ${on ? 'star' : 'unstar'} it: ${e.message}`, true);
+    });
+  }
+  function spShut(key) { clearTimeout(sp.open.get(key)); sp.open.delete(key); }
+  function spOpen(key) {
+    clearTimeout(sp.open.get(key));
+    sp.open.set(key, setTimeout(function fold() {
+      const id = key.slice(0, key.indexOf(':')), tile = [...document.querySelectorAll('#spgrid .spt')].find(t => t.dataset.id === id);
+      if (tile?.matches(':hover')) return sp.open.set(key, setTimeout(fold, 3000));
+      sp.open.delete(key); renderSpace();
+    }, window.peixSpOpenMs ?? SP_OPEN_MS));
+  }
+  function renderSpace() {
+    sp.raf = 0;
+    if (!prefs.space) return;
+    const p = projectList().find(x => x.key === prefs.project), pool = p?.sessions || [], list = sp.list = spChats(), off = spOff();
+    $('#main').classList.toggle('spfull', !state.current);
+    const favs = pool.filter(s => s.fav).length, q = spOn(), sel = sp.sel = Math.max(0, Math.min(sp.sel, list.length - 1));
+    // while a search is typed the chips count its matches, every state in: they filter again once it is cleared
+    setHtml($('#spfs'), (favs && !q ? `<button type="button" class="spf fav" data-k="fav" aria-pressed="${!off.includes('fav')}" title="Your starred chats, first, whatever their state">${SP_STAR}Favorites<b>${favs}</b></button>` : '')
+      + Object.keys(SP_ST).map(k => `<button type="button" class="spf" data-k="${k}" data-st="${k}" aria-pressed="${q ? true : !off.includes(k)}"${q ? ' disabled title="Every state, while a search is typed"' : ''}><i></i>${SP_ST[k]}<b>${(q ? list : pool.filter(s => !s.fav)).filter(s => spState(s) === k).length}</b></button>`).join(''));
+    $('#spqn').textContent = !q ? '' : list.length ? `${sel + 1} of ${list.length}` : 'none';
+    setHtml($('#spsub'), `${spCount(list.length, 'chat')} · ${spCount(list.reduce((n, s) => n + spRows(s).length, 0), 'agent')}`);
+    // a node keeps its element while its markup is the same, so its arcs turn on through every redraw
+    const grid = $('#spgrid'), had = new Map([...grid.children].map(e => [e.dataset.id, e])), tpl = document.createElement('template'), keys = document.activeElement?.closest?.('#spgrid .spt')?.dataset.id;
+    let prev = null, made = false, i = 0;
+    const byProj = spArr() === 'project', items = [];
+    for (const s of list) {
+      if (byProj && (!items.length || items.at(-1).s?.project !== s.project)) { const n = list.filter(c => c.project === s.project).length, color = repoColor(s.cwd);
+        items.push({ id: `h:${s.project}`, html: `<div class="sphead" data-id="h:${esc(s.project || '')}" role="heading" aria-level="3" style="${color ? `--repo:${color}` : ''}"><i></i>${esc(s.project || 'no folder')}<b>${n}</b></div>` }); }
+      items.push({ id: s.id, s });
+    }
+    $('#spar').querySelectorAll('[data-arr]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.arr === spArr())));
+    for (const it of items) {
+      if (!it.s) { let el = had.get(it.id); had.delete(it.id); if (el?._drawn !== it.html) { tpl.innerHTML = it.html; const ne = tpl.content.firstElementChild; ne._drawn = it.html; if (el) el.replaceWith(ne); el = ne; } if ((prev ? prev.nextElementSibling : grid.firstElementChild) !== el) { if (prev) prev.after(el); else grid.prepend(el); } prev = el; continue; }
+      const s = it.s;
+      const hit = !!q && i++ === sel;
+      const html = spNode(s); let el = had.get(s.id); had.delete(s.id);
+      if (el?._drawn !== html) { tpl.innerHTML = html; const ne = tpl.content.firstElementChild; ne._drawn = html; if (el) el.replaceWith(ne); el = ne; made = true; }
+      if ((prev ? prev.nextElementSibling : grid.firstElementChild) !== el) { if (prev) prev.after(el); else grid.prepend(el); }
+      if (el.classList.contains('on') !== (s.id === state.current)) { el.classList.toggle('on', s.id === state.current); el.setAttribute('aria-current', String(s.id === state.current)); }
+      if (el.classList.contains('hit') !== hit) el.classList.toggle('hit', hit);
+      if (el.classList.contains('chosen') !== sp.chosen.has(s.id)) el.classList.toggle('chosen', sp.chosen.has(s.id));
+      const first = !q && !byProj && !s.fav && !!prev?._fav;   // the first after the favourites starts a row; a search ranks them as the rest
+      if (el.classList.contains('spfirst') !== first) el.classList.toggle('spfirst', first);
+      el._fav = !!s.fav; prev = el;
+    }
+    for (const e of had.values()) e.remove();
+    if (made) phaseAnims();   // a node made anew: its pings and arcs onto the clock the old ones kept, no jump
+    if (keys && document.activeElement === document.body) grid.querySelector(`.spt[data-id="${CSS.escape(keys)}"]`)?.focus();
+    $('#spempty').hidden = !!list.length;
+    $('#spempty').textContent = q ? `No chat matches “${[...sp.toks, sp.q.trim()].filter(Boolean).join(' ')}”. Esc clears it.` : 'No chat in the states picked above.';
+    const lane = document.activeElement?.closest?.('#spside .splane')?.dataset.ag, side = $('#spside'), cur = state.sessions.get(state.current);
+    side.hidden = !cur;
+    if (setHtml(side, spSide(cur)) && lane) $(`#spside .splane[data-ag="${CSS.escape(lane)}"]`)?.focus();
+    spZoomShow();
+    spMinis(list);
+    fillAges(grid);
+    spTokDraw(); spBarDraw(list);
+    spLinksSoon();
+  }
+  // ---- constellations (2026-11-24, `prefs.spLinks`): the chats' ties (`links`: merge, fold, branch, gone on) as dashed lines
+  // from box to box under the nodes, one per pair, named at its middle; read after the layout, again when the grid moves
+  const SP_TIE = { merge: 'merged', fold: 'folded', branch: 'branch', continued: 'went on' };
+  const spLinksSoon = () => { if (!sp.lraf) sp.lraf = requestAnimationFrame(() => { sp.lraf = 0; spDrawLinks(); }); };
+  function spDrawLinks() {
+    const svg = $('#splinks'), field = $('#spfield'); if (!svg || !prefs.space) return;
+    if (prefs.spLinks === false) { setHtml(svg, ''); return; }
+    const boxes = new Map([...document.querySelectorAll('#spgrid .spt[data-id]')].map(n => [n.dataset.id, n.querySelector('.spbox')]));
+    const f = field.getBoundingClientRect(), at = b => { const r = b.getBoundingClientRect(); return [r.left - f.left + field.scrollLeft + r.width / 2, r.top - f.top + field.scrollTop + r.height / 2]; };
+    const seen = new Set(), lines = [];
+    for (const [id, box] of boxes) for (const l of state.sessions.get(id)?.links || []) {
+      const other = boxes.get(l.id), key = [id, l.id].sort().join('|'); if (!other || seen.has(key)) continue; seen.add(key);
+      const [x1, y1] = at(box), [x2, y2] = at(other);
+      lines.push(`<g data-a="${esc(id)}" data-b="${esc(l.id)}"><line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/><text x="${((x1 + x2) / 2).toFixed(1)}" y="${((y1 + y2) / 2 - 4).toFixed(1)}" text-anchor="middle">${esc(SP_TIE[l.k] || l.k)}</text></g>`);
+    }
+    svg.setAttribute('width', '1'); svg.setAttribute('height', '1');   // its lines drawn past its box (overflow: visible): sized to the field, it widened the field it was sized by
+    setHtml(svg, lines.join(''));
+    spLitLinks();
+  }
+  /** The lines of the node under the pointer, lit. */
+  function spLitLinks(id = sp.over) { for (const g of document.querySelectorAll('#splinks g')) g.classList.toggle('lit', !!id && (g.dataset.a === id || g.dataset.b === id)); }
+  // ---- Space's zoom (2026-11-18, v3): the grid zoomed whole, so it reflows — more nodes a row as it shrinks, 50–150 % by
+  // tens (`prefs.spZoom`); its buttons, ⌘+ ⌘− ⌘0 with the keys in Space (chatZoomKey), a pinch or ⌘/⌃-wheel over the nodes.
+  // Fit: the largest that shows every node without a scroll.
+  const spZoomNow = () => Math.min(1.5, Math.max(.5, Number(prefs.spZoom) || 1));
+  function spZoomShow() {
+    const z = spZoomNow(), g = $('#spgrid');
+    g.style.setProperty('--spz', String(z)); g.classList.toggle('small', z < .75);
+    $('#main').style.setProperty('--sp-min', `${Math.ceil(SP_TILE[0] * z + 20 + 16)}px`);   // the divider's floor: one tile at this zoom, the field's padding and a scrollbar (2026-11-18, v12)
+    $('#spzv').textContent = `${Math.round(z * 100)}%`;
+  }
+  function spZoom(z) { prefs.spZoom = Math.round(Math.min(1.5, Math.max(.5, z)) * 10) / 10; savePrefs(); spZoomShow(); }
+  function spFit() {
+    const f = $('#spfield'), n = $('#spgrid').querySelectorAll('.spt').length, W = f.clientWidth - 20, H = f.clientHeight - 64;
+    for (let z = 1.5; z > .5; z = Math.round((z - .1) * 10) / 10) { const cols = Math.max(1, Math.floor((W / z + 6) / (SP_TILE[0] + 6))); if (Math.ceil(n / cols) * (SP_TILE[1] + 8) * z <= H) return spZoom(z); }
+    spZoom(.5);
+  }
+  /** Space's ×, and ⌘W on the chat's tab there: the chat closed — Claude runs on —, Space the whole width again. */
+  function spCloseChat() { if (!state.current) return; leaveChat(); renderBoard(); }
+  const spSoon = () => { if (prefs.space && !sp.raf) sp.raf = requestAnimationFrame(renderSpace); };
+  /** On or off: the layout, the button, the clock; the chat's column moved, so its drawer and the pane's pages follow. */
+  function applySpace() {
+    const on = !!prefs.space, main = $('#main');
+    main.classList.toggle('space', on); if (!on) main.classList.remove('spfull');
+    applyList();   // the list's button: off while Space has its place
+    $('#space').hidden = $('#spdiv').hidden = !on;
+    main.style.setProperty('--sp', String(Math.min(.9, Math.max(.05, Number(prefs.spaceAt) || .52))));   // CSS holds the floors: one tile, the chat's
+    const b = $('#sbSpace'); b.setAttribute('aria-pressed', String(on)); b.title = `${on ? 'Leave' : 'Open'} Space — every chat as a node of its agents (⌥⌘S)`;
+    clearInterval(sp.timer); sp.timer = on ? setInterval(spSoon, 5000) : 0;
+    if (!on) { spAskClose(); sweepMinis(sp.minis, true); clearInterval(sp.askT); sp.askT = 0; }
+    spLook(); if (on !== !!sp.fall) spFall(); if (on !== !!sp.visit) spVisit();   // a falling star now and then while Space is on
+    if (on) renderSpace();
+    const s = state.sessions.get(state.current); if (s) { drawn.head = null; renderHead(s); syncTerm(s); } else repostPane();   // the header's × is Space's
+  }
+  function spToggle() { prefs.space = !prefs.space; savePrefs(); applySpace(); }
+  // Settings › Space (2026-11-18, v5): the sky, its twinkle and its falling stars; the agent card, the pods' agents and
+  // names, the lanes' span. What only looks is a class or an attribute on #space (spLook); what is drawn, a redraw.
+  function spLook() {
+    const sky = prefs.spSky !== false, el = $('#space');
+    el.classList.toggle('nosky', !sky); el.classList.toggle('still', prefs.spTwinkle === false); el.dataset.names = prefs.spNames || 'zoom';
+    $('#skyOn').checked = sky; $('#twinkleOn').checked = prefs.spTwinkle !== false; $('#agCardOn').checked = prefs.spCard !== false; $('#busyOnly').checked = !!prefs.spBusy;
+    $('#fallPick').value = SP_FALLS[prefs.spFalls] ? prefs.spFalls : 'off'; $('#podNames').value = prefs.spNames || 'zoom'; $('#laneSpan').value = String(spWin());
+    $('#visitOn').checked = prefs.spVisits !== false; $('#askOn').checked = prefs.spAnswer !== false; $('#fadeOn').checked = prefs.spFade !== false; $('#linksOn').checked = prefs.spLinks !== false;
+    for (const [row, box] of [['#twinkleRow', '#twinkleOn'], ['#fallRow', '#fallPick'], ['#visitRow', '#visitOn']]) {
+      const r = $(row), say = r.querySelector('small'); r.classList.toggle('off', !sky); $(box).disabled = !sky; say.textContent = sky ? say.dataset.d : say.dataset.off;
+    }
+  }
+  const spSet = (k, v, draw) => { prefs[k] = v; savePrefs(); spLook(); if (k === 'spSky' || k === 'spFalls') spFall(); if (k === 'spSky') spVisit(); if (draw) renderSpace(); };
+  $('#skyOn').addEventListener('change', e => spSet('spSky', e.target.checked));
+  $('#twinkleOn').addEventListener('change', e => spSet('spTwinkle', e.target.checked));
+  $('#fallPick').addEventListener('change', e => spSet('spFalls', e.target.value));
+  $('#visitOn').addEventListener('change', e => { spSet('spVisits', e.target.checked); spVisit(); });
+  $('#agCardOn').addEventListener('change', e => { spSet('spCard', e.target.checked); if (!e.target.checked) mxtHide(); });
+  $('#busyOnly').addEventListener('change', e => spSet('spBusy', e.target.checked, prefs.space));
+  $('#fadeOn').addEventListener('change', e => spSet('spFade', e.target.checked, prefs.space));
+  $('#linksOn').addEventListener('change', e => spSet('spLinks', e.target.checked, prefs.space));
+  $('#askOn').addEventListener('change', e => { if (!e.target.checked) spAskClose(); spSet('spAnswer', e.target.checked, prefs.space); });
+  $('#podNames').addEventListener('change', e => spSet('spNames', e.target.value));
+  $('#laneSpan').addEventListener('change', e => spSet('spWin', +e.target.value, prefs.space));
+  // The sky (2026-11-18, later), drawn once: four layers of stars from fixed seeds, so it is the same sky every time — the
+  // first still, the others twinkling (CSS). A falling star now and then (SP_FALL_MS, a random wait each time): from a random
+  // place in the sky's top half, at a random angle, under a second and a half — never while Space is hidden, the page is,
+  // the theme is light, or motion is reduced: the wait just starts again.
+  const SP_FALLS = { rare: [60_000, 180_000], some: [20_000, 60_000], often: [5_000, 20_000] };   // Settings › Space's picks
+  {
+    const rand = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    // the fifth layer (2026-11-19): a few bigger stars, 3–4.5 px, each with a soft glow, slow to twinkle
+    $('#spsky').innerHTML = [['', 11, 46, .28], ['tw1', 23, 22, .55], ['tw2', 37, 18, .5], ['tw3', 51, 14, .6], ['big', 67, 9, .8]].map(([cls, seed, n, o]) => {
+      const r = rand(seed * 7919);
+      return `<b class="${cls}">${Array.from({ length: n }, () => { const x = (r() * 100).toFixed(2), y = (r() * 100).toFixed(2), d = cls === 'big' ? (3 + r() * 1.5).toFixed(1) : r() < .85 ? 1 : r() < .7 ? 1.5 : 2;
+        return `<i style="left:${x}%;top:${y}%;width:${d}px;height:${d}px;opacity:${(o * (.6 + r() * .4)).toFixed(2)}"></i>`; }).join('')}</b>`;
+    }).join('');
+  }
+  function spFall(now = false) {
+    clearTimeout(sp.fall); sp.fall = 0;
+    const at = SP_FALLS[prefs.spFalls]; if (!prefs.space || !at || prefs.spSky === false) return;
+    const wait = at[0] + Math.random() * (at[1] - at[0]);
+    if (!now) { sp.fall = setTimeout(() => spFall(true), wait); return; }
+    const sky = $('#spsky');
+    if (!document.hidden && !REDUCED.matches && getComputedStyle(sky).display !== 'none' && sky.clientWidth) {
+      const el = document.createElement('i'), deg = 15 + Math.random() * 25, ms = 900 + Math.random() * 500;
+      el.className = 'spfall';
+      Object.assign(el.style, { left: `${(Math.random() * 80).toFixed(1)}%`, top: `${(Math.random() * 45).toFixed(1)}%` });
+      sky.append(el);
+      el.animate([{ transform: `rotate(${deg}deg) translateX(-130px) scaleX(.3)`, opacity: 0 }, { opacity: 1, offset: .18 },
+        { transform: `rotate(${deg}deg) translateX(240px) scaleX(1)`, opacity: 0 }], { duration: ms, easing: 'ease-out', id: 'spfall' }).finished.then(() => el.remove(), () => el.remove());
+    }
+    spFall();
+  }
+  // A visitor now and then (2026-11-19): a planet — some ringed — drifting across the sky in half a minute or so, or a
+  // comet in a few seconds, its tail behind it; one at a time, every SP_VISIT_MS, a random wait each; moved by transform
+  // and opacity alone, and under the same guards as a falling star. `prefs.spVisits`.
+  const SP_VISIT_MS = [45_000, 150_000];
+  function spVisit(now = false) {
+    clearTimeout(sp.visit); sp.visit = 0;
+    if (!prefs.space || prefs.spSky === false || prefs.spVisits === false) return;
+    if (!now) { sp.visit = setTimeout(() => spVisit(true), SP_VISIT_MS[0] + Math.random() * (SP_VISIT_MS[1] - SP_VISIT_MS[0])); return; }
+    const sky = $('#spsky'), W = sky.clientWidth, H = sky.clientHeight;
+    if (!document.hidden && !REDUCED.matches && getComputedStyle(sky).display !== 'none' && W && !sky.querySelector('.spvis')) {
+      const el = document.createElement('i'), comet = Math.random() < .5, ltr = Math.random() < .5, y0 = H * (.08 + Math.random() * .6), dy = (Math.random() - .5) * H * (comet ? .5 : .15);
+      if (comet) { el.className = 'spvis spcomet'; el.innerHTML = '<s></s>'; }
+      else {
+        const size = 14 + Math.round(Math.random() * 22), hue = [25, 55, 200, 280, 150][Math.floor(Math.random() * 5)];
+        el.className = `spvis spplanet${Math.random() < .4 ? ' ringed' : ''}`; el.style.setProperty('--d', `${size}px`); el.style.setProperty('--h', String(hue));
+        el.innerHTML = '<s></s>';
+      }
+      el.style.top = `${y0.toFixed(0)}px`;
+      sky.append(el);
+      const pad = 160, from = ltr ? -pad : W + pad, to = ltr ? W + pad : -pad, turn = comet ? Math.atan2(dy, to - from) * 180 / Math.PI : 0;
+      el.animate([{ transform: `translate(${from}px, 0) rotate(${turn}deg)`, opacity: 0 }, { opacity: comet ? .95 : .85, offset: .1 }, { opacity: comet ? .95 : .85, offset: .9 },
+        { transform: `translate(${to}px, ${dy}px) rotate(${turn}deg)`, opacity: 0 }], { duration: comet ? 5000 + Math.random() * 4000 : 28000 + Math.random() * 20000, easing: 'linear', id: 'spvisit' })
+        .finished.then(() => el.remove(), () => el.remove());
+    }
+    spVisit();
+  }
+  $('#sbSpace').onclick = spToggle;
+  $('#spgrid').addEventListener('pointerover', e => { const id = e.target.closest?.('.spt[data-id]')?.dataset.id || null; if (id !== sp.over) { sp.over = id; spLitLinks(); } });
+  $('#spgrid').addEventListener('pointerleave', () => { sp.over = null; spLitLinks(); });
+  new ResizeObserver(() => spLinksSoon()).observe($('#spgrid'));
+  $('#spgrid').addEventListener('keydown', e => {   // F on a node: star it, or not; D: done, or back
+    const k = e.key.toLowerCase(), n = (k === 'f' || k === 'd') && !e.metaKey && !e.ctrlKey && !e.altKey && e.target.closest?.('.spt[data-id]');
+    const pill = e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.altKey && e.target.matches?.('.spt[data-id]') && e.target.querySelector('.spask[data-tid]');
+    if (pill) { e.preventDefault(); return spAskOpen(e.target.dataset.id, pill.dataset.tid); }   // ⏎ on a node asking you: its question
+    if (!n) return;
+    e.preventDefault();
+    if (k === 'f') setFav(n.dataset.id, !state.sessions.get(n.dataset.id)?.fav); else spTick(n.dataset.id, n.querySelector('.spdone'));
+  });
+  // ⌘F with the keys in Space — not in the chat beside it, whose find stays its own — is its box (2026-11-23)
+  addEventListener('keydown', e => {
+    if (!prefs.space || e.code !== 'KeyF' || !e.metaKey || e.altKey || e.ctrlKey || e.shiftKey || $('#space').hidden || document.querySelector('dialog[open]')) return;
+    if (e.target.closest?.('#chat, #sessions')) return;
+    e.preventDefault(); e.stopPropagation();
+    const box = $('#spq'); box.focus(); box.select();
+  }, true);
+  const spRing = () => $('#spgrid .spt.hit')?.scrollIntoView({ block: 'nearest' });
+  /** The word being typed, if it is a filter's start: the whole of it and where it starts. */
+  const spPartial = v => { const m = /(?:^|\s)((?:is|pr):\w*|[@#]\S*)$/.exec(v); return m ? { w: m[1], at: v.length - m[1].length } : null; };
+  /** What a filter's start can be: [token, what it means, how many chats it keeps]. */
+  function spTokRows(w) {
+    const pool = projectList().find(x => x.key === prefs.project)?.sessions || [], n = t => pool.filter(spTokTest(t) || (() => false)).length;
+    const lw = w.toLowerCase(), list = lw.startsWith('is:') ? Object.keys(SP_IS).map(k => [`is:${k}`, SP_IS_SAY[k]])
+      : lw.startsWith('pr:') ? Object.keys(SP_PRS).map(k => [`pr:${k}`, SP_PRS_SAY[k]])
+      : lw.startsWith('@') ? [...new Set(pool.flatMap(spTypes))].sort().map(k => [`@${k}`, 'an agent of that type'])
+      : [...new Set(pool.map(s => s.project).filter(Boolean))].sort().map(k => [`#${k}`, 'its project']);
+    return list.filter(([t]) => t.toLowerCase().startsWith(lw) && !sp.toks.includes(t)).map(([t, say]) => [t, say, n(t)]).slice(0, 8);
+  }
+  function spTokDraw() {
+    $('#spq').parentElement.classList.toggle('toks', sp.toks.length > 0);
+    setHtml($('#sptoks'), sp.toks.map((t, i) => `<span class="sptok">${esc(t)}<button type="button" data-i="${i}" aria-label="${esc(`Take ${t} off`)}">×</button></span>`).join(''));
+    const box = $('#spq'), d = $('#spqd'), part = document.activeElement === box && spPartial(box.value), rows = part && part.w !== sp.dshut ? spTokRows(part.w) : [];
+    d.hidden = !rows.length; if (!rows.length) return setHtml(d, '');
+    sp.dsel = Math.min(sp.dsel, rows.length - 1);
+    setHtml(d, rows.map(([t, say, n], i) => `<div class="dr${i === sp.dsel ? ' on' : ''}" role="option" aria-selected="${i === sp.dsel}" data-tok="${esc(t)}"><code>${esc(t)}</code><span>${esc(say)}</span><em>${n}</em></div>`).join(''));
+  }
+  /** A filter taken: a chip, the word typed for it gone. */
+  function spTokAdd(t) {
+    const box = $('#spq'), part = spPartial(box.value);
+    if (!sp.toks.includes(t)) sp.toks.push(t);
+    box.value = sp.q = part ? box.value.slice(0, part.at) : box.value; sp.sel = 0; sp.dsel = 0; renderSpace(); box.focus();
+  }
+  /** Words typed: a whole filter followed by a space becomes a chip; the rest stays text. */
+  function spTyped(box) {
+    const v = box.value, m = /(?:^|\s)((?:is|pr):\w+|[@#]\S+)\s$/.exec(v);
+    if (m && spTokTest(m[1])) { if (!sp.toks.includes(m[1])) sp.toks.push(m[1]); box.value = v.slice(0, v.length - m[0].length + (m[0].startsWith(' ') ? 1 : 0)).trimStart(); }
+    sp.q = box.value; sp.sel = 0; sp.dsel = 0; sp.dshut = '';
+  }
+  $('#spq').addEventListener('input', e => { spTyped(e.target); renderSpace(); $('#spfield').scrollTop = 0; });
+  $('#spq').addEventListener('focus', () => spTokDraw());
+  $('#spq').addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== $('#spq')) $('#spqd').hidden = true; }, 150));
+  $('#spqd').addEventListener('pointerdown', e => { const r = e.target.closest('.dr[data-tok]'); if (r) { e.preventDefault(); spTokAdd(r.dataset.tok); } });
+  $('#sptoks').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) { sp.toks.splice(+b.dataset.i, 1); sp.sel = 0; renderSpace(); $('#spq').focus(); } });
+  $('#spq').addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const d = $('#spqd'), rows = d.hidden ? [] : [...d.querySelectorAll('.dr[data-tok]')];
+    if (rows.length) {   // a filter's start typed: its list has the arrows, ⇥ and ⏎ take one, esc closes it
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sp.dsel = (sp.dsel + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; return spTokDraw(); }
+      if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); return spTokAdd(rows[sp.dsel].dataset.tok); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sp.dshut = spPartial(e.target.value)?.w || ''; return spTokDraw(); }
+    }
+    if (e.key === 'Backspace' && !e.target.value && sp.toks.length) { e.preventDefault(); sp.toks.pop(); sp.sel = 0; return renderSpace(); }
+    const step = { ArrowDown: 1, ArrowUp: -1 }[e.key];
+    if (step && spOn()) { e.preventDefault(); sp.sel = Math.max(0, Math.min(sp.list.length - 1, sp.sel + step)); renderSpace(); return spRing(); }
+    if (e.key === 'Enter' && spOn()) { e.preventDefault(); const s = sp.list[sp.sel]; if (s && s.id !== state.current) openSession(s.id); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (e.target.value || sp.toks.length) { e.target.value = sp.q = ''; sp.toks = []; sp.sel = 0; renderSpace(); } else e.target.blur(); }
+  });
+  $('#space').addEventListener('click', e => {
+    const f = e.target.closest('.spf[data-k]');
+    if (f) { const k = f.dataset.k, off = spOff(); prefs.spOff = off.includes(k) ? off.filter(x => x !== k) : [...off, k]; savePrefs(); return renderSpace(); }
+    const w = e.target.closest('.spwin [data-w]'); if (w) { prefs.spWin = +w.dataset.w; savePrefs(); spLook(); return renderSpace(); }
+    const z = e.target.closest('.spzoom [data-z]'); if (z) return z.dataset.z === 'fit' ? spFit() : spZoom(spZoomNow() + .1 * +z.dataset.z);
+    if (e.target.closest('.spfold')) { prefs.spLanes = prefs.spLanes === false; savePrefs(); return renderSpace(); }
+    // a pod's +N: the ones done or idle, folded again SP_OPEN_MS on — later while the pointer is on its chat (2026-11-18, v10)
+    const px = e.target.closest('.spx[data-pod]');
+    if (px) { const key = `${px.closest('.spt').dataset.id}:${px.dataset.pod}`; sp.open.has(key) ? spShut(key) : spOpen(key); return renderSpace(); }
+    // an agent's mark: its chat, open on that agent's tab — its own transcript (2026-11-18, v8); one with none yet, the chat
+    const mk = e.target.closest('.spgrid .spa[data-ag]'), ms = mk && state.sessions.get(mk.dataset.sid), mr = ms && spRows(ms).find(x => x.id === mk.dataset.ag);
+    if (mr && AG_ID.test(String(mr.id)) && mr.st !== 'joined') { mxtHide(); return agOpen(ms, mr); }
+    // the star: its own target, or the one under the pointer should the click go to the node's button (2026-11-18, v11)
+    const star = e.target.closest('.spstar') || (e.detail && e.target.matches?.('.spt') && document.elementFromPoint(e.clientX, e.clientY)?.closest('.spstar'));
+    if (star) { const id = star.closest('.spt').dataset.id; return setFav(id, !state.sessions.get(id)?.fav); }
+    const tk = e.target.closest('.spdone'); if (tk) return spTick(tk.closest('.spt').dataset.id, tk);
+    const ar = e.target.closest('#spar [data-arr]'); if (ar) { prefs.spArrange = ar.dataset.arr; savePrefs(); return renderSpace(); }
+    const tkp = e.target.closest('.sptk[data-url]');   // its ticket's page, beside the chat (2026-11-24)
+    if (tkp) { const id = tkp.closest('.spt').dataset.id, url = tkp.dataset.url; if (url) (id === state.current ? Promise.resolve() : openSession(id)).then(() => { const c = state.sessions.get(id); if (c && state.current === id) openExternal(url, { s: c }); }); return; }
+    const ak = e.target.closest('.spask');   // its question (2026-11-24); one asked elsewhere opens nothing
+    if (ak) { if (ak.dataset.tid) { const id = ak.closest('.spt').dataset.id; sp.ask?.tid === ak.dataset.tid ? spAskClose() : spAskOpen(id, ak.dataset.tid); } return; }
+    // a PR in a node's list: its chat open, the PR on a tab beside it (2026-11-23); the pill itself opens nothing
+    const pr = e.target.closest('.spprr[data-url]');
+    if (pr) {
+      const id = pr.closest('.spt').dataset.id, url = pr.dataset.url;
+      (id === state.current ? Promise.resolve() : openSession(id)).then(() => { const s = state.sessions.get(id); if (s && state.current === id) openExternal(url, { s }); });
+      return;
+    }
+    if (e.target.closest('.sppr')) return;
+    const node = e.target.closest('.spt[data-id]');
+    if (node && e.shiftKey) { const id = node.dataset.id; sp.chosen.has(id) ? sp.chosen.delete(id) : sp.chosen.add(id); return renderSpace(); }   // ⇧-click: chosen, or not
+    if (node) { if (sp.chosen.size) { sp.chosen.clear(); renderSpace(); } if (node.dataset.id !== state.current) openSession(node.dataset.id); return; }
+    const s = state.sessions.get(state.current), lane = e.target.closest('.splane[data-ag]'), r = lane && s && spRows(s).find(x => x.id === lane.dataset.ag);
+    if (r) agOpen(s, r);
+  });
+  // a pinch over the nodes is theirs: Chrome's comes as a wheel with ⌃, WebKit's as gesture events; ⌘-wheel too
+  $('#spfield').addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); spZoom(spZoomNow() * Math.exp(-e.deltaY / 300)); }, { passive: false });
+  { let at = 1; const field = $('#spfield');
+    field.addEventListener('gesturestart', e => { e.preventDefault(); at = spZoomNow(); });
+    field.addEventListener('gesturechange', e => { e.preventDefault(); spZoom(at * e.scale); }); }
+  $('#space').addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.splane[data-ag]')) { e.preventDefault(); return e.target.click(); }
+    const at = e.target.closest?.('#spgrid .spt');
+    if (e.key === 'Escape' && sp.chosen.size && !e.target.closest?.('input, textarea')) { e.preventDefault(); e.stopPropagation(); sp.chosen.clear(); return renderSpace(); }
+    if (!at || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    // by the grid as it lies (2026-11-24): ←→ the node before or after, ↑↓ the nearest in the row above or below, Home End the ends
+    const nodes = [...$('#spgrid').querySelectorAll('.spt')], i = nodes.indexOf(at), box = n => n.getBoundingClientRect(), r = box(at), cx = r.left + r.width / 2;
+    let to = null;
+    if (e.key === 'Home') to = nodes[0]; else if (e.key === 'End') to = nodes.at(-1);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') to = nodes[Math.max(0, Math.min(nodes.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))];
+    else {
+      const down = e.key === 'ArrowDown', rows = nodes.map(n => [n, box(n)]).filter(([, b]) => down ? b.top > r.top + 4 : b.top < r.top - 4);
+      const row = down ? Math.min(...rows.map(([, b]) => b.top)) : Math.max(...rows.map(([, b]) => b.top));
+      to = rows.filter(([, b]) => Math.abs(b.top - row) < 4).sort(([, a], [, b]) => Math.abs(a.left + a.width / 2 - cx) - Math.abs(b.left + b.width / 2 - cx))[0]?.[0] || at;
+    }
+    if (e.shiftKey && to) { sp.chosen.add(at.dataset.id); sp.chosen.add(to.dataset.id); renderSpace(); }   // ⇧: both chosen
+    to?.focus(); to?.scrollIntoView({ block: 'nearest' });
+  });
+  // ---- several at once (2026-11-24): ⇧-click or ⇧-arrows choose nodes; a bar for them — done, star, mute —, esc lets go
+  function spBarDraw(list) {
+    const ids = new Set(list.map(s => s.id)); for (const id of [...sp.chosen]) if (!ids.has(id)) sp.chosen.delete(id);
+    const bar = $('#spbar'), chosen = [...sp.chosen].map(id => state.sessions.get(id)).filter(Boolean); bar.hidden = !chosen.length;
+    if (!chosen.length) return setHtml(bar, '');
+    const allFav = chosen.every(s => s.fav), allMuted = chosen.every(s => s.muted), allDone = chosen.every(s => s.done);
+    setHtml(bar, `<span>${chosen.length} chosen</span><button type="button" class="go" data-do="done">${allDone ? '↩ Back' : '✓ Done'}</button><button type="button" data-do="star">${allFav ? 'Unstar' : '★ Star'}</button><button type="button" data-do="mute">${allMuted ? 'Unmute' : 'Mute'}</button><button type="button" data-do="none" aria-label="Let them go">×</button><kbd>esc</kbd>`);
+  }
+  $('#spbar').addEventListener('click', e => {
+    const b = e.target.closest('button[data-do]'); if (!b) return;
+    const chosen = [...sp.chosen].map(id => state.sessions.get(id)).filter(Boolean), what = b.dataset.do;
+    if (what === 'done') { const back = chosen.every(s => s.done); for (const s of chosen) if (back || canTick(s)) tickDone(s.id, !back, b, null, false, true); }
+    if (what === 'star') { const on = !chosen.every(s => s.fav); for (const s of chosen) if (!!s.fav !== on) setFav(s.id, on); }
+    if (what === 'mute') { const on = !chosen.every(s => s.muted); for (const s of chosen) if (!!s.muted !== on) setMuted(s.id, on); }
+    sp.chosen.clear(); renderSpace();
+  });
+  {
+    // the divider: Space's share of the column, dragged; the left button only, as the list's splitter
+    const div = $('#spdiv');
+    div.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault(); div.setPointerCapture(e.pointerId); div.classList.add('drag');
+      const box = $('#main').getBoundingClientRect();
+      const move = ev => { const f = Math.min(.9, Math.max(.05, (ev.clientX - box.left) / box.width)); prefs.spaceAt = Math.round(f * 1000) / 1000; $('#main').style.setProperty('--sp', String(prefs.spaceAt)); };
+      const up = () => { div.classList.remove('drag'); div.removeEventListener('pointermove', move); savePrefs(); const s = state.sessions.get(state.current); if (s) syncTerm(s); };
+      div.addEventListener('pointermove', move); div.addEventListener('pointerup', up, { once: true }); div.addEventListener('pointercancel', up, { once: true });
+    });
+  }
+  applySpace();
 
   // ---- home: the chat column with no chat open (2026-10-10) ---------------------------------------------------------
   // fastfetch's block and btop's honesty: a pixel fish beside the board's facts in key: value lines and the palette's
@@ -12950,6 +14141,7 @@ const toolName = n => {
     if (!e.metaKey || e.ctrlKey || e.altKey) return false;
     const step = e.key === '=' || e.key === '+' ? .1 : e.key === '-' || e.key === '_' ? -.1 : e.key === '0' ? 0 : null;
     if (step === null) return false;
+    if (prefs.space && e.target.closest?.('#space')) { spZoom(step ? spZoomNow() + step : 1); e.preventDefault(); return true; }   // the keys in Space: its nodes' zoom (2026-11-18)
     prefs.chatZoom = step ? prefs.chatZoom + step : 1;
     applyChatZoom(); savePrefs(); e.preventDefault();
     return true;

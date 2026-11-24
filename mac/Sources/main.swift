@@ -1035,7 +1035,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog, or a page's address is edited (2026-10-27).
-  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z"]
+  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "s", "r", "j", "m", "z"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])

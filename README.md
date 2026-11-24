@@ -99,6 +99,12 @@ live terminal or what it's doing right now. The arrows walk it, ⏎ opens one.
 
 <img src="docs/shots/clip-overview.webp" alt="⌥⌘A: every live chat in columns by what it wants; the arrows move and ⏎ opens one">
 
+⌥⌘S (or **Space** in the status bar) swaps the chat list for Space: every chat as a node with its name and folder,
+its agents docked to it in a pod per type — each agent its type's two letters in its colour, its state on the corner —,
+filtered by state on top, your starred chats first, ⌘F to find one, a ✓ to tick one done, a question answered from its node, chats tied together joined by a line, laid out by state, project or last word, its open PRs counted on its edge, zoomed in or out to fit, over a night sky on a dark theme. Point at an agent for its card: its type, how
+long it has been at it, what it was asked and is doing now, its model and effort. Click a node and the chat opens on the right, every key working as
+ever, a × to close it; its agents line up on one clock under the nodes.
+
 ## 🗨️ A chat with the people you share it with
 
 Optional, and off until you set it up: one chat, in a private GitHub repo — an issue whose comments are the

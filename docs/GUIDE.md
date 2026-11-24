@@ -232,6 +232,7 @@ sky every three levels and fireworks at a level-up, wherever the Mac has WebGL2.
 | ⌥⌘B | hide the chat list, and show it again |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |
+| ⌥⌘S | Space, in the chat list's place: every chat as a node of its agents, filtered by state · ★ in a node's corner (or F) puts it first, with its own chip on top · ✓ in its other corner (or D) ticks it done · a pill on its edge counts its open PRs, pointed at their list, a click opens one beside the chat · ⌘F finds a chat by title, folder, agents or PRs · a node asking you has a pill: its question and answers open from it, a number or a click answers · right-click a node for the card's menu · its title, pointed at, its chat's card · a quiet one fades, its age beside its folder · tied chats joined by a line · State, Project or Last word on top lays the nodes out · in ⌘F, `is:ready`, `pr:changes`, `@security`, `#storefront` are filters · the arrows go by the grid · ⇧-click or ⇧-arrows choose several, a bar ticks, stars or mutes them · the pointer on an agent shows its card · Settings › Space: the sky, its falling stars, planets and comets, the card, the pods · a click opens the chat on the right, its × closes it · ⌘+ ⌘− zoom the nodes · the status bar's Space too, ⌥⌘B back to the list |
 | ⌥⌘M | lunch: today's menus, on a chalkboard |
 | ⌥⌘Z | Zé's game |
 | ⌥⌘Y | the theme |
@@ -322,6 +323,9 @@ or *key* to find a setting wherever it is):
   (every browser then asks for it again), and where the setup file is.
 
 The sidebar's foot has the keyboard shortcuts and the tour.
+
+When the board learns something new, *What's new* shows it once, an example a page — Space's four the first time.
+*Later* brings it back the next day; ⌥⌘L › What's new and the keys' sheet (?) open it whenever.
 
 The setup is a file of yours, `~/.config/peixairada/config.json` (`$XDG_CONFIG_HOME` moves it) — edit it by hand or
 keep it with your dotfiles; the board picks up a change within seconds:

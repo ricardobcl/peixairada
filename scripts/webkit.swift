@@ -49,13 +49,13 @@ let shotTools = """
         for (let i = Math.max(0, Math.round(x * S)); i < Math.min(cv.width, Math.round((x + w) * S)); i++) if (test(...at(i, j))) { n++; sx += i; sy += j; }
       return n ? { n, x: +(sx / n / S).toFixed(1), y: +(sy / n / S).toFixed(1) } : { n: 0 }; } };
   """
-// The page's prefs start empty (a store of its own), WK_PREFS over them; WK_KEY is the board's key, as the app gives it
+// The page's prefs start empty (a store of its own) but for what's new, seen (2026-11-24), WK_PREFS over them; WK_KEY is the board's key, as the app gives it
 // (2026-10-16).
 let seed = """
   window.PEIX_KEY = \((env["WK_KEY"] ?? "").debugDescription);
   window.__wkErrs = []; addEventListener('error', e => __wkErrs.push(String(e.message) + ' @' + e.lineno));
   addEventListener('unhandledrejection', e => __wkErrs.push('unhandled rejection: ' + String(e.reason)));
-  try { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k) || '{}'); Object.assign(p, \(env["WK_PREFS"] ?? "{}"));
+  try { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k) || '{}'); if (!('newsSeen' in p)) p.newsSeen = ['space']; Object.assign(p, \(env["WK_PREFS"] ?? "{}"));
     localStorage.setItem(k, JSON.stringify(p)); } catch {}
   """
 

@@ -10,7 +10,7 @@
 // (`waiting` + `permission prompt` is a chat blocked on a prompt the transcript knows nothing of). A pid that is running
 // gets its `procStart` as Claude Code writes it (2026-10-14), one made up none; `live.procStart` says it outright.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, utimesSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -151,8 +151,9 @@ export function agentNoteLine({ id, cwd, tool, asked, status = 'completed', said
  *  member shape is a guess: none was on this Mac); each teammate a sub-agent file of the lead's, its .meta.json an
  *  in-process teammate's, its first prompt the lead's `<teammate-message>`, then at work on a tool call (`work`) or done
  *  with a last word. `plain`: a background sub-agent of the lead's beside them, no teammate; `also`: names on the roster
- *  with no file of their own yet. */
-export function teamFiles({ dir, lead, mates = [], roster = true, plain = false, also = [], at = new Date() }) {
+ *  with no file of their own yet. `spawned` (2026-11-18): name → the `subagent_type` the lead's Agent call spawned it as (or `{type, tool}`: `Task`, its older name),
+ *  written into the lead's transcript — a teammate's category, which its own metadata does not name. */
+export function teamFiles({ dir, lead, mates = [], roster = true, plain = false, also = [], spawned = {}, at = new Date() }) {
   const id8 = lead.id.slice(0, 8), team = `session-${id8}`, ts = ms => new Date(at.getTime() + ms).toISOString();
   const sub = join(dir, 'projects', slugOf(lead.cwd), lead.id, 'subagents'); mkdirSync(sub, { recursive: true });
   const base = { isSidechain: true, userType: 'external', entrypoint: 'cli', cwd: lead.cwd, sessionId: lead.id, version: 'fixture', gitBranch: 'main' };
@@ -162,7 +163,7 @@ export function teamFiles({ dir, lead, mates = [], roster = true, plain = false,
     writeFileSync(join(sub, `agent-${agentId}.jsonl`), ls.map(l => JSON.stringify({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...l })).join('\n') + '\n');
   };
   const said = (text, i) => ({ type: 'assistant', timestamp: ts(i), message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } });
-  for (const m of mates) agent(m.name, { agentType: m.name, color: m.color || 'blue', description: m.summary, model: 'fixture-1', name: m.name, permissionMode: 'auto', planModeRequired: false,
+  for (const m of mates) agent(m.name, { agentType: m.name, ...m.spawnedType && { spawnedAgentType: m.spawnedType, customAgentType: m.spawnedType }, color: m.color || 'blue', description: m.summary, model: 'fixture-1', name: m.name, permissionMode: 'auto', planModeRequired: false,
     requestNonInteractive: false, requestShape: 'background', spawnDepth: 1, taskKind: 'in_process_teammate', teamName: team }, [
     { type: 'user', timestamp: ts(0), promptId: randomUUID(), message: { role: 'user', content: `<teammate-message teammate_id="team-lead" summary="${m.summary}">\n${m.ask || m.summary}\n</teammate-message>` } },
     m.work ? { type: 'assistant', timestamp: ts(1000), message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant',
@@ -170,6 +171,9 @@ export function teamFiles({ dir, lead, mates = [], roster = true, plain = false,
   ]);
   if (plain) agent('explore', { agentType: 'Explore', description: 'look around', requestNonInteractive: false, requestShape: 'background', spawnDepth: 1, toolUseId: 'toolu_x' }, [
     { type: 'user', timestamp: ts(0), message: { role: 'user', content: 'look around' } }, said('Looked.', 500)]);
+  for (const [name, said] of Object.entries(spawned)) { const { type, tool = 'Agent' } = said && typeof said === 'object' ? said : { type: said }; appendFileSync(lead.file, JSON.stringify({ type: 'assistant', uuid: randomUUID(), parentUuid: null, isSidechain: false, userType: 'external', entrypoint: 'cli',
+    cwd: lead.cwd, sessionId: lead.id, version: 'fixture', gitBranch: 'main', timestamp: ts(-1000), message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant',
+      content: [{ type: 'tool_use', id: 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20), name: tool, input: { name, team_name: team, description: `Spawn ${name}`, prompt: 'Join the team.', ...(type ? { subagent_type: type } : {}) } }], stop_reason: 'tool_use' } }) + '\n'); }
   const tdir = join(dir, 'teams', team); mkdirSync(tdir, { recursive: true });
   const member = (name, extra) => ({ agentId: `${name}@${team}`, name, agentType: name, joinedAt: at.getTime(), tmuxPaneId: '', cwd: lead.cwd, subscriptions: [], backendType: 'in-process', ...extra });
   writeFileSync(join(tdir, 'config.json'), JSON.stringify({ name: team, createdAt: at.getTime(), leadAgentId: `team-lead@${team}`, leadSessionId: lead.id,
@@ -200,6 +204,7 @@ export function makeFixture(dir, chats) {
       version: 'fixture', kind: 'interactive', entrypoint: c.live.entrypoint || 'cli', pidDomain: process.platform,
       ...c.live.status && { status: c.live.status, statusUpdatedAt: c.live.statusAt ?? Date.now() }, ...c.live.waitingFor && { waitingFor: c.live.waitingFor },
       ...c.live.name && { name: c.live.name, nameSource: 'derived', messagingSocketPath: `/tmp/cc-socks/${c.live.pid}.sock` },   // the name another chat's SendMessage reaches it by (2026-10-31)
+      ...c.live.agent && { agent: c.live.agent },   // `claude --agent <name>` (2026-11-18)
     }));
     made.push({ id, cwd: c.cwd, file, title: c.title || null, pid: c.live?.pid || null });
   }

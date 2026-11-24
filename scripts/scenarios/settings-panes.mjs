@@ -32,16 +32,16 @@ export default async function (ctx) {
 
   // each pane alone, named in the head; ↓ from a tab walks to the next
   out.panes = {};
-  for (const t of ['look', 'list', 'term', 'setup', 'jira', 'system']) {
+  for (const t of ['look', 'list', 'space', 'term', 'setup', 'jira', 'system']) {
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="${t}"]').click()`);
     const l = await look(); out.panes[t] = { title: l.title, rows: l.rows.length };
     ctx.assert.deepEqual(l.panes, [t], `${t} alone`);
   }
-  ctx.assert.deepEqual(Object.values(out.panes).map(p => p.title), ['Appearance', 'Chat list', 'Terminal', 'Projects', 'Jira', 'Updates & access']);
+  ctx.assert.deepEqual(Object.values(out.panes).map(p => p.title), ['Appearance', 'Chat list', 'Space', 'Terminal', 'Projects', 'Jira', 'Updates & access']);
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').focus()`);
   await ctx.evaluate(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))`);
   out.down = await look();
-  ctx.assert.deepEqual([out.down.panes, out.down.focus], [['term'], 'stTerm'], '↓ is the next pane, with the keys');
+  ctx.assert.deepEqual([out.down.panes, out.down.focus], [['space'], 'stSpace'], '↓ is the next pane, with the keys');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hiddenGrp').hidden`), true, 'nothing hidden: no Hidden group');
 
   // a search: every pane's matches under its name, counted in the sidebar, the words marked
@@ -49,7 +49,7 @@ export default async function (ctx) {
   await find('notif');
   out.notif = await look();
   ctx.assert.deepEqual([out.notif.title, out.notif.panes, out.notif.rows], ['Results for “notif”', ['general', 'lunch'], ['Notifications', 'Lunch']], 'lunch\'s row says it notifies (2026-10-18)');
-  ctx.assert.deepEqual(out.notif.counts, { general: '1', look: '-', list: '-', term: '-', setup: '-', jira: '-', chat: '-', lunch: '1', system: '-' }, 'counted, the rest dimmed');
+  ctx.assert.deepEqual(out.notif.counts, { general: '1', look: '-', list: '-', space: '-', term: '-', setup: '-', jira: '-', chat: '-', lunch: '1', system: '-' }, 'counted, the rest dimmed');
   ctx.assert.ok(out.notif.marks > 0, `the words marked: ${out.notif.marks}`);
   await find('same height');
   out.dependent = await look();
@@ -68,7 +68,7 @@ export default async function (ctx) {
 
   // Esc: the search first, then the dialog — and the keys back where they were
   out.esc1 = { taken: await esc(), ...(await look()) };
-  ctx.assert.deepEqual([out.esc1.taken, out.esc1.open, out.esc1.panes, out.esc1.title], [true, true, ['term'], 'Terminal'], 'Esc lets the search go, the pane before it in front');
+  ctx.assert.deepEqual([out.esc1.taken, out.esc1.open, out.esc1.panes, out.esc1.title], [true, true, ['space'], 'Space'], 'Esc lets the search go, the pane before it in front');
   out.esc2 = { taken: await esc() };
   await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
   await ctx.sleep(50);
@@ -78,7 +78,7 @@ export default async function (ctx) {
   // the sidebar's foot: the keys sheet, the settings closed first
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#spTitle').textContent`), 'Terminal', 'the pane in front kept while the page lives');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#spTitle').textContent`), 'Space', 'the pane in front kept while the page lives');
   await ctx.evaluate(`document.querySelector('#keysBtn').click()`);
   await ctx.waitFor(`document.querySelector('#keysheet').open && !document.querySelector('#settings').open`, { what: 'the keys sheet instead' });
   await ctx.evaluate(`document.querySelector('#keysheet').close()`);
