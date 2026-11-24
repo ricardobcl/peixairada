@@ -70,6 +70,15 @@ extension AppDelegate {
     guard let d = try? JSONSerialization.data(withJSONObject: o) else { return }
     FileHandle.standardOutput.write(d + Data("\n".utf8))
   }
+  /// A colour as the window wears it now, "rrggbb" in sRGB (a dynamic one resolved under the window's appearance).
+  private func probeHex(_ c: NSColor) -> String {
+    var out = ""
+    window.effectiveAppearance.performAsCurrentDrawingAppearance {
+      guard let s = c.usingColorSpace(.sRGB) else { return }
+      out = String(format: "%02x%02x%02x", Int((s.redComponent * 255).rounded()), Int((s.greenComponent * 255).rounded()), Int((s.blueComponent * 255).rounded()))
+    }
+    return out
+  }
   /// Why nobody could be looking, which is why WebKit would run no frames: the check cannot be run now.
   private func probeUnseen() -> String? {
     let s = CGSessionCopyCurrentDictionary() as? [String: Any]
@@ -130,7 +139,8 @@ extension AppDelegate {
       }
       reply(["w": window.frame.width, "h": h, "titled": window.styleMask.contains(.titled), "fill": fillSaved != nil, "full": window.styleMask.contains(.fullScreen),
              "inset": paneTopC.constant, "zoom": zoom, "active": NSApp.isActive, "seen": window.occlusionState.contains(.visible), "unseen": probeUnseen() as Any,
-             "webTop": content.bounds.height - web.frame.maxY, "barClear": window.titlebarAppearsTransparent, "panes": panes], nil)
+             "webTop": content.bounds.height - web.frame.maxY, "barClear": window.titlebarAppearsTransparent,
+             "ground": probeHex(window.backgroundColor), "under": probeHex(web.underPageBackgroundColor), "panes": panes], nil)
     case "shot":   // optionIncludingWindow (1 << 3), boundsIgnoreFraming (1 << 0)
       guard let img = capture(.null, 1 << 3, UInt32(window.windowNumber), 1)?.takeRetainedValue(), let s = Shot(img, points: window.frame.width) else { return reply(nil, "no image of the window") }
       shot = s

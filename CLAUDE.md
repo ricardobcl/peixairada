@@ -335,7 +335,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`, set before the first paint, which every dark
   rule reads — **never `prefers-color-scheme`**. Worn (`wornKey()`, `skinOn()`): the family's half of `darkNow()` —
   Appearance › Auto (`prefs.skinFollow`, the default; `setLook`) the system's, else `prefs.look`; the app's window wears
-  it (`appearance` → `window.appearance`), so the pane's pages follow. The blacks read `--crust`,
+  it (`appearance` → `window.appearance`), the pane's pages too; a theme's `titlebar` paints its bar
+  (2026-11-16, `titlebar-posts.mjs`). The blacks read `--crust`,
   `--bar`, `--hd-*`; a project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; not under the
   board's own, `asSet`); the drawer's sixteen are the theme's (`xtTheme`, `ANSI`). **Every theme lays the chat in a
   frame** (2026-11-01): `--frame` (`:root`'s, a theme's `crust`) the window's ground, the sidebar (`--side`) and the

@@ -2,8 +2,33 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-23. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-24. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-24 — Flashbang's review
+
+Ricardo's review of Flashbang: one bug, the drawer's selection, and nits — *"under Flashbang every launch flashes"*, *"not
+checked in macOS's own full screen"*, *"the cards lose their ground"*, *"nothing tests when the page posts `titlebar`"*.
+
+* **The drawer's selection is the accent, as everywhere**: Flashbang's `--term-sel` was macOS's blue, opaque, and xterm
+  5.5 turns an opaque `selectionBackground` down to 30 % (`_setTheme`), which on white is `#e9f2ff`, about 1.13:1. The
+  override is gone; the theme wears `skinCss`'s accent mix, as `::selection` does.
+* **The bar is kept for the next launch** (`peixairada.titlebar`, beside `peixairada.dark`): `buildWindow` wears it
+  before the window shows (`wearBar`), so Flashbang no longer opens on macOS's opaque bar over the board's `--frame` and
+  turns once the page has run. Only in a light launch: a bar is a light frame's, and under Auto macOS may have gone dark
+  since, where the saved white would flash over the dark ground.
+* **WebKit's ground is resolved under the window's appearance** (`wearBar`, `lookObs`): `underPageBackgroundColor` takes
+  a colour as it resolves when set, under macOS's appearance, so the dynamic `ground` came out dark on a light board in a
+  dark Mac. Resolved under `window.effectiveAppearance`, and again on every change of it.
+* **Opaque in macOS's full screen**: there the title bar slides down over the head row when the pointer reaches the
+  top, and a clear one leaves the lights and the title over the toolbar's controls with nothing behind them.
+  `wearBar(full:)` from `windowWillEnterFullScreen` (true), `windowDidExitFullScreen` and a failure to enter (false).
+* **The cards stay white on the white list**: every ground white is the theme; the raised cards read by their `--lo`
+  shadow alone. A step off white is one `panel` or `crust` away if that changes.
+* **The posts are tested** (`scenarios/titlebar-posts.mjs`, the bridge faked): the white under Flashbang's light half in
+  a light frame, null under the dark frame, the dark half and ⌥⌘Y's preview of another theme, once per change. The shell
+  check reads both grounds back (the probe's `ground`, `under`); `shell-checks/titlebar-full-screen.mjs` (`--space`) the
+  bar opaque in macOS's full screen and clear again after it.
 
 ## Decisions of 2026-11-23, later — Google Chrome blocked: the harness on chrome-headless-shell
 
@@ -76,6 +101,19 @@ Ricardo, in a drawer: *"why does audio to text not work on this chat? can this a
   holds. What disclaim does is checked everywhere.
 * **Open**: `/voice` itself in a drawer, by a person talking: the first press should raise macOS's dialog for
   *claude*. Hold-to-talk reads the space key's repeats, which xterm passes to the PTY.
+
+## Decisions of 2026-11-16 — Flashbang, a light theme with every ground white
+
+* **Flashbang** (`SKINS.flashbang`, `FAMILIES.flashbang`): a traditional light theme — the list, home, the panels and the
+  frame all `#ffffff`, so its frame is level with the chat, not a step apart (the guide says so) —, the drawer in the
+  default iTerm2 profile's Light set (Tango) on white; its dark half the board's own. No global colour changed.
+* **A theme can ask for the window's title bar** (`titlebar: true`): `applySkin` posts `{type: 'titlebar', color}`, the
+  theme's crust while it is worn in a light frame, else null; the shell makes the bar clear over that colour, the
+  window's ground and WebKit's (`underPageBackgroundColor`), and null puts back macOS's bar and `ground`.
+* **The board starts under every title bar** (`webTopC`, set in `paneTop` beside the overlay's top): WebKit insets the
+  page under an opaque bar on its own, but not under a clear one, so with the bar clear the board ran under the traffic
+  lights and took the window's drags. Under the bar always, WebKit insets nothing and turning the bar moves nothing: the
+  page the same height under either. → `shell-checks/titlebar-theme.mjs`.
 
 ## Decisions of 2026-11-07 — the fill on two screens, and who brings an app forward
 

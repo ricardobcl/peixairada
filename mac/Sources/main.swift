@@ -36,6 +36,12 @@ let kFrameName = "peixairada.main"   // the window's frame in the defaults — o
 let kFillKey = "peixairada.fill"      // whether the board was full screen (either kind) when it was last up: a relaunch comes back so
 let kSpaceKey = "peixairada.space"    // ⌃⌘F is the system's full screen, in a Space of its own, not the fill (2026-10-14, Settings › Look)
 let kDarkKey = "peixairada.dark"      // the board's own appearance when it last said one (none: it follows macOS), for the next launch
+let kBarKey = "peixairada.titlebar"   // a theme's title bar colour when the page last said one (none: macOS's bar), for the next launch (2026-11-24)
+/// "#rrggbb" in sRGB, else nil.
+func hexColor(_ s: String?) -> NSColor? {
+  guard let s, s.count == 7, s.hasPrefix("#"), let v = UInt32(s.dropFirst(), radix: 16) else { return nil }
+  return NSColor(srgbRed: CGFloat(v >> 16 & 255) / 255, green: CGFloat(v >> 8 & 255) / 255, blue: CGFloat(v & 255) / 255, alpha: 1)
+}
 /// The board's key (2026-10-16): a file beside the server's state, this user's alone, made at the server's first boot.
 /// The app's page gets it from a script of the app's own before the page's runs (`giveKey`), and the probe sends it.
 let kKeyFile = FileManager.default.homeDirectoryForCurrentUser
@@ -310,6 +316,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var content: NSView!
   var paneOverlay: PaneOverlay!
   var ground: NSColor!                          // the window's own ground, the board's --frame per appearance (buildWindow)
+  var barColor: NSColor?                        // a theme's title bar (the page's `titlebar`), nil for macOS's own (wearBar)
+  var lookObs: NSKeyValueObservation?           // the window's appearance, for WebKit's ground (wearBar)
   var webTopC: NSLayoutConstraint!             // the board's top: under the title bar, where the overlay's is (paneTop)
   var paneTopC: NSLayoutConstraint!            // the overlay's top: where the page's own y = 0 is, under a title bar (paneTop)
   var paneTopObs: NSKeyValueObservation?
@@ -541,7 +549,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       ? NSColor(srgbRed: 0x28 / 255, green: 0x28 / 255, blue: 0x25 / 255, alpha: 1)
       : NSColor(srgbRed: 0xde / 255, green: 0xdc / 255, blue: 0xd6 / 255, alpha: 1) }
     web.setValue(false, forKey: "drawsBackground")
-    web.underPageBackgroundColor = ground
     // A file dragged in from the Finder: the page gets its path (a browser page never could) and hands
     // it to the chat as an @-mention; while it hovers, the page marks the chat pane.
     web.onDragging = { [weak self] on in self?.toBoard("window.peixDragging && window.peixDragging(\(on))") }
@@ -569,13 +576,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     // A window built in code releases itself on close, on top of the strong ref above: ⌘W, then a
     // Dock click, and showWindow messages a freed window (SIGSEGV in applicationShouldHandleReopen).
     window.isReleasedWhenClosed = false
-    window.titlebarAppearsTransparent = false
-    window.backgroundColor = ground   // what shows until the page paints, and behind a web view that draws none (above)
     // The board's appearance is its own (2026-10-12): it says which (`appearance`), and the window wears it — the
     // ground above, the pane's pages, the find bar. As it was last said until the page says again.
     if let dark = UserDefaults.standard.object(forKey: kDarkKey) as? Bool { window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua) }
-    // The board fills the window; the pane is a transparent overlay over all of it, and each page's web view is
-    // placed inside it where the page says — one half of the chat column, or both, below their tab strips. An
+    // What shows until the page paints, and behind a web view that draws none (above): `ground`, or the theme's bar as the
+    // page last said it (2026-11-24), so a theme with one opens on it rather than turning it once the page has run. A bar
+    // is a light frame's (applySkin), so not in a dark launch: macOS gone dark under Auto opens on the dark ground.
+    let light = window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .aqua
+    barColor = light ? hexColor(UserDefaults.standard.string(forKey: kBarKey)) : nil
+    wearBar()
+    lookObs = window.observe(\.effectiveAppearance) { [weak self] _, _ in self?.wearBar() }
+    // The board and the pane start under the title bar (paneTop; the window's top in the fill and macOS's full screen);
+    // the pane is a transparent overlay over the whole board, and each page's web view is placed inside it where the
+    // page says — one half of the chat column, or both, below their tab strips. An
     // overlay, not a split: the board's columns never reflow under it, and it lets clicks that miss a page through.
     buildPaneOverlay()
     content = NSView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
@@ -680,6 +693,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
     guard paneTopC.constant != inset else { return }
     paneTopC.constant = inset
     logLine("pane: the page starts \(inset) pt down the window")
+  }
+  /// A theme's title bar (2026-11-16, Flashbang): clear over its colour, the window's ground; none, macOS's own bar over
+  /// `ground`. Opaque in macOS's full screen (2026-11-24): there the bar slides down over the head row, and a clear one
+  /// left the lights and the title over its controls with nothing behind them. `full` while AppKit is between the two.
+  func wearBar(full: Bool? = nil) {
+    window.titlebarAppearsTransparent = barColor != nil && !(full ?? window.styleMask.contains(.fullScreen))
+    window.backgroundColor = barColor ?? ground
+    // WebKit's own ground, the strip under the bar included: it takes a colour as it resolves when set, under macOS's
+    // appearance, so `ground` is resolved under the window's here, and again on every change of it (lookObs; 2026-11-24).
+    window.effectiveAppearance.performAsCurrentDrawingAppearance {
+      web.underPageBackgroundColor = window.backgroundColor.usingColorSpace(.sRGB) ?? window.backgroundColor
+    }
   }
   /// A page's new window, for the board to put on a tab beside it (2026-10-21) — or, the board saying no (a view not
   /// the open chat's), loaded where it came from, as before.
@@ -1424,15 +1449,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   // measured, AppKit keeps a full-screen window's frame there whatever setFrame or willUseFullScreenContentSize ask, and
   // the strip beside the housing is the menu bar's. So the page hears no fill and no housing (tellFill). The frame's
   // autosave is off meanwhile, as in the fill; a close leaves the Space first (AppKit's own), a quit does not.
-  func windowWillEnterFullScreen(_ note: Notification) { window.setFrameAutosaveName("") }
+  func windowWillEnterFullScreen(_ note: Notification) { window.setFrameAutosaveName(""); wearBar(full: true) }
   func windowDidEnterFullScreen(_ note: Notification) {
     UserDefaults.standard.set(true, forKey: kFillKey)
     logLine("full screen: on, its own Space \(NSStringFromRect(window.frame))")
     tellFill()
   }
-  func windowDidFailToEnterFullScreen(_ window: NSWindow) { window.setFrameAutosaveName(kFrameName) }
+  func windowDidFailToEnterFullScreen(_ window: NSWindow) { window.setFrameAutosaveName(kFrameName); wearBar(full: false) }
   func windowDidExitFullScreen(_ note: Notification) {
     window.setFrameAutosaveName(kFrameName)
+    wearBar(full: false)
     UserDefaults.standard.set(false, forKey: kFillKey)
     logLine("full screen: off \(NSStringFromRect(window.frame))")
     if !spaceMode { window.collectionBehavior = [.fullScreenNone] }
@@ -1920,11 +1946,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
       if let dark { UserDefaults.standard.set(dark, forKey: kDarkKey) } else { UserDefaults.standard.removeObject(forKey: kDarkKey) }
       logLine("appearance: \(dark.map { $0 ? "dark" : "light" } ?? "macOS's")")
     case "titlebar":   // a theme's title bar in its frame (2026-11-16, Flashbang): the bar clear over that ground; null, macOS's own
-      let hex = (body["color"] as? String).flatMap { $0.count == 7 && $0.hasPrefix("#") ? UInt32($0.dropFirst(), radix: 16) : nil }
-      window.titlebarAppearsTransparent = hex != nil
-      window.backgroundColor = hex.map { NSColor(srgbRed: CGFloat($0 >> 16 & 255) / 255, green: CGFloat($0 >> 8 & 255) / 255, blue: CGFloat($0 & 255) / 255, alpha: 1) } ?? ground
-      web.underPageBackgroundColor = window.backgroundColor   // WebKit's own ground, the strip under the bar included
-      logLine("titlebar: \(body["color"] as? String ?? "macOS's")")
+      let hex = body["color"] as? String
+      barColor = hexColor(hex)
+      if barColor != nil { UserDefaults.standard.set(hex, forKey: kBarKey) } else { UserDefaults.standard.removeObject(forKey: kBarKey) }
+      wearBar()
+      logLine("titlebar: \(hex ?? "macOS's")")
     case "haptic":   // a bump on the trackpad (2026-10-11): a divider at a stop, a tab dropped, a run of days crossed
       let pattern: NSHapticFeedbackManager.FeedbackPattern = switch body["kind"] as? String {
         case "levelChange": .levelChange
