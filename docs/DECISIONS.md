@@ -11,6 +11,65 @@ Space and the snooze (round XXX), made in two sessions the same day, both took �
 *"Space → ⌥⌘X"*: the snooze keeps S. X was one of three letters left (H is macOS's Hide Others, Q one key from ⌘Q).
 Space's row in `KEYS`, `HOTKEYS`, `boardKeys`, its titles and hints, What's new's page, the README and the guide say X.
 
+## Decisions of 2026-11-24, later — Top priority and snooze (round XXX)
+
+A colleague's ask, pasted in Portuguese (here in English): *"a 'Top priority' section at the top; in it the cards' order never
+changes by itself; the user can move the cards to set their priority; a setting to turn the section on and off, for whoever
+wants to hide it. So when you manage several things of a project for a release, it is easier to keep the focus on what
+matters most. Speaking of focus, there could be a 'focus' mode that leaves only the Top priority section on"*, and *"snooze
+cards, to see things again later"*. The study (round XXX, https://claude.ai/artifact/UsFGcBysNXSvd1vH2H2Yb1) put both on a
+live list in the board's own CSS, with this Mac's numbers and how other products keep a hand order and a snooze; Ricardo's
+line: `T1 T3 T4 T5 T6 T7 A1 A2 A3 A4 A5 R1 R3 R4 R5 D2 D3 F1 F2 F3 F6 Z1 Z2 Z3 B1 B2 W1 W3 W4 H1 H2 H3 H4 S1 S2 S3 S4 S5 X1 X2`
+— the suggestion, with the card's two marks (A5, S5) and without B3 (anything that wants you wakes a snooze).
+
+* **One order for the board, the server's; the switch the page's** (the open questions 1 and 2, as suggested): `priority` in
+  the state file beside the pins, written whole (`PUT /api/priority`, a `priority` event), so the app and every browser agree;
+  the section shows the project in view's chats in that order (T5). `prefs.prio` is off to begin with (T7): the list's rule
+  of 2026-10-12 — clauding first, the rest by its last word — stands for whoever does not switch it on, and off and on again
+  the order is as it was. No cap (question 4): the busiest project-day here had 8 chats.
+* **Above every lane, and out of them** (T1): a chat in the section is in no lane, so its card stays in its slot whatever it
+  does — a reply, a word, a PR come round, a question, which keeps its red edge there (measured: a card jumped to the top of
+  its lane a median 6 times an active hour, p90 32). Numbered (T3); the head tallies what its cards do, since nothing sorts
+  them by it (T4); empty, a dashed line that takes a drop (T6).
+* **Reordering shares the drag with Fold into…, by thirds** (R1): over a card of the section, its top or bottom third places
+  the chat there, a line between the two cards saying where; its middle folds, as anywhere. Held over the head it goes
+  first, over the empty line in (A3). A chat that cannot be folded (one at work) comes up to be placed alone. WCAG 2.2's
+  2.5.7 wants a way without a drag: the menu's *Move up*, *Move down*, *To the top*, *To the bottom* (R4), and ⌥⌘⇧↑↓ (R3);
+  each move is said to a reader, `Title, 2 of 5 in Top priority` (R5), as GitHub's sortable lists do.
+* **Ticked in it, a chat stays, dimmed and struck, in its slot** (D2, question 5): *never changes by itself* includes cards
+  leaving. The head says *1 of 5 done* and *Clear done* takes them out; a PR coming round un-ticks one in place. Deleted from
+  the board, it leaves the order (D3, the server's).
+* **Focus is the funnel's third row, not a mode of its own** (F1): a slice of the list is a filter (2026-10-12). *Top
+  priority only*, ⌥⌘U (F6). The project tab says it — *Top priority · 5 of 11 · 1 asking · Show all* (F2) — and Show all
+  leaves it. The rest goes quiet as when fishing (F3): no banner or chime from a chat out of the section, its replies out of
+  the Dock's count and Next, a question still ringing; leaving it, one line says what came. The word *Focus* is on no
+  control (question 3): ◎ Focus view, Claude Code's `/focus`, keeps it.
+* **The snooze is the server's** (`snoozed`, `woke`; the summary's `snooze`, `wokeAt`, `wokeWhy`; `POST …/snooze`), and so
+  is its end (`wakeWhy`, `wakeCheck`): looked at on every push of the chat — before a reply's or a question's alert, 400 ms on,
+  reads `hushOf` —, on the registry poll, so a Mac asleep through the time wakes it on the first poll after, and by one timer
+  to the nearest time. It ends by itself at its time (Z1: an hour, three, the next morning at `prefs.mornings` — work here
+  starts 09:38 at p25 (Z3) —, next Monday, a time picked) or on what it waits for (Z2: a PR come round to you, its checks
+  done, Claude's reply, its monitor ended); quietly on a question from it (B1), your word in it (B2), a tick or a delete.
+  Not on a PR at your move or a reply it was not waiting for: B3 was not picked — Superhuman's default (back only on its
+  time) rather than Linear's (any activity). What it waits for that can no longer come ends it too, said: its PR merged,
+  closed or off the chat; its claude ended before the reply.
+* **Asleep it counts nowhere** (W4): a lane of its own after Done, folded, soonest first, each card saying when (W1); out of
+  the filters, the Dock and the title, Next, the menu bar, the overview, the unread counts; its alerts `quiet`. ⌥⌘K and the
+  magnifier still find it, marked (W3). In Top priority it keeps its slot out of sight, the head saying *+1 snoozed* (X1).
+* **Back by itself** (H1–H4): `wokeAt` is a word for `wordAt` (both copies), so it is at the top of its lane; *back* on its
+  card and counted a new reply till it is opened; its card flares once; one `back` alert, quiet when muted, held when
+  fishing or out of the section in focus — but a reply's wake has no alert of its own: the reply's is the one banner.
+* **The ways to it** (S1–S5, A1–A5): a card's right-click (*Top priority*, *Snooze…* with the times and the events, a digit
+  each), ⌥⌘I and ⌥⌘S on the open chat, ···'s rows, the launcher's, and the card's two marks under the pointer, card parts off
+  by default. The app's banners: *In an hour* on a reply, a PR's turn, a chat back, a moved branch or a failed agent snoozes
+  the chat by the page (`peixSnooze`, S3) — its card leaves, and comes back with its own banner; a question's keeps *In 15
+  minutes*, since a question wakes a snooze.
+* **The keys**: ⌥⌘I, ⌥⌘S, ⌥⌘U were free; ⌥⌘⇧↑↓ is a third map, `SHIFTKEYS`, rows `shift:` in `KEYS`, forwarded by key code
+  as `shift`, and `check-page.mjs` holds all three. In the pane VS Code Web's ⌥⌘S (Save All) is given up, as its ⌥⌘B and
+  ⌥⌘R were; in a browser ⌥⌘I and ⌥⌘U stay the browser's.
+* **Not built**: T2 (under Asking you), A6 (⌥⌘K starting with them), R2 (a grip), D1 (a tick takes it out), F4 (focus for a
+  while), F5 (the Mac's Focus filter: App Intents metadata the swiftc build does not make), Z4 (a typed snooze), B3, B4, W2.
+
 ## Decisions of 2026-11-24 — a theme's drawer selection
 
 * **Every theme's `--term-sel` is an `rgba()` with commas** (`skinCss`, the accent's `rgbOf` at .3), as Flashbang's review

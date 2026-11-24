@@ -19,7 +19,8 @@ setup file, and how the pictures are made.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
   while Claude works, one per sub-agent, slower for a monitor; a question pings out in red.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you, answered where it shows in the app: *Reply…*
-  (straight into the chat's Claude, when it runs here), *Done*, or *In 15 minutes*. The Dock badge counts the chats asking
+  (straight into the chat's Claude, when it runs here), *Done*, or *In an hour*, which snoozes the chat (a question's keeps
+  *In 15 minutes*: a question wakes a snooze). The Dock badge counts the chats asking
   you and those with a new reply. The fish in the menu bar is dim when nothing wants you and full when something does, and
   its number is the questions alone; it floats belly-up if the server dies. Its menu leads with what to do next; hold ⌥
   and a reply's row marks it read. Settings › General can give it a key that works in any app.
@@ -32,6 +33,20 @@ setup file, and how the pictures are made.
   rest waits 25 minutes and arrives as one. Red on the status bar only ever means a chat is asking you, and with
   notifications off a mark says so. Settings › Appearance has two trials for the fish's lane: a fish per chat, and your
   day as the seabed.
+- ⬆️ **Top priority** — Settings › Chat list switches on a section above every lane for the chats you put first, in your
+  order, and nothing moves them but you: a reply, a word or a PR coming round leaves each card in its numbered place, its
+  edge still saying what it does, the section's head counting who asks and who is clauding. Put one in from its card's
+  right-click, ⌥⌘I, ··· in its header or the launcher, or drag it there; drag one between two others, or press ⌥⌘⇧↑ ⌥⌘⇧↓,
+  or pick the right-click's *Move up*, *Move down*, *To the top*, *To the bottom*. A chat ticked there stays, dimmed, till
+  the head's *Clear done*. With a project in view, the section shows that project's. **⌥⌘U** — the funnel's *Top priority
+  only* — leaves the section alone under a tab that says so, and *Show all* is the way back; meanwhile the rest is quiet as
+  when fishing, its questions still ring, and what came in is one line on the way out.
+- 🌙 **Snooze** — a card's right-click, ⌥⌘S, ··· or the launcher puts a chat away: in an hour or three, tomorrow morning
+  (Settings › Chat list says when mornings start), next week, a time you pick — or until its PR comes round to you, its
+  checks finish, Claude replies or its monitor ends; 1 to 9 pick. It waits in *Snoozed*, folded after Done, saying when,
+  and nothing counts it; a question from it or a word of yours wakes it. Back by itself, it is at the top of its lane,
+  marked *back* and counted a new reply till you open it, with one notification. In Top priority a snoozed chat keeps its
+  place, out of sight.
 - 🐙 **PRs** — on a card, a small square for each, in its state's colour (a draft hollow); PRs stacked on each other on
   GitHub sit together, joined by a line, base first. The number before them is the PR at your move, in the accent —
   else the one updated last. The squares keep their size however many there are; past the row's room they scroll
@@ -224,6 +239,8 @@ sky every three levels and fireworks at a level-up, wherever the Mac has WebGL2.
 | ⌥⌘N · ⌥⌘O | new chat · new chat in your ⌥⌘O project |
 | ⌥⌘P · ⌥⌘F | pick a project, twice for every project and back · filter the list |
 | ⌥⌘↑ ⌥⌘↓ | previous · next chat |
+| ⌥⌘I · ⌥⌘⇧↑ ⌥⌘⇧↓ | this chat into Top priority or out · its card a place up or down there |
+| ⌥⌘U · ⌥⌘S | Top priority only, and back · snooze this chat |
 | ⌥⌘C | this chat's Claude, in the pane |
 | ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · the in-app editor (VS Code Web or vim) · the PR |
 | ⌥⌘V | the chat's folder in the external editor (VS Code or Zed), its own window |

@@ -451,6 +451,22 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   chat never shown). Done chats never. On, the list is narrowed before anything counts it, every match shows (the
   heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. → `seen.test.mjs`,
   `lanes.mjs`, `pr-turn.mjs`.
+* **Top priority** (2026-11-24, round XXX; `prefs.prio`, off; the server's `priority`, `PUT /api/priority`, a `priority`
+  event): a section over every lane, the project in view's chats in that order and in no lane (`secIds`, `secCards`),
+  numbered (`cardHtml`'s `slot`, `.inprio`), a tick dimming one in place (`.pdone`, Clear done), its head a tally, empty a
+  line to drop on. In and out: the menu (`prioRows`), ⌥⌘I, `#prioBtn`, the launcher, a drag (`cdPrioAt`: a card's top or
+  bottom third places, `#cdgap`; its middle folds; a chat that cannot fold comes up to be placed). ⌥⌘⇧↑↓ and the menu
+  move one among those shown (`secList`, `prioMove`), said in `#prioSay`. **Focus** is `FILTERS.prio` (⌥⌘U,
+  `prioFocus`): the section alone, `cueDraw`'s tab; the rest held but questions (`quietNow`, `onAlert`), its catch on the
+  way out (`focusCatch`). A /clear carries a slot (`loadRegistry`). → `top-priority.mjs`, `priority.test.mjs`.
+* **Snooze** (2026-11-24, round XXX; the server's `snoozed`, `woke` → `snooze`, `wokeAt`; `POST …/snooze {until | on, pr |
+  undo}`): rank `snoozed`, a lane after Done, folded (`prefs.zzLane`), soonest first; counted nowhere (`asleep`: the
+  filters, `wanting`, `nextQueue`, `postState`, the overview; `hushOf` quiet). Its menu (`snoozeMenu`, digits by
+  `ctxRow`'s `key`): times by `prefs.mornings`, `#zzPick`, a PR come round, its checks, the reply, its monitor; ⌥⌘S,
+  `#zzBtn`, the launcher, the banner's *In an hour* (`peixSnooze`). **The server ends it** (`wakeWhy`, `wakeCheck`: in
+  `schedulePush`, the poll, a timer): a question or your word quietly; its time or event as `wokeAt`, a word in
+  `wordAt` (both copies), `back` till opened (`replied`), a flare, a `back` alert — a reply's is its own. →
+  `snooze.mjs`, `snooze.test.mjs`.
 * **A chat opened from elsewhere is located** (`locate`, `locateCard`): scrolled to, and a band of light sweeps
   across it (`.card > .loc`, a box of its own). Not a click on the card, ⌥⌘↑↓ or a tick's move.
 * **⌥-click on any card's button deletes it from the board** (2026-11-04; `removeChat`, `.act.del` on a chat at work, `…/remove`, `removedMarks` → `removed`; `data-alt` from `altHeld`): a tick for good, hidden (`visible`), whatever it is doing. Its claudes and drawers end, awaited, what that interrupts asking once more (`removeGate`), vim's unsaved work keeping it; the transcript stays. Back by a word, a claude started on it, a resume or `{undo}`. → `chat-remove.test.mjs`, `chat-delete.mjs`.
@@ -543,7 +559,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill, the menus, the pane's
   views, the server it adopts, Swift's traps. Here: what the page does across the bridge.
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
-  its group, one line, its codes in HOTKEYS or CMDKEYS — the ? sheet is drawn from it (`keyNotes`),
+  its group, one line, its codes in HOTKEYS, CMDKEYS or ⌥⌘⇧'s `SHIFTKEYS` (2026-11-24) — the ? sheet is drawn from it (`keyNotes`),
   and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
   main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. Handlers are `hot…`.
   **C T G E D J pressed again from the tab they bring up** (`hot…Key`: `zoomAgain`, then the plain `hot…`) fill the
@@ -667,8 +683,9 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   as `peixPaneUrl(key, url)` (`paneUrls`).
 * **The trackpad bumps** (`haptic(kind)`): a splitter snapping (`SNAP_PX`), a tab dropped across, the timeline's thumb
   crossing a run; in a browser, `haptic:<kind>` in `motion()`.
-* **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply *Reply… · Done ·
-  In 15 minutes* (Reply… with a drawer here), a question or a PR's turn the snooze alone. Reply… and Done go to the page
+* **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply or a chat back
+  *Reply… · Done · In an hour* (Reply… with a drawer here), a question *In 15 minutes* (the banner again), the rest *In an
+  hour* — the chat snoozed by the page (`peixSnooze`, 2026-11-24). Reply… and Done go to the page
   (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
   `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`; *Mute this chat* on any, `peixMute`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
