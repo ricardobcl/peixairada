@@ -1,3 +1,5 @@
+/** A web link clicked in a drawer: a PR on its tab, any other page where Settings › General › Links says. */
+const termWebLink = (_e, uri) => (GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri));
 function ensureXterm(tm) {
   if (tm.xt) return;
   tm.xt = new Terminal({
@@ -9,6 +11,10 @@ function ensureXterm(tm) {
     theme: xtTheme(),
     macOptionIsMeta: prefs.optMeta !== false,
     screenReaderMode: readerOn(),
+    // Claude Code writes every link as an OSC 8 hyperlink — a bare URL too —, and xterm's own provider for those, asked
+    // before the web-links addon, has nothing but confirm() and window.open() without a handler: in the app's view both
+    // are a no, and no click on a link in a drawer opened anything (2026-11-25). http(s) only, as xterm's default.
+    linkHandler: { activate: termWebLink },
   });
   // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them.
   // Shift+Enter: xterm.js sends the same \r as Enter, which submits the prompt. Claude reads ESC CR
@@ -54,9 +60,7 @@ function ensureXterm(tm) {
   tm.fit = new FitAddon.FitAddon();
   tm.xt.loadAddon(tm.fit);
   exactFit(tm);
-  tm.xt.loadAddon(
-    new WebLinksAddon.WebLinksAddon((_e, uri) => (GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri))),
-  );
+  tm.xt.loadAddon(new WebLinksAddon.WebLinksAddon(termWebLink));
   tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) }); // the paths on a line (2026-09-26)
   tm.xt.open($(tm.el.tbody));
   exactGlyphs(tm.xt);

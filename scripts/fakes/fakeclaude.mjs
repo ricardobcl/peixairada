@@ -740,7 +740,8 @@ const wordAhead = () => {
   while (i < c.length && isWord(c[i])) i++;
   return i;
 };
-const CSI = /^\x1b\[([0-9;?]*)[\x20-\x2f]*([\x40-\x7e])/;
+// every parameter byte (2026-11-25): an SGR mouse report, ESC [ < b ; x ; y M, is one sequence, not ESC [ and text typed
+const CSI = /^\x1b\[([0-9:;<=>?]*)[\x20-\x2f]*([\x40-\x7e])/;
 let pasting = false;
 async function submit() {
   const text = input.trim();
@@ -803,7 +804,7 @@ process.stdin.on('data', async d => {
         else if (fin === '~' && (arg === '4' || arg === '8')) cur = lineEnd();
         else if (fin === '~' && arg === '200') pasting = true;
         i += all.length;
-        continue; // the rest — a focus report (I, O), up and down, a paste's end out of place — is nothing to the prompt
+        continue; // the rest — a focus report (I, O), a mouse report (M, m), up and down, a paste's end out of place — is nothing to the prompt
       }
       const next = rest[1];
       if (next === 'O' && rest.length > 2) {

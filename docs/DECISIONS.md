@@ -5,6 +5,29 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, late at night — a link in a drawer opens
+
+Ricardo: *"clicking on web links in chat is not opening them in island browser"* — Island the Mac's default browser.
+
+* **What it was**: Claude Code writes every link in a drawer as an OSC 8 hyperlink — a markdown link's words, a bare
+  URL, a PR's — and its full screen turns mouse tracking on (`?1000h` `?1002h` `?1003h` `?1006h`); both measured on
+  2.1.332 in the real-CLI lab, `TERM=xterm-256color` and no `TERM_PROGRAM`, as a drawer runs it. xterm asks its own
+  OSC 8 provider before any registered after it, so the web-links addon never heard a click on such a link, and that
+  provider, with no `linkHandler`, has only `confirm()` and then `window.open()`. The app's board view answers neither
+  (no confirm panel, no `createWebViewWith` on its delegate): a no, so a click on a link in a drawer opened nothing —
+  not a tab, not the browser. In a browser it asked *"Do you want to navigate to …? WARNING: …"* first.
+* **The drawer's xterm takes a `linkHandler`, the web-links addon's own** (`termWebLink`): a PR on its tab, any other
+  page where Settings › General › Links says — his: the browser but for github.com, so a GitHub page stays a tab and
+  the rest goes to Island. http(s) alone, as xterm's default; a file path is still `termLinks`'. With mouse tracking
+  on the click reaches claude too, as it did: the linkifier hears it first, on the screen element.
+* Not done: a confirm sheet on the board's view — nothing of the board's asks one, and a link needs no asking.
+* Checked: `drawer-hyperlinks.mjs` — the fake draws OSC 8 links with mouse tracking on, the pointer and the click are
+  the browser's own; a page off the kept sites posts `external`, a PR opens its tab, nothing asks `confirm()`; with the
+  handler out it fails. It clicks once the drawer is still: the attach's fit and nudge draw every row again, which
+  drops the link under the pointer. The fake claude reads an SGR mouse report as one sequence now (`CSI`'s parameter
+  bytes, `<` among them), as the real one does — it typed them into its prompt, which grew and moved the screen. The
+  shell's half: `NSWorkspace.open` of a web page from a plain process opens it in Island.
+
 ## Decisions of 2026-11-25, at night — the clauding light, slower, and a choice (round XXVI)
 
 Ricardo, on 2026-11-04: *"some people don't like the ring around animation on the clauding cards. get alterntatives,

@@ -895,18 +895,20 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `toggleFocusView()` sends it, then reads the newest `Focus view enabled|disabled` off the screen (`focusSaid()`) and
   lights `#viewBtn` from that; every attach reads it too (`readFocusFromScreen()`).
   → `focus-view.mjs`.
-* **Paths and pages in the chat are links**: a file path in the transcript or a drawer's line — `/absolute`, `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens
-  in the editor at that line (`fileUrl`, relative to the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not
-  after a `+` or an in-word `@`, or it is quadratic); a web URL opens in the pane on a tab of the chat
-  (`openExternal`, which hands on only `OUT_OK`: http(s), mailto, the editors' `…://file/`; 2026-11-06). The transcript is linkified as rendered (`linkify`); the drawer has a link
-  provider beside the web-links addon (`termLinks`, `peix.links(y)`). → `chat-links.mjs`.
+* **Paths and pages in the chat are links**: a file path in the transcript or a drawer — `/absolute`, `./relative`,
+  `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens in the editor at that line (`fileUrl`,
+  against the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not after a `+` or an in-word `@`); a web URL on a
+  tab of the chat or in the browser, as Links says (`openExternal`, only `OUT_OK`: http(s), mailto, an editor's
+  `…://file/`; 2026-11-06). The transcript is linkified as drawn (`linkify`); the drawer has a provider beside the
+  web-links addon (`termLinks`, `peix.links(y)`), **Claude Code's OSC 8 links a `linkHandler`** (`termWebLink`,
+  2026-11-25). → `chat-links.mjs`, `drawer-hyperlinks.mjs`.
 * **Two editors, two picks** (Settings › General): the external one (2026-10-13; `prefs.editor`, `EDITORS`, `#edPick`:
-  VS Code or Zed — file links, ⌥⌘V `hotEditorApp`, `#zedBtn`) opens `<scheme>://file/<path>:<line>:<col>` (handed
-  to the system; never `window.open`); the in-app one (2026-10-21; `prefs.inEditor`, `#inEdPick`: VS Code Web or vim)
-  is ⌥⌘E, `#webBtn`, Editor ▾. A switch redraws the transcript (`logView.arr = null`), so its links follow; the
-  drawer's are read on hover. → `chat-links.mjs`. **Picking Zed without it installs it** (`wantZed` →
-  `POST /api/editors/zed/install` → `installZed`: `brew install --cask zed`, one at a time, then `lsregister -f`);
-  until it is there `#zedBtn` and a `zed:` link say so (`zedNote`). → `editors.test.mjs`, `zed-install.mjs`.
+  VS Code or Zed — file links, ⌥⌘V `hotEditorApp`, `#zedBtn`) opens `<scheme>://file/<path>:<line>:<col>` (the
+  system's; never `window.open`); the in-app one (2026-10-21; `prefs.inEditor`, `#inEdPick`: VS Code Web or vim) is
+  ⌥⌘E, `#webBtn`, Editor ▾. A switch redraws the transcript (`logView.arr = null`); the drawer's links are read on
+  hover. **Picking Zed without it installs it** (`wantZed` → `POST /api/editors/zed/install` → `installZed`:
+  `brew install --cask zed`, one at a time, then `lsregister -f`); till then `#zedBtn` and a `zed:` link say so
+  (`zedNote`). → `editors.test.mjs`, `zed-install.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **Chats that talk** (2026-10-31; `#handoff`): Send to… types into the drawer (`drawerType`), else the resume takes the
