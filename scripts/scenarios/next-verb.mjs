@@ -1,7 +1,7 @@
 // Next (2026-11-01, round XIX's M1): one key and one button that say what the fleet needs, in a fixed, stated order, and
-// always arrive. What this checks: the order (questions by longest wait, then a PR at your move, then what to read), ⌥⌘⏎
-// and a click walking it and coming round, the bar naming the next thing, a reply read leaving the queue, *caught up* with
-// nothing left, and the launcher's row.
+// always arrive. What this checks: the order (questions by longest wait, then what to read), ⌥⌘⏎ and a click walking it
+// and coming round, the bar naming the next thing, a reply read leaving the queue, *caught up* with nothing left, and the
+// launcher's row.
 import { spawn } from 'node:child_process';
 import { appendFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';

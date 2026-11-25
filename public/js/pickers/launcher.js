@@ -442,7 +442,7 @@ const KEYS = [
   ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
   ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
   ['⌥⌘U', 'Go to', 'the pinned only, and every chat again', 'the list is the pinned alone, its tab atop it says what is hidden · the rest is quiet as when fishing, its questions still ring · the funnel\'s third row · with the section on', ['alt:KeyU']],
-  ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
+  ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
   ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
   ['⌥⌘X', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyX']],
   ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],

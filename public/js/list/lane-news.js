@@ -33,9 +33,9 @@ function laneNews(html) {
 // costly moment, and this answers "what did I miss" before you go hunting. Nothing changed, nothing is said.
 const OUT_MS = 10 * 60_000;
 // Gone fishing (2026-11-01, round XIX's M4): a quiet you choose. A sign in the lane for FISH_MIN or till you say; questions
-// still ring; replies and PR moves come in with their counts and no banner or chime, and the catch arrives as one line,
-// and one banner if the app is behind. It is the safe way to try batching, the deciding being yours, and a mute that
-// wears a sign cannot be forgotten.
+// still ring; replies and PR moves come in with no banner or chime, and the catch arrives as one line — what landed, the
+// status bar saying nothing of moves since 2026-11-25 — and one banner if the app is behind. It is the safe way to try
+// batching, the deciding being yours, and a mute that wears a sign cannot be forgotten.
 const FISH_MIN = 25;
 const fishing = { since: prefs.fishing?.since || 0, until: prefs.fishing?.until || 0, t: 0 };
 function goFishing(min = FISH_MIN) {
@@ -125,16 +125,10 @@ function outLine(since) {
   const iso = new Date(since).toISOString(),
     all = [...state.sessions.values()].filter(s => visible(s) && !s.done && !s.muted && !asleep(s));
   const landed = all.filter(s => !asking(s) && s.status !== 'working' && (s.lastReplyAt || '') > iso).length;
-  const moved = all.filter(s => yourMove(s) && movedAt(s) > iso),
-    asks = all.filter(asking).length;
-  if (!landed && !moved.length && !asks) return '';
+  const asks = all.filter(asking).length;
+  if (!landed && !asks) return '';
   const bits = [
     landed ? `<b>${landed} landed</b>` : '',
-    moved.length === 1
-      ? `<b class="y">${esc(movedPrs(moved[0])[0]?.label || 'a PR')} is yours</b>`
-      : moved.length
-        ? `<b class="y">${moved.length} PRs are yours</b>`
-        : '',
     asks ? `<em>${asks} asking</em>` : '<span>nothing asked</span>',
   ];
   return bits.filter(Boolean).join('<i>·</i>');
@@ -149,8 +143,8 @@ addEventListener('blur', () => {
 addEventListener('focus', () => {
   if (!inApp) cameBack();
 });
-const NEXT_VERB = { ask: 'Answer', move: 'Your move', read: 'Read' };
-const nextName = ({ s, k }) => (k === 'ask' ? s.project : k === 'move' ? movedPrs(s)[0]?.label || s.title : s.title);
+const NEXT_VERB = { ask: 'Answer', read: 'Read' };
+const nextName = ({ s, k }) => (k === 'ask' ? s.project : s.title);
 function hotNext() {
   const q = nextQueue();
   if (!q.length) {
@@ -167,8 +161,7 @@ function hotNext() {
 }
 /** The bar's half of it: what Next would do, and the questions' count and longest wait while any. */
 function nextSeg(nx, ask, wait) {
-  if (!nx)
-    return `<span class="seg nx none" title="Nothing is asking you, no PR is at your move, nothing new to read">caught up</span>`;
+  if (!nx) return `<span class="seg nx none" title="Nothing is asking you, nothing new to read">caught up</span>`;
   const name = nextName(nx),
     tip = `${NEXT_VERB[nx.k]}: ${nx.s.title} · ${nx.s.project}. ⌥⌘⏎ or a click goes there; again, the one after`;
   return `<button class="seg nx ${nx.k}${ask ? ' ask' : ''}" title="${esc(tip)}">${ask ? `<em>${rn('asking', ask)} asking${wait ? ` · ${wait}` : ''}</em>` : ''}<span class="nxw${name.length > 26 ? ' over' : ''}">▸ ${esc(NEXT_VERB[nx.k])} ${esc(name)}</span></button>`;

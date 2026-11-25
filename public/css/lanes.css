@@ -168,9 +168,6 @@
 #sbar .seg.nx.ask .nxw {
   color: var(--needs);
 }
-#sbar .seg.nx.move .nxw {
-  color: var(--spend);
-}
 #sbar .seg.mute {
   color: var(--working-ink);
   font-weight: 600;

@@ -136,9 +136,6 @@
   color: var(--ink);
   font-weight: 650;
 }
-#sbSwim .lnews b.y {
-  color: var(--spend);
-}
 #sbSwim .lnews i {
   font-style: normal;
   opacity: 0.6;

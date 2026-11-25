@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, after the fish's menu — the status bar says nothing of PR moves
+
+Ricardo: *"on the status bar, remove the "your move" stuff"*.
+
+* **Next is the questions, then what to read** (`nextQueue`): a PR at your move was its second kind — *▸ Your move #12*
+  on the bar, ⌥⌘⏎ walking to it, the launcher's *Next:* row naming it. Kept in the queue and hidden from the bar, the
+  button would have named one chat and ⌥⌘⏎ gone to another, so the kind left the queue (`NEXT_VERB`, `nextName`).
+* **The lane's news** — *while you were out*, gone fishing's catch — counts no PR come round to you (*#12 is yours*,
+  *N PRs are yours*): what landed and what asks. Fishing still holds a move's banner, as before.
+* **Where a move is still said**: the card's line and the header's, the matrices, the funnel's *Your move*, its
+  notification, the timeline, home. `pr-turn.mjs` checks the bar names none.
+
 ## Decisions of 2026-11-25, after the formatting — the fish's menu, the bare minimum
 
 Ricardo: *"let's greatly simplify menu bar to have the bare minimum"*.

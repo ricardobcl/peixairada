@@ -91,9 +91,10 @@ function postState() {
   post({ type: 'state', needs, replied: replies, mutes });
 }
 // Next (2026-11-01, round XIX's M1; StarCraft's idle-worker key, Civ's turn button): one key that always arrives, in a
-// fixed, stated order. The question waiting longest, then a PR at your move, the one that came round first, then what to
-// read, the oldest first. It never moves you by itself, only on a press, and from a chat in the queue it goes on to the
-// one after it, so pressing it again walks them and comes round. Moves and replies stay filters of the list: never lanes.
+// fixed, stated order. The question waiting longest, then what to read, the oldest first — a PR at your move no more
+// (2026-11-25: the status bar says nothing of moves). It never moves you by itself, only on a press, and from a chat in
+// the queue it goes on to the one after it, so pressing it again walks them and comes round. Replies stay a filter of the
+// list: never a lane.
 function nextQueue() {
   const all = [...state.sessions.values()].filter(visible),
     seen = new Set(),
@@ -101,10 +102,6 @@ function nextQueue() {
   const by = at => (a, b) => String(at(a)).localeCompare(String(at(b)));
   return [
     ...all.filter(askingLoud).sort(byWait).map(once('ask')),
-    ...all
-      .filter(s => !s.done && !s.muted && !quietNow(s) && yourMove(s))
-      .sort(by(movedAt))
-      .map(once('move')),
     ...wanting()
       .replied.slice()
       .sort(by(s => s.lastReplyAt))
