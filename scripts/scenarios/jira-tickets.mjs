@@ -1,9 +1,9 @@
-// Jira tickets as PRs are (2026-10-08). Jira is the fake (scripts/fakejira.mjs), its token in the server's environment;
+// Jira tickets as PRs are (2026-10-08). Jira is the fake (scripts/fakes/fakejira.mjs), its token in the server's environment;
 // a chat names ACME-12 (in progress, yours), OPS-7 (done) and UTF-8 (no project of the site's). What this checks: the
 // Setup's Jira section takes the site and the login and says who you are; the card wears its tickets in their
 // status's colours as a stack, as its PRs are (2026-10-11; the first and a count before), fanned under the pointer;
 // the chat header has them among its chips, and its rows under it; nothing of UTF-8.
-import { startFakeJira } from '../fakejira.mjs';
+import { startFakeJira } from '../fakes/fakejira.mjs';
 import { makeFixture } from '../fixture.mjs';
 
 const jira = await startFakeJira({ projects: ['ACME', 'OPS'], issues: {

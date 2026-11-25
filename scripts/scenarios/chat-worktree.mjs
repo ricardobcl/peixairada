@@ -41,7 +41,7 @@ const { chats: [chat] } = makeFixture(claudeDir, [
 
 export const meta = {
   server: true, fake: true, fixture: claudeDir,
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300', GIT_BIN: slowGit, WT_ASK_MS: '20000' },
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300', GIT_BIN: slowGit, WT_ASK_MS: '20000' },
   prefs: { prsOpen: true },
 };
 

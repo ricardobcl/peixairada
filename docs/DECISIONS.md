@@ -51,6 +51,9 @@ product side or performance"*.
   warning before or after. Built `-wmo`: the module optimized whole as the one file was — per file, a call into another
   is never inlined (661 KB and twice the compile); whole, 586 KB against 671. `check-page` reads the keys from
   `Keys.swift`; `npm run shell` and `check.sh` hash every source; `shell.mjs --src` takes a folder.
+* **`scripts/` holds what is run**: the test doubles went to `scripts/fakes/` (`fake*.mjs`, `noclaude.mjs`) and the
+  README's pictures to `scripts/readme/` (`board`, `shots`, `clips`). `lib/testserver.mjs`, `scripts/check-page.mjs`,
+  `launchd.sh` and `mac/build.sh` stay where they are: an updater from before this pulls it and calls them by path.
 * **The cost, measured against main before it** (medians of three runs): importing the server is 65 files, 40 ms
   against 29, so a boot is ~15 ms longer (180 ms to its first index against 165), once; `GET /` 8 ms against 9,
   `GET /api/sessions` the same 0.2 ms. 323 tests pass; every scenario that fails here fails on main too.

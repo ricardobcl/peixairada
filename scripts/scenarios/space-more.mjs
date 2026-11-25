@@ -5,7 +5,7 @@
 // agents it ran in its pods, greyed (`past`).
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { startFakeJira } from '../fakejira.mjs';
+import { startFakeJira } from '../fakes/fakejira.mjs';
 import { agentFiles, makeFixture } from '../fixture.mjs';
 import { tmpDir } from '../../lib/testserver.mjs';
 

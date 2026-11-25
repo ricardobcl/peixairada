@@ -2,7 +2,7 @@
 // reaches the port writes its own Host and Origin, so foreign() alone let them read every transcript and type into a
 // drawer. A wrong key is refused always; none, once the key is required: at once on a test server (KEY_MODE enforce),
 // else — KEY_MODE lax alone since 2026-11-06 — from the app's page coming with it or a boot with no app to wait for. A
-// browser gets it by a ticket on a tab the server opens itself (a fake osascript here, scripts/fakeopen.mjs).
+// browser gets it by a ticket on a tab the server opens itself (a fake osascript here, scripts/fakes/fakeopen.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac, randomBytes } from 'node:crypto';

@@ -73,7 +73,7 @@ look(1);
 
 export const meta = {
   server: true, fixture: claudeDir,
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' },
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' },
   prefs: { cards: 'compact', tvSeen: false },   // the timeline never seen: its word comes up
 };
 

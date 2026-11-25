@@ -1,6 +1,6 @@
 // VS Code Web kept on its newest build (2026-10-11): the board asks VS Code's update service which build is the newest
 // and, when serve-web's cache has not got it, asks serve-web for that build by name — the download happens then, not
-// when the pane is opened — and asks nothing while the cache has it. A fake update service and scripts/fakecode.mjs.
+// when the pane is opened — and asks nothing while the cache has it. A fake update service and scripts/fakes/fakecode.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -17,7 +17,7 @@ test('the newest build is fetched in the background, once, and serve-web started
   const upd = createServer((req, res) => { asked.push(req.url); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(newest)); });
   await new Promise(r => upd.listen(0, '127.0.0.1', r));
   const srv = await startTestServer({ env: {
-    CODE_BIN: fileURLToPath(new URL('../scripts/fakecode.mjs', import.meta.url)), VSWEB_PORT: String(await freePort()), VSCODE_CLI_DATA_DIR: cli, FAKE_CODE_LOG: log,
+    CODE_BIN: fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url)), VSWEB_PORT: String(await freePort()), VSCODE_CLI_DATA_DIR: cli, FAKE_CODE_LOG: log,
     VSWEB_UPDATE_URL: `http://127.0.0.1:${upd.address().port}/api/latest`, VSWEB_FRESH_MS: '400' } });
   const requests = () => existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [];
   try {
@@ -69,7 +69,7 @@ test('what holds the port and wants a token is handed none unless it is the boar
 
 test('a VS Code Web on the port that wants no token — one started before 2026-10-16 that outlived its board — is not taken for the board\'s', { timeout: 40_000 }, async () => {
   const port = await freePort();
-  const old = spawn(process.execPath, [fileURLToPath(new URL('../scripts/fakecode.mjs', import.meta.url)), 'serve-web', '--host', '127.0.0.1', '--port', String(port), '--without-connection-token'], { stdio: 'ignore' });
+  const old = spawn(process.execPath, [fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url)), 'serve-web', '--host', '127.0.0.1', '--port', String(port), '--without-connection-token'], { stdio: 'ignore' });
   const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
   try {
     await waitFor(() => fetch(`http://127.0.0.1:${port}/`).then(r => r.status === 200, () => false), { what: 'the editor with no token answering' });

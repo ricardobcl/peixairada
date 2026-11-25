@@ -1,8 +1,8 @@
-// The README's clips (2026-10-16): each feature a few seconds on the made-up board (readme-board.mjs), never this
+// The README's clips (2026-10-16): each feature a few seconds on the made-up board (board.mjs), never this
 // Mac's — the page driven through the steps a hand would take, framed by Chrome's screencast (a frame each time the page
 // is drawn anew), resampled to FPS, and made into an animated WebP by libwebp's img2webp (GitHub plays one in an <img>;
 // a video in the repo it does not). Run it with
-//   npm run scenario -- scripts/readme-clips.mjs --timeout 900000 [-- <clip>…]
+//   npm run scenario -- scripts/readme/clips.mjs --timeout 900000 [-- <clip>…]
 // (every clip, or the ones named — CLIPS below) and look at docs/shots/clip-*.webp before committing them. Headless
 // Chrome draws no pointer and no keys: a drawn pointer follows the moves sent, and the keys pressed show at the foot,
 // in a popover of the script's own (the top layer, over a dialog once raised again). The PRs' clock runs fast here
@@ -12,8 +12,8 @@ import { randomUUID } from 'node:crypto';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { prLinkLine, replyLines, toolLines } from './fixture.mjs';
-import { chat, endBoard, FABLE, kit, meta as board, OUT, PAGE, PRS, prsFile, VS } from './readme-board.mjs';
+import { prLinkLine, replyLines, toolLines } from '../fixture.mjs';
+import { chat, endBoard, FABLE, kit, meta as board, OUT, PAGE, PRS, prsFile, VS } from './board.mjs';
 
 export const meta = { ...board, env: { ...board.env, PR_TTL_MS: '1000', PR_WATCH_MS: '2000' }, prefs: { ...board.prefs, cards: 'compact' } };
 

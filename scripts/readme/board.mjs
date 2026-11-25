@@ -1,4 +1,4 @@
-// The made-up board the README's pictures are taken on (readme-shots.mjs, the stills; readme-clips.mjs, the clips): a
+// The made-up board the README's pictures are taken on (shots.mjs, the stills; clips.mjs, the clips): a
 // handful of projects with colours, chats in every state, PRs coloured by a fake gh — their CI, the people on them, one
 // at your move —, a plan-usage answer of its own, the Mac's numbers made up too: nothing from this Mac's ~/.claude, nor
 // its name. Built as the module loads — before the runner starts the server — so the server boots on it whole; a script
@@ -16,9 +16,9 @@ import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { agentFiles, makeFixture, prLinkLine, replyLines, taskNoteLine, toolLines } from './fixture.mjs';
+import { agentFiles, makeFixture, prLinkLine, replyLines, taskNoteLine, toolLines } from '../fixture.mjs';
 
-export const ROOT = fileURLToPath(new URL('..', import.meta.url));
+export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const OUT = join(ROOT, 'docs', 'shots');
 export const W = 1440, H = 900;
 
@@ -110,7 +110,7 @@ export const PRS = {
     pushes: { nodes: [{ __typename: 'PullRequestCommit', commit: { committedDate: iso(50), author: { user: { login: kenji.login, avatarUrl: kenji.avatarUrl } } } }] } }),   // a commit's author is a login and a face, no __typename (PR_FIELDS)
   'acme/infra#92': pr({ state: 'OPEN', isDraft: true, title: 'Drop the Node 18 base image', createdAt: iso(DAY + 280), updatedAt: iso(DAY + 20), baseRefName: 'node-22', headRefName: 'node-22-drop-18', author: me, ...ci('FAILURE') }),
   'acme/mobile-app#310': pr({ state: 'CLOSED', title: 'Guard the keychain read on first launch', createdAt: iso(2 * DAY + 90), updatedAt: iso(2 * DAY + 60), author: me, reviews: { nodes: [{ author: kenji, state: 'COMMENTED', submittedAt: iso(2 * DAY + 70) }] } }),
-  // named by no chat yet: the clips' reply mentions it, and its chip comes in (readme-clips.mjs)
+  // named by no chat yet: the clips' reply mentions it, and its chip comes in (clips.mjs)
   'acme/billing-api#57': pr({ state: 'OPEN', isDraft: true, title: 'Invoice webhooks through a queue', createdAt: iso(1), updatedAt: iso(1), author: me, ...ci('PENDING') }),
 };
 writeFileSync(prsFile, JSON.stringify(PRS));
@@ -254,7 +254,7 @@ writeFileSync(screenFile, JSON.stringify({ screen: [
   '⏺ Opened https://github.com/acme/storefront/pull/479 — the visual snapshots for the grid are updated in the same commit.',
   '',
 ], status: [`  \x1b[38;2;175;135;255m⏵⏵ accept edits on${R}${D} (shift+tab to cycle)${R}`],
-  // what the clips type into the drawer, and its answer (readme-clips.mjs)
+  // what the clips type into the drawer, and its answer (clips.mjs)
   replies: { 'give the search box the same tokens': 'Done — the search box reads the same tokens now: the box on --surface, what you type in --text, the placeholder in --text-muted.\nThe search tests pass, and it follows the system setting with the grid.' } }));
 
 // VS Code Web for the pane: a serve-web of its own, on a port of its own, its server data in the fixture.
@@ -313,7 +313,7 @@ writeFileSync(join(zdot, '.zshrc'), "PROMPT='%F{green}ada@studio%f %F{blue}%1~%f
 // harness opens every lane unless told)
 export const meta = {
   server: true, fake: true, fixture: claudeDir,
-  env: { GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: prsFile, FAKEGH_VIEWER: 'me', ORG: 'acme', ORG_DIR: work, CONFIG_FILE: configFile,
+  env: { GH_BIN: join(ROOT, 'scripts', 'fakes', 'fakegh.mjs'), FAKEGH_PRS: prsFile, FAKEGH_VIEWER: 'me', ORG: 'acme', ORG_DIR: work, CONFIG_FILE: configFile,
     VSWEB_PORT: String(VS.port), FAKE_TUI: 'fullscreen', FAKE_SCREEN: screenFile, ZDOTDIR: zdot },
   prefs: { lanesShut: ['done'], changesScope: 'uncommitted' },
 };

@@ -126,7 +126,7 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
   const cwd = tmpDir('peix-tf-'); writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n');   // the fake task never reads it; the server looks for it
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: cwd });
   const ran = join(tmpDir('peix-task-'), 'runs'), runs = () => existsSync(ran) ? readFileSync(ran, 'utf8').trim().split('\n') : [];
-  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'faketask.mjs'), FAKE_TASK_LOG: ran } });
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'fakes', 'faketask.mjs'), FAKE_TASK_LOG: ran } });
   const post = body => srv.post('api/terminals', body);
   try {
     const none = await srv.api(`api/launchers?cwd=${encodeURIComponent(process.cwd())}`);
@@ -372,7 +372,7 @@ test('a claude live elsewhere is known by its start as Claude Code writes it, wh
 
 test('a claude that does not exec: its drawer is tied to the claude below it, and follows its /clear', { timeout: 40_000 }, async () => {
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-  const chat = fx.chats[1], dir = tmpDir('peix-wrap-'), wrapper = join(dir, 'claude'), fake = fileURLToPath(new URL('../scripts/fakeclaude.mjs', import.meta.url));
+  const chat = fx.chats[1], dir = tmpDir('peix-wrap-'), wrapper = join(dir, 'claude'), fake = fileURLToPath(new URL('../scripts/fakes/fakeclaude.mjs', import.meta.url));
   writeFileSync(wrapper, `#!/bin/sh\n'${fake}' "$@"\nexit $?\n`); chmodSync(wrapper, 0o755);
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { CLAUDE_BIN: wrapper } });
   const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);

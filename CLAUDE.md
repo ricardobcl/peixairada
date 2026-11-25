@@ -74,9 +74,9 @@ npm run scenarios                   # all of them, one at a time, with a verdict
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's cost in WebKit |
 | `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/` itself, driven |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView`, the app's engine |
-| `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
-| `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
-| `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips → `docs/shots/` |
+| `scripts/fixture.mjs` | A `~/.claude` look-alike |
+| `scripts/fakes/` | What every test server runs instead of the real CLIs and services (`fakeclaude.mjs` the CLI); each file's head says its knobs |
+| `scripts/readme/` | The README's pictures from a made-up board, never the real one: stills and clips → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs` | Static checks |
 | `test/` | `node:test` files (`npm test`) |
 
@@ -1028,7 +1028,7 @@ to the page, load it**: `check-page` only compiles, and a `const` read before it
   one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and
   `tmpDir()` are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has
   its own state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13).
-* **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
+* **Test against the fake claude, not real chats**: `scripts/fakes/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
   instant and touches nothing; the real CLI, at no cost: `lib/reallab.mjs`. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.
 * **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — a headless page's

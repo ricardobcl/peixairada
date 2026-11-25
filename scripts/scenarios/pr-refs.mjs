@@ -27,7 +27,7 @@ writeFileSync(file, JSON.stringify({
   'acme/app#20': { state: 'OPEN', title: 'Said live', createdAt: recent },
 }));
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, ORG_DIR: code, ORG: 'acme' } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, ORG_DIR: code, ORG: 'acme' } };
 
 const pull = (repo, n) => `https://github.com/${repo}/pull/${n}`;
 

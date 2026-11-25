@@ -12,7 +12,7 @@ import { tmpDir } from '../../lib/testserver.mjs';
 const dir = tmpDir('peix-launch-'), prs = join(dir, 'prs.json');
 writeFileSync(prs, JSON.stringify({ 'acme/widgets#57': { state: 'OPEN', title: 'Teach the widget to launch' } }));
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prs } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: prs } };
 
 export default async function (ctx) {
   const now = Date.now(), out = {};

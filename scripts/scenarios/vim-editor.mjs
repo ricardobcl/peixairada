@@ -1,5 +1,5 @@
 // The in-app editor (2026-10-21): Settings › General › In-app editor picks what ⌥⌘E opens on a tab beside the chat —
-// VS Code Web, or vim in a terminal in the chat's folder (the test server's fake vim, scripts/fakevim.mjs). What this
+// VS Code Web, or vim in a terminal in the chat's folder (the test server's fake vim, scripts/fakes/fakevim.mjs). What this
 // checks: the pick, ··· naming it; ⌥⌘E a tab "vim" in the second half, the fake's screen saying its folder; ⌥⌘E again from
 // it fills the column, and back; ⌥⌘E from the chat shows the same vim, never another; ⌥⌘T from the vim tab is a zsh, not
 // the vim; ⌥⌘W asks vim to quit (the fake does) and its tab goes; back on VS Code Web, ··· says so.

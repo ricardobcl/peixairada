@@ -1,4 +1,4 @@
-// The chat (2026-10-17): a private repo of a fake GitHub (scripts/fakegithub.mjs) — its chat (the oldest issue labelled
+// The chat (2026-10-17): a private repo of a fake GitHub (scripts/fakes/fakegithub.mjs) — its chat (the oldest issue labelled
 // room; one, with no name, 2026-10-18), another labelled issue the board leaves be, ana a member, and in the chat a
 // message that tries HTML, an image and a link. What this checks: Settings › Chat lists the chats you can read and
 // fills a new one's box with the organization you own, shows a setup's repo GitHub does not show you as one to forget,
@@ -12,7 +12,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpDir, waitFor } from '../../lib/testserver.mjs';
-import { startFakeGitHub } from '../fakegithub.mjs';
+import { startFakeGitHub } from '../fakes/fakegithub.mjs';
 import { makeFixture } from '../fixture.mjs';
 
 const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui', 'eva'], orgs: { 'acme-chat': ['me'], 'ana-chat': ['ana'] }, repos: {

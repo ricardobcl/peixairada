@@ -1,5 +1,5 @@
 // Zed installed when it is picked (2026-10-13): with no Zed.app among the server's apps (every test server's own folder),
-// picking Zed in Settings › Board › editor runs the server's `brew install --cask zed` — scripts/fakebrew.mjs, its
+// picking Zed in Settings › Board › editor runs the server's `brew install --cask zed` — scripts/fakes/fakebrew.mjs, its
 // lines spaced here so the install can be seen —, the line under the pick says how far it is, ··· 's folder in Zed
 // meanwhile says Zed is still coming rather than open a URL nothing answers, and once the app is there the install's
 // words go — what Zed is not (in the pane) stays — and the row opens the folder in Zed.

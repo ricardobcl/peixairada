@@ -23,7 +23,7 @@ writeFileSync(prs, JSON.stringify({
     reviews: { nodes: [] }, comments: { nodes: [] }, pushes: { nodes: [] }, asks: { nodes: [] }, reviewRequests: { nodes: [] } },
 }));
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prs, FAKEGH_VIEWER: 'me' } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: prs, FAKEGH_VIEWER: 'me' } };
 
 /** The largest spread between a colour's channels, over every colour in a computed value — 0 to 255, -1 for none.
  *  A grey is a few units of spread (--nocolor's warm grey is 6); the folder's blue mixed into a card is far more. */

@@ -1,6 +1,6 @@
 // Zed as the editor (2026-10-13): the server says whether Zed is on this Mac, and installs it with Homebrew when the page
 // asks — one install at a time, its progress as `editor` events, Launch Services told of the app once it is there; a
-// failure is said and the next ask tries again. The test server's own apps folder and scripts/fakebrew.mjs.
+// failure is said and the next ask tries again. The test server's own apps folder and scripts/fakes/fakebrew.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startTestServer, waitFor } from '../lib/testserver.mjs';
 
-const FAKE = fileURLToPath(new URL('../scripts/fakebrew.mjs', import.meta.url));
+const FAKE = fileURLToPath(new URL('../scripts/fakes/fakebrew.mjs', import.meta.url));
 const lines = f => existsSync(f) ? readFileSync(f, 'utf8').trim().split('\n') : [];
 
 test('Zed: not here, installed once however often asked, then here — and Launch Services told', { timeout: 30_000 }, async () => {

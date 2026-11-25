@@ -16,7 +16,7 @@ writeFileSync(file, JSON.stringify({ 'acme/store#11': { state: 'OPEN', title: 'R
   baseRefName: 'main', headRefName: 'retry', createdAt: ago(300), updatedAt: ago(5), reviewDecision: 'CHANGES_REQUESTED', reviewThreads: { nodes: [{ isResolved: false }] } } }));
 
 export const meta = { server: true, fixture: 'auto', prefs: { space: true, spOff: [], cards: 'compact', spVisits: false },
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
 
 export default async function (ctx) {
   const sleep = spawn('sleep', ['300'], { stdio: 'ignore' });

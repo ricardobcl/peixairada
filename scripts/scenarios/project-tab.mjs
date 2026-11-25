@@ -22,7 +22,7 @@ writeFileSync(file, JSON.stringify({ 'acme/moved#12': {
 } }));
 
 export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact', cardsEven: true, lanesShut: [] },
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' } };
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' } };
 
 export default async function (ctx) {
   const out = {}, now = Date.now(), root = realpathSync(tmpDir('peix-tab-')), sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });

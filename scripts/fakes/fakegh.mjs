@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A stand-in for `gh` — the one call the board makes of it for PR state and title, `gh api graphql -f query={…}`,
 // answered from a JSON file instead of GitHub, so a fixture's PR chips come out coloured and titled offline.
-//   GH_BIN=scripts/fakegh.mjs FAKEGH_PRS=<file>   the file maps "owner/repo#n" → { state: OPEN|MERGED|CLOSED, title, isDraft? }
+//   GH_BIN=scripts/fakes/fakegh.mjs FAKEGH_PRS=<file>   the file maps "owner/repo#n" → { state: OPEN|MERGED|CLOSED, title, isDraft? }
 // Anything else a PR's entry holds is handed back as GitHub would — the fields whose move it is goes by (author,
 // headRefOid, viewerLatestReview, reviews, comments, pushes, asks, reviewRequests: server/prs/turn.mjs's PR_FIELDS) — and
 // `viewer` is FAKEGH_VIEWER, else `me`. The file is read on every call, so a test moves a PR by rewriting it.
@@ -20,7 +20,7 @@
 // A repo named `no-such-…` is one GitHub has not got: gh's error, a non-zero exit, and the folder gone again.
 //   `pr diff <url> [--color never]` (2026-10-13): the PR's entry's `diff`, a unified patch as GitHub's; an entry with none,
 // or no entry, is gh's error and a non-zero exit.
-//   `auth token` (2026-10-17): FAKEGH_TOKEN, else `fake-token-<FAKEGH_VIEWER or me>` — what scripts/fakegithub.mjs takes.
+//   `auth token` (2026-10-17): FAKEGH_TOKEN, else `fake-token-<FAKEGH_VIEWER or me>` — what scripts/fakes/fakegithub.mjs takes.
 // Anything else asked of it fails, loudly.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';

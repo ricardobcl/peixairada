@@ -11,7 +11,7 @@ const rollup = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { s
 const write = s13 => writeFileSync(file, JSON.stringify({ 'acme/repo-a#12': { state: 'OPEN', title: 'The base', ...rollup('SUCCESS') }, 'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', ...rollup(s13) } }));
 write('FAILURE');
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, PR_TTL_MS: '300' } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, PR_TTL_MS: '300' } };
 
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats, out = {};

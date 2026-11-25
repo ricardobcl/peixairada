@@ -1,4 +1,4 @@
-// A poll in the chat (2026-10-20): a fake GitHub (scripts/fakegithub.mjs) with the chat, ana and rui in it, and lunch set
+// A poll in the chat (2026-10-20): a fake GitHub (scripts/fakes/fakegithub.mjs) with the chat, ana and rui in it, and lunch set
 // up with two places. What this checks: the box's poll button opens the form in the box's place and Esc lets it go;
 // what is typed is kept through a row added, and ⏎ walks down to a new answer; Lunch fills it with lunch's places and
 // Not today; Ask posts it — on GitHub, and on a board from before polls, a comment that reads as words, a line per answer
@@ -6,7 +6,7 @@
 // answer moves it (one each), the same one again takes it back; ana's vote, given on GitHub, comes in with her name;
 // lunch's dialog asks the chat with the form filled.
 import { waitFor } from '../../lib/testserver.mjs';
-import { startFakeGitHub } from '../fakegithub.mjs';
+import { startFakeGitHub } from '../fakes/fakegithub.mjs';
 
 const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui'], orgs: { 'acme-chat': ['me'] }, repos: {
   'acme-chat/room': { perms: { ana: 'pull', rui: 'pull' }, rooms: [{ title: 'General', comments: [['ana', 'hungry?']] }] } } });

@@ -8,7 +8,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { join } from 'node:path';
 import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture, replyLines } from '../scripts/fixture.mjs';
-import { startFakeJira } from '../scripts/fakejira.mjs';
+import { startFakeJira } from '../scripts/fakes/fakejira.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';

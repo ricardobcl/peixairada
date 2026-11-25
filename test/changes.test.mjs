@@ -185,7 +185,7 @@ test('a PR\'s changes from origin\'s refs, the checkout and its refs untouched (
   // what git cannot read comes from GitHub: a PR of another repo, one origin has not got — gh pr diff (the fake)
   const prs = join(dir, 'prs.json');
   writeFileSync(prs, JSON.stringify({ 'acme/gadgets#7': { state: 'OPEN', title: 'Gadgets', diff: 'diff --git a/g.js b/g.js\nnew file mode 100644\n--- /dev/null\n+++ b/g.js\n@@ -0,0 +1,2 @@\n+one\n+two\n' } }));
-  process.env.GH_BIN = fileURLToPath(new URL('../scripts/fakegh.mjs', import.meta.url)); process.env.FAKEGH_PRS = prs;
+  process.env.GH_BIN = fileURLToPath(new URL('../scripts/fakes/fakegh.mjs', import.meta.url)); process.env.FAKEGH_PRS = prs;
   const other = await changesOf(s, 'pr', false, { pr: 'https://github.com/acme/gadgets/pull/7' });
   assert.deepEqual([other.pr.source, other.pr.why, other.files.map(f => [f.path, f.status, f.add, f.del])], ['gh', 'it is not in this checkout\'s repo', [['g.js', 'A', 2, 0]]]);
   assert.equal(other.branch, null, 'nothing of the checkout read');

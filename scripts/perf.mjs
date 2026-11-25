@@ -146,7 +146,7 @@ async function startBoard(root, label) {
   const dir = join(base, 's' + boards.length); mkdirSync(dir); writeFileSync(join(dir, 'state.json'), doneMarks); writeFileSync(join(dir, 'config.json'), setup);
   const { startTestServer } = await import(pathToFileURL(join(root, 'lib', 'testserver.mjs')).href);
   const server = await startTestServer({ claudeDir: claude, fake: true, dir, env: {
-    GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: join(base, 'prs.json'), FAKEGH_VIEWER: 'me', REGISTRY_POLL_MS: '10000', TASK_GRACE_MS: '3000' } });
+    GH_BIN: join(ROOT, 'scripts', 'fakes', 'fakegh.mjs'), FAKEGH_PRS: join(base, 'prs.json'), FAKEGH_VIEWER: 'me', REGISTRY_POLL_MS: '10000', TASK_GRACE_MS: '3000' } });
   const open = (await server.api('api/sessions')).body.sessions.find(s => s.status === 'stale' && !s.done)?.id;
   const b = { label, server, open }; boards.push(b); return b;
 }

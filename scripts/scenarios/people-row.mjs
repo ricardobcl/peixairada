@@ -22,7 +22,7 @@ writeFileSync(file, JSON.stringify({
     pushes: { nodes: [{ __typename: 'HeadRefForcePushedEvent', createdAt: ago(5), actor: eva }] }, asks: { nodes: [] }, reviewRequests: { nodes: [] } }
 }));
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-people', 'people-repo'), now = Date.now();

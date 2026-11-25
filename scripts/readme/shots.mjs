@@ -1,11 +1,11 @@
-// The README's screenshots, from the made-up board (readme-board.mjs). Run it with
-//   npm run scenario -- scripts/readme-shots.mjs
+// The README's screenshots, from the made-up board (board.mjs). Run it with
+//   npm run scenario -- scripts/readme/shots.mjs
 // and look at docs/shots/ before committing them. Not in scripts/scenarios/: it checks nothing, it draws. The clips are
-// readme-clips.mjs's. WebP rather than PNG: the grain made each PNG megabytes.
+// clips.mjs's. WebP rather than PNG: the grain made each PNG megabytes.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chat, endBoard, kit, OUT, PAGE, VS, W, H } from './readme-board.mjs';
-export { meta } from './readme-board.mjs';
+import { chat, endBoard, kit, OUT, PAGE, VS, W, H } from './board.mjs';
+export { meta } from './board.mjs';
 
 export default async function (ctx) {
   const shots = [];

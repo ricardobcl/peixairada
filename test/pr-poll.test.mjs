@@ -91,7 +91,7 @@ import { appendFileSync } from 'node:fs';
 const q = process.argv.find(a => a.startsWith('query=')) || '';
 appendFileSync(${JSON.stringify(calls)}, (q.match(/ p\\d+: /g) || []).length + '\\n');
 if (q.includes('name: "refused"')) { console.log(JSON.stringify({ errors: [{ message: 'Parse error on "4" (INT) at [1, 99]', locations: [{ line: 1, column: 99 }] }] })); console.error('gh: Parse error'); process.exit(1); }
-await import(${JSON.stringify(fileURLToPath(new URL('../scripts/fakegh.mjs', import.meta.url)))});
+await import(${JSON.stringify(fileURLToPath(new URL('../scripts/fakes/fakegh.mjs', import.meta.url)))});
 `, { mode: 0o755 });
   const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
   const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: '/Users/test/widgets', prompt: `Look at ${pull('widgets', 1)}, ${pull('refused', 4)}, ${pull('widgets', 2)} and ${pull('widgets', 3)}`, reply: 'ok' }]);

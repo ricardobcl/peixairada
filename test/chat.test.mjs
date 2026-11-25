@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture } from '../scripts/fixture.mjs';
-import { startFakeGitHub } from '../scripts/fakegithub.mjs';
+import { startFakeGitHub } from '../scripts/fakes/fakegithub.mjs';
 import { cleanSetup, pollBody, pollOf } from '../server.mjs';
 
 test('cleanSetup: the chat\'s repo as owner/name, from its address too; null or an empty one is none', () => {

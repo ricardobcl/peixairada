@@ -50,7 +50,7 @@ const before = { head: git(repo, 'rev-parse', 'HEAD'), branch: git(repo, 'branch
 
 export const meta = {
   server: true, fixture: claudeDir,
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300' },
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300' },
   prefs: { prsOpen: true, changesScope: 'turn' },
 };
 

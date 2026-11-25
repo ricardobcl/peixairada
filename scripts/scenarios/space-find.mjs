@@ -26,7 +26,7 @@ writeFileSync(file, JSON.stringify({
 }));
 
 export const meta = { server: true, fixture: 'auto', prefs: { space: true, cards: 'compact' },
-  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
 const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
 
 export default async function (ctx) {

@@ -6,7 +6,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 echo "› node --check"
-for f in server.mjs server/*.mjs server/*/*.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs scripts/shell-checks/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
+for f in server.mjs server/*.mjs server/*/*.mjs lib/*.mjs scripts/*.mjs scripts/fakes/*.mjs scripts/readme/*.mjs scripts/scenarios/*.mjs scripts/shell-checks/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
 echo "› the tests: their environment, their temp dirs, every route named"
@@ -24,7 +24,7 @@ for p in @xterm/xterm/lib/xterm.js:xterm.js @xterm/xterm/css/xterm.css:xterm.css
   cmp -s "$NM/${p%%:*}" "public/vendor/${p##*:}" || { echo "public/vendor/${p##*:} differs from $NM/${p%%:*}" >&2; exit 1; }
 done
 echo "› shell"
-for f in scripts/launchd.sh scripts/check.sh scripts/worktree.sh scripts/board.sh scripts/fakepmset.mjs scripts/fakecaffeinate.mjs; do [ -f "$f" ] && sh -n "$f"; done   # the two fakes are sh in a file node reads too
+for f in scripts/launchd.sh scripts/check.sh scripts/worktree.sh scripts/board.sh scripts/fakes/fakepmset.mjs scripts/fakes/fakecaffeinate.mjs; do [ -f "$f" ] && sh -n "$f"; done   # the two fakes are sh in a file node reads too
 bash -n mac/build.sh
 # CLAUDE.md is loaded into every session in this repo, whole: past its budget, a bullet has grown a story, and the story
 # belongs in docs/DECISIONS.md (2026-10-12). Characters, as Claude Code counts them — it warns at 150 000. mac/'s own

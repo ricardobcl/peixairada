@@ -10,7 +10,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { waitFor } from '../../lib/testserver.mjs';
-import { startFakeGitHub } from '../fakegithub.mjs';
+import { startFakeGitHub } from '../fakes/fakegithub.mjs';
 import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
 
 const gh = await startFakeGitHub({ since: Date.now() - 3600_000, users: ['me', 'ana', 'rui'], orgs: { 'acme-chat': ['me'] }, repos: {

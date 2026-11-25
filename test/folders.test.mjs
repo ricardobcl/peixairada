@@ -48,7 +48,7 @@ test('the org folders are listed, and a clone is refused a name that is not one'
 // A chat's folder that is not there (2026-10-09): the spawn says which repo would bring it back — the root's org and the
 // folder's first name under the root —, a clone says how far it is over `clone` events, a second ask joins the one
 // under way (and a spawn in its folder waits for it), and a clone that fails leaves no folder behind. The fake gh
-// clones without the network (scripts/fakegh.mjs); a repo named no-such-… is one GitHub has not got.
+// clones without the network (scripts/fakes/fakegh.mjs); a repo named no-such-… is one GitHub has not got.
 test('a folder not there: the repo that clones it, a clone joined, its progress, and a failure that leaves nothing', { timeout: 60_000 }, async () => {
   const root = tmpDir('peix-org-');
   mkdirSync(join(root, 'ledger', '.git'), { recursive: true });

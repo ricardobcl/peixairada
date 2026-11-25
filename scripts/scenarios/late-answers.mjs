@@ -9,7 +9,7 @@ import { tmpDir } from '../../lib/testserver.mjs';
 
 const dir = tmpDir('peix-late-gh-'), file = join(dir, 'prs.json');
 writeFileSync(file, JSON.stringify({ 'acme/repo-a#12': { state: 'OPEN', title: 'Base of the follow-up' }, 'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up' } }));
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file } };
 
 export default async function (ctx) {
   const out = {}, [two, plain] = ctx.fixture.chats;   // the first names repo-a#12 and #13

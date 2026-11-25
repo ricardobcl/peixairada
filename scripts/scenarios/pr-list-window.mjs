@@ -16,7 +16,7 @@ import { replyLines } from '../fixture.mjs';
 const file = join(tmpDir('peix-prwin-'), 'prs.json'), MORE = Array.from({ length: 14 }, (_, i) => 20 + i);
 writeFileSync(file, JSON.stringify(Object.fromEntries([12, 13, ...MORE].map(n => [`acme/repo-a#${n}`, { state: n % 5 ? 'OPEN' : 'MERGED', title: `Change number ${n}` }]))));
 
-export const meta = { server: true, fixture: 'auto', prefs: { prsOpen: true }, env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, PR_TTL_MS: '300' } };
+export const meta = { server: true, fixture: 'auto', prefs: { prsOpen: true }, env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, PR_TTL_MS: '300' } };
 
 export default async function (ctx) {
   const [two] = ctx.fixture.chats, out = {}, a = ctx.assert;

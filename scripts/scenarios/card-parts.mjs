@@ -17,7 +17,7 @@ writeFileSync(file, JSON.stringify({
   'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', author: face('eva') },
 }));
 
-export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact' }, env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, PR_TTL_MS: '300' } };
+export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact' }, env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, PR_TTL_MS: '300' } };
 
 export default async function (ctx) {
   const [two] = ctx.fixture.chats, out = {}, a = ctx.assert, card = `#slist > .card[data-id="${two.id}"]`;
