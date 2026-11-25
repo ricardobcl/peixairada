@@ -44,9 +44,9 @@ setup file, and how the pictures are made.
 - 🌙 **Snooze** — a card's right-click, ⌥⌘S, ··· or the launcher puts a chat away: in an hour or three, tomorrow morning
   (Settings › Chat list says when mornings start), next week, a time you pick — or until its PR comes round to you, its
   checks finish, Claude replies or its monitor ends; 1 to 9 pick. It waits in *Snoozed*, folded after Done, saying when,
-  and nothing counts it; a question from it or a word of yours wakes it. Back by itself, it is at the top of its lane,
-  marked *back* and counted a new reply till you open it, with one notification. In Top priority a snoozed chat keeps its
-  place, out of sight.
+  and nothing counts it; a question from it or a word of yours wakes it. A card's moon under the pointer snoozes it too
+  (off in Settings › Chat list's card). Back by itself, it is at the top of its lane, marked *back* and counted a new
+  reply till you open it, with one notification. In Top priority a snoozed chat keeps its place, out of sight.
 - 🐙 **PRs** — on a card, a small square for each, in its state's colour (a draft hollow); PRs stacked on each other on
   GitHub sit together, joined by a line, base first. The number before them is the PR at your move, in the accent —
   else the one updated last. The squares keep their size however many there are; past the row's room they scroll

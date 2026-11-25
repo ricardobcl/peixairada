@@ -3908,9 +3908,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
-  // a card's parts chosen before it had agents to show (2026-11-02), and before every part was one (2026-11-03: shown, as they were)
-  if (Array.isArray(prefs.cardParts)) { if (!prefs.cardPartsSeen) prefs.cardParts.push('agents'); if (prefs.cardPartsSeen < 2) prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'); }
-  prefs.cardPartsSeen = 2;
+  // a card's parts chosen before it had agents to show (2026-11-02), before every part was one (2026-11-03: shown, as they
+  // were), and before the snooze's mark was on by default (2026-11-25: on, once)
+  if (Array.isArray(prefs.cardParts)) { if (!prefs.cardPartsSeen) prefs.cardParts.push('agents'); if (prefs.cardPartsSeen < 2) prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'); if (prefs.cardPartsSeen < 3 && !prefs.cardParts.includes('nap')) prefs.cardParts.push('nap'); }
+  prefs.cardPartsSeen = 3;
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   // ---- the board's key (2026-10-16) -----------------------------------------------------------------------------------
   // Every ask of the server carries it (the server's keyWant): `x-peix-key` from api(), `?key=` on the stream and a
@@ -4316,7 +4317,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const CARD_PART = { tab: ['.top .repo', 'The project'], branch: ['.top .chip.wtb', 'Its branch'], where: ['.top .chip.elsewhere', 'Running elsewhere'], tick: ['.top .act', '✓', 'only under the pointer'], tickets: ['.top .ttks', 'Tickets'],
     prs: ['.top .tmx', 'PRs'], watch: ['.trow .chip.watch', 'What it watches'], age: ['.trow .time', 'Its age', 'only under the pointer'], fable: ['.trow .fable', 'The F for Fable'], unread: ['.trow .badge', 'Unread count'],
     agents: [':is(.trow .chip.agents, .agl)', 'Agents'], live: ['.state.live', 'What it is doing'], move: ['.state.prmove', 'Your move'], rounds: ['.prpips', 'Rounds'],
-    pin: ['.top .ax.pin', 'Top priority’s mark, under the pointer', null, true], nap: ['.top .ax.zz', 'The snooze’s mark, under the pointer', null, true] };   // 2026-11-24, round XXX's A5 and S5: extras, off to begin with
+    pin: ['.top .ax.pin', 'Top priority’s mark, under the pointer', null, true], nap: ['.top .ax.zz', 'The snooze’s mark'] };   // 2026-11-24, round XXX's A5 and S5: Top priority's an extra, off to begin with; the snooze's a part, on since 2026-11-25 — under the pointer, as the ✓
   const CARD_PARTS = ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick', 'pin', 'nap'];
   const clab = { on: false, made: false };
   function applyCards() {
@@ -4328,7 +4329,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#sessions').toggleAttribute('data-even', line || (prefs.cards === 'compact' && !!prefs.cardsEven));   // compact's own switch, and one line's rule
     // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
     // the same, so a change redraws no card
-    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => !['age', 'tick', 'pin', 'nap'].includes(k));
+    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => !['age', 'tick', 'pin'].includes(k));
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
     $('#cardsEven').checked = !!prefs.cardsEven;
     $('#sessions').toggleAttribute('data-snipone', !!prefs.cardsSnipOne); $('#cardsSnipOne').checked = !!prefs.cardsSnipOne;

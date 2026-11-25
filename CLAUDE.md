@@ -463,7 +463,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   undo}`): rank `snoozed`, a lane after Done, folded (`prefs.zzLane`), soonest first; counted nowhere (`asleep`: the
   filters, `wanting`, `nextQueue`, `postState`, the overview; `hushOf` quiet). Its menu (`snoozeMenu`, digits by
   `ctxRow`'s `key`): times by `prefs.mornings`, `#zzPick`, a PR come round, its checks, the reply, its monitor; ⌥⌘S,
-  `#zzBtn`, the launcher, the banner's *In an hour* (`peixSnooze`). **The server ends it** (`wakeWhy`, `wakeCheck`: in
+  `#zzBtn`, the card's moon (`nap`, a part on), the launcher, the banner's *In an hour* (`peixSnooze`). **The server ends it** (`wakeWhy`, `wakeCheck`: in
   `schedulePush`, the poll, a timer): a question or your word quietly; its time or event as `wokeAt`, a word in
   `wordAt` (both copies), `back` till opened (`replied`), a flare, a `back` alert — a reply's is its own. →
   `snooze.mjs`, `snooze.test.mjs`.

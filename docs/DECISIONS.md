@@ -2,8 +2,14 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-24. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-25 — the snooze's mark on a card, on
+
+Ricardo: *"make the snooze button on card ON by default"*. The moon under the pointer (round XXX's S5) is a card part
+shown by default (`CARD_PART.nap`, no longer an extra), and a board with prefs from before gets it once
+(`cardPartsSeen` 3); taken off after, it stays off. Top priority's mark (A5) is still an extra, off. → `card-parts.mjs`.
 
 ## Decisions of 2026-11-24 — Space on ⌥⌘X
 
