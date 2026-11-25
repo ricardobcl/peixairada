@@ -310,7 +310,7 @@ export default async function (ctx) {
     ctx.assert.equal(card('Both at once').lit, card('Normal work').lit, '…and the work ring wins');
     ctx.assert.equal(
       card('Both at once').spins,
-      '1.4s',
+      '4s',
       "…at the work pace: every rule sets every variable, or the monitor's 6s leaks into it",
     );
     ctx.assert.deepEqual(
@@ -334,7 +334,7 @@ export default async function (ctx) {
       const m = new DOMMatrix(getComputedStyle(c.querySelector(':scope > .rg'), '::before').transform), doc = document.timeline.currentTime;   // the sidebar's ring is .rg's (2026-11-01)
       c.__seen = (c.__seen || 0) + 1;
       return { seen: c.__seen, start: a && a.startTime, props: a && Object.keys(a.effect.getKeyframes().at(-1)).filter(k => !['offset', 'computedOffset', 'easing', 'composite'].includes(k)),
-        angle: Math.round((Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360), expect: Math.round((doc % 1400) / 1400 * 360) };
+        angle: Math.round((Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360), expect: Math.round((doc % 4000) / 4000 * 360) };   // a lap in 4 s (2026-11-25)
     })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')))`,
         )
         .then(JSON.parse);

@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, at night — the clauding light, slower, and a choice (round XXVI)
+
+Ricardo, on 2026-11-04: *"some people don't like the ring around animation on the clauding cards. get alterntatives,
+including just being slower, let's promenient, other animations, etc."* — round XXVI laid 29 of them live on the board's
+real CSS (the ring turned down, other shapes on the edge, across the card, in the words, a small mark, water, fish and
+bubbles, still), measured on his transcripts and in WebKit. His pick, three weeks on: *"default R1 Slower (ring, 4 s,
+100 %, today's near-white, halo). Also offer in Settings: M1, S1. Watching keeps its 6 s teal light."*
+
+* **The clauding light laps in 4 s** (R1; 1.4 s before), as bright as it was, its halo and one light per agent kept.
+  The study's case: clauding wants nothing of you and lapped quicker than a question's ping (1.8 s); a ring was on
+  for 40 h of his last 14 days, two or more at once for a third of that. A monitor's light stays at 6 s. What it costs
+  did not decide it: in WebKit every look the study measured, the ring off too, read within the run's noise at rest.
+
 ## Decisions of 2026-11-25, the evening — the chat's messages edited, its emoji and reactions
 
 Ricardo, the chat's pictures in: *"I also want to edit messages and support emojis"* — and, asked which parts of

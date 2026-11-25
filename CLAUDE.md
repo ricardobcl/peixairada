@@ -308,7 +308,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (`drawCards` reads `REDUCED`), and in `reduced-motion.mjs` if it is a state's.
 * **The card's edge is one ring with four readings**: `--lit` what runs, `--seg` how much of the edge one light owns
   (`100% / --lights`, one per sub-agent), `--spins` how fast. **Clauding**: the project's colour lifted towards white
-  (`--glow`, OKLCH). **Watching** (`s.tasks`): one light in `--watch`, slowly — on a ready card too. **Asking**
+  (`--glow`, OKLCH), a lap in 4 s (2026-11-25). **Watching** (`s.tasks`): one light in `--watch`, slowly — on a ready card too. **Asking**
   (`needs-input` while alive): no ring — a red border and pings (`@keyframes sonar` on `::before` and `::after`, the
   card `overflow: visible`), the question on the card (`askHtml`); answered while alive, `heard` (`heardAt`,
   `flareLanded`). **The three CSS rules are in priority order — work beats a monitor, a question beats both — and each

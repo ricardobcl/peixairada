@@ -243,11 +243,12 @@
 }
 /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
-     which had the work light running at the monitor's sixth of the speed. */
+     which had the work light running at the monitor's sixth of the speed. A lap in 4 s (2026-11-25, round XXVI's R1;
+     1.4 s before): the state that wants nothing of you was quicker than a question's ping. */
 .card.working {
   --lit: var(--glow);
   --seg: calc(100% / var(--lights, 1));
-  --spins: 1.4s;
+  --spins: 4s;
   --track: transparent;
   --tail: 0.62;
 }
