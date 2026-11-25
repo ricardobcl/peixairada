@@ -7,7 +7,15 @@ import vm from 'node:vm';
 import { assemblePage } from '../lib/page.mjs';
 const file = process.argv[2] || 'public/index.html';
 const { html, parts, where } = assemblePage(file);
-const lineAt = i => html.slice(0, i).split('\n').length;
+// The line an offset of the page is on, by a search of where each line starts (2026-11-25): a split of all before it,
+// per match, was most of the check's time — 0.9 s of 1.4 on a page with twice the lines.
+const starts = [0];
+for (let i = html.indexOf('\n'); i >= 0; i = html.indexOf('\n', i + 1)) starts.push(i + 1);
+const lineAt = i => {
+  let lo = 0, hi = starts.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= i) lo = mid; else hi = mid - 1; }
+  return lo + 1;
+};
 const at = n => { const w = where(n); return `${w.file}:${w.line}`; };   // the part's path as the page's was given
 let n = 0, bad = 0;
 for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
