@@ -106,6 +106,13 @@ export default async function (ctx) {
       'no light across clauding…, the fish still',
     );
     ctx.assert.equal(out.reduced.heads, 0, 'nor the heads');
+    // While Claude works, the arc beside the project (2026-11-25): a whole circle, still
+    const arcAt = v =>
+      ctx.evaluate(`(s => { s.value = ${JSON.stringify(v)}; s.dispatchEvent(new Event('change', { bubbles: true }));
+      const a = document.querySelector('#slist > .card.working .top > .wkarc'); return a ? (getComputedStyle(a).display === 'none' ? 'hidden' : 'shown') + ' ' + getComputedStyle(a).animationName : 'none'; })(document.querySelector('#claudingLook'))`);
+    out.reduced.arc = await arcAt('arc');
+    ctx.assert.equal(out.reduced.arc, 'shown none', 'the arc picked stands still');
+    await arcAt('ring');
     await ctx.shot('reduced');
 
     // the list puts a card in place rather than sliding it: Ready one ticked done moves without a move recorded

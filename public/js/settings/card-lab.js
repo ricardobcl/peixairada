@@ -45,6 +45,11 @@ const CARD_PARTS = [
   'nap',
 ];
 const clab = { on: false, made: false };
+const CLAUDING = {
+  ring: 'A lap every 4 s, one light per agent',
+  arc: 'Turning beside the project’s name, nothing round the card',
+  still: 'Nothing moves: the edge in the project’s colour',
+};
 function applyCards() {
   if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
   const v = CARD_SIZES.indexOf(prefs.cards),
@@ -61,6 +66,12 @@ function applyCards() {
   $('#cardsEven').checked = !!prefs.cardsEven;
   $('#sessions').toggleAttribute('data-snipone', !!prefs.cardsSnipOne);
   $('#cardsSnipOne').checked = !!prefs.cardsSnipOne;
+  // While Claude works (2026-11-25, round XXVI's R1, M1 and S1): the ring, an arc beside the project or a still edge —
+  // CSS alone, by the list's data-clauding, a working card's markup carrying the arc whichever is picked
+  if (!CLAUDING[prefs.clauding]) prefs.clauding = 'ring';
+  $('#sessions').dataset.clauding = prefs.clauding;
+  $('#claudingLook').value = prefs.clauding;
+  $('#claudingSay').textContent = CLAUDING[prefs.clauding];
   // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
   for (const b of document.querySelectorAll('#cardsSize [data-v]'))
     b.setAttribute('aria-checked', String(+b.dataset.v === v));
@@ -277,6 +288,12 @@ $('#cardsSnipOne').addEventListener('change', e => {
   prefs.cardsSnipOne = e.target.checked;
   savePrefs();
   applyCards();
+});
+$('#claudingLook').addEventListener('change', e => {
+  prefs.clauding = e.target.value;
+  savePrefs();
+  applyCards();
+  phaseAnims(true); // an arc shown now turns with every other ring
 });
 // The pinned section's switch (2026-11-24, round XXX's T7; on since 2026-11-25): the order is the server's and stays,
 // so on again it is as it was; off in focus, the catch is said. When mornings start, for a snooze's Tomorrow morning and Next week (Z3).

@@ -17,7 +17,8 @@ setup file, and how the pictures are made.
   answered since you last looked, or only the pinned. Cards are compact unless you'd rather — or large only for the chats that want
   you.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
-  while Claude works, one per sub-agent, slower for a monitor; a question pings out in red.
+  while Claude works, one per sub-agent, slower for a monitor; a question pings out in red. Settings › Chat list can
+  make the light an arc beside the project, or a still edge.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you, answered where it shows in the app: *Reply…*
   (straight into the chat's Claude, when it runs here), *Done*, or *In an hour*, which snoozes the chat (a question's keeps
   *In 15 minutes*: a question wakes a snooze). The Dock badge counts the chats asking

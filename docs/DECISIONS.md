@@ -17,6 +17,19 @@ bubbles, still), measured on his transcripts and in WebKit. His pick, three week
   The study's case: clauding wants nothing of you and lapped quicker than a question's ping (1.8 s); a ring was on
   for 40 h of his last 14 days, two or more at once for a third of that. A monitor's light stays at 6 s. What it costs
   did not decide it: in WebKit every look the study measured, the ring off too, read within the run's noise at rest.
+* **Settings › Chat list › *While Claude works*: the ring, an arc beside the project, or a still edge**
+  (`prefs.clauding` → `#sessions[data-clauding]`, `ring` by default). The arc (M1) is the one an agent's row wears,
+  2.6 s a turn in the project's held colour (`--lift`, white on the open card), and the card has neither ring nor halo;
+  the still edge (S1) is the band in that colour, nothing turning — what reduced motion already gave, as a choice
+  anyone can make. **CSS alone**: a working card's markup carries the arc (`.wkarc`) whichever is picked, so a change
+  redraws no card, and the arc is a `ring` animation, on the document clock with the rest (`phaseAnims`).
+* **A monitor keeps its 6 s teal light under all three**, as picked, and work still beats it: a card at work with a
+  monitor wears the arc or the still edge. Under the still edge two things still move: that teal light, and the small
+  arc on each agent's row — left as they are, since the pick named neither.
+* Not offered: R0, the ring at its old pace — the study's other 26 looks stay on its page. Checked: `card-signals.mjs`
+  (4 s, the ring's phase on a 4 s clock; each look on a working card, one with a monitor, and the monitor's own;
+  kept across a reload), `reduced-motion.mjs` (the arc stands still), the made-up board shot in each look, light and
+  dark, the animation rules clean in Chrome. `npm run perf` could not run (the screen was locked).
 
 ## Decisions of 2026-11-25, the evening — the chat's messages edited, its emoji and reactions
 

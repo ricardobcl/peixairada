@@ -128,6 +128,13 @@
     animation: none;
     border-color: var(--glow, var(--working));
   } /* an agent's arc: a whole circle, still */
+  :root[data-layout='sidebar'] #sessions[data-clauding='arc'] #slist .card.working:not(.asking) .top > .wkarc {
+    animation: none;
+    border-color: var(--lift);
+  } /* While Claude works, the arc beside the project: a whole circle, still (2026-11-25) */
+  :root[data-layout='sidebar'] #sessions[data-clauding='arc'] #slist .card.working.active:not(.asking) .top > .wkarc {
+    border-color: #fff;
+  }
   .agcar {
     transition: none;
   }

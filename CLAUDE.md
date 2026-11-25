@@ -309,16 +309,17 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The card's edge is one ring with four readings**: `--lit` what runs, `--seg` how much of the edge one light owns
   (`100% / --lights`, one per sub-agent), `--spins` how fast. **Clauding**: the project's colour lifted towards white
   (`--glow`, OKLCH), a lap in 4 s (2026-11-25). **Watching** (`s.tasks`): one light in `--watch`, slowly — on a ready card too. **Asking**
-  (`needs-input` while alive): no ring — a red border and pings (`@keyframes sonar` on `::before` and `::after`, the
-  card `overflow: visible`), the question on the card (`askHtml`); answered while alive, `heard` (`heardAt`,
+  (`needs-input` while alive): no ring — a red border and pings (`sonar`, the card `overflow: visible`), the question on
+  the card (`askHtml`); answered while alive, `heard` (`heardAt`,
   `flareLanded`). **The three CSS rules are in priority order — work beats a monitor, a question beats both — and each
-  sets every variable.** **The ring is a conic gradient on a square `::before` turned by a `transform`, under an
-  `::after` cover 2 px in**: a card with a ring has no border; the track (`--track`) on the
-  open card only. **The live line** (`liveSlot`, `fillLive`) is a slot filled after the render, its memo in
+  sets every variable.** **The ring is a conic gradient on a square turned by a `transform`** (`.rg::before`,
+  masked to a band): no border; `--track` on the open card only. **The live line** (`liveSlot`, `fillLive`) is a slot filled after the render, its memo in
   properties, so a tool call keeps the card's node: the last tool call (`doing`, `doingOf`; `pathTail`), a watching
-  card's newest event. **`phaseAnims()`** (once a frame before paint; `true` at once) puts every `ring`, `sonar`,
+  card's newest event. **`phaseAnims()`** (once a frame; `true` at once) puts every `ring`, `sonar`,
   `pulse`, `pix` and `pixhop` at start 0 on the document clock — only when
-  something new may have started (`drawCards` says the list changed; 2026-10-13). → `card-signals.mjs`.
+  something new may have started (2026-10-13). **While Claude works** (Settings ›
+  Chat list, 2026-11-25; `prefs.clauding` → `#sessions[data-clauding]`, CSS alone): the ring, an arc beside the project
+  (`.wkarc`) or a still edge; a monitor keeps its light. → `card-signals.mjs`.
 * **A card opens to its agents while they work** (2026-11-02; `fillAgents`, `agPlan`, `.agl`): asked, doing (`agNow`), age (`agLabel`), `AG_SHOW` rows then `+N`; one ended ticks, then a done row of results; a failure first, the chip red, until the chat is opened (`seenAt`), a summary once the last ended; nothing leaves under the pointer (`agHover`). **Chip, rows and `--lights` are out of the markup**: a new node filled before `drawCards` measures (`agFresh`). The chip folds them (`prefs.agentCards`), the live line naming who stepped last (`.agwho`). At same height too, in `.moveslot`'s place; folded, one height unless a move wants the line. `data-hide~="agents"`: none. Its card `#mxtip`'s (`agCardHtml`), its menu `agMenu`; rows too under the transcript (`renderPresence`) and on ⌥⌘A's tile. → `agent-rows.mjs`, `agent-even.mjs`, `agent-menu.mjs`.
 * **Hidden (⌥⌘B, `#sbList`), the list is out of the layout** (2026-10-25; `prefs.listHidden` →
   `main.lhide`, `applyList`): `#sessions` and `#splitter` `display: none` — no card runs a thing —, the chat the whole

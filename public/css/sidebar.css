@@ -368,6 +368,52 @@
     ring var(--spins, 1.4s) linear infinite,
     ringin 0.5s ease-out backwards;
 }
+/* While Claude works (2026-11-25, round XXVI; Settings › Chat list, prefs.clauding → #sessions[data-clauding]): the ring
+     (R1, the default); an arc beside the project, the one an agent's row wears, and nothing round the card nor a halo
+     (M1); or a still edge in the project's colour (S1). A working card's markup carries the arc (.wkarc) whatever the
+     pick, so a change redraws no card. A monitor keeps its light, and work still beats it. */
+.wkarc {
+  display: none;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='arc'] #slist .card.working:not(.asking) > .rg {
+  display: none;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='arc'] #slist .card.working:not(.asking) .top > .wkarc {
+  display: inline-block;
+  flex: none;
+  align-self: center;
+  width: 11px;
+  height: 11px;
+  margin-left: 6px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--lift) 24%, transparent);
+  border-top-color: var(--lift);
+  opacity: 0.95;
+  animation: ring 2.6s linear infinite;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='arc'] #slist .card.working.active:not(.asking) .top > .wkarc {
+  border-color: rgb(255 255 255 / 0.24);
+  border-top-color: #fff;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='still'] #slist .card.working:not(.asking) > .rg {
+  opacity: 0.8;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='still'] #slist .card.working:not(.asking) > .rg::before {
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  aspect-ratio: auto;
+  background: var(--lift);
+  animation: none;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='still'] #slist .card.working.active:not(.asking) > .rg::before {
+  background: #fff;
+}
+:root[data-layout='sidebar'] #sessions[data-clauding='still'] #slist .card.heard.working:not(.asking) > .rg::before {
+  animation: ringin 0.5s ease-out backwards;
+}
 /* …and a question: a red hairline, a red wash (not on the open row's solid colour) and the sonar's two pings leaving
      the row's own outline */
 :root[data-layout='sidebar'] #slist .card.asking::before,
@@ -414,6 +460,34 @@
   box-shadow:
     0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent),
     var(--lo);
+}
+:root[data-layout='sidebar']
+  #sessions:is([data-clauding='arc'], [data-clauding='still'])
+  #slist
+  .card.working:not(.asking) {
+  box-shadow:
+    0 0 0 1px var(--sheet-edge),
+    var(--lo);
+} /* While Claude works, the arc or the still edge: no halo, a raised card's own edge */
+:root[data-layout='sidebar']
+  #sessions:is([data-clauding='arc'], [data-clauding='still'])
+  #slist
+  .card.working:not(.asking):hover {
+  box-shadow:
+    0 0 0 1px var(--sheet-edge),
+    var(--hi);
+}
+:root[data-layout='sidebar']
+  #sessions:is([data-clauding='arc'], [data-clauding='still'])
+  #slist
+  .card.working.active:not(.asking) {
+  box-shadow: none;
+}
+:root[data-layout='sidebar']
+  #sessions:is([data-clauding='arc'], [data-clauding='still'])
+  #slist
+  .card.working.active:not(.asking):hover {
+  box-shadow: var(--hi);
 }
 :root[data-layout='sidebar'] #sessions #slist .card.asking {
   box-shadow:

@@ -115,6 +115,7 @@ const prefs = {
   person: null,
   cardsEven: false,
   cardsSnipOne: false,
+  clauding: 'ring',
   sounds: false,
   barStats: ['cpu', 'mem'],
   peopleCompact: true,

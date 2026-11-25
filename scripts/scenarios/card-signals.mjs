@@ -415,6 +415,76 @@ export default async function (ctx) {
     );
     ctx.assert.deepEqual(await starts(), out.starts, '…and each ring where it was');
 
+    // ---- while Claude works, a choice (2026-11-25, round XXVI): the ring, an arc beside the project or a still edge,
+    // Settings › Chat list's — CSS alone, a monitor keeping its light ----
+    const pickLook = v =>
+      ctx.evaluate(
+        `(s => { s.value = ${JSON.stringify(v)}; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#claudingLook'))`,
+      );
+    const looks = () =>
+      ctx
+        .evaluate(
+          `JSON.stringify(Object.fromEntries(['Normal work', 'Both at once', 'Watching CI'].map(t => [t, (c => {
+      const rg = c.querySelector(':scope > .rg'), arc = c.querySelector('.top > .wkarc');
+      return { ring: getComputedStyle(rg).display === 'none' ? 'hidden' : getComputedStyle(rg, '::before').animationName,
+        arc: !arc ? 'none' : getComputedStyle(arc).display === 'none' ? 'hidden' : getComputedStyle(arc).animationName,
+        halo: /18px/.test(getComputedStyle(c).boxShadow), spins: getComputedStyle(c).getPropertyValue('--spins').trim(),
+        arcStart: arc?.getAnimations()[0]?.startTime ?? null };
+    })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === t))])))`,
+        )
+        .then(JSON.parse);
+    out.looks = { ring: await looks() };
+    ctx.assert.deepEqual(
+      [out.looks.ring['Normal work'].ring, out.looks.ring['Normal work'].arc, out.looks.ring['Normal work'].halo],
+      ['ring', 'hidden', true],
+      `the ring by default, its halo, the arc in the markup unseen: ${JSON.stringify(out.looks.ring)}`,
+    );
+    ctx.assert.equal(out.looks.ring['Watching CI'].arc, 'none', 'a card not at work carries no arc');
+    await pickLook('arc');
+    await ctx.waitFor(`document.querySelector('#sessions').dataset.clauding === 'arc'`, { what: 'the arc picked' });
+    await ctx.sleep(120);
+    out.looks.arc = await looks();
+    for (const t of ['Normal work', 'Both at once'])
+      ctx.assert.deepEqual(
+        [out.looks.arc[t].ring, out.looks.arc[t].arc, out.looks.arc[t].halo],
+        ['hidden', 'ring', false],
+        `${t}: an arc beside the project turns, nothing round the card, no halo: ${JSON.stringify(out.looks.arc)}`,
+      );
+    ctx.assert.equal(out.looks.arc['Normal work'].arcStart, 0, '…on the document clock, with every other ring');
+    ctx.assert.deepEqual(
+      [out.looks.arc['Watching CI'].ring, out.looks.arc['Watching CI'].spins],
+      ['ring', '6s'],
+      'a monitor keeps its light, at its 6 s',
+    );
+    await pickLook('still');
+    await ctx.waitFor(`document.querySelector('#sessions').dataset.clauding === 'still'`, {
+      what: 'the still edge picked',
+    });
+    out.looks.still = await looks();
+    ctx.assert.deepEqual(
+      [out.looks.still['Normal work'].ring, out.looks.still['Normal work'].arc, out.looks.still['Normal work'].halo],
+      ['none', 'hidden', false],
+      `a still edge: nothing turns, no halo: ${JSON.stringify(out.looks.still)}`,
+    );
+    ctx.assert.equal(out.looks.still['Watching CI'].ring, 'ring', '…and the monitor still has its light');
+    ctx.assert.equal(
+      await ctx.evaluate(
+        `getComputedStyle([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work').querySelector(':scope > .rg'), '::before').backgroundImage`,
+      ),
+      'none',
+      '…the edge a colour, not a gradient',
+    );
+    await ctx.reload();
+    ctx.assert.equal(
+      await ctx.evaluate(
+        `document.querySelector('#sessions').dataset.clauding + ' ' + document.querySelector('#claudingLook').value`,
+      ),
+      'still still',
+      'kept across a reload',
+    );
+    await pickLook('ring');
+    await ctx.waitFor(`document.querySelector('#sessions').dataset.clauding === 'ring'`, { what: 'the ring back' });
+
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(
       `[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('lane') ? 'lane:' + e.querySelector('.ln').textContent + ' ' + e.querySelector('b').textContent : e.classList.contains('gsep') ? 'line' : e.querySelector('.title')?.textContent)`,
