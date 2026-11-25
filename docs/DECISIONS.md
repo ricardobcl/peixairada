@@ -5,6 +5,48 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25 — a board on code older than its checkout
+
+Ricardo, two reports: *"sometimes the update is stuck on 'the project is not a git project' or something like that. but
+it is, if the user goes to the folder and does git pull, it works"*, and *"the pin feature is not working on my colleague
+that just updated"*.
+
+* **Findings.** Three ways to the first, one cause under the second:
+  * **The app's own server never gave the port back.** At login on 2026-10-27 the app waited its 25 s for the agent, the
+    agent answered 26 s after the app opened, and the app's bundled server took 7331 in the same second; the agent then
+    waited on the busy port (*port 7331 is busy* every 3 s in `peixairada.log`) for ten hours, until the app quit. All
+    that time the board was the bundle's copy: no checkout, so Settings › Updates said *Not a git checkout*, and nothing
+    updated. server.mjs's comment had the hand-over as "the app quitting a moment later"; nothing made it happen.
+  * **A path in another case.** node's `realpathSync` (and `pwd -P`) keep a path's case as typed, git's
+    `--show-toplevel` has the disk's: a board installed from `~/Code/peixairada` with `~/code` on disk was no checkout
+    to itself, for good, while `git pull` there worked.
+  * **The pin**: today's page against a server from before `/api/priority` (75ae063) offers the pin everywhere and every
+    pin answers *Not pinned: not found* — reproduced on a worktree at 75ae063^ with the new page. The way there is the
+    report's own way round the first: a `git pull` by hand leaves the agent on the code it loaded, serving the new page
+    from disk; so does an agent that waited behind the app's server since before the pull. The page had a few
+    per-route "the running server predates…" messages already; nothing said it in general, nor before a click failed.
+* **The app hands the port to the agent** (`portToAgent`, `agentPid` in main.swift): while its own server runs and the
+  agent is installed, each watchdog tick asks `launchctl print` for the agent's pid; the same pid on two ticks five
+  seconds apart is an agent waiting on the port (a crash loop respawns with a new pid), and the app stops its own and
+  adopts it (`restart`) — once per pid, so an agent that takes no port is not handed it again and again. The agent binds
+  within its 3 s retry; the drawers stay (holders). Only typechecked and `agentPid` run against the real launchd: the
+  hand-over itself needs a slow agent at login.
+* **The checkout's path is compared as the disk spells it** (`realpathSync.native` on both sides of `readCheckout`).
+* **A server older than its checkout says so** (`codeStamp` at import → `RAN_CODE`, `staleParts` → `pending`): its
+  `deps` (package.json, the lockfile) and `server` (server.mjs, lib/) stamped as loaded — at import, before a busy port is
+  waited on — and again at every look, `lookApp`'s minute re-reading the checkout once HEAD moved. Moved, the status bar
+  says *the server is behind · restart*, Settings › Updates *The server is behind* with **Restart now**: `restartStale`
+  installs the packages if they moved, tries the server on a spare port (`preflight`), then `launchd.sh restart`. A
+  server not the agent's says the command, as before. Said, not done by itself — not even with the switch on: a commit
+  landed on the checkout by a session is the same move, and the restart stays the person's. A page-only pull asks for
+  nothing (the page is read from disk).
+* **The page says a route its server lacks** (`api()`): the router's own `404 {error: 'not found'}` is thrown as *the
+  server running is older than this page — …restarts it* (`e.old`), so the pin says *Not pinned: the server running is
+  older than this page — scripts/launchd.sh restart restarts it* on a server from before this change too.
+* → `update-stale.test.mjs` (both fail on 12bb6c5's server.mjs).
+* **Once, by hand, on a board stuck now**: quit and reopen peixAIrada (its own server goes, the waiting agent binds),
+  or `cd <checkout> && scripts/launchd.sh restart` after a pull by hand.
+
 ## Decisions of 2026-11-25 — Top priority is Pinned, on, with a pin on the card
 
 Ricardo, after trying round XXX: *"we should have a pin also next to snooze (the 3 buttons should be closer) and just have

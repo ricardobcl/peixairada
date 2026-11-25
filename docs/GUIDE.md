@@ -292,7 +292,11 @@ Settings › Updates & access says so, with the command that clears the way unde
 board be for two minutes, and never while a file is changed here. **Only signed commits are taken**: the newest one
 must be signed by a key in `.github/allowed_signers`, as your checkout has it — anything else is said (*not signed*)
 and left, *Update now* too. By hand: `git pull --ff-only && npm ci && scripts/launchd.sh restart` — the board's page
-follows —, and `mac/build.sh install` when `mac/` changed. After
+follows —, and `mac/build.sh install` when `mac/` changed. A pull by hand without the restart leaves the server on its
+old code under the new page: the status bar says *the server is behind · restart*, and a click restarts it. Settings
+saying *Not a git checkout* while you run the board from your clone is the app's own server holding the port: quit and
+reopen peixAIrada and the login agent takes it (since 2026-11-25 the app hands it over by itself). Still saying it, a
+board from before 2026-11-25 installed from a path typed in another case than the disk's: the pull by hand above, once. After
 switching Node versions, or installing a CLI outside the `PATH` you installed with, run the last two install lines
 again.
 

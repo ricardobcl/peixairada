@@ -194,10 +194,13 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `lookApp`): build.sh stamps `PeixSource`, mac/'s tree as built (its notes out), and one not
   HEAD's (`macSource`) is behind — rebuilt with a pull, else by *update now* or the switch once quiet, by the clock never
   twice for one source (`appBuild`), never over work in mac/. → `update.test.mjs`, `auto-update.mjs`.
-* **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` is served with `<meta name="peix-page">`
-  — a stamp of the file on disk and the serving boot (`SINCE`) —, every snapshot names the page on disk (`page`); one
-  from a server started since, with another page, wants a reload as an update's does (`reload.want`). A reconnect to
-  the same server reloads nothing. → `update.test.mjs`, `restart-page.mjs`.
+* **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` carries `<meta name="peix-page">` (file
+  stamp, boot `SINCE`); a snapshot names the page on disk (`page`): from a server started since, with another
+  page, a reload (`reload.want`); a reconnect to the same server, none. → `update.test.mjs`, `restart-page.mjs`.
+* **A server older than its checkout says so** (2026-11-25): its code stamped at import (`codeStamp` → `RAN_CODE`) and
+  each look (`lookApp`); moved is `pending` (`staleParts`), *the server is behind*; *update now* restarts it
+  (`restartStale`, `npm ci` first if the packages moved). `api()`: the router's own 404 is such a server (`e.old`).
+  Paths compared by `realpathSync.native` (the disk's case). → `update-stale.test.mjs`.
 * **A PR is polled by how recently its chat was touched** (2026-09-28, `sweepPrs`, `duePrs`, `PR_POLL`): never asked →
   at once, then 1 · 5 · 30 min within the hour · day · three days, never after; touched is `lastActivity` or
   `s.openedAt` (a fetch, asking at once past `PR_TTL_MS`). Merged and closed never twice; one in flight unqueued
