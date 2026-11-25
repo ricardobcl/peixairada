@@ -451,14 +451,15 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   chat never shown). Done chats never. On, the list is narrowed before anything counts it, every match shows (the
   heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. → `seen.test.mjs`,
   `lanes.mjs`, `pr-turn.mjs`.
-* **Top priority** (2026-11-24, round XXX; `prefs.prio`, off; the server's `priority`, `PUT /api/priority`, a `priority`
-  event): a section over every lane, the project in view's chats in that order and in no lane (`secIds`, `secCards`),
-  numbered (`cardHtml`'s `slot`, `.inprio`), a tick dimming one in place (`.pdone`, Clear done), its head a tally, empty a
-  line to drop on. In and out: the menu (`prioRows`), ⌥⌘I, `#prioBtn`, the launcher, a drag (`cdPrioAt`: a card's top or
+* **Pinned** (2026-11-24, round XXX; named 2026-11-25, `prio` in the code; `prefs.prio`, on; the server's `priority`, `PUT
+  /api/priority`, a `priority` event): a section over every lane, the project in view's chats in that order and in no lane
+  (`secIds`, `secCards`), numbered (`cardHtml`'s `slot`, `.inprio`), a tick dimming one in place (`.pdone`, Clear done),
+  its head a tally; none pinned, none but in focus or a card held (`renderSessionList.zone`, a line to drop on). In and
+  out: the card's pin (`.ax.pin`, a part), the menu (`prioRows`), ⌥⌘I, `#prioBtn`, the launcher, a drag (`cdPrioAt`: a card's top or
   bottom third places, `#cdgap`; its middle folds; a chat that cannot fold comes up to be placed). ⌥⌘⇧↑↓ and the menu
   move one among those shown (`secList`, `prioMove`), said in `#prioSay`. **Focus** is `FILTERS.prio` (⌥⌘U,
   `prioFocus`): the section alone, `cueDraw`'s tab; the rest held but questions (`quietNow`, `onAlert`), its catch on the
-  way out (`focusCatch`). A /clear carries a slot (`loadRegistry`). → `top-priority.mjs`, `priority.test.mjs`.
+  way out (`focusCatch`). A /clear carries a slot (`loadRegistry`). → `pinned.mjs`, `priority.test.mjs`.
 * **Snooze** (2026-11-24, round XXX; the server's `snoozed`, `woke` → `snooze`, `wokeAt`; `POST …/snooze {until | on, pr |
   undo}`): rank `snoozed`, a lane after Done, folded (`prefs.zzLane`), soonest first; counted nowhere (`asleep`: the
   filters, `wanting`, `nextQueue`, `postState`, the overview; `hushOf` quiet). Its menu (`snoozeMenu`, digits by

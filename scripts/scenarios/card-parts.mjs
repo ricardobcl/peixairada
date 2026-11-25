@@ -4,7 +4,7 @@
 // themselves at rest. What this checks: the defaults; the card in the pane is the one real card, its rules a copy that goes with the pane; the PR
 // matrix shown; each click hides its part on every card, no card redrawn; a stand-in of each new part hidden; same height keeps a
 // hidden move's row, and one line gives it to the word; the age and the ✓ at rest; the keyboard reaches a part; the choice outlives a reload;
-// an older prefs' parts stay as they were, the new ones shown; the snooze's mark on once (2026-11-25), off for good when taken off after.
+// an older prefs' parts stay as they were, the new ones shown; the snooze's mark and the pin on once (2026-11-25), off for good when taken off after.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,19 +36,19 @@ export default async function (ctx) {
   const flip = async k => { await ctx.evaluate(`document.querySelector('#cardLab [data-part="${k}"]').click()`); await ctx.settle(); };
   await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
 
-  // by default all but the age and the ✓ at rest, and Top priority's mark under the pointer (2026-11-24; the snooze's on, 2026-11-25);
+  // by default all but the age and the ✓ at rest (the pin and the snooze's mark on, 2026-11-25);
   // the card in the pane has every part, and its rules are a copy that goes with the pane
   out.on = await look();
-  a.deepEqual(out.on, { hide: 'age tick pin', prs: true, node: true }, 'everything shown by default');
+  a.deepEqual(out.on, { hide: 'age tick', prs: true, node: true }, 'everything shown by default');
   const parts = await ctx.evaluate(`[...new Set([...document.querySelectorAll('#cardLab [data-part]')].map(e => e.dataset.part))].sort().join(' ')`);
-  a.equal(parts, 'age agents branch fable live move nap prs rounds tab tick tickets unread watch where', 'every part on it (Top priority\'s mark too, with the section on)');
+  a.equal(parts, 'age agents branch fable live move nap pin prs rounds tab tick tickets unread watch where', 'every part on it');
   a.deepEqual(await ctx.evaluate(`JSON.stringify((c => [getComputedStyle(c.querySelector('.top .repo')).fontWeight, c.querySelector('[data-part="age"]').classList.contains('cpoff'), c.querySelector('[data-part="age"]').getAttribute('aria-checked'), document.querySelectorAll('#slist > .card[data-id="cardlab"]').length])(document.querySelector('#cardLab .card')))`).then(JSON.parse), ['700', true, 'false', 0], 'the board\'s rules reach it; the age faint; nothing of it in the list');
   await ctx.shot('1-pane', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
 
   // each click hides its part, the card's node kept
   await flip('prs');
   out.bare = await look();
-  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.node], ['prs age tick pin', false, true], 'the PRs gone, no card redrawn');
+  a.deepEqual([out.bare.hide, out.bare.prs, out.bare.node], ['prs age tick', false, true], 'the PRs gone, no card redrawn');
   a.deepEqual(await ctx.evaluate(`JSON.stringify((e => [e.classList.contains('cpoff'), e.getAttribute('aria-checked'), +getComputedStyle(e).opacity < .5])(document.querySelector('#cardLab [data-part="prs"]')))`).then(JSON.parse), [true, 'false', true], 'faint on the card in the pane, to be clicked back');
   a.match(await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`), /Hidden: PRs\./, 'and named under it');
 
@@ -99,7 +99,7 @@ export default async function (ctx) {
 
   // a pref: the same after a reload
   const hidden = await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
-  a.equal(hidden, 'prs pin', 'the age and the ✓ kept, the PRs left out (Top priority\'s mark off, as it starts)');
+  a.equal(hidden, 'prs', 'the age and the ✓ kept, the PRs left out');
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
   a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), hidden, 'kept across a reload');
@@ -108,13 +108,13 @@ export default async function (ctx) {
   await ctx.evaluate(`(p => { p.cardParts = ['prs', 'agents']; p.cardPartsSeen = 1; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`);
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
-  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets age tick pin', 'older prefs: their choice, the rest of the parts shown');
+  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), 'rounds tickets age tick', 'older prefs: their choice, the rest of the parts shown');
 
-  // prefs from before the snooze's mark was on (2026-11-25): on, once; taken off after, it stays off
+  // prefs from before the snooze's mark and the pin were on (2026-11-25): on, once; taken off after, they stay off
   const seen = async (parts, n) => { await ctx.evaluate(`(p => { p.cardParts = ${JSON.stringify(parts)}; p.cardPartsSeen = ${n}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`);
     await ctx.reload(); await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
     return ctx.evaluate(`document.querySelector('#sessions').dataset.hide`); };
-  a.equal(await seen(['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'], 2), 'age tick pin', 'the snooze\'s mark on, once');
-  a.equal(await seen(['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'], 3), 'age tick pin nap', 'taken off since, it stays off');
+  a.equal(await seen(['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'], 2), 'age tick', 'the snooze\'s mark and the pin on, once');
+  a.equal(await seen(['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'], 4), 'age tick pin nap', 'taken off since, they stay off');
   return out;
 }

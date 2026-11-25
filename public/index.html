@@ -590,11 +590,11 @@
   .gsep.lane.shut > :is(i, .ln, b) { opacity: .7; }   /* the head's ground stays whole: cards pass under it */
   .gsep.lane.shut:hover > :is(i, .ln, b) { opacity: 1; }
   .gsep.lane.still { cursor: default; } .gsep.lane.still .lc { display: none; }   /* under a filter: every match shown, nothing to fold */
-  /* Top priority and snooze (2026-11-24, round XXX): the section's head an arrow, its tally and Clear done; the empty
-     section a place to drop; a card's number in it, ticked there dimmed and struck; snoozed, when it wakes; back from
-     one, a tag; and the two marks under the pointer (card parts, off by default) */
+  /* Pinned and snooze (2026-11-24, round XXX; Pinned was Top priority till 2026-11-25): the section's head a pin, its
+     tally and Clear done; the empty section a place to drop; a card's number in it, ticked there dimmed and struck;
+     snoozed, when it wakes; back from one, a tag; and the two marks under the pointer, close by the ✓ (card parts, on) */
   .gsep.lane.prio { --lanec: var(--accent); }
-  .gsep.lane.prio > i { border: 0; border-radius: 0; background: var(--lanec); clip-path: polygon(50% 6%, 94% 52%, 66% 52%, 66% 94%, 34% 94%, 34% 52%, 6% 52%); }
+  .gsep.lane.prio > i { border: 0; border-radius: 0; background: var(--lanec); clip-path: polygon(30% 2%, 70% 2%, 70% 15%, 62% 15%, 62% 42%, 85% 64%, 85% 73%, 56% 73%, 53% 100%, 47% 100%, 44% 73%, 15% 73%, 15% 64%, 38% 42%, 38% 15%, 30% 15%); }
   .gsep.lane.snoozed > i { border: 0; background: radial-gradient(circle at 74% 28%, transparent 40%, var(--lanec) 43%); }
   .gsep.lane .tally { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
   .gsep.lane .tally em { font-style: normal; color: var(--needs); } .gsep.lane .tally u { text-decoration: none; color: var(--working-ink); }
@@ -614,7 +614,7 @@
   #stitle .n .ic { margin-right: 5px; }
   .card.slept { filter: saturate(.45); }
   .ax { font: inherit; width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); cursor: pointer; flex: none; opacity: .7; display: none; place-items: center; }
-  .card .top .ax { height: 18px; }
+  .card .top .ax { width: 20px; height: 18px; margin-right: -5px; }   /* the pin, the moon and the ✓ 2 px apart, not the row's 7 (2026-11-25) */
   #sessions:not([data-hide~="pin"]) #slist .card:hover .top .ax.pin, #sessions:not([data-hide~="nap"]) #slist .card:hover .top .ax.zz, .ax:focus-visible { display: inline-grid; }
   .ax:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); } .ax.on { color: var(--accent); }
   #settings .clabs .clab .card .top .ax { display: inline-grid; }
@@ -3593,8 +3593,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
             </div>
           </div>
         </div></section>
-        <section class="sgrp"><h6 class="sgh" id="sgPrio">Top priority and snooze</h6><div class="slist" role="group" aria-labelledby="sgPrio">
-          <div class="srow set" data-kw="top priority section pin pinned order focus release important first"><label class="sl" for="prioOn"><b>Top priority section</b><small>Chats you put first, in your order, above every lane — nothing moves them but you. ⌥⌘I puts the open chat in, ⌥⌘U shows the section alone</small></label><input type="checkbox" class="sw" role="switch" id="prioOn"></div>
+        <section class="sgrp"><h6 class="sgh" id="sgPrio">Pinned and snooze</h6><div class="slist" role="group" aria-labelledby="sgPrio">
+          <div class="srow set" data-kw="pinned pin section top priority order focus release important first"><label class="sl" for="prioOn"><b>Pinned section</b><small>The chats you pin, in your order, above every lane — nothing moves them but you; drag one to reorder. ⌥⌘I pins the open chat, ⌥⌘U shows the pinned alone</small></label><input type="checkbox" class="sw" role="switch" id="prioOn"></div>
           <div class="srow set" data-kw="snooze later tomorrow morning next week wake hour"><label class="sl" for="mornings"><b>Mornings start at</b><small>Where a snooze till tomorrow morning or next week ends</small></label><span class="ssel"><select id="mornings"><option value="6">06:00</option><option value="7">07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option></select></span></div>
         </div><p class="sgf">A chat snoozed waits in Snoozed, counted nowhere, and comes back at the top of its lane, marked back. A question from it or a word of yours wakes it sooner.</p></section>
       </div>
@@ -3873,7 +3873,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, room: null, unread: 0, invites: [] }, lunch: { on: false, set: false, places: [] }, priority: [] };
-  const prefs = { space: false, spaceAt: .52, spZoom: 1, spLanes: true, spOff: ['idle', 'done'], spWin: 30, spSky: true, spTwinkle: true, spFalls: 'some', spVisits: true, spAnswer: true, spFade: true, spLinks: true, spArrange: 'state', spCard: true, spBusy: false, spNames: 'zoom', agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, newsSeen: [], newsLater: 0, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null, prio: false, mornings: 9, zzLane: 0, focusSince: 0 };
+  const prefs = { space: false, spaceAt: .52, spZoom: 1, spLanes: true, spOff: ['idle', 'done'], spWin: 30, spSky: true, spTwinkle: true, spFalls: 'some', spVisits: true, spAnswer: true, spFade: true, spLinks: true, spArrange: 'state', spCard: true, spBusy: false, spNames: 'zoom', agentCards: {}, cardPartsSeen: 0, mutedAt: 0, fishKey: null, fishing: null, laneSchool: false, laneBed: false, project: 'all', lastProject: null, lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, listHidden: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, cardsSnipOne: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', inEditor: 'vscode', pagesOut: true, linksMoved: false, boardSites: ['github.com'], cardParts: ['prs', 'rounds', 'tickets', 'faces'], prsHeight: null, theme: 'own', skinFollow: true, look: null, darkFrame: false, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, newsSeen: [], newsLater: 0, settingsPane: 'general', zeBest: {}, zeDay: null, zeDiff: 1, zeSound: true, zeBand: 'vira', zeTwo: null, zeTrophies: {}, prChips: 'matrix', agentFor: {}, prAgent: null, prio: true, pinned: 0, mornings: 9, zzLane: 0, focusSince: 0 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3905,13 +3905,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   if (!['move', 'replied', 'prio'].includes(prefs.listFilter)) prefs.listFilter = null;
   // the Snoozed lane folded to begin with (2026-11-24, round XXX's W1), as Idle and Done are, on a board that had prefs before it
   if (!prefs.zzLane) { if (!prefs.lanesShut.includes('snoozed')) prefs.lanesShut.push('snoozed'); prefs.zzLane = 1; }
+  // Top priority became Pinned, on by default (2026-11-25): on once on a board that had prefs before
+  if (!prefs.pinned) { prefs.prio = true; prefs.pinned = 1; }
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
   // a card's parts chosen before it had agents to show (2026-11-02), before every part was one (2026-11-03: shown, as they
-  // were), and before the snooze's mark was on by default (2026-11-25: on, once)
-  if (Array.isArray(prefs.cardParts)) { if (!prefs.cardPartsSeen) prefs.cardParts.push('agents'); if (prefs.cardPartsSeen < 2) prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'); if (prefs.cardPartsSeen < 3 && !prefs.cardParts.includes('nap')) prefs.cardParts.push('nap'); }
-  prefs.cardPartsSeen = 3;
+  // were), and before the snooze's mark and the pin were on by default (2026-11-25: on, once)
+  if (Array.isArray(prefs.cardParts)) { if (!prefs.cardPartsSeen) prefs.cardParts.push('agents'); if (prefs.cardPartsSeen < 2) prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'); if (prefs.cardPartsSeen < 3 && !prefs.cardParts.includes('nap')) prefs.cardParts.push('nap'); if (prefs.cardPartsSeen < 4 && !prefs.cardParts.includes('pin')) prefs.cardParts.push('pin'); }
+  prefs.cardPartsSeen = 4;
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   // ---- the board's key (2026-10-16) -----------------------------------------------------------------------------------
   // Every ask of the server carries it (the server's keyWant): `x-peix-key` from api(), `?key=` on the stream and a
@@ -4317,7 +4319,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const CARD_PART = { tab: ['.top .repo', 'The project'], branch: ['.top .chip.wtb', 'Its branch'], where: ['.top .chip.elsewhere', 'Running elsewhere'], tick: ['.top .act', '✓', 'only under the pointer'], tickets: ['.top .ttks', 'Tickets'],
     prs: ['.top .tmx', 'PRs'], watch: ['.trow .chip.watch', 'What it watches'], age: ['.trow .time', 'Its age', 'only under the pointer'], fable: ['.trow .fable', 'The F for Fable'], unread: ['.trow .badge', 'Unread count'],
     agents: [':is(.trow .chip.agents, .agl)', 'Agents'], live: ['.state.live', 'What it is doing'], move: ['.state.prmove', 'Your move'], rounds: ['.prpips', 'Rounds'],
-    pin: ['.top .ax.pin', 'Top priority’s mark, under the pointer', null, true], nap: ['.top .ax.zz', 'The snooze’s mark'] };   // 2026-11-24, round XXX's A5 and S5: Top priority's an extra, off to begin with; the snooze's a part, on since 2026-11-25 — under the pointer, as the ✓
+    pin: ['.top .ax.pin', 'The pin'], nap: ['.top .ax.zz', 'The snooze'] };   // 2026-11-24, round XXX's A5 and S5: on since 2026-11-25, under the pointer as the ✓
   const CARD_PARTS = ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live', 'age', 'tick', 'pin', 'nap'];
   const clab = { on: false, made: false };
   function applyCards() {
@@ -4329,7 +4331,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#sessions').toggleAttribute('data-even', line || (prefs.cards === 'compact' && !!prefs.cardsEven));   // compact's own switch, and one line's rule
     // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
     // the same, so a change redraws no card
-    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => !['age', 'tick', 'pin'].includes(k));
+    const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => !['age', 'tick'].includes(k));
     $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
     $('#cardsEven').checked = !!prefs.cardsEven;
     $('#sessions').toggleAttribute('data-snipone', !!prefs.cardsSnipOne); $('#cardsSnipOne').checked = !!prefs.cardsSnipOne;
@@ -4380,12 +4382,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     box.toggleAttribute('data-snipone', !!prefs.cardsSnipOne);
     if (!clab.made) { clab.made = true; box.firstElementChild.replaceChildren(cardLabMake()); }
     for (const el of box.querySelectorAll('[data-part]')) {
-      const k = el.dataset.part, [, name, off, extra] = CARD_PART[k], here = on.includes(k);
+      const k = el.dataset.part, [, name, off] = CARD_PART[k], here = on.includes(k);
       el.classList.toggle('cpoff', !here); el.setAttribute('aria-checked', String(here));
-      el.title = extra ? `${name}: ${here ? 'on — click to take it off every card' : 'off — click to put it on every card'}`
-        : here ? `${name}: click to ${off ? 'keep it to the pointer' : 'hide it on every card'}` : `${name}: ${off || 'hidden'}. Click to ${off ? 'keep it at rest' : 'bring it back'}`;
+      el.title = here ? `${name}: click to ${off ? 'keep it to the pointer' : 'hide it on every card'}` : `${name}: ${off || 'hidden'}. Click to ${off ? 'keep it at rest' : 'bring it back'}`;
     }
-    const gone = CARD_PARTS.filter(k => !on.includes(k) && !CARD_PART[k][2] && !CARD_PART[k][3]).map(k => CARD_PART[k][1]);   // an extra off is no part hidden
+    const gone = CARD_PARTS.filter(k => !on.includes(k) && !CARD_PART[k][2]).map(k => CARD_PART[k][1]);
     $('#cardLabSay').textContent = `Click a part to hide it or bring it back. This card has them all at once, which no real one does.${gone.length ? ` Hidden: ${gone.join(', ')}.` : ''}`;
   }
   function cardLabShow(on) {
@@ -4410,8 +4411,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#cardsSize').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); renderBoard(); });
   $('#cardsSnipOne').addEventListener('change', e => { prefs.cardsSnipOne = e.target.checked; savePrefs(); applyCards(); });
-  // Top priority's switch (2026-11-24, round XXX's T7): the order is the server's and stays, so on again it is as it was;
-  // off in focus, the catch is said. When mornings start, for a snooze's Tomorrow morning and Next week (Z3).
+  // The pinned section's switch (2026-11-24, round XXX's T7; on since 2026-11-25): the order is the server's and stays,
+  // so on again it is as it was; off in focus, the catch is said. When mornings start, for a snooze's Tomorrow morning and Next week (Z3).
   $('#prioOn').checked = !!prefs.prio; $('#mornings').value = String(prefs.mornings ?? 9);
   $('#prioOn').addEventListener('change', e => { const was = prioFocus(); prefs.prio = e.target.checked; savePrefs(); renderBoard(); if (was && !prioFocus()) focusCatch(); const cs = state.sessions.get(state.current); if (cs) renderHead(cs); });
   $('#mornings').addEventListener('change', e => { prefs.mornings = Number(e.target.value) || 9; savePrefs(); });
@@ -4910,7 +4911,7 @@ const toolName = n => {
     back: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5"/></svg>',
     forward: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>',
     up: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10.25 8 5.75 12.5 10.25"/></svg>',
-    prio: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.25V3.5M3.75 7.5 8 3.25l4.25 4.25"/></svg>',   // Top priority (2026-11-24)
+    prio: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.25 2.5h5.5M6.5 2.5v3.75L4.25 9.5h7.5L9.5 6.25V2.5M8 9.5v4.25"/></svg>',   // Pinned (2026-11-24; a pin since 2026-11-25)
     moon: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.9 10.1A5.25 5.25 0 0 1 5.9 3.1a5.25 5.25 0 1 0 7 7Z"/></svg>',   // a snooze (2026-11-24)   // the PR list's foot: fold it (2026-10-13)
     reload: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 6.4A4.9 4.9 0 1 0 12.9 9.6"/><path d="M13 3v3.5H9.5"/></svg>',
     external: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5h6v6M12.5 3.5 4 12"/></svg>',
@@ -5600,12 +5601,12 @@ const toolName = n => {
   // A muted chat keeps its card's truth, the red edge too, and calls you on nothing else (2026-11-02): not the Dock, the
   // title, the menu bar, Next, the bar's red, the lines of news or Zé's game.
   const askingLoud = s => asking(s) && !s.muted;
-  // ---- Top priority and snooze (2026-11-24, round XXX) -----------------------------------------------------------------
-  // Top priority: a section above every lane holding the chats you put there, in your order — the one order on the board
-  // nothing changes by itself. A word, a reply, a PR come round leave a card in its slot; its edge says what it does. One
+  // ---- Pinned and snooze (2026-11-24, round XXX) -----------------------------------------------------------------------
+  // Pinned (Top priority till 2026-11-25; `prio` in the code): a section above every lane holding the chats you pin, in
+  // your order — the one order on the board nothing changes by itself. A word, a reply, a PR come round leave a card in its slot; its edge says what it does. One
   // order for the board, the server's (state.priority, PUT /api/priority, carried to the new id over a /clear), shown for
-  // the project in view; the section's switch is this page's (prefs.prio, Settings › Chat list), off to begin with — the
-  // list is clauding first. Focus is the funnel's third row (FILTERS.prio, ⌥⌘U): the section alone, the project tab
+  // the project in view; the section's switch is this page's (prefs.prio, Settings › Chat list), on since 2026-11-25,
+  // none pinned no section. Focus is the funnel's third row (FILTERS.prio, ⌥⌘U): the section alone, the project tab
   // saying so, the rest quiet as when fishing but for questions.
   // Snooze: a chat put away till a time or till something happens (the server's `snooze`, which it ends): in the Snoozed
   // lane, folded, counted nowhere; a question from it or a word of yours wakes it. Back by itself it is at the top of its
@@ -5668,7 +5669,7 @@ const toolName = n => {
   const FILTERS = {
     move: { name: 'Your move', none: 'No PR at your move', tip: 'chats with a PR waiting on you', test: s => bucket(s) !== 'done' && !asleep(s) && yourMove(s) },
     replied: { name: 'New replies', none: 'No new replies', tip: 'chats Claude answered since you last looked', test: s => bucket(s) === 'ready' && !asleep(s) && replied(s) },
-    prio: { name: 'Top priority only', none: 'Nothing in Top priority', tip: 'chats in Top priority, in your order', on: prioOn, test: s => inPrio(s) && !asleep(s) },
+    prio: { name: 'Pinned only', none: 'Nothing pinned', tip: 'the chats you pinned, in your order', on: prioOn, test: s => inPrio(s) && !asleep(s) },
   };
   const filterList = () => Object.entries(FILTERS).filter(([, f]) => !f.on || f.on());
   const listFilter = () => { const f = FILTERS[prefs.listFilter]; return f && (!f.on || f.on()) ? f : null; };
@@ -5923,7 +5924,7 @@ const toolName = n => {
   // holds. Under a query, which ranks by the match, none; under a filter, which shows every match, a head that does not
   // fold (`still`).
   const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], watching: ['Watching', 'chats Claude will come back to by itself: a monitor or a command still running, or a wake-up it set'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'],
-    snoozed: ['Snoozed', 'chats put away till a time or till something happens'], prio: ['Top priority', 'chats you put first, in your order'] };
+    snoozed: ['Snoozed', 'chats put away till a time or till something happens'], prio: ['Pinned', 'chats you pinned, in your order'] };
   // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
@@ -6104,14 +6105,15 @@ const toolName = n => {
     const zero = !q && !flt && !list.some(s => ['asking', 'ready'].includes(rankOf(s))) && list.length > 0;
     const items = [];
     // the section's head tallies what its cards do, since nothing sorts them by it (T4), and what is ticked in it (D2)
-    if (sec) {
+    // none pinned (2026-11-25), no section: but in focus, and while a card is held, a place to drop it (zone, cdLift's)
+    if (sec && (secCards.length || secZz || focus || renderSessionList.zone)) {
       const n = secCards.length, done = secCards.filter(s => s.done).length, live = secCards.filter(s => !s.done);
       const ask = live.filter(asking).length, work = live.filter(s => bucket(s) === 'working').length;
       const bits = [ask ? `<em>${ask} asking</em>` : '', work ? `<u>${work} clauding</u>` : '', secZz ? `+${secZz} snoozed` : ''].filter(Boolean);
-      const extra = (bits.length ? `<span class="tally">${bits.join(' · ')}</span>` : '') + (done ? `<span class="tally">${done} of ${n} done <button type="button" class="clr" title="Take the ticked chats out of Top priority">Clear done</button></span>` : '');
+      const extra = (bits.length ? `<span class="tally">${bits.join(' · ')}</span>` : '') + (done ? `<span class="tally">${done} of ${n} done <button type="button" class="clr" title="Unpin the ticked chats">Clear done</button></span>` : '');
       const shut = !focus && laneShut('prio');
       items.push({ key: 'lane:prio', html: laneHtml('prio', n, shut, focus, extra) });
-      if (!shut && !n) items.push({ key: 'prio:empty', html: `<div class="gsep pempty" data-pempty>${secZz ? 'Every chat in it is snoozed: each comes back to its place' : 'Drag a card here, or right-click one › Top priority'}</div>` });
+      if (!shut && !n) items.push({ key: 'prio:empty', html: `<div class="gsep pempty" data-pempty>${secZz ? 'Every pinned chat is snoozed: each comes back to its place' : focus ? 'Nothing pinned — Show all, then a card’s pin or ⌥⌘I' : 'Drop a card here to pin it — or click its pin'}</div>` });
       if (!shut) secCards.forEach((s, i) => items.push({ id: s.id, html: cardHtml(s, q, i) }));
     }
     // The project in view (2026-11-04, round XXV): its tab atop the list, its name a click on ⌥⌘P's picker, how many of
@@ -6214,17 +6216,17 @@ const toolName = n => {
     const squares = [...by.values()].sort((a, b) => b.n - a.n).slice(0, OTHERS_SQUARES).map(b => `<i style="${repoStyle(repoColor(b.cwd))}"></i>`).join('');
     return `<div class="gsep others" data-others role="button" tabindex="0" title="Every project again (ALL)"><span class="sqs" aria-hidden="true">${squares}</span><span class="ln">${rest.length} more in ${by.size === 1 ? 'another project' : 'other projects'}</span><b>Show all</b></div>`;
   }
-  // …and in focus (2026-11-24, round XXX's F2), a question out of Top priority
+  // …and in focus (2026-11-24, round XXX's F2), a question from a chat not pinned
   const askingElsewhere = p => [...state.sessions.values()].filter(s => visible(s) && askingLoud(s) && (!inProject(s, p) || (prioFocus() && !inPrio(s))));
-  /** The tab atop the list: the project in view, or Top priority alone (F2) — what is hidden, and the way back. */
+  /** The tab atop the list: the project in view, or the pinned alone (F2) — what is hidden, and the way back. */
   function cueDraw(p, here, focus = false) {
     const box = $('#stitle'), on = p.key !== ALL || focus;
     box.hidden = !on; $('#sessions').classList.toggle('scoped', on); box.classList.toggle('focus', focus);
     if (focus && p.key === ALL) $('#sessions').style.setProperty('--repo', 'var(--accent)');
     if (!on) { setHtml(box, ''); return; }
     const n = here.filter(notDone).length, all = [...state.sessions.values()].filter(notDone).length, ask = askingElsewhere(p).length;
-    const tip = focus ? `Only the chats in Top priority, in your order${p.key !== ALL ? `, in ${p.name}` : ''} — the rest is quiet but for its questions · ⌥⌘U for every chat` : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — a click or ⌥⌘P for another`;
-    const name = focus ? `${ICON.prio}Top priority${p.key !== ALL ? ` · ${esc(p.name)}` : ''}` : `${projIcon(p.name)}${esc(p.name)}`;
+    const tip = focus ? `Only the pinned chats, in your order${p.key !== ALL ? `, in ${p.name}` : ''} — the rest is quiet but for its questions · ⌥⌘U for every chat` : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — a click or ⌥⌘P for another`;
+    const name = focus ? `${ICON.prio}Pinned${p.key !== ALL ? ` · ${esc(p.name)}` : ''}` : `${projIcon(p.name)}${esc(p.name)}`;
     setHtml(box, (focus ? `<span class="t" title="${esc(tip)}"><span class="n">${name}</span></span>` : `<button type="button" class="t" title="${esc(tip)}"><span class="n">${name}</span>${CUE_CHEV}</button>`)
       + `<span class="cn" role="status" title="${n} of the ${all} chats not done">${rn('cue:n', n)} of ${rn('cue:all', all)}</span>`
       + `<span class="out">${ask ? `<button type="button" class="ask" title="Go to the one waiting longest"><i></i>${rn('cue:ask', ask)} asking</button>·` : ''}<button type="button" class="sx" title="${focus ? 'Every chat again (⌥⌘U)' : 'Every project again (ALL)'}">Show all</button></span>`);
@@ -6535,7 +6537,7 @@ const toolName = n => {
   // edge when filled — for TL_DWELL_MS brings it out, as the menu bar comes out when filled; it goes TL_HIDE_MS after
   // the pointer has left it.
   const TL_EDGE = 4, TL_DWELL_MS = 1000, TL_HIDE_MS = 500;
-  const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done', snoozed: 'snoozed', prio: 'top priority' };
+  const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done', snoozed: 'snoozed', prio: 'pinned' };
   /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
   function tlDay(iso) {
     const d = new Date(iso); if (isNaN(d)) return '';
@@ -7091,7 +7093,7 @@ const toolName = n => {
     const t = s.tickets || []; if (!t.length) return '';
     return chipStack(t, (k, style) => `<a class="ctk"${style} data-cat="${esc(k.cat)}" data-url="${esc(k.url)}" title="${esc(ticketTip(k))}">${esc(k.key)}</a>`, ' ttks');
   }
-  function cardHtml(s, q = '', slot = null) {   // `slot`: its place in Top priority, when drawn there (2026-11-24)
+  function cardHtml(s, q = '', slot = null) {   // `slot`: its place among the pinned, when drawn there (2026-11-24)
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
     // Which of the two words is the older, for the cog's *medium* cards: Claude's reply is the last word once it came
@@ -7121,13 +7123,13 @@ const toolName = n => {
     // Top priority and snooze (2026-11-24, round XXX): its number in the section (T3), ticked there it stays dimmed (D2);
     // snoozed, when it wakes (W1); back from one, till opened (H2); and the two marks under the pointer, card parts (A5, S5)
     const inSec = slot != null, slept = asleep(s);
-    const pn = inSec ? `<span class="pn" title="${esc(`${ordinal(slot + 1)} in Top priority`)}">${slot + 1}</span>` : '';
+    const pn = inSec ? `<span class="pn" title="${esc(`${ordinal(slot + 1)} pinned`)}">${slot + 1}</span>` : '';
     const zz = (slept ? `<span class="snz" title="${esc(`Snoozed ${snoozeSay(s.snooze)} — a question from it or a word of yours wakes it sooner`)}">${ICON.moon}<span>${esc(snoozeSay(s.snooze))}</span></span>` : '')
       + (back(s) ? `<span class="lback" title="${esc(`Back from a snooze${s.wokeWhy ? `: ${s.wokeWhy}` : ''} — till you open it`)}">back</span>` : '');
-    const marks = (prioOn() ? `<button type="button" class="ax pin${inPrio(s) ? ' on' : ''}" title="${inPrio(s) ? 'Out of Top priority' : 'Into Top priority, at its end'} · ⌥⌘I">${ICON.prio}</button>` : '')
+    const marks = (prioOn() ? `<button type="button" class="ax pin${inPrio(s) ? ' on' : ''}" title="${inPrio(s) ? 'Unpin it' : 'Pin it — the section up top, in your order'} · ⌥⌘I">${ICON.prio}</button>` : '')
       + (asking(s) ? '' : `<button type="button" class="ax zz${slept ? ' on' : ''}" title="${slept ? 'Wake it now' : 'Snooze it… · ⌥⌘S'}">${ICON.moon}</button>`);
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${moveLine ? 'rowmove' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}${inSec ? ` inprio${s.done ? ' pdone' : ''}` : ''}${slept ? ' slept' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}">
-      <div class="top"><span class="vh">${inSec ? `Top priority, ${slot + 1}: ` : ''}${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${agentTag(s, 'chip runas')}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${marks}${act}${cardTickets(s)}${cardMatrix(s)}</div>
+      <div class="top"><span class="vh">${inSec ? `Pinned, ${slot + 1}: ` : ''}${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) && rankOf(s) !== 'watching' ? ", watching" : ""}${stoppedSaid(s) ? `, stopped: ${esc(stoppedSaid(s))}` : ""} — </span><span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>${agentTag(s, 'chip runas')}${muteChip(s)}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}${s.worktree ? `<span class="chip wtb" title="${esc(`in the worktree ${s.worktree.name} of ${s.project}${s.worktree.branch ? `, on ${s.worktree.branch}` : ''}`)}">${ICON.branch}${esc(s.worktree.branch || s.worktree.name)}</span>` : ''}${linkChip(s)}${peerMark(s)}<span class="grow"></span>${where}${marks}${act}${cardTickets(s)}${cardMatrix(s)}</div>
       <div class="trow">${pn}<div class="title">${ticks(markHits(s.title, q))}</div>${zz}${agOn(s) ? '<button type="button" class="chip agents" hidden></button>' : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}${agOn(s) ? '<div class="agl" hidden></div>' : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
@@ -7878,7 +7880,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
-    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['prioOn', 'Top priority section'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar'], ['skyOn', 'Space’s night sky'], ['agCardOn', 'Space’s agent card']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal'], ['darkFrame', 'Dark frame round a light chat'], ['cardsSnipOne', 'A card’s words on one line'], ['prioOn', 'Pinned section'], ['laneSchool', 'A fish per chat in the status bar'], ['laneBed', 'The seabed in the status bar'], ['skyOn', 'Space’s night sky'], ['agCardOn', 'Space’s agent card']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -7921,7 +7923,7 @@ const toolName = n => {
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         s.removed ? { name: 'Put it back on the board', sub: of, fn: () => restoreChat(s.id) } : { name: 'Delete it from the board — its claude ends, the transcript stays', sub: of, fn: () => removeChat(s.id, $('#shead')) },
         { name: s.muted ? 'Unmute it' : 'Mute it — no banner, sound or count, questions too', sub: of, fn: () => setMuted(s.id, !s.muted) },
-        ...(prioOn() ? [{ name: inPrio(s) ? 'Out of Top priority' : 'Top priority — the section up top, in your order', sub: of, hint: '⌥⌘I', fn: () => prioPut(s, !inPrio(s), null, $('#shead')) }] : []),   // 2026-11-24, round XXX's A4
+        ...(prioOn() ? [{ name: inPrio(s) ? 'Unpin it' : 'Pin it — the section up top, in your order', sub: of, hint: '⌥⌘I', fn: () => prioPut(s, !inPrio(s), null, $('#shead')) }] : []),   // 2026-11-24, round XXX's A4
         ...(asking(s) ? [] : [asleep(s) ? { name: 'Wake it now', sub: ` — snoozed ${snoozeSay(s.snooze)}`, fn: () => snoozeIt(s, { undo: true }, $('#shead')) } : { name: 'Snooze it…', sub: ' — till a time, or till something happens', hint: '⌥⌘S', fn: () => setTimeout(() => snoozeMenu(s), 0) }]),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
@@ -8040,7 +8042,7 @@ const toolName = n => {
     ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
-    ['⌥⌘U', 'Go to', 'Top priority only, and every chat again', 'the list is the section alone, its tab atop it says what is hidden · the rest is quiet as when fishing, its questions still ring · the funnel\'s third row · with the section on', ['alt:KeyU']],
+    ['⌥⌘U', 'Go to', 'the pinned only, and every chat again', 'the list is the pinned alone, its tab atop it says what is hidden · the rest is quiet as when fishing, its questions still ring · the funnel\'s third row · with the section on', ['alt:KeyU']],
     ['⌥⌘⏎', 'Go to', 'the next thing that wants you', 'the question waiting longest, then a PR at your move, then what to read · again, the one after · the status bar says which', ['alt:Enter']],
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘X', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyX']],
@@ -8056,8 +8058,8 @@ const toolName = n => {
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several — from one of them, the next selected, and ⌥⌘G once more fills the column · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘J', 'This chat', 'its timeline, on a tab — the chat and its PRs in one order', 'your prompts, each of Claude\'s turns as a line, the PRs\' events between them, a lane per PR · the Now bar says each one\'s round · a turn clicked shows it in the transcript · again from it: its half fills the column, and back', ['alt:KeyJ']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
-    ['⌥⌘I', 'This chat', 'into Top priority, or out of it', 'the section atop the list, in your order, that nothing moves but you · Settings › Chat list switches it on · a card\'s right-click and the header\'s ··· too', ['alt:KeyI']],
-    ['⌥⌘⇧↑↓', 'This chat', 'its card a place up / down in Top priority', 'a card\'s right-click: to the top, to the bottom · or drag it between two cards of the section', ['shift:ArrowUp', 'shift:ArrowDown']],
+    ['⌥⌘I', 'This chat', 'pin it, or unpin it', 'the section atop the list, in your order, that nothing moves but you · a card\'s pin, its right-click and the header\'s ··· too · Settings › Chat list can take the section off', ['alt:KeyI']],
+    ['⌥⌘⇧↑↓', 'This chat', 'its card a place up / down among the pinned', 'a card\'s right-click: to the top, to the bottom · or drag it between two pinned cards', ['shift:ArrowUp', 'shift:ArrowDown']],
     ['⌥⌘S', 'This chat', 'snooze it — till a time, or till something happens', '1–9 pick · it waits in Snoozed, counted nowhere, and comes back at the top of its lane, marked back · a question from it or a word of yours wakes it · Settings › Chat list says when mornings start', ['alt:KeyS']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page goes, VS Code Web once no editor is open in it (its ⌘W closes them first) · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
@@ -8315,14 +8317,14 @@ const toolName = n => {
     const was = state.priority; state.priority = ids; renderBoard();
     if (say) $('#prioSay').textContent = say;
     try { state.priority = (await api('PUT', '/api/priority', { ids })).priority || ids; }
-    catch (e) { state.priority = was; note($('#slist'), `Top priority not kept: ${e.message}`, true); }
+    catch (e) { state.priority = was; note($('#slist'), `Not pinned: ${e.message}`, true); }
     renderBoard();
   }
   function secList() {
     const p = prefs.project === ALL ? null : projectStub(prefs.project);
     return state.priority.map(id => state.sessions.get(id)).filter(s => s && visible(s) && !asleep(s) && (!p || inProject(s, p)));
   }
-  const prioOff = anchor => (note(anchor || $('#slist'), 'Top priority is off — Settings › Chat list switches it on', true), false);
+  const prioOff = anchor => (note(anchor || $('#slist'), 'The pinned section is off — Settings › Chat list switches it on', true), false);
   /** `s` into the order before the chat `before` (null: at its end), or out of it. */
   function prioPut(s, on, before = null, anchor = null) {
     if (!s) return false;
@@ -8331,19 +8333,19 @@ const toolName = n => {
     if (on) { const i = before ? ids.indexOf(before) : -1; ids.splice(i < 0 ? ids.length : i, 0, s.id); }
     const shown = on ? secList().map(x => x.id).filter(id => id !== s.id) : [];
     if (on) { const i = before ? shown.indexOf(before) : -1; shown.splice(i < 0 ? shown.length : i, 0, s.id); }
-    setPriority(ids, on ? `${s.title}, ${shown.indexOf(s.id) + 1} of ${shown.length} in Top priority` : `${s.title}, out of Top priority`);
+    setPriority(ids, on ? `${s.title}, pinned, ${shown.indexOf(s.id) + 1} of ${shown.length}` : `${s.title}, unpinned`);
     return true;
   }
   /** One place up or down among the section's cards (d ±1), or to its top or bottom (d ±Infinity). */
   function prioMove(s, d, anchor = null) {
     if (!prioOn()) return prioOff(anchor);
     const list = secList(), i = list.indexOf(s);
-    if (i < 0) return (note(anchor || $('#slist'), 'Not in Top priority — ⌥⌘I puts it there', true), false);
+    if (i < 0) return (note(anchor || $('#slist'), 'Not pinned — ⌥⌘I pins it', true), false);
     const j = Math.max(0, Math.min(list.length - 1, d === Infinity ? list.length - 1 : d === -Infinity ? 0 : i + d));
     if (j === i) { $('#prioSay').textContent = `${s.title}, already ${i ? 'last' : 'first'}`; return true; }
     return prioPut(s, true, d < 0 ? list[j].id : list[j + 1]?.id || null, anchor);
   }
-  const clearDone = () => setPriority(state.priority.filter(id => !state.sessions.get(id)?.done), 'The ticked chats are out of Top priority');
+  const clearDone = () => setPriority(state.priority.filter(id => !state.sessions.get(id)?.done), 'The ticked chats are unpinned');
   /** A snooze sent (`{until} | {on, pr}`), or `{undo: true}`: awake now. */
   async function snoozeIt(s, body, anchor = null) {
     const at = anchor?.isConnected ? anchor : cardNodes.get(s.id)?.el?.isConnected ? cardNodes.get(s.id).el : $('#shead');
@@ -9097,7 +9099,7 @@ const toolName = n => {
     if (e.target.closest('#stitle .ask')) { const s = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0]; if (s) openSession(s.id, { locate: true }); return; }
     if (e.target.closest('#stitle .t')) { if (!prioFocus()) pickOpen('project'); return; }
     if (e.target.closest('#slist > .gsep.others')) { showAll(); return; }
-    if (e.target.closest('#slist > .gsep.lane.prio .clr')) { clearDone(); return; }   // Top priority's ticked chats out (2026-11-24, round XXX's D2)
+    if (e.target.closest('#slist > .gsep.lane.prio .clr')) { clearDone(); return; }   // the ticked pinned chats unpinned (2026-11-24, round XXX's D2)
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
@@ -9567,8 +9569,8 @@ const toolName = n => {
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       `<button class="hmi${s.muted ? ' on' : ''}" id="muteBtn" aria-pressed="${!!s.muted}" title="No banner, sound or count from this chat, questions too, till you unmute it — its card says so and still shows what it does">${ICON.bellOff}<span>mute notifications</span><span class="k">${s.muted ? 'on' : 'off'}</span></button>`,
-      // Top priority, in or out, and a snooze (2026-11-24, round XXX's A4, S4)
-      prioOn() ? `<button class="hmi${inPrio(s) ? ' on' : ''}" id="prioBtn" aria-pressed="${inPrio(s)}" title="${inPrio(s) ? 'Out of Top priority' : 'Into Top priority, at its end — the section atop the list, in your order'}">${ICON.prio}<span>top priority</span><span class="k">${inPrio(s) ? 'on' : '⌥⌘I'}</span></button>` : '',
+      // pinned or not, and a snooze (2026-11-24, round XXX's A4, S4)
+      prioOn() ? `<button class="hmi${inPrio(s) ? ' on' : ''}" id="prioBtn" aria-pressed="${inPrio(s)}" title="${inPrio(s) ? 'Unpin it' : 'Pin it — the section atop the list, in your order'}">${ICON.prio}<span>pin</span><span class="k">${inPrio(s) ? 'on' : '⌥⌘I'}</span></button>` : '',
       asking(s) ? '' : `<button class="hmi${asleep(s) ? ' on' : ''}" id="zzBtn" title="${asleep(s) ? esc(`Snoozed ${snoozeSay(s.snooze)} — click to wake it now`) : 'Put it away till a time, or till something happens — it comes back at the top of its lane'}">${ICON.moon}<span>${asleep(s) ? 'wake it now' : 'snooze…'}</span><span class="k">${asleep(s) ? 'snoozed' : '⌥⌘S'}</span></button>`,
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.tick}<span>done for good</span><span class="k"></span></button>` : '',
       s.removed ? `<button class="hmi" id="undelBtn" title="Its card back on the list">${ICON.tick}<span>put it back on the board</span><span class="k"></span></button>`
@@ -9788,12 +9790,12 @@ const toolName = n => {
   const unlinkUrl = (s, url) => { const el = document.querySelector(`#shead .mxs[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`); if (el) return unlinkPr(s, el); api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => note($('#shead'), `Could not take it off: ${err.message}`, true)); };
   const moveFocused = s => { const k = tabOf(s); if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0); else note($('#shead'), 'The chat stays in its half — pick a tab to move', true); };
   const clearColor = name => { colorAt = '#shead'; colorWas.set(name, projCfg(name).color ?? null); written.delete(name); previewColor(name, null); setColor(name, null); };
-  /** A card's Top priority rows: in, or out and a place up, down, to the top or the bottom — the way without a drag (WCAG 2.5.7). */
+  /** A card's pin rows: Pin, or Unpin and a place up, down, to the top or the bottom — the way without a drag (WCAG 2.5.7). */
   function prioRows(s, card) {
     if (!prioOn()) return [];
-    if (!inPrio(s)) return [{ hr: true }, { t: 'Top priority', sub: 'the section up top, in your order · ⌥⌘I', fn: () => prioPut(s, true, null, card) }];
+    if (!inPrio(s)) return [{ hr: true }, { t: 'Pin', sub: 'the section up top, in your order · ⌥⌘I', fn: () => prioPut(s, true, null, card) }];
     const list = secList(), i = list.indexOf(s), n = list.length;
-    return [{ hr: true }, { t: 'Out of Top priority', n: '⌥⌘I', fn: () => prioPut(s, false, null, card) },
+    return [{ hr: true }, { t: 'Unpin', n: '⌥⌘I', fn: () => prioPut(s, false, null, card) },
       { t: 'Move up', n: '⌥⌘⇧↑', off: i <= 0, fn: () => prioMove(s, -1, card) }, { t: 'Move down', n: '⌥⌘⇧↓', off: i < 0 || i >= n - 1, fn: () => prioMove(s, 1, card) },
       { t: 'To the top', off: i <= 0, fn: () => prioMove(s, -Infinity, card) }, { t: 'To the bottom', off: i < 0 || i >= n - 1, fn: () => prioMove(s, Infinity, card) }];
   }
@@ -10819,7 +10821,7 @@ const toolName = n => {
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     alert: a => onAlert(a),   // the harness's: an alert as the stream would bring it (2026-11-01)
-    priority: () => [...state.priority],   // Top priority's order as this page holds it (2026-11-24)
+    priority: () => [...state.priority],   // the pinned chats' order as this page holds it (2026-11-24)
     details: () => detailsText(),   // About's Copy details (2026-11-04), its text with no clipboard touched
     skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]),   // the picker's themes, each with its appearance (2026-11-01: the inks' check)
     spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length),   // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
@@ -14717,7 +14719,7 @@ const toolName = n => {
   const CD_PX = 6, CD_EDGE = 44, CD_SPEED = 18, CD_SPRING_MS = 600, CD_IN_MS = 170, CD_BACK_MS = 180;
   const CD_CONTROLS = 'button, a, input, .act, .ctk, .tmx, .tprs, .chip.agents, .agr, .prmove, .prpips, .peerin';
   const CD_HINT = 'Drop it on another chat to fold it in · esc puts it back';
-  const CD_HINT_PRIO = 'Drop it on another chat to fold it in, or between two in Top priority · esc puts it back';
+  const CD_HINT_PRIO = 'Drop it on another chat to fold it in, or among the pinned to pin it there · esc puts it back';
   const cd = { press: null, on: false, from: null, over: null, x: 0, y: 0, ghost: null, was: null, raf: 0, lane: null, springT: 0, noFold: null, place: null };
   // Top priority's places (2026-11-24, round XXX's A3, R1): with the section on, a card held over the section goes between
   // two of its cards — a card's top or bottom third, a line saying where — or folds into one, its middle third, as it does
@@ -14751,7 +14753,7 @@ const toolName = n => {
   }
   function cdPrioSay(pl) {
     const ids = pl.cards.map(c => c.dataset.id), was = secList().map(s => s.id).indexOf(cd.from);
-    return was < 0 ? `Into Top priority, ${ordinal(pl.k + 1)}` : was === pl.k ? 'Stays where it is in Top priority' : `To ${ordinal(pl.k + 1)} of ${ids.length + 1} in Top priority`;
+    return was < 0 ? `Pin it, ${ordinal(pl.k + 1)}` : was === pl.k ? 'Stays where it is' : `To ${ordinal(pl.k + 1)} of ${ids.length + 1} pinned`;
   }
   function cdPlace(measure) {
     const g = cd.ghost; if (measure) { g._w = g.offsetWidth; g._h = g.offsetHeight; }
@@ -14803,8 +14805,10 @@ const toolName = n => {
   }
   function cdLift(p, e) {
     const a = state.sessions.get(p.id), no = foldFromWhy(a);
-    if (no && !prioOn()) return note(p.card, `Not folded: ${no}`);   // with Top priority on, it comes up to be placed (2026-11-24)
+    if (no && !prioOn()) return note(p.card, `Not folded: ${no}`);   // with the pinned on, it comes up to be placed (2026-11-24)
     Object.assign(cd, { on: true, from: p.id, over: null, x: e.clientX, y: e.clientY, lane: null, noFold: no, place: null });
+    // none pinned (2026-11-25): the section comes up empty, a place to drop it, while the card is held
+    if (prioOn() && !$('#q').value.trim() && !listFilter() && !document.querySelector('#slist > .gsep.lane.prio')) { renderSessionList.zone = true; renderBoard(); }
     renderBoard.held = true; renderBoard.owed = false;
     getSelection()?.removeAllRanges();
     try { $('#slist').setPointerCapture(p.pid); } catch {}   // its release is heard off the window too, and no card under it lights or fans
@@ -14824,6 +14828,7 @@ const toolName = n => {
     cd.on = false; cancelAnimationFrame(cd.raf); cd.raf = 0; cdSpring(null);
     for (const c of cardNodes.values()) c.el.classList.remove('cdfrom', 'cdoff', 'cdover');
     document.body.classList.remove('carddrag', 'cdno');
+    if (renderSessionList.zone) { renderSessionList.zone = false; renderBoard.owed = true; }   // the empty section goes with the hand
     renderBoard.held = false; if (renderBoard.owed) { renderBoard.owed = false; renderBoard(); }
     noteMotion(from, into ? 'cardfold' : 'cardback'); if (into) haptic('levelChange');
     if (was?.isConnected) was.focus({ preventScroll: true });   // the press took the keys from a drawer; the box gives them back to it on its way out
@@ -14834,19 +14839,19 @@ const toolName = n => {
     const ms = into ? CD_IN_MS : CD_BACK_MS, fly = g.animate([{ translate: g.style.translate, scale: 1, opacity: 1 }, { translate: to, scale: into ? .3 : .96, opacity: 0 }], { duration: ms, easing: into ? 'ease-in' : EASE_OUT, fill: 'forwards', id: into ? 'cardfold' : 'cardback' });
     fly.onfinish = fly.oncancel = then; setTimeout(then, ms + 150);   // a window out of sight may never finish it
   }
-  /** Let go on a place in Top priority: the chat goes there, between the two cards the line was between. */
+  /** Let go on a place among the pinned: the chat goes there, between the two cards the line was between. */
   function cdPlaceEnd(pl) {
     const { from, ghost: g, was } = cd, s = state.sessions.get(from), vis = pl.cards.map(c => c.dataset.id);
     cd.on = false; cancelAnimationFrame(cd.raf); cd.raf = 0; cdSpring(null);
     for (const c of cardNodes.values()) c.el.classList.remove('cdfrom', 'cdoff', 'cdover');
     document.body.classList.remove('carddrag', 'cdno');
-    renderBoard.held = false; renderBoard.owed = false;
+    renderBoard.held = false; renderBoard.owed = false; renderSessionList.zone = false;
     noteMotion(from, 'cardplace'); haptic('levelChange');
     if (was?.isConnected) was.focus({ preventScroll: true });
     const ids = state.priority.filter(id => id !== from), at = vis[pl.k] ? ids.indexOf(vis[pl.k]) : vis.length ? ids.indexOf(vis.at(-1)) + 1 : ids.length;
     ids.splice(at < 0 ? ids.length : at, 0, from);
     const shown = [...vis]; shown.splice(pl.k, 0, from);
-    if (s) setPriority(ids, `${s.title}, ${pl.k + 1} of ${shown.length} in Top priority`); else renderBoard();
+    if (s) setPriority(ids, `${s.title}, pinned, ${pl.k + 1} of ${shown.length}`); else renderBoard();
     if (REDUCED.matches) return g.remove();
     const fade = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CD_BACK_MS, easing: EASE_OUT, fill: 'forwards', id: 'cardplace' });
     fade.onfinish = fade.oncancel = () => g.remove(); setTimeout(() => g.remove(), CD_BACK_MS + 150);

@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25 — Top priority is Pinned, on, with a pin on the card
+
+Ricardo, after trying round XXX: *"we should have a pin also next to snooze (the 3 buttons should be closer) and just have
+a pinned section on top, that I can drag to re-order"*.
+
+* **Pinned, on by default**: the section, the funnel's row (*Pinned only*), the focus tab, the menus (*Pin*, *Unpin*), ⌥⌘I,
+  the keys' sheet, the drag's words and Settings › Chat list (*Pinned section*) say *pin*; the code keeps `prio` and the
+  server's `priority`. `prefs.prio` is on, and on once for a board with prefs from before (`prefs.pinned`); the switch
+  stays, for whoever wants the section gone (the colleague's ask). Its head and its mark a pushpin, no longer an arrow.
+* **None pinned, no section**: on for everyone, an empty dashed line atop every list was noise. It comes up while a card is
+  held (`renderSessionList.zone`, drawn at the lift, gone on the way out), so a drag still pins the first chat; in focus
+  it stays, saying how to pin.
+* **The pin is a card part, on**, beside the moon (the same `cardPartsSeen` 4 step, once); the two marks and the ✓ stand
+  2 px apart under the pointer, not the row's 7 (`.top .ax` 20 px, `margin-right: -5px`). No card part is an *extra* any
+  more: the 4th field went. The numbers, the tally and Clear done stay. → `pinned.mjs` (was `top-priority.mjs`),
+  `card-parts.mjs`.
+
 ## Decisions of 2026-11-25 — the snooze's mark on a card, on
 
 Ricardo: *"make the snooze button on card ON by default"*. The moon under the pointer (round XXX's S5) is a card part

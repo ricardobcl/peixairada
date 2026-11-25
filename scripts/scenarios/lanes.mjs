@@ -76,7 +76,7 @@ export default async function (ctx) {
     await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(t)})).click()`); };
   await ctx.evaluate(`document.querySelector('#fBtn').click()`);
   out.menu = await menu();
-  ctx.assert.deepEqual(out.menu, ['Every chat ✓', 'Your move0', 'New replies1'], 'the funnel: every chat, or one of the two, each counted');
+  ctx.assert.deepEqual(out.menu, ['Every chat ✓', 'Your move0', 'New replies1', 'Pinned only0'], 'the funnel: every chat, or one of the three, each counted (the pinned on by default, 2026-11-25)');
   await ctx.evaluate(`document.querySelector('#ctxm').close()`);
   await choose('New replies');
   await ctx.waitFor(`document.querySelector('#fBtn.on')`, { what: 'the funnel on' });

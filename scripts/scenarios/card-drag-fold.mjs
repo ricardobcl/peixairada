@@ -4,13 +4,14 @@
 // would do, or why not; Esc, its own card and nothing all put it back, and the release's click opens nothing; the list
 // stands still under the hand and draws what came on the way out; a chat at work does not come up; the ends scroll and a
 // shut lane's head held on opens; letting go asks (the box, its Fold grey until the handoff is in) and Cancel changes
-// nothing; Fold then does what the menu's does. Reduced motion: no scale, no flight.
+// nothing; Fold then does what the menu's does. Reduced motion: no scale, no flight. The pinned section off (2026-11-25): on,
+// a held card brings it up and a chat at work comes up to be pinned — pinned.mjs's.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { makeFixture, toolLines } from '../fixture.mjs';
 
-export const meta = { server: true, fake: true, fixture: 'auto' };
+export const meta = { server: true, fake: true, fixture: 'auto', prefs: { prio: false, pinned: 1 } };
 const sid = JSON.stringify;
 
 export default async function (ctx) {

@@ -1,6 +1,7 @@
 // The project's corner tab, and the edges round it (2026-11-03, round XXI), on the prefs it was chosen on. A row's tab sits in
 // its top-left corner, its words on the title's edge and the top row on one line; a project in view changes nothing on it (2026-11-04).
-// What only the pointer shows keeps no room at rest, so the chips run to the right edge; it comes under the pointer and
+// What only the pointer shows keeps no room at rest, so the chips run to the right edge; it comes under the pointer (the ✓,
+// and the pin and the moon close by it, 2026-11-25) and
 // the row keeps its height; the ✓ stays in the keys' way. A chat with no process dims its row, not its tab; open, nothing.
 // The toolbar's tab, one shape: in the sheet's corner down to the hairline, its words level with the title — lowered at
 // the notch too; a header with no project keeps its words where they were. The lane heads and the day lines on the rows' edges.
@@ -31,7 +32,7 @@ export default async function (ctx) {
     const words = s => { const r = document.createRange(); r.selectNodeContents(c.querySelector(s)); return r.getBoundingClientRect().left; };
     const squares = c.querySelectorAll('.tmx .mxs'), last = squares[squares.length - 1]?.getBoundingClientRect();
     return { card: box(), top: box('.top'), tab: box('.top .repo'), tabWords: c.querySelector('.top .repo') && words('.top .repo'), titleWords: words('.title'), title: box('.title'), trow: box('.trow'), titleRoom: parseFloat(getComputedStyle(c.querySelector('.title')).marginRight),
-      act: box('.act'), time: box('.time'), where: box('.chip.elsewhere'), tmx: box('.tmx'), lastSquare: last ? last.right : null, ymove: box('.ymove'), trowEnd: [...c.querySelectorAll('.trow > *')].filter(e => e.getClientRects().length).pop().getBoundingClientRect().right };
+      act: box('.act'), pin: box('.top .ax.pin'), zz: box('.top .ax.zz'), time: box('.time'), where: box('.chip.elsewhere'), tmx: box('.tmx'), lastSquare: last ? last.right : null, ymove: box('.ymove'), trowEnd: [...c.querySelectorAll('.trow > *')].filter(e => e.getClientRects().length).pop().getBoundingClientRect().right };
   })(document.querySelector('#slist > .card[data-id="${id}"]'))`);
   const point = (x, y) => ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
   const over = async c => { await point(c.l + c.w / 2, c.b - 4); await ctx.sleep(250); };
@@ -86,7 +87,9 @@ export default async function (ctx) {
     const LH = out.liveHover = await read(live.id);
     ctx.assert.equal(LH.act.w, 22, 'the ✓ comes');
     near(LH.act.r, R, 'on the right edge');
-    near(LH.where.r, R - 22 - 7, '>_ pushed left of it');
+    near(LH.zz.r, LH.act.l - 2, 'the moon beside it, 2 px off (2026-11-25)');
+    near(LH.pin.r, LH.zz.l - 2, 'the pin beside the moon');
+    near(LH.where.r, LH.pin.l - 7, '>_ pushed left of the three');
     ctx.assert.ok(LH.time, 'the age comes');
     near(LH.trowEnd, R, 'the title’s row still ends on the right edge');
     ctx.assert.equal(LH.card.h, L.card.h, 'the row keeps its height');
