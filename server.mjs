@@ -5453,8 +5453,11 @@ function gitIn(args, timeout = 30_000, env = {}) {
 const CHANGED_MAX = 20;   // the changed files named to the page; `dirty` counts them all
 async function readCheckout() {
   const top = await gitIn(['rev-parse', '--show-toplevel']).catch(() => '');
-  let here = UPDATE_DIR; try { here = realpathSync(UPDATE_DIR); } catch {}
-  if (!top || realpathSync(top) !== here) return { checkout: false };
+  // both as the disk spells them (2026-11-25): node's own realpath keeps a path's case as typed, git's toplevel has the
+  // disk's, and a board run from ~/Code/peixairada with ~/code on disk was no checkout to itself
+  let here = UPDATE_DIR; try { here = realpathSync.native(UPDATE_DIR); } catch {}
+  let there = top; try { there = top && realpathSync.native(top); } catch {}
+  if (!top || there !== here) return { checkout: false };
   const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null, sign: null, commits: [], rewritten: false, fresh: 0 };
   // the board's version at that commit (2026-10-21, lib/version.mjs): counted once per HEAD
   if (co.head === upd.head && upd.version) co.version = upd.version;
