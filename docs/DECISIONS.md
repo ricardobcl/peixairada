@@ -17,12 +17,15 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   halves are as they were — every halves scenario ran unchanged before the setting did anything.
 * **What a new terminal does** (`openNewTab` → `tileTerm`; zsh and vim only — pages, the changes, the timeline and
   the agents stay tabs, so nothing crosses the bridge that did not): an empty half or tile takes it, the keys' first;
-  not split yet, it is the first split as ever; else the tile the keys are in is cut in two along `stacked`, the new
-  terminal in the second part.
-* **The direction is the chat's switch.** ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 still mean "turn first": on tiles the digit is the
-  tile's place in the tree's order and the modifier turns the split that tile is half of, and sets the next one; the
-  strip's turn button does the same for its tile. No new keys: ⌥⌘←→ and a click reach a third tile and on, as ⌘3–⌘9
-  would have meant Keys.swift's forwarder and `npm run shell`.
+  not split yet, it is the first split; else the tile the keys are in is cut in two, the new terminal in the second
+  part.
+* **The direction is the tile's shape** (later the same day: *"the split direction should be dynamic. lets say and
+  switch back and forth. like this https://github.com/nwg-piotr/autotiling"*): taller than wide, one over the other,
+  else side by side — autotiling's rule, by the tile's box in pixels — so the cuts take turns as the tiles shrink; the
+  first split reads the column the same way. The chat's switch first decided it, which made every cut go one way.
+  ⌘1 / ⌘2 and ⌥⌘1 / ⌥⌘2 still turn a split after: on tiles the digit is the tile's place in the tree's order and the
+  modifier the layout of the split that tile is half of; the strip's turn button the same for its tile. No new keys:
+  ⌥⌘←→ and a click reach a third tile and on, as ⌘3–⌘9 would have meant Keys.swift's forwarder and `npm run shell`.
 * **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out
   as a CSS grid whose lines are every cut it makes (`tileLayout`) — each tile stays a direct child of `#groups`, so
   every rule that reads `#groups > .grp`, and the floating header's padding of a split, reach it. Groups past the two

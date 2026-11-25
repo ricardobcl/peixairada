@@ -162,6 +162,10 @@ function moveTab(s, k, g) {
  *  showing, and a new tab goes into the half the chat is not in — so it never takes the chat's place. */
 function openNewTab(s, k) {
   if (prefs.autoTile && isShellTab(k) && tileTerm(s, k)) return;
+  if (!isSplit(s) && prefs.autoTile && isShellTab(k)) {
+    if (tallOf('#groups')) stacked.add(s.id);
+    else stacked.delete(s.id);
+  } // the first split too, by the column's shape
   if (!isSplit(s)) splitChat(s, true);
   homes.get(s.id).set(k, besideChat(s));
   setTab(s, k);
@@ -176,8 +180,14 @@ function besideChat(s) {
 }
 // A terminal a tile of its own (2026-11-25, prefs.autoTile; zsh and vim — pages, the changes, the timeline and the
 // agents stay tabs): an empty half or tile takes it, the one the keys are in first; else the tile the keys are in is
-// cut in two the way the chat's split stands (`stacked`), the new terminal in its second part. Not split yet, it is the
-// first split as ever (false: openNewTab makes it). A part under TILE_MIN is no tile: false, a tab beside the chat.
+// cut in two along its longer side (2026-11-25, later: as i3's autotiling — taller than wide, one over the other,
+// else side by side, so the cuts take turns as the tiles shrink), the new terminal in its second part. Not split yet,
+// it is the first split, by the column's shape (false: openNewTab makes it). ⌘2 / ⌥⌘2 still turn a split after.
+// A part under TILE_MIN is no tile: false, a tab beside the chat.
+const tallOf = sel => {
+  const r = $(sel).getBoundingClientRect();
+  return r.height > r.width;
+};
 const TILE_MIN = { cols: 24, rows: 6 }; // the least a tile is for: a half side by side is under 80 already
 function tileTerm(s, k) {
   if (!isSplit(s)) return false;
@@ -189,11 +199,13 @@ function tileTerm(s, k) {
     setTab(s, k);
     return true;
   }
-  const d = stacked.has(s.id) ? 'col' : 'row',
-    at = gs.includes(focusG) ? focusG : gs[0];
+  const at = gs.includes(focusG) ? focusG : gs[0],
+    d = tallOf(GEL[at].grp) ? 'col' : 'row';
   if (!roomFor(at, d)) return false;
-  if (!trees.has(s.id))
-    trees.set(s.id, { d, r: (d === 'col' ? prefs.stackAt : prefs.splitAt) || 0.5, a: { g: 0 }, b: { g: 1 } }); // the halves as they stand
+  if (!trees.has(s.id)) {
+    const h = stacked.has(s.id) ? 'col' : 'row';
+    trees.set(s.id, { d: h, r: (h === 'col' ? prefs.stackAt : prefs.splitAt) || 0.5, a: { g: 0 }, b: { g: 1 } });
+  } // the halves as they stand
   const have = leavesOf(trees.get(s.id));
   let g = 1;
   while (have.includes(g)) g++;

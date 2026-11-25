@@ -1,8 +1,9 @@
-// Tile new terminals (2026-11-25, Settings › Terminal, prefs.autoTile): the first terminal splits the column as ever; each
-// one after it cuts the tile the keys are in in two — side by side, or one over the other once ⌥⌘2 has turned the chat —
-// the new terminal in the second part, so every terminal stays in view. What this keeps honest: the tree the tiles are
-// (state().tiles) and where each tile lands; every tile's terminal attached and fitted to its own body; ⌥⌘2 turning the
-// split the keys' tile is half of, and the next one; the divider dragged into the tree; a terminal that exits taking
+// Tile new terminals (2026-11-25, Settings › Terminal, prefs.autoTile): the first terminal splits the column by its shape; each
+// one after it cuts the tile the keys are in in two along its longer side, as i3's autotiling (2026-11-25, later): a
+// tall tile one over the other, a wide one side by side, so the cuts take turns; the new terminal in the second part.
+// What this keeps honest: the tree the tiles are
+// (state().tiles) and where each tile lands; every tile's terminal attached and fitted to its own body; ⌘2 turning the
+// split the keys' tile is half of; the divider dragged into the tree; a terminal that exits taking
 // its tile with it; the tiles across a reload; ⌘0 back to one half, nothing ended; and the switch off: today's tabs.
 export const meta = { server: true, fake: true, fixture: 'auto', prefs: { autoTile: true } };
 
@@ -41,54 +42,37 @@ export default async function (ctx) {
   await ctx.key('KeyC');
   await ctx.waitPrompt();
 
-  // the first zsh splits the column as without the setting: two halves, no tree
+  // the first zsh splits the column by its shape: wider than tall, side by side — two halves, no tree
   await ctx.key('KeyT');
   await ctx.waitFor(
     `JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`,
     { what: 'the zsh in the second half' },
   );
   ctx.assert.equal(await tiles(ctx), null, 'two halves are no tree');
+  ctx.assert.equal(await ctx.peix('state().stacked'), false, 'the wide column split side by side');
   await attached(ctx, [0, 1]);
 
-  // ⌘T from the zsh: its half is cut side by side, the new zsh in the right part — three terminals in view
+  // ⌘T from the zsh: its half is taller than wide, so it is cut one over the other
   await ctx.cmd('KeyT');
   await ctx.waitFor(`window.peix.state().tiles && window.peix.term(2).ws === 1`, { what: 'a third tile, attached' });
   let t = await tiles(ctx);
   ctx.assert.deepEqual(
     t,
-    { d: 'row', r: 0.5, a: { g: 0 }, b: { d: 'row', r: 0.5, a: { g: 1 }, b: { g: 2 } } },
-    "the zsh's half cut in two, side by side",
+    { d: 'row', r: 0.5, a: { g: 0 }, b: { d: 'col', r: 0.5, a: { g: 1 }, b: { g: 2 } } },
+    'the tall half cut one over the other',
   );
   ctx.assert.equal(await ctx.peix('state().focusG'), 2, 'the keys in the new tile');
   await prompt(ctx, 2);
   let b = await Promise.all([0, 1, 2].map(g => box(ctx, g)));
   ctx.assert.ok(
-    right(b[0], b[1]) && right(b[1], b[2]) && Math.abs(b[1].w - b[2].w) <= 2,
-    `three across: ${JSON.stringify(b)}`,
-  );
-  ctx.assert.ok(Math.abs(b[0].w - (b[1].w + b[2].w)) <= 8, 'claude keeps its half');
-  await fits(ctx, [0, 1, 2]);
-  await ctx.shot('three');
-
-  // ⌥⌘2: the second tile, and the split it is half of turned one over the other — and the next split too
-  const ids = await Promise.all([0, 1, 2].map(g => ctx.peix(`term(${g}).id`)));
-  await ctx.key('Digit2');
-  await ctx.waitFor(`window.peix.state().tiles?.b.d === 'col'`, { what: 'the right half stacked' });
-  ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌥⌘2 is the second tile');
-  ctx.assert.equal((await tiles(ctx)).d, 'row', 'the split over it stays side by side');
-  b = await Promise.all([0, 1, 2].map(g => box(ctx, g)));
-  ctx.assert.ok(
     right(b[0], b[1]) && below(b[1], b[2]) && Math.abs(b[1].x - b[2].x) <= 1,
     `one over the other on the right: ${JSON.stringify(b)}`,
   );
-  ctx.assert.deepEqual(
-    await Promise.all([0, 1, 2].map(g => ctx.peix(`term(${g}).id`))),
-    ids,
-    'the same terminals in the same tiles',
-  );
+  ctx.assert.ok(b[2].w > b[2].h, `the new tile is wider than tall (${b[2].w}×${b[2].h})`);
   await fits(ctx, [0, 1, 2]);
+  await ctx.shot('three');
 
-  // ⌘T from there: stacked now, so the second tile is cut one over the other
+  // ⌘T from that wide tile: cut side by side — the cuts take turns
   await ctx.cmd('KeyT');
   await ctx.waitFor(`JSON.stringify(window.peix.state().tiles).includes('"g":3') && window.peix.term(3).ws === 1`, {
     what: 'a fourth tile, attached',
@@ -96,12 +80,15 @@ export default async function (ctx) {
   t = await tiles(ctx);
   ctx.assert.deepEqual(
     t.b,
-    { d: 'col', r: 0.5, a: { d: 'col', r: 0.5, a: { g: 1 }, b: { g: 3 } }, b: { g: 2 } },
-    'the second tile cut one over the other',
+    { d: 'col', r: 0.5, a: { g: 1 }, b: { d: 'row', r: 0.5, a: { g: 2 }, b: { g: 3 } } },
+    'the wide tile cut side by side',
   );
   await prompt(ctx, 3);
-  b = await Promise.all([1, 3, 2].map(g => box(ctx, g)));
-  ctx.assert.ok(below(b[0], b[1]) && below(b[1], b[2]), `three stacked on the right: ${JSON.stringify(b)}`);
+  b = await Promise.all([1, 2, 3].map(g => box(ctx, g)));
+  ctx.assert.ok(
+    below(b[0], b[1]) && right(b[1], b[2]) && Math.abs(b[1].y - b[2].y) <= 1,
+    `the bottom right in two, side by side: ${JSON.stringify(b)}`,
+  );
   await fits(ctx, [0, 1, 2, 3]);
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelectorAll('#groups > .tdiv:not([hidden])').length`),
@@ -109,6 +96,20 @@ export default async function (ctx) {
     'a divider a split',
   );
   await ctx.shot('four');
+
+  // ⌘2: the second tile, and the split it is half of turned side by side — the same terminals, nothing re-attached
+  const ids = await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`)));
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`window.peix.state().tiles?.b.d === 'row'`, { what: 'the right half turned side by side' });
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌘2 is the second tile');
+  b = await Promise.all([0, 1, 2, 3].map(g => box(ctx, g)));
+  ctx.assert.ok(right(b[0], b[1]) && right(b[1], b[2]) && right(b[2], b[3]), `four across: ${JSON.stringify(b)}`);
+  ctx.assert.deepEqual(
+    await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`))),
+    ids,
+    'the same terminals in the same tiles',
+  );
+  await fits(ctx, [0, 1, 2, 3]);
 
   // the root's divider dragged to 30 %: claude's part narrows, the tree keeps it
   const g = await box(ctx, 0),
@@ -125,7 +126,7 @@ export default async function (ctx) {
   await ctx.reload();
   await ctx.openChat(chat.id);
   await attached(ctx, [0, 1, 2, 3]);
-  ctx.assert.deepEqual(leaves(await tiles(ctx)), [0, 1, 3, 2], 'the tiles came back');
+  ctx.assert.deepEqual(leaves(await tiles(ctx)), [0, 1, 2, 3], 'the tiles came back');
 
   // ⌥⌘W on the fourth: its zsh ends, and its tile with it — the one it was cut from takes the room
   await ctx.evaluate(
@@ -134,7 +135,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().focusG === 3`, { what: 'the keys in the fourth tile' });
   await ctx.key('KeyW');
   await ctx.waitFor(
-    `JSON.stringify(window.peix.state().tiles?.b) === JSON.stringify({ d: 'col', r: .5, a: { g: 1 }, b: { g: 2 } })`,
+    `JSON.stringify(window.peix.state().tiles?.b) === JSON.stringify({ d: 'row', r: .5, a: { g: 1 }, b: { g: 2 } })`,
     { what: 'the fourth tile folded' },
   );
   ctx.assert.equal(await box(ctx, 3), null, 'its tile hidden');

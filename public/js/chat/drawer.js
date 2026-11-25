@@ -65,8 +65,8 @@ const isSplit = s => !!s && splits.has(s.id);
 const splitNow = () => splits.has(state.current);
 const stackNow = () => splitNow() && stacked.has(state.current) && !trees.has(state.current);
 // …and a chat past two halves is a tree of tiles (2026-11-25, prefs.autoTile): each new terminal splits the tile the
-// keys are in, side by side or one over the other as the chat's split stands (`stacked`: ⌘2 / ⌥⌘2, the turn button),
-// and a tile closed gives its room to the one it was split from. A node is a leaf { g } — a group: GEL[g], terms[g] —
+// keys are in along its longer side (tileTerm; ⌘2 / ⌥⌘2 and the turn button turn a split after), and a tile closed
+// gives its room to the one it was split from. A node is a leaf { g } — a group: GEL[g], terms[g] —
 // or a split { d: 'row' | 'col', r, a, b }, `r` the first part's share. Made only by the setting, so a chat with none
 // is the two halves as they were; it goes with the split (unsplit).
 const trees = new Map(); // chat id → node
