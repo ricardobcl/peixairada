@@ -26,7 +26,7 @@ extension AppDelegate {
       return nil
     }
   }
-  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ⏎ Next, ↑ ↓ for
+  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ↑ ↓ for
   // the chat above or below, ← → for the tab beside, 1 and 2 for the top and bottom halves of a stacked chat column
   // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout), W to close the tab the
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to hide the chat
@@ -46,7 +46,6 @@ extension AppDelegate {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
     let ch = e.charactersIgnoringModifiers?.lowercased()
     if held == [.command, .option] {
-      if e.keyCode == 36 { return ("Enter", "altcmd") }   // ⌥⌘⏎, Next (2026-11-01)
       if e.keyCode == 126 { return ("ArrowUp", "altcmd") }
       if e.keyCode == 125 { return ("ArrowDown", "altcmd") }
       if e.keyCode == 123 { return ("ArrowLeft", "altcmd") }

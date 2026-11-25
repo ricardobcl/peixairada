@@ -601,8 +601,8 @@ async function openSession(id, { locate = false } = {}) {
   // came put its id back over the next one's, and a link to that one was then no change of hash)
   if (location.hash !== '#' + id + tvHash(id)) history.replaceState(null, '', '#' + id + tvHash(id)); // and the timeline's narrow beside it (2026-10-17)
   const s0 = state.sessions.get(id);
-  // a deep link, a notification or Next can point at a chat outside the project in view: the filter lets go, and ⌥⌘P ⌥⌘P
-  // brings it back. It never takes a value you did not give it (2026-11-04, round XXV; it moved to the chat's folder, in silence).
+  // a deep link, a notification or the bar's count can point at a chat outside the project in view: the filter lets go,
+  // and ⌥⌘P ⌥⌘P brings it back. It never takes a value you did not give it (2026-11-04, round XXV; it moved to the chat's folder, in silence).
   if (s0 && !inProject(s0, projectStub(prefs.project))) scopeTo(ALL);
   renderBoard();
   if (locate && s0) {

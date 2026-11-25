@@ -507,11 +507,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `updatePlaybackRate`); two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups**; `fishAt` reads the swim's
   clock, never a rect; `feed` a frame loop only while a bubble is out; `peix.state().swim`. → `status-bar.mjs`,
   `small-motions.mjs`.
-* **Next is the queue** (2026-11-01; ⌥⌘⏎, `.seg.nx`, `nextQueue`, `hotNext`): questions by longest wait
-  (`askedAt`, `byWait`), then what to read, oldest first: a fixed order, only on a press, never a lane. **No PR move on
-  the status bar** (2026-11-25). **Red on the bar means asking**: a meter past 90 % is the ink and a `!` (`hotInk`,
-  `hotMark`). **A mute shows** (`muteSeg`, `setNotify`). → `next-verb.mjs`, `asking-oldest.mjs`, `bar-one-red.mjs`, `mute-shows.mjs`.
-* **The lane's news and switches** (2026-11-01): `laneNews`, a line whose click is Next: *while you were out* (`wentOut`; `peixFront`, `peixAway`)
+* **The bar's asking count** (`.seg.ask`, only while one asks): how many and the longest wait (`askedAt`, `byWait`); a
+  click walks them longest wait first (`nextAsking`). No Next, no ⌥⌘⏎, no PR move on the bar (2026-11-25). **Red on the
+  bar means asking**: a meter past 90 % is the ink and a `!` (`hotInk`, `hotMark`). **A mute shows** (`muteSeg`,
+  `setNotify`). → `asking-oldest.mjs`, `bar-one-red.mjs`, `mute-shows.mjs`.
+* **The lane's news and switches** (2026-11-01): `laneNews`, a line a click puts away: *while you were out* (`wentOut`; `peixFront`, `peixAway`)
   and *gone fishing*'s catch (`fishing`; `onAlert` holds reply and pr). Off by default: a fish per chat (`prefs.laneSchool`) and the seabed (`prefs.laneBed`).
   → `while-out.mjs`, `gone-fishing.mjs`, `lane-school.mjs`, `lane-seabed.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming

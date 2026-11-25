@@ -568,13 +568,19 @@ function muteSeg() {
     `<button class="seg mute" title="Notifications are off${h ? ` for ${h} h` : ''}: chats still count here, no banner comes. Click to turn them on">${ICON.bellOff}muted${h ? ` · ${h}h` : ''}</button>`,
   ];
 }
+// The chats asking you, one after another from the one open, longest wait first (the bar's count, 2026-10-12)
+function nextAsking() {
+  const list = [...state.sessions.values()].filter(s => visible(s) && askingLoud(s)).sort(byWait);
+  if (!list.length) return;
+  const i = list.findIndex(s => s.id === state.current);
+  openSession(list[(i + 1) % list.length].id, { locate: true });
+}
 function renderBar() {
   if (!state.snapshots) return;
   const all = [...state.sessions.values()],
     n = f => all.filter(f).length;
   const ask = n(askingLoud);
-  const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(askingLoud).map(askedAt))) : '',
-    nx = nextQueue()[0]; // the longest wait (2026-11-01, round XIX's S4)
+  const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(askingLoud).map(askedAt))) : ''; // the longest wait (2026-11-01, round XIX's S4)
   const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
   // the connection is the fish alone (2026-10-27; *connected* beside it before), its colour the state: green on the
   // stream, amber belly-up while it tries again, red when the server turned it away (the lock's) — the words out of sight
@@ -587,8 +593,13 @@ function renderBar() {
     `<button class="seg conn${link[0]}${bar.back ? ' back' : ''}" title="${link[2]} — click for the About box">${FISH_LOGO()}<span class="vh">${link[1]}</span></button>`,
     // the live chats and the drawers and shells went (2026-10-11, later); what waits on you and what is watching stay,
     // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before); what is
-    // watching is the card's mark and its count (2026-10-27), the word out of sight
-    nextSeg(nx, ask, askWait),
+    // watching is the card's mark and its count (2026-10-27), the word out of sight. Next, which named what to read too,
+    // went (2026-11-25): the questions' count is back on its own.
+    ...(ask
+      ? [
+          `<button class="seg ask" title="Chats waiting on your answer${askWait ? `, the longest ${askWait}` : ''} — a click opens the next one, longest wait first"><em>${rn('asking', ask)} asking${askWait ? ` · ${askWait}` : ''}</em></button>`,
+        ]
+      : []),
     ...muteSeg(),
     ...(mons
       ? [
@@ -712,8 +723,8 @@ $('#sbar').addEventListener('click', e => {
     setNotify(true);
     return;
   }
-  if (e.target.closest('.seg.nx')) {
-    hotNext();
+  if (e.target.closest('.seg.ask')) {
+    nextAsking();
     return;
   } // (2026-10-12) the count opens the chats it counts, one after another
   const upg = e.target.closest('.seg.upg');

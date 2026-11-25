@@ -152,22 +152,6 @@
 #sbar .seg.ask {
   cursor: pointer;
 }
-#sbar .seg.nx.none {
-  color: var(--muted);
-}
-#sbar .seg.nx .nxw {
-  color: var(--ink);
-  font-weight: 600;
-  max-width: 220px;
-  overflow: hidden;
-}
-#sbar .seg.nx .nxw.over {
-  -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent);
-  mask-image: linear-gradient(90deg, #000 86%, transparent);
-}
-#sbar .seg.nx.ask .nxw {
-  color: var(--needs);
-}
 #sbar .seg.mute {
   color: var(--working-ink);
   font-weight: 600;

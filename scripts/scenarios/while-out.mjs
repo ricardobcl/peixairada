@@ -1,6 +1,6 @@
 // While you were out (2026-11-01, round XIX's M3): back after ten minutes away, one line over the fish's lane says what
 // changed. What this checks: a short absence says nothing, a long one with nothing new says nothing, a long one says what
-// landed and whether anything asked, a question is counted, and a click on the line is Next.
+// landed and whether anything asked, a question is counted, and a click on the line puts it away, opening nothing.
 import { spawn } from 'node:child_process';
 import { appendFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -40,14 +40,14 @@ export default async function (ctx) {
   });
   await back();
   ctx.assert.equal(await line(), '2 landed·nothing asked', 'what landed, and that nothing asked');
-  // a click on it is Next, and it goes
+  // a click puts it away, and opens nothing
   const box = await ctx.evaluate(
     `(r => ({ c: r.height > 15 }))(document.querySelector('#sbSwim .lnews').getBoundingClientRect())`,
   );
   ctx.assert.ok(box.c, 'it covers the lane');
   await ctx.evaluate(`document.querySelector('#sbSwim .lnews').click()`);
-  await ctx.waitFor(`!!window.peix.state().current`, { what: 'the first of them open' });
   ctx.assert.equal(await line(), null, 'the line gone');
+  ctx.assert.equal(await ctx.evaluate(`window.peix.state().current`), null, 'no chat opened');
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelector('#ov')?.open || false`),
     false,
@@ -67,7 +67,7 @@ export default async function (ctx) {
         live: { pid: sleep.pid, startedAt: Date.now() - 3600e3, status: 'waiting', waitingFor: 'input needed' },
       },
     ]);
-    await ctx.waitFor(`document.querySelector('#sbLeft .seg.nx.ask')`, { what: 'the question', timeout: 15000 });
+    await ctx.waitFor(`document.querySelector('#sbLeft .seg.ask')`, { what: 'the question', timeout: 15000 });
     await away(30);
     await back();
     ctx.assert.match(await line(), /1 asking/, 'said in red, over the rest');

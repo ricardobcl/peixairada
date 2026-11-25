@@ -84,5 +84,5 @@ const bucket = s => (s.done ? 'done' : s.status === 'working' ? 'working' : 'rea
 // (still a ready chat — the filters see 'ready'), and a monitor or background command of its own still running.
 const asking = s => s.alive && !s.done && s.status === 'needs-input';
 // A muted chat keeps its card's truth, the red edge too, and calls you on nothing else (2026-11-02): not the Dock, the
-// title, the menu bar, Next, the bar's red, the lines of news or Zé's game.
+// title, the menu bar, the bar's red, the lines of news or Zé's game.
 const askingLoud = s => asking(s) && !s.muted;

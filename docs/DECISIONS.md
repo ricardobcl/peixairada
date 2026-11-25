@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, last of the day — no Next
+
+Ricardo, of the status bar's *▸ Read …* between the chat and the monitors: *"what this thing right of chat and left of
+monitoring in status bar?"*; told it was Next (round XIX's M1, 2026-11-01): *"remove it entirely"*.
+
+* **Gone**: the bar's button (*▸ Answer …*, *▸ Read …*, *caught up*), ⌥⌘⏎ (`HOTKEYS.Enter`, its `KEYS` row, the app's
+  forwarding of key code 36), the launcher's *Next:* row, `nextQueue`, `hotNext`. The lane's news line (*while you were
+  out*, the catch) was a click to Next: a click now puts it away and opens nothing.
+* **Kept, as before Next**: the questions' own count, red, only while a chat asks — *2 asking · 30m* —, a click opening
+  them one after another, longest wait first (`nextAsking`, 2026-10-12's, restored). It was Next's left half; without it
+  nothing on the bar would say a chat is asking, and red there means only that (round XIX's S3).
+* `next-verb.mjs` went; `asking-oldest.mjs` holds the count and its walk, `while-out.mjs` the line's click.
+
 ## Decisions of 2026-11-25, after the fish's menu — the status bar says nothing of PR moves
 
 Ricardo: *"on the status bar, remove the "your move" stuff"*.

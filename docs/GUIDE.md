@@ -27,8 +27,9 @@ setup file, and how the pictures are made.
 - 🔕 **A chat muted** — its card's right-click, ··· in its header, the launcher, or *Mute this chat* on its notification: no
   banner, sound or count from it, its questions included, until you unmute it. Its card says *muted* beside the project and
   keeps showing what the chat does; a click on the word unmutes it.
-- ▶️ **Next** — ⌥⌘⏎, or the button on the status bar: the question waiting longest, then what to read, always in that
-  order. Back after a while, a line over the fish says what changed while you were out.
+- ❓ **Asking** — while a chat waits on your answer, the status bar says how many and how long the oldest has waited; a
+  click opens them one after another, longest wait first. Back after a while, a line over the fish says what changed
+  while you were out.
 - 🎣 **Gone fishing** — a quiet you choose, from the status bar's right-click or the launcher: questions still ring, the
   rest waits 25 minutes and arrives as one. Red on the status bar only ever means a chat is asking you, and with
   notifications off a mark says so. Settings › Appearance has two trials for the fish's lane: a fish per chat, and your

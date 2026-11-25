@@ -157,15 +157,13 @@ export default async function (ctx) {
       'your move',
       '…after the tag',
     );
-    // the status bar says nothing of it (2026-11-25): Next is questions and replies alone
+    // the status bar's segments say nothing of it (2026-11-25; the list's funnel, which sits there, has its filter)
     ctx.assert.doesNotMatch(
-      await ctx.evaluate(`document.querySelector('#sbLeft .seg.nx')?.textContent ?? ''`),
-      /move|#12/i,
+      await ctx.evaluate(
+        `[...document.querySelectorAll('#sbLeft, #sbSwim, #sbRight, #sbLeft [title], #sbSwim [title], #sbRight [title]')].map(e => e.title + ' ' + e.textContent).join(' ')`,
+      ),
+      /your move|#12/i,
       'not on the status bar',
-    );
-    ctx.assert.ok(
-      await ctx.evaluate(`!document.querySelector('#sbLeft .seg.nx')?.title.includes('repo-a#12')`),
-      "nor Next's",
     );
     // …and how long ago the move came, under the pointer only, keeping its room (2026-10-14): GitHub's time of the push
     await ctx.settle();

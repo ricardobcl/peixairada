@@ -1,4 +1,4 @@
-// A line over the lane (round XIX's M3, M4): news for a few seconds, and a click is Next. Under the pointer it stays.
+// A line over the lane (round XIX's M3, M4): news for a few seconds, and a click puts it away. Under the pointer it stays.
 const LANE_NEWS_MS = 9000;
 function laneNews(html) {
   const lane = $('#sbSwim');
@@ -13,12 +13,11 @@ function laneNews(html) {
     };
   el.type = 'button';
   el.className = 'lnews';
-  el.title = 'A click, or ⌥⌘⏎, goes to the first of them';
+  el.title = 'A click puts it away';
   el.innerHTML = html;
   el.addEventListener('click', e => {
     e.stopPropagation();
     el.remove();
-    hotNext();
   });
   let t = setTimeout(go, LANE_NEWS_MS);
   el.addEventListener('pointerenter', () => clearTimeout(t));
@@ -143,26 +142,3 @@ addEventListener('blur', () => {
 addEventListener('focus', () => {
   if (!inApp) cameBack();
 });
-const NEXT_VERB = { ask: 'Answer', read: 'Read' };
-const nextName = ({ s, k }) => (k === 'ask' ? s.project : s.title);
-function hotNext() {
-  const q = nextQueue();
-  if (!q.length) {
-    note($('#sbLeft .nx') || $('#sbar'), 'Caught up: nothing wants you');
-    return true;
-  }
-  const i = q.findIndex(x => x.s.id === state.current);
-  if (q.length === 1 && i === 0) {
-    note($('#sbLeft .nx') || $('#sbar'), 'This is the only thing left');
-    return true;
-  }
-  openSession(q[(i + 1) % q.length].s.id, { locate: true });
-  return true;
-}
-/** The bar's half of it: what Next would do, and the questions' count and longest wait while any. */
-function nextSeg(nx, ask, wait) {
-  if (!nx) return `<span class="seg nx none" title="Nothing is asking you, nothing new to read">caught up</span>`;
-  const name = nextName(nx),
-    tip = `${NEXT_VERB[nx.k]}: ${nx.s.title} · ${nx.s.project}. ⌥⌘⏎ or a click goes there; again, the one after`;
-  return `<button class="seg nx ${nx.k}${ask ? ' ask' : ''}" title="${esc(tip)}">${ask ? `<em>${rn('asking', ask)} asking${wait ? ` · ${wait}` : ''}</em>` : ''}<span class="nxw${name.length > 26 ? ' over' : ''}">▸ ${esc(NEXT_VERB[nx.k])} ${esc(name)}</span></button>`;
-}
