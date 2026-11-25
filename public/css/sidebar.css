@@ -72,7 +72,8 @@
 }
 :root[data-layout='sidebar'] main.tiles.split .grp.on {
   border-color: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 55%, transparent);
-}
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tile-edge, var(--nocolor)) 55%, transparent);
+} /* 2 px in all (2026-11-25): the second outside the box, a ring — a wider border would shrink the body, and moving the keys resize a terminal */
 /* the transcript on the chat's plain ground */
 :root[data-layout='sidebar'] #log,
 :root[data-layout='sidebar'] #chat #groups .gbody.haslog {
