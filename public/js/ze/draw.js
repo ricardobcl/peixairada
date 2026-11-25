@@ -15,7 +15,7 @@
     if (g.bolt) for (const [w, col] of [[9, 'rgba(200, 121, 255, .6)'], [3, '#fff6e0']]) {   // lightning, the dragon's or the storm's
       cx.strokeStyle = col; cx.lineWidth = w; cx.lineJoin = 'miter'; cx.beginPath(); cx.moveTo(...g.bolt.pts[0]); for (const pt of g.bolt.pts.slice(1)) cx.lineTo(...pt); cx.stroke();
     }
-    if (g.fw.length) zeFwEach(g, (x, y, a, f, up) => { cx.globalAlpha = Math.max(0, a); cx.fillStyle = f.c; cx.fillRect(x, y, 3, 3); });
+    if (g.fw.length) zeFwEach(g, (x, y, a, f) => { cx.globalAlpha = Math.max(0, a); cx.fillStyle = f.c; cx.fillRect(x, y, 3, 3); });
     cx.globalAlpha = 1;
     layers(false, true, false);
     if (g.avo) zeAvoHouse(cx, g, calm);

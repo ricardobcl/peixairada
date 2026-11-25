@@ -1,0 +1,14 @@
+# The editor's side of the format (2026-11-25): two spaces, LF, a last newline. Prettier formats the JavaScript and the
+# CSS (.prettierrc.json); the rest keeps these.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false

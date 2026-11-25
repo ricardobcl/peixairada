@@ -12,7 +12,6 @@ export default async function (ctx) {
   await ctx.openChat(chat.id);
   const [a] = await ctx.peix(`session(${JSON.stringify(chat.id)}).prs.map(p => p.url)`);
   const pages = () => ctx.peix(`state().paneTabs[${JSON.stringify(chat.id)}] || []`);
-  const tab = () => ctx.peix('state().tab');
   const open = () => ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(chat.id)}] .mxs[data-url=${JSON.stringify(a)}]').click()`);   // the card's chip
   const wentTo = (k, url) => ctx.evaluate(`window.peixPaneUrl(${JSON.stringify(k)}, ${JSON.stringify(url)})`);   // the shell, as the page navigates
   const lastPane = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop() || null)`).then(JSON.parse);

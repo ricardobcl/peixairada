@@ -287,7 +287,7 @@ async function applyUpdate() {
     setUpdateHeld({ to, why: e.message, at: new Date().toISOString() }); saveState();
     Object.assign(upd, await readCheckout().catch(() => ({})));
     upd.why = 'held';
-    throw new Error(`${to.slice(0, 7)} was not kept: ${e.message}${undo}`);
+    throw new Error(`${to.slice(0, 7)} was not kept: ${e.message}${undo}`, { cause: e });
   }
   setUpdateHeld(null);
   setUpdateLast({ at: new Date().toISOString(), from, to, count, parts, ...rewritten && { rewritten: true } });
@@ -389,7 +389,7 @@ async function preflight(parts, to, step = () => {}) {
   const { startTestServer } = await import(`${pathToFileURL(join(UPDATE_DIR, 'lib', 'testserver.mjs')).href}?${to}`);
   let srv;
   try { srv = await startTestServer({ env: { UPDATE_EVERY_MS: '0' } }); }
-  catch (e) { console.error(`[peixairada] update: ${to.slice(0, 7)}'s server did not start —\n${e.message}`); throw new Error(`its server did not start (${(e.message.match(/^.*(Error|error).*$/gm) || [e.message.split('\n')[0]]).pop().trim().slice(0, 200)})`); }
+  catch (e) { console.error(`[peixairada] update: ${to.slice(0, 7)}'s server did not start —\n${e.message}`); throw new Error(`its server did not start (${(e.message.match(/^.*(Error|error).*$/gm) || [e.message.split('\n')[0]]).pop().trim().slice(0, 200)})`, { cause: e }); }
   try { const r = await srv.api('/'); if (!r.ok) throw new Error(`its server answered ${r.status} for the page`); }
   finally { await srv.stop(); }
 }

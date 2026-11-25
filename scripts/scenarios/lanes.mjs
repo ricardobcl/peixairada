@@ -7,7 +7,7 @@
 // own that morning) and is what the funnel's New replies shows — every match, under heads that do not fold — until the
 // chat is opened, which the server keeps, so a reload does not bring it back. (The funnel's Your move: pr-turn.mjs.)
 import { spawn } from 'node:child_process';
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture, replyLines, slugOf } from '../fixture.mjs';
 

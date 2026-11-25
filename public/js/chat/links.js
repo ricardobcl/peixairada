@@ -14,7 +14,7 @@
   // last · name.ext right before :line — and :line[:col] on any of them
   // Not after a + or an @ inside a word (2026-10-03): every such place was a start that scanned to the run's end, and
   // a 40 000-character line of them took 800 ms on the main thread; an @ that begins a word (Claude Code's) still may.
-  const PATH_RE = /(?<![\w.\/~+-])(?<![\w.\/~+@-]@)(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
+  const PATH_RE = /(?<![\w./~+-])(?<![\w./~+@-]@)(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
   const EXT_RE = /\.[A-Za-z0-9]{1,8}$/;
   // The external editor (2026-10-13, prefs.editor, Settings › General): VS Code or Zed. Each opens a file at a
   // line from a URL of the same shape — <scheme>://file/<absolute path>:<line>:<col>, the path percent-decoded —, which
@@ -110,7 +110,7 @@
   /** Anchors for the paths and pages in the text of a rendered transcript — the text nodes outside anchors. */
   function linkify(root, cwd) {
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [];
-    for (let n; (n = w.nextNode());) if (/[\/:]/.test(n.data) && !n.parentElement.closest('a, summary, .who, .agcall')) nodes.push(n);
+    for (let n; (n = w.nextNode());) if (/[/:]/.test(n.data) && !n.parentElement.closest('a, summary, .who, .agcall')) nodes.push(n);
     for (const n of nodes) {
       const t = n.data, links = chatLinks(t, cwd); if (!links.length) continue;
       const frag = document.createDocumentFragment(); let at = 0;

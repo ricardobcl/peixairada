@@ -99,6 +99,12 @@ cp -R "$ROOT/public" "$APP/Contents/Resources/public"
 # pruned from the copy; node-pty's spawn-helper keeps its executable bit through cp -R.
 [ -d "$ROOT/node_modules/node-pty" ] || (cd "$ROOT" && npm install --no-audit --no-fund)
 cp -R "$ROOT/node_modules" "$APP/Contents/Resources/node_modules"
+# Nothing dev-only travels (2026-11-25): the linters, the formatter and the vendored builds' sources are pruned by the
+# lockfile, offline. A prune that fails leaves them in, a bigger app and nothing else.
+cp "$ROOT/package-lock.json" "$APP/Contents/Resources/package-lock.json"
+(cd "$APP/Contents/Resources" && npm prune --omit=dev --offline --ignore-scripts --no-audit --no-fund --loglevel=error) || echo "  (dev packages not pruned — the app carries them)"
+rm -f "$APP/Contents/Resources/package-lock.json"
+find "$APP/Contents/Resources/node_modules" -maxdepth 2 -type d -empty -delete
 # The xterm *client* packages are dev-only sources for public/vendor; @xterm/headless and addon-serialize are the
 # server's (the screen snapshot on attach) and stay.
 rm -rf "$APP/Contents/Resources/node_modules/@xterm/xterm" "$APP/Contents/Resources/node_modules/@xterm/addon-fit" "$APP/Contents/Resources/node_modules/@xterm/addon-web-links"

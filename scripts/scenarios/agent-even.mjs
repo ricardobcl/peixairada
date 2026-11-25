@@ -42,7 +42,7 @@ export default async function (ctx) {
     await ctx.waitFor(`!!document.querySelector('${card(none.id)}')`, { what: 'the plain card' });
     await ctx.settle();
     const base = await height(none.id);
-    const solo = agentFiles({ dir: ctx.fixture.dir, lead: one, agents: [{ id: 'rev', name: 'code-review', asked: '/code-review https://github.com/acme/infra/pull/9', ago: 2 * MIN, tool: 'toolu_rev', steps: ['Inspect the connection closing code'] }] });
+    agentFiles({ dir: ctx.fixture.dir, lead: one, agents: [{ id: 'rev', name: 'code-review', asked: '/code-review https://github.com/acme/infra/pull/9', ago: 2 * MIN, tool: 'toolu_rev', steps: ['Inspect the connection closing code'] }] });
     const many = agentFiles({ dir: ctx.fixture.dir, lead: three, agents: [
       { id: 'sec', asked: 'Review the plan for security', ago: 9 * MIN, tool: 'toolu_sec', steps: ['Parse the plan for ingress rules'] },
       { id: 'cost', asked: 'Price the NAT gateways', ago: 8 * MIN, tool: 'toolu_cost', steps: ['Count the gateways by zone'] },

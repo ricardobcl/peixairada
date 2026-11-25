@@ -49,7 +49,7 @@
   async function agvPoll() {
     clearTimeout(agv.timer); agv.timer = 0;
     const { sid, id, gen, n } = agv, s = state.sessions.get(sid); if (!s || $('#agv').hidden || agv.asking === gen) return;   // one ask at a time: two would draw it twice
-    let at = agvHead(s);
+    agvHead(s);
     if (!document.hidden) {
       agv.asking = gen;
       try {
@@ -60,7 +60,7 @@
       finally { if (agv.asking === gen) agv.asking = 0; }
     }
     if (gen !== agv.gen) return;
-    at = agvHead(state.sessions.get(sid) || s);
+    const at = agvHead(state.sessions.get(sid) || s);
     if (at || !agv.n) agv.timer = setTimeout(agvPoll, AGV_POLL_MS);
   }
   function placeAgent(s, p) {

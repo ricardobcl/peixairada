@@ -55,7 +55,7 @@ export default async function (ctx) {
   // the rest by the same rule: a stand-in of each on a real card, hidden while it is left out
   const standIns = { tickets: ['.top', 'span', 'tprs ttks'], rounds: ['', 'div', 'prpips'], tab: ['.top', 'span', 'repo'], branch: ['.top', 'span', 'chip wtb'], where: ['.top', 'span', 'chip elsewhere'], watch: ['.trow', 'span', 'chip watch'], fable: ['.trow', 'span', 'fable'], unread: ['.trow', 'span', 'badge'], move: ['', 'div', 'state prmove'], live: ['', 'div', 'state live wake'] };
   for (const [k, [where, tag, cls]] of Object.entries(standIns)) {
-    const shown = cards => ctx.evaluate(`(c => { const t = document.createElement('${tag}'); t.className = '${cls}'; t.textContent = 'x'; ${where ? `c.querySelector('${where}')` : 'c'}.append(t); const v = getComputedStyle(t).display; t.remove(); return v; })(document.querySelector('${card}'))`);
+    const shown = () => ctx.evaluate(`(c => { const t = document.createElement('${tag}'); t.className = '${cls}'; t.textContent = 'x'; ${where ? `c.querySelector('${where}')` : 'c'}.append(t); const v = getComputedStyle(t).display; t.remove(); return v; })(document.querySelector('${card}'))`);
     a.notEqual(await shown(), 'none', `${k}: shown`);
     await flip(k);
     a.equal(await shown(), 'none', `${k}: left out`);
@@ -63,7 +63,7 @@ export default async function (ctx) {
   }
 
   // same height holds a hidden move's row; one line gives the row to the word
-  const moved = sel => ctx.evaluate(`JSON.stringify((c => { const was = +c.getBoundingClientRect().height.toFixed(2), slot = c.querySelector('.state.moveslot'), m = document.createElement('div'); m.className = 'state prmove'; m.innerHTML = '<b class="ymove">your move</b>'; c.classList.add('rowmove'); slot?.replaceWith(m);
+  const moved = () => ctx.evaluate(`JSON.stringify((c => { const was = +c.getBoundingClientRect().height.toFixed(2), slot = c.querySelector('.state.moveslot'), m = document.createElement('div'); m.className = 'state prmove'; m.innerHTML = '<b class="ymove">your move</b>'; c.classList.add('rowmove'); slot?.replaceWith(m);
     const v = { same: +c.getBoundingClientRect().height.toFixed(2) === was, display: getComputedStyle(m).display, seen: getComputedStyle(m).visibility, words: [...c.querySelectorAll('.snip')].filter(x => getComputedStyle(x).display !== 'none').length };
     m.replaceWith(slot); c.classList.remove('rowmove'); return v; })(document.querySelector('${card}')))`).then(JSON.parse);
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="2"]').click(); if (!document.querySelector('#cardsEven').checked) document.querySelector('#cardsEven').click()`); await ctx.settle();

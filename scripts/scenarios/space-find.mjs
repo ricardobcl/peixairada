@@ -37,7 +37,6 @@ export default async function (ctx) {
     { cwd: join(dir, 'mobile-app'), title: 'Bump the build number', prompt: 'bump it', reply: 'Bumped on both apps.', at: new Date(now - 30 * 60_000) },
   ]);
   const node = id => `document.querySelector('#spgrid .spt[data-id="${id}"]')`;
-  const ids = () => ctx.evaluate(`[...document.querySelectorAll('#spgrid .spt')].map(b => b.dataset.id)`);
   const at = sel => ctx.evaluate(`(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`);
   const hover = async sel => { const r = await at(sel); await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y }); return r; };
   const press = async sel => {   // the mouse at its middle, pressed and let go: hit-testing as a hand's click has it

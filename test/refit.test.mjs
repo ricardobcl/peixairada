@@ -81,7 +81,7 @@ test('done comes once the parked resize has landed, so a shrink that follows a g
 
 // The page's copy, as it stands in its part of the page (public/js/chat/xterm.js) — run against the same screens (2026-10-14)
 const page = await import('node:fs').then(({ readFileSync }) => readFileSync(new URL('../public/js/chat/xterm.js', import.meta.url), 'utf8'));
-const refitTerm = new Function(`return ${page.match(/function refitTerm\(xt, rows, resize, done = \(\) => \{\}\) \{\n[\s\S]*?\n  \}\n/)[0]}`)();
+const refitTerm = new Function(`return ${page.match(/function refitTerm\(xt, rows, resize, done = \(\) => \{\}\) \{\n[\s\S]*?\n {2}\}\n/)[0]}`)();
 const pageRefitted = (t, cols, rows) => new Promise(r => refitTerm(t, rows, () => t.resize(cols, rows), r));
 const cursorLine = t => { const b = t.buffer.active; return b.getLine(b.baseY + b.cursorY).translateToString(true).trim(); };
 

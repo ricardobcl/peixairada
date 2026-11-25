@@ -51,7 +51,7 @@ const why = out => (out.split('\n').find(l => /FAILED:/.test(l)) || out.split('\
 const leftovers = out => {
   const marks = [...out.matchAll(/\(state (\/[^\s,)]+)|chrome profile (\/\S+)/g)].map(m => m[1] || m[2]);
   if (!marks.length) return [];
-  let ps = ''; try { ps = execFileSync('/bin/ps', ['-axww', '-o', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 }); } catch { return []; }
+  let ps; try { ps = execFileSync('/bin/ps', ['-axww', '-o', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 }); } catch { return []; }
   return ps.split('\n').filter(l => marks.some(m => l.includes(m))).map(l => l.trim().slice(0, 160));
 };
 const secs = ms => `${(ms / 1000).toFixed(1)}s`;

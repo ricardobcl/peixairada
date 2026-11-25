@@ -63,7 +63,7 @@ const shortFn = f => {   // WebCore::Foo::bar<…>(args…) const → Foo::bar
   return s.replace(/\(.*$/s, '').replace(/^(WebCore|WebKit|WTF|JSC|Inspector)::/, '').trim().slice(0, 90) || f.slice(0, 90);
 };
 function topOfStack(file, n = 6) {
-  let text = ''; try { text = readFileSync(file, 'utf8'); } catch { return []; }
+  let text; try { text = readFileSync(file, 'utf8'); } catch { return []; }
   const at = text.indexOf('Sort by top of stack'); if (at < 0) return [];
   const rows = [];
   for (const line of text.slice(at).split('\n').slice(1)) {

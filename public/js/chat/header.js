@@ -6,7 +6,6 @@
   // A PR's CI on its head commit (2026-10-09, the chat header only — the cards have enough to say): GitHub's rollup of
   // its checks, a badge on the header's chip and a word on its row; none for a PR merged or closed.
   const prCk = pr => pr.checks && (pr.state === 'open' || pr.state === 'draft') ? pr.checks : null;
-  const CK_TIP = { pass: 'checks passed', fail: 'checks failing', pending: 'checks running' };
   const CK_ICON = { pass: '<path d="M3.6 8.3 6.6 11.2 12.4 4.9" />', fail: '<path d="M4.8 4.8 11.2 11.2M11.2 4.8 4.8 11.2" />', pending: '<circle cx="8" cy="8" r="4.6" />' };
   const ckHtml = (pr, said = false) => { const c = prCk(pr); return c ? `<i class="ck" data-checks="${c}"><svg viewBox="0 0 16 16" aria-hidden="true">${CK_ICON[c]}</svg>${said ? '' : `<span class="vh">, CI ${c === 'pass' ? 'passed' : c === 'fail' ? 'failing' : 'running'}</span>`}</i>` : ''; };   // in words too (2026-10-12), but where the row says them (said)
   const UNLINK_TIP = '⌥-click: take it off this chat — naming it again yourself brings it back';

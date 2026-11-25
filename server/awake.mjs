@@ -89,7 +89,7 @@ export async function setLid(on) {
   lidAsking = mode === 'none' ? execFileP(...run.plain, { timeout: 10_000 }) : mode === 'osascript' ? viaDialog()
     : viaSudo().catch(e => { console.log(`[peixairada] sudo pmset did not go through (${String(e.stderr || e.message).trim().split('\n')[0]}) — asking with the dialog`); return viaDialog(); });
   try { await lidAsking; }
-  catch (e) { throw new Error(/-128|cancel/i.test(String(e.stderr || e.message)) ? 'cancelled' : String(e.stderr || e.message).trim().split('\n')[0]); }
+  catch (e) { throw new Error(/-128|cancel/i.test(String(e.stderr || e.message)) ? 'cancelled' : String(e.stderr || e.message).trim().split('\n')[0], { cause: e }); }
   finally { lidAsking = null; await readPower(); }
   console.log(`[peixairada] sleep with the lid closed: ${lidOff ? 'off — the Mac stays awake' : 'on again'}`);
   return awakeState();

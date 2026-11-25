@@ -142,7 +142,6 @@ export default async function (ctx) {
     await sleep(250);
     await ctx.evaluate(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
   };
-  const tabs = () => ctx.evaluate(`window.peix.state().tabs`);
   // VS Code Web's address as the app would show it for the made-up user's folder, not the fixture's temp path
   const vsAddress = () => ctx.evaluate(`(k => k && window.peixPaneUrl(k, 'http://127.0.0.1:7332/?folder=' + encodeURIComponent('/Users/ada/work/storefront')))(window.peix.state().tabs.find(k => k.startsWith('ide:')))`);
   const quickOpen = async file => {

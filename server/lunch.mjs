@@ -318,7 +318,7 @@ function lunchAlert(cfg) {
   broadcast('alert', evt);
   if (notificationsOn) nativeNotify(evt.heading, title, snippet);
 }
-export async function lunchRoute(req, res, url) {
+export async function lunchRoute(req, res) {
   if (req.method === 'GET') return json(res, 200, lunchSummary());
   if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST' });
   const body = await jsonBody(req), cfg = lunchCfg(), act = body.act, t = Date.now();

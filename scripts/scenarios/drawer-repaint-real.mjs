@@ -3,7 +3,6 @@
 // A lab of its own (lib/reallab.mjs): its own HOME and config, no API, nothing spent. No Claude Code here, or a locked
 // screen for the WebKit half, and it says so and passes.
 import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import { FRAME_WATCH, looks } from '../../lib/framewatch.mjs';
 import { labChat, realLab } from '../../lib/reallab.mjs';
 
@@ -18,7 +17,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix?.sessions().some(s => s.id === '${id}')`, { what: 'the lab chat' });
   await ctx.openChat(id); await ctx.key('KeyC'); await ctx.waitPrompt(30000);
   await ctx.sleep(2500); await ctx.settle();
-  for (const round of [1, 2]) for (const [label, mod, code] of CHANGES) {
+  for (let round = 1; round <= 2; round++) for (const [label, mod, code] of CHANGES) {
     await ctx.watchFrames(0); await ctx.sleep(150);
     const at = await ctx.evaluate('performance.now()');
     await (mod === 'cmd' ? ctx.cmd(code) : ctx.key(code));

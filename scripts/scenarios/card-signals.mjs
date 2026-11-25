@@ -26,7 +26,7 @@ const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')
   lit: getComputedStyle(c).getPropertyValue('--lit').trim(),
   spins: getComputedStyle(c).getPropertyValue('--spins').trim(),
   track: getComputedStyle(c).getPropertyValue('--track').trim(), active: c.classList.contains('active'),
-  ring: /0px 0px 0px 1(\.5)?px/.test(getComputedStyle(c).boxShadow),   // a line round the row (the sidebar's, 2026-11-01: inset 1.5 px)
+  ring: /0px 0px 0px 1(\\.5)?px/.test(getComputedStyle(c).boxShadow),   // a line round the row (the sidebar's, 2026-11-01: inset 1.5 px)
 }))`);
 
 export default async function (ctx) {

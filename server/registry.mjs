@@ -41,7 +41,7 @@ export function pidAlive(pid) {
 const PS_ENV = { ...process.env, LC_ALL: 'C', TZ: 'UTC' };
 export const squash = t => String(t || '').replace(/\s+/g, ' ').trim();
 export function procStarts(pids) {
-  let out = '';
+  let out;
   try { out = execFileSync('/bin/ps', ['-o', 'pid=', '-o', 'lstart=', '-p', pids.join(',')], { encoding: 'utf8', env: PS_ENV, timeout: 5000 }); } catch (e) { out = String(e.stdout || ''); }   // a pid not there is ps's exit 1, the rest still printed
   return new Map(out.split('\n').map(l => /^\s*(\d+)\s+(\S.*)$/.exec(l)).filter(Boolean).map(m => [Number(m[1]), squash(m[2])]));
 }

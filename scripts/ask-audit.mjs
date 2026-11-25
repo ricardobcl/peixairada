@@ -21,7 +21,7 @@ function watch() {
   const look = () => {
     if (Date.now() - started > FOR_MS) { try { execFileSync('/bin/launchctl', ['remove', 'net.peixairada.askaudit']); } catch {} process.exit(0); }
     const seen = new Set();
-    let files = [];
+    let files;
     try { files = readdirSync(DIR).filter(f => /^\d+\.json$/.test(f)); } catch { return; }
     for (const f of files) {
       let d; try { d = JSON.parse(readFileSync(join(DIR, f), 'utf8')); } catch { continue; }

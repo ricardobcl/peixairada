@@ -71,7 +71,7 @@ export default async function (ctx) {
   };
 
   await ctx.watchFrames(0);
-  const when = [], watches = [];   // each step's time on the page's clock, so a frame that went wrong names the step before it
+  const when = [];   // each step's time on the page's clock, so a frame that went wrong names the step before it
   const mark = async op => when.push({ op, i: trail.length - 1, t: await ctx.evaluate('performance.now()') });
   for (let i = 0; i < ops; i++) {
     const op = pick(WEIGHTS);

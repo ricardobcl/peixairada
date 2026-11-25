@@ -39,7 +39,7 @@ export default async function (ctx) {
   /** The stand-in drawer's screen, drawn anew; its socket a recorder of what was typed. */
   /** The select with its ring on answer k, as Claude Code redraws it on a number. */
   const ringOn = (lines, k) => lines.map(l => {
-    const m = /^(\s*│?\s?)(?:❯ |  )(\d+)\. (.*)$/.exec(l.replace(/\x1b\[[0-9;]*m/g, ''));
+    const m = /^(\s*│?\s?)(?:❯ | {2})(\d+)\. (.*)$/.exec(l.replace(/\x1b\[[0-9;]*m/g, ''));
     return m ? `${m[1]}${+m[2] === k ? '❯ ' : '  '}${m[2]}. ${m[3]}` : l;
   });
   /** The stand-in drawer's screen, drawn anew; its socket a recorder of what was typed. A number redraws it — the ring on

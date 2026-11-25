@@ -49,13 +49,13 @@ if (unlowered.length) { console.error(`a showModal() with no repostPane() after 
 // declarations two spaces in.
 {
   const seen = new Map();
-  for (const m of html.matchAll(/^  (?:async )?function\*? ?(\w+)\s*\(/gm)) (seen.get(m[1]) || seen.set(m[1], []).get(m[1])).push(at(lineAt(m.index)));
+  for (const m of html.matchAll(/^ {2}(?:async )?function\*? ?(\w+)\s*\(/gm)) (seen.get(m[1]) || seen.set(m[1], []).get(m[1])).push(at(lineAt(m.index)));
   const twice = [...seen].filter(([, at]) => at.length > 1);
   if (twice.length) { console.error(`a function declared twice, the later one silently replacing the first: ${twice.map(([n, where]) => `${n} at ${where.join(', ')}`).join('; ')}`); process.exit(1); }
 }
 if (file.endsWith('public/index.html')) {
   const keysOf = name => { const m = html.match(new RegExp(`const ${name} = \\{(.*?)\\};`)); return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null; };
-  const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), shift = keysOf('SHIFTKEYS') || [], table = html.match(/const KEYS = \[([\s\S]*?)\n  \];/);
+  const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), shift = keysOf('SHIFTKEYS') || [], table = html.match(/const KEYS = \[([\s\S]*?)\n {2}\];/);
   const fail = msg => { console.error(`${file}: ${msg}`); process.exitCode = 1; };
   if (!hot || !cmd || !table) fail('HOTKEYS, CMDKEYS or KEYS not found');
   else {
@@ -87,7 +87,7 @@ if (file.endsWith('public/index.html')) {
     // The ⌥⌘ digits, arrows and Return the forwarder matches by key code (⌥ composes a symbol over them): each code the Mac's
     // own (kVK_ANSI_1 is 18…), each answered by HOTKEYS, and every digit and arrow HOTKEYS has, forwarded.
     const KVK = { 18: 'Digit1', 19: 'Digit2', 20: 'Digit3', 21: 'Digit4', 23: 'Digit5', 22: 'Digit6', 26: 'Digit7', 28: 'Digit8', 25: 'Digit9', 29: 'Digit0', 123: 'ArrowLeft', 124: 'ArrowRight', 125: 'ArrowDown', 126: 'ArrowUp', 36: 'Enter' };
-    const fn = src.match(/static func hotkeyCode\([\s\S]*?\n  \}\n/)?.[0];
+    const fn = src.match(/static func hotkeyCode\([\s\S]*?\n {2}\}\n/)?.[0];
     if (!fn) fail('Keys.swift: hotkeyCode not found');
     else {
       const byCode = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "altcmd"\) \}/g)].map(([, n, c]) => [+n, c]);

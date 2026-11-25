@@ -239,7 +239,7 @@
     e.preventDefault();
     // by the grid as it lies (2026-11-24): ←→ the node before or after, ↑↓ the nearest in the row above or below, Home End the ends
     const nodes = [...$('#spgrid').querySelectorAll('.spt')], i = nodes.indexOf(at), box = n => n.getBoundingClientRect(), r = box(at), cx = r.left + r.width / 2;
-    let to = null;
+    let to;
     if (e.key === 'Home') to = nodes[0]; else if (e.key === 'End') to = nodes.at(-1);
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') to = nodes[Math.max(0, Math.min(nodes.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))];
     else {

@@ -88,7 +88,7 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
         const url = addAsset(r, bytes, q.get('content_type'));
         return send(201, { id: assets.size, name: q.get('name'), content_type: q.get('content_type'), size: bytes.length, url, href: url });
       }
-      let body = {}; try { body = raw ? JSON.parse(raw) : {}; } catch { return no(400, 'Problems parsing JSON'); }
+      let body; try { body = raw ? JSON.parse(raw) : {}; } catch { return no(400, 'Problems parsing JSON'); }
       if (M === 'POST' && path === '/markdown') {   // GitHub's rendering for you: a picture of a repo you read signed, any other as written
         const html = String(body.text || '').split(/\n{2,}/).map(par => `<p dir="auto">${par.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, url) => {
           const a = assets.get(url.split('/').pop()), r = a && all.get(a.repo.toLowerCase());

@@ -21,7 +21,7 @@ const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEven
 export default async function (ctx) {
   const out = {}, now = Date.now(), elsewhere = join(tmpDir('peix-gone-'), 'scratch');
   mkdirSync(join(org, 'ledger', '.git'), { recursive: true });   // one repo that is here, so the root is a root
-  const { chats: [widgets, nosuch, lost, gadgets] } = makeFixture(ctx.fixture.dir, [
+  const { chats: [widgets, nosuch, lost] } = makeFixture(ctx.fixture.dir, [
     { cwd: join(org, 'widgets'), title: 'In widgets', prompt: 'fix the widget', reply: 'fixed', at: new Date(now - 60_000) },
     { cwd: join(org, 'no-such-repo'), title: 'In a repo GitHub has not got', prompt: 'hello', reply: 'hi', at: new Date(now - 120_000) },
     { cwd: elsewhere, title: 'In a folder long gone', prompt: 'hello', reply: 'hi', at: new Date(now - 180_000) },

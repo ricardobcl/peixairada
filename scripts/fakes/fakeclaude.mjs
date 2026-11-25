@@ -52,7 +52,7 @@ const cwd = process.cwd();
 // are; '' is none, over a folder's settings' own. The transcript's first line says it (`agent-setting`), the registry's
 // `agent` the flag's. A resume keeps the transcript's.
 const jsonAt = p => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
-const mdNames = d => { try { return readdirSync(d).filter(n => n.endsWith('.md')).map(n => (/^name:\s*(\S+)/m.exec(readFileSync(join(d, n), 'utf8')) || [, n.slice(0, -3)])[1]); } catch { return []; } };
+const mdNames = d => { try { return readdirSync(d).filter(n => n.endsWith('.md')).map(n => (/^name:\s*(\S+)/m.exec(readFileSync(join(d, n), 'utf8')) || [null, n.slice(0, -3)])[1]); } catch { return []; } };
 const agentFlag = args.includes('--agent') ? arg('--agent') ?? '' : null;
 const settings = [join(CLAUDE_DIR, 'settings.json'), join(cwd, '.claude', 'settings.json'), join(cwd, '.claude', 'settings.local.json')].map(jsonAt);
 let agent = agentFlag ?? (arg('--resume') && !args.includes('--fork-session') ? null : [2, 1, 0].map(i => settings[i]?.agent).find(a => typeof a === 'string' && a) || null);

@@ -110,7 +110,7 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('${card(lead.id)} .agl').hidden`, { what: 'seen: gone once left', timeout: 4000 });
 
     // a new round: its rows alone
-    const round = agentFiles({ dir: ctx.fixture.dir, lead: other, agents: [
+    agentFiles({ dir: ctx.fixture.dir, lead: other, agents: [
       { id: 'a', asked: 'First', ago: 5 * MIN, steps: ['One'] }, { id: 'b', asked: 'Second', ago: 4 * MIN, steps: ['Two'] }, { id: 'c', asked: 'Third', ago: 3 * MIN, steps: ['Three'] },
       { id: 'd', asked: 'Fourth', ago: 2 * MIN, steps: ['Four'], quiet: 4 * MIN }, { id: 'e', asked: 'Fifth', ago: 90_000, name: 'fifth-one', steps: ['Five'] },
     ] });

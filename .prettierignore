@@ -1,0 +1,11 @@
+# Prettier formats the code (2026-11-25): JavaScript and CSS, nothing else — not the notes, the page's skeleton
+# (its include lines), the data or the vendored builds.
+*
+!*/
+!*.js
+!*.mjs
+!*.cjs
+!*.css
+public/vendor/
+docs/
+mac/build/

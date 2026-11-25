@@ -61,7 +61,7 @@
       ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
       ...(s.cwd ? [scopedOn(s) ? { t: 'Every project', sub: 'show all · ⌥⌘P ⌥⌘P', fn: () => selectProject(ALL) } : { t: `Only ${s.project}`, sub: 'narrow the list to it', fn: () => selectProject(projDir(s.cwd)) }] : []),
-      ...talkRows(s, card),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
+      ...talkRows(s),   // chats that talk (2026-10-31): what goes from this chat to another, and the chats tied to it
       ...prioRows(s, card),   // Top priority, in or out, and its place (2026-11-24, round XXX's A1, R4)
       asleep(s) ? { t: 'Wake it now', sub: `snoozed ${snoozeSay(s.snooze)}`, fn: () => snoozeIt(s, { undo: true }, card) }   // …and a snooze (S1)
         : asking(s) ? { t: 'Snooze…', sub: 'it is asking you — a question wakes a snooze', off: true } : { t: 'Snooze…', sub: 'till a time, or till something happens · ⌥⌘S', fn: () => snoozeMenu(s, ...$('#ctxm')._at) },

@@ -20,7 +20,7 @@
   /** A chat as the box lists it: its project's square, name and title. */
   const hoChat = (s, extra = '') => `<div class="hochat" style="${repoStyle(repoColor(s.cwd))}" data-id="${esc(s.id)}"><span class="sq"></span><b>${projIcon(s.project)}${esc(s.project)}</b><span class="ht">${ticks(esc(s.title))}</span>${extra}</div>`;
   /** A card's rows for the right-click menu: what can be done with it and another chat — and the chats tied to it. */
-  function talkRows(s, card) {
+  function talkRows(s) {
     const no = sendWhy(s), mno = mergeWhy(s), fno = foldFromWhy(s);
     return [{ hr: true }, { t: 'Send to this chat…', ...no ? { off: true, sub: no } : {}, fn: () => sendOpen(s) },
       { t: 'Merge with…', ...mno ? { off: true, sub: mno } : { sub: 'a new chat, its first prompt where each stands' }, fn: () => mergePick([s.id]) },

@@ -14,7 +14,7 @@
       if (!state.clones.has(c.dir)) state.clones.set(c.dir, { ref: c.ref, dir: c.dir, phase: null, percent: 0 });
       onClone?.(c); cloneShown();
       try { await api('POST', '/api/clone', { name: c.name, root: c.root }); }
-      catch (ce) { throw new Error(`Could not clone ${c.ref}: ${ce.message}`); }
+      catch (ce) { throw new Error(`Could not clone ${c.ref}: ${ce.message}`, { cause: ce }); }
       finally { cloneWaits.delete(key); cloneShown(); }
       return spawn();
     }

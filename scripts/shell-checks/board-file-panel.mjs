@@ -13,7 +13,7 @@ export default async function (ctx) {
   let w; while (!(w = await ctx.win()).sheet && Date.now() - t < 5000) await new Promise(r => setTimeout(r, 100));
   ctx.assert.match(String(w.sheet), /OpenPanel/, 'the system\'s open panel, as a sheet over the window');
   ctx.assert.equal(await ctx.ask('unsheet'), true);
-  const after = Date.now(); let picked = null;
+  const after = Date.now(); let picked;
   while ((picked = await ctx.js('return window.peixPicked')) === null && Date.now() - after < 3000) await new Promise(r => setTimeout(r, 100));
   ctx.assert.equal((await ctx.win()).sheet, null, 'gone once cancelled');
   ctx.assert.notEqual(picked, 1, 'nothing picked');
