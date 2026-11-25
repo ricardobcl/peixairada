@@ -12,3 +12,5 @@ scripts/fakes/fakecaffeinate.mjs
 scripts/fakes/fakepmset.mjs
 docs/
 mac/build/
+# the worktrees under the checkout (2026-11-25): other sessions' branches, on code from before the formatting
+.claude/

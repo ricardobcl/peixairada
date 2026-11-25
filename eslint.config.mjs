@@ -16,7 +16,7 @@ const pageGlobals = {
 };
 
 export default [
-  { ignores: ['public/vendor/', 'public/js/', 'docs/', 'mac/build/'] },
+  { ignores: ['public/vendor/', 'public/js/', 'docs/', 'mac/build/', '.claude/'] }, // .claude/: the worktrees, others' branches
   js.configs.recommended,
   {
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },

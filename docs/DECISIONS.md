@@ -5,6 +5,14 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, late at night — format and lint leave the worktrees be
+
+* **`.claude/` is in `.prettierignore` and ESLint's `ignores`**: the worktrees live under the checkout
+  (`scripts/worktree.sh`), and `.claude` is ignored only by a global gitignore, which neither tool reads. `npm run
+  format` on main rewrote every file of every worktree's older branch — 17 of them, up to 271 files each, put back by
+  hand to HEAD where each was exactly HEAD formatted (none had work of its own in those files) —, and `npm run check`'s
+  lint failed on their 3 605 problems.
+
 ## Decisions of 2026-11-25, late at night — a link in a drawer opens
 
 Ricardo: *"clicking on web links in chat is not opening them in island browser"* — Island the Mac's default browser.
