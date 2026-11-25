@@ -5,6 +5,39 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, latest — every new terminal a tile
+
+The ask: *"Add support for autotiling the terminals whenever opening new ones. let it be a settings toggle."* Four
+readings were drawn up side by side (split by the column's shape; Claude and a stack; a 2 × 2 grid; every terminal a
+tile), with today's beside them, which showed the first to be today's in all but a tall column. Then: *"can you do D
+but with the current half split keybinding switch behaviour?"* — every terminal a tile, the direction not the tile's
+longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 and the turn button already switch.
+
+* **Settings › Terminal › Tile new terminals** (`prefs.autoTile`, off by default). Off, nothing makes a tree, and the
+  halves are as they were — every halves scenario ran unchanged before the setting did anything.
+* **What a new terminal does** (`openNewTab` → `tileTerm`; zsh and vim only — pages, the changes, the timeline and
+  the agents stay tabs, so nothing crosses the bridge that did not): an empty half or tile takes it, the keys' first;
+  not split yet, it is the first split as ever; else the tile the keys are in is cut in two along `stacked`, the new
+  terminal in the second part.
+* **The direction is the chat's switch.** ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 still mean "turn first": on tiles the digit is the
+  tile's place in the tree's order and the modifier turns the split that tile is half of, and sets the next one; the
+  strip's turn button does the same for its tile. No new keys: ⌥⌘←→ and a click reach a third tile and on, as ⌘3–⌘9
+  would have meant Keys.swift's forwarder and `npm run shell`.
+* **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out
+  as a CSS grid whose lines are every cut it makes (`tileLayout`) — each tile stays a direct child of `#groups`, so
+  every rule that reads `#groups > .grp`, and the floating header's padding of a split, reach it. Groups past the two
+  in the markup are made when first wanted (`ensureGroups`), their listeners by `onGroup`. A leaf keeps its group
+  number for life, so no terminal is re-attached when another tile goes (a re-attach is a resize and a nudge).
+* **Going**: a tile emptied — its zsh exited, its last tab dragged off — folds, its sibling taking the room
+  (`foldTiles`); its ⨯ or ⌘W on it gives its tabs to that sibling (`closeTile`); ⌘0 is the one tile the keys are in,
+  every tab in its strip, nothing ended. Down to one tile, the column is unsplit.
+* **A floor, lower than first said**: `TILE_MIN` 24 × 6, not the 80 × 15 proposed — a side-by-side half on a laptop is
+  under 80 columns already, so 80 would have refused the second terminal almost always. Under it the terminal is a
+  tab beside the chat, as with the setting off.
+* **Dividers**: one `.tdiv` a split, over the gap it makes, placed from the tiles' boxes a frame after the layout and
+  whenever a tile changes size; dragged, `r` moves (15–85 %, even parts pull, as `#gsplit` does). The tree rides
+  `keepTabs`, so it outlives a reload. → `auto-tile.mjs`.
+
 ## Decisions of 2026-11-25, late at night — format and lint leave the worktrees be
 
 * **`.claude/` is in `.prettierignore` and ESLint's `ignores`**: the worktrees live under the checkout

@@ -5,7 +5,7 @@
 function hotTab(dir) {
   const s = state.sessions.get(state.current);
   if (!s) return noChat();
-  const keys = [...keysIn(s, 0), ...keysIn(s, 1)];
+  const keys = groupsOf(s).flatMap(g => keysIn(s, g));
   if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
   openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
 }

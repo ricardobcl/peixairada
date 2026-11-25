@@ -80,7 +80,7 @@
     <div id="prlist" hidden></div>
     <div id="rival" hidden></div>
     <div id="groups">
-      <div class="grp on nostrip" id="grp">
+      <div class="grp on nostrip" id="grp" data-g="0">
         <div class="ptabs" id="ptabs" role="tablist" aria-label="This chat's tabs" hidden></div>
         <div class="gbody haslog" id="gbody">
           <div id="chg" hidden></div>
@@ -91,7 +91,7 @@
         </div>
       </div>
       <div id="gsplit" title="Drag to resize the two halves" hidden></div>
-      <div class="grp" id="grpB" hidden>
+      <div class="grp" id="grpB" data-g="1" hidden>
         <div class="ptabs" id="ptabsB" role="tablist" aria-label="The second half's tabs"></div>
         <div class="gbody" id="gbodyB">
           <div class="gterm" id="termB" hidden><div class="tbody" id="termBodyB"></div></div>
@@ -203,6 +203,7 @@
         <section class="sgrp"><div class="slist" role="group" aria-label="Terminal">
           <div class="srow set" data-kw="option alt meta esc keyboard terminal drawer word"><label class="sl" for="optMeta"><b>Option as Meta</b><small id="optMetaSay"></small></label><input type="checkbox" class="sw" role="switch" id="optMeta" checked></div>
           <div class="srow set" data-kw="screen reader voiceover accessibility drawer"><label class="sl" for="termReader"><b>Screen reader mode</b><small id="termReaderSay">The drawer’s lines read out as they come</small></label><input type="checkbox" class="sw" role="switch" id="termReader"></div>
+          <div class="srow set" data-kw="tile tiling autotile split half terminal zsh vim layout grid"><label class="sl" for="autoTile"><b>Tile new terminals</b><small>Each new zsh or vim gets a tile of its own, cut from the one you are in — side by side, or one over the other after ⌥⌘2</small></label><input type="checkbox" class="sw" role="switch" id="autoTile"></div>
         </div></section>
       </div>
       <div class="spane" data-tab="setup" hidden role="tabpanel" id="spSetup" aria-labelledby="stSetup">

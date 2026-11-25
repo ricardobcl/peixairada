@@ -293,6 +293,34 @@ main.notch #chat.npad .shead {
 #groups.stack {
   flex-direction: column;
 }
+/* Tiled (2026-11-25, Settings › Terminal › Tile new terminals): past two, a chat's tiles are a tree (trees), laid out
+     as a grid whose lines are every cut the tree makes (tileLayout); each tile a direct child still, so every rule that
+     reads `#groups > .grp` reaches it. The gaps are the dividers' (.tdiv, over them, one per split). */
+#groups.tiled {
+  display: grid;
+  position: relative;
+  gap: 5px;
+}
+#groups.tiled > .grp {
+  min-width: 0;
+  min-height: 0;
+}
+.tdiv {
+  position: absolute;
+  z-index: 2;
+  cursor: col-resize;
+  background: linear-gradient(90deg, transparent 2px, var(--line) 2px 3px, transparent 3px);
+}
+.tdiv.col {
+  cursor: row-resize;
+  background: linear-gradient(transparent 2px, var(--line) 2px 3px, transparent 3px);
+}
+.tdiv[hidden] {
+  display: none;
+}
+.tdiv:is(:hover, .drag) {
+  background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent);
+}
 #groups.stack > #gsplit {
   width: auto;
   height: 6px;

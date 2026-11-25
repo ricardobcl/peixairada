@@ -13,8 +13,10 @@ const unlinkUrl = (s, url) => {
   );
 };
 const moveFocused = s => {
-  const k = tabOf(s);
-  if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0);
+  const k = tabOf(s),
+    gs = groupsOf(s);
+  if (k && k !== 'chat')
+    moveTab(s, k, isTiled(s) ? gs[(gs.indexOf(homeOf(s, k)) + 1) % gs.length] : placeOf(s)[0] === k ? 1 : 0);
   else note($('#shead'), 'The chat stays in its half — pick a tab to move', true);
 };
 const clearColor = name => {

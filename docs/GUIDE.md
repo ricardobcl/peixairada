@@ -116,7 +116,7 @@ setup file, and how the pictures are made.
 
 ## Beside a chat
 
-Each is a tab of the chat; the column splits in two halves when there's more than one thing to look at.
+Each is a tab of the chat; the column splits in two halves when there's more than one thing to look at. With Settings › Terminal › *Tile new terminals* on, each new zsh or vim gets a tile of its own, cut from the one you are in — side by side, or one over the other once ⌥⌘2 has turned the chat — so every terminal stays in view.
 
 <img src="shots/chat-dark.webp" alt="A chat with Claude Code resumed in the pane on the left, the PR's state and CI under the header, and the repo open in VS Code Web on the right">
 

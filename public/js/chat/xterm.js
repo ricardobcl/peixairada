@@ -521,8 +521,9 @@ window.peix = {
     focusG,
     halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
     strips: state.sessions.has(state.current)
-      ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g))
+      ? placeOf(state.sessions.get(state.current)).map((_, g) => keysIn(state.sessions.get(state.current), g))
       : [[], []],
+    tiles: trees.has(state.current) && splitNow() ? JSON.parse(JSON.stringify(trees.get(state.current))) : null,
     timeline: {
       k: tl.k,
       want: tl.want,

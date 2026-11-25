@@ -12,7 +12,7 @@ const GEL = [
   { grp: '#grp', tabs: '#ptabs', body: '#gbody', term: '#term', tbody: '#termBody' },
   { grp: '#grpB', tabs: '#ptabsB', body: '#gbodyB', term: '#termB', tbody: '#termBodyB' },
 ];
-const terms = GEL.map((el, g) => ({
+const newTerm = (el, g) => ({
   g,
   el,
   id: null,
@@ -23,7 +23,30 @@ const terms = GEL.map((el, g) => ({
   xt: null,
   fit: null,
   exited: null,
-}));
+});
+const terms = GEL.map(newTerm);
+// What each group's elements need once (2026-11-25): run for the two halves in the markup, and for each tile made
+// later (ensureGroups) — its strip's listeners, its body's paste, the pane's observer.
+const groupHooks = [];
+const onGroup = f => {
+  groupHooks.push(f);
+  for (const tm of terms) f(tm);
+};
+/** Groups up to `n`, a tile's markup made beside the halves' for each one more. */
+function ensureGroups(n) {
+  while (GEL.length < n) {
+    const g = GEL.length,
+      i = g + 1;
+    $('#groups').insertAdjacentHTML(
+      'beforeend',
+      `<div class="grp" id="grp${i}" data-g="${g}" hidden><div class="ptabs" id="ptabs${i}" role="tablist" aria-label="Tile ${i}'s tabs"></div><div class="gbody" id="gbody${i}"><div class="gterm" id="term${i}" hidden><div class="tbody" id="termBody${i}"></div></div></div></div>`,
+    );
+    GEL.push({ grp: '#grp' + i, tabs: '#ptabs' + i, body: '#gbody' + i, term: '#term' + i, tbody: '#termBody' + i });
+    const tm = newTerm(GEL[g], g);
+    terms.push(tm);
+    for (const f of groupHooks) f(tm);
+  }
+}
 const drawer = { arm: null, armTimer: null, err: null };
 // Split in two or not is the *chat's* (2026-09-22): a PR beside its terminal is a thing you want for the review you
 // are doing, not for the board. Held here rather than in prefs for the same reason the tab a chat is on is — it lasts
@@ -40,7 +63,32 @@ const stacked = new Set();
 const zoomed = new Map(); // chat id → 0 | 1
 const isSplit = s => !!s && splits.has(s.id);
 const splitNow = () => splits.has(state.current);
-const stackNow = () => splitNow() && stacked.has(state.current);
+const stackNow = () => splitNow() && stacked.has(state.current) && !trees.has(state.current);
+// …and a chat past two halves is a tree of tiles (2026-11-25, prefs.autoTile): each new terminal splits the tile the
+// keys are in, side by side or one over the other as the chat's split stands (`stacked`: ⌘2 / ⌥⌘2, the turn button),
+// and a tile closed gives its room to the one it was split from. A node is a leaf { g } — a group: GEL[g], terms[g] —
+// or a split { d: 'row' | 'col', r, a, b }, `r` the first part's share. Made only by the setting, so a chat with none
+// is the two halves as they were; it goes with the split (unsplit).
+const trees = new Map(); // chat id → node
+const leavesOf = n => (!n ? [] : 'g' in n ? [n.g] : [...leavesOf(n.a), ...leavesOf(n.b)]);
+const isTiled = s => !!s && splits.has(s.id) && trees.has(s.id);
+const tiledNow = () => splits.has(state.current) && trees.has(state.current);
+/** The groups a chat's column shows, in the tree's order: the one, the two halves, or its tiles. */
+const groupsOf = s => (!isSplit(s) ? [0] : isTiled(s) ? leavesOf(trees.get(s.id)) : [0, 1]);
+/** A tree with leaf `g` replaced by what `f` makes of it; `null` from f drops it, its sibling taking its place. */
+const treeMap = (n, g, f) =>
+  'g' in n
+    ? n.g === g
+      ? f(n)
+      : n
+    : (a => (b => (!a ? b : !b ? a : { ...n, a, b }))(treeMap(n.b, g, f)))(treeMap(n.a, g, f));
+/** The split right over leaf `g`, or null for the root's leaf. */
+const parentOf = (n, g) =>
+  !n || 'g' in n
+    ? null
+    : ('g' in n.a && n.a.g === g) || ('g' in n.b && n.b.g === g)
+      ? n
+      : parentOf(n.a, g) || parentOf(n.b, g);
 let focusG = 0; // the half the keys, the pickers and a new tab act on
 const curTerm = () => terms[focusG];
 const termFor = id => (id ? terms.find(t => t.id === id) || null : null);

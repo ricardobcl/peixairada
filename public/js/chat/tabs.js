@@ -17,7 +17,14 @@ const tabs = new Map();
 // everything else on the right, until a tab is dragged across (moveTab). Written down only for the tabs that
 // moved, and forgotten with the split — the next one starts from claude on the left again.
 const homes = new Map(); // chat id → Map(tab → half), while that chat is split
-const homeOf = (s, k) => homes.get(s.id)?.get(k) ?? (k === 'chat' ? 0 : 1);
+const homeOf = (s, k) => {
+  const h = homes.get(s.id)?.get(k) ?? (k === 'chat' ? 0 : 1);
+  if (!isTiled(s)) return h;
+  const gs = groupsOf(s); // a tile that went: its tabs went to the one beside it (closeTile), anything else to the first but the chat's
+  if (gs.includes(h)) return h;
+  const chatAt = k === 'chat' ? null : homeOf(s, 'chat');
+  return gs.find(g => g !== chatAt) ?? gs[0];
+};
 /** The tabs a half's strip lists: every one of the chat's with one half, its own with two. */
 const keysIn = (s, g) => (!isSplit(s) ? (g ? [] : tabKeys(s)) : tabKeys(s).filter(k => homeOf(s, k) === g));
 const isPaneTab = t => /^(gh\d*|ide):/.test(t || '');
@@ -26,8 +33,10 @@ const isPageTab = t => /^gh\d*:/.test(t || ''); // a web page's: gh:<url>, or gh
       half whose tab went shows the first of its own that is left — or nothing, which is what an emptied half says. */
 function placeOf(s) {
   if (!s) return [null, null];
-  const p = tabs.get(s.id) || [];
-  return [0, 1].map(g => {
+  const p = tabs.get(s.id) || [],
+    gs = groupsOf(s);
+  return Array.from({ length: Math.max(2, ...gs.map(g => g + 1)) }, (_, g) => {
+    if (!gs.includes(g)) return null;
     const ks = keysIn(s, g);
     return ks.includes(p[g]) ? p[g] : ks[0] || null;
   });
@@ -152,9 +161,96 @@ function moveTab(s, k, g) {
  *  leaves. Claude keeps the first half (2026-09-25): a split puts the chat on the left whatever the column was
  *  showing, and a new tab goes into the half the chat is not in — so it never takes the chat's place. */
 function openNewTab(s, k) {
+  if (prefs.autoTile && isShellTab(k) && tileTerm(s, k)) return;
   if (!isSplit(s)) splitChat(s, true);
-  homes.get(s.id).set(k, 1 - homeOf(s, 'chat'));
+  homes.get(s.id).set(k, besideChat(s));
   setTab(s, k);
+}
+/** Where a tab opened beside the chat goes: the other half; tiled, the tile the keys are in when the chat is not
+ *  there, else the first that is not the chat's. */
+function besideChat(s) {
+  const c = homeOf(s, 'chat');
+  if (!isTiled(s)) return 1 - c;
+  const gs = groupsOf(s);
+  return focusG !== c && gs.includes(focusG) ? focusG : (gs.find(g => g !== c) ?? gs[0]);
+}
+// A terminal a tile of its own (2026-11-25, prefs.autoTile; zsh and vim — pages, the changes, the timeline and the
+// agents stay tabs): an empty half or tile takes it, the one the keys are in first; else the tile the keys are in is
+// cut in two the way the chat's split stands (`stacked`), the new terminal in its second part. Not split yet, it is the
+// first split as ever (false: openNewTab makes it). A part under TILE_MIN is no tile: false, a tab beside the chat.
+const TILE_MIN = { cols: 24, rows: 6 }; // the least a tile is for: a half side by side is under 80 already
+function tileTerm(s, k) {
+  if (!isSplit(s)) return false;
+  if (!homes.has(s.id)) homes.set(s.id, new Map());
+  const gs = groupsOf(s),
+    empty = [focusG, ...gs].find(g => gs.includes(g) && !keysIn(s, g).length);
+  if (empty !== undefined) {
+    homes.get(s.id).set(k, empty);
+    setTab(s, k);
+    return true;
+  }
+  const d = stacked.has(s.id) ? 'col' : 'row',
+    at = gs.includes(focusG) ? focusG : gs[0];
+  if (!roomFor(at, d)) return false;
+  if (!trees.has(s.id))
+    trees.set(s.id, { d, r: (d === 'col' ? prefs.stackAt : prefs.splitAt) || 0.5, a: { g: 0 }, b: { g: 1 } }); // the halves as they stand
+  const have = leavesOf(trees.get(s.id));
+  let g = 1;
+  while (have.includes(g)) g++;
+  ensureGroups(g + 1);
+  const p = tabs.get(s.id);
+  if (p) p[g] = null; // whatever a tile there before showed
+  trees.set(
+    s.id,
+    treeMap(trees.get(s.id), at, leaf => ({ d, r: 0.5, a: leaf, b: { g } })),
+  );
+  homes.get(s.id).set(k, g);
+  setTab(s, k);
+  return true;
+}
+/** Whether half of group g's body, cut along d, holds a terminal of TILE_MIN — by the cell of a terminal drawn now. */
+function roomFor(g, d) {
+  const b = $(GEL[g].body).getBoundingClientRect(),
+    tm = terms.find(t => t.xt?.cols && $(t.el.tbody).clientWidth);
+  const cw = tm ? $(tm.el.tbody).clientWidth / tm.xt.cols : 8,
+    ch = tm ? $(tm.el.tbody).clientHeight / tm.xt.rows : 17;
+  const w = d === 'row' ? (b.width - 5) / 2 : b.width,
+    h = d === 'col' ? (b.height - 5) / 2 : b.height;
+  return w / cw >= TILE_MIN.cols && h / ch >= TILE_MIN.rows;
+}
+/** Tile g closed (⌘W on it, its ⨯): its tabs go to the tile it was split from, and the room with them. */
+function closeTile(s, g) {
+  const par = parentOf(trees.get(s.id), g);
+  if (!par) return;
+  const to = leavesOf('g' in par.a && par.a.g === g ? par.b : par.a)[0];
+  for (const k of keysIn(s, g)) homes.get(s.id).set(k, to);
+  if (focusG === g) focusG = to;
+  dropLeaf(s, g);
+}
+/** Leaf g out of the chat's tree, its sibling taking its place; down to one, the column is one again. */
+function dropLeaf(s, g) {
+  const t = treeMap(trees.get(s.id), g, () => null);
+  if (zoomed.get(s.id) === g) zoomed.delete(s.id);
+  if (t && !('g' in t)) {
+    trees.set(s.id, t);
+    if (!leavesOf(t).includes(focusG)) focusG = leavesOf(t)[0];
+    return;
+  }
+  const left = t ? placeOf(s)[t.g] : null;
+  unsplit(s, left || 'chat');
+  focusG = 0;
+}
+/** A tile emptied — its zsh exited, its last tab dragged away — goes, as a split the board made goes with its half. */
+function foldTiles(s) {
+  for (let again = true; again && isTiled(s);) {
+    again = false;
+    for (const g of groupsOf(s))
+      if (!keysIn(s, g).length) {
+        dropLeaf(s, g);
+        again = true;
+        break;
+      }
+  }
 }
 /** The chat tab brought forward — Esc from a page, ⌥⌘C, the focus view's row: into its own half, the left one
  *  unless it was dragged, and the keys go there rather than the chat coming into the half they were in. */
@@ -164,6 +260,7 @@ const showChat = s => setTab(s, 'chat');
 function splitChat(s, auto) {
   const was = placeOf(s)[0];
   splits.add(s.id);
+  trees.delete(s.id);
   if (auto) autoSplit.add(s.id);
   else autoSplit.delete(s.id);
   homes.set(s.id, new Map());
@@ -174,6 +271,7 @@ function unsplit(s, keep) {
   splits.delete(s.id);
   autoSplit.delete(s.id);
   homes.delete(s.id);
+  trees.delete(s.id);
   tabs.set(s.id, [keep, null]);
 }
 /** A page's tab is named for where it is (2026-10-13; where it was opened before): a PR as repo#n, else its host. */
@@ -192,7 +290,8 @@ const paneLabel = u => {
 // never re-attaches what it shows.
 function syncTerm(s) {
   // the zsh exited, the page was forgotten, the last tab was dragged out: a split of the board's own goes with its half
-  if (s && autoSplit.has(s.id) && (!keysIn(s, 0).length || !keysIn(s, 1).length)) {
+  if (isTiled(s)) foldTiles(s);
+  else if (s && autoSplit.has(s.id) && (!keysIn(s, 0).length || !keysIn(s, 1).length)) {
     const p = placeOf(s);
     unsplit(s, p[0] || p[1]);
   }
@@ -237,7 +336,7 @@ function placeLog(s, p) {
   for (const tm of terms) {
     const host = $(tm.el.body),
       had = host.querySelector('.gempty'),
-      want = isSplit(s) && !p[tm.g];
+      want = isSplit(s) && !p[tm.g] && groupsOf(s).includes(tm.g);
     if (want && !had)
       host.insertAdjacentHTML(
         'beforeend',
@@ -266,7 +365,7 @@ function renderTabs(s, p = placeOf(s)) {
     el.hidden = g === 0 ? !two && keys.length < 2 : false;
     $(tm.el.grp).classList.toggle('nostrip', el.hidden); // the floating header's rules read it — a class, not :has() (2026-10-13)
     el.classList.toggle('lone', lone);
-    if (el.hidden || lone || (g === 1 && !two)) {
+    if (el.hidden || lone || (s ? !groupsOf(s).includes(g) : g > 0)) {
       setHtml(el, '');
       el._on = null;
       continue;
@@ -293,9 +392,10 @@ function renderTabs(s, p = placeOf(s)) {
       return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" role="tab" aria-selected="${cur === k}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
     };
     // the half's own, ◫ (or ⊟) and ⨯, behind a ⋯ at the strip's end (Q5)
+    const over = isTiled(s) ? parentOf(trees.get(s.id), g)?.d === 'col' : stackNow(); // tiled: the split this tile is half of
     const half = two
       ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">` +
-        `<button class="nav gturn" data-to="${stackNow() ? 'side' : 'over'}" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? ICON.side : ICON.over}</button>` +
+        `<button class="nav gturn" data-to="${over ? 'side' : 'over'}" title="${over ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${over ? ICON.side : ICON.over}</button>` +
         `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘0 from that one">${ICON.close}</button></span>`
       : '';
     const html =
@@ -557,7 +657,8 @@ if (inApp) {
     if (s && placeOf(s).some(isPaneTab)) postPane(s);
   };
   const ro = new ResizeObserver(repost);
-  for (const id of ['#chat', '#groups', '#gbody', '#gbodyB']) ro.observe($(id));
+  for (const id of ['#chat', '#groups']) ro.observe($(id));
+  onGroup(tm => ro.observe($(tm.el.body)));
   window.addEventListener('resize', repost);
   for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', repostPane); // the pane comes back up
 }
@@ -565,12 +666,16 @@ if (inApp) {
 $('#groups').addEventListener('click', e => {
   const strip = e.target.closest('.ptabs');
   if (!strip) return;
-  const g = strip.id === 'ptabsB' ? 1 : 0;
+  const g = +strip.closest('.grp').dataset.g;
   if (e.target.closest('.gmore')) return void strip.classList.toggle('gopen');
   if (e.target.closest('.gclose')) return closeHalf(g);
   const s = state.sessions.get(state.current);
   if (!s) return;
-  if (e.target.closest('.gturn')) return stackSplit(s, !stacked.has(s.id));
+  if (e.target.closest('.gturn')) {
+    if (!isTiled(s)) return stackSplit(s, !stacked.has(s.id));
+    focusGroup(g);
+    return stackSplit(s, parentOf(trees.get(s.id), g)?.d !== 'col');
+  }
   const cp = e.target.closest('.pcopy');
   if (cp) {
     const k = cp.closest('.ptab').dataset.tab;
@@ -593,8 +698,7 @@ $('#groups').addEventListener('click', e => {
   if (e.target.closest('.x')) return closeTab(s, k);
   openTab(s, k);
 });
-for (const id of ['#ptabs', '#ptabsB'])
-  $(id).addEventListener('pointerleave', e => e.currentTarget.classList.remove('gopen')); // ⋯'s ◫ ⨯ fold again
+onGroup(tm => $(tm.el.tabs).addEventListener('pointerleave', e => e.currentTarget.classList.remove('gopen'))); // ⋯'s ◫ ⨯ fold again
 // The tabs past the strip's ends (2026-10-30): a sideways swipe scrolls their box by itself; a wheel turned over the
 // strip, or a swipe down it, scrolls it too — down is further along — rather than nothing. Each strip's own listener,
 // non-passive: nothing else scrolls under it. The box is drawn anew with the strip, so its scroll is heard in capture.
@@ -610,17 +714,18 @@ const stripRo = new ResizeObserver(es => {
     if (t) trackEdges(t);
   }
 });
-for (const id of ['#ptabs', '#ptabsB']) {
-  $(id).addEventListener('wheel', tabsWheel, { passive: false });
-  $(id).addEventListener(
+onGroup(tm => {
+  const el = $(tm.el.tabs);
+  el.addEventListener('wheel', tabsWheel, { passive: false });
+  el.addEventListener(
     'scroll',
     e => {
       if (e.target.classList?.contains('ptrack')) trackEdges(e.target);
     },
     { capture: true, passive: true },
   );
-  stripRo.observe($(id));
-}
+  stripRo.observe(el);
+});
 // A click anywhere in a half is being in it — the keys follow the pointer, as they do between editor groups.
 // Not the strips: their own click already says which half, and re-rendering them under a mousedown would take
 // the button out from under the click that followed it.
@@ -629,7 +734,7 @@ $('#groups').addEventListener(
   e => {
     if (e.target.closest('.ptabs')) return;
     const grp = e.target.closest('.grp');
-    if (grp) focusGroup(grp.id === 'grpB' ? 1 : 0);
+    if (grp) focusGroup(+grp.dataset.g);
   },
   true,
 );
@@ -667,7 +772,7 @@ window.peixPaneOpen = (key, url) => {
   let drag = null;
   const halfAt = (x, y) => {
     const g = document.elementFromPoint(x, y)?.closest('.grp');
-    return g ? (g.id === 'grpB' ? 1 : 0) : null;
+    return g ? +g.dataset.g : null;
   };
   const lit = g => {
     for (const tm of terms) $(tm.el.grp).classList.toggle('drop', g === tm.g && g !== drag?.from);
@@ -684,14 +789,7 @@ window.peixPaneOpen = (key, url) => {
     const b = e.target.closest('.ptab');
     if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl, .paddr, .pedit')) return; // the address and its buttons are not the tab's handle
     if (!splitNow()) return;
-    drag = {
-      k: b.dataset.tab,
-      from: b.closest('.ptabs').id === 'ptabsB' ? 1 : 0,
-      x: e.clientX,
-      y: e.clientY,
-      b,
-      ghost: null,
-    };
+    drag = { k: b.dataset.tab, from: +b.closest('.grp').dataset.g, x: e.clientX, y: e.clientY, b, ghost: null };
   });
   window.addEventListener('pointermove', e => {
     if (!drag) return;

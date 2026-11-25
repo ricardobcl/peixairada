@@ -21,6 +21,7 @@ function keepTabs() {
     auto: [...autoSplit],
     stacked: [...stacked],
     zoomed: [...zoomed],
+    trees: [...trees],
     changes: [...changesOpen],
     timeline: [...timelineOpen],
     agents: [...agentTabs],
@@ -69,7 +70,9 @@ try {
       for (const id of l || []) m.add(id);
     blankSeq = Math.max(blankSeq, ...[...blanks.values()].flat().map(b => b.n));
     reviewSeq = Math.max(reviewSeq, ...[...reviews.values()].flatMap(r => r.items.map(c => c.id)));
-    focusG = k.focus === 1 ? 1 : 0;
+    for (const [id, t] of k.trees || []) if (t && typeof t === 'object') trees.set(id, t);
+    ensureGroups(Math.max(2, ...[...trees.values()].flatMap(leavesOf).map(g => g + 1))); // the tiles' markup before anything reads a group
+    focusG = Number.isInteger(k.focus) && k.focus >= 0 && k.focus < GEL.length ? k.focus : 0;
     keepTabs.was = v;
   }
 } catch {} // none, or not ours to read: nothing to give back

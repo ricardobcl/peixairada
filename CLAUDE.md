@@ -702,16 +702,14 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 
 ## The chat column's two halves
 
-* **⌘2 splits the chat column, ⌘1 / ⌘2 are the halves**: each has its own tab strip and body, both picking from the
-  *one* open chat's tabs. The left half keeps the plain ids (`#ptabs`, `#term`, `#termBody`, `#log`) — the whole
-  column while nothing is split, and the harness reads it by those names. `GEL` maps each half to its elements,
+* **⌘2 splits the chat column, ⌘1 / ⌘2 are the halves**: each its own strip and body, both picking from the
+  *one* open chat's tabs. The left half keeps the plain ids (`#ptabs`, `#term`, `#termBody`, `#log`), the harness's names. `GEL` maps each group to its elements,
   `terms[g]` owns its xterm and socket, the take-over state (armed, failed) is the board's `drawer`.
 * **⌥⌘2 splits it one half over the other; the digit is the pane, the modifier the layout**: pane 1 is left or top,
-  pane 2 right or bottom, and a key of the other layout turns the split first (`hotGroup(g, stack)` → `stackSplit`:
-  `syncTerm` and a refit, nothing re-attached). The layout is the chat's (`stacked`, beside `splits`) **and outlives
+  pane 2 right or bottom, and a key of the other layout turns the split first (`hotGroup(g, stack)` → `stackSplit`, nothing re-attached). The layout is the chat's (`stacked`, beside `splits`) **and outlives
   the split** (`unsplit` leaves it); the divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`). Stacked is
   `#groups.stack`; the second strip's `.gturn` turns it too. **A zsh
-  ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
+  ended by its × lingers with `exited` set** — wait on that. → `split-stacked.mjs`.
 * **The sidebar is the one layout** (2026-10-30; no Tiles 2026-11-01): `<html data-layout="sidebar">` in the markup,
   never toggled, **its every rule `:root[data-layout="sidebar"] …`** over the tiles' rules, which stay the panels'
   base (`main.tiles` in the markup: `--tile-edge` from `tileEdge` in `tintChat` for a split's halves, `tileNotch`'s cut
@@ -725,15 +723,17 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
   editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`), a new tab goes
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).
-  Choosing a tab that exists is `openTab()` and never splits. A split the board made (`autoSplit`) folds back on its
+  A tab that exists is `openTab()`, never a split. A split the board made (`autoSplit`) folds back on its
   own when the chat is down to one tab (`syncTerm`).
+* **Tile new terminals** (2026-11-25; Settings › Terminal, `prefs.autoTile`, off): a zsh or vim fills an empty half or
+  tile, else cuts the keys' tile along `stacked` (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid
+  (`tileLayout`, `.tdiv`), groups made at need (`ensureGroups`, `onGroup`); an empty tile folds (`foldTiles`), ⨯
+  gives its tabs to its sibling (`closeTile`); ⌘1 ⌘2 by tree order, ⌥ turns its split. → `auto-tile.mjs`.
 * **A tab lives in exactly one half, and split, each strip lists only its own**: one transcript element, one xterm
   per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other right
   (`homeOf`) — written only for a tab **dragged across** (`moveTab`; a press under 5 px is a click) and forgotten
-  with the split. `keysIn(s, g)` is a strip's list; `setTab` shows a tab in *its* half. ⌥⌘←→ walk both strips as one.
-* **A strip moves rather than jumps** (`tabMotion`, from `renderTabs`, reading the strip only when it redraws it for
-  the same chat): the highlight slides (`.ptabpill`, the new tab `.slid` until it lands), a new tab grows in, a closed
-  one folds as a stand-in **`.ptabgone` — never a `.ptab`**, so counts of tabs count the real ones.
+  with the split. `keysIn(s, g)` is a strip's list; `setTab` shows a tab in its half. ⌥⌘←→ walk both strips as one.
+* **A strip moves rather than jumps** (`tabMotion`, from `renderTabs`, for the same chat): the highlight slides (`.ptabpill`, a new tab `.slid` till landed), a new tab grows in, a closed one folds as a stand-in **`.ptabgone` — never a `.ptab`**, so counts of tabs count the real ones.
 * **The strip is one family of controls** (2026-10-11): every tab, nav button and field 26 px, `--r-3`, no fill at
   rest; **the tab in front and the half with the keys in `--tablit`** (the chat's colour lifted), never the accent;
   glyphs are strokes (`ICON.back` …, `.ic.st`). Under 640 px (a size container) the tabs behind fold to marks and
@@ -741,22 +741,21 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   and `.navs`; the tab drag ignores it. The half's ◫/⊟ and ⨯ are behind ⋯ (`.gmore` → `.gopen`; `.click()` on
   `.gturn` / `.gclose` works folded). Split, each half is a tile (`#gsplit` the gap); under the floating header
   `#groups` pads by `--float-h`, not the halves. → `pane-tabs.mjs`, `split-halves.mjs`.
-* **The tabs scroll; the one in front never gives way** (2026-10-30): the tabs are in `.ptrack`, the strip's own box
-  past which they run (⋯ outside it) — a swipe, or a wheel down it (`tabsWheel`); an end with more faded
+* **The tabs scroll; the one in front never gives way** (2026-10-30): the tabs are in `.ptrack`, the strip's own scroller
+  (⋯ outside it) — a swipe, or a wheel down it (`tabsWheel`); an end with more faded
   (`trackEdges`). The address is `min(420px, 100%)` whatever is beside it; a tab come in front is scrolled to
-  (`revealTab`, keyed `el._on`, a new one once grown in), a redraw keeps the scroll. Stand-ins and the pill go in the
-  box. → `tab-scroll.mjs`.
-* **A half whose one tab is not a web page has no strip** (`.lone`, of no height: the tile's border says where the keys
-  are, so moving them resizes no terminal). A web page alone keeps its strip, an empty half keeps its (the drop, ⋯).
+  (`revealTab`, keyed `el._on`, a new one once grown in), a redraw keeps the scroll. Stand-ins and the pill go in it. → `tab-scroll.mjs`.
+* **A half whose one tab is not a web page has no strip** (`.lone`, no height: the tile's border marks the keys, so
+  moving them resizes no terminal). A web page alone keeps its strip, an empty half keeps its (the drop, ⋯).
   The lone tab's × is ⌘W's, ⌥⌘W's and the header menu's (`dropTab()`); a lone tab cannot be dragged. Unsplit, the
   strip hides under two tabs. → `split-halves.mjs`, `split-stacked.mjs`, `pane-tabs.mjs`.
-* **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now* —
-  a key that is gone falls away. `tabOf(s)` is the focused half's. A half with nothing says what would fill it
-  (`.gempty`), and its strip takes a drop (`.pdrop`). **The tab in front closed, the one beside it comes forward**
+* **Placement is derived**: `tabs` holds a tab per group per chat and `placeOf(s)` reads it against `keysIn` *now* —
+  a key that is gone falls away. `tabOf(s)` is the focused half's. An empty half says what would fill it
+  (`.gempty`), its strip takes a drop (`.pdrop`). **The tab in front closed, the one beside it comes forward**
   (2026-10-13, `closeTab`): its right, else its left — a zsh's at once, before the server says it ended.
 * **A blank tab is a browser's new tab** (2026-10-13, ⌘T on a page; `blanks`, `new:<n>` after the pages, page state
-  only): in front, its address a box with the keys (`.ptab.blank .paddr`; what was typed is out of the markup, given
-  back with the caret on a redraw — as a page's address edited, `addrEdit`), and under it, in the half, what ⏎ would
+  only): in front, its address a box with the keys (`.ptab.blank .paddr`; its text out of the markup, given back with the caret on a
+  redraw, as `addrEdit`), and under it, in the half, what ⏎ would
   open (`.gblank`, `placeBlanks` from `syncTerm`, `blankRows`: typed first — `typedPage`: an address, a bare host,
   else a search —, then `chatPages`). ⏎ or a click puts the page in its place (`fillBlank`); esc empties the box, then
   closes the tab (`blankEscape`, also `hotEscape`'s). `focusTerm` focuses the box where a terminal would be. Never
@@ -764,8 +763,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The changes tab is git in the chat's folder, read when asked** (2026-10-10; ⌥⌘D, the header's `#diffBtn`, ···'s
   `#chgBtn`): a tab `changes` while the chat is in `changesOpen`, one element `#chg` moved into its half
   (`placeChanges`, from `syncTerm`). `GET /api/sessions/:id/changes?scope=` — `uncommitted` (untracked as added),
-  `branch` (against the merge base with origin's default branch), `turn` (the uncommitted diff of the files the last
-  turn edited, `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`);
+  `branch` (from the merge base with origin's default), `turn` (the last turn's files, uncommitted,
+  `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`);
   `prefs.changesScope`. Re-read when the chat moved on or by ↻, its place kept; read on a copy of the index
   (`indexCopy`), lists `-z`, a file past `CHANGES_MAX` named in `left`. **Commit…, Push and PR… type the command into the chat's
   zsh, unrun** (`typeInShell`). **A line's comments are a review** (2026-10-28; `reviews`, `drawComments`, found by its
@@ -777,15 +776,15 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (`tvLanes`), the Now bar (`tvGo`), folds (`tvFold`). **The narrow** (`tvNarrow` vs `tvInPlay`;
   `tvSolo`; you and Claude a chip each) rides the address, `#<id>/tl:p=repo.n…` (`tvHash`, `tvFromHash`) — **the id
   is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert, the menus; the move gone to once
-  both are in (`tv.lit`). Its word (`tvHint`) till seen (`prefs.tvSeen`). Its tracks (`tvTracksHtml`, its alone) hold
-  times for `fillTracks`. → `timeline-tab.mjs`.
+  both are in (`tv.lit`). Its word (`tvHint`) till seen (`prefs.tvSeen`). Its tracks (`tvTracksHtml`) hold times for
+  `fillTracks`. → `timeline-tab.mjs`.
 * **An agent's tab** (2026-11-02; `agentTabs`, `placeAgent`, `#agv`): `agent:<id>`, a row clicked, read-only, from `…/agents/:id?after=n` while it shows and works. Alone in a half, no strip: `.agvx` closes it. **Its call in the transcript**: a line out of the fold, tied by its result's `agent` (`agCallHtml`). → `agent-tab.mjs`, `agent-call.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
-  `merge-base..head`. What git cannot (no checkout of that repo, origin unreachable) is `gh pr diff` (`prFromGh`,
+  `merge-base..head`. Else `gh pr diff` (`prFromGh`,
   `patchStat`; `pr.source`, `pr.why`). The page: `PR #n ▾` in `.cseg` (`scopePrs`, `changes.pr` per
-  chat; the picker `prScopeMenu`), a `.csrc` line saying where it was read, no Commit… or Push, a
+  chat; the picker `prScopeMenu`), `.csrc` where it was read, no Commit… or Push, a
   note prefixed `PR #n`. **Each `#prlist` row is a `.prline`** — the `.prrow` link, where its branch lives
   (`.prwhere`, `whereOf` over `GET /api/worktrees?cwd=`; `wtOf` keeps it 10 s),
   then its buttons (`.pract`; Diff → `openPrDiff`, Editor ▾ and Chat below); `.prcopy` after its title copies its
@@ -834,15 +833,15 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `:scope > .msg:last-of-type`. → `transcript-live.mjs`.
 * **Split or not is the chat's** (`splits`, beside `tabs`); `syncTerm` calls `applySplit()` on every open; each
   strip's ⨯ closes its own half (`closeHalf(g)`). The per-chat maps (`tabs`, `splits`, `state.paneGh`… — the
-  snapshot's list) are pruned on every snapshot to the chats it has, carried to the new id across a /clear
-  (`carryChat`) and **kept across a reload** (2026-10-16, `keepTabs`: sessionStorage, which lives as the shell's views
-  do; written after `syncTerm`, read before the first snapshot). → `split-halves.mjs`, `pane-tabs.mjs`,
+  snapshot's list) are pruned on every snapshot to its chats, carried to the new id across a /clear
+  (`carryChat`) and **kept across a reload** (2026-10-16, `keepTabs`: sessionStorage, as the shell's views
+  live; written after `syncTerm`, read before the first snapshot). → `split-halves.mjs`, `pane-tabs.mjs`,
   `tabs-reload.mjs`.
-* **A half can fill the column and give it back** (2026-10-13, `zoomed`: chat → half, `toggleZoom`): the other half is
-  hidden as it is (`.grp[hidden]`), never unsplit — its terminal is not resized (`fitTerm` gets no size from a hidden
-  body), its page not posted (`postPane` skips a hidden half) —, `#groups.zoomed` on and `.stack` off. **It holds while
+* **A half can fill the column and give it back** (2026-10-13, `zoomed`: chat → half, `toggleZoom`): the other
+  hidden (`.grp[hidden]`), never unsplit — its terminal not resized (`fitTerm` gets no size from a hidden
+  body), its page not posted (`postPane`) —, `#groups.zoomed` on and `.stack` off. **It holds while
   the keys stay in that half**: `applySplit` drops it otherwise, and `focusGroup` runs `applySplit` while one is held,
-  so ⌘1/⌘2, ⌥⌘←→ or a key of a tab behind it bring both back. → `half-zoom.mjs`.
+  so ⌘1/⌘2, ⌥⌘←→ or a tab behind it bring both back. → `half-zoom.mjs`.
 
 ## The drawer
 

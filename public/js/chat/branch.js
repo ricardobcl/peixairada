@@ -121,7 +121,7 @@ window.peixDragging = on => {
   setDropping(!!on && !room);
 }; // the chat's panel with the keys takes the drop (chatTakesDrop)
 const pastedFiles = e => [...(e.clipboardData?.files || [])];
-for (const tm of terms)
+onGroup(tm =>
   $(tm.el.tbody).addEventListener(
     'paste',
     e => {
@@ -134,4 +134,5 @@ for (const tm of terms)
       else uploadFiles(files).then(attachPaths);
     },
     true,
-  );
+  ),
+);

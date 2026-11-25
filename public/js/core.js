@@ -151,6 +151,7 @@ const prefs = {
   prAgent: null,
   prio: true,
   pinned: 0,
+  autoTile: false,
   mornings: 9,
   zzLane: 0,
   focusSince: 0,

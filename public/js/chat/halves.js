@@ -6,19 +6,176 @@
 // is the pane, the modifier the layout, and a key pressed on the other layout turns it. ⌘0 and ⌘W carry no layout.
 function applySplit() {
   const on = splitNow(),
-    stack = stackNow();
+    stack = stackNow(),
+    tree = on ? trees.get(state.current) : null;
   if (!on) focusG = 0;
+  if (tree) {
+    const gs = leavesOf(tree);
+    ensureGroups(Math.max(...gs) + 1);
+    if (!gs.includes(focusG)) focusG = gs[0];
+  }
   if (zoomed.has(state.current) && (!on || zoomed.get(state.current) !== focusG)) zoomed.delete(state.current); // the keys left the half that filled the column
   const z = zoomed.get(state.current) ?? null;
   $('#main').classList.toggle('split', on);
   $('#groups').classList.toggle('stack', stack && z === null); // one half showing is laid out as a column, whichever it is
   $('#groups').classList.toggle('zoomed', z !== null);
+  $('#groups').classList.toggle('tiled', !!tree);
+  if (tree) {
+    tileLayout(z !== null ? { g: z } : tree);
+    return;
+  }
+  if (applySplit.tiled) {
+    // out of a tree: the grid's placements go, and the tiles past the halves
+    applySplit.tiled = false;
+    $('#groups').style.gridTemplateColumns = $('#groups').style.gridTemplateRows = '';
+    for (const tm of terms) {
+      $(tm.el.grp).style.gridArea = '';
+      if (tm.g > 1) $(tm.el.grp).hidden = true;
+    }
+    for (const d of tdivs) d.hidden = true;
+  }
   $('#grp').hidden = z === 1;
   $('#grpB').hidden = !on || z === 0;
   $('#gsplit').hidden = !on || z !== null;
   const at = Math.max(0.15, Math.min(0.85, (stack ? prefs.stackAt : prefs.splitAt) || 0.5));
   $('#grp').style.flex = on && z === null ? `${at} 1 0` : '1 1 0';
   $('#grpB').style.flex = z === 1 ? '1 1 0' : `${1 - at} 1 0`;
+}
+// The tree as a grid (2026-11-25): its leaves cut the unit square, every cut a grid line, so each tile spans the tracks
+// between its own — the halves' flex basis has no third part. fr shares in ten-thousandths: under 1 in all, fr leaves
+// the rest of the room empty.
+function tileLayout(node) {
+  applySplit.tiled = true;
+  const rects = {},
+    cut = (n, x, y, w, h) => {
+      if ('g' in n) {
+        rects[n.g] = [x, y, x + w, y + h];
+        return;
+      }
+      const r = Math.max(0.15, Math.min(0.85, n.r || 0.5));
+      if (n.d === 'row') {
+        cut(n.a, x, y, w * r, h);
+        cut(n.b, x + w * r, y, w * (1 - r), h);
+      } else {
+        cut(n.a, x, y, w, h * r);
+        cut(n.b, x, y + h * r, w, h * (1 - r));
+      }
+    };
+  cut(node, 0, 0, 1, 1);
+  const q = v => Math.round(v * 1e4),
+    lines = i => [...new Set(Object.values(rects).flatMap(r => [q(r[i]), q(r[i + 2])]))].sort((a, b) => a - b);
+  const xs = lines(0),
+    ys = lines(1),
+    tracks = l =>
+      l
+        .slice(1)
+        .map((v, i) => `minmax(0, ${v - l[i]}fr)`)
+        .join(' ');
+  const box = $('#groups');
+  box.style.gridTemplateColumns = tracks(xs);
+  box.style.gridTemplateRows = tracks(ys);
+  for (const tm of terms) {
+    const r = rects[tm.g],
+      grp = $(tm.el.grp);
+    grp.hidden = !r;
+    grp.style.flex = '';
+    if (r)
+      grp.style.gridArea = `${ys.indexOf(q(r[1])) + 1} / ${xs.indexOf(q(r[0])) + 1} / ${ys.indexOf(q(r[3])) + 1} / ${xs.indexOf(q(r[2])) + 1}`;
+  }
+  $('#gsplit').hidden = true;
+  dividersSoon();
+}
+// One divider a split, over the gap it makes, dragged to move it (2026-11-25). Placed by the tiles' boxes once they
+// are laid out — a frame on, and whenever a tile changes size — never in the same pass as the layout that moves them.
+const tdivs = [];
+const splitsOf = (n, path = '') =>
+  !n || 'g' in n ? [] : [{ n, path }, ...splitsOf(n.a, path + 'a'), ...splitsOf(n.b, path + 'b')];
+const nodeAt = (n, path) => [...path].reduce((x, c) => (x && !('g' in x) ? x[c] : null), n);
+/** A subtree's box in #groups' own coordinates, from its tiles'. */
+function boxOf(n, br) {
+  const rs = leavesOf(n).map(g => $(GEL[g].grp).getBoundingClientRect());
+  return {
+    l: Math.min(...rs.map(r => r.left)) - br.left,
+    t: Math.min(...rs.map(r => r.top)) - br.top,
+    r: Math.max(...rs.map(r => r.right)) - br.left,
+    b: Math.max(...rs.map(r => r.bottom)) - br.top,
+  };
+}
+function placeDividers() {
+  dividersSoon.f = 0;
+  const s = state.sessions.get(state.current),
+    tree = isTiled(s) && !zoomed.has(s.id) ? trees.get(s.id) : null,
+    list = splitsOf(tree);
+  const box = $('#groups'),
+    br = box.getBoundingClientRect();
+  while (tdivs.length < list.length) {
+    const d = html2el('<div class="tdiv" role="separator" title="Drag to resize these tiles" hidden></div>');
+    box.append(d);
+    tdivs.push(d);
+  }
+  tdivs.forEach((d, i) => {
+    const x = list[i];
+    d.hidden = !x;
+    if (!x) return;
+    const a = boxOf(x.n.a, br),
+      b = boxOf(x.n.b, br),
+      all = boxOf(x.n, br),
+      row = x.n.d === 'row';
+    d.dataset.path = x.path;
+    d.classList.toggle('col', !row);
+    d.setAttribute('aria-orientation', row ? 'vertical' : 'horizontal');
+    Object.assign(
+      d.style,
+      row
+        ? { left: a.r + 'px', width: Math.max(1, b.l - a.r) + 'px', top: all.t + 'px', height: all.b - all.t + 'px' }
+        : { top: a.b + 'px', height: Math.max(1, b.t - a.b) + 'px', left: all.l + 'px', width: all.r - all.l + 'px' },
+    );
+  });
+}
+function dividersSoon() {
+  if (!dividersSoon.f) dividersSoon.f = requestAnimationFrame(placeDividers);
+} // a function: applySplit runs before this line has
+{
+  const ro = new ResizeObserver(() => {
+    if (tiledNow()) dividersSoon();
+  });
+  onGroup(tm => ro.observe($(tm.el.grp)));
+  $('#groups').addEventListener('pointerdown', e => {
+    const d = e.target.closest?.('.tdiv'),
+      s = state.sessions.get(state.current);
+    if (!d || !isTiled(s)) return;
+    const n = nodeAt(trees.get(s.id), d.dataset.path);
+    if (!n || 'g' in n) return;
+    e.preventDefault();
+    e.stopPropagation();
+    d.classList.add('drag');
+    document.body.style.userSelect = 'none';
+    const at = boxOf(n, $('#groups').getBoundingClientRect()),
+      br0 = $('#groups').getBoundingClientRect();
+    let snapped = false;
+    const move = ev => {
+      const row = n.d === 'row',
+        len = row ? at.r - at.l : at.b - at.t;
+      const raw = Math.max(
+        0.15,
+        Math.min(0.85, (row ? ev.clientX - br0.left - at.l : ev.clientY - br0.top - at.t) / len),
+      );
+      const near = Math.abs(raw - 0.5) * len <= SNAP_PX; // even parts pull, as the halves' divider does
+      if (near && !snapped) haptic('alignment');
+      snapped = near;
+      n.r = near ? 0.5 : raw;
+      applySplit();
+    };
+    const up = () => {
+      removeEventListener('pointermove', move);
+      d.classList.remove('drag');
+      document.body.style.userSelect = '';
+      keepTabsSoon();
+      fitTerm();
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up, { once: true });
+  });
 }
 /** The half the keys are in fills the column, or the two come back. False with nothing split. */
 function toggleZoom(s) {
@@ -35,7 +192,7 @@ function toggleZoom(s) {
 /** Which half the keys are in. Re-renders the strips (the rule moves) and tells the shell which page to focus. */
 function focusGroup(g) {
   const to = splitNow() ? g : 0;
-  if (to === focusG) return;
+  if (to === focusG || (tiledNow() && !leavesOf(trees.get(state.current)).includes(to))) return;
   focusG = to;
   if (zoomed.has(state.current)) applySplit(); // into the half behind the one filling the column: both come back
   const s = state.sessions.get(state.current);
@@ -60,9 +217,18 @@ function splitOn(stack = false) {
       what the column keeps; a half that was showing nothing leaves the closer's tab behind rather than none. */
 function closeHalf(g) {
   const s = state.sessions.get(state.current) || null;
+  if (s && isTiled(s) && groupsOf(s).length > 2) {
+    closeTile(s, g);
+    syncTerm(s);
+    renderHead(s);
+    focusBoard();
+    focusTerm();
+    return;
+  } // a tile: the rest stay
   if (s) {
-    const p = placeOf(s);
-    unsplit(s, p[g ? 0 : 1] || p[g]);
+    const p = placeOf(s),
+      o = groupsOf(s).find(x => x !== g) ?? (g ? 0 : 1);
+    unsplit(s, p[o] || p[g]);
   }
   focusG = 0;
   applySplit();
@@ -106,7 +272,18 @@ function hotOnlyHalf() {
     savePrefs();
     return true;
   }
-  closeHalf(focusG ? 0 : 1);
+  const s = state.sessions.get(state.current);
+  if (isTiled(s) && groupsOf(s).length > 2) {
+    unsplit(s, placeOf(s)[focusG]);
+    focusG = 0;
+    applySplit();
+    syncTerm(s);
+    renderHead(s);
+    focusBoard();
+    focusTerm();
+    return true;
+  } // tiles: all but this one
+  closeHalf(groupsOf(s).find(x => x !== focusG) ?? (focusG ? 0 : 1));
   return true;
 }
 /** ⌘1 / ⌘2 (side by side) and ⌥⌘1 / ⌥⌘2 (one over the other): the keys to that pane, the split made or turned first. */
@@ -114,6 +291,16 @@ function hotGroup(g, stack = false) {
   if (g === 1 && !splitNow()) return splitOn(stack);
   if (!splitNow()) return; // ⌘1 / ⌥⌘1 with one half is where you already are
   const s = state.sessions.get(state.current);
+  if (isTiled(s)) {
+    // tiles: the digit is the tile's place in the tree; the modifier turns the split it is half of, and the next one
+    const to = groupsOf(s)[g];
+    if (to === undefined) return;
+    focusGroup(to);
+    if (stacked.has(s.id) !== stack || (parentOf(trees.get(s.id), to)?.d === 'col') !== stack) stackSplit(s, stack);
+    focusBoard();
+    focusTerm();
+    return;
+  }
   if (s && stacked.has(s.id) !== stack) stackSplit(s, stack);
   focusGroup(g);
   focusBoard();
@@ -124,6 +311,8 @@ function hotGroup(g, stack = false) {
 function stackSplit(s, on) {
   if (on) stacked.add(s.id);
   else stacked.delete(s.id);
+  const par = isTiled(s) && parentOf(trees.get(s.id), focusG);
+  if (par) par.d = on ? 'col' : 'row'; // tiled: the split the keys' tile is half of
   syncTerm(s);
   fitTerm();
 }
