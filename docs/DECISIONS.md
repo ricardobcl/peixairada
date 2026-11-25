@@ -42,7 +42,10 @@ member reads the chat and GitHub takes an upload only from a writer: *a files re
   puts the pictures back in the tray. An alert for pictures alone says *📷 a picture*.
 * **Drawn** at their size (the log is drawn whole on a change, so a picture already here fills before the paint and
   nothing jumps), 300 × 260 at most; a click shows it large (`#rmview`) with its original a button away; one GitHub shows
-  you nowhere says so and opens in your browser. **Under reduced motion a GIF is its first frame**, moving under the
+  you nowhere says so and opens in your browser. **The large view is as wide as the picture fitted to the window**
+  (`width: fit-content`): it first kept every dialog's `min(600px, 92vw)`, and Ricardo's first screenshot (3456 × 2234),
+  fitted to the window's height, came out 1077 px wide in a 600 px box — cropped, *"doesn't seem to resize the image"*;
+  the scenario's pictures had all been a few pixels, so it carries a screenshot's size now. **Under reduced motion a GIF is its first frame**, moving under the
   pointer or the keys, the switch followed as it turns.
 * Checked: `test/chat.test.mjs` (the addresses, the bytes; the files repo made, its invitation taken, a member's GIF up and
   fetched through the signed address once, one from GitHub's page, one nobody shared, by path; the people following;

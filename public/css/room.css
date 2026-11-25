@@ -60,9 +60,11 @@
   #room .rmtp .rmbtn { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--ink); }
   #room .rmtp .rmbtn .ic { width: 10px; height: 10px; }
   #room.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
-  #rmview[open] { max-width: 94vw; max-height: 92vh; padding: 0; border: 0; border-radius: var(--r-4); background: var(--panel); overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .4); cursor: zoom-out; }
+  /* the picture large: its box as wide as the picture fitted to the window (never the dialogs' 600 px, which cropped a
+     big one), the picture whole inside it, never past its own size */
+  #rmview[open] { width: fit-content; max-width: 94vw; max-height: 92vh; padding: 0; border: 0; border-radius: var(--r-4); background: var(--panel); overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .4); cursor: zoom-out; }
   #rmview::backdrop { background: rgba(0, 0, 0, .6); }
-  #rmview img { display: block; max-width: 94vw; max-height: calc(92vh - 40px); margin: 0 auto; object-fit: contain; }
+  #rmview img { display: block; width: auto; height: auto; max-width: 94vw; max-height: calc(92vh - 40px); margin: 0 auto; }
   #rmview .rmvfoot { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 12px; font-size: var(--fs-sm); color: var(--muted); } #rmview .rmvfoot span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* a poll (2026-10-20): an answer a row, its share of the people who answered a fill from the left; yours edged in the accent */
   #room .rmpoll { display: grid; gap: 4px; margin-top: 2px; }
