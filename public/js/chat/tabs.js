@@ -425,6 +425,9 @@ function renderTabs(s, p = placeOf(s)) {
     const half = two
       ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">` +
         `<button class="nav gturn" data-to="${over ? 'side' : 'over'}" title="${over ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${over ? ICON.side : ICON.over}</button>` +
+        (prefs.autoTile
+          ? `<button class="nav gspiral" title="Every tile in a spiral, Claude's on the left">${ICON.spiral}</button>`
+          : '') +
         `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘0 from that one">${ICON.close}</button></span>`
       : '';
     const html =
@@ -700,6 +703,7 @@ $('#groups').addEventListener('click', e => {
   if (e.target.closest('.gclose')) return closeHalf(g);
   const s = state.sessions.get(state.current);
   if (!s) return;
+  if (e.target.closest('.gspiral')) return hotSpiral();
   if (e.target.closest('.gturn')) {
     if (!isTiled(s)) return stackSplit(s, !stacked.has(s.id));
     focusGroup(g);

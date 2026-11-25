@@ -122,11 +122,48 @@ export default async function (ctx) {
   ctx.assert.ok(Math.abs((await box(ctx, 0)).w - all.width * 0.3) < 12, "claude's tile is 30 % of the column");
   await fits(ctx, [0, 1, 2, 3]);
 
+  // ··· › tidy the tiles (2026-11-25): a spiral, even cuts, claude's on the left, the rest turning clockwise — 1 top
+  // right, 2 at the bottom's right, 3 left of it; nothing re-attached; the keys where they were
+  const kept = await ctx.peix('state().focusG');
+  await ctx.evaluate(`document.querySelector('#spiralBtn').click()`);
+  await ctx.waitFor(`window.peix.state().tiles?.r === .5`, { what: 'the tiles tidied' });
+  ctx.assert.deepEqual(
+    await tiles(ctx),
+    {
+      d: 'row',
+      r: 0.5,
+      a: { g: 0 },
+      b: { d: 'col', r: 0.5, a: { g: 1 }, b: { d: 'row', r: 0.5, a: { g: 3 }, b: { g: 2 } } },
+    },
+    'a spiral',
+  );
+  ctx.assert.equal(await ctx.peix('state().focusG'), kept, 'the keys stayed');
+  ctx.assert.deepEqual(
+    await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`))),
+    ids,
+    'the same terminals, tidied',
+  );
+  await ctx.settle();
+  b = await Promise.all([0, 1, 2, 3].map(g => box(ctx, g)));
+  ctx.assert.ok(
+    right(b[0], b[1]) &&
+      below(b[1], b[2]) &&
+      right(b[3], b[2]) &&
+      below(b[1], b[3]) &&
+      Math.abs(b[0].w - all.width / 2) < 12,
+    `0 | 1 over (3 | 2): ${JSON.stringify(b)}`,
+  );
+  await fits(ctx, [0, 1, 2, 3]);
+  await ctx.shot('spiral');
+  // ⌘2 turns its split back side by side, as before the tidy, for what follows
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`window.peix.state().tiles?.b.d === 'row'`, { what: 'the right side by side again' });
+
   // across a reload: the same tree, every tile attached again
   await ctx.reload();
   await ctx.openChat(chat.id);
   await attached(ctx, [0, 1, 2, 3]);
-  ctx.assert.deepEqual(leaves(await tiles(ctx)), [0, 1, 2, 3], 'the tiles came back');
+  ctx.assert.deepEqual(leaves(await tiles(ctx)), [0, 1, 3, 2], 'the tiles came back, as tidied');
 
   // ⌥⌘W on the fourth: its zsh ends, and its tile with it — the one it was cut from takes the room
   await ctx.evaluate(

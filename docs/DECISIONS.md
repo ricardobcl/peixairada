@@ -71,6 +71,14 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   would (`openNewTab`'s `here`) — never a tile cut, never a split, the setting on or off; ⌘T keeps tiling. Made
   ⌃⌘⇧T as asked, then moved (*"It shoulddd be cmd option shift sorry"*): in `SHIFTKEYS`, beside the tile moves,
   forwarded by its key code (17, kVK_ANSI_T).
+* **Tidy the tiles: a spiral** (later: *"if auto tiling is turned on there should be a button to reset every tile into
+  a neatly packed spiral."* — *"with claude being on the left."*): ··· › *tidy the tiles*, the ⋯ of a tile's strip
+  and the launcher (`hotSpiral`, `spiralTree`), while the setting is on and the column split. The tile holding the
+  chat first, on the column's longer side — the left on a wide one —, then the rest in the tree's order, each turning
+  clockwise into the room left (left, top, right, bottom, again), every cut even: bspwm's *spiral*, not its
+  *dwindle* (every next one right and below), which is what i3's autotiling makes from the newest tile. Only the tree
+  changes: every tile keeps its tabs and terminal, the keys stay. Two halves untiled go side by side, even, no tree
+  made. Under `TILE_MIN` anywhere, refused with a note. No key: a button was asked for.
 * **page-load.test skips without CHROME** (found the same day): run bare, it passed over a board dead at load — a
   `const` read before its file. The suite's gate is `npm test` with CHROME set.
 * **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out

@@ -99,6 +99,9 @@ const actionRows = () => {
             ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }]
             : []),
           ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
+          ...(prefs.autoTile && isSplit(s)
+            ? [{ name: 'Tidy the tiles into a spiral', sub: ' — Claude’s on the left', fn: hotSpiral }]
+            : []),
           { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
           ...(inApp || onVim() ? [{ name: `Its folder in ${inEdName()}`, sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
           ...(s.cwd

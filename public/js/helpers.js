@@ -74,6 +74,8 @@ const ICON = {
   copied: '<svg class="ic st ok" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.6 8.4 6.6 11.3 12.4 5"/></svg>', // …and the ✓ they give way to, drawn (addrSay)
   side: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 2.5v11"/></svg>',
   over: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M2.5 8h11"/></svg>',
+  spiral:
+    '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 2.5v11M8 8h5.5M10.75 8v5.5M8 10.75h2.75"/></svg>',
   close:
     '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5"/></svg>',
   // the card's ✓ (2026-10-11; the text glyph before): a stroke, so a tick can draw it

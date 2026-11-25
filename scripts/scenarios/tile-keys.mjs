@@ -167,6 +167,11 @@ export default async function (ctx) {
   });
   ctx.assert.equal(await ctx.peix('state().stacked'), true, '⇧⌘D: one over the other');
   ctx.assert.ok(below(await box(ctx, 0), await box(ctx, 1)), 'the zsh under the chat');
+  // tidied (2026-11-25): two halves on a wide column go side by side, claude's on the left — no tree made
+  await ctx.evaluate(`document.querySelector('#spiralBtn').click()`);
+  await ctx.waitFor(`window.peix.state().stacked === false`, { what: 'the halves side by side' });
+  ctx.assert.equal(await ctx.peix('state().tiles'), null, 'still two halves');
+  ctx.assert.ok(right(await box(ctx, 0), await box(ctx, 1)), 'the chat on the left');
 
   // the switch off: ⌘D and ⌥⌘⇧← are no keys of the board's (they go on, to a page or the browser), ⌥⌘↑↓ the list's
   await ctx.evaluate(`document.querySelector('#autoTile').click()`);

@@ -474,6 +474,46 @@ function treeFits(tree) {
     r => ((r[2] - r[0]) * b.width - 5) / cw >= TILE_MIN.cols && ((r[3] - r[1]) * b.height - 5) / ch >= TILE_MIN.rows,
   );
 }
+/** The tiles tidied (2026-11-25): groups gs as a spiral, the first along the column's longer side and on the left (or
+ *  top), each next one turning clockwise into the room left — left, top, right, bottom —, every cut even. */
+function spiralTree(gs, d, k = 0) {
+  if (gs.length === 1) return { g: gs[0] };
+  const leaf = { g: gs[0] },
+    more = spiralTree(gs.slice(1), d === 'row' ? 'col' : 'row', k + 1);
+  return k % 4 < 2 ? { d, r: 0.5, a: leaf, b: more } : { d, r: 0.5, a: more, b: leaf };
+}
+/** Every tile of the open chat put back in a spiral, Claude's first — the left, on a wide column. Each tile keeps its
+ *  group (its tabs, its terminal attached), the keys stay where they were; the halves of an untiled split go side by
+ *  side, even. */
+function hotSpiral() {
+  const s = state.sessions.get(state.current);
+  if (!s) return noChat();
+  if (!prefs.autoTile) return note($('#shead'), 'Tiles are off — Settings › Terminal › Tile new terminals');
+  if (!isSplit(s)) return note($('#shead'), 'One tile — nothing to tidy');
+  const b = $('#groups').getBoundingClientRect(),
+    d = b.width >= b.height ? 'row' : 'col';
+  if (!isTiled(s)) {
+    if (d === 'row') prefs.splitAt = 0.5;
+    else prefs.stackAt = 0.5;
+    savePrefs();
+    zoomed.delete(s.id);
+    if (stacked.has(s.id) !== (d === 'col')) return stackSplit(s, d === 'col');
+    applySplit();
+    fitTerm();
+    return;
+  }
+  const gs = groupsOf(s),
+    cg = gs.find(g => keysIn(s, g).includes('chat')) ?? gs[0];
+  const next = spiralTree([cg, ...gs.filter(g => g !== cg)], d);
+  if (!treeFits(next)) return note($('#shead'), `No room for ${gs.length} tiles in a spiral`);
+  trees.set(s.id, next);
+  zoomed.delete(s.id);
+  applySplit();
+  syncTerm(s);
+  fitTerm();
+  focusBoard();
+  focusTerm();
+}
 /** ⌘D side by side, ⇧⌘D one over the other (2026-11-25, iTerm's pair): a new zsh in a tile cut from this one that way. */
 function hotSplitTile(d) {
   const s = state.sessions.get(state.current);
