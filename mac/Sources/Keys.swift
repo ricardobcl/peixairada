@@ -44,6 +44,9 @@ extension AppDelegate {
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x", "i", "s", "u"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t", "d"]
   static let cmdShiftKeys: Set<String> = ["d"]
+  // Tile new terminals' keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→ — only while the page says the setting is on (`tiles`):
+  // off, VS Code Web keeps them.
+  static var tileKeys = false
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
     let ch = e.charactersIgnoringModifiers?.lowercased()
@@ -60,11 +63,11 @@ extension AppDelegate {
     if held == [.command, .option, .shift] {   // Top priority's place (2026-11-24), a tile's (2026-11-25): the page's SHIFTKEYS
       if e.keyCode == 126 { return ("ArrowUp", "shift") }
       if e.keyCode == 125 { return ("ArrowDown", "shift") }
-      if e.keyCode == 123 { return ("ArrowLeft", "shift") }
-      if e.keyCode == 124 { return ("ArrowRight", "shift") }
+      if tileKeys, e.keyCode == 123 { return ("ArrowLeft", "shift") }
+      if tileKeys, e.keyCode == 124 { return ("ArrowRight", "shift") }
     }
-    if held == [.command, .shift], let ch = ch, cmdShiftKeys.contains(ch) { return ("Key" + ch.uppercased(), "cmdshift") }   // the page's CMDSHIFTKEYS
-    if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
+    if held == [.command, .shift], tileKeys, let ch = ch, cmdShiftKeys.contains(ch) { return ("Key" + ch.uppercased(), "cmdshift") }   // the page's CMDSHIFTKEYS
+    if held == [.command], let ch = ch, cmdKeys.contains(ch), ch != "d" || tileKeys { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
     return nil
   }
   // A click on a page in the pane takes the keys to its half (2026-09-28): the board hears a click on its own halves,

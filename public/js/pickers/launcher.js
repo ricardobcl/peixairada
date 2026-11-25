@@ -604,6 +604,17 @@ const CMDKEYS = {
 const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // ⌥⌘⇧ (2026-11-24, round XXX's R3): the open chat's card a place up or down in Top priority — ⌥⌘↑↓ walk the cards.
 // Tiled (2026-11-25, tileKeysOn): the tile the keys are in moved that way, ←→ too.
+// The tiles' own keys are no keys while they have nothing to do (2026-11-25): ⌘D ⇧⌘D with the setting off, ⌥⌘⇧←→ but
+// tiled — the key goes on, to a page or the browser, and the app forwards none of them (`tiles`, Keys.swift's tileKeys).
+const keyLive = (code, mods) =>
+  code === 'KeyD' && (mods === 'cmd' || mods === 'cmdshift')
+    ? !!prefs.autoTile
+    : mods === 'shift' && (code === 'ArrowLeft' || code === 'ArrowRight')
+      ? tileKeysOn()
+      : true;
+const postTiles = () => {
+  if (inApp) post({ type: 'tiles', on: !!prefs.autoTile });
+};
 const SHIFTKEYS = {
   ArrowUp: () => (tileKeysOn() ? hotTileMove('ArrowUp') : hotPrioMove(-1)),
   ArrowDown: () => (tileKeysOn() ? hotTileMove('ArrowDown') : hotPrioMove(1)),
@@ -618,7 +629,7 @@ const runHotkey = (code, mods = 'altcmd') => {
   const fn = (mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[
     code
   ];
-  if (!fn) return false;
+  if (!fn || !keyLive(code, mods)) return false;
   if ($('#hmenu').open) {
     $('#hmenu').close();
     if (fn === hotClose) return true;
@@ -651,7 +662,10 @@ document.addEventListener(
     if (e.ctrlKey || !e.metaKey || (e.shiftKey && !(e.altKey ? SHIFTKEYS : CMDSHIFTKEYS)[e.code])) return;
     const mods = e.shiftKey ? (e.altKey ? 'shift' : 'cmdshift') : e.altKey ? 'altcmd' : 'cmd';
     if (
-      !(mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[e.code]
+      !(mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[
+        e.code
+      ] ||
+      !keyLive(e.code, mods)
     )
       return;
     e.stopPropagation();

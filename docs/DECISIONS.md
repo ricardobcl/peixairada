@@ -45,8 +45,12 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
     that way whatever its shape; no empty tile takes it; no room, a note and a tab. Off, a note pointing at the
     setting. A fourth key map, `CMDSHIFTKEYS` (⇧⌘ alone, which the keydown gate dropped), forwarded from the pane by
     `cmdShiftKeys`; VS Code Web's ⌘D (the next match) and ⇧⌘D (Run and Debug) are given up for it while it has the
-    keys, as its ⌘T was. The app forwards them, and ⌥⌘⇧←→, only once rebuilt (`mac/build.sh install`); in a
+    keys, as its ⌘T was — **only while the setting is on**: the page tells the app (`tiles` → Keys.swift's
+    `tileKeys`), and with it off neither takes ⌘D, ⇧⌘D or ⌥⌘⇧←→ (`keyLive`), so VS Code Web and the browser keep
+    them for everyone who never turns tiles on. The app forwards them only once rebuilt (`mac/build.sh install`); in a
     terminal, the page hears them without it.
+* **page-load.test skips without CHROME** (found the same day): run bare, it passed over a board dead at load — a
+  `const` read before its file. The suite's gate is `npm test` with CHROME set.
 * **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out
   as a CSS grid whose lines are every cut it makes (`tileLayout`) — each tile stays a direct child of `#groups`, so
   every rule that reads `#groups > .grp`, and the floating header's padding of a split, reach it. Groups past the two

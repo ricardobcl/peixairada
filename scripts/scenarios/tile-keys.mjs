@@ -31,16 +31,32 @@ export default async function (ctx) {
     await ctx.key(code);
     await ctx.waitFor(`window.peix.state().focusG === ${want}`, { what });
   };
-  const chat = ctx.fixture.chats[1];
+  const chat = ctx.fixture.chats[1],
+    other = ctx.fixture.chats[0];
+  const walk = async (from, to) => {
+    // ⌥⌘↑ or ↓, whichever way the list has `to` from `from`
+    const ids = await ctx
+      .evaluate(`JSON.stringify([...document.querySelectorAll('#slist > .card')].map(x => x.dataset.id))`)
+      .then(JSON.parse);
+    await ctx.key(ids.indexOf(to) < ids.indexOf(from) ? 'ArrowUp' : 'ArrowDown');
+    await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(to)}`, { what: 'the next chat in the list' });
+  };
   await ctx.openChat(chat.id);
+  // one half, the setting on: ⌥⌘↑↓ are the list's still
+  await walk(chat.id, other.id);
+  await walk(other.id, chat.id);
+  await ctx.waitFor(`document.querySelector('#log')?.dataset.sid === ${JSON.stringify(chat.id)}`, {
+    what: 'its transcript',
+  });
   await ctx.key('KeyC');
   await ctx.waitPrompt();
 
-  // two halves side by side: ←→ between them, ↑ nothing — and the chat stays (no walk down the list)
-  await ctx.cmd('KeyT');
+  // ⌘D from one half: split side by side. Then ←→ between the halves, ↑ nothing — and the chat stays
+  await ctx.cmd('KeyD');
   await ctx.waitFor(`window.peix.state().split === true && window.peix.term(1).ws === 1`, {
     what: 'the zsh in the second half',
   });
+  ctx.assert.equal(await ctx.peix('state().stacked'), false, '⌘D: side by side');
   await go('ArrowLeft', 0, "⌥⌘← to claude's half");
   await go('ArrowRight', 1, '⌥⌘→ back');
   await ctx.key('ArrowUp');
@@ -121,16 +137,21 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await tiles(ctx), t, 'up again: it is the top already, nothing moves');
   await ctx.shot('moved');
 
-  // the switch off: ⌥⌘↑↓ are the list's again — the chat above
+  // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
+  await ctx.openChat(other.id);
+  await cmdShift('KeyD');
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.term(1).ws === 1`, {
+    what: 'its zsh in the second half',
+  });
+  ctx.assert.equal(await ctx.peix('state().stacked'), true, '⇧⌘D: one over the other');
+  ctx.assert.ok(below(await box(ctx, 0), await box(ctx, 1)), 'the zsh under the chat');
+
+  // the switch off: ⌘D and ⌥⌘⇧← are no keys of the board's (they go on, to a page or the browser), ⌥⌘↑↓ the list's
   await ctx.evaluate(`document.querySelector('#autoTile').click()`);
   ctx.assert.equal((await ctx.peix('prefs()')).autoTile, false, 'the setting is off');
-  const [i, ids2] = await ctx
-    .evaluate(
-      `(() => { const c = [...document.querySelectorAll('#slist > .card')].map(x => x.dataset.id); return JSON.stringify([c.indexOf(${JSON.stringify(chat.id)}), c]); })()`,
-    )
-    .then(JSON.parse);
-  const other = ids2[i > 0 ? i - 1 : i + 1];
-  await ctx.key(i > 0 ? 'ArrowUp' : 'ArrowDown');
-  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(other)}`, { what: 'the next chat in the list' });
+  ctx.assert.equal(await ctx.cmd('KeyD'), true, '⌘D left alone');
+  ctx.assert.equal(await shift('ArrowLeft'), true, '⌥⌘⇧← left alone');
+  ctx.assert.equal(await ctx.peix('state().tiles'), null, 'nothing cut');
+  await walk(other.id, chat.id);
   return { tree: t };
 }

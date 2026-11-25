@@ -120,6 +120,7 @@ $('#autoTile').checked = !!prefs.autoTile;
 $('#autoTile').addEventListener('change', e => {
   prefs.autoTile = e.target.checked;
   savePrefs();
+  postTiles();
 }); // the next terminal: the tiles there are stay as they are
 $('#optMeta').addEventListener('change', e => {
   prefs.optMeta = e.target.checked;
