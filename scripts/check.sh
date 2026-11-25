@@ -6,7 +6,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 echo "› node --check"
-for f in server.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs scripts/shell-checks/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
+for f in server.mjs server/*.mjs server/*/*.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs scripts/shell-checks/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
 echo "› the tests: their environment, their temp dirs, every route named"

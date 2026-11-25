@@ -2,7 +2,7 @@
 # Run peixAIrada as a macOS login item (launchd user agent): starts at login, restarts if it dies.
 #   scripts/launchd.sh install     # write ~/Library/LaunchAgents/net.peixairada.server.plist, load it, start now;
 #                                  # if the app is running on its own server, hand over to the agent (see below)
-#   scripts/launchd.sh restart [--after N]   # restart the agent after a change to server.mjs — the drawers stay (each
+#   scripts/launchd.sh restart [--after N]   # restart the agent after a change to the server — the drawers stay (each
 #                                  # hangs off its own holder, lib/termhold.mjs); N seconds first, for a recap to land
 #   scripts/launchd.sh open        # the board in this Mac's browser, with its key (a tab the server opens with a ticket)
 #   scripts/launchd.sh uninstall   # stop it and remove the plist

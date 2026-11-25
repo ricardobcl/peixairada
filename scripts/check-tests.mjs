@@ -5,7 +5,7 @@
 // STATE_FILE itself before a dynamic import of it.
 // **No temp dir left behind**: a test or a scenario makes its folders with lib/testserver.mjs's tmpDir(), which removes
 // each as the process exits — a bare mkdtempSync left some 280 in $TMPDIR in four days.
-// **Every route is named**: each path server.mjs's HTTP section answers is written out in test/ or scripts/scenarios/,
+// **Every route is named**: each path server/http.mjs and its routes answer is written out in test/ or scripts/scenarios/,
 // or is on DRIVEN below with the scenario that drives it through the page — by the path, whatever the method.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,17 +45,19 @@ const DRIVEN = {
 };
 /** A route's regex literal as a path: each group a `:id`. */
 const asPath = src => { let out = '', depth = 0; for (const c of src.replace(/\\\//g, '/')) { if (c === '(' && !depth++) out += ':id'; else if (c === ')') depth--; else if (!depth) out += c; } return out; };
-const server = read('server.mjs'), http = server.slice(server.indexOf('\n// HTTP\n'), server.indexOf('\n// Boot'));
-if (http.length < 1000) fails.push('server.mjs: the HTTP section was not found (its banner, then the Boot one)');
+// the routes: server/http.mjs and its route modules (2026-11-25: the HTTP section of server.mjs before)
+const routeFiles = ['server/http.mjs', ...(existsSync(join(ROOT, 'server/routes')) ? readdirSync(join(ROOT, 'server/routes')).filter(f => f.endsWith('.mjs')).map(f => `server/routes/${f}`) : [])];
+const http = routeFiles.map(read).join('\n');
+if (http.length < 1000) fails.push('server/http.mjs: the routes were not found');
 const routes = new Set([...http.matchAll(/\bp === '(\/[^']*)'/g)].map(m => m[1]).concat([...http.matchAll(/\bp\.match\(\/\^(.+?)\$\/\)/g)].map(m => asPath(m[1]))));
 const corpus = files.map(read).join('\n'), esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 for (const r of routes) {
   if (DRIVEN[r]) continue;
   const parts = r.slice(1).split(':id').map(esc), named = new RegExp(`(?<=['"\`/])${parts.join(".{1,60}?")}${r.endsWith(':id') ? "[^\\s'\"`)]" : '(?![\\w/-])'}`);
-  if (!named.test(corpus)) fails.push(`server.mjs answers ${r}, which no test or scenario names: test it, or put it on DRIVEN (scripts/check-tests.mjs) with the scenario that drives it`);
+  if (!named.test(corpus)) fails.push(`the server answers ${r}, which no test or scenario names: test it, or put it on DRIVEN (scripts/check-tests.mjs) with the scenario that drives it`);
 }
 for (const [r, by] of Object.entries(DRIVEN)) {
-  if (!routes.has(r)) fails.push(`scripts/check-tests.mjs: DRIVEN names ${r}, which server.mjs no longer answers`);
+  if (!routes.has(r)) fails.push(`scripts/check-tests.mjs: DRIVEN names ${r}, which the server no longer answers`);
   if (!existsSync(join(ROOT, by))) fails.push(`scripts/check-tests.mjs: DRIVEN's ${r} is driven by ${by}, which is not there`);
 }
 

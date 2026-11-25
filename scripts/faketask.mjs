@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// A stand-in for go-task (`task`) in tests — for the folders whose Taskfile launches claude (server.mjs, launchersFor):
+// A stand-in for go-task (`task`) in tests — for the folders whose Taskfile launches claude (server/terminals/launchers.mjs, launchersFor):
 //   faketask.mjs --list --json     → two tasks, one whose description mentions Claude (the launcher), one that does not
 //   faketask.mjs <name>            → runs the fake claude as a *child* (not exec), the way task runs a command, so the
 //                                    chat's pid is below the PTY's and the board has to find it through `ps`, as with

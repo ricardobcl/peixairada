@@ -20,7 +20,7 @@ GitHub's noreply address (this repo's `user.email`). **A commit's message is a s
 
 ```sh
 scripts/launchd.sh install          # the server as a login agent, run from this checkout — the recommended setup
-scripts/launchd.sh restart [--after N]   # after a server.mjs change; the drawers stay (holders); N s first, so a recap lands
+scripts/launchd.sh restart [--after N]   # after a server change; the drawers stay (holders); N s first, so a recap lands
 scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions (below)
 mac/build.sh install                # the native app into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
@@ -32,12 +32,11 @@ npm run shell                       # the real shell on a throwaway server, by t
 npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s)
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
-npm run map                         # rewrite the section map at the top of server.mjs
 ```
 
 * **The server is a launchd agent run from the repo; the app adopts whatever answers on 7331.** Quitting or
   rebuilding the app touches no chat. A page change is live on reload (the agent serves the working tree's
-  `public/`); a `server.mjs` change needs `restart`. The app's bundled server is the fallback for a Mac without the
+  `public/`); a change to `server/` or `lib/` needs `restart`. The app's bundled server is the fallback for a Mac without the
   agent. → Findings: *launchd agent*.
 * **Node ≥ 22** (the harness uses the global WebSocket), **`npm install` first.** Runtime deps: `node-pty` (native),
   `ws`, `@xterm/headless` 5.5.0 and `@xterm/addon-serialize` 0.13.0 — pinned to the vendored xterm's version, which
@@ -57,18 +56,18 @@ npm run map                         # rewrite the section map at the top of serv
 
 | Path | What |
 |---|---|
-| `server.mjs` | The backend: transcript tailing, sessions, SSE, HTTP, notifications, the holder proxy. A **section map** at its top (`npm run map`); boots only when run as the program, exports its pure parts for the tests |
+| `server.mjs`, `server/` | The entry (run, it boots; imported, the tests' parts) and the backend, a module per concern |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/disclaim.c` | A drawer's claude exec'd as its own responsible process to macOS (2026-11-23); the server builds it with cc |
 | `lib/instagram.mjs` | Lunch's Instagram, in headless Chrome: a profile, logged out |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over CDP; a throwaway server with cleanup, `waitFor`, `post` |
 | `lib/refit.mjs` | A terminal's refit, the holder's copy |
-| `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since; the server's per HEAD, build.sh's into the app |
+| `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since |
 | `public/index.html`, `lib/page.mjs` | The page's skeleton, an include per part, put in as served (2026-11-25) |
 | `public/css/`, `public/js/` | The page by concern; the script one IIFE across its parts, in order |
-| `public/vendor/` | `marked` 18.1.2 + `DOMPurify` 3.4.17 + `highlight.js` 11.12.0 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
+| `public/vendor/` | `marked`, `DOMPurify`, `highlight.js`, `xterm` (+ fit, web-links): UMD builds, `node_modules`' bytes, no CDN |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
-| `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version `lib/version.mjs`'s) |
+| `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/worktree.sh` | A worktree per piece of parallel work |
 | `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness |
@@ -78,7 +77,7 @@ npm run map                         # rewrite the section map at the top of serv
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
 | `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips → `docs/shots/` |
-| `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the server's section map |
+| `scripts/check.sh`, `check-page.mjs` | Static checks |
 | `test/` | `node:test` files (`npm test`) |
 
 ## How it reads Claude Code
@@ -109,6 +108,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 
 ## The server
 
+* **A module per concern** (2026-11-25): `server/env.mjs` imports none and goes first; no module reads another's binding
+  as it loads; another's `let` is written by its setter (`setX`); a route joins its group in `routes/`, `ROUTES` their order.
 * **Only the board's own page may ask** (2026-09-27): every route and the terminal upgrade refuse a request whose
   Origin is not this server's or whose Host is not a loopback name (`foreign()`); no Origin passes (curl, the app, the
   tests), a `null` one is nobody's. With no Origin (an `<img>`, a navigation) `Sec-Fetch-Site` must be `same-origin`

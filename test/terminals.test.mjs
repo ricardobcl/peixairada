@@ -280,8 +280,8 @@ test('/clear in a drawer takes the chat\'s zsh tabs along to the new chat (2026-
 });
 
 test('a drawer has none of the board\'s own configuration: PORT and every knob the server reads stay the server\'s (2026-10-14)', { timeout: 40_000 }, async () => {
-  // what server.mjs reads off its environment, as it reads it — a knob added there and set by the test server is caught here
-  const src = readFileSync(join(ROOT, 'server.mjs'), 'utf8');
+  // what the server reads off its environment, as it reads it — a knob added there and set by the test server is caught here
+  const src = ['server.mjs', ...readdirSync(join(ROOT, 'server'), { recursive: true }).filter(f => f.endsWith('.mjs')).map(f => join('server', f))].map(f => readFileSync(join(ROOT, f), 'utf8')).join('\n');
   const reads = new Set([...src.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(m => m[1]));
   for (const m of src.matchAll(/findBin\('([a-z]+)'/g)) reads.add(`${m[1].toUpperCase()}_BIN`);
   const KEEP = new Set(['CLAUDE_DIR', 'PATH', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME', 'VSCODE_CLI_DATA_DIR', 'XPC_SERVICE_NAME', 'JIRA_API_TOKEN']);

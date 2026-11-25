@@ -59,7 +59,7 @@ trap 'rm -rf "$LOCK"' EXIT
 
 # What it is built from (2026-10-14), stamped into Info.plist as PeixSource: mac/'s tree as it stands, uncommitted changes
 # in, through an index of its own (the checkout's is not touched). The board compares it with HEAD's mac/ (readApp in
-# server.mjs) to tell an app older than its checkout — commits made here as much as pulled ones. Empty outside git.
+# server/update.mjs) to tell an app older than its checkout — commits made here as much as pulled ones. Empty outside git.
 # mac/'s notes (*.md, 2026-10-28) are left out on both sides (macSource): a note is no rebuild.
 IDX="$MINE/peixairada-src.$$"
 SOURCE=$( { cd "$ROOT" && export GIT_INDEX_FILE="$IDX" && git read-tree HEAD && git add -A -- mac \
@@ -79,6 +79,7 @@ swiftc -swift-version 5 -O -target "$TARGET" "$DIR/Sources/main.swift" -o "$APP/
 echo "› bundle"
 cp "$DIR/icon/peixAIrada.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/server.mjs" "$APP/Contents/Resources/server.mjs"
+cp -R "$ROOT/server" "$APP/Contents/Resources/server"   # its modules (2026-11-25)
 cp -R "$ROOT/lib" "$APP/Contents/Resources/lib"   # the terminal holder and the plumbing the server imports
 # The node that runs the server travels with the app: the one on PATH here, which is the one that
 # ran npm install, so node-pty's native addon matches its ABI. The app never looks for node again.

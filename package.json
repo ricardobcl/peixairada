@@ -14,8 +14,7 @@
     "shell": "node scripts/shell.mjs",
     "scenario": "node scripts/scenario.mjs",
     "scenarios": "node scripts/scenarios.mjs",
-    "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
-    "map": "node scripts/map.mjs"
+    "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "engines": {
     "node": ">=22"

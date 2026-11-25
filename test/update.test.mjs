@@ -16,6 +16,7 @@ import { PAGE, ROOT, TINY, project } from './update-project.mjs';
 test('what a change asks for: packages, the server, the page, the app — and nothing for the rest', () => {
   assert.deepEqual(updateParts(['public/index.html']), ['page']);
   assert.deepEqual(updateParts(['server.mjs', 'mac/Sources/main.swift', 'README.md']), ['server', 'app']);
+  assert.deepEqual(updateParts(['server/http.mjs']), ['server'], 'a module of the server (2026-11-25)');
   assert.deepEqual(updateParts(['lib/termhold.mjs']), ['server']);
   assert.deepEqual(updateParts(['package-lock.json', 'public/vendor/xterm.js']), ['deps', 'server', 'page']);
   assert.deepEqual(updateParts(['docs/DECISIONS.md', 'test/update.test.mjs', 'scripts/scenarios/x.mjs', 'CLAUDE.md', 'mac/CLAUDE.md']), []);

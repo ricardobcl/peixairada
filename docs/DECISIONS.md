@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-11-25, later still — the code in units: the page in parts
+## Decisions of 2026-11-25, later still — the code in units: the page in parts, the server in modules
 
 Ricardo: *"files are to big, no clear separation of concerns in files/folders. etc. do a deep review of best pratices, split
 files into more managable units and organize the code better. this should be a refactor, nothing should change from the
@@ -19,13 +19,32 @@ product side or performance"*.
 * **Not ES modules**: the script is one IIFE whose 2,103 statements share 1,851 names (37 of them `let`s written from
   everywhere); a module a part would mean an import list each, a setter for every shared `let`, strict mode, deferred
   loading and a hundred requests — a rewrite, not a move, and the cost the ask ruled out.
-* **No build step still**: the server reads the parts on each `/` and for a snapshot's `page` stamp; `check-page`
-  compiles the page put together, points an error at the part's own line (`where`), and fails a part no include names
-  or one named twice. The map's page half went (`npm run map` is the server's): the folders and the skeleton's list are
-  the map.
+* **No build step still**: the server puts the page together for `/` and a snapshot's `page` stamp, again only when a
+  file of it changed (`readPage` looks at each: 0.2 ms, reading them all is 5) — so `/` costs less than the one file
+  did, and an edit is still live on a reload. `check-page` compiles the page put together, points an error at the
+  part's own line (`where`), and fails a part no include names or one named twice. The section map went: the folders
+  and the skeleton's list are the map.
 * The update's preflight runs the new `check-page`, which imports `lib/page.mjs`: the tiny update project copies it
   (`test/update-project.mjs`, `auto-update.mjs`). A board on an older updater pulling this runs the check from the
   checkout, so it takes it.
+* **The server is `server/`, a module per concern**: 55 modules from server.mjs's 7,400 lines — `env` (paths and knobs;
+  it imports none of the others and is imported first, so the log's time is on before anything logs), `state` (the
+  state file), `sessions`, `transcript/`, `prs/` (mentions, refs, status, turn, ledger, acts), `agents/`,
+  `terminals/`, a feature a module, `http.mjs` and `routes/`. Moved by a tool over the syntax tree, not by hand: each
+  statement to its module with the comments above it, the imports and exports from a scope analysis, so no statement
+  changed but these: a write to another module's `let` (22, the persisted state's mostly) goes through its setter
+  (`setX`), as an import is read-only; `__dirname` is `ROOT`; `isMain` and `package.json` are found from `server/`.
+  Nothing reads another module's binding as it loads (checked), so the import cycles are harmless.
+* **The request handler's 66 routes are 16 groups in 10 route modules**, tried in the order they were written
+  (`ROUTES`), each returning `NEXT` for a request not its own: the same statements, compared node for node, so a path
+  two could answer still goes to the first.
+* `server.mjs` is the entry: run, it boots (`main`, `server/boot.mjs`); imported, it gives the tests the same 105
+  names. The updater counts `server/` as the server (`updateParts`, and `CODE_PARTS`, the stamp of the code a server
+  runs), build.sh bundles it, `check-tests` reads the routes from `routes/`, the drawer's environment test every
+  module. The section map and `npm run map` went.
+* **The cost, measured against main before it** (medians of three runs): importing the server is 65 files, 40 ms
+  against 29, so a boot is ~15 ms longer (180 ms to its first index against 165), once; `GET /` 8 ms against 9,
+  `GET /api/sessions` the same 0.2 ms. 323 tests pass; every scenario that fails here fails on main too.
 
 ## Decisions of 2026-11-25 — a board on code older than its checkout
 

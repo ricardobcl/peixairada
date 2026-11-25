@@ -8,7 +8,7 @@ import { request } from 'node:http';
 import { join } from 'node:path';
 import { startTestServer } from '../lib/testserver.mjs';
 
-const MAX = 50 * 1024 * 1024;   // server.mjs's ATTACH_MAX
+const MAX = 50 * 1024 * 1024;   // server/attach.mjs's ATTACH_MAX
 /** A request by hand, for what fetch hides: the body in `chunks` written one by one (no content-length: chunked), and
  *  the answer's headers; `sent` says how writing the body ended. With `none`, the head alone goes and the answer is
  *  awaited before a byte of the body: a refusal said up front. */

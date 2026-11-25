@@ -1,5 +1,5 @@
   // ---- the chat: a GitHub repo's issue, with the people the board is shared with (2026-10-17) -----------------------
-  // The server reads the repo (chatTick in server.mjs); every page gets what it knows — `chat`: its issue and what you
+  // The server reads the repo (chatTick in server/chat.mjs); every page gets what it knows — `chat`: its issue and what you
   // have not read there, who you are, the invitations waiting for you — and what changed (`chatmsgs`). One chat, with no
   // name and no rooms (2026-10-18): the panel (#room, a non-modal dialog over the status bar's left end, where its
   // segment is) is its messages and a box. A poll is a message (2026-10-20): its answers are buttons, a vote GitHub's

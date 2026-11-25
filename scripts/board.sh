@@ -1,5 +1,5 @@
 #!/bin/sh
-# The board's API from a terminal, with its key (2026-10-16): every route but the page wants it (server.mjs, keyWant).
+# The board's API from a terminal, with its key (2026-10-16): every route but the page wants it (server/key.mjs, keyWant).
 #   scripts/board.sh /api/terminals        # GET; the answer on stdout
 #   scripts/board.sh /api/key -X PUT       # whatever follows the path goes to curl
 # PORT is 7331 unless set; the key is the file beside the state file (STATE_FILE, else the Mac's default).

@@ -1,5 +1,5 @@
   // The board's own code kept up to date (2026-10-12): the server's switch and its word on the checkout (checkUpdate in
-  // server.mjs), and the page reloading itself once an update has changed it — at once when the update was asked for
+  // server/update.mjs), and the page reloading itself once an update has changed it — at once when the update was asked for
   // here, else once the page is left be: no dialog up, no box being typed in, no page of the pane in front, nothing
   // pressed for RELOAD_IDLE_MS (hidden, none of that matters). Never before the server is back from its own restart: a
   // page loaded from one about to go is half a page.
@@ -22,7 +22,7 @@
     if (u.building) return { say: UPD_STEPS.build, p: null };
     return null;
   }
-  // The installed app against the checkout (2026-10-14; readApp in server.mjs): behind when built from another mac/ than
+  // The installed app against the checkout (2026-10-14; readApp in server/update.mjs): behind when built from another mac/ than
   // HEAD's — commits made here as much as pulled ones —, and why it is not being rebuilt (`appWhy`: appWhyNot's word).
   const appFailed = u => !!(u?.app?.behind && u.build?.done && !u.build.ok && u.build.source === u.app.source);
   function appSay(u) {

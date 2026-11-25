@@ -2,7 +2,7 @@
 // A ~/.claude look-alike for tests: projects/<slug>/<id>.jsonl per chat, an empty sessions/ (nothing alive).
 //   node scripts/fixture.mjs <dir>        # the default fixture (a two-PR chat, a plain one), prints its chats as JSON
 // Or from a script: makeFixture(dir, [{ id?, cwd, prompt, reply, title?, at?, model?, branch?, lines?, live? }]) → { dir, chats: […] }.
-// The lines carry what server.mjs reads (fold()): user/assistant messages with text blocks, ai-title, pr-link —
+// The lines carry what the server reads (fold(), server/transcript/fold.mjs): user/assistant messages with text blocks, ai-title, pr-link —
 // and, through `lines` (toolLines / taskNoteLine below), the tool calls and task notifications a chat mid-work has.
 // `live: { pid, startedAt }` writes the registry file that makes a chat *alive*: the states that only exist while a
 // claude is running — a pending question, a monitor, sub-agents — need one, and any live pid will do (the server

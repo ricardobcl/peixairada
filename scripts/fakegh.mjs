@@ -3,7 +3,7 @@
 // answered from a JSON file instead of GitHub, so a fixture's PR chips come out coloured and titled offline.
 //   GH_BIN=scripts/fakegh.mjs FAKEGH_PRS=<file>   the file maps "owner/repo#n" → { state: OPEN|MERGED|CLOSED, title, isDraft? }
 // Anything else a PR's entry holds is handed back as GitHub would — the fields whose move it is goes by (author,
-// headRefOid, viewerLatestReview, reviews, comments, pushes, asks, reviewRequests: server.mjs's PR_FIELDS) — and
+// headRefOid, viewerLatestReview, reviews, comments, pushes, asks, reviewRequests: server/prs/turn.mjs's PR_FIELDS) — and
 // `viewer` is FAKEGH_VIEWER, else `me`. The file is read on every call, so a test moves a PR by rewriting it.
 // **Only what the query asks for** (2026-10-14: the entry was echoed whole, so a field dropped or renamed in PR_FIELDS
 // still passed every test): the answer is the query's own selection, an entry's field it does not name — at any depth —
