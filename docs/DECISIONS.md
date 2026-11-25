@@ -71,6 +71,13 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   would (`openNewTab`'s `here`) — never a tile cut, never a split, the setting on or off; ⌘T keeps tiling. Made
   ⌃⌘⇧T as asked, then moved (*"It shoulddd be cmd option shift sorry"*): in `SHIFTKEYS`, beside the tile moves,
   forwarded by its key code (17, kVK_ANSI_T).
+* **⌃⌥⌘T, a tab out into a tile of its own** (later: *"Also is there a way to untab into a new tile?"* — a key or a
+  drag to a tile's edge was offered —, then *"cmd option control t should untab into an autotile."*): the tab in front
+  of the keys' tile leaves it for a tile cut from it along its longer side, as a new terminal's (`hotUntab` →
+  `tileTerm`) — any tab, a page or the chat too, the one beside it coming forward in the tile left. One half: the
+  split, by the column's shape, the rest staying in the first half (the chat out, the chat's half the left). Its tile's
+  only tab, or no room, a note. With the setting on only (`keyLive`; a fifth map, `CTRLALTKEYS`, forwarded as
+  `ctrlalt` while `tileKeys`): ⌥⌘⇧T is its way back, a zsh onto a tile. No drag yet.
 * **Tidy the tiles: a spiral** (later: *"if auto tiling is turned on there should be a button to reset every tile into
   a neatly packed spiral."* — *"with claude being on the left."*): ··· › *tidy the tiles*, the ⋯ of a tile's strip
   and the launcher (`hotSpiral`, `spiralTree`), while the setting is on and the column split. The tile holding the

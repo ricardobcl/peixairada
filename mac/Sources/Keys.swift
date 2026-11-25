@@ -44,7 +44,7 @@ extension AppDelegate {
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x", "i", "s", "u"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t", "d"]
   static let cmdShiftKeys: Set<String> = ["d"]
-  // Tile new terminals' keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→ — only while the page says the setting is on (`tiles`):
+  // Tile new terminals' keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→, ⌃⌥⌘T — only while the page says the setting is on (`tiles`):
   // off, VS Code Web keeps them.
   static var tileKeys = false
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
@@ -66,6 +66,9 @@ extension AppDelegate {
       if tileKeys, e.keyCode == 123 { return ("ArrowLeft", "shift") }
       if tileKeys, e.keyCode == 124 { return ("ArrowRight", "shift") }
       if e.keyCode == 17 { return ("KeyT", "shift") }   // ⌥⌘⇧T, a zsh on a tab where the keys are
+    }
+    if held == [.command, .option, .control], tileKeys {   // a tab out into a tile (2026-11-25): the page's CTRLALTKEYS
+      if e.keyCode == 17 { return ("KeyT", "ctrlalt") }
     }
     if held == [.command, .control] {   // a strip's tabs (2026-11-25): the page's CTRLKEYS
       if e.keyCode == 123 { return ("ArrowLeft", "ctrlcmd") }

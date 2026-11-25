@@ -467,6 +467,7 @@ const KEYS = [
   ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there · tiles on and the column split: the tile to the left / right, by where it stands', ['alt:ArrowLeft', 'alt:ArrowRight']],
   ['⌥⌘⇧←→', 'Layout', 'tiles: the tile the keys are in moved left / right', 'Settings › Terminal › Tile new terminals, the column split · the rest close over the room it left · two side by side trade places · ↑↓ the same up and down', ['shift:ArrowLeft', 'shift:ArrowRight']],
   ['⌘D ⇧⌘D', 'Layout', 'tiles: a new zsh beside this tile, or under it', 'Settings › Terminal › Tile new terminals · ⌘D cuts it side by side, ⇧⌘D one over the other, whatever its shape', ['cmd:KeyD', 'cmdshift:KeyD']],
+  ['⌃⌥⌘T', 'Layout', 'the tab in front out into a tile of its own', 'with Tile new terminals on: cut from its tile along the longer side, as a new terminal is — a zsh, a page, the chat · ⌥⌘⇧T the other way, a zsh onto this tile', ['ctrlalt:KeyT']],
   ['⌃⌘←→', 'Layout', 'the tab to the left / right in this half or tile', 'its own strip alone, round from the end to the start · drag a tab onto another to move it there', ['ctrl:ArrowLeft', 'ctrl:ArrowRight']],
   ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
   ['⌥⌘B', 'Layout', 'hide the chat list, and show it again', 'the chat takes the whole width · the status bar\'s first button too', ['alt:KeyB']],
@@ -612,14 +613,18 @@ const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // tile the keys are in — never a new tile, never a split.
 // ⌃⌘ (2026-11-25): the tabs of the half or tile the keys are in, its strip alone — ⌥⌘←→ walk the tiles once tiled.
 const CTRLKEYS = { ArrowLeft: () => hotStripTab(-1), ArrowRight: () => hotStripTab(1) };
+// ⌃⌥⌘ (2026-11-25): ⌃⌥⌘T, the tab in front out into a tile of its own — with Tile new terminals on.
+const CTRLALTKEYS = { KeyT: hotUntab };
 // The tiles' own keys are no keys while they have nothing to do (2026-11-25): ⌘D ⇧⌘D with the setting off, ⌥⌘⇧←→ but
 // tiled — the key goes on, to a page or the browser, and the app forwards none of them (`tiles`, Keys.swift's tileKeys).
 const keyLive = (code, mods) =>
-  code === 'KeyD' && (mods === 'cmd' || mods === 'cmdshift')
+  mods === 'ctrlalt'
     ? !!prefs.autoTile
-    : mods === 'shift' && (code === 'ArrowLeft' || code === 'ArrowRight')
-      ? tileKeysOn()
-      : true;
+    : code === 'KeyD' && (mods === 'cmd' || mods === 'cmdshift')
+      ? !!prefs.autoTile
+      : mods === 'shift' && (code === 'ArrowLeft' || code === 'ArrowRight')
+        ? tileKeysOn()
+        : true;
 const postTiles = () => {
   if (inApp) post({ type: 'tiles', on: !!prefs.autoTile });
 };
@@ -633,7 +638,14 @@ const SHIFTKEYS = {
 // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
 // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see Menus.swift).
 // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
-const KEYMAPS = { altcmd: HOTKEYS, cmd: CMDKEYS, cmdshift: CMDSHIFTKEYS, shift: SHIFTKEYS, ctrlcmd: CTRLKEYS }; // by peixKey's mods
+const KEYMAPS = {
+  altcmd: HOTKEYS,
+  cmd: CMDKEYS,
+  cmdshift: CMDSHIFTKEYS,
+  shift: SHIFTKEYS,
+  ctrlcmd: CTRLKEYS,
+  ctrlalt: CTRLALTKEYS,
+}; // by peixKey's mods
 const runHotkey = (code, mods = 'altcmd') => {
   if (code === 'Escape') return hotEscape();
   const fn = KEYMAPS[mods]?.[code];
@@ -667,8 +679,18 @@ const runHotkey = (code, mods = 'altcmd') => {
 document.addEventListener(
   'keydown',
   e => {
-    if (!e.metaKey || (e.ctrlKey && (e.altKey || e.shiftKey))) return;
-    const mods = e.ctrlKey ? 'ctrlcmd' : e.shiftKey ? (e.altKey ? 'shift' : 'cmdshift') : e.altKey ? 'altcmd' : 'cmd';
+    if (!e.metaKey || (e.ctrlKey && e.shiftKey)) return;
+    const mods = e.ctrlKey
+      ? e.altKey
+        ? 'ctrlalt'
+        : 'ctrlcmd'
+      : e.shiftKey
+        ? e.altKey
+          ? 'shift'
+          : 'cmdshift'
+        : e.altKey
+          ? 'altcmd'
+          : 'cmd';
     if (!KEYMAPS[mods][e.code] || !keyLive(e.code, mods)) return;
     e.stopPropagation();
     if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault(); // a key held down is one press — the arrows walk on

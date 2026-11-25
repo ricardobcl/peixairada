@@ -16,6 +16,40 @@ function hotTabHere() {
   focusBoard();
   startShell(s, true, 'here');
 }
+/** ⌃⌥⌘T (2026-11-25): the tab in front of the keys' tile out into a tile of its own, cut from that one along its
+ *  longer side as a new terminal's is — any tab, its terminal or page going with it. One half: the split, by the
+ *  column's shape, the rest staying where they were. */
+function hotUntab() {
+  const s = state.sessions.get(state.current);
+  if (!s) return noChat();
+  const k = tabOf(s),
+    here = keysIn(s, isSplit(s) ? focusG : 0);
+  if (!k || here.length < 2) return note($('#shead'), 'Its only tab — a tile of its own already');
+  const at = isSplit(s) ? focusG : 0,
+    d = tallOf(GEL[at].grp) ? 'col' : 'row',
+    rest = here.filter(x => x !== k);
+  if (!roomFor(at, d)) return note($('#shead'), 'No room for another tile here');
+  if (!isSplit(s)) {
+    // one half: the rest stay in the first, it in the second (the chat out on its own: the chat left)
+    if (d === 'col') stacked.add(s.id);
+    else stacked.delete(s.id);
+    splitChat(s, false);
+    const mine = k === 'chat' ? 0 : 1;
+    for (const x of here) homes.get(s.id).set(x, x === k ? mine : 1 - mine);
+    tabs.set(s.id, mine ? [rest[Math.min(here.indexOf(k), rest.length - 1)], k] : [k, rest[0]]); // the one beside it in front
+    focusG = mine;
+  } else {
+    const p = placeOf(s),
+      i = here.indexOf(k);
+    p[at] = here[i + 1] || here[i - 1];
+    tabs.set(s.id, p);
+    if (!tileTerm(s, k, d)) return;
+  }
+  syncTerm(s);
+  fitTerm();
+  focusBoard();
+  focusTerm();
+}
 /** ⌃⌘←→ (2026-11-25): the tab beside this one in its own strip — the half's or tile's the keys are in, round. */
 function hotStripTab(dir) {
   const s = state.sessions.get(state.current);

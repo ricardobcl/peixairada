@@ -23,6 +23,10 @@ export default async function (ctx) {
     ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, altKey: true, shiftKey: true, bubbles: true, cancelable: true }))`,
     );
+  const ctrlAlt = code =>
+    ctx.evaluate(
+      `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, altKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`,
+    );
   const cmdShift = code =>
     ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, shiftKey: true, bubbles: true, cancelable: true }))`,
@@ -154,6 +158,21 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().halves[3] === ${JSON.stringify(first)}`, {
     what: '⌃⌘← back to its first tab',
   });
+  // ⌃⌥⌘T (2026-11-25): that tab out into a tile of its own, cut from this one — a wide tile, so side by side
+  await ctrlAlt('KeyT');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().tiles).includes('"g":4') && window.peix.term(4).ws === 1`, {
+    what: 'the tab a tile of its own, attached',
+  });
+  ctx.assert.deepEqual(
+    (await tiles(ctx)).a,
+    { d: 'row', r: 0.5, a: { g: 3 }, b: { g: 4 } },
+    'cut from its tile side by side',
+  );
+  ctx.assert.deepEqual(await ctx.peix('state().strips[3]'), [added], 'the other tab left behind');
+  ctx.assert.deepEqual(await ctx.peix('state().strips[4]'), [first], 'it, alone in the new tile');
+  ctx.assert.equal(await focus(ctx), 4, 'the keys went with it');
+  await ctrlAlt('KeyT');
+  ctx.assert.ok(!JSON.stringify(await tiles(ctx)).includes('"g":5'), 'alone in its tile: nothing to take out');
 
   // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
   await ctx.openChat(other.id);
@@ -161,6 +180,20 @@ export default async function (ctx) {
   await shift('KeyT');
   await ctx.waitFor(`window.peix.state().strips[0].length === 2`, { what: 'a zsh tab beside the chat' });
   ctx.assert.equal(await ctx.peix('state().split'), false, 'one half still');
+  // ⌃⌥⌘T with one half: the zsh out beside the chat, side by side on the wide column, the chat on the left
+  await ctrlAlt('KeyT');
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.term(1).ws === 1`, {
+    what: 'the zsh out in the second half',
+  });
+  ctx.assert.deepEqual(
+    await ctx.peix('state().strips'),
+    [['chat'], [(await ctx.peix('state().halves'))[1]]],
+    'the chat alone left, the zsh right',
+  );
+  ctx.assert.equal(await ctx.peix('state().stacked'), false, 'side by side');
+  ctx.assert.ok(right(await box(ctx, 0), await box(ctx, 1)), 'the chat on the left');
+  await ctx.cmd('Digit0'); // one half again, both tabs, for ⇧⌘D
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'one half again' });
   await cmdShift('KeyD');
   await ctx.waitFor(`window.peix.state().split === true && window.peix.term(1).ws === 1`, {
     what: 'its zsh in the second half',
@@ -178,6 +211,7 @@ export default async function (ctx) {
   ctx.assert.equal((await ctx.peix('prefs()')).autoTile, false, 'the setting is off');
   ctx.assert.equal(await ctx.cmd('KeyD'), true, '⌘D left alone');
   ctx.assert.equal(await shift('ArrowLeft'), true, '⌥⌘⇧← left alone');
+  ctx.assert.equal(await ctrlAlt('KeyT'), true, '⌃⌥⌘T left alone');
   ctx.assert.equal(await ctx.peix('state().tiles'), null, 'nothing cut');
   await walk(other.id, chat.id);
   return { tree: t };
