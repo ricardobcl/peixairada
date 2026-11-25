@@ -1,5 +1,5 @@
 // The tiles by the keys (2026-11-25), Tile new terminals on and the column split: ⌥⌘←→↑↓ take the keys to the tile that
-// way by where it stands (sideways the topmost), ⌥⌘⇧ + an arrow moves the tile — two side by side trade
+// way by where it stands (of several, the one the keys were in last), ⌥⌘⇧ + an arrow moves the tile — two side by side trade
 // places, none that way and it is that whole side —, ⌘D / ⇧⌘D a new zsh in a tile cut side by side / one over the
 // other whatever its shape, ⌥⌘⇧T a zsh on a tab where the keys are, never a tile. What this keeps honest: the tree (state().tiles) and the boxes after each key; no
 // terminal attached again by a move; at an edge nothing moves, the chat neither; the switch off, the keys as ever
@@ -63,8 +63,8 @@ export default async function (ctx) {
   ctx.assert.equal(await focus(ctx), 1, 'nothing above: the keys stay');
   ctx.assert.equal(await ctx.peix('state().current'), chat.id, '…and so does the chat');
 
-  // a third tile, under the zsh: ↑↓ between the two on the right, ← to claude's, → to the topmost on that side (2026-11-25,
-  // later) — not back to the bottom one it left
+  // a third tile, under the zsh: ↑↓ between the two on the right, ← to claude's, → back to the one of them the keys were
+  // in last (2026-11-25, later: i3's focus stack), whichever that is
   await ctx.cmd('KeyT');
   await ctx.waitFor(`window.peix.state().tiles && window.peix.term(2).ws === 1`, { what: 'a third tile' });
   ctx.assert.deepEqual(
@@ -75,7 +75,10 @@ export default async function (ctx) {
   await go('ArrowUp', 1, '⌥⌘↑ to the top right');
   await go('ArrowDown', 2, '⌥⌘↓ to the bottom right');
   await go('ArrowLeft', 0, "⌥⌘← to claude's");
-  await go('ArrowRight', 1, '⌥⌘→ to the topmost on the right');
+  await go('ArrowRight', 2, '⌥⌘→ back to the bottom one, the last of them');
+  await go('ArrowUp', 1, '⌥⌘↑ to the top right');
+  await go('ArrowLeft', 0, "⌥⌘← to claude's again");
+  await go('ArrowRight', 1, '⌥⌘→ now to the top one');
   await go('ArrowDown', 2, '⌥⌘↓ to the bottom right again');
 
   // ⇧⌘D on that wide tile: one over the other all the same, not side by side as its shape would cut it

@@ -120,6 +120,7 @@ const backOf = (n, g) => {
   const par = parentOf(n, g);
   return !par ? null : 'g' in par.a && par.a.g === g ? leavesOf(par.b)[0] : leavesOf(par.a).at(-1);
 };
+const tileSeen = new Map(); // chat id → its groups, the one the keys were in last first (the arrows', as i3's focus stack)
 let focusG = 0; // the half the keys, the pickers and a new tab act on
 const curTerm = () => terms[focusG];
 const termFor = id => (id ? terms.find(t => t.id === id) || null : null);

@@ -311,9 +311,9 @@ const TILE_DIRS = {
   ArrowUp: [1, -1, 'above', 'top'],
   ArrowDown: [1, 1, 'below', 'bottom'],
 }; // axis (0 x, 1 y), sign, words, edge
-let tileCame = null; // the last step: back the other way goes where it came from, not the first of a long side
-/** The tile next to g that way: one sharing its edge and its span. Sideways the topmost of them (2026-11-25, later),
- *  whatever the way in; up or down the one sharing the most, the one just come from first. */
+/** The tile next to g that way, as i3's focus has it (2026-11-25, later): of those sharing its edge and its span, the
+ *  one the keys were in last (`tileSeen`) — i3's focus stack —, else the first: the topmost sideways, the leftmost up
+ *  or down. */
 function tileToward(s, tree, g, dir) {
   const R = tileRects(tree),
     c = R[g],
@@ -321,31 +321,26 @@ function tileToward(s, tree, g, dir) {
     o = 1 - ax,
     E = 1e-4;
   if (!c) return null;
+  const seen = tileSeen.get(s.id) || [],
+    last = x => {
+      const i = seen.indexOf(x);
+      return i < 0 ? Infinity : i;
+    };
   const near = Object.entries(R)
     .map(([k, r]) => ({
       g: +k,
-      top: r[1],
+      first: r[o],
       gap: sg > 0 ? r[ax] - c[ax + 2] : c[ax] - r[ax + 2],
       over: Math.min(r[o + 2], c[o + 2]) - Math.max(r[o], c[o]),
     }))
     .filter(x => x.g !== g && Math.abs(x.gap) < E && x.over > E)
-    .sort((a, b) => (ax === 0 ? a.top - b.top : b.over - a.over));
-  if (ax === 0) return near[0]?.g ?? null;
-  const back =
-    tileCame &&
-    tileCame.id === s.id &&
-    tileCame.at === g &&
-    tileCame.dir === dir &&
-    near.find(x => x.g === tileCame.from);
-  return (back || near[0])?.g ?? null;
+    .sort((a, b) => last(a.g) - last(b.g) || a.first - b.first);
+  return near[0]?.g ?? null;
 }
-const BACK_DIR = { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp' };
 function hotTileGo(dir) {
   const s = state.sessions.get(state.current),
-    from = focusG,
-    to = tileToward(s, trees.get(s.id) || halvesTree(s), from, dir);
+    to = tileToward(s, trees.get(s.id) || halvesTree(s), focusG, dir);
   if (to === null) return note($('#shead'), `No tile ${TILE_DIRS[dir][2]}`);
-  tileCame = { id: s.id, from, at: to, dir: BACK_DIR[dir] };
   focusGroup(to);
   focusBoard();
   focusTerm();
@@ -368,7 +363,6 @@ function hotTileMove(dir) {
   if (!treeFits(next)) return note($('#shead'), `No room for it ${words}`);
   trees.set(s.id, next);
   zoomed.delete(s.id);
-  tileCame = null;
   applySplit();
   syncTerm(s);
   fitTerm();

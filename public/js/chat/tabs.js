@@ -380,6 +380,10 @@ function placeLog(s, p) {
 // have, ⌘W and ⌘0 the half, and ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 turn it.
 function renderTabs(s, p = placeOf(s)) {
   const two = isSplit(s);
+  if (s && two) {
+    const l = tileSeen.get(s.id) || [];
+    if (l[0] !== focusG) tileSeen.set(s.id, [focusG, ...l.filter(x => x !== focusG)]);
+  } // where the keys are, drawn: the arrows' memory
   for (const tm of terms) {
     const g = tm.g,
       el = $(tm.el.tabs),
