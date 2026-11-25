@@ -149,6 +149,27 @@ final class ServerController {
     FileManager.default.isExecutableFile(atPath: path)
   }
 
+  /// The app's own server is up — spawned here, not adopted.
+  var ownRunning: Bool { process?.isRunning == true }
+  /// The agent's process as launchd has it (2026-11-25): `launchctl print`'s `pid = N`, nil while it runs nothing (not
+  /// loaded, between two runs). It waits on launchctl: off the main thread.
+  static func agentPid() -> Int32? {
+    let p = Process(), out = Pipe()
+    p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+    p.arguments = ["print", "gui/\(getuid())/\(agentLabel)"]
+    p.standardOutput = out
+    p.standardError = FileHandle.nullDevice
+    do { try p.run() } catch { return nil }
+    let data = out.fileHandleForReading.readDataToEndOfFile()
+    p.waitUntilExit()
+    guard p.terminationStatus == 0 else { return nil }
+    for line in String(decoding: data, as: UTF8.self).split(separator: "\n") {
+      let t = line.trimmingCharacters(in: .whitespaces)
+      if t.hasPrefix("pid = "), let pid = Int32(t.dropFirst(6)) { return pid }
+    }
+    return nil
+  }
+
   /// What answers on the port: the board, nothing, or something that could not prove it is the board.
   enum Answer { case ours, silent, stranger }
   /// The server proves itself before anything is trusted to it (2026-11-06): the probe sends a fresh nonce and no key, and
@@ -1803,12 +1824,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
         // a reload by hand (2026-10-03): the board comes back on its own.
         if ok && !self.boardShown { logLine("watchdog: the server answers — the board again"); self.loadBoard() }
         self.misses = ok ? 0 : self.misses + 1
-        if ok { self.setServerDown(false) }
+        if ok { self.setServerDown(false); self.portToAgent() }
         guard self.misses >= 3 else { return }   // ~15 s of silence, not one slow answer
         self.setServerDown(true)
         logLine(answer == .stranger ? "watchdog: :\(kPort) answers without the board's proof" : "watchdog: nothing answering on :\(kPort) — starting the server")
         if answer == .silent { self.showMessage("The server stopped — starting it again…") }   // a stranger's: start() says so
         self.bringUpServer()
+      }
+    }
+  }
+  /// The port back to the agent (2026-11-25). The app runs its own server when the agent is slow to answer (`start`'s
+  /// wait), and the agent that comes up after waits for the port behind it — server.mjs retries a busy one — until the
+  /// app quits: ten hours on 2026-10-27, the board the bundle's copy all along, its updates "not a git checkout". Seen
+  /// running by launchd on two looks in a row, five seconds apart (not a crash's respawn), the agent gets the port: the
+  /// app's own stopped, the agent adopted (`restart`). Once per agent: one that takes no port is not waited on again.
+  private var agentSeen: Int32 = 0
+  private var agentHanded: Int32 = 0
+  private func portToAgent() {
+    guard server.ownRunning, ServerController.agentInstalled else { return }
+    DispatchQueue.global(qos: .utility).async { [weak self] in
+      let pid = ServerController.agentPid()
+      DispatchQueue.main.async {
+        guard let self else { return }
+        let seen = self.agentSeen
+        self.agentSeen = pid ?? 0
+        guard let pid, pid == seen, pid != self.agentHanded, !self.recovering, self.server.ownRunning else { return }
+        self.agentHanded = pid
+        logLine("server: the launchd agent (pid \(pid)) waits behind the app's own server — handing the port to it")
+        self.bringUpServer(restart: true)
       }
     }
   }

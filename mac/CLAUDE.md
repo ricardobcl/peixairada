@@ -115,6 +115,9 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to
   fail first; the 5 s watchdog probes (`probe`, `/api/alive` with a nonce) and brings the board back once the server proves itself
   (`boardShown`). A web process that dies is loaded again. The bridge answers the board's own main frame only.
+  **The app's own server gives the port back** (2026-11-25, `portToAgent`): while it runs with the agent installed, the
+  watchdog asks launchd (`agentPid`, `launchctl print`); the same pid on two looks is the agent waiting on the port —
+  the app's own is stopped and the agent adopted (`restart`), once per pid.
 * **`npm run shell` runs this very file** (2026-11-04; `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/`): with the probe beside it
   and `-D PEIX_PROBE`, which build.sh does not set, on a throwaway server and fixture, a line of JSON each way; `ctx` is at the runner's
   head, and what a check believes is the window's pixels in sRGB (`ask('shot')`, `ask('runs')`). Out of the way of the app in use
