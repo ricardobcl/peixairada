@@ -41,11 +41,16 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
     child. `tileCame`'s one step back is that memory's first case. ⌥⌘⇧'s move picks its neighbour the same way.
     At an edge, a note and nothing moves — never the list's next chat. **What is given up while it holds**: ⌥⌘↑↓'s
     walk down the list, ⌥⌘←→'s walk along the tabs (a strip's tabs are a click), ⌥⌘⇧↑↓'s pinned card.
-  * ⌥⌘⇧ + an arrow moves the tile (`hotTileMove`), read as i3's move rather than a swap: out of the tree, its sibling
-    taking the room — "auto tile everything else" —, then in beside the tile that way, cut along the arrow with it on
-    the arrow's side; two side by side so trade places. None that way: it becomes that whole side of the column
-    (already it, a note). The tree alone changes, every group keeping its terminal: nothing attached again, each
-    refits. Under `TILE_MIN` anywhere, refused with a note.
+  * ⌥⌘⇧ + an arrow moves the tile as i3 does (`hotTileMove`, `i3Move`; first a move of the board's own — out, then
+    in beside the tile that way, cut in two — which, from a stack of two on the right of claude | zsh, cut the zsh
+    under `TILE_MIN` and was refused: *"For some reason I cant move the the splitted ones on the right to he left, but I
+    can up and down"*). The tree is read as i3's containers — a run of splits one way is one list (`toKids`,
+    `tidyKids`, `fromKids`) —: beside a tile in its own list that way, the two trade places, the sizes staying where
+    they were; beside a list across the arrow, it goes into it after the one the keys were in last; at its list's end
+    or in a list across the arrow, it leaves into the nearest list the arrow's way, just past the part it was in — out
+    of a stack, a column of its own beside it, each part of that list an even share, as i3 gives —; none, a split
+    round the whole column. The tree alone changes, every group keeping its terminal: nothing attached again, each
+    refits. Under `TILE_MIN` anywhere, refused with a note; already that whole side, a note.
   * **⌘D side by side, ⇧⌘D one over the other** (`hotSplitTile`): iTerm's pair, and named by what they make, since
     "vertical split" means opposite things in iTerm and in vim and i3. A new zsh in a tile cut from the keys' one
     that way whatever its shape; no empty tile takes it; no room, a note and a tab. Off, a note pointing at the

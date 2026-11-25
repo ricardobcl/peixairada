@@ -94,24 +94,24 @@ export default async function (ctx) {
   ctx.assert.equal(await focus(ctx), 3, 'the keys in the new tile');
   await ctx.shot('cut');
 
-  // ⌥⌘⇧←: the fourth beside claude's, on its left; the right column closes over the room it left; nothing re-attached
+  // ⌥⌘⇧ is i3's move (2026-11-25, later); the tree read as i3's lists — here claude's | (1 / 2 / 3), the keys in 3.
+  const moved = async (code, want, what) => {
+    await shift(code);
+    await ctx.waitFor(
+      `JSON.stringify((function s(n) { return 'g' in n ? n.g : [n.d, s(n.a), s(n.b)]; })(window.peix.state().tiles)) === ${JSON.stringify(JSON.stringify(want))}`,
+      { what },
+    );
+  };
   const ids = await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`)));
-  await shift('ArrowLeft');
-  await ctx.waitFor(`window.peix.state().tiles?.a?.d === 'row'`, { what: 'the fourth moved left' });
-  ctx.assert.deepEqual(
-    await tiles(ctx),
-    {
-      d: 'row',
-      r: 0.5,
-      a: { d: 'row', r: 0.5, a: { g: 3 }, b: { g: 0 } },
-      b: { d: 'col', r: 0.5, a: { g: 1 }, b: { g: 2 } },
-    },
-    "left of claude's, the rest closed up",
-  );
+  // ← out of its stack: a column of its own between claude's and the stack — nothing cut in two, nothing re-attached
+  await moved('ArrowLeft', ['row', 0, ['row', 3, ['col', 1, 2]]], 'the fourth a column of its own');
   ctx.assert.equal(await focus(ctx), 3, 'the keys went with it');
   await ctx.settle();
-  let b = await Promise.all([3, 0, 1, 2].map(g => box(ctx, g)));
-  ctx.assert.ok(right(b[0], b[1]) && right(b[1], b[2]) && below(b[2], b[3]), `3 | 0 | 1 over 2: ${JSON.stringify(b)}`);
+  let b = await Promise.all([0, 3, 1, 2].map(g => box(ctx, g)));
+  ctx.assert.ok(
+    right(b[0], b[1]) && right(b[1], b[2]) && below(b[2], b[3]) && Math.abs(b[1].h - b[0].h) <= 2,
+    `0 | 3 | 1 over 2: ${JSON.stringify(b)}`,
+  );
   ctx.assert.deepEqual(
     await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`))),
     ids,
@@ -121,17 +121,16 @@ export default async function (ctx) {
     (await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).ws`)))).every(w => w === 1),
     'every tile still attached',
   );
-
-  // ⌥⌘⇧→: back past claude's — two side by side trade places
-  await shift('ArrowRight');
-  await ctx.waitFor(`window.peix.state().tiles?.a?.a?.g === 0`, { what: 'the fourth moved right' });
-  ctx.assert.deepEqual((await tiles(ctx)).a, { d: 'row', r: 0.5, a: { g: 0 }, b: { g: 3 } }, 'the two traded places');
-
-  // ⌥⌘⇧↑ with nothing above: the whole top of the column
-  await shift('ArrowUp');
-  await ctx.waitFor(`window.peix.state().tiles?.d === 'col'`, { what: 'the fourth up top' });
+  // ← again, in a row now: it and claude's trade places
+  await moved('ArrowLeft', ['row', 3, ['row', 0, ['col', 1, 2]]], "traded with claude's");
+  await moved('ArrowRight', ['row', 0, ['row', 3, ['col', 1, 2]]], 'and back');
+  // → into the stack across the arrow: after the one of it the keys were in last (2), at its foot
+  await moved('ArrowRight', ['row', 0, ['col', 1, ['col', 2, 3]]], 'into the stack, under 2');
+  // ↑ in the stack: trades with 2, then 1; at its top, out: the whole top of the column
+  await moved('ArrowUp', ['row', 0, ['col', 1, ['col', 3, 2]]], 'over 2');
+  await moved('ArrowUp', ['row', 0, ['col', 3, ['col', 1, 2]]], 'over 1');
+  await moved('ArrowUp', ['col', 3, ['row', 0, ['col', 1, 2]]], 'the whole top');
   const t = await tiles(ctx);
-  ctx.assert.deepEqual(t.a, { g: 3 }, 'the top, whole');
   await ctx.settle();
   b = await Promise.all([3, 0, 1].map(g => box(ctx, g)));
   ctx.assert.ok(

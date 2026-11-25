@@ -345,21 +345,19 @@ function hotTileGo(dir) {
   focusBoard();
   focusTerm();
 }
-/** ⌥⌘⇧ + an arrow: tile g out of the tree, its sibling taking the room, and in again beside the tile that way, cut
- *  along the arrow's axis with g on the arrow's side — two side by side trade places. None that way: g becomes that
- *  whole side of the column. Every leaf keeps its group, so no terminal is attached again; each refits. */
+/** ⌥⌘⇧ + an arrow: i3's move (2026-11-25, later), on the tree read as i3's containers — a run of splits one way is one
+ *  list (`toKids`). Beside a tile in its own list that way, the two trade places; beside a list across the arrow (a
+ *  stack, side by side…), it goes into it, after the one of them the keys were in last. At its list's end, or in a
+ *  list across the arrow, it leaves: into the nearest list that runs the arrow's way, just past the part it was in —
+ *  out of a stack, a column of its own beside it. None: the whole column that way, a split round all of it. Every
+ *  leaf keeps its group, so no terminal is attached again; each refits. */
 function hotTileMove(dir) {
   const s = state.sessions.get(state.current),
     g = focusG,
-    tree = trees.get(s.id) || halvesTree(s);
-  const [ax, sg, words, edge] = TILE_DIRS[dir],
-    d = ax ? 'col' : 'row',
-    to = tileToward(s, tree, g, dir),
-    rest = treeMap(tree, g, () => null);
-  const put = n => (sg > 0 ? { d, r: 0.5, a: n, b: { g } } : { d, r: 0.5, a: { g }, b: n });
-  if (to === null && tree.d === d && 'g' in (sg > 0 ? tree.b : tree.a) && (sg > 0 ? tree.b : tree.a).g === g)
-    return note($('#shead'), `It is the column's whole ${edge} already`);
-  const next = to === null ? put(rest) : treeMap(rest, to, put);
+    tree = trees.get(s.id) || halvesTree(s),
+    [, , words, edge] = TILE_DIRS[dir];
+  const next = i3Move(tree, g, dir, tileSeen.get(s.id) || []);
+  if (!next) return note($('#shead'), `It is the column's whole ${edge} already`);
   if (!treeFits(next)) return note($('#shead'), `No room for it ${words}`);
   trees.set(s.id, next);
   zoomed.delete(s.id);
@@ -368,6 +366,103 @@ function hotTileMove(dir) {
   fitTerm();
   focusBoard();
   focusTerm();
+}
+// i3's containers over the binary tree: { g } | { d, kids: [{ n, w }] }, w each part's share of its list (summing to 1).
+const clampR = r => Math.max(0.15, Math.min(0.85, r || 0.5));
+function toKids(n) {
+  if ('g' in n) return { g: n.g };
+  const kids = [],
+    add = (x, w) => {
+      if (!('g' in x) && x.d === n.d) {
+        const r = clampR(x.r);
+        add(x.a, w * r);
+        add(x.b, w * (1 - r));
+      } else kids.push({ n: toKids(x), w });
+    };
+  add(n, 1);
+  return { d: n.d, kids };
+}
+function fromKids(n) {
+  if ('g' in n) return { g: n.g };
+  if (n.kids.length === 1) return fromKids(n.kids[0].n);
+  const sum = n.kids.reduce((x, k) => x + k.w, 0),
+    [k0, ...rest] = n.kids;
+  return { d: n.d, r: k0.w / sum, a: fromKids(k0.n), b: fromKids({ d: n.d, kids: rest }) };
+}
+/** A list as i3 keeps it: a part of one, the part; a part running the same way, its parts in its place. */
+function tidyKids(n) {
+  if ('g' in n) return n;
+  const kids = [];
+  for (const k of n.kids) {
+    const c = tidyKids(k.n);
+    if (!('g' in c) && c.d === n.d) for (const x of c.kids) kids.push({ n: x.n, w: x.w * k.w });
+    else kids.push({ n: c, w: k.w });
+  }
+  if (kids.length === 1) return kids[0].n;
+  const sum = kids.reduce((x, k) => x + k.w, 0);
+  for (const k of kids) k.w /= sum;
+  return { d: n.d, kids };
+}
+const kidLeaves = n => ('g' in n ? [n.g] : n.kids.flatMap(k => kidLeaves(k.n)));
+const kidOut = (C, i) => {
+  C.kids.splice(i, 1);
+  const sum = C.kids.reduce((x, k) => x + k.w, 0) || 1;
+  for (const k of C.kids) k.w /= sum;
+};
+const kidIn = (C, i, n) => {
+  const m = C.kids.length;
+  for (const k of C.kids) k.w *= m / (m + 1);
+  C.kids.splice(i, 0, { n, w: 1 / (m + 1) });
+}; // an even share, as i3 gives
+/** The tree with g moved that way as i3 would, or null when it is that whole side already. */
+function i3Move(tree, g, dir, seen) {
+  const [ax, sg] = TILE_DIRS[dir],
+    d = ax ? 'col' : 'row',
+    root = toKids(tree),
+    path = [];
+  const find = n => {
+    if ('g' in n) return n.g === g;
+    for (let i = 0; i < n.kids.length; i++) {
+      path.push({ n, i });
+      if (find(n.kids[i].n)) return true;
+      path.pop();
+    }
+    return false;
+  };
+  if (!find(root)) return null;
+  const { n: P, i } = path.at(-1),
+    leaf = P.kids[i].n,
+    T = P.d === d ? P.kids[i + sg] : null;
+  if (T && 'g' in T.n) {
+    P.kids[i + sg] = { n: leaf, w: T.w };
+    P.kids[i] = { n: T.n, w: P.kids[i].w };
+    return fromKids(tidyKids(root));
+  } // its neighbour: trade places, the room where it was
+  if (T) {
+    // a list across the arrow: into it, after the part the keys were in last
+    const C = T.n,
+      ls = kidLeaves(C),
+      last = seen.find(x => ls.includes(x)) ?? ls.at(-1),
+      j = C.kids.findIndex(k => kidLeaves(k.n).includes(last));
+    kidOut(P, i);
+    kidIn(C, j + 1, leaf);
+    return fromKids(tidyKids(root));
+  }
+  let k = path.length - 2;
+  while (k >= 0 && path[k].n.d !== d) k--; // out: the nearest list the arrow's way above
+  if (k < 0 && P === root && P.d === d) return null; // its end already
+  kidOut(P, i);
+  if (k >= 0) {
+    const { n: A, i: j } = path[k];
+    kidIn(A, sg > 0 ? j + 1 : j, leaf);
+    return fromKids(tidyKids(root));
+  }
+  const rest = tidyKids(root),
+    half = [
+      { n: rest, w: 0.5 },
+      { n: leaf, w: 0.5 },
+    ];
+  return fromKids(tidyKids({ d, kids: sg > 0 ? half : half.reverse() })); // none: the column's whole side, round the rest
 }
 /** Whether every tile of a tree laid out in the column holds a terminal of TILE_MIN, by a drawn terminal's cell. */
 function treeFits(tree) {
