@@ -21,16 +21,16 @@ GitHub's noreply address (this repo's `user.email`). **A commit's message is a s
 ```sh
 scripts/launchd.sh install          # the server as a login agent, run from this checkout — the recommended setup
 scripts/launchd.sh restart [--after N]   # after a server change; the drawers stay (holders); N s first, so a recap lands
-scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions (below)
+scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions
 mac/build.sh install                # the native app into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
-npm test                            # node:test over test/, the drawers end to end too (≈45 s)
-npm run check                       # static: the page compiles, the tests' rules, swiftc -typecheck, this file's size (≈10 s)
-npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
+npm test                            # node:test over test/, the drawers end to end too (≈95 s)
+npm run check                       # static: lint, format, the page compiles, the tests' rules, swiftc, this file's size (≈15 s)
+npm run verify -- "<js>"            # one expression on the live board in headless Chrome
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
 npm run shell                       # the real shell on a throwaway server, by the window's pixels; never in front (≈20 s)
 npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s)
-npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
+npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
 ```
 
@@ -39,10 +39,11 @@ npm run scenarios                   # all of them, one at a time, with a verdict
   `public/`); a change to `server/` or `lib/` needs `restart`. The app's bundled server is the fallback for a Mac without the
   agent. → Findings: *launchd agent*.
 * **Node ≥ 22** (the harness uses the global WebSocket), **`npm install` first.** Runtime deps: `node-pty` (native),
-  `ws`, `@xterm/headless` 5.5.0 and `@xterm/addon-serialize` 0.13.0 — pinned to the vendored xterm's version, which
-  `npm run check` compares with `node_modules`. The xterm client packages, marked, DOMPurify and highlight.js are
-  dev-only, `public/vendor/`'s sources byte for byte (2026-11-06); every version exact. Rebuild the app after
-  `npm install` or a node switch (it copies `node_modules` and the node binary).
+  `ws`, `@xterm/headless` 5.5.0 and `@xterm/addon-serialize` 0.13.0 (the vendored xterm's, checked). Dev-only and
+  pruned from the app: the xterm client, marked, DOMPurify, highlight.js (`public/vendor/`'s sources byte for byte),
+  ESLint, Prettier; every version exact. Rebuild the app after `npm install` or a node switch (it bundles both).
+* **Prettier lays the code out, ESLint lints it** (2026-11-25): `npm run format` before a commit, `npm run check`
+  fails the rest; the page's script is linted whole (`lint-page.mjs`), a table kept a row a line `// prettier-ignore`.
 * **A session that runs in a drawer**: finish the work, write the notes and the recap first, and run
   `restart --after 20` last. `scripts/board.sh /api/terminals` says which chats are in drawers. `launchd.sh` and
   `build.sh` detach themselves when run from a drawer (`PEIXAIRADA_DRAWER`). → Findings: *build.sh from a drawer*.
@@ -58,9 +59,9 @@ npm run scenarios                   # all of them, one at a time, with a verdict
 |---|---|
 | `server.mjs`, `server/` | The entry (run, it boots; imported, the tests' parts) and the backend, a module per concern |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
-| `lib/disclaim.c` | A drawer's claude exec'd as its own responsible process to macOS (2026-11-23); the server builds it with cc |
-| `lib/instagram.mjs` | Lunch's Instagram, in headless Chrome: a profile, logged out |
-| `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over CDP; a throwaway server with cleanup, `waitFor`, `post` |
+| `lib/disclaim.c` | A drawer's claude as its own responsible process (2026-11-23), built by the server with cc |
+| `lib/instagram.mjs` | Lunch's Instagram in headless Chrome, logged out |
+| `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: Chrome over CDP; a throwaway server (`waitFor`, `post`) |
 | `lib/refit.mjs` | A terminal's refit, the holder's copy |
 | `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since |
 | `public/index.html`, `lib/page.mjs` | The page's skeleton, an include per part, put in as served (2026-11-25) |
@@ -75,9 +76,9 @@ npm run scenarios                   # all of them, one at a time, with a verdict
 | `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/` itself, driven |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView`, the app's engine |
 | `scripts/fixture.mjs` | A `~/.claude` look-alike |
-| `scripts/fakes/` | What every test server runs instead of the real CLIs and services (`fakeclaude.mjs` the CLI); each file's head says its knobs |
-| `scripts/readme/` | The README's pictures from a made-up board, never the real one: stills and clips → `docs/shots/` |
-| `scripts/check.sh`, `check-page.mjs` | Static checks |
+| `scripts/fakes/` | The test servers' stand-ins for every CLI and service (`fakeclaude.mjs` the CLI); each head says its knobs |
+| `scripts/readme/` | The README's pictures, from a made-up board: stills and clips → `docs/shots/` |
+| `scripts/check.sh`, `check-page.mjs`, `lint-page.mjs` | Static checks |
 | `test/` | `node:test` files (`npm test`) |
 
 ## How it reads Claude Code
@@ -108,8 +109,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 
 ## The server
 
-* **A module per concern** (2026-11-25): `server/env.mjs` imports none and goes first; no module reads another's binding
-  as it loads; another's `let` is written by its setter (`setX`); a route joins its group in `routes/`, `ROUTES` their order.
+* **A module per concern** (2026-11-25): `server/env.mjs` imports none, first; no module reads another's binding at
+  load; another's `let` is set by its `setX`; a route joins its group in `routes/` (`ROUTES` the order).
 * **Only the board's own page may ask** (2026-09-27): every route and the terminal upgrade refuse a request whose
   Origin is not this server's or whose Host is not a loopback name (`foreign()`); no Origin passes (curl, the app, the
   tests), a `null` one is nobody's. With no Origin (an `<img>`, a navigation) `Sec-Fetch-Site` must be `same-origin`
@@ -565,7 +566,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 
 * **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill, the menus, the pane's
   views, the server it adopts, Swift's traps. Here: what the page does across the bridge.
-* **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
+* **`HOTKEYS` is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
   its group, one line, its codes in HOTKEYS, CMDKEYS or ⌥⌘⇧'s `SHIFTKEYS` (2026-11-24) — the ? sheet is drawn from it (`keyNotes`),
   and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
   Keys.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. Handlers are `hot…`.

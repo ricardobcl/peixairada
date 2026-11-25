@@ -402,7 +402,7 @@ The login agent takes `PORT`, `NOTIFY`, `CHROME` and your `PATH` at `scripts/lau
 
 ## Hacking
 
-`npm test` · `npm run check` · `npm run scenarios` · `npm run shell` (the app's own window, read off its pixels, out of your way). The pictures are taken on a made-up board
+`npm test` · `npm run check` (with the lint and the format: `npm run format` is Prettier, `npm run lint` ESLint) · `npm run scenarios` · `npm run shell` (the app's own window, read off its pixels, out of your way). The pictures are taken on a made-up board
 (`scripts/readme/board.mjs`), never yours: `npm run scenario -- scripts/readme/shots.mjs` redraws the stills, and
 `npm run scenario -- scripts/readme/clips.mjs --timeout 900000 [-- <clip>…]` the README's clips (animated WebP, by
 libwebp's `img2webp` — `brew install webp`); VS Code Web's want the `code` CLI. The browser checks drive Google Chrome

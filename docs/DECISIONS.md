@@ -5,6 +5,50 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, latest — the code laid out by Prettier, linted by ESLint
+
+Ricardo: *"can we add a common linter or prettier so the code look and feels more readable?"*.
+
+* **Prettier lays out the JavaScript and the CSS** (3.10.1, `.prettierrc.json`): 120 columns, single quotes, an arrow's
+  one parameter bare — the spellings most of the code had —, everything else its default. Nothing else is formatted
+  (`.prettierignore`): not the notes (CLAUDE.md's budget, their own wrapping), not the page's skeleton (its include
+  lines), not the data, the vendored builds or `docs/`; nor the two fakes that are a shell script and a module at once
+  (`true /*` on their second line: Prettier's `true;` ran `/*` as a command). `.editorconfig` is the editor's side.
+* **The page's parts are formatted each as a file**, so the IIFE no longer indents them: top-level is the line's start.
+  `check-page` reads them so (its own-scope functions, the `KEYS` table's end; a `showModal()` wants `repostPane()` within
+  the two lines after it, a statement a line now), as do the refit and chat tests. `KEYS` stays a table, a row a line
+  (`// prettier-ignore`): exploded it was 265 lines of five. Prettier lays six files out differently on a second pass
+  (comments and a CSS `clamp()`), so it ran twice; it is stable from there.
+* **Nothing but the layout changed**, checked three ways: every script's syntax tree (positions and spellings aside) and
+  comments are the same before and after (451: each file, and the page's two inline scripts put together; Prettier's own
+  `--debug-check` agrees but crashes on a BigInt); the CSS as Chrome reads it is the same rule for rule — 89 values of
+  custom properties and `var()` declarations, which Chrome keeps as written, differ only by spaces, quotes, a leading
+  zero or a hex's case (the multi-line `--spring` still eases in Chrome and WebKit); and the tests and scenarios.
+* **ESLint's recommended rules** (10.15.0, `eslint.config.mjs`) over the code, with three let go: an empty `catch`
+  (letting go on purpose, 132 of them), a rest sibling left out (`const { key, ...rest }`), and a control byte in a
+  regex (a terminal's, on purpose). The page's script is one function across 97 parts, so a part alone is all
+  undefined names: `scripts/lint-page.mjs` lints it put together, as `public/page.js` with the browser's globals and
+  the vendored builds', and tells each finding at its part's line. What it found is fixed: dead code (`CK_TIP`, a
+  scenario's helpers), unused imports, parameters and initial values, needless escapes, an error thrown from a
+  `catch` now carrying its `cause`, and two scenario regexes inside template literals whose escapes the string ate —
+  branch-drift's `rgba\(…\)` never matched; it is `\\(` now.
+* `npm run check` runs both (`› lint`, `› format`), ≈15 s now; `npm run format` writes, `npm run lint` says. The
+  update's preflight runs neither: a board pulls code that passed them. Its page check got faster instead: `check-page`
+  placed each match by splitting all the page before it, 0.9 s of its 1.4 once the page had twice the lines (an update
+  test's clock caught it); a table of where lines start makes it 0.3 s, against 1.1 before any of this.
+* **The app bundle prunes what is dev-only** (`build.sh`: `npm prune --omit=dev --offline` by the lockfile; a failed
+  prune only leaves it bigger): the linters never travel, nor marked, DOMPurify and highlight.js (the page has
+  `public/vendor/`). Its `node_modules` is 64 MB.
+* `.git-blame-ignore-revs` names the formatting commit: GitHub's blame skips it, and `git blame --ignore-revs-file
+  .git-blame-ignore-revs` (not set in the config: a worktree on an older branch has no such file, and blame fails there).
+* **The cost**: the code is 123 000 lines against 56 000 — the same statements, a declaration or an argument a line
+  past 120 columns, CSS a declaration a line; 4 500 lines are still longer, comments and strings Prettier does not
+  wrap. The page served is 1.91 MB against 1.84 (the indentation the parts lost pays for most of the new lines);
+  `npm run perf` against main, the median of three: within the 2–3 points the Mac's load moves (rest 3.8 % of a core
+  against 2.7, home 23.5 against 20.4, scroll 17.2 against 17.3), a chat opened in 83 ms and 248 layers both, the same
+  memory — the scripts are the same statements.
+  A branch from before this conflicts on every line it touches: re-split it and run `npm run format`, then compare.
+
 ## Decisions of 2026-11-25, last — pictures and GIFs in the chat
 
 Ricardo: *"add support for images/gifs on chat"* — then, asked where a picture sent from the board should live, since a
@@ -56,6 +100,7 @@ member reads the chat and GitHub takes an upload only from a writer: *a files re
   addresses (only its media's are pictures); a video attachment shows as its address; the files repo's writers could push
   to it — it holds nothing, the pictures are attachments.
 
+||||||| parent of 786512f (npm run check lints and checks the format; the notes say so)
 ## Decisions of 2026-11-25, later still — the code in units: the page in parts, the server in modules, the shell in files
 
 Ricardo: *"files are to big, no clear separation of concerns in files/folders. etc. do a deep review of best pratices, split

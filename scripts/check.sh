@@ -1,12 +1,22 @@
 #!/bin/sh
-# Static checks, ten seconds: every script parses, the page's inline script compiles, the tests keep to a state and temp
-# dirs of their own and name every route (scripts/check-tests.mjs), the shell scripts parse, the app's Swift type-checks
-# against the deployment target build.sh uses, with the shell's probe too, and the WebKit check's against this Mac.
-# `npm run check`. No network, no server.
+# Static checks, fifteen seconds: every script parses, the code is linted (ESLint, the page's script whole) and formatted
+# (Prettier), the page's inline script compiles, the tests keep to a state and temp dirs of their own and name every route
+# (scripts/check-tests.mjs), the shell scripts parse, the app's Swift type-checks against the deployment target build.sh
+# uses, with the shell's probe too, and the WebKit check's against this Mac. `npm run check`. No network, no server.
 set -eu
 cd "$(dirname "$0")/.."
 echo "› node --check"
 for f in server.mjs server/*.mjs server/*/*.mjs lib/*.mjs scripts/*.mjs scripts/fakes/*.mjs scripts/readme/*.mjs scripts/scenarios/*.mjs scripts/shell-checks/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
+# The nearest node_modules up the folders, as Node finds it: a worktree inside the repo has none of its own (2026-10-14).
+NM=$PWD; while [ ! -d "$NM/node_modules" ] && [ "$NM" != / ]; do NM=$(dirname "$NM"); done; NM="$NM/node_modules"
+# The code as one hand wrote it (2026-11-25): ESLint's recommended rules, the page's script linted as it runs, and
+# Prettier's layout — `npm run format` writes it, `npm run lint` says what is left.
+[ -x "$NM/.bin/eslint" ] && [ -x "$NM/.bin/prettier" ] || { echo "ESLint or Prettier is missing from $NM — npm install" >&2; exit 1; }
+echo "› lint"
+"$NM/.bin/eslint" .
+node scripts/lint-page.mjs
+echo "› format"
+"$NM/.bin/prettier" --check --log-level warn . || { echo "not formatted: npm run format" >&2; exit 1; }
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
 echo "› the tests: their environment, their temp dirs, every route named"
@@ -16,8 +26,6 @@ node scripts/check-tests.mjs
 # The page's markdown, its sanitiser and its highlighter too (2026-11-06): pinned in package.json, so npm audit and
 # Dependabot see them, and the copy is the registry's file byte for byte — a hand-picked CDN build is no longer one.
 echo "› vendored libraries = node_modules"
-# The nearest node_modules up the folders, as Node finds it: a worktree inside the repo has none of its own (2026-10-14).
-NM=$PWD; while [ ! -d "$NM/node_modules" ] && [ "$NM" != / ]; do NM=$(dirname "$NM"); done; NM="$NM/node_modules"
 for p in @xterm/xterm/lib/xterm.js:xterm.js @xterm/xterm/css/xterm.css:xterm.css @xterm/addon-fit/lib/addon-fit.js:xterm-addon-fit.js @xterm/addon-web-links/lib/addon-web-links.js:xterm-addon-web-links.js \
     dompurify/dist/purify.min.js:purify.min.js marked/lib/marked.umd.js:marked.min.js @highlightjs/cdn-assets/highlight.min.js:highlight.min.js; do
   [ -f "$NM/${p%%:*}" ] || { echo "$NM/${p%%:*} is missing — npm install" >&2; exit 1; }

@@ -1,0 +1,4 @@
+# Commits that changed only the code's layout: `git blame --ignore-revs-file .git-blame-ignore-revs`, and GitHub's blame,
+# step over them to a line's last real change.
+# The code formatted by Prettier (2026-11-25)
+bd0ffaaa81f044c27d9034036f3f8519d29f8ef7
