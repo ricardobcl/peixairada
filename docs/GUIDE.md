@@ -22,14 +22,14 @@ setup file, and how the pictures are made.
   (straight into the chat's Claude, when it runs here), *Done*, or *In an hour*, which snoozes the chat (a question's keeps
   *In 15 minutes*: a question wakes a snooze). The Dock badge counts the chats asking
   you and those with a new reply. The fish in the menu bar is dim when nothing wants you and full when something does, and
-  its number is the questions alone; it floats belly-up if the server dies. Its menu leads with what to do next; hold ⌥
-  and a reply's row marks it read. Settings › General can give it a key that works in any app.
+  its number is the questions alone; it floats belly-up if the server dies. Its menu lists the chats asking you, then
+  *Show Board* and *Quit*.
 - 🔕 **A chat muted** — its card's right-click, ··· in its header, the launcher, or *Mute this chat* on its notification: no
   banner, sound or count from it, its questions included, until you unmute it. Its card says *muted* beside the project and
   keeps showing what the chat does; a click on the word unmutes it.
 - ▶️ **Next** — ⌥⌘⏎, or the button on the status bar: the question waiting longest, then a PR at your move, then what to
   read, always in that order. Back after a while, a line over the fish says what changed while you were out.
-- 🎣 **Gone fishing** — a quiet you choose, from the status bar's right-click or the fish's menu: questions still ring, the
+- 🎣 **Gone fishing** — a quiet you choose, from the status bar's right-click or the launcher: questions still ring, the
   rest waits 25 minutes and arrives as one. Red on the status bar only ever means a chat is asking you, and with
   notifications off a mark says so. Settings › Appearance has two trials for the fish's lane: a fish per chat, and your
   day as the seabed.

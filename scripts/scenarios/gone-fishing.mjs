@@ -1,7 +1,7 @@
 // Gone fishing (2026-11-01, round XIX's M4): a quiet you choose, with a sign in the lane. What this checks: the bar's right-
 // click starts it; replies and PR moves come in without a sound or a banner (quiet to the app), still counted; a question
 // and a branch moved ring as ever; it outlives a reload; the sign's click ends it, and the catch is one line and one
-// banner; and its time running out does the same by itself. The app hears it for its fish and its menu.
+// banner; and its time running out does the same by itself.
 import { appendFileSync } from 'node:fs';
 import { replyLines } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
@@ -28,8 +28,6 @@ export default async function (ctx) {
   );
   await ctx.waitFor(`document.querySelector('#sbSwim .fsign')`, { what: 'the sign' });
   ctx.assert.equal(await sign(), 'GONE FISHING');
-  const fish = (await posts('state')).pop();
-  ctx.assert.match(fish.fishing, /^\d\d:\d\d$/, 'the app hears till when');
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelector('#sbSwim').classList.contains('rest')`),
     true,
@@ -73,7 +71,6 @@ export default async function (ctx) {
     'The catch:1 landed·nothing asked',
   );
   ctx.assert.equal(await sign(), null, 'the sign gone');
-  ctx.assert.equal((await posts('state')).pop().fishing, '', 'and the app hears');
   const banner = (await posts('alert')).pop();
   ctx.assert.deepEqual(
     [banner.heading, banner.title],

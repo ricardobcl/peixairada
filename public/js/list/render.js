@@ -55,9 +55,9 @@ const postChat = s => {
   postChat.last = sig;
   post(m);
 };
-// …and what wants you, one meaning for the Dock's badge and the menu bar's count (2026-10-12; the badge counted the
-// alerts that came while the app was in the back, the menu bar the questions): the chats asking you and the ones with
-// a new reply — the menu lists them.
+// …and what wants you, one meaning for the Dock's badge (2026-10-12; it counted the alerts that came while the app was in
+// the back): the chats asking you and the ones with a new reply — the fish in the menu bar counts and lists the questions
+// alone (2026-11-25).
 // what asks is what the list and the bar call asking (2026-10-14; any live claude waiting before, a chat ticked done too)
 // How long a chat has been asking: the registry's moment, else the status's. Questions are served longest wait first
 // (2026-11-01, round XIX's S4; newest first before, which favours whoever pinged last), and the bar says the longest.
@@ -79,60 +79,16 @@ const wanting = () => {
       .sort(byWord),
   };
 };
-// The plan usage in a line, for the fish's menu (2026-11-01, round XIX's S5): each window's tag and percent, the next reset
-function planLine() {
-  const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
-  if (usage.off || !ws.length) return '';
-  const soon = ws.map(w => (w.resetsAt ? new Date(w.resetsAt).getTime() : Infinity)).reduce((a, b) => Math.min(a, b));
-  return `Plan ${ws.map(w => `${w.percent}% of ${uShort(w)}`).join(' · ')}${soon < Infinity ? ` · resets ${new Date(soon).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : ''}`;
-}
 function postState() {
   const w = wanting(),
     brief = s => ({ id: s.id, project: s.project, title: s.title });
   const needs = [...w.needs].sort(byWait).map(s => ({ ...brief(s), since: String(askedAt(s)) })),
     replies = w.replied.map(brief);
-  // …and for the status menu alone (2026-10-12, P2): the PRs at your move, by chat, and what is clauding
-  const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
-  const moves = live
-    .filter(s => !asking(s) && !s.muted && !quietNow(s) && yourMove(s))
-    .sort(byWord)
-    .map(s => ({
-      ...brief(s),
-      title: `${movedPrs(s)[0]?.label || ''} — ${s.title}`,
-      why: movedPrs(s)[0]?.turn?.why || '',
-    }));
-  const working = live
-    .filter(s => bucket(s) === 'working' && !asleep(s))
-    .sort(byWord)
-    .map(brief);
-  const watching = live
-    .filter(s => inWatch(s) && bucket(s) !== 'working' && !asleep(s))
-    .sort(byWord)
-    .map(brief);
-  const muted = !state.notifications,
-    plan = planLine(),
-    nx = nextQueue()[0],
-    gone = fishing.until
-      ? new Date(fishing.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-      : '';
-  const next = nx
-    ? {
-        id: nx.s.id,
-        verb: `${NEXT_VERB[nx.k]}${nx.k === 'ask' ? ' ' : ': '}${nextName(nx)}`,
-        sub:
-          nx.k === 'ask'
-            ? nx.s.title
-            : nx.k === 'move'
-              ? `${nx.s.project} · ${movedPrs(nx.s)[0]?.turn?.why || ''}`
-              : nx.s.project,
-        since: nx.k === 'ask' ? String(askedAt(nx.s)) : '',
-      }
-    : null;
   const mutes = [...state.sessions.values()].filter(s => s.muted).map(s => s.id); // the app takes back what it still holds for one (a snooze)
-  const sig = JSON.stringify([needs, replies, moves, working, watching, muted, plan, next, gone, mutes]);
+  const sig = JSON.stringify([needs, replies, mutes]);
   if (sig === postState.last) return;
   postState.last = sig;
-  post({ type: 'state', needs, replied: replies, moves, working, watching, muted, plan, next, fishing: gone, mutes });
+  post({ type: 'state', needs, replied: replies, mutes });
 }
 // Next (2026-11-01, round XIX's M1; StarCraft's idle-worker key, Civ's turn button): one key that always arrives, in a
 // fixed, stated order. The question waiting longest, then a PR at your move, the one that came round first, then what to

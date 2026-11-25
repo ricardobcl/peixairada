@@ -25,17 +25,10 @@ extension AppDelegate {
     case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
       let asked = Set(needsInput.map { $0["id"] ?? "" })
       let brief: ([String: Any]) -> [String: String] = {
-        ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "", "title": $0["title"] as? String ?? "", "since": $0["since"] as? String ?? "", "why": $0["why"] as? String ?? ""]
+        ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "", "title": $0["title"] as? String ?? "", "since": $0["since"] as? String ?? ""]
       }
       needsInput = (body["needs"] as? [[String: Any]] ?? []).map(brief)
       newReplies = (body["replied"] as? [[String: Any]] ?? []).map(brief)
-      yourMoves = (body["moves"] as? [[String: Any]] ?? []).map(brief)
-      clauding = (body["working"] as? [[String: Any]] ?? []).map(brief)
-      watching = (body["watching"] as? [[String: Any]] ?? []).map(brief)
-      muted = body["muted"] as? Bool ?? false
-      plan = body["plan"] as? String ?? ""
-      nextUp = (body["next"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
-      fishingUntil = body["fishing"] as? String ?? ""
       let mutes = Set(body["mutes"] as? [String] ?? [])
       let newlyMuted = mutes.subtracting(mutedChats)
       mutedChats = mutes
@@ -75,8 +68,6 @@ extension AppDelegate {
       setPane(chat: body["id"] as? String, keys: body["keys"] as? [String] ?? [], places: places, focus: body["focus"] as? String)
     case "nav":
       paneNav(body["what"] as? String ?? "", key: body["key"] as? String, url: body["url"] as? String)
-    case "summon":   // Settings › General's key for the fish's menu (2026-11-01, round XIX's M2)
-      setSummonKey(code: body["code"] as? String ?? "", mods: body["mods"] as? [String] ?? [])
     case "fullscreen":   // Settings › Look's full screen (2026-10-14): the fill, or the system's in a Space of its own
       setSpaceMode(body["space"] as? Bool ?? false)
     case "details":   // About's Copy details (2026-11-04)

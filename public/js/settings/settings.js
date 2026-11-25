@@ -183,10 +183,7 @@ $('#shead').addEventListener('click', e => {
 // permission, granted to the app.
 const showNotify = () => {
   $('#notifyOn').checked = state.notifications;
-  if (state.snapshots) {
-    renderBar();
-    postState();
-  }
+  if (state.snapshots) renderBar();
 };
 function setNotify(on) {
   state.notifications = on;
@@ -199,4 +196,3 @@ function setNotify(on) {
   if (on && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
 }
 $('#notifyOn').addEventListener('change', e => setNotify(e.target.checked));
-window.peixNotifyOn = () => setNotify(true); // the fish's menu's row (round XIX's S7)

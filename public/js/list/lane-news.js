@@ -35,7 +35,7 @@ const OUT_MS = 10 * 60_000;
 // Gone fishing (2026-11-01, round XIX's M4): a quiet you choose. A sign in the lane for FISH_MIN or till you say; questions
 // still ring; replies and PR moves come in with their counts and no banner or chime, and the catch arrives as one line,
 // and one banner if the app is behind. It is the safe way to try batching, the deciding being yours, and a mute that
-// wears a sign cannot be forgotten. The fish's own menu has the same rows, and its fish a slash.
+// wears a sign cannot be forgotten.
 const FISH_MIN = 25;
 const fishing = { since: prefs.fishing?.since || 0, until: prefs.fishing?.until || 0, t: 0 };
 function goFishing(min = FISH_MIN) {
@@ -44,7 +44,6 @@ function goFishing(min = FISH_MIN) {
   savePrefs();
   fishingBar();
   renderBar();
-  postState();
 }
 function backFromFishing() {
   if (!fishing.until) return;
@@ -55,7 +54,6 @@ function backFromFishing() {
   savePrefs();
   fishingBar();
   renderBar();
-  postState();
   const line = outLine(since);
   if (!line) return;
   laneNews(`<b>The catch:</b>${line}`);
@@ -107,7 +105,7 @@ function fishingBar() {
 window.peixFishing = (on, min) => {
   if (on) goFishing(min);
   else backFromFishing();
-}; // the fish's menu
+}; // the harness's: a fishing of any length
 const outUi = { at: 0 };
 function wentOut(at = Date.now()) {
   if (!outUi.at) outUi.at = at;

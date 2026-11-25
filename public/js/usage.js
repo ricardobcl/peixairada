@@ -83,7 +83,6 @@ async function loadUsage() {
   }
   Object.assign(usage, { busy: false, at: Date.now() });
   renderBar();
-  postState();
 }
 // Due: the interval is up (longer after failures), or a window has reset since the last answer — its numbers are old.
 const usageDue = () =>

@@ -86,13 +86,12 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
 * **The badge and the Dock**: the page's `{type: 'state'}` is their number; `refreshBadges` redraws only on a change
   (`badged`); a newly asking chat, the app behind, bounces the Dock once.
 * **The fish in the menu bar** (2026-11-01, round XIX; `drawFish`, `fishFace`): dim, nothing wants you (`appearsDisabled`);
-  full, something does; its number the questions alone, the Dock's what wants you; a slash while muted or fishing; belly-up
-  under a waterline with no number once the watchdog's 15 s pass (`setServerDown`). **Its menu is one `statusMenu`, drawn as
-  it opens** (`menuNeedsUpdate`), never while open: Next first, `sectionHeader`s, `subtitle`s, `+n more`, submenus for what
-  works, each behind `#available`; ⌥ rows are `isAlternate`, which reads no event. **Its key is `popUp`, never
-  `performClick`** (`setSummonKey`, `summonMenu`; Carbon): on 27.2 performClick opens off the top of the screen with the
-  bar hidden. On 27.2 a status button's `NSApp.currentEvent` has no flags and its type swapped: read `NSEvent.modifierFlags`.
-  Logged `fish:`, `summon:`.
+  full, something does; its number the questions alone, the Dock's what wants you; belly-up under a waterline with no
+  number once the watchdog's 15 s pass (`setServerDown`). **Its menu is the bare minimum** (2026-11-25; `rebuildStatusMenu`):
+  the chats asking you (a `sectionHeader`, a `subtitle` each, behind `#available`), Show Board, Quit; the server gone,
+  Restart Server and its log instead. One `statusMenu`, drawn as it opens (`menuNeedsUpdate`), never while open. On 27.2 a
+  status button's `NSApp.currentEvent` has no flags and its type swapped: read `NSEvent.modifierFlags`. Logged `fish:`.
+  → `shell-checks/fish-menu.mjs` (the probe's `fish`).
 * **About's Copy details asks the shell** (2026-11-04; `details` → `tellDetails` → `peixDetails`): macOS, the window's shape and inset, the
   screen, where each page's view really is in the window's terms, never its address. → `shell-checks/details.mjs`.
 * **The board's view opens the system's file panel** (2026-11-25; `runOpenPanelWith` on `AppDelegate`, its `uiDelegate`):

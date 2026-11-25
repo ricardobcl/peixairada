@@ -155,6 +155,15 @@ extension AppDelegate {
     case "unsheet":   // the sheet over the window let go, as its Cancel would (2026-11-25: the board's file panel)
       guard let sheet = window.attachedSheet else { return reply(false, nil) }
       window.endSheet(sheet, returnCode: .cancel); reply(true, nil)
+    case "fish":   // the menu bar's fish, and its menu as it is drawn on opening (2026-11-25)
+      menuNeedsUpdate(statusMenu)
+      let rows: [[String: Any]] = statusMenu.items.map { i in
+        var r: [String: Any] = ["title": i.isSeparatorItem ? "—" : i.title, "on": i.isEnabled]
+        if #available(macOS 14.4, *), let sub = i.subtitle { r["sub"] = sub }
+        return r
+      }
+      let b = statusItem.button
+      reply(["title": b?.title ?? "", "tip": b?.toolTip ?? "", "dim": b?.appearsDisabled ?? false, "rows": rows], nil)
     case "quit": exit(0)
     default: reply(nil, "no such thing to do: \(o["do"] ?? "?")")
     }

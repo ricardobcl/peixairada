@@ -1,7 +1,7 @@
 // Next (2026-11-01, round XIX's M1): one key and one button that say what the fleet needs, in a fixed, stated order, and
 // always arrive. What this checks: the order (questions by longest wait, then a PR at your move, then what to read), ⌥⌘⏎
 // and a click walking it and coming round, the bar naming the next thing, a reply read leaving the queue, *caught up* with
-// nothing left, the launcher's row, and the app's `next`.
+// nothing left, and the launcher's row.
 import { spawn } from 'node:child_process';
 import { appendFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -102,11 +102,6 @@ export default async function (ctx) {
     await ctx.key('Enter');
     await ctx.sleep(250);
     ctx.assert.equal(await title(), 'Older question', 'round again, the read one gone');
-    const post = await ctx
-      .evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'state').pop().next)`)
-      .then(JSON.parse);
-    ctx.assert.equal(post.sub, 'Older question', "the app's first row names it");
-    ctx.assert.ok(Math.abs((Date.now() - Number(post.since)) / 60000 - 30) < 2, 'and when it began');
     // the launcher has it
     await ctx.key('KeyL');
     await ctx.waitFor(`document.querySelector('#pick[open]')`, { what: 'the launcher' });

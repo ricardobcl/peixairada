@@ -90,7 +90,6 @@ const prefs = {
   agentCards: {},
   cardPartsSeen: 0,
   mutedAt: 0,
-  fishKey: null,
   fishing: null,
   laneSchool: false,
   laneBed: false,

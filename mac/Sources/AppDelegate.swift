@@ -1,6 +1,5 @@
 // The app's delegate: every stored property of it (an extension holds none), its launch, in front and behind, nobody
 // looking, the watchdog over the server.
-import Carbon
 import Cocoa
 import WebKit
 import UserNotifications
@@ -49,25 +48,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   let server = ServerController()
   var statusItem: NSStatusItem!
   // What wants you, as the page posts it (2026-10-12): the chats asking you and the ones with a new reply — the Dock's
-  // badge and the menu bar's count are both their number (the badge counted the alerts that came while the window was
-  // in the back before, the menu bar the questions), and the status menu lists them.
+  // badge is their number (it counted the alerts that came while the window was in the back before); the fish's, and its
+  // menu, the questions alone (2026-11-25).
   var needsInput: [[String: String]] = []
   var newReplies: [[String: String]] = []
-  var muted = false                       // notifications off: the fish wears a slash, the menu says so (round XIX's S7)
   var mutedChats = Set<String>()          // the chats muted (2026-11-02): what the system still holds for one goes when it joins
-  var watching: [[String: String]] = [], plan = ""   // the status menu's: what watches behind a turn, the plan in a line (S5)
-  var nextUp: [String: String] = [:]      // what ⌥⌘⏎ would do, the menu's first row (M1)
-  var fishingUntil = ""                   // gone fishing till this time (M4): a slash on the fish, a row in the menu
   let statusMenu = NSMenu()
   var statusMenuOpen = false
-  var summonRef: EventHotKeyRef?
-  var summonInstalled = false
-  var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
   // The board's own zoom (2026-10-12, the settings' text size): the web view's pageZoom, so the page's CSS px are
   // `zoom` points — what the page and the shell say of places (the pane's rects, the housing, the pane's edge) is
   // turned between the two here.
   var zoom: CGFloat = 1
-  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]], watching: [[String: String]], plan: String, muted: Bool, next: [String: String], fishing: String) = ([], [], [], [], [], "", false, [:], "")   // what the badge and the status menu last showed
+  var badged: (waiting: [[String: String]], replies: [[String: String]]) = ([], [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again

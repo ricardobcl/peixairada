@@ -5,66 +5,6 @@
 // size, branches. Non-GitHub links in the app go to the system browser the same way.
 const inApp = !!window.webkit?.messageHandlers?.hub;
 const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
-// The fish's menu from anywhere (2026-11-01, round XIX's M2): a global key of your choosing, none by default (a default-on
-// one drew complaints elsewhere), registered by the app. It reaches the menu with the menu bar hidden, which is the fill.
-// A key needs two modifiers, or to be an F key, so it cannot take ⌘C from every other app; the board's own are refused.
-const summonName = k =>
-  `${k.mods.includes('ctrl') ? '⌃' : ''}${k.mods.includes('alt') ? '⌥' : ''}${k.mods.includes('shift') ? '⇧' : ''}${k.mods.includes('cmd') ? '⌘' : ''}${k.name}`;
-function summonDraw(asking) {
-  $('#summonSet').textContent = asking ? 'Press the keys…' : prefs.fishKey ? summonName(prefs.fishKey) : 'Set a key…';
-  $('#summonClear').hidden = asking || !prefs.fishKey;
-}
-const summonPost = () => post({ type: 'summon', code: prefs.fishKey?.code || '', mods: prefs.fishKey?.mods || [] });
-function summonRecord() {
-  summonDraw(true);
-  const stop = () => {
-    removeEventListener('keydown', key, true);
-    summonDraw(false);
-  };
-  const key = e => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    if (['Alt', 'Control', 'Meta', 'Shift'].includes(e.key)) return;
-    if (e.key === 'Escape') {
-      stop();
-      return;
-    }
-    const mods = [e.ctrlKey && 'ctrl', e.altKey && 'alt', e.shiftKey && 'shift', e.metaKey && 'cmd'].filter(Boolean),
-      fn = /^F\d+$/.test(e.code);
-    if (!fn && mods.length < 2) {
-      note($('#summonSet'), 'Two modifiers, or an F key: it works in every app');
-      return;
-    }
-    if (mods.length === 2 && mods.includes('alt') && mods.includes('cmd') && HOTKEYS[e.code]) {
-      note($('#summonSet'), "That one is the board's");
-      return;
-    }
-    prefs.fishKey = {
-      code: e.code,
-      mods,
-      name: fn
-        ? e.code
-        : e.code
-            .replace(/^(Key|Digit)/, '')
-            .replace(/^Enter$/, '⏎')
-            .replace(/^Space$/, '␣'),
-    };
-    savePrefs();
-    summonPost();
-    stop();
-  };
-  addEventListener('keydown', key, true);
-}
-$('#fishRow').hidden = !inApp;
-$('#summonSet').addEventListener('click', summonRecord);
-$('#summonClear').addEventListener('click', () => {
-  delete prefs.fishKey;
-  savePrefs();
-  summonPost();
-  summonDraw(false);
-});
-summonDraw(false);
-if (inApp) summonPost();
 // The whole board larger or smaller (2026-10-12, the settings' text size): the app's web view zooms (pageZoom — the
 // page's CSS px stay its own, the app turns its places between the two); a browser has its own View → Zoom, which ⌘+
 // and ⌘− (the chat's own size here) do not reach. Posted on every load, as the app forgets.

@@ -266,7 +266,7 @@ export default async function (ctx) {
     }
     out.asking = await lastState();
     ctx.assert.equal(out.asking.needs.length, 0, 'not in what the Dock, the menu bar and the bounce read');
-    ctx.assert.notEqual(out.asking.next?.id, asker.id, 'nor Next');
+    ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#sbar .seg.ask')`), false, 'nor Next');
 
     // ---- a click on the word unmutes it, and opens nothing ----
     const current = await ctx.evaluate(`window.peix.state().current`);

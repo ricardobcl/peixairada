@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, after the formatting — the fish's menu, the bare minimum
+
+Ricardo: *"let's greatly simplify menu bar to have the bare minimum"*.
+
+* **What it keeps**: the chats asking you, longest wait first, a row each with its project and wait that opens it; Show
+  Board; Quit (⌘Q while it is open). The server gone: the line saying so, Restart Server, Open Server Log, then Show
+  Board and Quit. The fish as it was — dim when nothing wants you, its number the questions alone, belly-up with the
+  server gone — but the slash.
+* **What went**: Next as the first row, the *Your move* and *New replies* sections (⌥ on a reply's row marking it
+  read), `+n more…`, the Clauding and Watching submenus, the plan's line, *Caught up*, Go Fishing and the fishing row, the
+  notifications-off row, Settings…, Enter/Exit Full Screen, the ⌥ rows (Reload Board, Restart Server, Open Server Log);
+  the slash on the fish for a mute or a fishing trip, whose marks the status bar keeps; and **the key that opened the menu
+  from anywhere** (round XIX's M2, Settings › General's *Menu bar* group; none was set on his board), no help for a menu
+  of three rows. All of it is on the board still: Next ⌥⌘⏎, gone fishing on the status bar's right-click and the
+  launcher, notifications in Settings, the full screen ⌃⌘F, Reload Board and Restart Server in View.
+* **The page tells the app what it reads**: `{type: 'state', needs, replied, mutes}` — `moves`, `working`, `watching`,
+  `muted`, `plan`, `next` and `fishing` went, with `planLine`, `peixMarkRead` and `peixNotifyOn`; `peixFishing` stays,
+  the harness's. The scenarios `fish-menu.mjs` and `summon-key.mjs` went with what they checked.
+* **The menu is seen in the real shell now**, not only typechecked: `shell-checks/fish-menu.mjs` asks the probe for the
+  menu as drawn on opening and the fish's number, tip and dimming (`fish`) — at rest, a reply, a question. It fails on
+  the menu before and passes now.
+
 ## Decisions of 2026-11-25, latest — the code laid out by Prettier, linted by ESLint
 
 Ricardo: *"can we add a common linter or prettier so the code look and feels more readable?"*.

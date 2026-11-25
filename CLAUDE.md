@@ -666,9 +666,9 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   differs. Esc in a pane page is forwarded (`hotEscape()`: a dialog first, else the chat tab); on the board the
   capture-phase handler closes a dialog or popover and, the pane up, does hotEscape's outside a terminal or a box
   (2026-10-14). `focus` is null unless the keys' half shows a page.
-* **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, moves, working, watching, muted, plan, next, fishing, mutes}` from
+* **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, mutes}` from
   `renderBoard` when what wants you changes (`postState`, `wanting()`: the chats asking and the new replies — **the
-  Dock's badge and the page's title are their number**, the fish's the questions alone (2026-11-01)), each alert with
+  Dock's badge and the page's title are their number**, the fish's and its menu the questions alone (2026-11-25)), each alert with
   `serverNotify` and `quiet`, the pane's places, and `{type: 'chat', project, title, cwd}` from `renderHead` and
   `leaveChat` (`postChat`: the window's title and `representedURL`).
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while it runs here), `shell:<id>` per live zsh
