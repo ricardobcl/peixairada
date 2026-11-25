@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, after no Next — the funnel has no Your move
+
+Asked whether the funnel's *Your move*, the last of it on the status bar (the funnel sits at its left), should go too:
+*"yes"*.
+
+* **The funnel is *Every chat* · *New replies* · *Pinned only*** (the last while the section is on): `FILTERS.move` went,
+  and a board that kept it as its filter (`prefs.listFilter`) shows every chat. Its tooltip and the tour say so.
+* **Cards by lane keeps a PR at your move as wanting you** (`roomy`): that is the card's size, not the bar, so the test
+  is written out there.
+* **A move is still said** on the card, the header, the matrices, its notification, the timeline and home.
+  `pr-turn.mjs` checks the funnel's rows have none; `people-row.mjs` counts a new reply where it counted a move, and
+  `lanes.mjs` reads the funnel's three rows.
+
 ## Decisions of 2026-11-25, last of the day — no Next
 
 Ricardo, of the status bar's *▸ Read …* between the chat and the monitors: *"what this thing right of chat and left of

@@ -5,7 +5,7 @@
 // And Idle (2026-10-12): a chat untouched for longer than four days is Idle, folded to begin with — on a board saved
 // with Done alone folded too, once. A reply the board has not shown stays where its last word puts it (a lane of its
 // own that morning) and is what the funnel's New replies shows — every match, under heads that do not fold — until the
-// chat is opened, which the server keeps, so a reload does not bring it back. (The funnel's Your move: pr-turn.mjs.)
+// chat is opened, which the server keeps, so a reload does not bring it back.
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -166,8 +166,8 @@ export default async function (ctx) {
   out.menu = await menu();
   ctx.assert.deepEqual(
     out.menu,
-    ['Every chat ✓', 'Your move0', 'New replies1', 'Pinned only0'],
-    'the funnel: every chat, or one of the three, each counted (the pinned on by default, 2026-11-25)',
+    ['Every chat ✓', 'New replies1', 'Pinned only0'],
+    'the funnel: every chat, or one of the two, each counted (the pinned on by default, 2026-11-25; no Your move since)',
   );
   await ctx.evaluate(`document.querySelector('#ctxm').close()`);
   await choose('New replies');

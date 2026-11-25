@@ -67,7 +67,7 @@ const TOUR = [
     at: () => onScreen($('#sbFind')),
     title: 'Find a chat',
     text: () =>
-      'The first button hides the list, for the room, and brings it back — <kbd>⌥⌘B</kbd>. The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the chats with a new reply, or a PR at your move. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.',
+      'The first button hides the list, for the room, and brings it back — <kbd>⌥⌘B</kbd>. The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the chats with a new reply. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.',
   },
   {
     id: 'new',
@@ -130,7 +130,7 @@ const TOUR = [
     at: () => onScreen($('#shead .hmove')) || onScreen($('#slist > .card .prmove')) || onScreen($('#fBtn')),
     title: 'Your move',
     text: () =>
-      'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; a click on the tag opens the timeline at the move, ⌥-click lets that round go. The funnel shows only the chats at your move.',
+      'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; a click on the tag opens the timeline at the move, ⌥-click lets that round go.',
     pic: () =>
       `<div class="tlink"><span class="tto"><b class="ymove">${ICON.pr}your move</b><span class="tq">#12 · changes asked by alex</span></span></div>`,
   },

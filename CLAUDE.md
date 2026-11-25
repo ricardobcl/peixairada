@@ -447,17 +447,16 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `.covered` from `drawEdges`; none under a query) that folds it (`foldLane`, `prefs.lanesShut`; Idle and
   Done folded at first) in one motion (`lineMorph`, `foldRun`; 2026-11-01). **A day label over each run of
   one day** (`dayHtml`, `dayBefore`) **but today's** (2026-10-14). **All caught up** (`ZERO_HTML`,
-  `caughtUp`): no ready chat and no question; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies
-  are the funnel's filters, never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its
+  `caughtUp`): no ready chat and no question; reached from a ✓ (`lastTickAt`) it sparks once. **New replies is the
+  funnel's filter, never a lane.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its
   newest cards and a `.gsep.more` line (`laneMore`); the open chat's card whatever its place; a query or a filter every
   match. → `lanes.mjs`, `lane-heads.mjs`, `lane-fold.mjs`, `day-separator.mjs`, `long-lanes.mjs`.
 * **The list's filter is the funnel** (2026-10-12; `#fBtn`, `FILTERS`, `prefs.listFilter`; counted by `fCounts`):
-  *Every chat* · *Your move* (`yourMove`: a PR waiting on you, not done for good) ·
-  *New replies* (`replied`: a ready chat whose last word is Claude's and came after the board last showed it —
+  *Every chat* · *New replies* (`replied`: a ready chat whose last word is Claude's and came after the board last showed it —
   `seenAt`, the server's `seen` in the state file, `POST /api/sessions/:id/seen` from `markSeen`; `seenSince` for a
   chat never shown). Done chats never. On, the list is narrowed before anything counts it, every match shows (the
-  heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. → `seen.test.mjs`,
-  `lanes.mjs`, `pr-turn.mjs`.
+  heads `.still`, unfoldable), the caught-up head is not drawn, and an empty list says so. No *Your move* (2026-11-25).
+  → `seen.test.mjs`, `lanes.mjs`.
 * **Pinned** (2026-11-24, round XXX; named 2026-11-25, `prio` in the code; `prefs.prio`, on; the server's `priority`, `PUT
   /api/priority`, a `priority` event): a section over every lane, the project in view's chats in that order and in no lane
   (`secIds`, `secCards`), numbered (`cardHtml`'s `slot`, `.inprio`), a tick dimming one in place (`.pdone`, Clear done),

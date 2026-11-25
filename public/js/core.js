@@ -224,7 +224,7 @@ for (const k of [
   delete prefs[k]; // layout: Tiles · Sidebar, sidebarStyle: Ring · Glass, until 2026-11-01
 if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
 prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied'); // lanes for a morning (2026-10-12), filters since
-if (!['move', 'replied', 'prio'].includes(prefs.listFilter)) prefs.listFilter = null;
+if (!['replied', 'prio'].includes(prefs.listFilter)) prefs.listFilter = null; // 'move' till 2026-11-25
 // the Snoozed lane folded to begin with (2026-11-24, round XXX's W1), as Idle and Done are, on a board that had prefs before it
 if (!prefs.zzLane) {
   if (!prefs.lanesShut.includes('snoozed')) prefs.lanesShut.push('snoozed');

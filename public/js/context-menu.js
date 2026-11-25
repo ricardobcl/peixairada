@@ -339,8 +339,8 @@ document.addEventListener(
   },
   true,
 );
-// The list's filter (2026-10-12): the funnel's menu — every chat, or only the ones with a PR at your move, or with a
-// new reply — counted in the project in view (fCounts, from drawFilter), as the list would show it: the query and the
+// The list's filter (2026-10-12): the funnel's menu — every chat, or only the ones with a new reply, or the pinned —
+// counted in the project in view (fCounts, from drawFilter), as the list would show it: the query and the
 // face narrowing it too (2026-10-14; the project's alone before, a count the list did not show). A press on the funnel
 // that closed its own menu leaves it closed.
 let fCounts = {};
@@ -376,7 +376,7 @@ function drawFilter(p, narrow = () => true) {
   b.setAttribute('aria-pressed', String(!!f));
   b.title = f
     ? `Only the ${f.tip} — click for every chat, or the other filter`
-    : 'Show only some chats — a PR at your move, or a new reply';
+    : `Show only some chats — those with a new reply${prioOn() ? ', or the pinned' : ''}`;
 }
 $('#fBtn').addEventListener('click', () => {
   const m = $('#ctxm'),

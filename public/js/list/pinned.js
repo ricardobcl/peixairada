@@ -3,7 +3,7 @@
 // your order — the one order on the board nothing changes by itself. A word, a reply, a PR come round leave a card in its slot; its edge says what it does. One
 // order for the board, the server's (state.priority, PUT /api/priority, carried to the new id over a /clear), shown for
 // the project in view; the section's switch is this page's (prefs.prio, Settings › Chat list), on since 2026-11-25,
-// none pinned no section. Focus is the funnel's third row (FILTERS.prio, ⌥⌘U): the section alone, the project tab
+// none pinned no section. Focus is the funnel's second row (FILTERS.prio, ⌥⌘U): the section alone, the project tab
 // saying so, the rest quiet as when fishing but for questions.
 // Snooze: a chat put away till a time or till something happens (the server's `snooze`, which it ends): in the Snoozed
 // lane, folded, counted nowhere; a question from it or a word of yours wakes it. Back by itself it is at the top of its
@@ -127,17 +127,10 @@ const tickArmed = new Map(),
 const delArmed = new Map(),
   delArmedOn = id => (delArmed.get(id) || 0) > performance.now(); // …and its ✕ (2026-11-04)
 const DEL_TIP = '⌥-click: delete from the board — its claude ends, the transcript stays';
-// The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the chats with a PR at your
-// move — clauding ones too, the PR waits on you all the same — or the ready ones with a new reply. Done chats never.
-// …and Top priority only (2026-11-24, round XXX's F1), while the section is on (`on`): the list is the section alone.
-// A snoozed chat is in none of them (W4).
+// The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the ready chats with a new reply.
+// Done chats never. A PR at your move was one till 2026-11-25. …and Top priority only (2026-11-24, round XXX's F1), while
+// the section is on (`on`): the list is the section alone. A snoozed chat is in none of them (W4).
 const FILTERS = {
-  move: {
-    name: 'Your move',
-    none: 'No PR at your move',
-    tip: 'chats with a PR waiting on you',
-    test: s => bucket(s) !== 'done' && !asleep(s) && yourMove(s),
-  },
   replied: {
     name: 'New replies',
     none: 'No new replies',
@@ -158,7 +151,11 @@ const listFilter = () => {
   return f && (!f.on || f.on()) ? f : null;
 };
 // the cards large with cards by lane on: a chat asking you, clauding, at your move or with a new reply
-const roomy = s => asking(s) || bucket(s) === 'working' || FILTERS.move.test(s) || FILTERS.replied.test(s);
+const roomy = s =>
+  asking(s) ||
+  bucket(s) === 'working' ||
+  (bucket(s) !== 'done' && !asleep(s) && yourMove(s)) ||
+  FILTERS.replied.test(s);
 // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
 // of them, so `wapi` has to be somewhere in the project or the branch and cannot be spelled out of letters
 // borrowed from a title and a prompt (2026-09-21). Short and identifying first — ties go to the earlier field.

@@ -5,12 +5,12 @@
 // newest first; a face narrows the list, its counts and the chips to that person's chats and rings the face, and keeps
 // it folded; another face moves the filter; the same face again lets go; the choice is a pref; folded, the fish's lane
 // takes the room the faces had.
-import { writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { tmpDir } from '../../lib/testserver.mjs';
 import { fileURLToPath } from 'node:url';
-import { makeFixture } from '../fixture.mjs';
+import { makeFixture, replyLines } from '../fixture.mjs';
 
 const dir = tmpDir('peix-people-'),
   file = join(dir, 'prs.json');
@@ -205,12 +205,23 @@ export default async function (ctx) {
     [['eva', 'rui', 'ana*'], ['On one'], 1],
     'another face moves the filter',
   );
-  // the funnel counts what the list would show (2026-10-14): the face narrowing it, and a query, as the list does
+  // the funnel counts what the list would show (2026-10-14): the face narrowing it, and a query, as the list does. What it
+  // counts is a new reply on two, not ana's chat (her PR is one's); a PR at your move was it till 2026-11-25.
+  const two = chats[1];
+  appendFileSync(
+    two.file,
+    replyLines({ id: two.id, cwd: two.cwd, text: 'Done, have a look.', at: new Date() })
+      .map(l => JSON.stringify(l))
+      .join('\n') + '\n',
+  );
+  await ctx.waitFor(`window.peix.session('${two.id}')?.lastReplyAt > new Date(Date.now() - 15000).toISOString()`, {
+    what: 'the new reply on two',
+  });
   const funnel = async () => {
     await ctx.evaluate(`document.querySelector('#fBtn').click()`);
     await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: "the funnel's menu" });
     const m = await ctx.evaluate(
-      `[...document.querySelectorAll('#ctxm button')].map(b => b.textContent).filter(t => /^(Your move|New replies)\\d+$/.test(t))`,
+      `[...document.querySelectorAll('#ctxm button')].map(b => b.textContent).filter(t => /^New replies\\d+$/.test(t))`,
     );
     await ctx.evaluate(`document.querySelector('#ctxm').close()`);
     await ctx.sleep(200);
@@ -219,7 +230,7 @@ export default async function (ctx) {
   out.funnelAna = await funnel();
   ctx.assert.deepEqual(
     out.funnelAna,
-    ['Your move0', 'New replies0'],
+    ['New replies0'],
     `with ana's face, the funnel counts ana's chats alone: ${JSON.stringify(out.funnelAna)}`,
   );
   ctx.assert.equal((await ctx.peix('prefs()')).person, 'ana', 'and it is a pref');
@@ -231,13 +242,13 @@ export default async function (ctx) {
     [false, 3, 3],
     'the same face again: every chat',
   );
-  ctx.assert.deepEqual(await funnel(), ['Your move1', 'New replies0'], "every chat: On two's PR at your move");
+  ctx.assert.deepEqual(await funnel(), ['New replies1'], "every chat: On two's new reply");
   await ctx.fill('#q', 'zzqqxx');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 0`, { what: 'a query matching nothing' });
   out.funnelQuery = await funnel();
   ctx.assert.deepEqual(
     out.funnelQuery,
-    ['Your move0', 'New replies0'],
+    ['New replies0'],
     `…and none under a query that leaves no chat: ${JSON.stringify(out.funnelQuery)}`,
   );
   await ctx.fill('#q', '');
