@@ -98,6 +98,21 @@ extension AppDelegate {
   }
 }
 
+/// The board's own file panel (2026-11-25): WebKit opens none for an <input type=file> without its UI delegate — the
+/// chat's picture button did nothing in the app. A sheet over the window, the files picked handed to the page, as the
+/// pane's pages have it (PaneDelegate).
+extension AppDelegate: WKUIDelegate {
+  func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo,
+               completionHandler: @escaping @MainActor @Sendable ([URL]?) -> Void) {
+    let panel = NSOpenPanel()
+    panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+    panel.canChooseDirectories = false
+    panel.canChooseFiles = true
+    guard let w = webView.window else { return completionHandler(panel.runModal() == .OK ? panel.urls : nil) }
+    panel.beginSheetModal(for: w) { completionHandler($0 == .OK ? panel.urls : nil) }
+  }
+}
+
 /// The board's web view, with Finder drops taken before WebKit sees them. A web page only ever gets a
 /// dropped file's bytes; the shell gets its path from the pasteboard — and a path is what claude wants.
 /// A drag without file URLs (the page's own row drags, text) goes to WebKit untouched, and a drag this

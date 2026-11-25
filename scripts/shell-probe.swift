@@ -140,7 +140,8 @@ extension AppDelegate {
       reply(["w": window.frame.width, "h": h, "titled": window.styleMask.contains(.titled), "fill": fillSaved != nil, "full": window.styleMask.contains(.fullScreen),
              "inset": paneTopC.constant, "zoom": zoom, "active": NSApp.isActive, "seen": window.occlusionState.contains(.visible), "unseen": probeUnseen() as Any,
              "webTop": content.bounds.height - web.frame.maxY, "barClear": window.titlebarAppearsTransparent,
-             "ground": probeHex(window.backgroundColor), "under": probeHex(web.underPageBackgroundColor), "panes": panes], nil)
+             "ground": probeHex(window.backgroundColor), "under": probeHex(web.underPageBackgroundColor), "panes": panes,
+             "sheet": window.attachedSheet.map { String(describing: type(of: $0)) } as Any], nil)
     case "shot":   // optionIncludingWindow (1 << 3), boundsIgnoreFraming (1 << 0)
       guard let img = capture(.null, 1 << 3, UInt32(window.windowNumber), 1)?.takeRetainedValue(), let s = Shot(img, points: window.frame.width) else { return reply(nil, "no image of the window") }
       shot = s
@@ -151,6 +152,9 @@ extension AppDelegate {
     case "runs":   // on the last shot, in points: { down: true, at: x } or { down: false, at: y }
       guard let s = shot else { return reply(nil, "no shot yet") }
       reply(s.runs(down: o["down"] as? Bool ?? true, at: CGFloat(o["at"] as? Double ?? 0)), nil)
+    case "unsheet":   // the sheet over the window let go, as its Cancel would (2026-11-25: the board's file panel)
+      guard let sheet = window.attachedSheet else { return reply(false, nil) }
+      window.endSheet(sheet, returnCode: .cancel); reply(true, nil)
     case "quit": exit(0)
     default: reply(nil, "no such thing to do: \(o["do"] ?? "?")")
     }

@@ -95,6 +95,8 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   Logged `fish:`, `summon:`.
 * **About's Copy details asks the shell** (2026-11-04; `details` → `tellDetails` → `peixDetails`): macOS, the window's shape and inset, the
   screen, where each page's view really is in the window's terms, never its address. → `shell-checks/details.mjs`.
+* **The board's view opens the system's file panel** (2026-11-25; `runOpenPanelWith` on `AppDelegate`, its `uiDelegate`):
+  an `<input type=file>` there, the chat's picture button, is a sheet over the window. → `shell-checks/board-file-panel.mjs`.
 * **Both web views are inspectable** (Safari → Develop). **A drop brings the app forward** (2026-10-28, `onFiles`); in
   front, a view has the keys (`keysBack`, logged `focus:`) — **never made key from its own `didBecomeKey`**: on 27.2
   `NSApp.keyWindow` is nil there, and it posted it again (2026-11-07).

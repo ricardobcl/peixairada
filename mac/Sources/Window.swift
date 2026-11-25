@@ -12,6 +12,7 @@ extension AppDelegate {
     cfg.userContentController = ucc
     web = BoardWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: cfg)
     web.navigationDelegate = self
+    web.uiDelegate = self   // an <input type=file> on the board opens the system's panel (2026-11-25: the chat's pictures)
     // No flash before the page paints (2026-09-27, night): a WKWebView draws white until the document's CSS lands —
     // in dark mode a flash of the wrong colour at every launch and reload. The view draws no ground of its own and
     // the window's is the page's --frame for the appearance in force (its --bg until 2026-11-01, when the board's own
