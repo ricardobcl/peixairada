@@ -49,6 +49,12 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
     `tileKeys`), and with it off neither takes ⌘D, ⇧⌘D or ⌥⌘⇧←→ (`keyLive`), so VS Code Web and the browser keep
     them for everyone who never turns tiles on. The app forwards them only once rebuilt (`mac/build.sh install`); in a
     terminal, the page hears them without it.
+* **⌃⌘←→ walk the tabs of the half or tile the keys are in** (later: *"how do I cycle between tabs on the same
+  tile?"* — ⌘⇧[ ] were put first, then *"whats the [] on the portuguese keyboard, does it even make sense?"* — they are
+  ⌥8 ⌥9 there —, then ⌃Tab, Chrome's own in a browser tab, then *"wouldn't just cycling with the cmd contro left right
+  be easier?"*): the same keys on every layout, beside ⌥⌘←→ that walk the tiles once tiled; any layout, its strip alone,
+  round (`hotStripTab`, `CTRLKEYS`, forwarded as `ctrlcmd`). VS Code Web's ⌃⌘←→ (an editor into the next group) is
+  given up while it has the keys.
 * **page-load.test skips without CHROME** (found the same day): run bare, it passed over a board dead at load — a
   `const` read before its file. The suite's gate is `npm test` with CHROME set.
 * **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out

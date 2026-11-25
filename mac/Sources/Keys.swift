@@ -66,6 +66,10 @@ extension AppDelegate {
       if tileKeys, e.keyCode == 123 { return ("ArrowLeft", "shift") }
       if tileKeys, e.keyCode == 124 { return ("ArrowRight", "shift") }
     }
+    if held == [.command, .control] {   // a strip's tabs (2026-11-25): the page's CTRLKEYS
+      if e.keyCode == 123 { return ("ArrowLeft", "ctrlcmd") }
+      if e.keyCode == 124 { return ("ArrowRight", "ctrlcmd") }
+    }
     if held == [.command, .shift], tileKeys, let ch = ch, cmdShiftKeys.contains(ch) { return ("Key" + ch.uppercased(), "cmdshift") }   // the page's CMDSHIFTKEYS
     if held == [.command], let ch = ch, cmdKeys.contains(ch), ch != "d" || tileKeys { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
     return nil

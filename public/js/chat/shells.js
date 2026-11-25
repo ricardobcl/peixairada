@@ -9,6 +9,14 @@ function hotTab(dir) {
   if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
   openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
 }
+/** ⌃⌘←→ (2026-11-25): the tab beside this one in its own strip — the half's or tile's the keys are in, round. */
+function hotStripTab(dir) {
+  const s = state.sessions.get(state.current);
+  if (!s) return noChat();
+  const keys = keysIn(s, focusG);
+  if (keys.length < 2) return note($('#shead'), 'One tab here — ⌥⌘← → for the tiles beside it');
+  openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
+}
 // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). The
 // chat's zsh: started on the first press, shown on the next ones — the one the keys are in, else the first (⌘T opens
 // another, 2026-10-13); `exit` or the tab's × ends it. A failure is a note. Answers the zsh it showed, or null.

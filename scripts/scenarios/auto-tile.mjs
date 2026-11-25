@@ -4,7 +4,7 @@
 // What this keeps honest: the tree the tiles are
 // (state().tiles) and where each tile lands; every tile's terminal attached and fitted to its own body; ⌘2 turning the
 // split the keys' tile is half of; the divider dragged into the tree; a terminal that exits taking
-// its tile with it, the keys back in the tile it was cut from (2026-11-25, later); the tiles across a reload; ⌘0 back to one half, nothing ended; and the switch off: today's tabs.
+// its tile with it, the keys back in the tile it was cut from (2026-11-25, later); ⌃⌘←→ round one strip's tabs; the tiles across a reload; ⌘0 back to one half, nothing ended; and the switch off: today's tabs.
 export const meta = { server: true, fake: true, fixture: 'auto', prefs: { autoTile: true } };
 
 const grp = g => `document.querySelector('#groups > .grp[data-g="${g}"]')`;
@@ -180,5 +180,26 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().strips[1].length === 3`, { what: 'another, as a tab' });
   ctx.assert.equal(await tiles(ctx), null, 'still two halves');
   await ctx.shot('off');
+
+  // ⌃⌘←→ (2026-11-25): the tabs of the half the keys are in, its strip alone, round — never claude's on the other side
+  const ctrl = code =>
+    ctx.evaluate(
+      `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`,
+    );
+  const strip = await ctx.peix('state().strips[1]'),
+    at = (await ctx.peix('state().halves'))[1];
+  for (const [code, step] of [
+    ['ArrowRight', 1],
+    ['ArrowRight', 2],
+    ['ArrowRight', 3],
+    ['ArrowLeft', 2],
+  ]) {
+    const want = strip[(strip.indexOf(at) + step) % strip.length];
+    await ctrl(code);
+    await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(want)} && window.peix.state().focusG === 1`, {
+      what: `⌃⌘${code === 'ArrowRight' ? '→' : '←'} to ${want}`,
+    });
+  }
+  ctx.assert.equal((await ctx.peix('state().halves'))[0], 'chat', "claude's half as it was");
   return { tree: t };
 }

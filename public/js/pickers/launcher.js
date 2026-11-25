@@ -463,6 +463,7 @@ const KEYS = [
   ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there · tiles on and the column split: the tile to the left / right, by where it stands', ['alt:ArrowLeft', 'alt:ArrowRight']],
   ['⌥⌘⇧←→', 'Layout', 'tiles: the tile the keys are in moved left / right', 'Settings › Terminal › Tile new terminals, the column split · the rest close over the room it left · two side by side trade places · ↑↓ the same up and down', ['shift:ArrowLeft', 'shift:ArrowRight']],
   ['⌘D ⇧⌘D', 'Layout', 'tiles: a new zsh beside this tile, or under it', 'Settings › Terminal › Tile new terminals · ⌘D cuts it side by side, ⇧⌘D one over the other, whatever its shape', ['cmd:KeyD', 'cmdshift:KeyD']],
+  ['⌃⌘←→', 'Layout', 'the tab to the left / right in this half or tile', 'its own strip alone, round from the end to the start · drag a tab onto another to move it there', ['ctrl:ArrowLeft', 'ctrl:ArrowRight']],
   ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
   ['⌥⌘B', 'Layout', 'hide the chat list, and show it again', 'the chat takes the whole width · the status bar\'s first button too', ['alt:KeyB']],
   ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › General picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar after a hold at the top edge · remembered across launches', []],
@@ -604,6 +605,8 @@ const CMDKEYS = {
 const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // ⌥⌘⇧ (2026-11-24, round XXX's R3): the open chat's card a place up or down in Top priority — ⌥⌘↑↓ walk the cards.
 // Tiled (2026-11-25, tileKeysOn): the tile the keys are in moved that way, ←→ too.
+// ⌃⌘ (2026-11-25): the tabs of the half or tile the keys are in, its strip alone — ⌥⌘←→ walk the tiles once tiled.
+const CTRLKEYS = { ArrowLeft: () => hotStripTab(-1), ArrowRight: () => hotStripTab(1) };
 // The tiles' own keys are no keys while they have nothing to do (2026-11-25): ⌘D ⇧⌘D with the setting off, ⌥⌘⇧←→ but
 // tiled — the key goes on, to a page or the browser, and the app forwards none of them (`tiles`, Keys.swift's tileKeys).
 const keyLive = (code, mods) =>
@@ -624,11 +627,10 @@ const SHIFTKEYS = {
 // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
 // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see Menus.swift).
 // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
+const KEYMAPS = { altcmd: HOTKEYS, cmd: CMDKEYS, cmdshift: CMDSHIFTKEYS, shift: SHIFTKEYS, ctrlcmd: CTRLKEYS }; // by peixKey's mods
 const runHotkey = (code, mods = 'altcmd') => {
   if (code === 'Escape') return hotEscape();
-  const fn = (mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[
-    code
-  ];
+  const fn = KEYMAPS[mods]?.[code];
   if (!fn || !keyLive(code, mods)) return false;
   if ($('#hmenu').open) {
     $('#hmenu').close();
@@ -659,15 +661,9 @@ const runHotkey = (code, mods = 'altcmd') => {
 document.addEventListener(
   'keydown',
   e => {
-    if (e.ctrlKey || !e.metaKey || (e.shiftKey && !(e.altKey ? SHIFTKEYS : CMDSHIFTKEYS)[e.code])) return;
-    const mods = e.shiftKey ? (e.altKey ? 'shift' : 'cmdshift') : e.altKey ? 'altcmd' : 'cmd';
-    if (
-      !(mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[
-        e.code
-      ] ||
-      !keyLive(e.code, mods)
-    )
-      return;
+    if (!e.metaKey || (e.ctrlKey && (e.altKey || e.shiftKey))) return;
+    const mods = e.ctrlKey ? 'ctrlcmd' : e.shiftKey ? (e.altKey ? 'shift' : 'cmdshift') : e.altKey ? 'altcmd' : 'cmd';
+    if (!KEYMAPS[mods][e.code] || !keyLive(e.code, mods)) return;
     e.stopPropagation();
     if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault(); // a key held down is one press — the arrows walk on
     // ⌘W the board did not take — one half, on the chat's tab, nothing up — is left alone (2026-10-14): in the app the

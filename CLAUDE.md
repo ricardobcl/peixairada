@@ -567,7 +567,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill, the menus, the pane's
   views, the server it adopts, Swift's traps. Here: what the page does across the bridge.
 * **`HOTKEYS` is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
-  its group, one line, its codes in HOTKEYS, CMDKEYS, ⌥⌘⇧'s `SHIFTKEYS` or ⇧⌘'s `CMDSHIFTKEYS` — the ? sheet is drawn from it (`keyNotes`),
+  its group, one line, its codes in a map of `KEYMAPS` — the ? sheet is drawn from it (`keyNotes`),
   and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
   Keys.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. Handlers are `hot…`.
   **C T G E D J pressed again from the tab they bring up** (`hot…Key`: `zoomAgain`, then the plain `hot…`) fill the
@@ -728,7 +728,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   keys' tile along its longer side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid (`tileLayout`,
   `.tdiv`), groups at need (`ensureGroups`); one gone (`foldTiles`, ⨯ `closeTile`) leaves its tabs and the
   keys to its sibling's nearest (`backOf`); ⌘1 ⌘2 by tree order, ⌥ turns its split; ⌥⌘ arrows by place
-  (`hotTileGo`), ⌥⌘⇧ moves it (`hotTileMove`), ⌘D ⇧⌘D cut one way (`hotSplitTile`). → `auto-tile.mjs`, `tile-keys.mjs`.
+  (`hotTileGo`), ⌥⌘⇧ moves it (`hotTileMove`), ⌘D ⇧⌘D cut one way (`hotSplitTile`); ⌃⌘←→ one strip's tabs. → `auto-tile.mjs`, `tile-keys.mjs`.
 * **A tab lives in exactly one half, and split, each strip lists only its own**: one transcript element, one xterm
   per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other right
   (`homeOf`) — written only for a tab **dragged across** (`moveTab`; a press under 5 px is a click) and forgotten
