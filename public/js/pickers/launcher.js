@@ -437,7 +437,7 @@ const KEYS = [
   ['⌥⌘F', 'Go to', 'the list\'s own search, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
   ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
   ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
-  ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
+  ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', 'tiles on and the column split: the tile above / below', ['alt:ArrowUp', 'alt:ArrowDown']],
   ['⌥⌘U', 'Go to', 'the pinned only, and every chat again', 'the list is the pinned alone, its tab atop it says what is hidden · the rest is quiet as when fishing, its questions still ring · the funnel\'s second row · with the section on', ['alt:KeyU']],
   ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
   ['⌥⌘X', 'Go to', 'Space: the board\'s other layout, every chat as a node of its agents', 'in the chat list\'s place, the chats by state, each with a pod per agent type · a click opens the chat on its right, every key as ever, its × or ⌘W closes it · ⌘+ ⌘− zoom the nodes · its agents as lanes under them · again, or ⌥⌘B, back to the list · the status bar\'s Space too', ['alt:KeyX']],
@@ -454,13 +454,15 @@ const KEYS = [
   ['⌥⌘J', 'This chat', 'its timeline, on a tab — the chat and its PRs in one order', 'your prompts, each of Claude\'s turns as a line, the PRs\' events between them, a lane per PR · the Now bar says each one\'s round · a turn clicked shows it in the transcript · again from it: its half fills the column, and back', ['alt:KeyJ']],
   ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
   ['⌥⌘I', 'This chat', 'pin it, or unpin it', 'the section atop the list, in your order, that nothing moves but you · a card\'s pin, its right-click and the header\'s ··· too · Settings › Chat list can take the section off', ['alt:KeyI']],
-  ['⌥⌘⇧↑↓', 'This chat', 'its card a place up / down among the pinned', 'a card\'s right-click: to the top, to the bottom · or drag it between two pinned cards', ['shift:ArrowUp', 'shift:ArrowDown']],
+  ['⌥⌘⇧↑↓', 'This chat', 'its card a place up / down among the pinned', 'a card\'s right-click: to the top, to the bottom · or drag it between two pinned cards · tiles on and the column split: the tile moved up / down', ['shift:ArrowUp', 'shift:ArrowDown']],
   ['⌥⌘S', 'This chat', 'snooze it — till a time, or till something happens', '1–9 pick · it waits in Snoozed, counted nowhere, and comes back at the top of its lane, marked back · a question from it or a word of yours wakes it · Settings › Chat list says when mornings start', ['alt:KeyS']],
   ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page goes, VS Code Web once no editor is open in it (its ⌘W closes them first) · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
   ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
   ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
   ['⌥⌘1 ⌥⌘2', 'Layout', 'the top half, the bottom one', '⌥⌘2 splits the chat that way the first time; side by side, either turns it', ['alt:Digit1', 'alt:Digit2']],
-  ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
+  ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there · tiles on and the column split: the tile to the left / right, by where it stands', ['alt:ArrowLeft', 'alt:ArrowRight']],
+  ['⌥⌘⇧←→', 'Layout', 'tiles: the tile the keys are in moved left / right', 'Settings › Terminal › Tile new terminals, the column split · the rest close over the room it left · two side by side trade places · ↑↓ the same up and down', ['shift:ArrowLeft', 'shift:ArrowRight']],
+  ['⌘D ⇧⌘D', 'Layout', 'tiles: a new zsh beside this tile, or under it', 'Settings › Terminal › Tile new terminals · ⌘D cuts it side by side, ⇧⌘D one over the other, whatever its shape', ['cmd:KeyD', 'cmdshift:KeyD']],
   ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
   ['⌥⌘B', 'Layout', 'hide the chat list, and show it again', 'the chat takes the whole width · the status bar\'s first button too', ['alt:KeyB']],
   ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › General picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar after a hold at the top edge · remembered across launches', []],
@@ -576,10 +578,10 @@ const HOTKEYS = {
   KeyI: hotPrio,
   KeyS: hotSnooze,
   KeyU: hotFocus,
-  ArrowUp: () => hotMove(-1),
-  ArrowDown: () => hotMove(1),
-  ArrowLeft: () => hotTab(-1),
-  ArrowRight: () => hotTab(1),
+  ArrowUp: () => (tileKeysOn() ? hotTileGo('ArrowUp') : hotMove(-1)),
+  ArrowDown: () => (tileKeysOn() ? hotTileGo('ArrowDown') : hotMove(1)),
+  ArrowLeft: () => (tileKeysOn() ? hotTileGo('ArrowLeft') : hotTab(-1)),
+  ArrowRight: () => (tileKeysOn() ? hotTileGo('ArrowRight') : hotTab(1)),
   Digit1: () => hotGroup(0, true),
   Digit2: () => hotGroup(1, true),
 };
@@ -595,16 +597,27 @@ const CMDKEYS = {
   Digit0: hotOnlyHalf,
   KeyT: hotNewTab,
   KeyW: hotClose,
+  KeyD: () => hotSplitTile('row'),
   Comma: settingsToggle,
 };
+// ⇧⌘ (2026-11-25): ⇧⌘D, ⌘D's other way — one over the other.
+const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // ⌥⌘⇧ (2026-11-24, round XXX's R3): the open chat's card a place up or down in Top priority — ⌥⌘↑↓ walk the cards.
-const SHIFTKEYS = { ArrowUp: () => hotPrioMove(-1), ArrowDown: () => hotPrioMove(1) };
+// Tiled (2026-11-25, tileKeysOn): the tile the keys are in moved that way, ←→ too.
+const SHIFTKEYS = {
+  ArrowUp: () => (tileKeysOn() ? hotTileMove('ArrowUp') : hotPrioMove(-1)),
+  ArrowDown: () => (tileKeysOn() ? hotTileMove('ArrowDown') : hotPrioMove(1)),
+  ArrowLeft: () => (tileKeysOn() ? hotTileMove('ArrowLeft') : false),
+  ArrowRight: () => (tileKeysOn() ? hotTileMove('ArrowRight') : false),
+};
 // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
 // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see Menus.swift).
 // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
 const runHotkey = (code, mods = 'altcmd') => {
   if (code === 'Escape') return hotEscape();
-  const fn = (mods === 'cmd' ? CMDKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[code];
+  const fn = (mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[
+    code
+  ];
   if (!fn) return false;
   if ($('#hmenu').open) {
     $('#hmenu').close();
@@ -635,9 +648,12 @@ const runHotkey = (code, mods = 'altcmd') => {
 document.addEventListener(
   'keydown',
   e => {
-    if (e.ctrlKey || !e.metaKey || (e.shiftKey && !(e.altKey && SHIFTKEYS[e.code]))) return;
-    const mods = e.shiftKey ? 'shift' : e.altKey ? 'altcmd' : 'cmd';
-    if (!(mods === 'cmd' ? CMDKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[e.code]) return;
+    if (e.ctrlKey || !e.metaKey || (e.shiftKey && !(e.altKey ? SHIFTKEYS : CMDSHIFTKEYS)[e.code])) return;
+    const mods = e.shiftKey ? (e.altKey ? 'shift' : 'cmdshift') : e.altKey ? 'altcmd' : 'cmd';
+    if (
+      !(mods === 'cmd' ? CMDKEYS : mods === 'cmdshift' ? CMDSHIFTKEYS : mods === 'shift' ? SHIFTKEYS : HOTKEYS)[e.code]
+    )
+      return;
     e.stopPropagation();
     if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault(); // a key held down is one press — the arrows walk on
     // ⌘W the board did not take — one half, on the chat's tab, nothing up — is left alone (2026-10-14): in the app the

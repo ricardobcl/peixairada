@@ -118,6 +118,7 @@ if (file.endsWith('public/index.html')) {
   const hot = keysOf('HOTKEYS'),
     cmd = keysOf('CMDKEYS'),
     shift = keysOf('SHIFTKEYS') || [],
+    cmdShift = keysOf('CMDSHIFTKEYS') || [],
     table = html.match(/const KEYS = \[([\s\S]*?)\n\];/);
   const fail = msg => {
     console.error(`${file}: ${msg}`);
@@ -125,13 +126,16 @@ if (file.endsWith('public/index.html')) {
   };
   if (!hot || !cmd || !table) fail('HOTKEYS, CMDKEYS or KEYS not found');
   else {
-    const rows = [...table[1].matchAll(/'((?:alt|cmd|shift):\w+)'/g)].map(x => x[1]);
+    const rows = [...table[1].matchAll(/'((?:alt|cmdshift|cmd|shift):\w+)'/g)].map(x => x[1]);
     for (const c of hot) if (!rows.includes('alt:' + c)) fail(`⌥⌘ ${c} is in HOTKEYS but has no row in KEYS`);
     for (const c of cmd) if (!rows.includes('cmd:' + c)) fail(`⌘ ${c} is in CMDKEYS but has no row in KEYS`);
     for (const c of shift) if (!rows.includes('shift:' + c)) fail(`⌥⌘⇧ ${c} is in SHIFTKEYS but has no row in KEYS`); // (2026-11-24) Top priority's ⌥⌘⇧↑↓
+    for (const c of cmdShift)
+      if (!rows.includes('cmdshift:' + c)) fail(`⇧⌘ ${c} is in CMDSHIFTKEYS but has no row in KEYS`); // (2026-11-25) ⇧⌘D
     for (const r of rows) {
       const [m, c] = r.split(':');
-      if (!(m === 'alt' ? hot : m === 'shift' ? shift : cmd).includes(c)) fail(`KEYS names ${r}, which no map answers`);
+      if (!(m === 'alt' ? hot : m === 'shift' ? shift : m === 'cmdshift' ? cmdShift : cmd).includes(c))
+        fail(`KEYS names ${r}, which no map answers`);
     }
     // (2026-10-14) A row that promises the key "again from" its tab fills the column is answered by a hot…Key handler
     // (zoomAgain before the plain one), and every hot…Key the page defines is in HOTKEYS — ⌥⌘D's sat unbound, its
@@ -169,6 +173,14 @@ if (file.endsWith('public/index.html')) {
       for (const l of cmdFwd)
         if (!cmd.includes((/\d/.test(l) ? 'Digit' : 'Key') + l.toUpperCase()))
           fail(`Keys.swift forwards ⌘${l.toUpperCase()} (cmdKeys), which CMDKEYS does not answer`);
+      // ⇧⌘ letters (2026-11-25): forwarded both ways, as cmdKeys are
+      const csFwd = set('cmdShiftKeys') || [];
+      for (const c of cmdShift)
+        if (!csFwd.includes(c.slice(-1).toLowerCase()))
+          fail(`⇧⌘${c.slice(-1)} is the board's, but the app does not forward it from the pane (cmdShiftKeys)`);
+      for (const l of csFwd)
+        if (!cmdShift.includes('Key' + l.toUpperCase()))
+          fail(`Keys.swift forwards ⇧⌘${l.toUpperCase()} (cmdShiftKeys), which CMDSHIFTKEYS does not answer`);
     }
     // The ⌥⌘ digits, arrows and Return the forwarder matches by key code (⌥ composes a symbol over them): each code the Mac's
     // own (kVK_ANSI_1 is 18…), each answered by HOTKEYS, and every digit and arrow HOTKEYS has, forwarded.
@@ -224,7 +236,7 @@ if (file.endsWith('public/index.html')) {
     }
     if (!process.exitCode)
       console.log(
-        `${file}: ${hot.length} ⌥⌘, ${shift.length} ⌥⌘⇧ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`,
+        `${file}: ${hot.length} ⌥⌘, ${shift.length} ⌥⌘⇧, ${cmdShift.length} ⇧⌘ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`,
       );
   }
 }

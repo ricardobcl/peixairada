@@ -27,8 +27,8 @@ async function hotShell() {
   return on;
 }
 /** A zsh started in the chat's folder, on a new tab: the chat's first (⌥⌘T), or `fresh` another beside the ones it has
-      (⌘T). Answers it, or null. */
-async function startShell(s, fresh) {
+      (⌘T); `cut` the direction ⌘D / ⇧⌘D asked its tile in. Answers it, or null. */
+async function startShell(s, fresh, cut) {
   if (!s.cwd) {
     note($('#shead'), 'No folder known for this chat', true);
     return null;
@@ -50,7 +50,7 @@ async function startShell(s, fresh) {
   if (!(now.shells || []).some(x => x.id === t.id)) now.shells = [...(now.shells || []), t];
   if (!now.shell || now.shell.exited !== null) now.shell = t;
   if (state.current !== s.id) return t; // another chat by now: its tab waits on this one, not over that
-  openNewTab(now, 'shell:' + t.id);
+  openNewTab(now, 'shell:' + t.id, cut);
   syncTerm(now);
   focusBoard();
   focusTerm();

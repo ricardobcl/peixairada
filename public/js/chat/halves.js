@@ -46,22 +46,7 @@ function applySplit() {
 // the rest of the room empty.
 function tileLayout(node) {
   applySplit.tiled = true;
-  const rects = {},
-    cut = (n, x, y, w, h) => {
-      if ('g' in n) {
-        rects[n.g] = [x, y, x + w, y + h];
-        return;
-      }
-      const r = Math.max(0.15, Math.min(0.85, n.r || 0.5));
-      if (n.d === 'row') {
-        cut(n.a, x, y, w * r, h);
-        cut(n.b, x + w * r, y, w * (1 - r), h);
-      } else {
-        cut(n.a, x, y, w, h * r);
-        cut(n.b, x, y + h * r, w, h * (1 - r));
-      }
-    };
-  cut(node, 0, 0, 1, 1);
+  const rects = tileRects(node);
   const q = v => Math.round(v * 1e4),
     lines = i => [...new Set(Object.values(rects).flatMap(r => [q(r[i]), q(r[i + 2])]))].sort((a, b) => a - b);
   const xs = lines(0),
@@ -315,6 +300,95 @@ function stackSplit(s, on) {
   if (par) par.d = on ? 'col' : 'row'; // tiled: the split the keys' tile is half of
   syncTerm(s);
   fitTerm();
+}
+// The tiles by the arrows (2026-11-25): with Tile new terminals on and the column split, ⌥⌘←→↑↓ take the keys to the
+// tile that way, by where the tiles stand — not their order — and ⌥⌘⇧ moves the tile itself, the rest closing over
+// the room it left. Off, or one half, they are the tabs', the list's and the pinned cards' as ever.
+const tileKeysOn = () => !!prefs.autoTile && splitNow() && state.sessions.has(state.current);
+const TILE_DIRS = {
+  ArrowLeft: [0, -1, 'to the left', 'left'],
+  ArrowRight: [0, 1, 'to the right', 'right'],
+  ArrowUp: [1, -1, 'above', 'top'],
+  ArrowDown: [1, 1, 'below', 'bottom'],
+}; // axis (0 x, 1 y), sign, words, edge
+let tileCame = null; // the last step: back the other way goes where it came from, not the first of a long side
+/** The tile next to g that way: one sharing its edge and its span, the most of it, the one just come from first. */
+function tileToward(s, tree, g, dir) {
+  const R = tileRects(tree),
+    c = R[g],
+    [ax, sg] = TILE_DIRS[dir],
+    o = 1 - ax,
+    E = 1e-4;
+  if (!c) return null;
+  const near = Object.entries(R)
+    .map(([k, r]) => ({
+      g: +k,
+      gap: sg > 0 ? r[ax] - c[ax + 2] : c[ax] - r[ax + 2],
+      over: Math.min(r[o + 2], c[o + 2]) - Math.max(r[o], c[o]),
+    }))
+    .filter(x => x.g !== g && Math.abs(x.gap) < E && x.over > E)
+    .sort((a, b) => b.over - a.over);
+  const back =
+    tileCame &&
+    tileCame.id === s.id &&
+    tileCame.at === g &&
+    tileCame.dir === dir &&
+    near.find(x => x.g === tileCame.from);
+  return (back || near[0])?.g ?? null;
+}
+const BACK_DIR = { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp' };
+function hotTileGo(dir) {
+  const s = state.sessions.get(state.current),
+    from = focusG,
+    to = tileToward(s, trees.get(s.id) || halvesTree(s), from, dir);
+  if (to === null) return note($('#shead'), `No tile ${TILE_DIRS[dir][2]}`);
+  tileCame = { id: s.id, from, at: to, dir: BACK_DIR[dir] };
+  focusGroup(to);
+  focusBoard();
+  focusTerm();
+}
+/** ⌥⌘⇧ + an arrow: tile g out of the tree, its sibling taking the room, and in again beside the tile that way, cut
+ *  along the arrow's axis with g on the arrow's side — two side by side trade places. None that way: g becomes that
+ *  whole side of the column. Every leaf keeps its group, so no terminal is attached again; each refits. */
+function hotTileMove(dir) {
+  const s = state.sessions.get(state.current),
+    g = focusG,
+    tree = trees.get(s.id) || halvesTree(s);
+  const [ax, sg, words, edge] = TILE_DIRS[dir],
+    d = ax ? 'col' : 'row',
+    to = tileToward(s, tree, g, dir),
+    rest = treeMap(tree, g, () => null);
+  const put = n => (sg > 0 ? { d, r: 0.5, a: n, b: { g } } : { d, r: 0.5, a: { g }, b: n });
+  if (to === null && tree.d === d && 'g' in (sg > 0 ? tree.b : tree.a) && (sg > 0 ? tree.b : tree.a).g === g)
+    return note($('#shead'), `It is the column's whole ${edge} already`);
+  const next = to === null ? put(rest) : treeMap(rest, to, put);
+  if (!treeFits(next)) return note($('#shead'), `No room for it ${words}`);
+  trees.set(s.id, next);
+  zoomed.delete(s.id);
+  tileCame = null;
+  applySplit();
+  syncTerm(s);
+  fitTerm();
+  focusBoard();
+  focusTerm();
+}
+/** Whether every tile of a tree laid out in the column holds a terminal of TILE_MIN, by a drawn terminal's cell. */
+function treeFits(tree) {
+  const b = $('#groups').getBoundingClientRect(),
+    tm = terms.find(t => t.xt?.cols && $(t.el.tbody).clientWidth);
+  const cw = tm ? $(tm.el.tbody).clientWidth / tm.xt.cols : 8,
+    ch = tm ? $(tm.el.tbody).clientHeight / tm.xt.rows : 17;
+  return Object.values(tileRects(tree)).every(
+    r => ((r[2] - r[0]) * b.width - 5) / cw >= TILE_MIN.cols && ((r[3] - r[1]) * b.height - 5) / ch >= TILE_MIN.rows,
+  );
+}
+/** ⌘D side by side, ⇧⌘D one over the other (2026-11-25, iTerm's pair): a new zsh in a tile cut from this one that way. */
+function hotSplitTile(d) {
+  const s = state.sessions.get(state.current);
+  if (!s) return noChat();
+  if (!prefs.autoTile) return note($('#shead'), 'Tiles are off — Settings › Terminal › Tile new terminals');
+  focusBoard();
+  startShell(s, true, d);
 }
 applySplit();
 {

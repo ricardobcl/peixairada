@@ -24,8 +24,29 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   else side by side — autotiling's rule, by the tile's box in pixels — so the cuts take turns as the tiles shrink; the
   first split reads the column the same way. The chat's switch first decided it, which made every cut go one way.
   ⌘1 / ⌘2 and ⌥⌘1 / ⌥⌘2 still turn a split after: on tiles the digit is the tile's place in the tree's order and the
-  modifier the layout of the split that tile is half of; the strip's turn button the same for its tile. No new keys:
-  ⌥⌘←→ and a click reach a third tile and on, as ⌘3–⌘9 would have meant Keys.swift's forwarder and `npm run shell`.
+  modifier the layout of the split that tile is half of; the strip's turn button the same for its tile. No ⌘3–⌘9: the
+  arrows below reach a third tile and on.
+* **The arrows by place, and keys to move and cut** (later still: *"currently cmd +option+ left right move the focus
+  directionally 0->9 I want it to move based on horizontal position & repurpose the up & left to to move vertically.
+  Only change when autotile mode is on, with shift it should move the tile and auto tile everything else. Also come
+  up with an hotkey to split with a chosen direction either vertical split or horizontal."*). With the setting on
+  and the column split (`tileKeysOn`) — one half keeps every key as it was:
+  * ⌥⌘←→↑↓ go to the tile that way by the tree's boxes (`tileRects`, so a zoomed half does not hide the others): one
+    sharing the edge, the most of it, and the way back the tile just left (`tileCame`), not the first of a long side.
+    At an edge, a note and nothing moves — never the list's next chat. **What is given up while it holds**: ⌥⌘↑↓'s
+    walk down the list, ⌥⌘←→'s walk along the tabs (a strip's tabs are a click), ⌥⌘⇧↑↓'s pinned card.
+  * ⌥⌘⇧ + an arrow moves the tile (`hotTileMove`), read as i3's move rather than a swap: out of the tree, its sibling
+    taking the room — "auto tile everything else" —, then in beside the tile that way, cut along the arrow with it on
+    the arrow's side; two side by side so trade places. None that way: it becomes that whole side of the column
+    (already it, a note). The tree alone changes, every group keeping its terminal: nothing attached again, each
+    refits. Under `TILE_MIN` anywhere, refused with a note.
+  * **⌘D side by side, ⇧⌘D one over the other** (`hotSplitTile`): iTerm's pair, and named by what they make, since
+    "vertical split" means opposite things in iTerm and in vim and i3. A new zsh in a tile cut from the keys' one
+    that way whatever its shape; no empty tile takes it; no room, a note and a tab. Off, a note pointing at the
+    setting. A fourth key map, `CMDSHIFTKEYS` (⇧⌘ alone, which the keydown gate dropped), forwarded from the pane by
+    `cmdShiftKeys`; VS Code Web's ⌘D (the next match) and ⇧⌘D (Run and Debug) are given up for it while it has the
+    keys, as its ⌘T was. The app forwards them, and ⌥⌘⇧←→, only once rebuilt (`mac/build.sh install`); in a
+    terminal, the page hears them without it.
 * **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out
   as a CSS grid whose lines are every cut it makes (`tileLayout`) — each tile stays a direct child of `#groups`, so
   every rule that reads `#groups > .grp`, and the floating header's padding of a split, reach it. Groups past the two

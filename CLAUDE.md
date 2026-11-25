@@ -567,7 +567,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill, the menus, the pane's
   views, the server it adopts, Swift's traps. Here: what the page does across the bridge.
 * **`HOTKEYS` is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
-  its group, one line, its codes in HOTKEYS, CMDKEYS or ⌥⌘⇧'s `SHIFTKEYS` (2026-11-24) — the ? sheet is drawn from it (`keyNotes`),
+  its group, one line, its codes in HOTKEYS, CMDKEYS, ⌥⌘⇧'s `SHIFTKEYS` or ⇧⌘'s `CMDSHIFTKEYS` — the ? sheet is drawn from it (`keyNotes`),
   and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
   Keys.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. Handlers are `hot…`.
   **C T G E D J pressed again from the tab they bring up** (`hot…Key`: `zoomAgain`, then the plain `hot…`) fill the
@@ -578,12 +578,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   header alone, a new drawer attaches through `showTerminal`, ⌥⌘T's zsh and the editor's page wait on a chat left.
 * **Plain ⌘ is the window's shape and its tabs, in `CMDKEYS`**: **1** / **2** the left and right halves (⌘2 splits the
   first time), **0** closes the *other* half (`hotOnlyHalf`); **T** a new tab of the kind the keys are in (2026-10-13,
-  `hotNewTab`: in a terminal, on the chat, the changes or an empty half another zsh, `startShell(s, true)`; on a page
-  or a blank tab a blank tab, `openBlank`), **W** the tab the keys are in (`hotClose` → `dropTab`; a dialog up first;
-  on the chat's tab or an empty half, the half; with one half, `false`). `peixKey(code, mods)` says which map and
-  **returns whether the key was taken**; `cmdKeys` in Keys.swift is the forwarder's copy (a digit as `Digit<n>`;
-  `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only
-  when nothing is split).
+  `hotNewTab`: on a page or a blank tab a blank tab, `openBlank`, else a zsh), **W** the tab the keys are in
+  (`hotClose` → `dropTab`; a dialog up first; on the chat's tab or an empty half, the half; one half, `false`).
+  `peixKey(code, mods)` says which map and **returns whether the key was taken**; `cmdKeys` (`cmdShiftKeys`) in
+  Keys.swift is the forwarder's copy (`npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
+  (`chatZoomKey`, which sees ⌘0 only when nothing is split).
 * **⌃⌘F is the full screen Settings › General picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
   `spaceMode`): its own Space, where the page hears no fill, or **up to the notch, the fill**.
   → `full-screen-pick.mjs`. **The fill gone on while the page heard it off says so once** (`fillHint`): never on a load
@@ -725,11 +724,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).
   A tab that exists is `openTab()`, never a split. A split the board made (`autoSplit`) folds back on its
   own when the chat is down to one tab (`syncTerm`).
-* **Tile new terminals** (2026-11-25; Settings › Terminal, `prefs.autoTile`, off): a zsh or vim fills an empty tile,
-  else cuts the keys' tile along its longer side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid
-  (`tileLayout`, `.tdiv`), groups at need (`ensureGroups`, `onGroup`); one gone (`foldTiles`, ⨯
-  `closeTile`) leaves its tabs and the keys to its sibling's nearest (`backOf`); ⌘1 ⌘2 by tree order, ⌥ turns
-  its split. → `auto-tile.mjs`.
+* **Tile new terminals** (2026-11-25; `prefs.autoTile`, off): a zsh or vim fills an empty tile, else cuts the
+  keys' tile along its longer side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid (`tileLayout`,
+  `.tdiv`), groups at need (`ensureGroups`); one gone (`foldTiles`, ⨯ `closeTile`) leaves its tabs and the
+  keys to its sibling's nearest (`backOf`); ⌘1 ⌘2 by tree order, ⌥ turns its split; ⌥⌘ arrows by place
+  (`hotTileGo`), ⌥⌘⇧ moves it (`hotTileMove`), ⌘D ⇧⌘D cut one way (`hotSplitTile`). → `auto-tile.mjs`, `tile-keys.mjs`.
 * **A tab lives in exactly one half, and split, each strip lists only its own**: one transcript element, one xterm
   per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other right
   (`homeOf`) — written only for a tab **dragged across** (`moveTab`; a press under 5 px is a click) and forgotten

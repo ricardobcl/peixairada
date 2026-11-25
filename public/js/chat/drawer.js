@@ -89,6 +89,31 @@ const parentOf = (n, g) =>
     : ('g' in n.a && n.a.g === g) || ('g' in n.b && n.b.g === g)
       ? n
       : parentOf(n.a, g) || parentOf(n.b, g);
+/** Each leaf's box in the unit square, [x0, y0, x1, y1] by group — the layout's and the arrows' one reading. */
+function tileRects(node) {
+  const rects = {},
+    cut = (n, x, y, w, h) => {
+      if ('g' in n) {
+        rects[n.g] = [x, y, x + w, y + h];
+        return;
+      }
+      const r = Math.max(0.15, Math.min(0.85, n.r || 0.5));
+      if (n.d === 'row') {
+        cut(n.a, x, y, w * r, h);
+        cut(n.b, x + w * r, y, w * (1 - r), h);
+      } else {
+        cut(n.a, x, y, w, h * r);
+        cut(n.b, x, y + h * r, w, h * (1 - r));
+      }
+    };
+  cut(node, 0, 0, 1, 1);
+  return rects;
+}
+/** A chat's two halves as a tree, as they stand — what a tree past them starts from. */
+const halvesTree = s => {
+  const h = stacked.has(s.id) ? 'col' : 'row';
+  return { d: h, r: (h === 'col' ? prefs.stackAt : prefs.splitAt) || 0.5, a: { g: 0 }, b: { g: 1 } };
+};
 /** Where the keys go back to when tile `g` goes (2026-11-25): the part it was cut from, at the tile nearest it — a
  *  second part's sibling's last leaf, a first part's sibling's first — as i3's focus falls back to the window it split. */
 const backOf = (n, g) => {

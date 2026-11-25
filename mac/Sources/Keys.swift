@@ -34,14 +34,16 @@ extension AppDelegate {
   // board reloaded (2026-10-13 — VS Code Web's ⌥⌘R, reveal in Finder, has no Finder to reveal in), V the folder in VS Code's
   // own window (2026-10-14), J the chat's timeline (2026-10-17), M lunch's menus (2026-10-18), Z Zé's game (2026-10-30), X Space (2026-11-18; ⌥⌘S until 2026-11-24),
   // I a chat into Top priority or out, S its snooze, U the section alone (2026-11-24, round XXX — VS Code Web's ⌥⌘S, Save
-  // All, is given up for it; its ⌘S saves) and ⌥⌘⇧↑↓ a card's place in it;
+  // All, is given up for it; its ⌘S saves) and ⌥⌘⇧↑↓ a card's place in it — tiled, ⌥⌘⇧←→↑↓ the tile's (2026-11-25);
   // and ⌘ + one of the
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column, and T a new tab (2026-10-13 — VS Code Web's
-  // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
+  // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's), D and ⇧D a tile cut side by side or one
+  // over the other (2026-11-25, iTerm's; VS Code Web's ⌘D, the next match, and ⇧⌘D, Run and Debug, given up). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog, or a page's address is edited (2026-10-27).
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x", "i", "s", "u"]
-  static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
+  static let cmdKeys: Set<String> = ["0", "1", "2", "t", "d"]
+  static let cmdShiftKeys: Set<String> = ["d"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
     let ch = e.charactersIgnoringModifiers?.lowercased()
@@ -55,10 +57,13 @@ extension AppDelegate {
       if e.keyCode == 29 { return ("Digit0", "altcmd") }   // ⌥⌘0, the home (2026-10-10)
       if let ch = ch, boardKeys.contains(ch) { return ("Key" + ch.uppercased(), "altcmd") }
     }
-    if held == [.command, .option, .shift] {   // Top priority's place (2026-11-24): the page's SHIFTKEYS
+    if held == [.command, .option, .shift] {   // Top priority's place (2026-11-24), a tile's (2026-11-25): the page's SHIFTKEYS
       if e.keyCode == 126 { return ("ArrowUp", "shift") }
       if e.keyCode == 125 { return ("ArrowDown", "shift") }
+      if e.keyCode == 123 { return ("ArrowLeft", "shift") }
+      if e.keyCode == 124 { return ("ArrowRight", "shift") }
     }
+    if held == [.command, .shift], let ch = ch, cmdShiftKeys.contains(ch) { return ("Key" + ch.uppercased(), "cmdshift") }   // the page's CMDSHIFTKEYS
     if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
     return nil
   }
