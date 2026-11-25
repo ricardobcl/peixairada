@@ -728,7 +728,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   keys' tile along its longer side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid (`tileLayout`,
   `.tdiv`), groups at need (`ensureGroups`); one gone (`foldTiles`, ⨯ `closeTile`) leaves its tabs and the
   keys to its sibling's nearest (`backOf`); ⌘1 ⌘2 by tree order, ⌥ turns its split; ⌥⌘ arrows by place
-  (`hotTileGo`), ⌥⌘⇧ moves it (`hotTileMove`), ⌘D ⇧⌘D cut one way (`hotSplitTile`); ⌃⌘←→ one strip's tabs. → `auto-tile.mjs`, `tile-keys.mjs`.
+  (`hotTileGo`), ⌥⌘⇧ moves it (`hotTileMove`), ⌘D ⇧⌘D cut one way (`hotSplitTile`); ⌃⌘←→ one strip's tabs, ⌃⌘⇧T one more. → `auto-tile.mjs`, `tile-keys.mjs`.
 * **A tab lives in exactly one half, and split, each strip lists only its own**: one transcript element, one xterm
   per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other right
   (`homeOf`) — written only for a tab **dragged across** (`moveTab`; a press under 5 px is a click) and forgotten

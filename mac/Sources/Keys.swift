@@ -44,6 +44,7 @@ extension AppDelegate {
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x", "i", "s", "u"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t", "d"]
   static let cmdShiftKeys: Set<String> = ["d"]
+  static let ctrlShiftKeys: Set<String> = ["t"]   // ⌃⌘⇧T, a zsh on a tab where the keys are (2026-11-25)
   // Tile new terminals' keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→ — only while the page says the setting is on (`tiles`):
   // off, VS Code Web keeps them.
   static var tileKeys = false
@@ -70,6 +71,7 @@ extension AppDelegate {
       if e.keyCode == 123 { return ("ArrowLeft", "ctrlcmd") }
       if e.keyCode == 124 { return ("ArrowRight", "ctrlcmd") }
     }
+    if held == [.command, .control, .shift], let ch = ch, ctrlShiftKeys.contains(ch) { return ("Key" + ch.uppercased(), "ctrlshift") }   // the page's CTRLSHIFTKEYS
     if held == [.command, .shift], tileKeys, let ch = ch, cmdShiftKeys.contains(ch) { return ("Key" + ch.uppercased(), "cmdshift") }   // the page's CMDSHIFTKEYS
     if held == [.command], let ch = ch, cmdKeys.contains(ch), ch != "d" || tileKeys { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
     return nil

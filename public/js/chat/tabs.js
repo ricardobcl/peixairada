@@ -161,6 +161,14 @@ function moveTab(s, k, g) {
  *  leaves. Claude keeps the first half (2026-09-25): a split puts the chat on the left whatever the column was
  *  showing, and a new tab goes into the half the chat is not in — so it never takes the chat's place. */
 function openNewTab(s, k, cut) {
+  if (cut === 'here') {
+    // ⌃⌘⇧T: in the keys' strip, as if dragged there; one half stays one
+    if (isSplit(s)) {
+      if (!homes.has(s.id)) homes.set(s.id, new Map());
+      homes.get(s.id).set(k, focusG);
+    }
+    return setTab(s, k);
+  }
   if (prefs.autoTile && isShellTab(k) && tileTerm(s, k, cut)) return;
   if (!isSplit(s) && prefs.autoTile && isShellTab(k)) {
     if (cut ? cut === 'col' : tallOf('#groups')) stacked.add(s.id);

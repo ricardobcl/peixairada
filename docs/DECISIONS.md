@@ -55,6 +55,10 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   be easier?"*): the same keys on every layout, beside ⌥⌘←→ that walk the tiles once tiled; any layout, its strip alone,
   round (`hotStripTab`, `CTRLKEYS`, forwarded as `ctrlcmd`). VS Code Web's ⌃⌘←→ (an editor into the next group) is
   given up while it has the keys.
+* **⌃⌘⇧T, a zsh on a tab where the keys are** (*"also can you make it so ctr cmd shift t always open a new tab on the
+  same tile instead of maybe opening a tab on a new tile"*): ⌘T's zsh, homed in the keys' half or tile as a drag
+  would (`openNewTab`'s `here`) — never a tile cut, never a split, the setting on or off. `CTRLSHIFTKEYS`, forwarded
+  as `ctrlshift` (`ctrlShiftKeys`); ⌘T keeps tiling.
 * **page-load.test skips without CHROME** (found the same day): run bare, it passed over a board dead at load — a
   `const` read before its file. The suite's gate is `npm test` with CHROME set.
 * **The model**: past two halves a chat's column is a tree (`trees`: a leaf `{g}`, a split `{d, r, a, b}`), laid out

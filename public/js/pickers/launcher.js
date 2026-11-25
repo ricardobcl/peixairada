@@ -447,6 +447,7 @@ const KEYS = [
   ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
   ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
   ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
+  ['⌃⌘⇧T', 'This chat', 'a new shell on a tab where the keys are', 'in the half or tile you are in, beside its tabs — never a new tile, never a split · ⌃⌘←→ go round them', ['ctrlshift:KeyT']],
   ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
   ['⌥⌘E', 'This chat', 'its folder in the in-app editor, on a tab', 'VS Code Web, or vim in a terminal — Settings › General › In-app editor · again from it: its half fills the column, and back', ['alt:KeyE']],
   ['⌥⌘V', 'This chat', 'its folder in the external editor, its own window', 'VS Code, or Zed — Settings › General › External editor · outside the board: ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
@@ -607,6 +608,8 @@ const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // Tiled (2026-11-25, tileKeysOn): the tile the keys are in moved that way, ←→ too.
 // ⌃⌘ (2026-11-25): the tabs of the half or tile the keys are in, its strip alone — ⌥⌘←→ walk the tiles once tiled.
 const CTRLKEYS = { ArrowLeft: () => hotStripTab(-1), ArrowRight: () => hotStripTab(1) };
+// ⌃⌘⇧ (2026-11-25): ⌃⌘⇧T a zsh on a tab in the half or tile the keys are in — never a new tile, never a split.
+const CTRLSHIFTKEYS = { KeyT: hotTabHere };
 // The tiles' own keys are no keys while they have nothing to do (2026-11-25): ⌘D ⇧⌘D with the setting off, ⌥⌘⇧←→ but
 // tiled — the key goes on, to a page or the browser, and the app forwards none of them (`tiles`, Keys.swift's tileKeys).
 const keyLive = (code, mods) =>
@@ -627,7 +630,14 @@ const SHIFTKEYS = {
 // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
 // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see Menus.swift).
 // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
-const KEYMAPS = { altcmd: HOTKEYS, cmd: CMDKEYS, cmdshift: CMDSHIFTKEYS, shift: SHIFTKEYS, ctrlcmd: CTRLKEYS }; // by peixKey's mods
+const KEYMAPS = {
+  altcmd: HOTKEYS,
+  cmd: CMDKEYS,
+  cmdshift: CMDSHIFTKEYS,
+  shift: SHIFTKEYS,
+  ctrlcmd: CTRLKEYS,
+  ctrlshift: CTRLSHIFTKEYS,
+}; // by peixKey's mods
 const runHotkey = (code, mods = 'altcmd') => {
   if (code === 'Escape') return hotEscape();
   const fn = KEYMAPS[mods]?.[code];
@@ -661,8 +671,18 @@ const runHotkey = (code, mods = 'altcmd') => {
 document.addEventListener(
   'keydown',
   e => {
-    if (!e.metaKey || (e.ctrlKey && (e.altKey || e.shiftKey))) return;
-    const mods = e.ctrlKey ? 'ctrlcmd' : e.shiftKey ? (e.altKey ? 'shift' : 'cmdshift') : e.altKey ? 'altcmd' : 'cmd';
+    if (!e.metaKey || (e.ctrlKey && e.altKey)) return;
+    const mods = e.ctrlKey
+      ? e.shiftKey
+        ? 'ctrlshift'
+        : 'ctrlcmd'
+      : e.shiftKey
+        ? e.altKey
+          ? 'shift'
+          : 'cmdshift'
+        : e.altKey
+          ? 'altcmd'
+          : 'cmd';
     if (!KEYMAPS[mods][e.code] || !keyLive(e.code, mods)) return;
     e.stopPropagation();
     if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault(); // a key held down is one press — the arrows walk on
