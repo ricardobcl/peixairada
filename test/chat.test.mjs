@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture } from '../scripts/fixture.mjs';
 import { startFakeGitHub } from '../scripts/fakes/fakegithub.mjs';
-import { cleanSetup, picSnippet, picType, picUrl, pollBody, pollOf } from '../server.mjs';
+import { cleanSetup, emojiChar, picSnippet, picType, picUrl, pollBody, pollOf, REACTIONS } from '../server.mjs';
 
 test("cleanSetup: the chat's repo as owner/name, from its address too; null or an empty one is none", () => {
   for (const v of ['acme-chat/room', ' https://github.com/acme-chat/room.git ', 'github.com/acme-chat/room/'])
@@ -920,3 +920,141 @@ test('a member leaving leaves the files repo too', { timeout: 40_000 }, async ()
     await gh.close();
   }
 });
+
+test("an emoji's character from GitHub's address for it: its code points, a lone old symbol as an emoji", () => {
+  const u = cp => `https://github.githubassets.com/images/icons/emoji/unicode/${cp}.png?v8`;
+  assert.equal(emojiChar(u('1f44d')), '👍');
+  assert.equal(emojiChar(u('2764')), '❤️', 'the presentation selector: ❤ alone is text');
+  assert.equal(emojiChar(u('0023-20e3')), '#️⃣', "a keycap's selector before its cap");
+  assert.equal(emojiChar(u('1f3f3-fe0f-200d-1f308')), '🏳️‍🌈');
+  assert.equal(
+    emojiChar('https://github.githubassets.com/images/icons/emoji/octocat.png?v8'),
+    null,
+    "GitHub's own picture",
+  );
+  assert.deepEqual(REACTIONS, ['+1', '-1', 'laugh', 'hooray', 'confused', 'heart', 'rocket', 'eyes']);
+});
+
+test(
+  "edits, reactions and emoji end to end: your own words edited, a reaction given and taken back, GitHub's emoji names",
+  { timeout: 60_000 },
+  async () => {
+    const gh = await startFakeGitHub({
+      users: ['me', 'ana'],
+      orgs: { 'acme-chat': ['me'] },
+      repos: {
+        'acme-chat/room': { perms: { ana: 'pull' }, rooms: [{ title: 'Chat', comments: [['ana', 'hello']] }] },
+      },
+    });
+    const srv = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+    let sse = null;
+    try {
+      await srv.api('api/config', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }),
+      });
+      await waitFor(async () => (await srv.api('api/chat')).body.ready, { what: 'the chat read' });
+      const msgs = async () => (await srv.api('api/chat/messages')).body.msgs;
+      const hers = (await msgs()).find(m => m.who === 'ana');
+      assert.deepEqual([hers.rc, hers.rx, hers.reacts], [{}, '', []], 'no reactions: none asked');
+
+      // an edit: yours alone, never a poll, never to nothing; GitHub's comment carries it, and nobody is alerted
+      const sent = (await srv.post('api/chat/send', { body: 'helo' })).body.msg;
+      sse = await stream(srv);
+      await waitFor(() => sse.text.includes('event: snapshot'), { what: 'the stream' });
+      sse.mark();
+      const ed = await srv.post('api/chat/edit', { id: sent.id, body: ' hello\r\nall ' });
+      assert.equal(ed.status, 200, JSON.stringify(ed.body));
+      assert.deepEqual([ed.body.msg.body, !!ed.body.msg.edited], ['hello\nall', true]);
+      assert.equal(gh.repo('acme-chat/room').issues[0].comments.find(c => c.id === sent.id).body, 'hello\nall');
+      await waitFor(() => /event: chatmsgs\ndata: .*hello\\nall/.test(sse.since()), {
+        what: 'the edit, to every page',
+      });
+      assert.ok(!sse.since().includes('event: alert'), 'an edit alerts nobody');
+      for (const [b, code, why] of [
+        [{ id: hers.id, body: 'mine now' }, 403, /only your own/],
+        [{ id: sent.id, body: '  ' }, 400, /delete it instead/],
+        [{ id: sent.id, body: pollBody('x?', ['a', 'b'], false) }, 400, /poll/],
+        [{ id: 1, body: 'x' }, 404, /no such message/],
+      ]) {
+        const r = await srv.post('api/chat/edit', b);
+        assert.equal(r.status, code, JSON.stringify(b));
+        assert.match(r.body.error, why);
+      }
+      const poll = (await srv.post('api/chat/poll', { q: 'Lunch?', answers: ['yes', 'no'] })).body.msg;
+      assert.equal(
+        (await srv.post('api/chat/edit', { id: poll.id, body: 'no poll' })).status,
+        400,
+        'a poll is not edited',
+      );
+
+      // ana edits hers on GitHub: taken in place
+      gh.edit(hers.id, 'hello (edited)');
+      await waitFor(async () => (await msgs()).find(m => m.id === hers.id).body === 'hello (edited)', {
+        what: 'her edit',
+      });
+
+      // reactions: hers given on GitHub, read with who; yours given and taken back; a poll's are its votes
+      gh.react(hers.id, 'ana', 'heart');
+      const reacted = await waitFor(
+        async () => {
+          const m = (await msgs()).find(x => x.id === hers.id);
+          return m.reacts?.length && m;
+        },
+        { what: 'her reaction, read' },
+      );
+      assert.deepEqual(
+        [reacted.rc, reacted.rx, reacted.reacts.map(x => `${x.who}:${x.r}`)],
+        [{ heart: 1 }, 'heart:1', ['ana:heart']],
+      );
+      let r = await srv.post('api/chat/react', { id: hers.id, r: 'heart' });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.deepEqual(
+        [r.body.msg.rc, r.body.msg.reacts.map(x => `${x.who}:${x.r}`).sort()],
+        [{ heart: 2 }, ['ana:heart', 'me:heart']],
+      );
+      r = await srv.post('api/chat/react', { id: hers.id, r: 'rocket' });
+      assert.deepEqual(r.body.msg.rc, { heart: 2, rocket: 1 });
+      r = await srv.post('api/chat/react', { id: hers.id, r: 'heart' });
+      assert.deepEqual(
+        [r.body.msg.rc, r.body.msg.rx],
+        [{ heart: 1, rocket: 1 }, 'heart:1 rocket:1'],
+        'yours again: taken back',
+      );
+      assert.deepEqual(
+        gh
+          .repo('acme-chat/room')
+          .issues[0].comments.find(c => c.id === hers.id)
+          .reactions.map(x => `${x.user.login}:${x.content}`)
+          .sort(),
+        ['ana:heart', 'me:rocket'],
+      );
+      assert.equal((await srv.post('api/chat/react', { id: hers.id, r: 'thumbsup' })).status, 400);
+      assert.equal(
+        (await srv.post('api/chat/react', { id: poll.id, r: '+1' })).status,
+        400,
+        "a poll's reactions are its votes",
+      );
+
+      // GitHub's emoji names: Unicode ones as characters, its own pictures left out; kept, not asked again
+      const e = await srv.api('api/chat/emojis');
+      assert.equal(e.status, 200, JSON.stringify(e.body));
+      assert.deepEqual(
+        [e.body.emojis['+1'], e.body.emojis.heart, e.body.emojis.hash, e.body.emojis.octocat],
+        ['👍', '❤️', '#️⃣', undefined],
+      );
+      await srv.api('api/chat/emojis');
+      assert.equal(gh.calls.filter(c => c.startsWith('GET /emojis')).length, 1, 'kept');
+      // and an alert says a shortcode as its emoji
+      sse.mark();
+      gh.say('acme-chat/room', 1, 'ana', ':tada: shipped :octocat:');
+      await waitFor(() => sse.since().includes('event: alert'), { what: 'her alert' });
+      assert.match(sse.since(), /"snippet":"🎉 shipped :octocat:"/);
+    } finally {
+      sse?.close();
+      await srv.stop();
+      await gh.close();
+    }
+  },
+);

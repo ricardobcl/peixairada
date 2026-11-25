@@ -5,6 +5,43 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, the evening — the chat's messages edited, its emoji and reactions
+
+Ricardo, the chat's pictures in: *"I also want to edit messages and support emojis"* — and, asked which parts of
+emoji: the picker in the box, `:shortcode:` suggestions and reactions on messages, all three.
+
+* **Your own message is edited in the box**, as Telegram's and WhatsApp's are, not in place (the log is drawn whole on
+  every change, which would take an editor's caret with it): its pencil under the pointer, or ↑ in an empty box for your
+  last; its words in the box, a bar over it saying so, ⏎ saves (`POST /api/chat/edit` → GitHub's PATCH of the comment),
+  esc puts back what the box held. **Its pictures stay as they were** (`chatSplitPics`: a paragraph that is pictures
+  alone is one), a picture added from the tray joins them. Only your own — the admin deletes others', never rewrites
+  them —, never a poll (its votes are reactions on those words), never to nothing (*delete it instead*). Drawn at once,
+  faded till GitHub has it; an edit alerts nobody. One made on GitHub comes in as before, *edited* said.
+* **Reactions are GitHub's eight** (`REACTIONS`): a chip per reaction given, yours edged, who on hover; a click gives
+  or takes back yours, the message's React button offers all eight (over it, or under it near the panel's head). Counts
+  ride the comments' list (`rc`, `rx`); who reacted is asked when a message's counts moved, the newest `REACT_SPAN`
+  (100) messages — none for a message with none. A poll's reactions stay its votes. Clicks on one message go to GitHub
+  one after another, so a quick second is not lost (`reactQ`), and its answer is taken once none is still on its way.
+* **Found on the way, a race older than this**: a look at the comments' list while your own vote was being written
+  keeps that list's ETag, and someone's vote bringing the counts back to that list's — byte for byte the same — was a
+  304: unseen for up to a minute (chat-poll.mjs failed one run in two today). After a vote or a reaction of yours the
+  board lets the list's ETag go (`lookUrl`), so the next look reads it whole.
+* **Emoji are GitHub's names** (`GET /emojis`: a name and its picture's address, a Unicode one's named by its code
+  points — `emojiChar`, a lone older symbol given its emoji selector, ❤ → ❤️ —; GitHub's own pictures, `:octocat:`,
+  left as words), kept a week in the state folder (`chatEmojis`): a `:tada:` written on GitHub's page is 🎉 here, in a
+  message (not in code) and in its alert. **The picker** (the smile beside the box): what you used last (`emojiRecent`),
+  then a chat's usual ones; a search by a name's start, a word's start, then anywhere; arrows over the grid, ⏎ the
+  first. **The box's suggestions**: `:` and two letters offers eight, ↑↓ walk them, ⇥ or ⏎ takes one; a name closed by
+  its colon becomes its emoji as it is typed.
+* **Esc lets go of one thing at a time**: the picture shown large (it had closed the panel under it instead: the board's
+  Esc asks the first open dialog, which is the panel), the React row, the suggestions, the picker, the edit — then the
+  panel.
+* Checked: `test/chat.test.mjs` (an edit and its refusals, one made on GitHub; a reaction read with who, yours given and
+  taken back; GitHub's names and their characters, kept; an alert's shortcode), `chat-emoji.mjs` (all of it in the page),
+  `chat-room.mjs`, `chat-poll.mjs` (three runs), `chat-pictures.mjs`.
+* Open: editing a message's pictures one by one (they stay or go with it); a reaction GitHub has not (its eight are all
+  there are).
+
 ## Decisions of 2026-11-25, after no Next — the funnel has no Your move
 
 Asked whether the funnel's *Your move*, the last of it on the status bar (the funnel sits at its left), should go too:
@@ -31,6 +68,7 @@ monitoring in status bar?"*; told it was Next (round XIX's M1, 2026-11-01): *"re
   nothing on the bar would say a chat is asking, and red there means only that (round XIX's S3).
 * `next-verb.mjs` went; `asking-oldest.mjs` holds the count and its walk, `while-out.mjs` the line's click.
 
+||||||| parent of 28f4c1e (The chat's messages edited, its emoji and reactions)
 ## Decisions of 2026-11-25, after the fish's menu — the status bar says nothing of PR moves
 
 Ricardo: *"on the status bar, remove the "your move" stuff"*.

@@ -191,16 +191,116 @@
   font-size: var(--fs-2xs);
   color: var(--muted);
 }
-#room .rmdel {
+/* a message's own buttons (2026-11-25): react, edit (yours), delete — at its top right under the pointer or the keys */
+#room .rmacts {
   position: absolute;
-  top: -2px;
+  top: -4px;
   right: -4px;
-  width: 22px;
-  height: 22px;
+  display: flex;
+  gap: 1px;
+  padding: 1px;
+  border-radius: var(--r-3);
+  background: var(--panel);
   opacity: 0;
 }
-#room .rmmsg:is(:hover, :focus-within) .rmdel {
+#room .rmacts:empty {
+  display: none;
+}
+#room .rmacts .rmbtn {
+  width: 22px;
+  height: 22px;
+}
+#room .rmacts .rmbtn .ic {
+  width: 13px;
+  height: 13px;
+}
+#room .rmmsg:is(:hover, :focus-within) .rmacts {
   opacity: 1;
+}
+/* your message in the box being edited: lit, and faded while it saves */
+#room .rmmsg.editing {
+  margin-inline: -6px;
+  padding: 3px 6px;
+  border-radius: var(--r-3);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+#room .rmmsg.saving .rmbody {
+  opacity: 0.55;
+}
+/* its reactions: a chip each, yours edged in the accent; the last chip adds one */
+#room .rmrx {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+#room .rmrc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: var(--ctl);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+#room .rmrc:hover {
+  background: var(--ctl-hi);
+}
+#room .rmrc b {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--muted);
+}
+#room .rmrc.mine {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+#room .rmrc.mine b {
+  color: var(--accent);
+}
+#room .rmrc.add {
+  padding: 0 6px;
+  color: var(--muted);
+  opacity: 0;
+}
+#room .rmrc.add .ic {
+  width: 13px;
+  height: 13px;
+}
+#room .rmmsg:is(:hover, :focus-within) .rmrc.add {
+  opacity: 1;
+}
+/* GitHub's eight, over the message: a row of them */
+#room .rmrxp {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  background: var(--panel);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+#room .rmrb {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+#room .rmrb:is(:hover, :focus-visible) {
+  background: var(--ctl-hi);
 }
 #room .rmmsg.going {
   opacity: 0.45;
@@ -270,6 +370,116 @@
 #room .rmrow .rmbtn {
   height: 34px;
   width: 30px;
+}
+/* the box's emoji (2026-11-25): its picker and the : suggestions over the box; the bar saying an edit is under way */
+#room .rmfoot {
+  position: relative;
+}
+#room .rmediting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 2px 9px;
+  border-radius: var(--r-3);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+}
+#room .rmediting span {
+  flex: 1;
+}
+#room .rmediting kbd {
+  font: inherit;
+  font-weight: 650;
+}
+#room .rmediting .rmbtn {
+  width: 22px;
+  height: 22px;
+}
+#room :is(.rmemo, .rmsug) {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  z-index: 2;
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+#room .rmemo {
+  right: 8px;
+  width: min(312px, calc(100% - 16px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: 280px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+#room .rmemo input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  outline: none;
+}
+#room .rmemo input[type='text']:focus {
+  border-color: var(--accent);
+}
+#room .rmemog {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr); /* eight to a row: the arrows' step (chatEmoDraw's grid) */
+  align-content: start;
+  overflow-y: auto;
+}
+#room .rmemog .rmnone {
+  grid-column: 1 / -1;
+  padding: 18px 8px;
+}
+#room .rmeb {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+#room .rmeb:is(:hover, :focus-visible) {
+  background: var(--ctl-hi);
+}
+#room .rmsug {
+  left: 8px;
+  min-width: 200px;
+  max-width: calc(100% - 16px);
+  padding: 4px;
+}
+#room .rmsi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--r-3);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  cursor: pointer;
+}
+#room .rmsi .e {
+  font-size: 18px;
+  line-height: 1;
+}
+#room .rmsi.on {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--ink);
+}
+#room #rmEmoBtn.on {
+  background: var(--ctl);
+  color: var(--ink);
 }
 #room #rmPicBtn[aria-disabled='true'] {
   opacity: 0.45;

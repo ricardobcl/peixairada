@@ -200,6 +200,12 @@ server to run and a Mac that slept catches up when it wakes.
   With *Reduce motion* on, a GIF stays still until the pointer is on it. GitHub takes a picture only from someone who
   can write where it goes, and members only read the chat: the owner's board makes a private `<chat>-files` repo beside
   it, keeps everyone in the chat a writer there, and each member's board joins it by itself.
+- **Editing**: under the pointer your message has a pencil, or press ↑ in an empty box for your last one; its words go
+  back in the box (its pictures stay), ⏎ saves and Esc cancels. Only your own, and not a poll.
+- **Emoji and reactions**: the smile beside the box opens a picker you can search; or type `:` and a name (`:tad`) for
+  suggestions, ⇥ or ⏎ to take one — a name closed with its colon (`:tada:`) turns into its emoji as you type. GitHub's
+  `:shortcodes:` show as emoji. Under a message, its reactions — GitHub's eight —, who gave each on hover; click one to
+  add or take back yours, or the message's own React button for the rest.
 - **Polls**: the bar chart beside the box asks a question with two to eight answers — one answer each, or *Several
   each*. Everyone's votes show under each answer, by name; a click votes, another answer moves your vote, the same one
   again takes it back. *Lunch* fills it in with your lunch places and *Not today*. A vote is a reaction on GitHub —

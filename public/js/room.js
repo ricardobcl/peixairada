@@ -11,6 +11,9 @@
 // (2026-11-25) are the server's to fetch (GET /api/chat/pic, server/chat-pics.mjs): a message names one by its address
 // — GitHub's attachment, a GIF on Giphy, Tenor or Imgur (picOf) —, and the page draws the bytes it was given, never
 // the address; an <img> of GitHub's own page's is taken for its address alone, the rest of the tag shown as text.
+// Your own message is edited in the box (2026-11-25; its pictures kept, ↑ in an empty box the last), any message wears
+// GitHub's eight reactions (a chip each, who on hover, yours a click away), and emoji are GitHub's names: a :shortcode:
+// drawn as its emoji, the box's picker and its : suggestions (GET /api/chat/emojis, once the panel opens).
 const chatUi = {
   n: null,
   msgs: [],
@@ -39,9 +42,19 @@ const chatUi = {
   picSeq: 0,
   atEnd: true,
   viewing: null,
+  editing: null,
+  emo: null,
+  emoNames: null,
+  emoAsk: false,
+  sug: null,
+  rxFor: null,
+  reacting: new Map(),
+  reactQ: Promise.resolve(),
 };
 $('#rmPollBtn').innerHTML = ICON.poll;
 $('#rmPicBtn').innerHTML = ICON.pic;
+$('#rmEmoBtn').innerHTML = ICON.emoji;
+$('#rmediting [data-rm="unedit"]').innerHTML = ICON.close;
 $('#rmPeople').innerHTML = ICON.people;
 $('#rmMore').innerHTML = ICON.more;
 $('#rmClose').innerHTML = ICON.close;
@@ -168,6 +181,13 @@ function chatMd(text) {
     }
     a.title = h;
     a.rel = 'noopener noreferrer';
+  }
+  if (chatUi.emo) {
+    // :tada: as GitHub draws it, 🎉 — not in code, and a name it does not know left as written
+    const walk = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
+    for (let t = walk.nextNode(); t; t = walk.nextNode())
+      if (t.nodeValue.includes(':') && !t.parentElement?.closest('code, pre'))
+        t.nodeValue = t.nodeValue.replace(/:([\w+-]+):/g, (all, n) => chatUi.emo.get(n) ?? all);
   }
   html = tpl.innerHTML;
   if (chatHtml.size > 2000) chatHtml.clear();
@@ -402,6 +422,394 @@ const mdAlt = n =>
     .replace(/[[\]\\\n]/g, ' ')
     .trim()
     .slice(0, 80);
+// ---- emoji (2026-11-25): GitHub's names, asked once the panel opens; the picker's first row what you used last, then
+// the ones a chat reaches for most; a name hunted by its start, a word's start, then anywhere in it
+const EMO_TOP = [
+  '+1',
+  '-1',
+  'smile',
+  'joy',
+  'rofl',
+  'sweat_smile',
+  'wink',
+  'slightly_smiling_face',
+  'upside_down_face',
+  'thinking',
+  'heart_eyes',
+  'sunglasses',
+  'partying_face',
+  'grimacing',
+  'sob',
+  'scream',
+  'facepalm',
+  'shrug',
+  'pray',
+  'clap',
+  'raised_hands',
+  'muscle',
+  'ok_hand',
+  'wave',
+  'handshake',
+  'v',
+  'eyes',
+  'heart',
+  'fire',
+  'tada',
+  'rocket',
+  'sparkles',
+  'star',
+  'zap',
+  'boom',
+  '100',
+  'white_check_mark',
+  'x',
+  'warning',
+  'bug',
+  'skull',
+  'see_no_evil',
+  'coffee',
+  'beers',
+  'pizza',
+  'hamburger',
+  'ramen',
+  'sushi',
+  'fish',
+  'tropical_fish',
+  'fishing_pole_and_fish',
+  'whale',
+];
+// a reaction's emoji, GitHub's eight in its own order (the server's REACTIONS)
+const REACT_EMO = {
+  '+1': '👍',
+  '-1': '👎',
+  laugh: '😄',
+  hooray: '🎉',
+  confused: '😕',
+  heart: '❤️',
+  rocket: '🚀',
+  eyes: '👀',
+};
+function chatEmoLoad() {
+  if (chatUi.emo || chatUi.emoAsk) return;
+  chatUi.emoAsk = true;
+  api('GET', '/api/chat/emojis').then(
+    d => {
+      chatUi.emo = new Map(Object.entries(d.emojis || {}));
+      chatUi.emoNames = [...chatUi.emo.keys()].sort();
+      chatHtml.clear(); // the words drawn again, their :names: as emoji
+      chatDraw();
+      if (!$('#rmemo').hidden) chatEmoDraw();
+    },
+    () => {
+      chatUi.emoAsk = false; // asked again the next time the panel opens
+    },
+  );
+}
+/** The names whose emoji a search finds, best first: `q`'s start, a word's start in the name, then anywhere. */
+function chatEmoFind(q, max) {
+  const names = chatUi.emoNames || [];
+  q = String(q).toLowerCase().replace(/^:|:$/g, '');
+  if (!q) return [];
+  const a = [],
+    b = [],
+    c = [];
+  for (const n of names) {
+    if (n.startsWith(q)) a.push(n);
+    else if (n.includes(`_${q}`)) b.push(n);
+    else if (n.includes(q)) c.push(n);
+    if (a.length >= max) break;
+  }
+  return [...a.sort((x, y) => x.length - y.length), ...b, ...c].slice(0, max);
+}
+const emoNote = name => {
+  const r = prefs.emojiRecent.filter(n => n !== name);
+  prefs.emojiRecent = [name, ...r].slice(0, 24);
+  savePrefs();
+};
+/** Words into the box where its caret is, as typed there. */
+function chatInsert(text) {
+  const box = $('#rmbox');
+  box.focus();
+  box.setRangeText(text, box.selectionStart, box.selectionEnd, 'end');
+  chatGrow();
+}
+function chatEmoOpen(on = $('#rmemo').hidden) {
+  $('#rmemo').hidden = !on;
+  $('#rmEmoBtn').setAttribute('aria-expanded', String(on));
+  $('#rmEmoBtn').classList.toggle('on', on);
+  if (!on) return;
+  chatSugClose();
+  chatEmoLoad();
+  $('#rmemoq').value = '';
+  chatEmoDraw();
+  $('#rmemoq').focus();
+}
+function chatEmoDraw() {
+  const q = $('#rmemoq').value.trim(),
+    e = chatUi.emo;
+  if (!e) return setHtml($('#rmemog'), '<div class="rmnone">Asking GitHub for its emoji…</div>');
+  const names = q ? chatEmoFind(q, 96) : [...new Set([...prefs.emojiRecent, ...EMO_TOP])].filter(n => e.has(n));
+  setHtml(
+    $('#rmemog'),
+    names.length
+      ? names
+          .map(
+            n =>
+              `<button type="button" class="rmeb" data-emo="${esc(n)}" title=":${esc(n)}:" role="option" aria-label="${esc(n.replace(/_/g, ' '))}">${e.get(n)}</button>`,
+          )
+          .join('')
+      : `<div class="rmnone">No emoji called “${esc(q)}”</div>`,
+  );
+}
+function chatEmoPick(name) {
+  const ch = chatUi.emo?.get(name);
+  if (!ch) return;
+  emoNote(name);
+  chatEmoOpen(false);
+  chatInsert(ch);
+}
+$('#rmemoq').addEventListener('input', chatEmoDraw);
+$('#rmemoq').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const first = $('#rmemog .rmeb');
+    if (first) chatEmoPick(first.dataset.emo);
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    $('#rmemog .rmeb')?.focus();
+  }
+});
+// the grid walked by the arrows, eight to a row (CSS's); ↑ from the first row back to the search
+$('#rmemog').addEventListener('keydown', e => {
+  const all = [...$('#rmemog').querySelectorAll('.rmeb')],
+    i = all.indexOf(document.activeElement),
+    step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 8, ArrowUp: -8 }[e.key];
+  if (i < 0 || !step) return;
+  e.preventDefault();
+  if (i + step < 0) return $('#rmemoq').focus();
+  all[Math.min(all.length - 1, i + step)]?.focus();
+});
+// : and a name in the box: its emoji offered under the pointer of the caret — ↑↓ walk them, ⇥ or ⏎ takes one, esc lets
+// them go; a name closed by its colon becomes its emoji as it is typed
+function chatSugUpdate() {
+  const box = $('#rmbox'),
+    before = box.value.slice(0, box.selectionStart);
+  if (box.selectionStart !== box.selectionEnd || !chatUi.emo) return chatSugClose();
+  const done = /(^|[\s([{])(:([\w+-]+):)$/.exec(before);
+  if (done && chatUi.emo.has(done[3])) {
+    box.setRangeText(chatUi.emo.get(done[3]), before.length - done[2].length, before.length, 'end');
+    emoNote(done[3]);
+    chatGrow();
+    return chatSugClose();
+  }
+  const m = /(^|[\s([{]):([\w+-]{2,})$/.exec(before),
+    list = m ? chatEmoFind(m[2], 8) : [];
+  if (!list.length) return chatSugClose();
+  const same = chatUi.sug?.list.join() === list.join();
+  chatUi.sug = { start: before.length - m[2].length - 1, list, sel: same ? chatUi.sug.sel : 0 };
+  chatSugDraw();
+}
+function chatSugDraw() {
+  const g = chatUi.sug;
+  $('#rmsug').hidden = !g;
+  if (!g) return;
+  setHtml(
+    $('#rmsug'),
+    g.list
+      .map(
+        (n, i) =>
+          `<div class="rmsi${i === g.sel ? ' on' : ''}" data-emo="${esc(n)}" role="option" aria-selected="${i === g.sel}"><span class="e">${chatUi.emo.get(n)}</span>:${esc(n)}:</div>`,
+      )
+      .join(''),
+  );
+}
+function chatSugClose() {
+  if (!chatUi.sug) return false;
+  chatUi.sug = null;
+  chatSugDraw();
+  return true;
+}
+function chatSugPick(name = chatUi.sug?.list[chatUi.sug.sel]) {
+  const g = chatUi.sug,
+    box = $('#rmbox');
+  if (!g || !name) return;
+  const next = box.value[box.selectionStart];
+  box.setRangeText(chatUi.emo.get(name) + (next && /\s/.test(next) ? '' : ' '), g.start, box.selectionStart, 'end');
+  emoNote(name);
+  chatSugClose();
+  chatGrow();
+  box.focus();
+}
+$('#rmsug').addEventListener('mousedown', e => {
+  const it = e.target.closest('.rmsi');
+  if (!it) return;
+  e.preventDefault(); // the box keeps the keys
+  chatSugPick(it.dataset.emo);
+});
+// ---- reactions (2026-11-25): a chip for each given, yours lit, who on hover; given or taken back at once, then as
+// GitHub took it (POST /api/chat/react)
+function chatReactsHtml(m) {
+  const me = state.chat.me?.login,
+    by = new Map();
+  if (m.reacts?.length) for (const x of m.reacts) by.set(x.r, [...(by.get(x.r) || []), x.who]);
+  else for (const [r, n] of Object.entries(m.rc || {})) by.set(r, Array(n).fill(null));
+  if (!by.size) return '';
+  const chips = Object.keys(REACT_EMO)
+    .filter(r => by.has(r))
+    .map(r => {
+      const who = by.get(r),
+        mine = who.includes(me),
+        names = who.filter(Boolean).map(w => (w === me ? 'you' : w));
+      return `<button type="button" class="rmrc${mine ? ' mine' : ''}" data-rm="react" data-r="${esc(r)}" aria-pressed="${mine}" title="${esc(names.length ? names.join(', ') : `${who.length}`)}" aria-label="${esc(`${r}: ${who.length}${mine ? ', yours among them' : ''}`)}">${REACT_EMO[r]}<b>${who.length}</b></button>`;
+    })
+    .join('');
+  return `<div class="rmrx">${chips}<button type="button" class="rmrc add" data-rm="rxpick" title="React" aria-label="React">${ICON.react}</button></div>`;
+}
+/** Your reaction toggled at once; GitHub told in the order you clicked, one after another (a quick second click is
+ *  not lost), its word taken once none of yours on that message is still on its way. */
+function chatReact(id, r) {
+  const m = chatUi.msgs.find(x => x.id === id),
+    me = state.chat.me;
+  if (!m || m.poll || !me) return;
+  const toggle = x => {
+    const list = x.reacts ? [...x.reacts] : [],
+      had = list.some(y => y.who === me.login && y.r === r),
+      reacts = had
+        ? list.filter(y => !(y.who === me.login && y.r === r))
+        : [...list, { r, who: me.login, face: me.face }],
+      rc = {};
+    for (const y of reacts) rc[y.r] = (rc[y.r] || 0) + 1;
+    return { ...x, reacts, rc };
+  };
+  chatTake([toggle(m)], []);
+  chatDraw();
+  chatUi.reacting.set(id, (chatUi.reacting.get(id) || 0) + 1);
+  chatUi.reactQ = chatUi.reactQ.then(async () => {
+    let got = null;
+    try {
+      got = (await api('POST', '/api/chat/react', { id, r })).msg;
+    } catch (e) {
+      const now = chatUi.msgs.find(x => x.id === id);
+      if (now) chatTake([toggle(now)], []); // this one back as it was
+      note($(`#rmlog .rmmsg[data-id="${id}"] .rmbody`) || $('#rmlog'), `Not reacted: ${e.message}`, true);
+    }
+    const left = chatUi.reacting.get(id) - 1;
+    if (left) chatUi.reacting.set(id, left);
+    else chatUi.reacting.delete(id);
+    if (got && !left && got.n === chatUi.n) chatTake([got], []);
+    chatDraw();
+  });
+}
+/** GitHub's eight, by the message's own React button. */
+function chatRxOpen(id, at) {
+  const p = $('#rmrxp');
+  chatUi.rxFor = id;
+  setHtml(
+    p,
+    Object.entries(REACT_EMO)
+      .map(
+        ([r, e]) =>
+          `<button type="button" class="rmrb" data-rx="${esc(r)}" title="${esc(r)}" aria-label="${esc(r)}">${e}</button>`,
+      )
+      .join(''),
+  );
+  p.hidden = false;
+  // over the button, or under it where the log has no room above (the panel's head is not the row's)
+  const room = $('#room').getBoundingClientRect(),
+    log = $('#rmlog').getBoundingClientRect(),
+    b = at.getBoundingClientRect(),
+    up = b.top - p.offsetHeight - 4;
+  p.style.left = `${Math.max(8, Math.min(room.width - p.offsetWidth - 8, b.right - room.left - p.offsetWidth))}px`;
+  p.style.top = `${(up >= log.top ? up : b.bottom + 4) - room.top}px`;
+  p.querySelector('.rmrb').focus();
+}
+function chatRxClose() {
+  if ($('#rmrxp').hidden) return false;
+  $('#rmrxp').hidden = true;
+  chatUi.rxFor = null;
+  return true;
+}
+$('#rmrxp').addEventListener('click', e => {
+  const b = e.target.closest('[data-rx]');
+  if (!b) return;
+  const id = chatUi.rxFor;
+  chatRxClose();
+  chatReact(id, b.dataset.rx);
+});
+// ---- your message edited (2026-11-25): in the box, as Telegram's and WhatsApp's are — its words there, its pictures
+// kept as they were (a picture added from the tray joins them), ⏎ saves, esc puts back what the box held; ↑ in an empty
+// box takes your last. Drawn at once, faded till GitHub has it; one that did not save stays in the box, saying why.
+/** A message's words and its pictures apart: a paragraph that is pictures alone is one of them. */
+function chatSplitPics(body) {
+  const text = [],
+    pics = [];
+  const pic = /!\[[^\]\n]*\]\(([^)\s]+)\)|<img\b[^>]*\ssrc\s*=\s*["']?([^"'\s>]+)[^>]*>/gi;
+  for (const para of String(body).split(/\n{2,}/)) {
+    const found = [...para.matchAll(pic)];
+    if (found.length && found.every(m => picOf(m[1] || m[2])) && !para.replace(pic, '').trim()) pics.push(para.trim());
+    else text.push(para);
+  }
+  return { text: text.join('\n\n').trim(), pics };
+}
+function chatEditStart(id) {
+  const m = chatUi.msgs.find(x => x.id === id),
+    box = $('#rmbox');
+  if (!m || m.poll || m.who !== state.chat.me?.login) return;
+  if (chatUi.poll) chatPollForm(false);
+  const { text, pics } = chatSplitPics(m.body);
+  chatUi.editing = { id, pics, body: m.body, draft: chatUi.editing ? chatUi.editing.draft : box.value, saving: false };
+  chatSugClose();
+  chatEmoOpen(false);
+  box.value = text;
+  chatGrow();
+  chatDraw();
+  box.focus();
+  box.setSelectionRange(box.value.length, box.value.length);
+  $(`#rmlog .rmmsg[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
+}
+function chatEditEnd(restore) {
+  const ed = chatUi.editing;
+  if (!ed) return false;
+  chatUi.editing = null;
+  $('#rmbox').value = restore ? ed.draft : '';
+  chatGrow();
+  chatDraw();
+  $('#rmbox').focus();
+  return true;
+}
+async function chatEditSave() {
+  const ed = chatUi.editing,
+    m = chatUi.msgs.find(x => x.id === ed?.id);
+  if (!ed || ed.saving) return;
+  if (!m) return chatEditEnd(true);
+  ed.saving = true;
+  chatDraw();
+  const added = chatUi.pics.slice();
+  try {
+    await Promise.all(added.map(p => p.up));
+    const bad = added.find(p => p.err);
+    if (bad) throw new Error(`${bad.name}: ${bad.err}`);
+    const body = [$('#rmbox').value.trim(), ...ed.pics, ...added.map(p => `![${mdAlt(p.name)}](${p.url})`)]
+      .filter(Boolean)
+      .join('\n\n');
+    if (!body) throw new Error('nothing left — delete it instead');
+    if (body !== ed.body) {
+      chatTake([{ ...m, body, edited: new Date().toISOString() }], []);
+      chatDraw();
+      const d = await api('POST', '/api/chat/edit', { id: ed.id, body });
+      if (d.msg.n === chatUi.n) chatTake([d.msg], []);
+    }
+    chatUi.pics = chatUi.pics.filter(p => !added.includes(p));
+    chatTrayDraw();
+    chatEditEnd(false);
+  } catch (e) {
+    const now = chatUi.msgs.find(x => x.id === ed.id);
+    if (now && now.body !== ed.body) chatTake([{ ...now, body: ed.body, edited: m.edited }], []);
+    ed.saving = false;
+    chatDraw();
+    note($('#rmediting'), `Not saved: ${e.message}`, true);
+  }
+}
 const chatClock = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 const chatFace = (url, cls = 'face') =>
   /^(https:\/\/avatars\.githubusercontent\.com\/|data:image\/)/.test(url || '')
@@ -440,6 +848,7 @@ function chatOpen(view = 'log') {
   }
   if (view === 'people') chatPeopleLoad();
   chatLoad();
+  chatEmoLoad();
   chatDraw(true);
   renderBar();
   chatSeenNow(); // what came while it was shut is read now
@@ -515,14 +924,26 @@ function chatLogHtml() {
     const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000,
       mine = m.who === me || !!m.out,
       o = m.out;
+    const ed = !o && chatUi.editing?.id === m.id ? (chatUi.editing.saving ? ' editing saving' : ' editing') : '';
     out +=
-      `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}${o ? ` out${o.err ? ' fail' : ''}` : ''}" ${o ? `data-out="${o.key}"` : `data-id="${m.id}"`}>${chatFace(m.face)}` +
+      `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}${o ? ` out${o.err ? ' fail' : ''}` : ''}${ed}" ${o ? `data-out="${o.key}"` : `data-id="${m.id}"`}>${chatFace(m.face)}` +
       `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}${o && !o.err ? '<span class="vh">sending</span>' : ''}</div>` +
       `<div class="rmbody">${m.poll ? chatPollHtml(m) : chatMd(m.body)}${o ? chatOutPics(o) : ''}</div>` +
+      (!o && !m.poll ? chatReactsHtml(m) : '') +
       (o?.err
         ? `<div class="rmfail" role="status"><span>Not sent: ${esc(o.err)}</span><button type="button" class="btn" data-rm="retry">Try again</button><button type="button" class="btn" data-rm="edit" title="Its words back in the box">Edit</button></div>`
-        : !o && (mine || admin)
-          ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : "Delete this message — as the chat's admin"}" aria-label="Delete">${ICON.close}</button>`
+        : !o
+          ? '<div class="rmacts">' +
+            (!m.poll
+              ? `<button type="button" class="rmbtn" data-rm="rxpick" title="React" aria-label="React">${ICON.react}</button>`
+              : '') +
+            (mine && !m.poll
+              ? `<button type="button" class="rmbtn" data-rm="editmsg" title="Edit your message — or ↑ in an empty box" aria-label="Edit">${ICON.edit}</button>`
+              : '') +
+            (mine || admin
+              ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : "Delete this message — as the chat's admin"}" aria-label="Delete">${ICON.close}</button>`
+              : '') +
+            '</div>'
           : '') +
       '</div>';
     prev = m;
@@ -726,7 +1147,8 @@ function chatDraw(toEnd = false) {
     log.scrollTop = log.scrollHeight;
     chatUi.atEnd = true;
   }
-  $('#rmbox').placeholder = 'Message — ⏎ sends, ⇧⏎ a new line';
+  $('#rmediting').hidden = !chatUi.editing;
+  $('#rmbox').placeholder = chatUi.editing ? 'Your message — ⏎ saves, esc cancels' : 'Message — ⏎ sends, ⇧⏎ a new line';
   const pics = c.pics;
   $('#rmPicBtn').setAttribute('aria-disabled', String(!pics?.can));
   $('#rmPicBtn').title = pics?.can
@@ -748,6 +1170,7 @@ function chatGrow() {
  *  GitHub's comment once the server has it. One that did not go stays where it was said, saying so — on this page
  *  alone, since nobody else has it. Sent one after another, in the order typed (the server writes them so anyway). */
 function chatSend() {
+  if (chatUi.editing) return chatEditSave();
   const box = $('#rmbox'),
     body = box.value;
   if ((!body.trim() && !chatUi.pics.length) || chatUi.n == null) return;
@@ -913,7 +1336,12 @@ async function chatAct(what, body, anchor, done) {
   }
 }
 $('#room').addEventListener('click', e => {
+  if (!$('#rmrxp').hidden && !e.target.closest('#rmrxp, [data-rm="rxpick"]')) chatRxClose();
+  if (!$('#rmemo').hidden && !e.target.closest('#rmemo, #rmEmoBtn')) chatEmoOpen(false);
   if (e.target.closest('#rmClose')) return $('#room').close();
+  if (e.target.closest('#rmEmoBtn')) return chatEmoOpen();
+  const eb = e.target.closest('#rmemog .rmeb');
+  if (eb) return chatEmoPick(eb.dataset.emo);
   if (e.target.closest('#rmPollBtn')) return chatPollForm(chatUi.poll ? false : {});
   if (e.target.closest('#rmPeople')) {
     chatUi.view = chatUi.view === 'people' ? 'log' : 'people';
@@ -977,6 +1405,12 @@ $('#room').addEventListener('click', e => {
     chatUi.sure = null;
     chatDraw();
   } else if (act === 'vote') chatVote(id, b.dataset.r);
+  else if (act === 'react') chatReact(id, b.dataset.r);
+  else if (act === 'rxpick') {
+    if (chatUi.rxFor === id && !$('#rmrxp').hidden) chatRxClose();
+    else chatRxOpen(id, b);
+  } else if (act === 'editmsg') chatEditStart(id);
+  else if (act === 'unedit') chatEditEnd(true);
   else if (act === 'retry' || act === 'edit') chatRetry(Number(b.closest('.rmmsg')?.dataset.out), act === 'edit');
   else if (act === 'unpic') {
     const k = Number(b.closest('.rmtp')?.dataset.k);
@@ -1021,12 +1455,37 @@ $('#room').addEventListener('click', e => {
     });
 });
 $('#rmbox').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+  if (e.isComposing) return;
+  const g = chatUi.sug;
+  if (g && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault();
+    g.sel = (g.sel + (e.key === 'ArrowDown' ? 1 : g.list.length - 1)) % g.list.length;
+    return chatSugDraw();
+  }
+  if (g && (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey))) {
+    e.preventDefault();
+    return chatSugPick();
+  }
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     chatSend();
+  } else if (e.key === 'ArrowUp' && !e.shiftKey && !e.metaKey && !e.altKey && !$('#rmbox').value && !chatUi.editing) {
+    // your last message, back in the box to edit (never a poll)
+    const me = state.chat.me?.login,
+      last = chatUi.msgs.findLast(m => m.who === me && !m.poll);
+    if (last) {
+      e.preventDefault();
+      chatEditStart(last.id);
+    }
   }
 });
-$('#rmbox').addEventListener('input', chatGrow);
+$('#rmbox').addEventListener('input', () => {
+  chatGrow();
+  chatSugUpdate();
+});
+$('#rmbox').addEventListener('blur', () =>
+  setTimeout(() => document.activeElement !== $('#rmbox') && chatSugClose(), 150),
+);
 // a picture pasted (a screenshot's ⌃⇧⌘4, an image copied): to the tray — what has words to paste pastes them instead
 $('#rmbox').addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])].filter(f => PIC_TYPES.test(f.type));
@@ -1088,6 +1547,17 @@ $('#rmfind').addEventListener('keydown', e => {
 });
 /** Esc in the panel lets go of one thing at a time — a question, the people — before the panel. */
 function chatEscape() {
+  if ($('#rmview').open) {
+    $('#rmview').close();
+    return true;
+  }
+  if (chatRxClose() || chatSugClose()) return true;
+  if (!$('#rmemo').hidden) {
+    chatEmoOpen(false);
+    $('#rmbox').focus();
+    return true;
+  }
+  if (chatEditEnd(true)) return true;
   if (chatUi.sure) {
     chatUi.sure = null;
     chatDraw();
@@ -1106,6 +1576,9 @@ function chatEscape() {
   return false;
 }
 $('#room').addEventListener('close', () => {
+  chatRxClose();
+  chatSugClose();
+  chatEmoOpen(false);
   clearInterval(chatUi.watch);
   chatUi.watch = 0;
   chatUi.sure = null;
@@ -1126,6 +1599,7 @@ function chatChanged() {
       poll: null,
       out: [],
       pics: [],
+      editing: null,
     });
     chatPollDraw();
   } // another repo: nothing of the last one's
@@ -1155,6 +1629,10 @@ function chatMsgs(d) {
     if (o) chatUi.out = chatUi.out.filter(x => x !== o);
   }
   chatTake(d.add || [], d.gone || []);
+  if (chatUi.editing && (d.gone || []).includes(chatUi.editing.id)) {
+    chatEditEnd(true);
+    note($('#rmbox'), 'The message you were editing was deleted', true);
+  }
   chatDraw();
   chatSeenNow();
 }

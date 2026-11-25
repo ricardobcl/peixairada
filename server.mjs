@@ -28,7 +28,7 @@ export {
   worktreeBases,
   worktreesFor,
 } from './server/changes.mjs';
-export { picSnippet, pollBody, pollOf } from './server/chat.mjs';
+export { emojiChar, picSnippet, pollBody, pollOf, REACTIONS } from './server/chat.mjs';
 export { picType, picUrl } from './server/chat-pics.mjs';
 export { driftOf, headOf, noteHead, settleDrift } from './server/drift.mjs';
 export { folderBack, putBack } from './server/folders.mjs';

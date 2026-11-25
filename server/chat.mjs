@@ -1,5 +1,7 @@
 // The chat (2026-10-17): the people the board is shared with, in a GitHub repo's issue — messages, polls, people.
-import { CONFIG_FILE, execFileP } from './env.mjs';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { CONFIG_FILE, execFileP, STATE_FILE } from './env.mjs';
 import { ghBin } from './bins.mjs';
 import { json, jsonBody } from './http.mjs';
 import { nativeNotify } from './notify.mjs';
@@ -30,6 +32,10 @@ import { plainSnippet } from './transcript/text.mjs';
 // repo (`<repo>-files`, private, empty), where every member writes: the admin's board makes it and keeps its people the
 // chat's (filesKeep), a member's board takes its invitation by itself (chatPicsFind). A picture shows to whoever can
 // read the repo it went against: everyone in the chat either way. Fetched and kept by server/chat-pics.mjs.
+// A message is edited by its own author alone (2026-11-25, PATCH of the comment; a poll never); any message wears
+// GitHub's eight reactions, who as well as how many (chatVotes asks a message's when its counts moved, the newest
+// REACT_SPAN), a poll's being its votes. The emoji's names are GitHub's own (GET /emojis, kept a week: chatEmojis), so a
+// :shortcode: written on GitHub reads the same here.
 // What comes in is someone else's words: the page draws it in a module of its own, and nothing here or there hands it
 // to a drawer, a claude or a notification's Reply… (test/chat.test.mjs holds the page to that).
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
@@ -125,7 +131,8 @@ export async function ghToken(fresh = false) {
   return token;
 }
 /** A comment as the page gets it: whose (login, face), the room's number, the words (capped, the unsaid characters out);
- *  a poll's question and answers (`poll`), and its counts as the list has them (`rx`). */
+ *  a poll's question and answers (`poll`), and its counts as the list has them (`rx`) — another message's reactions,
+ *  counted (`rc`, those given; `rx` their word, '' for none). */
 function chatMsg(c) {
   const body = String(c.body || '')
       .replace(UNSAID, '')
@@ -145,9 +152,28 @@ function chatMsg(c) {
     at: c.created_at,
     edited: c.updated_at && c.updated_at !== c.created_at ? c.updated_at : null,
     url: c.html_url || null,
-    ...(poll && { poll, rx: poll.opts.map(o => c.reactions?.[o.r] ?? 0).join(' ') }),
+    ...(poll
+      ? { poll, rx: poll.opts.map(o => c.reactions?.[o.r] ?? 0).join(' ') }
+      : reactCounts(REACTIONS.flatMap(r => Array(c.reactions?.[r] ?? 0).fill({ content: r })))),
   };
 }
+// GitHub's eight reactions, in the order its own page lists them; a message's counted from a list of them
+export const REACTIONS = ['+1', '-1', 'laugh', 'hooray', 'confused', 'heart', 'rocket', 'eyes'];
+const REACT_SPAN = 100;
+function reactCounts(list) {
+  const rc = {};
+  for (const x of list) if (REACTIONS.includes(x.content)) rc[x.content] = (rc[x.content] || 0) + 1;
+  return {
+    rc,
+    rx: REACTIONS.filter(r => rc[r])
+      .map(r => `${r}:${rc[r]}`)
+      .join(' '),
+  };
+}
+const reactsOf = list =>
+  (list || [])
+    .filter(x => REACTIONS.includes(x.content) && x.user?.login)
+    .map(x => ({ id: x.id, r: x.content, who: x.user.login, face: x.user.avatar_url || null }));
 // A poll's body, as GitHub shows it too: a mark it hides, the question, a line per answer — the reaction that votes for
 // it, then its words —, and how to vote there. The reactions in the order answers take them; an answer that says no
 // wears 👎. Markdown alone, no raw HTML (2026-10-20): a board from before polls draws it as words and escapes HTML, so
@@ -256,8 +282,8 @@ function chatTake(list, span = null) {
       c.add.push(m);
       c.fresh.push(m);
     } else if (held[i].body !== m.body || held[i].edited !== m.edited || held[i].rx !== m.rx) {
-      const { votes, votesRx, votesAt } = held[i];
-      held[i] = { ...m, votes, votesRx, votesAt };
+      const { votes, votesRx, votesAt, reacts, reactsRx } = held[i];
+      held[i] = { ...m, votes, votesRx, votesAt, reacts, reactsRx };
       c.add.push(held[i]);
     }
   }
@@ -287,13 +313,67 @@ function chatTell(c, silent) {
     sessionId: null,
     heading: 'Chat',
     title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who,
-    snippet: last.poll ? `📊 ${last.poll.q}` : picSnippet(last.body) || plainSnippet(last.body, 140),
+    snippet: last.poll ? `📊 ${last.poll.q}` : picSnippet(last.body) || emojiText(plainSnippet(last.body, 140)),
     ts: last.at,
     quiet: !notificationsOn,
   };
   broadcast('alert', evt);
   if (notificationsOn && Date.now() > chat.watchUntil) nativeNotify(evt.heading, evt.title, evt.snippet);
 }
+// ---- GitHub's emoji, by name (2026-11-25): GET /emojis, a name and its picture's address, a Unicode one's named by its
+// code points (…/unicode/1f44d.png) — those alone kept, as characters (its own, :octocat:, are pictures: left as words).
+// Kept in the state folder a week, asked again past it; the page asks GET /api/chat/emojis.
+const EMOJI_FILE = join(dirname(STATE_FILE), 'emojis.json'),
+  EMOJI_MS = 7 * 86_400_000;
+const emojis = { map: null, at: 0, asking: null };
+/** An emoji's character from GitHub's address for it: its code points, with the presentation selector a lone symbol
+ *  of the older planes wants (❤ is text without it) and a keycap's; null for one of GitHub's own pictures. */
+export function emojiChar(url) {
+  const m = /\/unicode\/([0-9a-f]+(?:-[0-9a-f]+)*)\.png/i.exec(String(url || ''));
+  if (!m) return null;
+  const cps = m[1].split('-').map(h => parseInt(h, 16));
+  if (cps.length === 1 && cps[0] < 0x1f000) cps.push(0xfe0f);
+  if (cps.length === 2 && cps[1] === 0x20e3) cps.splice(1, 0, 0xfe0f);
+  try {
+    return String.fromCodePoint(...cps);
+  } catch {
+    return null;
+  }
+}
+/** GitHub's emoji names, `{name: character}`: kept, or asked of GitHub (once, however many ask at a time). */
+export async function chatEmojis() {
+  if (!emojis.map)
+    try {
+      const f = JSON.parse(readFileSync(EMOJI_FILE, 'utf8'));
+      if (f?.map && typeof f.map === 'object') Object.assign(emojis, { map: f.map, at: Number(f.at) || 0 });
+    } catch {}
+  if (emojis.map && Date.now() - emojis.at < EMOJI_MS) return emojis.map;
+  emojis.asking ??= ghRest('GET', '/emojis')
+    .then(r => {
+      const map = {};
+      for (const [name, url] of Object.entries(r.data || {})) {
+        const ch = emojiChar(url);
+        if (ch && /^[\w+-]{1,40}$/.test(name)) map[name] = ch;
+      }
+      Object.assign(emojis, { map, at: Date.now() });
+      try {
+        const tmp = `${EMOJI_FILE}.${process.pid}`;
+        writeFileSync(tmp, JSON.stringify({ at: emojis.at, map }), { mode: 0o600 });
+        renameSync(tmp, EMOJI_FILE);
+      } catch {}
+      return map;
+    })
+    .catch(e => {
+      if (emojis.map) return emojis.map; // the old names, while GitHub is away
+      throw e;
+    })
+    .finally(() => {
+      emojis.asking = null;
+    });
+  return emojis.asking;
+}
+/** `:name:` in words, as the emoji GitHub would draw — with the names this board knows, none asked for. */
+const emojiText = s => (!emojis.map ? s : String(s).replace(/:([\w+-]+):/g, (all, n) => emojis.map[n] ?? all));
 /** A message that is pictures alone, in words for an alert: *a picture*, *3 pictures* — else null (said as it is). */
 export function picSnippet(body) {
   const pics = String(body).match(/!\[[^\]\n]*\]\([^)\s]+\)|<img\b[^>]*>/gi) || [];
@@ -341,8 +421,10 @@ async function chatBackfill(gen) {
     saveState();
   }
 }
+// the newest comments, one fixed address and its ETag (a 304 free)
+const lookUrl = () => `/repos/${chat.repo}/issues/comments?sort=created&direction=desc&per_page=${CHAT_WINDOW}`;
 async function chatLook(gen, silent = false) {
-  const url = `/repos/${chat.repo}/issues/comments?sort=created&direction=desc&per_page=${CHAT_WINDOW}`;
+  const url = lookUrl();
   const r = await ghRest('GET', url, undefined, chat.tags.get(url));
   if (gen !== chat.gen || r.status === 304) return;
   chat.tags.set(url, r.etag);
@@ -358,9 +440,30 @@ async function chatLook(gen, silent = false) {
 }
 /** The votes of each poll whose counts moved since its votes were asked (`rx`, the comments' list's) — and of one a day
  *  old at most once a minute, a 304 when nothing moved: two people trading answers leave the counts as they were. Who
- *  gave which of its answers; on a poll of one answer each, a person's newest. A poll changed joins what changed. */
+ *  gave which of its answers; on a poll of one answer each, a person's newest. A poll changed joins what changed. And
+ *  who reacted to the newest REACT_SPAN other messages, asked when their counts moved (2026-11-25): none, nothing asked. */
 async function chatVotes(gen, c) {
   const now = Date.now();
+  for (const m of chat.msgs.slice(-REACT_SPAN)) {
+    if (m.poll || m.reactsRx === m.rx) continue;
+    const rx = m.rx;
+    if (!rx) {
+      if (m.reacts?.length && !c.add.includes(m)) c.add.push(m);
+      Object.assign(m, { reacts: [], reactsRx: rx });
+      continue;
+    }
+    const url = `/repos/${chat.repo}/issues/comments/${m.id}/reactions?per_page=100`;
+    const r = await ghRest('GET', url, undefined, chat.tags.get(url)).catch(e => {
+      if (e.status === 404) return null;
+      throw e;
+    }); // 404: deleted since
+    if (gen !== chat.gen) return;
+    m.reactsRx = rx;
+    if (!r || r.status === 304) continue;
+    chat.tags.set(url, r.etag);
+    m.reacts = reactsOf(r.data);
+    if (!c.add.includes(m)) c.add.push(m);
+  }
   for (const m of chat.msgs) {
     if (
       !m.poll ||
@@ -912,10 +1015,61 @@ export async function chatRoute(req, res, what, url) {
       // finds others' votes making the same counts as yours did would see nothing moved
       const held = chat.msgs.find(x => x.id === id) || m;
       held.votes = votesOf(held.poll, list);
+      // the list's ETag let go (2026-11-25): a look while this was written kept a list whose counts someone else's vote
+      // can bring back exactly, which GitHub then answers with a 304 — and that vote went unseen for a minute
+      chat.tags.delete(lookUrl());
       held.rx = held.votesRx = held.poll.opts.map(o => list.filter(x => x.content === o.r).length).join(' ');
       broadcast('chatmsgs', { n: held.n, add: [held], gone: [] });
       return json(res, 200, { msg: held });
     }
+    if (M === 'POST' && what === 'edit') {
+      // your own message's words, edited (2026-11-25): never someone else's — the admin deletes — nor a poll
+      ready();
+      const id = Number(body.id),
+        m = chat.msgs.find(x => x.id === id),
+        text = String(body.body ?? '')
+          .replace(/\r\n?/g, '\n')
+          .replace(UNSAID, '')
+          .trim();
+      if (!m) throw chatErr(404, 'no such message');
+      if (m.who !== chat.me?.login) throw chatErr(403, 'only your own messages are yours to edit');
+      if (m.poll || pollOf(text)) throw chatErr(400, 'a poll is not edited — ask another');
+      if (!text) throw chatErr(400, 'nothing left — delete it instead');
+      if (text.length > CHAT_BODY_MAX) throw chatErr(400, `a message is ${CHAT_BODY_MAX} characters at most`);
+      if (text === m.body) return json(res, 200, { msg: m });
+      const r = await chatWrite(() => ghRest('PATCH', `/repos/${chat.repo}/issues/comments/${id}`, { body: text }));
+      const c = chatTake([{ ...chatMsg(r.data), n: m.n }]);
+      chatTell(c, true);
+      return json(res, 200, { msg: chat.msgs.find(x => x.id === id) || m });
+    }
+    if (M === 'POST' && what === 'react') {
+      // your reaction on a message, given or taken back (2026-11-25); a poll's are its votes
+      ready();
+      const id = Number(body.id),
+        m = chat.msgs.find(x => x.id === id),
+        r = String(body.r ?? '');
+      if (!m) throw chatErr(404, 'no such message');
+      if (m.poll) throw chatErr(400, "a poll's reactions are its votes");
+      if (!REACTIONS.includes(r)) throw chatErr(400, `not one of GitHub's reactions: ${REACTIONS.join(' ')}`);
+      const url = `/repos/${chat.repo}/issues/comments/${id}/reactions`;
+      let list = (await ghRest('GET', `${url}?per_page=100`)).data || [];
+      const mine = list.find(x => x.user?.login === chat.me.login && x.content === r);
+      if (mine) {
+        await chatWrite(() => ghRest('DELETE', `${url}/${mine.id}`));
+        list = list.filter(x => x.id !== mine.id);
+      } else {
+        const made = (await chatWrite(() => ghRest('POST', url, { content: r }))).data;
+        if (made?.id && !list.some(x => x.id === made.id)) list.push(made);
+      }
+      // as written, not asked again (GitHub's list may lag its writes)
+      const held = chat.msgs.find(x => x.id === id) || m;
+      Object.assign(held, reactCounts(list), { reacts: reactsOf(list) });
+      chat.tags.delete(lookUrl()); // as a vote's: the next look sees another's that brings the counts back
+      held.reactsRx = held.rx;
+      broadcast('chatmsgs', { n: held.n, add: [held], gone: [] });
+      return json(res, 200, { msg: held });
+    }
+    if (M === 'GET' && what === 'emojis') return json(res, 200, { emojis: await chatEmojis() });
     if (M === 'POST' && what === 'delete') {
       // yours, or anyone's for the admin
       ready();

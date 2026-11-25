@@ -48,6 +48,9 @@
     #room .rmbtn,
     #room .rmopt,
     #room .rmpic,
+    #room .rmrc,
+    #room .rmeb,
+    #room .rmrb,
     #stitle > .out
   ) {
     border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important;

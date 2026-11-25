@@ -146,6 +146,7 @@ const prefs = {
   zeTrophies: {},
   prChips: 'matrix',
   agentFor: {},
+  emojiRecent: [], // the chat's emoji you used last, newest first (2026-11-25): the picker's first row
   prAgent: null,
   prio: true,
   pinned: 0,

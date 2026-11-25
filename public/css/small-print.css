@@ -68,7 +68,7 @@ dialog p.help,
 .gterm .tbody,
 .gblank,
 .pop,
-#room :is(.rmlog, .rmpeople) {
+#room :is(.rmlog, .rmpeople, .rmemog) {
   overscroll-behavior: contain;
 }
 .card .top .tprs,

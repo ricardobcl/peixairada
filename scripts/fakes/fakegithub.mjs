@@ -17,6 +17,8 @@
 // — a 404 otherwise, as GitHub answers —, and POST /markdown renders `![](…)` as GitHub does for you: an attachment of a
 // repo you can read as a signed address on this port (`/pics/…?jwt=`, served with no token), any other as it was.
 // `asset(repo, bytes, type)` is a picture dropped on GitHub's page; `assets` holds them all.
+// Edits and emoji (2026-11-25): a comment PATCHed by its author (or a writer), as GitHub allows; GET /emojis a few of
+// GitHub's names, Unicode ones by their code points and one picture of its own (`octocat`), as GitHub answers.
 import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 
@@ -250,6 +252,23 @@ export async function startFakeGitHub({
         return res.end(html);
       }
       if (M === 'GET' && path === '/user') return send(200, user(me));
+      if (M === 'GET' && path === '/emojis') {
+        const u = cp => `https://github.githubassets.com/images/icons/emoji/unicode/${cp}.png?v8`;
+        return send(200, {
+          '+1': u('1f44d'),
+          tada: u('1f389'),
+          heart: u('2764'),
+          rocket: u('1f680'),
+          smile: u('1f604'),
+          smiley: u('1f603'),
+          sweat_smile: u('1f605'),
+          fish: u('1f41f'),
+          ramen: u('1f35c'),
+          hash: u('0023-20e3'),
+          rainbow_flag: u('1f3f3-fe0f-200d-1f308'),
+          octocat: 'https://github.githubassets.com/images/icons/emoji/octocat.png?v8',
+        });
+      }
       if (M === 'GET' && (m = path.match(/^\/users\/([^/]+)$/)))
         return people.has(m[1]) ? send(200, user(m[1])) : no(404, 'Not Found');
       if (M === 'GET' && path === '/user/memberships/orgs')
@@ -463,6 +482,14 @@ export async function startFakeGitHub({
           f.c.reactions.splice(f.c.reactions.indexOf(x), 1);
           return send(204);
         }
+      }
+      if (M === 'PATCH' && (m = rest.match(/^\/issues\/comments\/(\d+)$/))) {
+        const f = find(Number(m[1]));
+        if (!f || f.r !== r) return no(404, 'Not Found');
+        if (f.c.user.login !== me && !may(r, me, 'push')) return no(403, 'Must have push access');
+        f.c.body = String(body.body || '');
+        f.c.updated_at = at();
+        return send(200, commentOut(r, f.i, f.c));
       }
       if (M === 'DELETE' && (m = rest.match(/^\/issues\/comments\/(\d+)$/))) {
         const f = find(Number(m[1]));

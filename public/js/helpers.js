@@ -144,6 +144,11 @@ const ICON = {
   // the chat (2026-10-17): a speech bubble, its status-bar segment and Settings' pane; two heads, its people
   poll: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5h11M4.5 11V7.5M8 11V3.5M11.5 11V6"/></svg>', // a poll in the chat (2026-10-20): a bar chart
   pic: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><circle cx="5.75" cy="6.25" r="1.25"/><path d="m2.5 12 3.75-3.75 2.5 2.5 2-2L14 12"/></svg>', // a picture in the chat (2026-11-25): a frame, a sun, hills
+  emoji:
+    '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M5.5 9.5a3 3 0 0 0 5 0"/><path d="M6 6.4v.2M10 6.4v.2"/></svg>', // the chat's emoji (2026-11-25): a smile
+  react:
+    '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.4 8.6A5.5 5.5 0 1 1 8.6 2.6"/><path d="M5.6 9.4a2.8 2.8 0 0 0 4.6 0M6 6.4v.2M10 6.4v.2M12.5 1.5v4M10.5 3.5h4"/></svg>', // a reaction added: a smile and a plus
+  edit: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z"/><path d="M9 4l3 3"/></svg>', // your message edited: a pencil
   chat: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.6A1.6 1.6 0 0 1 4.1 2h7.8a1.6 1.6 0 0 1 1.6 1.6v5.8A1.6 1.6 0 0 1 11.9 11H7.2l-3.2 3v-3a1.6 1.6 0 0 1-1.5-1.6Z"/></svg>',
   people:
     '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.75 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.5-.25a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM1 14c0-2.4 2.1-4.2 4.75-4.2S10.5 11.6 10.5 14Zm10.5 0c0-1.4-.45-2.6-1.25-3.5.35-.1.7-.15 1.05-.15 2.1 0 3.7 1.4 3.7 3.4v.25Z"/></svg>',
