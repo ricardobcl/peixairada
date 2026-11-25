@@ -33,6 +33,8 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   and the column split (`tileKeysOn`) — one half keeps every key as it was:
   * ⌥⌘←→↑↓ go to the tile that way by the tree's boxes (`tileRects`, so a zoomed half does not hide the others): one
     sharing the edge, the most of it, and the way back the tile just left (`tileCame`), not the first of a long side.
+    Sideways, the topmost of those beside it (later: *"When moving sideways it should be the top most tile that
+    borders its height."*), whatever the way in — for ⌥⌘⇧'s move beside one too; up and down keep the rule before.
     At an edge, a note and nothing moves — never the list's next chat. **What is given up while it holds**: ⌥⌘↑↓'s
     walk down the list, ⌥⌘←→'s walk along the tabs (a strip's tabs are a click), ⌥⌘⇧↑↓'s pinned card.
   * ⌥⌘⇧ + an arrow moves the tile (`hotTileMove`), read as i3's move rather than a swap: out of the tree, its sibling

@@ -312,7 +312,8 @@ const TILE_DIRS = {
   ArrowDown: [1, 1, 'below', 'bottom'],
 }; // axis (0 x, 1 y), sign, words, edge
 let tileCame = null; // the last step: back the other way goes where it came from, not the first of a long side
-/** The tile next to g that way: one sharing its edge and its span, the most of it, the one just come from first. */
+/** The tile next to g that way: one sharing its edge and its span. Sideways the topmost of them (2026-11-25, later),
+ *  whatever the way in; up or down the one sharing the most, the one just come from first. */
 function tileToward(s, tree, g, dir) {
   const R = tileRects(tree),
     c = R[g],
@@ -323,11 +324,13 @@ function tileToward(s, tree, g, dir) {
   const near = Object.entries(R)
     .map(([k, r]) => ({
       g: +k,
+      top: r[1],
       gap: sg > 0 ? r[ax] - c[ax + 2] : c[ax] - r[ax + 2],
       over: Math.min(r[o + 2], c[o + 2]) - Math.max(r[o], c[o]),
     }))
     .filter(x => x.g !== g && Math.abs(x.gap) < E && x.over > E)
-    .sort((a, b) => b.over - a.over);
+    .sort((a, b) => (ax === 0 ? a.top - b.top : b.over - a.over));
+  if (ax === 0) return near[0]?.g ?? null;
   const back =
     tileCame &&
     tileCame.id === s.id &&
