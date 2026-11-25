@@ -3957,6 +3957,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const r = await fetch(url, body === undefined ? { method, headers } : { method, headers, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
     if (r.status === 401 && d.key) keyLock(d.key);
+    // a route the server does not have (its router's own `not found`): this page is newer than the server serving it — a
+    // pull by hand, not restarted (2026-11-25: every pin, the day Pinned came) — and said so, with the way out (`old`)
+    if (r.status === 404 && d.error === 'not found') throw Object.assign(new Error(`the server running is older than this page — ${state.update?.restart ? 'Settings › Updates restarts it' : 'scripts/launchd.sh restart restarts it'}`), { status: 404, body: d, old: true });
     if (!r.ok) throw Object.assign(new Error(d.error || `HTTP ${r.status}`), { status: r.status, body: d });
     return d;
   }
@@ -4129,7 +4132,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (!u) return null;
     const n = u.steps?.length || 0, at = k => n ? (u.steps.indexOf(k) + .5) / n : null;
     if (u.busy === 'updating') return { say: UPD_STEPS[u.steps?.[u.step]] || 'updating', p: n && u.step >= 0 ? (u.step + .5) / n : null, of: n && u.step >= 0 ? `${u.step + 1} of ${n}` : '' };
-    const fresh = u.last && Date.now() - Date.parse(u.last.at) < 60_000;
+    const fresh = [u.last?.at, u.restartAt].some(t => t && Date.now() - Date.parse(t) < 60_000);   // restartAt: a restart for the code on disk (2026-11-25)
     if ((u.restarting || reload.why === 'server') && fresh) return { say: UPD_STEPS.restart, p: at('restart') };
     if (u.building) return { say: UPD_STEPS.build, p: null };
     return null;
@@ -4158,6 +4161,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return esc(`cd ${dir.startsWith('~/') ? `~/${q(dir.slice(2))}` : q(dir)} && ${words.map(q).join(' ')}`);
   }
   const canBuild = u => !u.busy && ['off', 'tried', 'busy'].includes(u.appWhy);
+  const canRestart = u => !u.busy && !!u.restart && !!u.pending?.includes('server');   // the agent, older than its checkout (2026-11-25)
   /** Settings' row for the update (2026-10-16, a status row): a few words for where it stands (`word`), one line on it
    *  (`say`), and the rest — the commands that clear the way, why a commit was held, the last update — under Details
    *  (`more`); and whether its button updates (rather than looks). */
@@ -4186,18 +4190,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     })[u.why] || `<code>${shortSha(u.head)}</code>${u.checkedAt ? '' : ' · not looked yet'}`;
     if (run && u.busy !== 'updating') say += ` · ${run.say}…`;
     else if (!u.busy) say += appSay(u);
-    if (u.pending?.includes('server')) { say += ' · restart the server to wear it'; more.push('<code>scripts/launchd.sh restart</code> restarts it; the chats in drawers stay'); }
+    // the server older than the checkout (2026-11-25): a pull by hand, or an update this server could not restart for
+    if (u.pending?.includes('server')) { say += u.restart ? ' · the server running is older than the checkout — <b>Restart now</b> starts it again' : ' · restart the server to wear it'; more.push(`<code>${inCheckout(u, 'scripts/launchd.sh', 'restart')}</code> restarts it; the chats in drawers stay`); }
     if (u.checkedAt && !u.busy) say += ` · looked ${rel(u.checkedAt)} ago`;
     if (!u.every) { say += ' · it looks only when asked'; more.push('this server is not the login agent, so it looks only when asked'); }
     if (u.behind > 0 && u.commits?.length) more.push(`${u.behind === 1 ? 'the new commit' : `the new commits${u.behind > u.commits.length ? `, the newest ${u.commits.length}` : ''}`}${u.sign?.ok && u.sign.by ? `, the newest signed by ${esc(u.sign.by)}` : ''}: ${u.commits.map(c => `<code>${esc(c.h)}</code> ${esc(c.s)} — ${esc(c.a)}`).join('<br>')}`);   // what Update now takes, named first (2026-11-06)
     if (u.last) more.push(`last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${u.last.parts.length ? `, touching ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}`);
-    return { word: updWord(u), say, more: more.join('<br>'), apply: canPull(u) || canBuild(u) };
+    return { word: updWord(u), say, more: more.join('<br>'), apply: canPull(u) || canBuild(u) || canRestart(u), restart: !canPull(u) && !canBuild(u) && canRestart(u) };
   }
   /** Where the update stands, in a few words: the status row's name. */
   const updWord = u => u.busy === 'checking' ? 'Looking…' : u.busy === 'updating' ? 'Updating…' : u.error ? 'Could not look'
     : u.failed ? 'Update failed' : u.why === 'held' ? 'Held back' : u.why === 'diverged' ? 'Diverged' : u.why === 'unsigned' ? 'Not signed'
     : u.why === 'changes' && u.clash?.length ? 'Waiting on your changes' : u.behind > 0 ? (u.rewritten ? 'History rewritten' : many(u.behind, 'new commit'))
-    : u.why === 'detached' ? 'On no branch' : u.why === 'no-upstream' ? 'No remote branch' : u.app?.behind ? 'The app is behind'
+    : u.why === 'detached' ? 'On no branch' : u.why === 'no-upstream' ? 'No remote branch' : u.pending?.includes('server') ? 'The server is behind' : u.app?.behind ? 'The app is behind'
     : u.ahead ? 'Ahead of the remote' : 'Up to date';
   /** The status bar's word on the update (2026-10-12): what it is doing, step by step; a page that waits to be reloaded
    *  (a click reloads it); an update that failed or was held back; new commits not taken, and why; for a minute, what
@@ -4215,6 +4220,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (u.behind > 0 && why != null) return seg('new', ICON.download, `${u.rewritten ? 'history rewritten' : many(u.behind, 'new commit')}${why || (canPull(u) ? ' · update' : '')}`, tip, null, canPull(u) ? 'to update now' : '');
     const appWhy = { off: '', tried: '', manual: '', changes: ' · changes here', busy: ' · once you rest' }[u.appWhy];   // nothing to pull, and the app older than mac/ here (2026-10-14)
     if (u.app?.behind && appWhy != null) return seg('new', ICON.download, `the app is behind${appWhy || (canBuild(u) ? ' · rebuild' : '')}`, tip, null, canBuild(u) ? 'to rebuild it now (it quits and opens again)' : '');
+    if (u.pending?.includes('server')) return seg('new', ICON.reload, `the server is behind${canRestart(u) ? ' · restart' : ''}`, tip, null, canRestart(u) ? 'to restart it now (the chats in drawers stay)' : '');   // 2026-11-25
     if (u.last && Date.now() - Date.parse(u.last.at) < 60_000) return seg('done', ICON.reload, `updated · ${many(u.last.count, 'commit')}`, tip);
     return '';
   }
@@ -4225,7 +4231,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#autoUpdateSay').textContent = w.none ? 'Only for a board run from a git checkout' : u?.on ? 'Pulls new commits after two idle minutes, never over your changes' : 'The status bar says when new commits come';
     $('#updWord').textContent = w.word; setHtml($('#updSay'), w.say);
     $('#updMore').hidden = !w.more; setHtml($('#updMore div'), w.more || '');
-    b.textContent = w.apply ? 'Update now' : 'Check now'; b.dataset.apply = w.apply ? '1' : ''; b.disabled = !!(u?.busy || w.none);
+    b.textContent = w.restart ? 'Restart now' : w.apply ? 'Update now' : 'Check now'; b.dataset.apply = w.apply ? '1' : ''; b.disabled = !!(u?.busy || w.none);
   }
   /** The server's word on the update — the snapshot's, an `update` event's, an answer's. A newer page is wanted once an
    *  update that changed the page came after this one was loaded. */
@@ -13290,8 +13296,7 @@ const toolName = n => {
     show(on);
     api('POST', `/api/sessions/${id}/favorite`, { on }).catch(e => {
       show(!on);
-      const old = e.status === 404 && e.message === 'not found';   // a server started before this has no such route
-      note($('#space'), old ? 'Stars need the server restarted (scripts/launchd.sh restart)' : `Could not ${on ? 'star' : 'unstar'} it: ${e.message}`, true);
+      note($('#space'), `Could not ${on ? 'star' : 'unstar'} it: ${e.message}`, true);   // a server started before this has no such route: api() says so (e.old)
     });
   }
   function spShut(key) { clearTimeout(sp.open.get(key)); sp.open.delete(key); }

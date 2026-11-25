@@ -5410,7 +5410,7 @@ const UPDATE_EVERY_MS = Number(process.env.UPDATE_EVERY_MS ?? (UNDER_AGENT ? 30 
 const UPDATE_QUIET_MS = Number(process.env.UPDATE_QUIET_MS ?? 2 * 60_000);
 const UPDATE_DIR = process.env.UPDATE_DIR || __dirname;
 const APP_DIR = process.env.BOARD_APP || '/Applications/peixAIrada.app';   // the installed app (BOARD_APP: the tests' stand-in)
-const APP_LOOK_MS = 60_000;   // how often the installed app is held against the checkout (lookApp)
+const APP_LOOK_MS = Number(process.env.APP_LOOK_MS || 60_000);   // how often the installed app, and the code this server runs (2026-11-25), are held against the checkout (lookApp)
 const restartBin = process.env.UPDATE_RESTART_BIN || (UNDER_AGENT ? join(UPDATE_DIR, 'scripts', 'launchd.sh') : '');
 const buildBin = process.env.UPDATE_BUILD_BIN || (UNDER_AGENT && existsSync(APP_DIR) ? join(UPDATE_DIR, 'mac', 'build.sh') : '');
 let lastTouchAt = 0;   // the last key sent to a drawer, or anything the board was asked to do (the HTTP handler)
@@ -5419,6 +5419,32 @@ let lastTouchAt = 0;   // the last key sent to a drawer, or anything the board w
 // installed app against the checkout (readApp), and `appWhy` why it is not being rebuilt (appWhyNot).
 const upd = { busy: null, checkout: null, checkedAt: null, error: null, failed: null, why: null, pending: [], steps: null, step: -1, building: false, app: null, appWhy: null };
 let updRetry = null;
+// The code this server runs, against its checkout's (2026-11-25): a pull by hand — the way round an update the board would
+// not take — left the agent on the server it started with, serving the new page from disk, whose new routes answered `not
+// found` (every pin, the day Pinned came). What a restart takes in (updateParts' `deps` and `server`), stamped as it was
+// when this server loaded it — at import, before a busy port is waited on: the agent behind the app's own server waits
+// for hours with the code it loaded — and again as the checkout is read. What differs is `pending`, said where the update
+// is; *update now* restarts the agent for it, the packages installed first when they moved.
+const CODE_PARTS = { deps: ['package.json', 'package-lock.json'], server: ['server.mjs', 'lib'] };
+function codeStamp(dir = UPDATE_DIR) {
+  const out = {};
+  for (const [part, files] of Object.entries(CODE_PARTS)) {
+    const h = createHash('sha1');
+    for (const f of files) {
+      let names = [f]; try { if (statSync(join(dir, f)).isDirectory()) names = readdirSync(join(dir, f), { recursive: true }).map(n => join(f, n)).sort(); } catch {}
+      for (const n of names) try { h.update(`${n}\0`).update(readFileSync(join(dir, n))); } catch {}   // a folder in lib/, a file gone: its name alone
+    }
+    out[part] = h.digest('hex');
+  }
+  return out;
+}
+const RAN_CODE = codeStamp();
+/** What a restart would take in that this server lacks, in updateParts' order — none while one is on its way. */
+function staleParts() {
+  if (upd.restarting || !upd.checkout) return [];
+  const now = codeStamp(), moved = Object.keys(CODE_PARTS).filter(k => now[k] !== RAN_CODE[k]);
+  return moved.includes('deps') ? ['deps', 'server'] : moved;
+}
 /** What a change to these files asks for, in the order it is done — pure. `deps`: npm install; `server`: a restart;
  *  `page`: a reload; `app`: a rebuild. The rest (docs, tests, the harness) asks for nothing. */
 function updateParts(files) {
@@ -5431,7 +5457,7 @@ function updateParts(files) {
   }
   return ['deps', 'server', 'page', 'app'].filter(k => has.has(k));
 }
-const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, dir: tildePath(UPDATE_DIR), ...u, last: updateLast, held: updateHeld, build: appBuild }; };   // dir: the settings' commands cd there (2026-10-15)
+const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, dir: tildePath(UPDATE_DIR), restart: !!restartBin, ...u, last: updateLast, held: updateHeld, build: appBuild }; };   // dir: the settings' commands cd there (2026-10-15); restart: this server restarts itself, as the agent does, for `pending` (2026-11-25)
 const sayUpdate = () => broadcast('update', updateState());
 /** The environment of what an update runs: the server's, minus the nesting markers and the agent's own name, with the
  *  running node first on PATH (npm and build.sh want a node, and the agent's PATH may have none), and git never asking. */
@@ -5595,8 +5621,12 @@ async function checkUpdate({ asked = false, apply = false } = {}) {
     if (upd.why === 'current') upd.failed = null;
     upd.appWhy = appWhyNot(asked, apply, !upd.why || upd.why === 'busy');
     if (upd.appWhy === 'busy') updRetry = setTimeout(checkUpdate, quietLeft() + 1000);
+    upd.pending = staleParts();
     if (!upd.why) { upd.busy = 'updating'; upd.failed = null; await applyUpdate(); }
-    else if (!upd.appWhy) { upd.failed = null; startBuild(); }   // nothing to pull, and the app behind: rebuilt alone
+    else {
+      if (!upd.appWhy) { upd.failed = null; startBuild(); }   // nothing to pull, and the app behind: rebuilt alone
+      if (apply && restartBin && upd.pending.length) await restartStale();   // nothing to pull, and this server older than its checkout (2026-11-25)
+    }
   } catch (e) { upd.error = errText(e); if (upd.busy === 'updating') upd.failed = upd.error; console.error(`[peixairada] update: ${upd.error}`); }
   finally { upd.busy = null; sayUpdate(); }
   return updateState();
@@ -5635,10 +5665,22 @@ async function applyUpdate() {
   Object.assign(upd, await readCheckout(), { why: 'current' });
   upd.app = await readApp();
   console.log(`[peixairada] updated ${from.slice(0, 7)} → ${to.slice(0, 7)} (${count} commit${count === 1 ? '' : 's'}${rewritten ? ', onto its rewritten history' : ''}): ${parts.join(', ') || 'nothing to start again'}`);
-  upd.pending = parts.filter(p => p === 'server' && !restartBin);   // the app's, when this server does not rebuild it, is appWhy's `manual`
+  upd.pending = has('server') && restartBin ? [] : staleParts();   // the app's, when this server does not rebuild it, is appWhy's `manual`
   upd.appWhy = appWhyNot(true, true, false);   // the commits taken: the app comes along whenever it is behind them
   if (!upd.appWhy) { step('build'); startBuild(); }
   if (has('server') && restartBin) { upd.restarting = true; step('restart'); setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000); }   // the answer and the event go out first
+}
+/** *update now* with nothing to pull and this server older than its checkout (2026-11-25, `pending`): the packages
+ *  installed when they moved, the server on disk tried on a spare port, then the agent restarted. */
+async function restartStale() {
+  const deps = upd.pending.includes('deps');
+  upd.busy = 'updating'; upd.failed = null; upd.steps = [...(deps ? ['deps'] : []), 'server', 'restart'];
+  const step = k => { upd.step = upd.steps.indexOf(k); sayUpdate(); };
+  if (deps) { step('deps'); await npmInstall(); }
+  await preflight(['server'], upd.head, step);
+  upd.pending = []; upd.restarting = true; upd.restartAt = new Date().toISOString(); step('restart');
+  console.log(`[peixairada] update: restarting for the checkout's ${deps ? 'packages and server' : 'server'}, newer than this one`);
+  setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000);   // the answer and the event go out first
 }
 /** git's refusal to fast-forward over files here, said as the settings say a clash (2026-10-15): which files, and what
  *  to do about them — a change made since the look, or a file not in git that the commits add. Null for any other failure. */
@@ -5679,11 +5721,16 @@ function buildEnded(code = null) {
 async function lookApp() {
   if (upd.busy || !upd.checkout) return;
   const a = await readApp().catch(() => upd.app);
+  // a pull by hand (2026-11-25): the checkout read again once HEAD moves, and the code a restart would take in
+  const head = await gitIn(['rev-parse', 'HEAD']).catch(() => upd.head);
+  const co = head !== upd.head ? await readCheckout().catch(() => null) : null;
   if (upd.busy) return;
-  const was = JSON.stringify([upd.app, upd.appWhy]);
+  const was = JSON.stringify([upd.app, upd.appWhy, upd.pending, upd.head, upd.why]);
+  if (co) { Object.assign(upd, co); if (!upd.behind) upd.why = whyNot(false, false); }
+  upd.pending = staleParts();
   upd.app = a; upd.appWhy = appWhyNot(false, false, upd.why === 'busy');
   if (UPDATE_EVERY_MS > 0 && !updRetry && (upd.appWhy === null || upd.appWhy === 'busy')) { checkUpdate(); return; }
-  if (JSON.stringify([upd.app, upd.appWhy]) !== was) sayUpdate();
+  if (JSON.stringify([upd.app, upd.appWhy, upd.pending, upd.head, upd.why]) !== was) sayUpdate();
 }
 function watchBuild() {
   const b = appBuild; if (!b || b.done) return;
@@ -5806,7 +5853,7 @@ function termEnv() {
 const BOARD_ENV = new Set(['WT_ASK_MS', 'PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
   'MAX_ENTRIES', 'TAIL_BYTES', 'HEAD_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'AGENT_WORDS_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
-  'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
+  'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'APP_LOOK_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
   'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN', 'DISCLAIM',
   ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'osascript', 'cc'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
@@ -7336,7 +7383,7 @@ setInterval(pollRepos, REPOS_POLL_MS);
 setInterval(reloadConfig, CONFIG_POLL_MS);
 setInterval(lunchTick, LUNCH_TICK_MS); setTimeout(lunchTick, Math.min(5000, LUNCH_TICK_MS));   // lunch's clock (2026-10-18): the morning's looks, the reminder   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
-readCheckout().then(async co => { Object.assign(upd, co); if (co.checkout) { upd.app = await readApp().catch(() => null); upd.appWhy = appWhyNot(false, false, false); } sayUpdate(); }, e => { upd.error = errText(e); });
+readCheckout().then(async co => { Object.assign(upd, co); if (co.checkout) { upd.app = await readApp().catch(() => null); upd.appWhy = appWhyNot(false, false, false); upd.pending = staleParts(); } sayUpdate(); }, e => { upd.error = errText(e); });   // pending: a server that waited on the port while a pull came (2026-11-25)
 setInterval(lookApp, APP_LOOK_MS);
 watchBuild();   // an app's rebuild that outlived the restart it came with   // where the checkout stands, for the settings, before the first look
 if (UPDATE_EVERY_MS > 0) { setTimeout(checkUpdate, Math.min(60_000, UPDATE_EVERY_MS)); setInterval(checkUpdate, UPDATE_EVERY_MS); }   // the board's own new commits (checkUpdate)
