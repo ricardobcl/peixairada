@@ -89,7 +89,7 @@ export function newTicket() {
 // on every probe and gave its page the key and the bridge — so another account, or a container publishing the port,
 // that held 7331 while this server was down (a login, a restart, a crash) had the key. Now the app's probe sends a nonce
 // and no key, and this answers with an HMAC of it under the key, which only a server that can read the key file can
-// write; the app checks it before anything else (`ServerController.probe` in main.swift). Open as /api/alive is: an
+// write; the app checks it before anything else (`ServerController.probe` in ServerController.swift). Open as /api/alive is: an
 // HMAC tells nothing of its key.
 const ALIVE_NONCE = /^[0-9a-f]{32,128}$/;
 export const aliveProof = req => {

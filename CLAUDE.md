@@ -66,13 +66,13 @@ npm run scenarios                   # all of them, one at a time, with a verdict
 | `public/index.html`, `lib/page.mjs` | The page's skeleton, an include per part, put in as served (2026-11-25) |
 | `public/css/`, `public/js/` | The page by concern; the script one IIFE across its parts, in order |
 | `public/vendor/` | `marked`, `DOMPurify`, `highlight.js`, `xterm` (+ fit, web-links): UMD builds, `node_modules`' bytes, no CDN |
-| `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
+| `mac/Sources/` | The native shell, a file per concern (2026-11-25; mac/CLAUDE.md maps them) |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/worktree.sh` | A worktree per piece of parallel work |
 | `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness |
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's cost in WebKit |
-| `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/main.swift` itself, driven |
+| `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/` itself, driven |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView`, the app's engine |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
@@ -567,7 +567,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
   its group, one line, its codes in HOTKEYS, CMDKEYS or ⌥⌘⇧'s `SHIFTKEYS` (2026-11-24) — the ? sheet is drawn from it (`keyNotes`),
   and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
-  main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. Handlers are `hot…`.
+  Keys.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. Handlers are `hot…`.
   **C T G E D J pressed again from the tab they bring up** (`hot…Key`: `zoomAgain`, then the plain `hot…`) fill the
   column with that half, and back (`toggleZoom`); `typeInShell` and the launcher call the plain ones. Capture phase,
   `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them (`#hmenu` and `#room` close instead);
@@ -579,7 +579,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `hotNewTab`: in a terminal, on the chat, the changes or an empty half another zsh, `startShell(s, true)`; on a page
   or a blank tab a blank tab, `openBlank`), **W** the tab the keys are in (`hotClose` → `dropTab`; a dialog up first;
   on the chat's tab or an empty half, the half; with one half, `false`). `peixKey(code, mods)` says which map and
-  **returns whether the key was taken**; `cmdKeys` in main.swift is the forwarder's copy (a digit as `Digit<n>`;
+  **returns whether the key was taken**; `cmdKeys` in Keys.swift is the forwarder's copy (a digit as `Digit<n>`;
   `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only
   when nothing is split).
 * **⌃⌘F is the full screen Settings › General picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
@@ -695,7 +695,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
   `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`; *Mute this chat* on any, `peixMute`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
-  `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
+  `pageZoom`, and the shell turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.
 
 ## The chat column's two halves
@@ -966,11 +966,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **No in-page toasts**: alerts are the badge plus a system notification (the app sets `NOTIFY=off` on its own
   server); with the board in front an alert can be heard instead (`chime`, `prefs.sounds`, off; none for the chat in view, `CHIME_GAP_MS`; Web Audio made on a
   press, `audioUp`, suspended between sounds, `audioRest`). **The notifications switch is the server's** (`notifications` in the state file, `PUT
-  /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
+  /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (Notifications.swift, the
   page's `Notification`, the server's osascript) skip it. A new poster reads `quiet` — and `heading`, the server's
   title for an alert that is not Claude's. → `notifications.mjs`.
 * **A chat muted** (2026-11-02; `mutedChats`, `…/mute`, `hushOf`, `setMuted`, `.chip.cmute`): its alerts `quiet` and `muted`, questions too; a PR's goes to another chat (`prAlertChat`); nothing that calls you counts it (`askingLoud`, `wanting`), its card still does. → `mute-chat.test.mjs`, `chat-mute.mjs`.
-* **A change to `:root`'s `--frame` moves the two hex pairs in main.swift's `buildWindow` with it**: the board's web view
+* **A change to `:root`'s `--frame` moves the two hex pairs in Window.swift's `buildWindow` with it**: the board's web view
   draws no ground, the window's colours are the page's `--frame` per appearance.
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
 * `pkill -f server.mjs` also kills the app's own server: stop test servers **by port**.
@@ -994,7 +994,7 @@ to the page, load it**: `check-page` only compiles, and a `const` read before it
   can ask (`burst()`, 2026-11-05) and `WK_BORDERS` are at its head. On screen by one pixel (off a screen WebKit runs
   no frames); a locked screen or a sleeping display hides it.
 * **What the page and the shell do only together is checked in the real shell** (2026-11-04; `npm run shell`, `shell-checks/`): a fake
-  bridge says what the page asks for, this whether the window agrees; how is in mac/CLAUDE.md. **A change to `main.swift` or to what
+  bridge says what the page asks for, this whether the window agrees; how is in mac/CLAUDE.md. **A change to `mac/Sources/` or to what
   crosses the bridge runs it before it lands** (`npm run check` says when the shell has moved since). → `pane-place.mjs`.
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board, lights on: the web process's
   CPU, layers, memory against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:

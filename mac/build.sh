@@ -74,7 +74,10 @@ iconutil -c icns peixAIrada.iconset -o peixAIrada.icns
 
 echo "› compile"
 rm -rf "$BUILD"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -swift-version 5 -O -target "$TARGET" "$DIR/Sources/main.swift" -o "$APP/Contents/MacOS/peixAIrada"
+# Every file in Sources (2026-11-25: main.swift alone before), in C's order, the one shell.mjs and check.sh take them in;
+# one module optimized whole (-wmo), as the one file was: per file, a call into another is never inlined.
+cd "$DIR/Sources"
+swiftc -swift-version 5 -O -wmo -target "$TARGET" $(printf '%s\n' *.swift | LC_ALL=C sort) -o "$APP/Contents/MacOS/peixAIrada"
 
 echo "› bundle"
 cp "$DIR/icon/peixAIrada.icns" "$APP/Contents/Resources/AppIcon.icns"

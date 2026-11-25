@@ -153,7 +153,7 @@
   }
   // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
   // settings' Keys pane is its source, so the list is kept in one place; the box narrows it.
-  // Every key in one table (2026-10-12; typed by hand into the Keys pane before, beside HOTKEYS and main.swift's
+  // Every key in one table (2026-10-12; typed by hand into the Keys pane before, beside HOTKEYS and Keys.swift's
   // boardKeys): [what you press, its group, what it does in a line, the rest for its tooltip, the codes it is in
   // HOTKEYS (alt:) or CMDKEYS (cmd:)]. The Keys pane and the ? sheet are drawn from it, grouped, and `npm run check`
   // holds HOTKEYS, CMDKEYS and the app's forwarder to it (scripts/check-page.mjs). A row with an id is one the setup
@@ -259,7 +259,7 @@
   // ⌥⌘⇧ (2026-11-24, round XXX's R3): the open chat's card a place up or down in Top priority — ⌥⌘↑↓ walk the cards.
   const SHIFTKEYS = { ArrowUp: () => hotPrioMove(-1), ArrowDown: () => hotPrioMove(1) };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
-  // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
+  // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see Menus.swift).
   // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
   const runHotkey = (code, mods = 'altcmd') => {
     if (code === 'Escape') return hotEscape();

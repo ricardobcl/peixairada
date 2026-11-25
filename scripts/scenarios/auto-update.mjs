@@ -32,7 +32,7 @@ const PAGE = readPage();   // put together: the tiny project's page is one file
 mkdirSync(dev);
 git(dev, 'init', '-q', '-b', 'main');
 write({ 'server.mjs': TINY, 'public/index.html': PAGE, '.github/allowed_signers': `test@example.com namespaces="git" ${readFileSync(`${signer}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}\n` });
-for (const f of ['lib/testserver.mjs', 'lib/page.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
+for (const f of ['lib/testserver.mjs', 'lib/page.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift', 'mac/Sources/Keys.swift']) cpSync(join(ROOT, f), join(dev, f));
 git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the first');
 git(root, 'init', '-q', '--bare', '-b', 'main', origin);
 git(dev, 'remote', 'add', 'origin', origin); git(dev, 'push', '-q', '-u', 'origin', 'main');

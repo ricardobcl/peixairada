@@ -30,7 +30,7 @@ export function project() {
   mkdirSync(dev);
   git(dev, 'init', '-q', '-b', 'main');
   write(dev, { 'server.mjs': TINY, 'package.json': '{ "name": "tiny" }\n', 'README.md': 'tiny\n', 'public/index.html': PAGE, '.github/allowed_signers': signers(signer) });
-  for (const f of ['lib/testserver.mjs', 'lib/page.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
+  for (const f of ['lib/testserver.mjs', 'lib/page.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift', 'mac/Sources/Keys.swift']) cpSync(join(ROOT, f), join(dev, f));
   git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the first');
   git(root, 'init', '-q', '--bare', '-b', 'main', origin);
   git(dev, 'remote', 'add', 'origin', origin); git(dev, 'push', '-q', '-u', 'origin', 'main');

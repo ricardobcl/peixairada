@@ -37,11 +37,14 @@ if [ -d "$(xcode-select -p 2>/dev/null)" ]; then echo "› cc lib/disclaim.c"; c
 if command -v swiftc >/dev/null 2>&1; then
   MIN_OS=$(sed -n 's/^MIN_OS=\(.*\)$/\1/p' mac/build.sh)
   echo "› swiftc -typecheck (macOS $MIN_OS)"
-  swiftc -typecheck -swift-version 5 -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" mac/Sources/main.swift
+  # the app's files (2026-11-25), in C's order — the one build.sh compiles them in and shell.mjs hashes them in —, one module
+  # checked whole (-wmo: one job, not one a file)
+  SWIFT=$(printf '%s\n' mac/Sources/*.swift | LC_ALL=C sort)
+  swiftc -typecheck -wmo -swift-version 5 -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" $SWIFT
   swiftc -typecheck -swift-version 5 scripts/webkit.swift
   # …and the shell as `npm run shell` builds it (2026-11-04); that run is what looks at it, so a change it has not seen is said
-  swiftc -typecheck -swift-version 5 -D PEIX_PROBE -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" mac/Sources/main.swift scripts/shell-probe.swift
-  [ "$(cat mac/Sources/main.swift scripts/shell-probe.swift | shasum -a 256 | cut -d' ' -f1)" = "$(cat "$NM/.cache/peixairada/shell-passed" 2>/dev/null)" ] ||
+  swiftc -typecheck -wmo -swift-version 5 -D PEIX_PROBE -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" $SWIFT scripts/shell-probe.swift
+  [ "$(cat $SWIFT scripts/shell-probe.swift | shasum -a 256 | cut -d' ' -f1)" = "$(cat "$NM/.cache/peixairada/shell-passed" 2>/dev/null)" ] ||
     echo "› note: the shell has changed since \`npm run shell\` last passed: run it before this lands"
 else echo "› swiftc not found — the app is not type-checked here"; fi
 echo "ok"

@@ -1,12 +1,27 @@
 # peixAIrada — the app's shell
 
-The notes for `mac/` alone: `Sources/main.swift`, `build.sh`, the icon. Claude Code loads this file once a session reads a
+The notes for `mac/` alone: `Sources/`, `build.sh`, the icon. Claude Code loads this file once a session reads a
 file under `mac/`; the [root CLAUDE.md](../CLAUDE.md), loaded into every session, keeps what the page does across the
 bridge (`peixKey`, `peixFill`, `peixPane…`, the posts — its *Hotkeys and the pane*) and points here (2026-10-28). Its
 rules hold here too: one bullet each — the rule, the names to find it by, the test that holds it —, the story in
 [docs/DECISIONS.md](../docs/DECISIONS.md), a comment dated and never in a person's words. **This file stays under 20 000
 characters** (`npm run check`). **A note here rebuilds nothing**: the app's stamp leaves `mac/*.md` out (`macSource` in
-server.mjs, build.sh's `SOURCE`).
+server/update.mjs, build.sh's `SOURCE`).
+
+## The sources
+
+* **A file per concern** (2026-11-25): `main.swift` the globals (`kPort`, the keys, the log, `handOn`) and the start;
+  `AppDelegate.swift` every stored property, the launch, front and back, nobody looking, the watchdog;
+  `ServerController.swift`; `Window.swift` (`buildWindow`, `paneTop`, `wearBar`, `BoardWindow`); `FullScreen.swift` (⌃⌘F,
+  the fill, `dockTick`); `Lights.swift`; `Pane.swift` (the pane's views, `PaneDelegate`); `FindBar.swift`; `Keys.swift`
+  (the key monitors, `boardKeys`, `hotkeyCode`, `KeyboardMap`); `Bridge.swift` (`toBoard`, the hub's messages);
+  `BoardView.swift` (the board's view: its load, key and navigation, `BoardWebView`); `StatusItem.swift` (the fish, its menu, the badge);
+  `Menus.swift`; `Notifications.swift`.
+* **What the split holds to**: top-level code in `main.swift` alone, and its globals stay there — initialised in order as
+  it runs, where another file's are lazy; an extension holds no stored property, so the class's are all in
+  `AppDelegate.swift`; a member another file calls is internal, never `private`. build.sh, check.sh and shell.mjs take
+  every `Sources/*.swift` in C's order as one module (`-wmo`: per file, no call into another is inlined), and
+  check-page.mjs reads `boardKeys`, `cmdKeys` and `hotkeyCode` in `Keys.swift`.
 
 ## Keys and menus
 
@@ -91,7 +106,7 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
 
 * **The server proves itself before it is trusted**: every probe (`ServerController.probe`: ours · silent · stranger) sends
   `x-peix-nonce` and never the key; only an `x-peix-proof` that is the HMAC of it under the key file's key
-  (`aliveProof` in server.mjs) is the board — adopted, its page loaded, the key script and the hub given. A listener
+  (`aliveProof` in server/key.mjs) is the board — adopted, its page loaded, the key script and the hub given. A listener
   that fails it gets nothing, and the window says so. Every load of the board's origin is proved in `decidePolicyFor`.
   → `test/key.test.mjs`, `shell-checks/port-stranger.mjs` (`meta.stranger`).
 * **The board's view never leaves the board's origin**, by any kind of navigation (the shell's own `about:blank`
@@ -118,13 +133,13 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   **The app's own server gives the port back** (2026-11-25, `portToAgent`): while it runs with the agent installed, the
   watchdog asks launchd (`agentPid`, `launchctl print`); the same pid on two looks is the agent waiting on the port —
   the app's own is stopped and the agent adopted (`restart`), once per pid.
-* **`npm run shell` runs this very file** (2026-11-04; `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/`): with the probe beside it
+* **`npm run shell` runs these very files** (2026-11-04; `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/`): with the probe beside them
   and `-D PEIX_PROBE`, which build.sh does not set, on a throwaway server and fixture, a line of JSON each way; `ctx` is at the runner's
   head, and what a check believes is the window's pixels in sRGB (`ask('shot')`, `ask('runs')`). Out of the way of the app in use
   (`kProbeAside`): never in front, one pixel on the screen, its home a temp folder (`CFFIXED_USER_HOME`). **It differs from the app in
   five places, each a hole in what it proves**: the activation policy, `probeBegin`, `BoardWindow`'s frame, `placeFill`, `tellFill`'s
   left edge; keep them few, and a new command in the probe, not here (a change under `mac/` puts every app behind). **A new check first
-  fails on the bug it is for** (`--src <dir>/main.swift`). A locked screen is `NOT RUN`, exit 3; `--space` is macOS's full screen, and takes the screen. → `shell-up.mjs`.
+  fails on the bug it is for** (`--src <dir>`, a copy of `Sources/` with the fix out). A locked screen is `NOT RUN`, exit 3; `--space` is macOS's full screen, and takes the screen. → `shell-up.mjs`.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
   **The board's web view draws no ground** (`drawsBackground` off): the window's `backgroundColor` and

@@ -1,6 +1,6 @@
   /* ---- the inset (2026-11-01, round XV's T3; every theme's, round XVII's C1): the chat laid in a frame — the window's
      ground, the wallpaper, the sidebar and the status bar in --frame (the board's own: the window's own ground,
-     main.swift's; a theme's, its crust) —, the chat a sheet, rounded, 8 px in from the frame's edges, a hairline and a
+     Window.swift's; a theme's, its crust) —, the chat a sheet, rounded, 8 px in from the frame's edges, a hairline and a
      soft shadow round it. ---- */
   :root { --sheet-edge: rgb(0 0 0 / .07); --sheet-shade: 0 2px 10px -4px rgb(0 0 0 / .14); }
   :root[data-theme="dark"] { --sheet-edge: rgb(255 255 255 / .06); --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / .7); }

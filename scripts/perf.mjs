@@ -78,7 +78,7 @@ const stackLines = top => top.map(r => `    ${String(r.pct).padStart(3)} %  ${r.
 
 // ---- --app: the board as it runs ----
 if (APP) {
-  // the board's web process: the app logs it (main.swift, 2026-10-13); else the first one the app started, which is the
+  // the board's web process: the app logs it (BoardView.swift, 2026-10-13); else the first one the app started, which is the
   // board's unless its process was ever loaded again
   const isWeb = pid => /WebContent/.test(ps('comm', pid));
   let pid = null, how = '';

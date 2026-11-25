@@ -1,6 +1,6 @@
-// The real shell, driven (2026-11-04). scripts/shell.mjs compiles mac/Sources/main.swift with this file beside it and
+// The real shell, driven (2026-11-04). scripts/shell.mjs compiles mac/Sources with this file beside it and
 // -D PEIX_PROBE, and talks to it over stdin and stdout, a line of JSON each way: `{id, do, …}` in, `{id, ok, value | error}`
-// out. Nothing here is in the app: build.sh does not compile it, and main.swift calls it behind the flag.
+// out. Nothing here is in the app: build.sh does not compile it, and AppDelegate.swift calls it behind the flag.
 // What it is for: the page and the shell each right in their own terms and wrong together — Chrome with a fake bridge
 // sees the one, a probe built like buildWindow a copy of the other. So the window, the overlay, the pane's views, the
 // fill and the bridge are the app's own code here, and what a check believes is the window's pixels (`shot`, `runs`).

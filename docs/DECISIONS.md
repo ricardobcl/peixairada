@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-11-25, later still — the code in units: the page in parts, the server in modules
+## Decisions of 2026-11-25, later still — the code in units: the page in parts, the server in modules, the shell in files
 
 Ricardo: *"files are to big, no clear separation of concerns in files/folders. etc. do a deep review of best pratices, split
 files into more managable units and organize the code better. this should be a refactor, nothing should change from the
@@ -42,6 +42,15 @@ product side or performance"*.
   names. The updater counts `server/` as the server (`updateParts`, and `CODE_PARTS`, the stamp of the code a server
   runs), build.sh bundles it, `check-tests` reads the routes from `routes/`, the drawer's environment test every
   module. The section map and `npm run map` went.
+* **The app's shell is a file per concern**: `mac/Sources/main.swift` (2,515 lines) is 14 files — `main.swift` keeps the
+  globals, so they still start eagerly and in order, and the four lines that run the app; `AppDelegate`,
+  `ServerController`, `Window`, `FullScreen`, `Lights`, `Pane`, `FindBar`, `Keys`, `Bridge`, `BoardView`, `StatusItem`,
+  `Menus`, `Notifications` the rest, each an `extension AppDelegate` but its own classes. Moved verbatim: 27 `private`
+  members are internal now, as another file calls them, and four stored properties went into the class (an extension
+  holds none). The binary has the same Objective-C classes, conformances and selectors (`dyld_info -objc`), and no
+  warning before or after. Built `-wmo`: the module optimized whole as the one file was — per file, a call into another
+  is never inlined (661 KB and twice the compile); whole, 586 KB against 671. `check-page` reads the keys from
+  `Keys.swift`; `npm run shell` and `check.sh` hash every source; `shell.mjs --src` takes a folder.
 * **The cost, measured against main before it** (medians of three runs): importing the server is 65 files, 40 ms
   against 29, so a boot is ~15 ms longer (180 ms to its first index against 165), once; `GET /` 8 ms against 9,
   `GET /api/sessions` the same 0.2 ms. 323 tests pass; every scenario that fails here fails on main too.

@@ -5,10 +5,10 @@
 //   npm run shell                   every check in scripts/shell-checks/
 //   npm run shell -- pane-place     the ones named
 //   npm run shell -- --shots <dir>  where the window's pictures go ($TMPDIR/peixairada-shots by default)
-//   npm run shell -- --src <dir>/main.swift   another main.swift, to see a check fail on the bug it is for
+//   npm run shell -- --src <dir>    another copy of mac/Sources, to see a check fail on the bug it is for
 //   npm run shell -- --space        macOS's own full screen: the app comes forward and takes a Space for some seconds, so
 //                                   only when asked, and it is all this runs
-// mac/Sources/main.swift itself is compiled with scripts/shell-probe.swift beside it, -D PEIX_PROBE, into the cache, and
+// mac/Sources itself is compiled with scripts/shell-probe.swift beside it, -D PEIX_PROBE, into the cache, and
 // run on a throwaway server and a fixture, its home a temp folder (CFFIXED_USER_HOME: the key, the logs, no launchd agent
 // to find) — out of the way of the app in use: never in front, one pixel on the screen (scripts/shell-probe.swift).
 // A check is an ES module: `export const meta = {}` and `export default async function (ctx) { … return result }`; `ctx`
@@ -29,13 +29,15 @@ import { defaultFixture } from './fixture.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..'), NAME = 'peix-shell';
 const argv = process.argv.slice(2), opt = name => { const i = argv.indexOf(name); return i < 0 ? null : argv.splice(i, 2)[1]; }, flag = name => { const i = argv.indexOf(name); if (i < 0) return false; argv.splice(i, 1); return true; };
 const shots = opt('--shots') || join(tmpdir(), 'peixairada-shots'), srcAsked = opt('--src'), space = flag('--space'), named = argv.filter(a => !a.startsWith('--'));
-const DRIVE = join(ROOT, 'scripts/shell-probe.swift'), SRC = srcAsked ? resolve(srcAsked) : join(ROOT, 'mac/Sources/main.swift');
-if (basename(SRC) !== 'main.swift') { console.error('--src wants a file named main.swift: swiftc takes top-level code from no other'); process.exit(2); }
+const DRIVE = join(ROOT, 'scripts/shell-probe.swift'), SRC = srcAsked ? resolve(srcAsked) : join(ROOT, 'mac/Sources');
+// the app's files (2026-11-25: main.swift alone before), in C's order: the one scripts/check.sh hashes them in
+const SOURCES = existsSync(join(SRC, 'main.swift')) ? readdirSync(SRC).filter(f => f.endsWith('.swift')).sort().map(f => join(SRC, f)) : [];
+if (!SOURCES.length) { console.error('--src wants a folder of the app\'s sources, main.swift among them: swiftc takes top-level code from no other file'); process.exit(2); }
 if (process.platform !== 'darwin') { console.error('the shell is a Mac\'s'); process.exit(2); }
 mkdirSync(shots, { recursive: true });
 let nm = ROOT; while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname(nm);
 const CACHE = join(nm, 'node_modules/.cache/peixairada');
-const sourceHash = () => createHash('sha256').update(readFileSync(SRC)).update(readFileSync(DRIVE)).digest('hex');
+const sourceHash = () => { const h = createHash('sha256'); for (const f of [...SOURCES, DRIVE]) h.update(readFileSync(f)); return h.digest('hex'); };
 
 /** Compiled once per what it is compiled from, whichever worktree asks: flags as build.sh's but -O, which only takes longer. */
 function compile() {
@@ -44,9 +46,9 @@ function compile() {
   const min = /^MIN_OS=(.*)$/m.exec(readFileSync(join(ROOT, 'mac/build.sh'), 'utf8'))?.[1] || '13.0';
   const arch = spawnSync('uname', ['-m'], { encoding: 'utf8' }).stdout.trim();
   mkdirSync(dir, { recursive: true });
-  console.error(`› compiling ${SRC === join(ROOT, 'mac/Sources/main.swift') ? 'mac/Sources/main.swift' : SRC} with the probe`);
+  console.error(`› compiling ${SRC === join(ROOT, 'mac/Sources') ? 'mac/Sources' : SRC} with the probe`);
   const made = join(dir, `${NAME}.${process.pid}`);
-  const c = spawnSync('swiftc', ['-swift-version', '5', '-D', 'PEIX_PROBE', '-target', `${arch}-apple-macosx${min}`, SRC, DRIVE, '-o', made], { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' });
+  const c = spawnSync('swiftc', ['-swift-version', '5', '-wmo', '-D', 'PEIX_PROBE', '-target', `${arch}-apple-macosx${min}`, ...SOURCES, DRIVE, '-o', made], { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' });
   if (c.status !== 0) { console.error(c.stderr); process.exit(c.status ?? 1); }
   renameSync(made, bin);
   for (const old of readdirSync(join(CACHE, 'shell'))) if (old !== hash.slice(0, 16)) { const p = join(CACHE, 'shell', old); if (Date.now() - statSync(p).mtimeMs > 86_400_000) rmSync(p, { recursive: true, force: true }); }
@@ -187,6 +189,6 @@ const results = [];
 for (const f of chosen) results.push(await runCheck(f, bin));
 const failed = results.filter(r => r.ok === false), skipped = results.filter(r => r.skipped);
 for (const r of results) console.log(`${r.skipped ? 'NOT RUN' : r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.skipped ? ` — ${r.skipped}` : r.ok ? '' : ` — ${r.error.split('\n')[0]}`}`);
-// `npm run check` says when main.swift has moved on from the last time this passed whole (scripts/check.sh)
+// `npm run check` says when the app's sources have moved on from the last time this passed whole (scripts/check.sh)
 if (!failed.length && !skipped.length && !named.length && !space && !srcAsked) { mkdirSync(CACHE, { recursive: true }); writeFileSync(join(CACHE, 'shell-passed'), sourceHash()); }
 process.exit(failed.length ? 1 : skipped.length ? 3 : 0);

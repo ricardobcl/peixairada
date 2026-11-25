@@ -1,6 +1,6 @@
 // The cog's switch for system notifications (2026-09-23). It is the server's setting, not a pref: every alert still
 // reaches every page — the unread counts on the cards and the Dock go on — but with the switch off it goes out
-// `quiet`, and nothing posts a banner for it: not the app (main.swift reads the flag off the bridge), not a browser
+// `quiet`, and nothing posts a banner for it: not the app (Bridge.swift reads the flag off the bridge), not a browser
 // tab (the page's Notification below), not the server's osascript. What this checks is the page's half, the
 // server's word travelling to every page, and that the word survives a restart.
 import { readFileSync } from 'node:fs';
