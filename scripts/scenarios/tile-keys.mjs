@@ -1,7 +1,7 @@
 // The tiles by the keys (2026-11-25), Tile new terminals on and the column split: ⌥⌘←→↑↓ take the keys to the tile that
 // way by where it stands (the way back the tile just left), ⌥⌘⇧ + an arrow moves the tile — two side by side trade
 // places, none that way and it is that whole side —, ⌘D / ⇧⌘D a new zsh in a tile cut side by side / one over the
-// other whatever its shape, ⌃⌘⇧T a zsh on a tab where the keys are, never a tile. What this keeps honest: the tree (state().tiles) and the boxes after each key; no
+// other whatever its shape, ⌥⌘⇧T a zsh on a tab where the keys are, never a tile. What this keeps honest: the tree (state().tiles) and the boxes after each key; no
 // terminal attached again by a move; at an edge nothing moves, the chat neither; the switch off, the keys as ever
 // (⌥⌘↑↓ the list's chats).
 export const meta = { server: true, fake: true, fixture: 'auto', prefs: { autoTile: true } };
@@ -22,10 +22,6 @@ export default async function (ctx) {
   const shift = code =>
     ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, altKey: true, shiftKey: true, bubbles: true, cancelable: true }))`,
-    );
-  const ctrlShift = code =>
-    ctx.evaluate(
-      `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))`,
     );
   const cmdShift = code =>
     ctx.evaluate(
@@ -141,8 +137,8 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await tiles(ctx), t, 'up again: it is the top already, nothing moves');
   await ctx.shot('moved');
 
-  // ⌃⌘⇧T in that tile: a zsh on a tab beside its own, the tree as it was — no tile cut
-  await ctrlShift('KeyT');
+  // ⌥⌘⇧T in that tile: a zsh on a tab beside its own, the tree as it was — no tile cut
+  await shift('KeyT');
   await ctx.waitFor(`window.peix.state().strips[3]?.length === 2`, { what: 'a second tab in the fourth tile' });
   ctx.assert.deepEqual(await tiles(ctx), t, 'no new tile');
   ctx.assert.equal(await focus(ctx), 3, 'the keys still in it');
@@ -157,8 +153,8 @@ export default async function (ctx) {
 
   // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
   await ctx.openChat(other.id);
-  // ⌃⌘⇧T with one half: a tab, no split
-  await ctrlShift('KeyT');
+  // ⌥⌘⇧T with one half: a tab, no split
+  await shift('KeyT');
   await ctx.waitFor(`window.peix.state().strips[0].length === 2`, { what: 'a zsh tab beside the chat' });
   ctx.assert.equal(await ctx.peix('state().split'), false, 'one half still');
   await cmdShift('KeyD');

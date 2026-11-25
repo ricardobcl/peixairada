@@ -116,7 +116,7 @@ setup file, and how the pictures are made.
 
 ## Beside a chat
 
-Each is a tab of the chat; the column splits in two halves when there's more than one thing to look at. With Settings › Terminal › *Tile new terminals* on, each new zsh or vim gets a tile of its own, cut from the one you are in along its longer side — a wide tile side by side, a tall one one over the other, as i3's autotiling does — so every terminal stays in view; ⌘2 or ⌥⌘2 turns a split after. Then ⌥⌘ and the arrows go to the tile that way, ⌥⌘⇧ and an arrow move the tile there, and ⌘D or ⇧⌘D opens a zsh beside this tile or under it, whatever its shape. ⌃⌘← and ⌃⌘→ go round the tabs of the half or tile you are in, and ⌃⌘⇧T opens a zsh as one more of them rather than a tile of its own.
+Each is a tab of the chat; the column splits in two halves when there's more than one thing to look at. With Settings › Terminal › *Tile new terminals* on, each new zsh or vim gets a tile of its own, cut from the one you are in along its longer side — a wide tile side by side, a tall one one over the other, as i3's autotiling does — so every terminal stays in view; ⌘2 or ⌥⌘2 turns a split after. Then ⌥⌘ and the arrows go to the tile that way, ⌥⌘⇧ and an arrow move the tile there, and ⌘D or ⇧⌘D opens a zsh beside this tile or under it, whatever its shape. ⌃⌘← and ⌃⌘→ go round the tabs of the half or tile you are in, and ⌥⌘⇧T opens a zsh as one more of them rather than a tile of its own.
 
 <img src="shots/chat-dark.webp" alt="A chat with Claude Code resumed in the pane on the left, the PR's state and CI under the header, and the repo open in VS Code Web on the right">
 

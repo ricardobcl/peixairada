@@ -9,7 +9,7 @@ function hotTab(dir) {
   if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
   openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
 }
-/** ⌃⌘⇧T (2026-11-25): another zsh, a tab in the half or tile the keys are in (startShell's `here`). */
+/** ⌥⌘⇧T (2026-11-25): another zsh, a tab in the half or tile the keys are in (startShell's `here`). */
 function hotTabHere() {
   const s = state.sessions.get(state.current);
   if (!s) return noChat();
@@ -42,7 +42,7 @@ async function hotShell() {
   return on;
 }
 /** A zsh started in the chat's folder, on a new tab: the chat's first (⌥⌘T), or `fresh` another beside the ones it has
-      (⌘T); `cut` the direction ⌘D / ⇧⌘D asked its tile in, or `here`: a tab where the keys are (⌃⌘⇧T). Answers it, or null. */
+      (⌘T); `cut` the direction ⌘D / ⇧⌘D asked its tile in, or `here`: a tab where the keys are (⌥⌘⇧T). Answers it, or null. */
 async function startShell(s, fresh, cut) {
   if (!s.cwd) {
     note($('#shead'), 'No folder known for this chat', true);

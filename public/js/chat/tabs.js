@@ -162,7 +162,7 @@ function moveTab(s, k, g) {
  *  showing, and a new tab goes into the half the chat is not in — so it never takes the chat's place. */
 function openNewTab(s, k, cut) {
   if (cut === 'here') {
-    // ⌃⌘⇧T: in the keys' strip, as if dragged there; one half stays one
+    // ⌥⌘⇧T: in the keys' strip, as if dragged there; one half stays one
     if (isSplit(s)) {
       if (!homes.has(s.id)) homes.set(s.id, new Map());
       homes.get(s.id).set(k, focusG);

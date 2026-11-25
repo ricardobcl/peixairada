@@ -120,7 +120,6 @@ if (file.endsWith('public/index.html')) {
     shift = keysOf('SHIFTKEYS') || [],
     cmdShift = keysOf('CMDSHIFTKEYS') || [],
     ctrl = keysOf('CTRLKEYS') || [],
-    ctrlShift = keysOf('CTRLSHIFTKEYS') || [],
     table = html.match(/const KEYS = \[([\s\S]*?)\n\];/);
   const fail = msg => {
     console.error(`${file}: ${msg}`);
@@ -128,31 +127,19 @@ if (file.endsWith('public/index.html')) {
   };
   if (!hot || !cmd || !table) fail('HOTKEYS, CMDKEYS or KEYS not found');
   else {
-    const rows = [...table[1].matchAll(/'((?:alt|cmdshift|cmd|shift|ctrlshift|ctrl):\w+)'/g)].map(x => x[1]);
+    const rows = [...table[1].matchAll(/'((?:alt|cmdshift|cmd|shift|ctrl):\w+)'/g)].map(x => x[1]);
     for (const c of hot) if (!rows.includes('alt:' + c)) fail(`⌥⌘ ${c} is in HOTKEYS but has no row in KEYS`);
     for (const c of cmd) if (!rows.includes('cmd:' + c)) fail(`⌘ ${c} is in CMDKEYS but has no row in KEYS`);
     for (const c of shift) if (!rows.includes('shift:' + c)) fail(`⌥⌘⇧ ${c} is in SHIFTKEYS but has no row in KEYS`); // (2026-11-24) Top priority's ⌥⌘⇧↑↓
     for (const c of cmdShift)
       if (!rows.includes('cmdshift:' + c)) fail(`⇧⌘ ${c} is in CMDSHIFTKEYS but has no row in KEYS`); // (2026-11-25) ⇧⌘D
-    for (const c of ctrlShift)
-      if (!rows.includes('ctrlshift:' + c)) fail(`⌃⌘⇧ ${c} is in CTRLSHIFTKEYS but has no row in KEYS`);
     for (const c of ctrl) if (!rows.includes('ctrl:' + c)) fail(`⌃⌘ ${c} is in CTRLKEYS but has no row in KEYS`); // (2026-11-25) a strip's tabs
     for (const r of rows) {
       const [m, c] = r.split(':');
       if (
-        !(
-          m === 'alt'
-            ? hot
-            : m === 'shift'
-              ? shift
-              : m === 'cmdshift'
-                ? cmdShift
-                : m === 'ctrl'
-                  ? ctrl
-                  : m === 'ctrlshift'
-                    ? ctrlShift
-                    : cmd
-        ).includes(c)
+        !(m === 'alt' ? hot : m === 'shift' ? shift : m === 'cmdshift' ? cmdShift : m === 'ctrl' ? ctrl : cmd).includes(
+          c,
+        )
       )
         fail(`KEYS names ${r}, which no map answers`);
     }
@@ -200,13 +187,6 @@ if (file.endsWith('public/index.html')) {
       for (const l of csFwd)
         if (!cmdShift.includes('Key' + l.toUpperCase()))
           fail(`Keys.swift forwards ⇧⌘${l.toUpperCase()} (cmdShiftKeys), which CMDSHIFTKEYS does not answer`);
-      const ctsFwd = set('ctrlShiftKeys') || []; // ⌃⌘⇧ letters, the same both ways
-      for (const c of ctrlShift)
-        if (!ctsFwd.includes(c.slice(-1).toLowerCase()))
-          fail(`⌃⌘⇧${c.slice(-1)} is the board's, but the app does not forward it from the pane (ctrlShiftKeys)`);
-      for (const l of ctsFwd)
-        if (!ctrlShift.includes('Key' + l.toUpperCase()))
-          fail(`Keys.swift forwards ⌃⌘⇧${l.toUpperCase()} (ctrlShiftKeys), which CTRLSHIFTKEYS does not answer`);
     }
     // The ⌥⌘ digits, arrows and Return the forwarder matches by key code (⌥ composes a symbol over them): each code the Mac's
     // own (kVK_ANSI_1 is 18…), each answered by HOTKEYS, and every digit and arrow HOTKEYS has, forwarded.
@@ -226,6 +206,7 @@ if (file.endsWith('public/index.html')) {
       125: 'ArrowDown',
       126: 'ArrowUp',
       36: 'Enter',
+      17: 'KeyT',
     };
     const fn = src.match(/static func hotkeyCode\([\s\S]*?\n {2}\}\n/)?.[0];
     if (!fn) fail('Keys.swift: hotkeyCode not found');
@@ -277,7 +258,7 @@ if (file.endsWith('public/index.html')) {
     }
     if (!process.exitCode)
       console.log(
-        `${file}: ${hot.length} ⌥⌘, ${shift.length} ⌥⌘⇧, ${cmdShift.length} ⇧⌘, ${ctrl.length} ⌃⌘, ${ctrlShift.length} ⌃⌘⇧ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`,
+        `${file}: ${hot.length} ⌥⌘, ${shift.length} ⌥⌘⇧, ${cmdShift.length} ⇧⌘, ${ctrl.length} ⌃⌘ and ${cmd.length} ⌘ keys, each with its row; the app forwards them all, and the board answers all it forwards`,
       );
   }
 }
