@@ -9,6 +9,7 @@
   .pop .setup input[type=time] { height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--ink); font: inherit; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
   #settings .sseg.ldays button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
   @media (prefers-reduced-motion: reduce) {
+    #room :is(.rmpic.wait, .rmtp.up) { animation: none; opacity: .6; }   /* a picture on its way: dimmed, not breathing */
     .zewalk .zw, .zewalk .zw i { animation: none; } .zewalk .zw i { left: auto; right: 8px; } .zewalk .zw i + i { opacity: 0; }   /* Zé stands at the end of All caught up */
     #sbSwim .lnews { animation: none; }
     #sbSwim .sf .fw, #sbSwim .sf .ft, #sbSwim .sf::before { animation: none !important; } #sbSwim .sf { transition: none; }

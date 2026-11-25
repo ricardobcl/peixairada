@@ -24,6 +24,12 @@ import { plainSnippet } from './transcript/text.mjs';
 // A poll is a message (2026-10-20): a question and up to eight answers, each one of the eight reactions GitHub has — a
 // vote is that reaction on the comment, so it says who as well as how many, and one given on GitHub counts. A poll's
 // votes are asked of GitHub when its counts on the comments' list moved (POLL_RX, chatVotes).
+// A picture is a message too (2026-11-25): GitHub's own attachment, uploaded through its endpoint for them (the one
+// behind gh's --attach), which takes one only from someone who can write to the repo it is uploaded against — and a
+// member of an organization's chat only reads it, so its moderation holds. Their pictures go against the chat's files
+// repo (`<repo>-files`, private, empty), where every member writes: the admin's board makes it and keeps its people the
+// chat's (filesKeep), a member's board takes its invitation by itself (chatPicsFind). A picture shows to whoever can
+// read the repo it went against: everyone in the chat either way. Fetched and kept by server/chat-pics.mjs.
 // What comes in is someone else's words: the page draws it in a module of its own, and nothing here or there hands it
 // to a drawer, a claude or a notification's Reply… (test/chat.test.mjs holds the page to that).
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
@@ -31,27 +37,32 @@ const CHAT_FAST_MS = Number(process.env.CHAT_FAST_MS || 3000), CHAT_SLOW_MS = Nu
 const CHAT_GAP_MS = Number(process.env.CHAT_GAP_MS || 1000), CHAT_INVITES_MS = Number(process.env.CHAT_INVITES_MS || 10 * 60_000);
 const CHAT_FIND_MS = 60_000, CHAT_PLACES_MS = 60_000, CHAT_WATCH_MS = 30_000, CHAT_WINDOW = 100, CHAT_KEEP = 300, CHAT_BODY_MAX = 10_000, CHAT_SUGGEST = 12;
 const ROOM_LABEL = 'room', ROOM_MARK = 'peixAIrada chat';   // the label the chat's issue wears; the words a chat repo's description starts with
-export const chat = { gen: 0, live: false, repo: null, me: null, role: null, org: false, room: null, msgs: [], tags: new Map(), ready: false, error: null, missing: false,
-  invites: [], invitesAt: 0, askedAt: 0, foundAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
-const chatErr = (status, message) => Object.assign(new Error(message), { status });
+// the files repo's description: never ROOM_MARK's words first, or it would be listed as a chat and offered as one
+const FILES_MARK = 'Pictures for the peixAIrada chat in', CHAT_PICS_AGAIN_MS = Number(process.env.CHAT_PICS_AGAIN_MS || 15_000);
+/** The repo a chat's members put their pictures against: beside it, by its name. */
+export const filesOf = repo => `${repo}-files`;
+export const chat = { gen: 0, live: false, repo: null, repoId: null, me: null, role: null, org: false, room: null, msgs: [], tags: new Map(), ready: false, error: null, missing: false,
+  pics: null, picsAt: 0, invites: [], invitesAt: 0, askedAt: 0, foundAt: 0, watchUntil: 0, pause: 0, pauseUntil: 0, busy: false, timer: null, writes: Promise.resolve(), lastWrite: 0, said: '' };
+export const chatErr = (status, message) => Object.assign(new Error(message), { status });
 // Not the characters that let a line say other than it shows (2026-10-17): C0 controls but the newline and the tab, and
 // the bidirectional overrides and isolates.
 const UNSAID = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f‪-‮⁦-⁩]/g;
 /** One REST call to GitHub as the gh login: {status, data, etag}. A 304 is an answer (nothing new); a 401 reads the
- *  token again, once; any other failure throws with GitHub's own words and its status. */
-async function ghRest(method, path, body, etag) {
+ *  token again, once; any other failure throws with GitHub's own words and its status. `text`: the answer's words, not
+ *  JSON (POST /markdown's HTML). */
+export async function ghRest(method, path, body, etag, { text = false } = {}) {
   for (let again = 0; ; again++) {
     const token = await ghToken(again > 0);
     if (!token) throw Object.assign(chatErr(401, 'gh is not signed in here — gh auth login'), { quiet: true });
     const r = await fetch(GITHUB_API + path, { method, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20_000),
       headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'peixAIrada', ...etag && { 'if-none-match': etag }, ...body !== undefined && { 'content-type': 'application/json' } } });
     if (r.status === 401 && !again) continue;
-    const data = r.status === 204 || r.status === 304 ? null : await r.json().catch(() => null);
+    const data = r.status === 204 || r.status === 304 ? null : text && r.ok ? await r.text() : await r.json().catch(() => null);
     if (r.status >= 400) throw chatErr(r.status, `GitHub: ${data?.errors?.[0]?.message || data?.message || `HTTP ${r.status}`}`);
     return { status: r.status, data, etag: r.headers.get('etag') };
   }
 }
-async function ghToken(fresh = false) {
+export async function ghToken(fresh = false) {
   const c = ghToken.cache;
   if (!fresh && c && (c.token || Date.now() - c.at < 60_000)) return c.token;
   const bin = ghBin(); let token = null;
@@ -98,7 +109,8 @@ const chatUnread = () => { const seen = chatSeen[seenKey()] ?? Infinity; return 
 export function chatSummary() {
   const last = chat.msgs.at(-1);
   return { on: !!setup.chat, repo: chat.repo || setup.chat?.repo || null, me: chat.me, role: chat.role, ready: chat.ready, error: chat.error, missing: chat.missing, invites: chat.invites,
-    room: chat.room?.n ?? null, unread: chat.room ? chatUnread() : 0, last: last ? { who: last.who, at: last.at } : null };
+    room: chat.room?.n ?? null, unread: chat.room ? chatUnread() : 0, last: last ? { who: last.who, at: last.at } : null,
+    pics: chat.ready && chat.pics ? { can: !!chat.pics.id, why: chat.pics.id ? null : chat.pics.why || null } : null };
 }
 function chatSay() { const s = JSON.stringify(chatSummary()); if (s !== chat.said) { chat.said = s; broadcast('chat', JSON.parse(s)); } }
 /** Messages into the chat: a new one in place by its id, an edit over the one held; and with a window — the newest
@@ -129,9 +141,15 @@ function chatTell(c, silent) {
   const news = silent ? [] : c.fresh.filter(m => m.who !== chat.me?.login && m.id > (chatSeen[seenKey()] ?? Infinity));
   if (!news.length) return;
   const last = news.at(-1), who = [...new Set(news.map(m => m.who))];
-  const evt = { kind: 'chat', sessionId: null, heading: 'Chat', title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who, snippet: last.poll ? `📊 ${last.poll.q}` : plainSnippet(last.body, 140), ts: last.at, quiet: !notificationsOn };
+  const evt = { kind: 'chat', sessionId: null, heading: 'Chat', title: who.length > 1 ? `${who.at(-1)} and ${who.length - 1} more` : last.who, snippet: last.poll ? `📊 ${last.poll.q}` : picSnippet(last.body) || plainSnippet(last.body, 140), ts: last.at, quiet: !notificationsOn };
   broadcast('alert', evt);
   if (notificationsOn && Date.now() > chat.watchUntil) nativeNotify(evt.heading, evt.title, evt.snippet);
+}
+/** A message that is pictures alone, in words for an alert: *a picture*, *3 pictures* — else null (said as it is). */
+export function picSnippet(body) {
+  const pics = String(body).match(/!\[[^\]\n]*\]\([^)\s]+\)|<img\b[^>]*>/gi) || [];
+  if (!pics.length || String(body).replace(/!\[[^\]\n]*\]\([^)\s]+\)|<img\b[^>]*>/gi, '').trim()) return null;
+  return pics.length === 1 ? '📷 a picture' : `📷 ${pics.length} pictures`;
 }
 /** The chat's issue: the oldest open one labelled `room` — the first, made with the repo; any other the board leaves
  *  be. Its last messages are read as it is first seen; another since (that one closed on GitHub) starts over. */
@@ -209,13 +227,69 @@ async function chatBoot(gen) {
     throw Object.assign(chatNotThere(want), { quiet: true });
   }
   if (gen !== chat.gen) return;
-  Object.assign(chat, { repo: r.full_name, me: { login: me.login, face: me.avatar_url || null }, role: r.permissions?.admin ? 'admin' : r.permissions?.push ? 'write' : 'read', org: r.owner?.type === 'Organization' });
+  Object.assign(chat, { repo: r.full_name, repoId: r.id ?? null, me: { login: me.login, face: me.avatar_url || null }, role: r.permissions?.admin ? 'admin' : r.permissions?.push ? 'write' : 'read', org: r.owner?.type === 'Organization' });
   if (!chatQuiet.includes(chat.repo)) { await ghRest('PUT', `/repos/${chat.repo}/subscription`, { subscribed: false, ignored: true }); chatQuiet.push(chat.repo); saveState(); }
   await chatFind(gen); if (gen !== chat.gen) return;
   if (!chat.room && chat.role === 'admin') { await chatStart(chat.repo); await chatFind(gen); if (gen !== chat.gen) return; }
   await chatLook(gen, true); if (gen !== chat.gen) return;
+  await chatPicsFind(gen); if (gen !== chat.gen) return;
   chat.ready = true;
 }
+/** Where this board's pictures go (`chat.pics`: the repo, its id, or why none): against the chat's repo for whoever can
+ *  write there; on an organization's chat, a member's against its files repo — its invitation taken here, by itself, as
+ *  part of the chat already joined. The admin's board makes that repo and keeps its people the chat's (filesKeep).
+ *  Never fails the chat: a picture that cannot go says why. */
+async function chatPicsFind(gen) {
+  chat.picsAt = Date.now();
+  try {
+    if (chat.role !== 'read') {
+      chat.pics = { repo: chat.repo, id: chat.repoId };
+      if (chat.role === 'admin' && chat.org) await filesKeep(gen).catch(e => console.error(`[peixairada] chat: the files repo, ${filesOf(chat.repo)}:`, e.message));   // the members' pictures' place: their own go on without it
+      return;
+    }
+    const files = filesOf(chat.repo), look = () => ghRest('GET', `/repos/${files}`).then(r => r.data, e => { if (e.status === 404) return null; throw e; });
+    let r = await look();
+    if (!r?.permissions?.push && chat.org) {
+      const inv = ((await ghRest('GET', '/user/repository_invitations?per_page=100')).data || []).find(i => i.repository?.full_name?.toLowerCase() === files.toLowerCase() && !i.expired);
+      if (inv) { await ghRest('PATCH', `/user/repository_invitations/${inv.id}`); r = await look(); }
+    }
+    if (gen !== chat.gen) return;
+    chat.pics = r?.permissions?.push ? { repo: r.full_name, id: r.id } : { repo: files, id: null, why: chat.org ? `your pictures go to ${files}, which the chat's admin has not shared with you yet — their board does it once it runs` : `you can only read ${chat.repo}: GitHub takes pictures from those who can write there` };
+  } catch (e) { if (gen === chat.gen) chat.pics = { repo: null, id: null, why: e.message }; }
+}
+/** This board's pictures' place asked again, when it had none (a picture about to go): at most every CHAT_PICS_AGAIN_MS. */
+export async function chatPicsAgain() {
+  if (!chat.ready || chat.pics?.id || Date.now() - chat.picsAt < CHAT_PICS_AGAIN_MS) return;
+  await chatPicsFind(chat.gen); chatSay();
+}
+/** The admin's: the chat's files repo made if it is not there (private, empty, its mails off), and its people the chat's
+ *  — each member and each one invited to the chat a writer there (invited), anyone else let go. */
+async function filesKeep(gen) {
+  const files = filesOf(chat.repo), [owner, name] = files.split('/');
+  const there = await ghRest('GET', `/repos/${files}`).then(() => true, e => { if (e.status === 404) return false; throw e; });
+  if (gen !== chat.gen) return;
+  if (!there) {
+    await chatWrite(() => ghRest('POST', `/orgs/${owner}/repos`, { name, private: true, description: `${FILES_MARK} ${chat.repo} — GitHub keeps them against this repo, where every member can write`, has_issues: false, has_wiki: false, has_projects: false, has_discussions: false }));
+    await ghRest('PUT', `/repos/${files}/subscription`, { subscribed: false, ignored: true }).catch(() => {});
+    console.log(`[peixairada] chat: made ${files} for the chat's pictures`);
+  }
+  await filesPeople(gen);
+}
+/** The files repo's people put back to the chat's: a writer there for each member and invitation here, nobody else — an
+ *  invitation there that expired (a week unanswered: a board not updated yet) made again. */
+async function filesPeople(gen) {
+  const files = filesOf(chat.repo), me = chat.me?.login?.toLowerCase(), lc = l => String(l || '').toLowerCase();
+  const [cm, ci, fm, fi] = await Promise.all([`/repos/${chat.repo}/collaborators?affiliation=direct&per_page=100`, `/repos/${chat.repo}/invitations?per_page=100`,
+    `/repos/${files}/collaborators?affiliation=direct&per_page=100`, `/repos/${files}/invitations?per_page=100`].map(u => ghRest('GET', u).then(r => r.data || [])));
+  if (gen !== chat.gen) return;
+  const want = new Set([...cm.map(c => lc(c.login)), ...ci.map(i => lc(i.invitee?.login))].filter(l => l && l !== me));
+  const have = new Set([...fm.map(c => lc(c.login)), ...fi.filter(i => !i.expired).map(i => lc(i.invitee?.login))]);
+  for (const i of fi) if (i.expired || !want.has(lc(i.invitee?.login))) await chatWrite(() => ghRest('DELETE', `/repos/${files}/invitations/${i.id}`));
+  for (const l of want) if (!have.has(l)) await chatWrite(() => ghRest('PUT', `/repos/${files}/collaborators/${l}`, { permission: 'push' }));
+  for (const c of fm) if (lc(c.login) !== me && !want.has(lc(c.login))) await chatWrite(() => ghRest('DELETE', `/repos/${files}/collaborators/${c.login}`));
+}
+/** After the admin's change to the people: the files repo's put back to them, never failing the change itself. */
+const filesFollow = () => chat.role === 'admin' && chat.org ? filesPeople(chat.gen).catch(e => console.error('[peixairada] chat: the files repo\'s people:', e.message)) : null;
 const chatNotThere = want => chatErr(404, chat.invites.some(i => i.repo.toLowerCase() === want.toLowerCase()) ? `you are invited to ${want} — join it in Settings › Chat` : `${want} is not a repo you can read — not made yet, or not shared with you`);
 /** The invitations waiting for you to a chat's repo — one whose description says it is one, or the setup's. */
 async function chatInvites(gen) {
@@ -242,7 +316,11 @@ async function chatTick() {
   try {
     if (!setup.chat) { if (Date.now() - chat.invitesAt >= CHAT_INVITES_MS) await chatInvites(gen); }
     else if (!chat.ready) await chatBoot(gen);
-    else { if (Date.now() - chat.foundAt >= CHAT_FIND_MS) await chatFind(gen); await chatLook(gen); }
+    else {
+      if (Date.now() - chat.foundAt >= CHAT_FIND_MS) await chatFind(gen);
+      await chatLook(gen);
+      if (!chat.pics?.id && Date.now() - chat.picsAt >= CHAT_INVITES_MS) await chatPicsFind(gen);   // the files repo shared since
+    }
     if (gen === chat.gen) { chat.pause = 0; chat.pauseUntil = 0; chat.error = null; }
   } catch (e) { if (gen === chat.gen) chatFailed(e); }
   finally { chat.busy = false; chatSay(); chatNext(gen !== chat.gen ? 0 : null); }
@@ -257,7 +335,7 @@ function chatNext(ms = null) {
 /** The repo changed (the setup, a join, a leave): everything learnt of the old one is forgotten and the new one read. */
 export function chatReset() {
   chat.gen++;
-  Object.assign(chat, { repo: setup.chat?.repo || null, me: null, role: null, org: false, room: null, msgs: [], ready: false, error: null, missing: false, foundAt: 0, pause: 0, pauseUntil: 0 });
+  Object.assign(chat, { repo: setup.chat?.repo || null, repoId: null, me: null, role: null, org: false, room: null, msgs: [], ready: false, error: null, missing: false, pics: null, picsAt: 0, foundAt: 0, pause: 0, pauseUntil: 0 });
   chat.tags.clear();
   chatSay(); chatNext(0);
 }
@@ -333,6 +411,7 @@ export async function chatRoute(req, res, what, url) {
   try {
     if (M === 'GET' && !what) {
       if (url.searchParams.has('invites') && Date.now() - chat.askedAt > 1000) await chatInvites(chat.gen).catch(e => chatFailed(e));   // Settings › Chat open: asked now (a 304 when nothing changed), not in ten minutes — at boot too: invitesAt is the timer's, put off then
+      if (url.searchParams.has('pics')) await chatPicsAgain();   // the panel open with no place for your pictures: asked again (CHAT_PICS_AGAIN_MS)
       return json(res, 200, chatSummary());
     }
     if (M === 'GET' && what === 'messages') return json(res, 200, { room: chat.room?.n ?? null, msgs: chat.msgs, seen: chatSeen[seenKey()] ?? 0 });
@@ -395,10 +474,11 @@ export async function chatRoute(req, res, what, url) {
       admin(); const u = (await ghRest('GET', `/users/${login(body.login)}`).catch(e => { throw e.status === 404 ? chatErr(404, `no GitHub user ${body.login}`) : e; })).data;
       if (u.type !== 'User') throw chatErr(400, `${u.login} is not a person's account`);
       const r = await chatWrite(() => ghRest('PUT', `/repos/${chat.repo}/collaborators/${u.login}`, chat.org ? { permission: 'pull' } : {}));
+      await filesFollow();   // a writer on the files repo too, for their pictures
       return json(res, 200, { login: u.login, invited: r.status === 201, ...await chatPeople() });
     }
-    if (M === 'POST' && what === 'remove') { admin(); const l = login(body.login); await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/collaborators/${l}`)); return json(res, 200, await chatPeople()); }
-    if (M === 'POST' && what === 'cancel') { admin(); await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/invitations/${Number(body.id)}`)); return json(res, 200, await chatPeople()); }
+    if (M === 'POST' && what === 'remove') { admin(); const l = login(body.login); await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/collaborators/${l}`)); await filesFollow(); return json(res, 200, await chatPeople()); }
+    if (M === 'POST' && what === 'cancel') { admin(); await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/invitations/${Number(body.id)}`)); await filesFollow(); return json(res, 200, await chatPeople()); }
     if (M === 'POST' && what === 'join') {
       const inv = chat.invites.find(i => i.id === Number(body.id)); if (!inv) throw chatErr(404, 'no such invitation — it may have expired');
       await ghRest('PATCH', `/user/repository_invitations/${inv.id}`);
@@ -407,7 +487,10 @@ export async function chatRoute(req, res, what, url) {
       return failed ? json(res, 500, { error: `joined, but not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());
     }
     if (M === 'POST' && what === 'leave') {   // a member leaves the repo; its admin only stops using it here
-      if (setup.chat && chat.ready && chat.role !== 'admin') await ghRest('DELETE', `/repos/${chat.repo}/collaborators/${chat.me.login}`).catch(e => { if (e.status !== 404) throw e; });
+      if (setup.chat && chat.ready && chat.role !== 'admin') {
+        await ghRest('DELETE', `/repos/${chat.repo}/collaborators/${chat.me.login}`).catch(e => { if (e.status !== 404) throw e; });
+        if (chat.org) await ghRest('DELETE', `/repos/${filesOf(chat.repo)}/collaborators/${chat.me.login}`).catch(() => {});   // its files repo too: nothing left of the chat
+      }
       chatPlaces.cache = null;
       const failed = setChatRepo(null);
       return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, chatSummary());

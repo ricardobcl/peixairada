@@ -20,7 +20,8 @@ export {
   addedPatch, branchWhere, changesOf, parseNameStatus, parseNumstat, parseWorktrees, patchStat, splitPatch,
   worktreeBases, worktreesFor
 } from './server/changes.mjs';
-export { pollBody, pollOf } from './server/chat.mjs';
+export { picSnippet, pollBody, pollOf } from './server/chat.mjs';
+export { picType, picUrl } from './server/chat-pics.mjs';
 export { driftOf, headOf, noteHead, settleDrift } from './server/drift.mjs';
 export { folderBack, putBack } from './server/folders.mjs';
 export { noteTickets, ticketsIn } from './server/jira.mjs';

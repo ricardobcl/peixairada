@@ -4,7 +4,9 @@
 // manages the people — the suggestions from its chats' PRs, an invitation, a cancel, a removal; a member's board
 // finds the invitation, joins as a reader, may not manage, and leaves; the look that finds nothing new is a 304; a
 // repo made from the board, and where one could be (the organizations you own, the chats you can read); a poll, its votes
-// GitHub's reactions (2026-10-20). The page's chat module is held to drawing words only: it reaches no drawer.
+// GitHub's reactions (2026-10-20); pictures (2026-11-25) — which addresses are pictures and what bytes are, a member's
+// through the files repo the admin's board makes and keeps, uploaded and fetched, one dropped on GitHub's page, one
+// nobody shared with you. The page's chat module is held to drawing words only: it reaches no drawer.
 import './env.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +15,7 @@ import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture } from '../scripts/fixture.mjs';
 import { startFakeGitHub } from '../scripts/fakes/fakegithub.mjs';
-import { cleanSetup, pollBody, pollOf } from '../server.mjs';
+import { cleanSetup, picSnippet, picType, picUrl, pollBody, pollOf } from '../server.mjs';
 
 test('cleanSetup: the chat\'s repo as owner/name, from its address too; null or an empty one is none', () => {
   for (const v of ['acme-chat/room', ' https://github.com/acme-chat/room.git ', 'github.com/acme-chat/room/']) assert.deepEqual(cleanSetup({ chat: { repo: v } }, true).setup.chat, { repo: 'acme-chat/room' }, v);
@@ -25,7 +27,7 @@ test('cleanSetup: the chat\'s repo as owner/name, from its address too; null or 
 
 const face = (login, fill) => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`) });
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
-const FAST = { CHAT_FAST_MS: '250', CHAT_SLOW_MS: '250', CHAT_GAP_MS: '30' };
+const FAST = { CHAT_FAST_MS: '250', CHAT_SLOW_MS: '250', CHAT_GAP_MS: '30', CHAT_PICS_AGAIN_MS: '200' };
 /** The board's event stream, as text: what it said since `mark()`. */
 async function stream(srv) {
   const r = await fetch(`${srv.url}events?key=${srv.key}`), dec = new TextDecoder(), reader = r.body.getReader();
@@ -289,4 +291,131 @@ test('the page\'s chat module draws words only: no drawer, no claude, no Reply�
   assert.ok(!/(?<![\w.])md\((?!\))/.test(code), 'the transcript\'s md() draws no chat message: its links open files and a chat\'s pages');
   assert.match(code, /function chatMd\(/, 'its own renderer');
   assert.match(code, /ALLOWED_URI_REGEXP/, 'links: https and mailto alone');
+});
+
+// a picture of each kind, as small as each comes
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const GIF = Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
+const ASSET = 'https://github.com/user-attachments/assets/0b7f1e2a-3c4d-4e5f-8a9b-0c1d2e3f4a5b';
+
+test('a picture\'s address and its bytes: GitHub\'s attachments and a few GIF hosts, a Giphy page its GIF; PNG, JPEG, GIF, WebP by their first bytes', () => {
+  for (const u of [ASSET, 'https://github.com/acme/app/assets/123/0b7f1e2a-3c4d-4e5f-8a9b-0c1d2e3f4a5b', 'https://media.giphy.com/media/abc123XYZ/giphy.gif', 'https://media2.giphy.com/media/v1.Y2lk/abc/200.gif?cid=x&rid=200.gif',
+    'https://i.giphy.com/abc123XYZ.gif', 'https://media.tenor.com/AbC/dancing.gif', 'https://i.imgur.com/AbC123.png', 'https://user-images.githubusercontent.com/1/2-x.png'])
+    assert.equal(picUrl(u), u, u);
+  assert.equal(picUrl('https://giphy.com/gifs/cat-funny-JIX9t2j0ZTN9S'), 'https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif', 'a Giphy page: its GIF');
+  assert.equal(picUrl('https://giphy.com/gifs/JIX9t2j0ZTN9S/'), 'https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif');
+  for (const u of ['http://media.giphy.com/media/a/giphy.gif', 'https://evil.example/p.png', 'https://github.com/user-attachments/assets/not-a-uuid', 'https://media.giphy.com.evil.example/x.gif',
+    'https://i.imgur.com/a b.png', 'https://github.com/acme/app/blob/main/x.png', 'javascript:alert(1)', 'data:image/png;base64,AAAA', '', null])
+    assert.equal(picUrl(u), null, String(u));
+  assert.equal(picType(PNG), 'image/png'); assert.equal(picType(GIF), 'image/gif');
+  assert.equal(picType(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1])), 'image/jpeg');
+  assert.equal(picType(Buffer.from('RIFF\x10\x00\x00\x00WEBPVP8 ', 'latin1')), 'image/webp');
+  for (const b of [Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'), Buffer.from('<!doctype html><html>'), Buffer.from('GIF8'), Buffer.alloc(0)]) assert.equal(picType(b), null);
+  assert.equal(picSnippet(`![a cat](${ASSET})`), '📷 a picture');
+  assert.equal(picSnippet(`![a](${ASSET})\n\n<img width="300" alt="b" src="${ASSET}">`), '📷 2 pictures');
+  assert.equal(picSnippet(`look ![a](${ASSET})`), null, 'words too: said as they are');
+});
+
+test('pictures end to end: the files repo made and kept the chat\'s, a member\'s picture up and back, one from GitHub\'s page, one shared with nobody', { timeout: 90_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana', 'rui'], orgs: { 'acme-chat': ['me'] }, repos: {
+    'acme-chat/room': { perms: { ana: 'pull' }, rooms: [{ title: 'Chat', comments: [['ana', 'hi']] }] }, 'acme/secret': { perms: {} } } });
+  const ana = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'ana', ...FAST } });
+  let owner = null;
+  const use = srv => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }) });
+  const ready = srv => waitFor(async () => { const x = (await srv.api('api/chat')).body; return x.ready && x; }, { what: 'the chat read' });
+  const pic = async (srv, u) => { const r = await fetch(new URL(`api/chat/pic?u=${encodeURIComponent(u)}`, srv.url), { headers: { 'x-peix-key': srv.key } }); return { status: r.status, type: r.headers.get('content-type'), csp: r.headers.get('content-security-policy'), bytes: Buffer.from(await r.arrayBuffer()) }; };
+  const upload = (srv, bytes, name) => srv.api(`api/chat/upload?name=${encodeURIComponent(name)}`, { method: 'POST', body: bytes });
+  try {
+    // ana's board first: a member, and no files repo yet — her pictures have no place, and she is told why
+    await use(ana);
+    const before = await ready(ana);
+    assert.deepEqual([before.role, before.pics.can], ['read', false]);
+    assert.match(before.pics.why, /acme-chat\/room-files, which the chat's admin has not shared with you yet/);
+    assert.equal((await upload(ana, PNG, 'shot.png')).status, 409);
+
+    // the admin's board: the files repo made — private, empty, not a chat by its description — and ana a writer there
+    owner = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+    await use(owner);
+    const o = await ready(owner);
+    assert.deepEqual(o.pics, { can: true, why: null }, 'the admin writes to the chat itself');
+    const files = gh.repo('acme-chat/room-files');
+    assert.ok(files, 'the files repo made');
+    assert.equal(files.private, true);
+    assert.doesNotMatch(files.description, /^peixAIrada chat/, 'never listed as a chat');
+    assert.deepEqual(files.subs.me, { subscribed: false, ignored: true });
+    assert.deepEqual(files.invitations.map(v => [v.login, v.permission]), [['ana', 'push']]);
+    assert.ok(!(await owner.api('api/chat/places')).body.chats.some(c => /files/.test(c.repo)), 'not one of the places a chat is');
+
+    // ana's board takes the invitation by itself (asked again as the panel opens), and her picture goes up there
+    const can = await waitFor(async () => { const x = (await ana.api('api/chat?pics=1')).body; return x.pics?.can && x; }, { what: 'ana\'s pictures\' place, the invitation taken' });
+    assert.equal(can.pics.why, null);
+    assert.equal(files.perms.ana, 'push');
+    assert.equal((await upload(ana, Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'), 'x.svg')).status, 415, 'no SVG, nothing but a picture');
+    const up = await upload(ana, GIF, 'party time.gif');
+    assert.equal(up.status, 200, JSON.stringify(up.body));
+    assert.match(up.body.url, /^https:\/\/github\.com\/user-attachments\/assets\/[0-9a-f-]{36}$/);
+    assert.deepEqual([up.body.type, up.body.name], ['image/gif', 'party time']);
+    assert.equal(gh.assets.get(up.body.url.split('/').pop()).repo, 'acme-chat/room-files', 'against the files repo: she only reads the chat');
+    assert.equal((await ana.post('api/chat/send', { body: `![party time](${up.body.url})` })).status, 200);
+
+    // the owner's board fetches it — through GitHub's signed address — and keeps it; ana's had it kept from the upload
+    const calls = () => gh.calls.filter(c => c.startsWith('POST /markdown')).length;
+    const got = await pic(owner, up.body.url);
+    assert.deepEqual([got.status, got.type, got.bytes.equals(GIF)], [200, 'image/gif', true]);
+    assert.match(got.csp, /sandbox/);
+    assert.equal(calls(), 1);
+    assert.deepEqual([(await pic(owner, up.body.url)).status, calls()], [200, 1], 'kept: GitHub not asked again');
+    assert.equal((await pic(ana, up.body.url)).bytes.equals(GIF), true);
+    assert.equal(calls(), 1, 'the uploader\'s own, kept from the upload');
+
+    // a picture dropped on GitHub's page of the chat, against the chat's repo; one of a repo nobody shared with you; a
+    // picture by its path (the app's drop); an address that is no picture's
+    const web = gh.asset('acme-chat/room', PNG);
+    const [a, b] = await Promise.all([pic(ana, web), pic(owner, web)]);
+    assert.deepEqual([a.status, a.bytes.equals(PNG), b.status], [200, true, 200]);
+    assert.equal((await pic(ana, gh.asset('acme/secret', PNG))).status, 404, 'GitHub signs none for you');
+    assert.equal((await pic(ana, 'https://evil.example/p.png')).status, 400);
+    const shot = join(tmpDir('peix-pic-'), 'shot.png'); writeFileSync(shot, PNG);
+    const byPath = await ana.api(`api/chat/upload?path=${encodeURIComponent(shot)}`, { method: 'POST' });
+    assert.equal(byPath.status, 200, JSON.stringify(byPath.body));
+    assert.equal(byPath.body.name, 'shot');
+    assert.equal((await ana.api(`api/chat/upload?path=${encodeURIComponent('/etc/hosts')}`, { method: 'POST' })).status, 400, 'a path that is no picture\'s');
+
+    // the people follow: rui invited to the chat is invited to its files too; ana removed goes from both
+    await owner.post('api/chat/invite', { login: 'rui' });
+    assert.deepEqual(files.invitations.map(v => v.login), ['rui']);
+    await owner.post('api/chat/remove', { login: 'ana' });
+    assert.deepEqual([gh.repo('acme-chat/room').perms.ana, files.perms.ana], [undefined, undefined]);
+    const rui = files.invitations[0], ruiChat = gh.repo('acme-chat/room').invitations.find(v => v.login === 'rui');
+    await owner.post('api/chat/cancel', { id: ruiChat.id });
+    assert.ok(!files.invitations.includes(rui), 'an invitation cancelled: its files one too');
+  } finally { await owner?.stop(); await ana.stop(); await gh.close(); }
+});
+
+test('the files repo\'s invitation that expired unanswered is made again by the admin\'s board', { timeout: 40_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana'], orgs: { 'acme-chat': ['me'] }, repos: {
+    'acme-chat/room': { perms: { ana: 'pull' }, rooms: [{ title: 'Chat' }] }, 'acme-chat/room-files': { description: 'pictures' } } });
+  gh.invite('acme-chat/room-files', 'ana', 'me');
+  const old = gh.repo('acme-chat/room-files').invitations[0]; old.expired = true;
+  const owner = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'me', ...FAST } });
+  try {
+    await owner.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }) });
+    await waitFor(async () => (await owner.api('api/chat')).body.ready, { what: 'the chat read' });
+    const now = gh.repo('acme-chat/room-files').invitations;
+    assert.deepEqual(now.map(v => [v.login, !!v.expired]), [['ana', false]], 'a fresh one in its place');
+    assert.notEqual(now[0].id, old.id);
+  } finally { await owner.stop(); await gh.close(); }
+});
+
+test('a member leaving leaves the files repo too', { timeout: 40_000 }, async () => {
+  const gh = await startFakeGitHub({ users: ['me', 'ana'], orgs: { 'acme-chat': ['me'] }, repos: {
+    'acme-chat/room': { perms: { ana: 'pull' }, rooms: [{ title: 'Chat' }] }, 'acme-chat/room-files': { perms: { ana: 'push' }, description: 'pictures' } } });
+  const ana = await startTestServer({ env: { GITHUB_API: gh.url, FAKEGH_VIEWER: 'ana', ...FAST } });
+  try {
+    await ana.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }) });
+    const c = await waitFor(async () => { const x = (await ana.api('api/chat')).body; return x.ready && x; }, { what: 'the chat read' });
+    assert.equal(c.pics.can, true, 'already a writer there');
+    assert.equal((await ana.post('api/chat/leave', {})).status, 200);
+    assert.deepEqual([gh.repo('acme-chat/room').perms.ana, gh.repo('acme-chat/room-files').perms.ana], [undefined, undefined]);
+  } finally { await ana.stop(); await gh.close(); }
 });

@@ -41,6 +41,29 @@
   #room .rmfoot textarea { min-height: 34px; max-height: 140px; resize: none; display: block; }
   #room :is(.rmfoot textarea, .rmfind, .rmform input[type="text"]):focus { border-color: var(--accent); }
   #room .rmrow { display: flex; gap: 4px; align-items: flex-end; } #room .rmrow textarea { flex: 1 1 auto; min-width: 0; } #room .rmrow .rmbtn { height: 34px; width: 30px; }
+  #room #rmPicBtn[aria-disabled="true"] { opacity: .45; }
+  /* pictures (2026-11-25): a place in a message, its size once the bytes are here (the log is drawn whole: what is here
+     fills at once, so nothing jumps), a GIF moving — still under reduced motion till the pointer or the keys are on it;
+     the tray of yours over the box, each going up; the panel taking a drop */
+  #room .rmpic { display: block; max-width: min(100%, 300px); margin: 4px 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); overflow: hidden; cursor: zoom-in; font: inherit; color: inherit; }
+  #room .rmpic:not(.on) { width: 180px; height: 110px; }
+  #room .rmpic.wait { animation: rmwait 1s var(--ease-out) infinite alternate; }
+  @keyframes rmwait { from { opacity: 1; } to { opacity: .45; } }
+  #room .rmpic img { display: block; max-width: 100%; max-height: 260px; width: auto; height: auto; }
+  #room .rmpic.still img:first-child { display: none; } #room .rmpic.still:is(:hover, :focus-visible) img:first-child { display: block; } #room .rmpic.still:is(:hover, :focus-visible) img + img { display: none; }
+  #room .rmpic.bad { width: auto; height: auto; padding: 5px 9px; cursor: pointer; color: var(--muted); font-size: var(--fs-sm); text-align: left; }
+  #room .rmoutpics { display: flex; flex-wrap: wrap; gap: 4px; } #room .rmoutpics .rmpic { cursor: default; }
+  #room .rmpics { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; }
+  #room .rmtp { position: relative; width: 56px; height: 56px; border-radius: var(--r-3); background: var(--ctl); overflow: hidden; }
+  #room .rmtp img { width: 100%; height: 100%; object-fit: cover; } #room .rmtp.up img { opacity: .5; } #room .rmtp.up { animation: rmwait 1s var(--ease-out) infinite alternate; }
+  #room .rmtp.fail { outline: 2px solid var(--needs); outline-offset: -2px; }
+  #room .rmtp .rmbtn { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--ink); }
+  #room .rmtp .rmbtn .ic { width: 10px; height: 10px; }
+  #room.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
+  #rmview[open] { max-width: 94vw; max-height: 92vh; padding: 0; border: 0; border-radius: var(--r-4); background: var(--panel); overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .4); cursor: zoom-out; }
+  #rmview::backdrop { background: rgba(0, 0, 0, .6); }
+  #rmview img { display: block; max-width: 94vw; max-height: calc(92vh - 40px); margin: 0 auto; object-fit: contain; }
+  #rmview .rmvfoot { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 12px; font-size: var(--fs-sm); color: var(--muted); } #rmview .rmvfoot span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* a poll (2026-10-20): an answer a row, its share of the people who answered a fill from the left; yours edged in the accent */
   #room .rmpoll { display: grid; gap: 4px; margin-top: 2px; }
   #room .rmq { display: flex; gap: 6px; align-items: center; font-weight: 650; } #room .rmq .ic { flex: none; width: 14px; height: 14px; color: var(--accent); }

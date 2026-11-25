@@ -5,26 +5,171 @@
   // segment is) is its messages and a box. A poll is a message (2026-10-20): its answers are buttons, a vote GitHub's
   // reaction on it (the server's chatVotes); the box's ▤ asks one, and lunch's dialog one about lunch. The repo's admin also gets the people — invite (the people of the chats' PRs
   // suggested), cancel, remove. Settings › Chat makes a repo, joins one, or leaves.
-  // What comes in is someone else's words, drawn by chatMd alone — markdown with no raw HTML, no images, no attribute
-  // but a link's address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's
-  // files and pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs).
+  // What comes in is someone else's words, drawn by chatMd alone — markdown with no raw HTML, no attribute but a link's
+  // address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's files and
+  // pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs). Its pictures
+  // (2026-11-25) are the server's to fetch (GET /api/chat/pic, server/chat-pics.mjs): a message names one by its address
+  // — GitHub's attachment, a GIF on Giphy, Tenor or Imgur (picOf) —, and the page draws the bytes it was given, never
+  // the address; an <img> of GitHub's own page's is taken for its address alone, the rest of the tag shown as text.
   const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, sending: false, watch: 0, seenSent: 0, err: null, setSure: false,
-    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null, poll: null, voting: new Set(), out: [], outSeq: 0, sendQ: Promise.resolve() };
-  $('#rmPollBtn').innerHTML = ICON.poll; $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
-  const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => esc(t.text ?? ''), image: t => esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
-  const CHAT_TAGS = ['p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
+    places: null, placesErr: null, placesAsk: false, newRepo: null, useRepo: null, poll: null, voting: new Set(), out: [], outSeq: 0, sendQ: Promise.resolve(), pics: [], picSeq: 0, atEnd: true, viewing: null };
+  $('#rmPollBtn').innerHTML = ICON.poll; $('#rmPicBtn').innerHTML = ICON.pic; $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
+  // a picture's address the panel draws as one (the server's picUrl holds the same list): GitHub's attachments, a few GIF
+  // hosts' files, and a Giphy page's GIF
+  const PIC_ASSET = /^https:\/\/github\.com\/(?:user-attachments\/assets\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}|[\w.-]+\/[\w.-]+\/assets\/\d+\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i;
+  const PIC_DIRECT = /^https:\/\/(?:user-images\.githubusercontent\.com|media[0-4]?\.giphy\.com|i\.giphy\.com|media\.tenor\.com|i\.imgur\.com)\/[\w./%~+-]+(?:\?[\w.=&%~+-]*)?$/i;
+  const PIC_GIPHY = /^https:\/\/(?:www\.)?giphy\.com\/(?:gifs|embed)\/(?:[\w-]*-)?([A-Za-z0-9]{6,40})\/?$/;
+  function picOf(u) {
+    const s = String(u ?? '').trim(), g = PIC_GIPHY.exec(s);
+    return g ? `https://media.giphy.com/media/${g[1]}/giphy.gif` : PIC_ASSET.test(s) || PIC_DIRECT.test(s) ? s : null;
+  }
+  /** Raw HTML in a message, as text — but an <img> naming a picture, as GitHub's page writes one dropped there
+   *  (`<img width="892" alt="…" src="https://github.com/user-attachments/assets/…">`): that picture, its alt kept. */
+  function chatRawHtml(text) {
+    const attr = (tag, name) => { const m = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`, 'i').exec(tag); return m ? (m[1] ?? m[2] ?? m[3]).replace(/&amp;/g, '&') : null; };
+    let out = '', at = 0;
+    for (const m of String(text).matchAll(/<img\b[^>]*>/gi)) {
+      const src = picOf(attr(m[0], 'src')); if (!src) continue;
+      out += esc(text.slice(at, m.index)) + `<img src="${esc(src)}" alt="${esc(attr(m[0], 'alt') || '')}">`; at = m.index + m[0].length;
+    }
+    return out + esc(String(text).slice(at));
+  }
+  const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => chatRawHtml(t.text ?? ''),
+    image: t => picOf(t.href) ? `<img src="${esc(picOf(t.href))}" alt="${esc(t.text || '')}">` : esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
+  const CHAT_TAGS = ['p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img'];
   const chatHtml = new Map();
+  /** A picture's place in a message, filled once its bytes are here (chatPicsFill): a button, which shows it large. */
+  function chatPicNode(url, alt) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'rmpic'; b.dataset.pic = url;
+    if (alt) b.dataset.alt = alt;
+    b.setAttribute('aria-label', alt ? `Picture: ${alt}` : 'Picture'); return b;
+  }
   /** A message's words as the panel draws them: raw HTML escaped by the parser, then only CHAT_TAGS, and no attribute but a
-   *  link's address — https or mailto —, which it says on hover. */
+   *  link's address — https or mailto —, which it says on hover; a picture (an <img> the parser made of one, or a
+   *  paragraph that is a picture's address alone) a place for it, by its address. */
   function chatMd(text) {
     const t = String(text ?? ''); if (chatHtml.has(t)) return chatHtml.get(t);
-    let html = !chatMarked ? esc(t).replace(/\n/g, '<br>') : DOMPurify.sanitize(chatMarked.parse(t), { ALLOWED_TAGS: CHAT_TAGS, ALLOWED_ATTR: ['href'], ALLOWED_URI_REGEXP: /^(?:https:\/\/|mailto:)/i });
+    let html = !chatMarked ? esc(t).replace(/\n/g, '<br>') : DOMPurify.sanitize(chatMarked.parse(t), { ALLOWED_TAGS: CHAT_TAGS, ALLOWED_ATTR: ['href', 'src', 'alt'], ALLOW_DATA_ATTR: false, ALLOWED_URI_REGEXP: /^(?:https:\/\/|mailto:)/i });
     const tpl = document.createElement('template'); tpl.innerHTML = html;
-    for (const a of tpl.content.querySelectorAll('a')) { const h = a.getAttribute('href'); if (!h) { a.replaceWith(...a.childNodes); continue; } a.title = h; a.rel = 'noopener noreferrer'; }
+    for (const img of tpl.content.querySelectorAll('img')) { const pic = picOf(img.getAttribute('src')); img.replaceWith(pic ? chatPicNode(pic, img.getAttribute('alt')) : document.createTextNode(`[image: ${img.getAttribute('alt') || ''}]`)); }
+    for (const a of tpl.content.querySelectorAll('a')) {
+      const h = a.getAttribute('href'); if (!h || a.querySelector('.rmpic')) { a.replaceWith(...a.childNodes); continue; }   // a picture linked: the picture, which opens itself
+      const pic = a.parentElement?.tagName === 'P' && a.parentElement.childNodes.length === 1 && a.textContent.trim() === h && picOf(h);
+      if (pic) { a.replaceWith(chatPicNode(pic, '')); continue; }
+      a.title = h; a.rel = 'noopener noreferrer';
+    }
     html = tpl.innerHTML;
     if (chatHtml.size > 2000) chatHtml.clear();
     chatHtml.set(t, html); return html;
   }
+  // ---- pictures (2026-11-25): asked of the server four at a time, kept for the page's life as blob: addresses -------
+  // chatPics: an address → {src, w, h, still} once here (`still` a GIF's first frame, drawn under reduced motion), {err, at}
+  // for a minute, or the ask on its way. A place is filled at once from what is here — the log is drawn whole on a change, so a
+  // picture's size goes with it and nothing jumps — and the rest once each answer comes.
+  const chatPics = new Map(), chatPicQ = [];
+  let chatPicRun = 0;
+  const PIC_TYPES = /^image\/(png|jpeg|gif|webp)$/, PIC_MAX = 10 * 1024 * 1024;
+  /** A picture's bytes as a blob: address, its size, and a GIF's still: what a place is filled with. */
+  async function chatPicOf(blob) {
+    const src = URL.createObjectURL(blob);
+    const img = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+    if (!img) { URL.revokeObjectURL(src); return { err: 'not a picture this page can draw' }; }
+    let still = null;
+    if (blob.type === 'image/gif') try {
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0);
+      still = URL.createObjectURL(await new Promise(ok => c.toBlob(ok, 'image/png')));
+    } catch {}
+    return { src, w: img.naturalWidth, h: img.naturalHeight, still };
+  }
+  function chatPicGet(url) {
+    if (chatPics.has(url)) return chatPics.get(url);
+    const ask = new Promise(ok => { chatPicQ.push({ url, ok }); chatPicPump(); }).then(r => { chatPics.set(url, r.err ? { ...r, at: Date.now() } : r); return r; });
+    chatPics.set(url, ask); return ask;
+  }
+  function chatPicPump() {
+    while (chatPicRun < 4 && chatPicQ.length) {
+      const { url, ok } = chatPicQ.shift(); chatPicRun++;
+      (async () => {
+        await keyReady;
+        const r = await fetch(`/api/chat/pic?u=${encodeURIComponent(url)}`, { headers: keyHeaders() });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); return { err: d.error || `HTTP ${r.status}` }; }
+        return chatPicOf(await r.blob());
+      })().catch(e => ({ err: e.message })).then(ok).finally(() => { chatPicRun--; chatPicPump(); });
+    }
+  }
+  const STILL = matchMedia('(prefers-reduced-motion: reduce)'), stillNow = () => STILL.matches;
+  STILL.addEventListener('change', () => { for (const el of document.querySelectorAll('#room .rmpic.on:not(.bad)')) { const got = chatPics.get(el.dataset.pic); if (got?.src) chatPicPut(el, got); } });   // turned on or off: every GIF shown follows
+  /** A place filled: the picture at its size — a GIF still under reduced motion, moving under the pointer or the keys —,
+   *  or why it is not shown (a click opens its address in your browser). */
+  function chatPicPut(el, got) {
+    el.classList.remove('wait'); el.classList.add('on');
+    if (got.err) { el.classList.add('bad'); el.title = `Not shown: ${got.err} — click to open it in your browser`; el.textContent = `${el.dataset.alt || 'A picture'} · not shown`; return; }
+    const img = n => { const i = document.createElement('img'); i.src = n; i.alt = el.dataset.alt || ''; i.width = got.w; i.height = got.h; i.decoding = 'async'; return i; };
+    el.replaceChildren(img(got.src), ...got.still && stillNow() ? [img(got.still)] : []);
+    el.classList.toggle('still', !!got.still && stillNow());
+    if (el.closest('#rmlog') && chatUi.atEnd) { const log = $('#rmlog'); log.scrollTop = log.scrollHeight; }
+  }
+  function chatPicsFill(root) {
+    for (const el of root.querySelectorAll('.rmpic:not(.on, .wait)')) {
+      const url = el.dataset.pic;
+      let got = chatPics.get(url);
+      if (got?.err && Date.now() - got.at > 60_000) { chatPics.delete(url); got = null; }   // not shown: asked again a minute on (the chat still being read, a host down)
+      if (got && !(got instanceof Promise)) { chatPicPut(el, got); continue; }
+      el.classList.add('wait');
+      (got || chatPicGet(url)).then(r => { for (const x of document.querySelectorAll('.rmpic.wait')) if (x.dataset.pic === url) chatPicPut(x, r); });
+    }
+  }
+  /** A picture large, over the board: a click or Esc lets it go; its original in your browser. */
+  function chatView(el) {
+    const got = chatPics.get(el.dataset.pic); if (!got?.src) return;
+    $('#rmviewImg').src = got.src; $('#rmviewImg').alt = el.dataset.alt || '';
+    $('#rmviewAlt').textContent = el.dataset.alt || ''; chatUi.viewing = el.dataset.pic;
+    $('#rmview').showModal(); repostPane();
+  }
+  $('#rmview').addEventListener('click', e => {
+    if (e.target.closest('#rmviewOut')) openExternal(chatUi.viewing, { s: null });
+    $('#rmview').close();
+  });
+  // your pictures for the next message: up to GitHub as they are added (POST /api/chat/upload — its bytes from a paste, a
+  // drop or the picker; the app's Finder drop its path), shown from here meanwhile, in the tray over the box
+  function chatPicsAdd(files) {
+    const c = state.chat;
+    if (!c.ready || c.room == null) return false;
+    if (!c.pics?.can) { note($('#rmPicBtn'), `No pictures from here: ${c.pics?.why || 'the chat is still being read'}`, true); return true; }
+    for (const f of files) {
+      const name = f.name || f.path?.split('/').pop() || 'pasted.png';
+      if (f.path ? !/\.(png|jpe?g|gif|webp)$/i.test(f.path) : !PIC_TYPES.test(f.type)) { note($('#rmbox'), `${name}: a PNG, JPEG, GIF or WebP picture`, true); continue; }
+      if (f.size > PIC_MAX) { note($('#rmbox'), `${name}: larger than 10 MB`, true); continue; }
+      if (chatUi.pics.length >= 10) { note($('#rmbox'), 'Ten pictures to a message at most', true); break; }
+      const p = { key: ++chatUi.picSeq, name: name.replace(/\.\w{1,5}$/, ''), file: f.path ? null : f, path: f.path || null, got: null, url: null, err: null, up: null };
+      chatUi.pics.push(p); chatPicUp(p);
+    }
+    chatTrayDraw(); $('#rmbox').focus();
+    return true;
+  }
+  function chatPicUp(p) {
+    p.err = null;
+    p.up = (async () => {
+      if (p.file && !p.got) { p.got = await chatPicOf(p.file); chatTrayDraw(); chatDraw(); }
+      await keyReady;
+      const r = await fetch(`/api/chat/upload?${p.path ? `path=${encodeURIComponent(p.path)}` : `name=${encodeURIComponent(p.file.name || 'pasted.png')}`}`, { method: 'POST', body: p.file || undefined, headers: keyHeaders() });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      p.url = d.url;
+      if (p.got && !p.got.err) chatPics.set(d.url, p.got); else p.got = await chatPicGet(d.url);   // the app's drop: the server kept its bytes
+    })().catch(e => { p.err = e.message; }).finally(() => { chatTrayDraw(); chatDraw(); });
+    chatTrayDraw();
+    return p.up;
+  }
+  function chatTrayDraw() {
+    const tray = $('#rmpics'); tray.hidden = !chatUi.pics.length || !!chatUi.poll;
+    setHtml(tray, chatUi.pics.map(p => `<span class="rmtp${p.err ? ' fail' : p.url ? '' : ' up'}" data-k="${p.key}" title="${esc(p.err ? `${p.name}: not uploaded — ${p.err}` : p.url ? p.name : `${p.name}: uploading…`)}">`
+      + (p.got?.src ? `<img src="${esc(p.got.src)}" alt="">` : '<span class="rmtpw"></span>')
+      + `<button type="button" class="rmbtn" data-rm="unpic" title="Not this one" aria-label="Drop ${esc(p.name)}">${ICON.close}</button></span>`).join(''));
+  }
+  /** A message on its way, its pictures as you gave them: drawn from here. */
+  const chatOutPics = o => !o.pics?.length ? '' : `<div class="rmoutpics">${o.pics.map(p => p.got?.src ? `<span class="rmpic on"><img src="${esc(p.got.src)}" width="${p.got.w}" height="${p.got.h}" alt=""></span>` : '<span class="rmpic wait"></span>').join('')}</div>`;
+  const mdAlt = n => String(n).replace(/[[\]\\\n]/g, ' ').trim().slice(0, 80);
   const chatClock = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const chatFace = (url, cls = 'face') => /^(https:\/\/avatars\.githubusercontent\.com\/|data:image\/)/.test(url || '') ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy">` : `<span class="${cls}"></span>`;
   /** The status bar's word on the chat (renderBar): its unread count, an invitation waiting, what went wrong — nothing
@@ -43,6 +188,7 @@
     if (!dlg.open) { if ($('#hmenu').open) $('#hmenu').close(); dlg.show(); repostPane(); if (inApp) post({ type: 'focus' }); chatWatch(); }
     if (view === 'people') chatPeopleLoad();
     chatLoad(); chatDraw(true); renderBar(); chatSeenNow();   // what came while it was shut is read now
+    if (c.ready && c.pics && !c.pics.can) api('GET', '/api/chat?pics=1').then(d => { state.chat = d; chatChanged(); }, () => {});   // shared since? (its invitation taken by the server)
     if (view !== 'log') $('#rmfind').focus(); else (chatUi.poll ? $('#rmform input') : $('#rmbox')).focus();
   }
   /** The chat's messages, read as the panel first shows them — and again for another issue (the repo's, or its first
@@ -79,7 +225,7 @@
       const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000, mine = m.who === me || !!m.out, o = m.out;
       out += `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}${o ? ` out${o.err ? ' fail' : ''}` : ''}" ${o ? `data-out="${o.key}"` : `data-id="${m.id}"`}>${chatFace(m.face)}`
         + `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}${o && !o.err ? '<span class="vh">sending</span>' : ''}</div>`
-        + `<div class="rmbody">${m.poll ? chatPollHtml(m) : chatMd(m.body)}</div>`
+        + `<div class="rmbody">${m.poll ? chatPollHtml(m) : chatMd(m.body)}${o ? chatOutPics(o) : ''}</div>`
         + (o?.err ? `<div class="rmfail" role="status"><span>Not sent: ${esc(o.err)}</span><button type="button" class="btn" data-rm="retry">Try again</button><button type="button" class="btn" data-rm="edit" title="Its words back in the box">Edit</button></div>`
           : !o && (mine || admin) ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
       prev = m;
@@ -121,7 +267,7 @@
   }
   function chatPollDraw() {
     const p = chatUi.poll, form = $('#rmform'), text = 'type="text" spellcheck="false" autocomplete="off"';
-    form.hidden = !p; $('#rmrow').hidden = !!p; if (!p) return;
+    form.hidden = !p; $('#rmrow').hidden = !!p; chatTrayDraw(); if (!p) return;
     const lunch = state.lunch?.set;
     form.innerHTML = `<input ${text} data-pf="q" maxlength="200" placeholder="Ask the chat — Lunch at 12:30?" aria-label="The question" value="${esc(p.q)}">`
       + p.answers.map((a, i) => `<div class="rma"><input ${text} data-pf="a" data-i="${i}" maxlength="80" placeholder="Answer ${i + 1}" aria-label="Answer ${i + 1}" value="${esc(a)}">`
@@ -176,8 +322,11 @@
     if (people) return chatPeopleDraw();
     const log = $('#rmlog'), atEnd = toEnd || log.scrollHeight - log.scrollTop - log.clientHeight < 48;
     setHtml(log, chatLogHtml());
-    if (atEnd) log.scrollTop = log.scrollHeight;
+    chatPicsFill(log);
+    if (atEnd) { log.scrollTop = log.scrollHeight; chatUi.atEnd = true; }
     $('#rmbox').placeholder = 'Message — ⏎ sends, ⇧⏎ a new line';
+    const pics = c.pics; $('#rmPicBtn').setAttribute('aria-disabled', String(!pics?.can));
+    $('#rmPicBtn').title = pics?.can ? 'Pictures and GIFs — or paste one, or drop it here' : `No pictures from here: ${pics?.why || 'the chat is still being read'}`;
     setHtml($('#rmsay'), c.repo ? `<span>${esc(c.me?.login ? `as ${c.me.login}` : '')}</span><a href="https://github.com/${esc(c.repo)}${r != null ? `/issues/${r}` : ''}" data-rm="gh" title="The chat on GitHub — its messages are this issue's comments">${esc(c.repo)}</a>` : '');
   }
   function chatGrow() { const b = $('#rmbox'); b.style.height = 'auto'; b.style.height = `${Math.min(140, b.scrollHeight + 2)}px`; }
@@ -185,24 +334,32 @@
    *  GitHub's comment once the server has it. One that did not go stays where it was said, saying so — on this page
    *  alone, since nobody else has it. Sent one after another, in the order typed (the server writes them so anyway). */
   function chatSend() {
-    const box = $('#rmbox'), body = box.value; if (!body.trim() || chatUi.n == null) return;
+    const box = $('#rmbox'), body = box.value; if ((!body.trim() && !chatUi.pics.length) || chatUi.n == null) return;
     box.value = ''; chatGrow();
-    const o = { key: ++chatUi.outSeq, n: chatUi.n, body, at: new Date().toISOString(), err: null };
-    chatUi.out.push(o); chatDraw(true); chatPost(o);
+    const o = { key: ++chatUi.outSeq, n: chatUi.n, body, pics: chatUi.pics.splice(0), at: new Date().toISOString(), err: null };
+    chatTrayDraw(); chatUi.out.push(o); chatDraw(true); chatPost(o);
   }
+  /** Sent once its pictures are up: the words, then each picture as markdown — as GitHub's own uploader writes one. */
   function chatPost(o) {
     chatUi.sendQ = chatUi.sendQ.then(async () => {
-      try { const d = await api('POST', '/api/chat/send', { body: o.body }); chatUi.out = chatUi.out.filter(x => x !== o); if (d.msg.n === chatUi.n) chatTake([d.msg], []); }
+      try {
+        await Promise.all(o.pics.map(p => p.up));
+        const bad = o.pics.find(p => p.err); if (bad) throw new Error(`${bad.name}: ${bad.err}`);
+        o.final = o.pics.length ? [o.body.trim(), ...o.pics.map(p => `![${mdAlt(p.name)}](${p.url})`)].filter(Boolean).join('\n\n') : o.body;
+        const d = await api('POST', '/api/chat/send', { body: o.final }); chatUi.out = chatUi.out.filter(x => x !== o); if (d.msg.n === chatUi.n) chatTake([d.msg], []);
+      }
       catch (e) { o.err = e.message; }
       chatDraw();
     });
   }
-  /** A message that did not go: sent again, as the newest — or its words back in the box, before what is typed there. */
+  /** A message that did not go: sent again, as the newest (a picture that did not go up, up again) — or its words back
+   *  in the box, before what is typed there, and its pictures in the tray. */
   function chatRetry(key, edit) {
     const o = chatUi.out.find(x => x.key === key); if (!o) return;
     chatUi.out = chatUi.out.filter(x => x !== o);
-    if (edit) { const box = $('#rmbox'); box.value = o.body + (box.value.trim() ? '\n' + box.value : ''); chatGrow(); chatDraw(); box.focus(); return; }
-    Object.assign(o, { at: new Date().toISOString(), err: null }); chatUi.out.push(o); chatDraw(true); chatPost(o);
+    for (const p of o.pics) if (p.err) chatPicUp(p);
+    if (edit) { const box = $('#rmbox'); box.value = o.body + (box.value.trim() ? '\n' + box.value : ''); chatUi.pics.unshift(...o.pics); chatTrayDraw(); chatGrow(); chatDraw(); box.focus(); return; }
+    Object.assign(o, { at: new Date().toISOString(), err: null, final: null }); chatUi.out.push(o); chatDraw(true); chatPost(o);
   }
   /** While the panel is up the server looks often (POST /api/chat/watch, every 15 s), else every 20 s. */
   function chatWatch() {
@@ -253,6 +410,9 @@
       return ctxShow([...(c.room != null ? [{ t: 'The chat on GitHub', fn: () => openExternal(`https://github.com/${c.repo}/issues/${c.room}`, { s: null }) }, { hr: true }] : []), { t: 'Chat settings…', fn: () => settingsAt('chat', '#chatSet') },
         { t: c.role === 'admin' ? 'Stop the chat on this board…' : 'Leave the chat…', warn: true, fn: () => { chatUi.view = 'log'; chatUi.sure = 'leave'; chatDraw(); } }], b.left, b.bottom + 4, 'chat');
     }
+    const pic = e.target.closest('#rmlog .rmpic.on');
+    if (pic) return pic.classList.contains('bad') ? openExternal(pic.dataset.pic, { s: null }) : chatView(pic);
+    if (e.target.closest('#rmPicBtn')) return state.chat.pics?.can ? $('#rmFile').click() : note($('#rmPicBtn'), `No pictures from here: ${state.chat.pics?.why || 'the chat is still being read'}`, true);
     const a = e.target.closest('#rmlog a[href], #rmsay a[href]');
     if (a) { e.preventDefault(); openExternal(a.href, { s: null }); return; }   // the system's browser: never a chat's pane
     const act = e.target.closest('[data-rm]')?.dataset.rm, b = e.target.closest('[data-rm]'); if (!act) return;
@@ -260,6 +420,7 @@
     if (act === 'unsure') { chatUi.sure = null; chatDraw(); }
     else if (act === 'vote') chatVote(id, b.dataset.r);
     else if (act === 'retry' || act === 'edit') chatRetry(Number(b.closest('.rmmsg')?.dataset.out), act === 'edit');
+    else if (act === 'unpic') { const k = Number(b.closest('.rmtp')?.dataset.k); chatUi.pics = chatUi.pics.filter(p => p.key !== k); chatTrayDraw(); $('#rmbox').focus(); }
     else if (act === 'del') { b.closest('.rmmsg').classList.add('going'); chatAct('delete', { id }, b, () => { chatTake([], [id]); chatDraw(); }); }
     else if (act === 'leave') chatAct('leave', {}, b, d => { state.chat = d; $('#room').close(); chatChanged(); });
     else if (act === 'invite') chatAct('invite', { login }, b, d => { chatUi.people = d; $('#rmfind').value = ''; chatDraw(); note($('#rmfind'), d.invited ? `Invited ${d.login} — they join from their board, or GitHub's email` : `${d.login} is in already`); });
@@ -269,6 +430,25 @@
   });
   $('#rmbox').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); } });
   $('#rmbox').addEventListener('input', chatGrow);
+  // a picture pasted (a screenshot's ⌃⇧⌘4, an image copied): to the tray — what has words to paste pastes them instead
+  $('#rmbox').addEventListener('paste', e => {
+    const files = [...e.clipboardData?.files || []].filter(f => PIC_TYPES.test(f.type));
+    if (!files.length || e.clipboardData.types.includes('text/plain')) return;
+    e.preventDefault(); chatPicsAdd(files);
+  });
+  $('#rmFile').addEventListener('change', e => { const files = [...e.target.files]; e.target.value = ''; chatPicsAdd(files); });
+  // a file dropped on the panel is the chat's, not the drawer's (attach.js's drop, on the document, never hears it)
+  const roomFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  $('#room').addEventListener('dragover', e => { if (!roomFiles(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; $('#room').classList.add('dropping'); });
+  $('#room').addEventListener('dragleave', e => { if (!$('#room').contains(e.relatedTarget)) $('#room').classList.remove('dropping'); });
+  $('#room').addEventListener('drop', e => { if (!roomFiles(e)) return; e.preventDefault(); e.stopPropagation(); $('#room').classList.remove('dropping'); chatPicsAdd([...e.dataTransfer.files]); });
+  /** The app's Finder drop (peixDrop: paths, WebKit never sees the drag): the chat's when its panel has the keys and every
+   *  file is a picture — uploaded by its path —, else false, and it goes to the drawer as ever. */
+  function chatTakesDrop(paths) {
+    if (!$('#room').open || !$('#room').contains(document.activeElement) || chatUi.view !== 'log' || !paths.length || !paths.every(p => /\.(png|jpe?g|gif|webp)$/i.test(String(p)))) return false;
+    return chatPicsAdd(paths.map(path => ({ path })));
+  }
+  $('#rmlog').addEventListener('scroll', () => { const log = $('#rmlog'); chatUi.atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 48; }, { passive: true });
   $('#rmfind').addEventListener('input', () => chatPeopleDraw());
   $('#rmfind').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#rmplist').querySelector('[data-rm="invite"]')?.click(); } });
   /** Esc in the panel lets go of one thing at a time — a question, the people — before the panel. */
@@ -282,7 +462,7 @@
   for (const ev of ['focus', 'visibilitychange']) window.addEventListener(ev, chatSeenNow);
   /** What the server knows changed: the bar, the panel, Settings' pane. */
   function chatChanged() {
-    if (state.chat.repo !== chatUi.repo) { Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null, poll: null, out: [] }); chatPollDraw(); }   // another repo: nothing of the last one's
+    if (state.chat.repo !== chatUi.repo) { Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null, poll: null, out: [], pics: [] }); chatPollDraw(); }   // another repo: nothing of the last one's
     renderBar(); renderChatSet();
     if (state.chat.missing && !chatUi.places && $('#settings').open) chatPlacesLoad();
     if (!$('#room').open) return;
@@ -296,7 +476,7 @@
     // before the send's own answer
     const me = state.chat.me?.login, held = new Set(chatUi.msgs.map(m => m.id));
     for (const m of d.add || []) {
-      const o = !held.has(m.id) && m.who === me && chatUi.out.find(x => !x.err && x.n === m.n && x.body.replace(/\r\n?/g, '\n').trim() === String(m.body ?? '').trim());
+      const o = !held.has(m.id) && m.who === me && chatUi.out.find(x => !x.err && x.n === m.n && (x.final ?? x.body).replace(/\r\n?/g, '\n').trim() === String(m.body ?? '').trim());
       if (o) chatUi.out = chatUi.out.filter(x => x !== o);
     }
     chatTake(d.add || [], d.gone || []); chatDraw(); chatSeenNow();
@@ -336,12 +516,12 @@
           `${c.missing ? 'Off until the repo can be read.' : 'Off until a repo is set.'} A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.`);
     }
     const admin = c.role === 'admin', member = !!c.role && !admin, state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${admin ? 'You are its admin' : 'You are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}${c.room == null ? ' · no chat in it yet' : ''}`;
-    return group('', 'chat repo github room people invite leave',
+    return group('', 'chat repo github room people invite leave pictures images gifs',
       row(esc(c.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>')
       + (admin ? row('People', 'Invite, cancel an invitation, remove — only you can', '<button type="button" class="btn" data-chat="people">Manage…</button>') : '')
       + `<div class="srow set"><span class="sl"><b>${!member ? 'Stop the chat here' : 'Leave the chat'}</b><small>${!member ? 'The repo and its rooms stay on GitHub' : 'You leave the repo'}</small></span><button type="button" class="btn danger" data-chat="sure" aria-expanded="${chatUi.setSure}" aria-controls="chatSure">${!member ? 'Stop…' : 'Leave…'}</button>`
       + `<div class="ssure" id="chatSure" role="group" aria-labelledby="chatSureSay"${chatUi.setSure ? '' : ' hidden'}><span id="chatSureSay">${!member ? 'The chat goes from this board; the repo, its rooms and its people stay on GitHub.' : 'You leave the repo and its history; coming back takes a new invitation.'}</span><button type="button" class="btn" data-chat="unsure">Cancel</button><button type="button" class="btn danger" data-chat="leave">${!member ? 'Stop the chat' : 'Leave the chat'}</button></div></div>`,
-      'Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you.');
+      `Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you. Pictures are GitHub’s attachments: a member who only reads the chat puts theirs against <code>${esc(c.repo)}-files</code>, which its admin’s board makes and keeps shared with everyone in it.`);
   }
   function renderChatSet(force = false) { drawSetup($('#chatSet'), chatSetHtml(), force); }
   /** Settings › Chat in front: the invitations asked now, not in ten minutes — and with no chat, where one could be. */

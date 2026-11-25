@@ -190,8 +190,15 @@ server to run and a Mac that slept catches up when it wakes.
   with GitHub first. A chat set up whose repo you can't read (not made yet, renamed, access gone) shows with *Forget
   it* above the same choices.
 - **Using it**: *chat* in the status bar opens the panel (its count is what you haven't read); ⏎ sends, ⇧⏎ is a new
-  line, Esc closes. Markdown works; images don't show and links open in your browser. A message from someone else
-  while the panel isn't in front of you is a notification. ··· has the chat on GitHub, its settings, and leaving.
+  line, Esc closes. Markdown works and links open in your browser. A message from someone else while the panel isn't in
+  front of you is a notification. ··· has the chat on GitHub, its settings, and leaving.
+- **Pictures and GIFs**: the picture beside the box picks some, or paste one (a screenshot copied with ⌃⇧⌘4), or drop
+  it on the panel — in the app, a file from the Finder goes to the chat while its box has the keys. Each goes up to
+  GitHub at once and waits over the box (× takes one back); ⏎ sends them with your words. A picture someone dropped on
+  the chat's page on GitHub shows too, and so does a link to a GIF on Giphy, Tenor or Imgur; a click shows one large.
+  With *Reduce motion* on, a GIF stays still until the pointer is on it. GitHub takes a picture only from someone who
+  can write where it goes, and members only read the chat: the owner's board makes a private `<chat>-files` repo beside
+  it, keeps everyone in the chat a writer there, and each member's board joins it by itself.
 - **Polls**: the bar chart beside the box asks a question with two to eight answers — one answer each, or *Several
   each*. Everyone's votes show under each answer, by name; a click votes, another answer moves your vote, the same one
   again takes it back. *Lunch* fills it in with your lunch places and *Not today*. A vote is a reaction on GitHub —
@@ -366,7 +373,8 @@ What the board records as you use it — done ticks, titles, pins — stays in `
 with its key (`key`) and VS Code Web's token (`vsweb-token`).
 
 **What leaves your machine**: only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up), the
-chat's GitHub calls (once you join one — with none, a look for an invitation every ten minutes), a `git
+chat's GitHub calls (once you join one — with none, a look for an invitation every ten minutes) and, for a GIF a
+message links, its host's (Giphy, Tenor, Imgur), a `git
 fetch` of the board's own checkout every half hour (its updates) and, with VS Code installed, an hourly look at VS
 Code's update service (so VS Code Web has its newest build before you open it). Transcripts hold everything Claude
 read: keep the server on `127.0.0.1` — past it, the key crosses your network unencrypted.

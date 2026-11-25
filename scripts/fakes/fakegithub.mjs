@@ -12,7 +12,12 @@
 // before it) or of `members` (organizations where those logins are members only); `description` starts with the
 // board's mark unless given. `say`, `edit` and `drop` change it as another board would; `invite(repo, login, by)` and
 // `react(id, login, content)` (a vote; `unreact` takes it back) too.
-import { createHash } from 'node:crypto';
+// Pictures (2026-11-25): GitHub's attachment endpoint (`POST /user-attachments/assets?name&content_type&repository_id`,
+// on this same port: the board's GITHUB_UPLOADS follows GITHUB_API) takes a picture from whoever can push to that repo
+// — a 404 otherwise, as GitHub answers —, and POST /markdown renders `![](…)` as GitHub does for you: an attachment of a
+// repo you can read as a signed address on this port (`/pics/…?jwt=`, served with no token), any other as it was.
+// `asset(repo, bytes, type)` is a picture dropped on GitHub's page; `assets` holds them all.
+import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const face = login => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="hsl(${[...login].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360} 55% 55%)"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif">${login[0].toUpperCase()}</text></svg>`)}`;
@@ -21,7 +26,8 @@ const REACTIONS = ['+1', '-1', 'laugh', 'confused', 'heart', 'hooray', 'rocket',
 
 export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {}, repos = {}, since = Date.parse('2026-10-17T09:00:00Z') } = {}) {
   const people = new Map(), all = new Map(), calls = [];
-  let nextId = 5000, inviteId = 700, reactionId = 90_000, clock = since;   // what it writes is a second apart from `since`
+  let nextId = 5000, inviteId = 700, reactionId = 90_000, repoId = 300, assetN = 1, clock = since;   // what it writes is a second apart from `since`
+  const assets = new Map(), signed = new Set();   // an attachment by its id: {repo, type, bytes, n}; the signatures given
   const at = () => new Date(clock += 1000).toISOString();
   const user = login => { if (!people.has(login)) people.set(login, { login, id: people.size + 1, type: /\[bot\]$/.test(login) ? 'Bot' : 'User', avatar_url: face(login) }); return people.get(login); };
   for (const u of users) user(u);
@@ -29,7 +35,7 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
   const isOrg = owner => !!orgName(owner);
   const orgOut = o => ({ login: o, id: 9000 + orgNames.indexOf(o), avatar_url: face(o), created_at: new Date(Date.parse('2026-01-01T00:00:00Z') + orgNames.indexOf(o) * 86_400_000).toISOString() });
   function makeRepo(full, { perms = {}, description, rooms = [], private: priv = true } = {}) {
-    const [owner, name] = full.split('/'), r = { owner, name, full_name: full, private: priv, description: description ?? 'peixAIrada chat — its rooms are the issues labelled room', perms: { ...perms }, invitations: [], issues: [], labels: new Set(), subs: {} };
+    const [owner, name] = full.split('/'), r = { id: repoId++, owner, name, full_name: full, private: priv, description: description ?? 'peixAIrada chat — its rooms are the issues labelled room', perms: { ...perms }, invitations: [], issues: [], labels: new Set(), subs: {} };
     if (!isOrg(owner)) r.perms[owner] = 'admin';
     all.set(full.toLowerCase(), r);
     for (const room of rooms) {
@@ -47,15 +53,18 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
   const commentOut = (r, i, c) => ({ id: c.id, user: c.user, body: c.body, created_at: c.created_at, updated_at: c.updated_at, issue_url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}`, html_url: `https://github.com/${r.full_name}/issues/${i.number}#issuecomment-${c.id}`,
     reactions: Object.fromEntries([['total_count', c.reactions.length], ...REACTIONS.map(k => [k, c.reactions.filter(x => x.content === k).length])]) });
   const react = (c, login, content) => { let x = c.reactions.find(y => y.user.login === login && y.content === content); if (x) return [200, x]; x = { id: reactionId++, user: user(login), content, created_at: at() }; c.reactions.push(x); return [201, x]; };
-  const repoOut = (r, login) => ({ full_name: r.full_name, name: r.name, private: r.private, description: r.description, owner: { login: r.owner, type: isOrg(r.owner) ? 'Organization' : 'User' },
+  const repoOut = (r, login) => ({ id: r.id, full_name: r.full_name, name: r.name, private: r.private, description: r.description, owner: { login: r.owner, type: isOrg(r.owner) ? 'Organization' : 'User' },
     permissions: { admin: may(r, login, 'admin'), push: may(r, login, 'push'), pull: may(r, login, 'pull') } });
   const inviteOut = (r, v) => ({ id: v.id, invitee: user(v.login), inviter: user(v.by), created_at: v.created_at, expired: !!v.expired, permissions: v.permission === 'pull' ? 'read' : 'write', repository: { full_name: r.full_name, description: r.description, private: r.private } });
   const comments = r => r.issues.flatMap(i => i.comments.map(c => commentOut(r, i, c)));
   const find = id => { for (const r of all.values()) for (const i of r.issues) { const c = i.comments.find(x => x.id === id); if (c) return { r, i, c }; } return null; };
 
+  const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
+  const addAsset = (r, bytes, type) => { const id = randomUUID(); assets.set(id, { repo: r.full_name, type, bytes: Buffer.from(bytes), n: assetN++ }); return `https://github.com/user-attachments/assets/${id}`; };
   const server = createServer((req, res) => {
-    let raw = ''; req.on('data', d => { raw += d; });
+    const chunks = []; req.on('data', d => { chunks.push(d); });
     req.on('end', () => {
+      const bytes = Buffer.concat(chunks), raw = bytes.toString('utf8');
       const u = new URL(req.url, 'http://x'), path = u.pathname, q = u.searchParams, M = req.method;
       const send = (code, body) => {
         let text = body === undefined ? '' : JSON.stringify(body), tag = null;
@@ -64,10 +73,31 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
         res.writeHead(code, { 'content-type': 'application/json', ...tag && { etag: tag } }); res.end(text);
       };
       const no = (code, message) => send(code, { message });
+      let m;
+      if (M === 'GET' && (m = path.match(/^\/pics\/\d+-([0-9a-f-]{36})\.\w+$/))) {   // a signed address: no token, the signature
+        const a = assets.get(m[1]);
+        if (!a || !signed.has(q.get('jwt'))) return no(404, 'Not Found');
+        calls.push(`${M} ${path} 200`); res.writeHead(200, { 'content-type': a.type, 'content-length': a.bytes.length }); return res.end(a.bytes);
+      }
       const token = /^Bearer fake-token-(.+)$/.exec(req.headers.authorization || ''), me = token && people.has(token[1]) ? token[1] : null;
       if (!me) return no(401, 'Bad credentials');
+      if (M === 'POST' && path === '/user-attachments/assets') {   // GitHub's attachment endpoint: a writer's picture, its address back
+        const r = [...all.values()].find(x => x.id === Number(q.get('repository_id')));
+        if (!r || !may(r, me, 'push')) return no(404, 'Not Found');
+        if (!EXT[q.get('content_type')] || !bytes.length) return send(422, { message: 'Validation Failed' });
+        const url = addAsset(r, bytes, q.get('content_type'));
+        return send(201, { id: assets.size, name: q.get('name'), content_type: q.get('content_type'), size: bytes.length, url, href: url });
+      }
       let body = {}; try { body = raw ? JSON.parse(raw) : {}; } catch { return no(400, 'Problems parsing JSON'); }
-      let m;
+      if (M === 'POST' && path === '/markdown') {   // GitHub's rendering for you: a picture of a repo you read signed, any other as written
+        const html = String(body.text || '').split(/\n{2,}/).map(par => `<p dir="auto">${par.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, url) => {
+          const a = assets.get(url.split('/').pop()), r = a && all.get(a.repo.toLowerCase());
+          let src = url;
+          if (a && may(r, me, 'pull')) { const jwt = createHash('sha1').update(`${me}:${url}:${Math.random()}`).digest('hex'); signed.add(jwt); src = `http://127.0.0.1:${server.address().port}/pics/${a.n}-${url.split('/').pop()}.${EXT[a.type]}?jwt=${jwt}`; }
+          return `<a target="_blank" rel="noopener noreferrer" href="${src.replace(/&/g, '&amp;')}"><img src="${src.replace(/&/g, '&amp;')}" alt="${alt}" style="max-width: 100%;"></a>`;
+        })}</p>`).join('\n');
+        calls.push(`${M} ${path} 200`); res.writeHead(200, { 'content-type': 'text/html;charset=utf-8' }); return res.end(html);
+      }
       if (M === 'GET' && path === '/user') return send(200, user(me));
       if (M === 'GET' && (m = path.match(/^\/users\/([^/]+)$/))) return people.has(m[1]) ? send(200, user(m[1])) : no(404, 'Not Found');
       if (M === 'GET' && path === '/user/memberships/orgs') return send(200, orgNames.filter(o => orgs[o]?.includes(me) || members[o]?.includes(me)).map(o => ({ organization: orgOut(o), role: orgs[o]?.includes(me) ? 'admin' : 'member', state: 'active' })));
@@ -161,7 +191,9 @@ export async function startFakeGitHub({ users = ['me'], orgs = {}, members = {},
   await new Promise(ok => server.listen(0, '127.0.0.1', ok));
   const repo = full => all.get(full.toLowerCase());
   return {
-    url: `http://127.0.0.1:${server.address().port}`, calls, repo,
+    url: `http://127.0.0.1:${server.address().port}`, calls, repo, assets,
+    /** A picture dropped on GitHub's page of `full`'s issue: its attachment's address. */
+    asset(full, bytes, type = 'image/png') { return addAsset(repo(full), bytes, type); },
     /** A message another board sent: its id. */
     say(full, n, login, body) { const t = at(), c = { id: nextId++, user: user(login), body, created_at: t, updated_at: t, reactions: [] }; repo(full).issues.find(i => i.number === n).comments.push(c); return c.id; },
     edit(id, body) { const f = find(id); f.c.body = body; f.c.updated_at = at(); },

@@ -5,6 +5,54 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-25, last — pictures and GIFs in the chat
+
+Ricardo: *"add support for images/gifs on chat"* — then, asked where a picture sent from the board should live, since a
+member reads the chat and GitHub takes an upload only from a writer: *a files repo beside the chat*.
+
+* **What GitHub gives**: a picture in an issue is GitHub's attachment (`github.com/user-attachments/assets/<id>`), and since
+  gh 2.101 (2026-09) there is an endpoint for it a token can use — `uploads.github.com/user-attachments/assets`, behind gh's
+  `--attach` —, but only for someone who can write to the repo it is uploaded against: READ and TRIAGE get a 404 (gh's
+  own source says so, measured). The chat's members on an organization's repo only read it (2026-10-17, its moderation),
+  and the three in the chat do.
+* **The files repo** (picked): `<repo>-files` beside the chat, private and empty, made by the admin's board as it reads the
+  chat (`filesKeep`), its people kept the chat's — every member and invitation a writer there, anyone else let go, after
+  each invite, removal and cancel too (`filesPeople`). A member's board takes its invitation by itself (`chatPicsFind`:
+  part of the chat already joined), looks again every ten minutes while it has none, and as the panel opens; a member
+  leaving leaves it too. Its description never starts with the chat's mark, or it would be listed and offered as a chat.
+  The admin, and anyone who writes to the chat, uploads against the chat itself. Not picked: Write on the chat for
+  everyone (any member could delete anyone's words or close the chat), writers alone sending pictures.
+* **A picture shows to whoever reads the repo it went against** — everyone in the chat either way. A private one's address
+  gives a token HTML, not the picture (checked on a private repo the same day); the picture is behind a signed address
+  that lives five minutes, which GitHub writes into the HTML it renders for you — POST /markdown signs it for a reader of
+  the asset's repo whatever repo is the context (checked), a batch of 20 a call. So **the server fetches every picture**,
+  once, through redirects that stay on GitHub's and the GIF hosts' (`HOPS`), 10 MB at most, sniffed as PNG, JPEG, GIF or
+  WebP (never SVG), kept in the state folder's `chat-pics/` by its address's hash (256 MB, the oldest let go), served under
+  a policy that runs nothing; the page draws the bytes as `blob:` addresses, so its own policy keeps refusing every
+  remote picture (it backs the transcript's sanitiser).
+* **What counts as a picture** (`picUrl`, the page's `picOf` the same list): GitHub's attachments, a markdown picture or a
+  paragraph that is the address alone on Giphy (a page's address is its GIF's), Tenor's media, Imgur's, GitHub's old
+  user-images, and the `<img>` GitHub's own page writes for a picture dropped there — its address taken, the rest of the tag
+  text as before. Any other host's is still the word *[image: …]*.
+* **Sending**: the panel's picture button (the app's board view now opens the system's file panel: WebKit opens none for an
+  `<input type=file>` without its UI delegate), a paste into the box (unless there are words to paste), a drop on the panel,
+  and in the app a Finder drop while the panel has the keys (`chatTakesDrop`: by its path, the server reading the file).
+  Each goes up at once into the tray over the box; ⏎ sends the words, then each picture as markdown, as GitHub's uploader
+  writes it, once all are up. Yours is drawn from what you gave it — no fetch —, a failure says which picture, and Edit
+  puts the pictures back in the tray. An alert for pictures alone says *📷 a picture*.
+* **Drawn** at their size (the log is drawn whole on a change, so a picture already here fills before the paint and
+  nothing jumps), 300 × 260 at most; a click shows it large (`#rmview`) with its original a button away; one GitHub shows
+  you nowhere says so and opens in your browser. **Under reduced motion a GIF is its first frame**, moving under the
+  pointer or the keys, the switch followed as it turns.
+* Checked: `test/chat.test.mjs` (the addresses, the bytes; the files repo made, its invitation taken, a member's GIF up and
+  fetched through the signed address once, one from GitHub's page, one nobody shared, by path; the people following;
+  leaving), `chat-pictures.mjs` (in the page: drawn as blobs, the large view, a paste and a drop into the tray, sent as
+  markdown, the still GIF), `shell-checks/board-file-panel.mjs` (fails on the shell before), `chat-room.mjs` and
+  `chat-poll.mjs` as they were. The real endpoint answered a refused type with its validation, the token taken.
+* Open: a GIF search (Giphy's and Tenor's want a key of their own — the user's, in the setup, if wanted); Tenor's page
+  addresses (only its media's are pictures); a video attachment shows as its address; the files repo's writers could push
+  to it — it holds nothing, the pictures are attachments.
+
 ## Decisions of 2026-11-25, later still — the code in units: the page in parts, the server in modules, the shell in files
 
 Ricardo: *"files are to big, no clear separation of concerns in files/folders. etc. do a deep review of best pratices, split

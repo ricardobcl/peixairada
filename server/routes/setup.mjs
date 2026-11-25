@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { CONFIG_FILE } from '../env.mjs';
 import { chatReset, chatRoute } from '../chat.mjs';
+import { chatPicRoute } from '../chat-pics.mjs';
 import { folderCache, suggestRoots } from '../folders.mjs';
 import { json, jsonBody, NEXT } from '../http.mjs';
 import { jiraInfo, jiraReset, saveJiraToken } from '../jira.mjs';
@@ -20,6 +21,7 @@ export async function setupRoutes(req, res, url, p) {
   if (req.method === 'GET' && p === '/api/config/suggest') return json(res, 200, { roots: suggestRoots() });
   if (req.method === 'GET' && p === '/api/jira') return json(res, 200, await jiraInfo());
   if (p === '/api/chat') return chatRoute(req, res, null, url);   // the chat (2026-10-17): its own routes
+  if (p === '/api/chat/pic' || p === '/api/chat/upload') return chatPicRoute(req, res, url, p);   // its pictures (2026-11-25): fetched for the page, yours uploaded
   if ((m = p.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, m[1], url);
   if (p === '/api/lunch') return lunchRoute(req, res, url);   // lunch (2026-10-18)
   if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {   // the Setup's token box: into the keychain, or out of it

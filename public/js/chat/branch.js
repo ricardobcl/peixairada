@@ -58,7 +58,7 @@
     if (e.key !== 'Enter' || e.isComposing) return;
     if (ho.mode === 'send' ? !e.shiftKey && !e.altKey : e.metaKey) { e.preventDefault(); hoGo(); }
   });
-  window.peixDragging = on => setDropping(!!on);
+  window.peixDragging = on => { const room = !!on && $('#room').open && $('#room').contains(document.activeElement); $('#room').classList.toggle('dropping', room); setDropping(!!on && !room); };   // the chat's panel with the keys takes the drop (chatTakesDrop)
   const pastedFiles = e => [...(e.clipboardData?.files || [])];
   for (const tm of terms) $(tm.el.tbody).addEventListener('paste', e => {   // capture, so xterm's own paste (the text, a file's name) does not run
     const files = pastedFiles(e); if (!files.length) return;

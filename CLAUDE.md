@@ -170,7 +170,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
   origin when a PR's diff or a worktree is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint (`planUsage`), Jira
   once the setup names a site (`jiraAsk`; `GET /api/jira` says only where its token is), GitHub's REST API for the
-  chat, Instagram and `claude -p` for lunch, VS Code's update service, and Homebrew when Zed is picked and missing.
+  chat (and GIF hosts), Instagram and `claude -p` for lunch, VS Code's update service, and Homebrew when Zed is picked and missing.
 * **VS Code Web wants the board's token** (2026-10-16; `vsweb-token` in the state folder, 0600): the page gets it from
   `POST /api/vscode-web` and opens `?tkn=` (`vswebAt`), traded by serve-web for its cookie; one on the port the board
   did not start, serving without it, is refused, and nothing is sent the token before its listener is the serve-web this
@@ -233,12 +233,13 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   author, reviewers, commenters, pushers, newest first, `PEOPLE_MAX`, no you nor bots; a PR the
   call could not see keeps its faces.
 * **The chat is a GitHub repo's issue** (2026-10-17; setup.chat `{repo}`, `chatTick`, `chatRoute`): one, unnamed
-  (2026-10-18), the oldest open labelled `room` (`chatFind`; `chatStart`, the admin's), its comments the messages, by
-  REST with gh's token (`ghRest`, `GITHUB_API`): the newest comments by one URL and ETag (a 304 free), `CHAT_FAST_MS`
-  while watched, writes `CHAT_GAP_MS` apart (`chatWrite`), its mails off (`chatQuiet`); only its `admin` manages
-  people. **A poll is a message, a vote its reaction** (2026-10-20; `pollOf`; `chatVotes` when the list's `rx` moves).
-  No repo: invitations every `CHAT_INVITES_MS`, never at boot; `chatPlaces`. One GitHub hides is `missing`; `use` asks
-  first. → `chat.test.mjs`.
+  (2026-10-18), the oldest open labelled `room` (`chatFind`; `chatStart`, the admin's), comments its messages, by REST
+  with gh's token (`ghRest`): the newest by one URL and ETag (a 304 free), `CHAT_FAST_MS` while watched, writes
+  `CHAT_GAP_MS` apart (`chatWrite`), its mails off (`chatQuiet`); only its `admin` manages people. **A poll is a message,
+  a vote its reaction** (2026-10-20; `pollOf`, `chatVotes`). **A picture is GitHub's attachment** (2026-11-25)
+  against a repo you write to (`chat.pics`) — a reader's `<repo>-files` (`filesKeep`, `chatPicsFind`) —, fetched by
+  the server (`picUrl`). No repo: invitations every `CHAT_INVITES_MS`, not at boot; `chatPlaces`. One GitHub hides is
+  `missing`; `use` asks first. → `chat.test.mjs`.
 * **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places not `settled`
   (a month's dishes are not, 2026-10-20), the profile logged out (`lib/instagram.mjs`; **never logged in**,
   2026-11-23), the Slack channel at `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's
@@ -516,10 +517,10 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   back; backing off on failure, keeping the last numbers (`.stale`).
   → `usage-bar.mjs`.
 * **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd`
-  alone (no raw HTML or image; https/mailto links, to the browser), polls, the
-  admin's people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`). **Yours is in the log at ⏎** (2026-10-27,
+  alone (no raw HTML; https/mailto links, to the browser; pictures by `chatPicsFill`), polls,
+  the admin's people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`). **Yours is in the log at ⏎** (2026-10-27,
   `chatUi.out`): faded till GitHub has it; one not sent says so there alone (`chatRetry`).
-  **No chat code reaches a drawer, a claude or `md()`**. → `chat-room.mjs`, `chat-poll.mjs`.
+  **No chat code reaches a drawer, a claude or `md()`**. → `chat-room.mjs`, `chat-poll.mjs`, `chat-pictures.mjs`.
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`), ⌥⌘M's `#lunchd` and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()`, `.lab` the harness's): frames only while open,

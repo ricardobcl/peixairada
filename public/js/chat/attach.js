@@ -38,7 +38,7 @@
   document.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropping(true); });
   document.addEventListener('dragleave', e => { if (hasFiles(e) && !e.relatedTarget) setDropping(false); });
   document.addEventListener('drop', async e => { if (!hasFiles(e)) return; e.preventDefault(); setDropping(false); attachPaths(await uploadFiles([...e.dataTransfer.files])); });
-  window.peixDrop = paths => attachPaths(Array.isArray(paths) ? paths : []);   // the Mac app, with real paths
+  window.peixDrop = paths => { const list = Array.isArray(paths) ? paths : []; return chatTakesDrop(list) || attachPaths(list); };   // the Mac app, with real paths — the chat's panel's when it has the keys (room.js)
   // A notification answered where it shows (the app's, 2026-10-12): Done is the card's ✓ (offered only where the card
   // offers it), a reply is typed into the chat's Claude in its drawer here — over the page's own socket to it when the
   // chat is open, else one opened for the reply and closed after it, which sends no size, so the drawer is not resized.
