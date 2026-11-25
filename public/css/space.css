@@ -1,0 +1,283 @@
+  /* ---- ⌥⌘X: Space, the board's other layout — every chat as a node of its agents (2026-11-18) ---- */
+  main.space { display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: clamp(min(var(--sp-min), 100%), calc(var(--sp, .52) * 100%), max(var(--sp-min), 100% - var(--chat-min) - 8px)) 8px minmax(0, 1fr); --sp-min: 340px; --chat-min: 360px; }   /* Space down to one tile's column, the chat never under its own floor (2026-11-18, v12) */
+  main.space > :is(#sessions, #splitter) { display: none; }   /* Space or the list, never both: it takes the list's place */
+  main.space > #space { grid-row: 1; grid-column: 1; }
+  main.space > #spdiv { grid-row: 1; grid-column: 2; }
+  main.space > #chat { grid-row: 1; grid-column: 3; min-width: 0; }   /* the chat on the right, the whole height (2026-11-18, v3) */
+  main.space.spfull { grid-template-columns: minmax(0, 1fr) 0 0; } main.space.spfull > :is(#chat, #spdiv) { display: none; }
+  #space { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--bg); color: var(--ink); }   /* never wider than its column, however zoomed (2026-11-18, v12) */
+  #space[hidden], #spdiv[hidden] { display: none; }
+  #spdiv { display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; border-inline: 1px solid var(--line); background: var(--bg); }
+  #spdiv::before { content: ""; width: 3px; height: 44px; border-radius: 2px; background: var(--line); }
+  #spdiv:hover::before, #spdiv.drag::before { background: var(--muted); }
+  #space .sphd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  #space .sphd h1 { margin: 0; font-size: var(--fs-lg); }
+  main.notch #space.npad .sphd { padding-top: calc(10px + var(--notch-top, 0px)); }   /* filled on a notched screen: the bar below the strip (layoutNotch) */
+  #space .spfs { display: flex; flex-wrap: wrap; gap: 6px; }
+  #space .spf { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border: 1px solid transparent; border-radius: 999px; background: var(--ctl); color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; }
+  #space .spf i { width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--c); }
+  #space .spf b { font-weight: 650; }
+  #space .spf[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 16%, var(--ctl)); color: var(--ink); }   /* a fill, never a grey edge: on, a tint of its colour */
+  #space .spf[aria-pressed="true"] i { background: var(--c); }
+  #space .spf:hover { background: var(--ctl-hi); }
+  #space .spf[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--c) 24%, var(--ctl-hi)); }
+  #space .spsub { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
+  #space .spbody { position: relative; min-height: 0; min-width: 0; }
+  #space .spfield { height: 100%; box-sizing: border-box; overflow: auto; overscroll-behavior: contain; padding: 8px 10px 56px; background: color-mix(in srgb, var(--ink) 3%, var(--bg)); }
+  #space .spgrid { display: grid; grid-template-columns: repeat(auto-fill, var(--spw)); justify-content: center; gap: 6px; zoom: var(--spz, 1); }   /* zoomed whole, so the grid reflows: more a row as it shrinks; each node its own size, never stretched to the row (2026-11-18, v7) */
+  #space:not([data-names="always"]) .spgrid.small .spl, #space[data-names="never"] .spl { display: none; }   /* under 75 %: the pods' names go, the letters and badges stay */
+  #space .spzoom { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 24px -12px rgb(0 0 0 / .5); }
+  #space .spzoom button { min-width: 28px; height: 26px; padding: 0 8px; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-base); cursor: pointer; }
+  #space .spzoom button:hover { background: var(--ctl); }
+  #space .spzoom .fit { font-size: var(--fs-sm); color: var(--muted); }
+  #space .spzoom output { min-width: 42px; text-align: center; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #space .spempty { margin: 40px auto; max-width: 46ch; text-align: center; color: var(--muted); font-size: var(--fs-md); }
+  #space .spside { min-width: 0; border-top: 1px solid var(--line); background: var(--bg); }   /* the open chat's agents, a strip under the nodes */
+  #space .spside[hidden] { display: none; }
+  #space .spsh { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 7px 16px; }
+  #space .spfold { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border: 0; border-radius: var(--r-2); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  #space .spfold:hover { color: var(--ink); }
+  #space .spfold svg { width: 10px; height: 10px; transition: rotate .15s var(--ease-out); } #space .spfold[aria-expanded="false"] svg { rotate: -90deg; }
+  #space .spls { max-height: 196px; overflow: auto; overscroll-behavior: contain; padding: 0 16px 8px; }
+  /* the chats' state, the colour its node's edge and its filter wear */
+  #space [data-st="ask"] { --c: var(--needs); } #space [data-st="work"] { --c: var(--working-ink); } #space [data-st="watch"] { --c: var(--watch); }
+  #space [data-st="ready"] { --c: var(--idle); } #space [data-st="idle"] { --c: var(--muted); } #space [data-st="done"] { --c: var(--ended); }
+  /* a chat: its node (the name, the folder) and a pod per agent type docked to it */
+  #space .spt { display: block; min-width: 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-5); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  #space .spt:hover { background: var(--ctl); }
+  #space .spt.on { background: var(--panel); border-color: var(--line); }
+  #space { --spw: 304px; --sph: 216px; --spr: 16px; }   /* --spr a node's corner: the tokens stop at 14 px, small on a 160 × 100 box; its ring and ping concentric */   /* a node's tile: its box and a pod each side (spPods' SP_GEO) */
+  #space .spo { position: relative; display: block; width: var(--spw); height: var(--sph); margin: 0 auto; }
+  #space .spbox { position: absolute; left: 72px; top: 58px; width: 160px; height: 100px; box-sizing: border-box; padding: 6px 12px; border-radius: var(--spr); border: 2px solid var(--c); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; z-index: 1; }   /* a rounded box, its words in the middle (2026-11-18, v9; a circle in v7 held too little) */
+  #space .spbox::after { content: ""; position: absolute; inset: -6px; border-radius: calc(var(--spr) + 4px); border: 2px solid var(--c); opacity: 0; pointer-events: none; }   /* the ping lies over the box: never in a click's way (2026-11-18, v12) */
+  #space .spbox[data-st="ask"]::after { animation: spsonar 1.5s ease-out infinite; }
+  /* at work, a light turns round the node (2026-11-24): a bright arc on its edge and its bloom with it — each a square
+     turned by a transform under a still mask (the sidebar card's .rg), the edge's a 2 px band, the bloom's a soft one
+     drawn once; the project's colour (a watching node's cyan, slower); `ring` is phased, so a redraw never restarts it */
+  #space .spt { --spg: var(--repo, var(--working-ink)); --sptip: var(--spg); }
+  :root[data-theme="dark"] #space .spt { --spg: oklch(from var(--repo, var(--working-ink)) calc(l + (1 - l) * .55) c h); --sptip: var(--ink); }
+  #space [data-st="watch"] { --spg: var(--watch); --sps: 10s; }
+  #space .spbox:is([data-st="work"], [data-st="watch"]) { border-color: color-mix(in srgb, var(--c) 28%, transparent); }
+  #space .sprg { position: absolute; inset: -2px; padding: 2px; border-radius: var(--spr); overflow: hidden; pointer-events: none;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  #space .sphl { position: absolute; left: 58px; top: 44px; width: 188px; height: 128px; overflow: hidden; pointer-events: none; opacity: .56;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 188 128' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Crect x='12' y='12' width='164' height='104' rx='18' fill='none' stroke='white' stroke-width='9' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 188 128' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Crect x='12' y='12' width='164' height='104' rx='18' fill='none' stroke='white' stroke-width='9' filter='url(%23b)'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+  :root[data-theme="dark"] #space .sphl { opacity: .63; }   /* 30 % under the first (2026-11-24) */
+  #space .sprg::before, #space .sphl::before { content: ''; position: absolute; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; margin: -100% 0 0 -100%;
+    background: conic-gradient(transparent 0 50%, color-mix(in srgb, var(--spg) 35%, transparent) 68%, var(--spg) 88%, var(--sptip) 93%, transparent 94%); animation: ring var(--sps, 2.4s) linear infinite; }
+  #space .sphl::before { background: conic-gradient(transparent 0 45%, color-mix(in srgb, var(--spg) 40%, transparent) 70%, var(--spg) 92%, transparent 95%); }
+  #space .spbox[data-st="done"] { filter: saturate(.4); }
+  #space .spbt { max-width: 100%; font-size: var(--fs-sm); font-weight: 650; line-height: 1.25; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  #space .spstar { position: absolute; left: 7px; top: 6px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-2); color: var(--muted); cursor: pointer; visibility: hidden; z-index: 1; }   /* favourites (2026-11-18, v11): shown, not faded */
+  #space .spstar svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; }
+  #space .spt:hover .spstar, #space .spt:focus-visible .spstar, #space .spstar[aria-pressed="true"] { visibility: visible; }
+  #space .spstar:hover { background: var(--ctl-hi); color: var(--ink); }
+  #space .spstar[aria-pressed="true"] { color: var(--working-ink); }
+  #space .spstar[aria-pressed="true"] svg { fill: currentColor; }
+  #space .spt.spfirst { grid-column-start: 1; }
+  #space .spf.fav { --c: var(--working-ink); }
+  #space .spf.fav svg { width: 12px; height: 12px; fill: none; stroke: var(--c); stroke-width: 1.5; stroke-linejoin: round; }
+  #space .spf.fav[aria-pressed="true"] svg { fill: var(--c); }
+  #space .spf:disabled { cursor: default; }
+  /* find (2026-11-23): ⌘F's box at the top bar's end; the ringed match, ↑↓'s; the letters it landed on */
+  #space .spq { display: flex; align-items: center; gap: 6px; flex: 0 1 260px; min-width: 140px; height: 28px; box-sizing: border-box; padding: 0 6px 0 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--ctl); }
+  #space .spq:focus-within { border-color: var(--accent); }
+  #space .spq svg { flex: none; width: 13px; height: 13px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; }
+  #space .spq input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-sm); }
+  #space .spq input::-webkit-search-cancel-button { display: none; }
+  #space .spqn { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #space .spq kbd { font: var(--fs-2xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); padding: 3px 5px; border-radius: var(--r-1); background: var(--ctl); }
+  #space .spq:focus-within kbd, #space .spqn:empty { display: none; }
+  /* the box's filters (2026-11-24): chips before the words, what a prefix can be under it */
+  #space .spq { position: relative; flex-wrap: nowrap; }
+  #space .sptoks { display: contents; }
+  #space .spq.toks { flex-basis: 420px; }   /* chips in it: room for the words still */
+  #space .sptok { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 3px 0 6px; border-radius: var(--r-1); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--ink); font: var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+  #space .sptok button { width: 14px; height: 14px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: inherit; line-height: 1; cursor: pointer; }
+  #space .sptok button:hover { background: var(--ctl-hi); color: var(--ink); }
+  #spqd { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; width: 300px; padding: 5px; border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .6); }
+  #spqd[hidden] { display: none; }
+  #spqd .dr { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 7px; border-radius: var(--r-2); font-size: var(--fs-xs); cursor: pointer; }
+  #spqd .dr.on, #spqd .dr:hover { background: var(--ctl-hi); }
+  #spqd code { font: var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+  #spqd span { color: var(--muted); } #spqd em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* several at once (2026-11-24): ⇧-click, ⇧-arrows; a mark on each, a bar for all of them */
+  #space .spt.chosen .spbox { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+  #space .spt.chosen .spbox::before { content: "✓"; position: absolute; left: -9px; top: -9px; z-index: 3; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: var(--fs-xs); font-weight: 800; display: grid; place-items: center; }
+  #spbar { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .6); font-size: var(--fs-sm); white-space: nowrap; }
+  #spbar[hidden] { display: none; }
+  #spbar button { padding: 4px 10px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  #spbar button:hover { background: var(--ctl-hi); }
+  #spbar button.go { background: var(--idle); color: var(--bg); }
+  #spbar kbd { color: var(--muted); font: var(--fs-2xs) ui-monospace, Menlo, monospace; }
+  #space .spt.hit .spbox { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+  #space .spbt b { font-weight: inherit; background: color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 2px; }
+  /* done (2026-11-23): the card's ✓ in the corner the star mirrors; ↩ on a done chat, armed while a watching one asks again */
+  #space .spdone { position: absolute; right: 7px; top: 6px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--r-2); color: var(--muted); cursor: pointer; visibility: hidden; z-index: 1; }
+  #space .spdone svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #space .spt:hover .spdone, #space .spt:focus-visible .spdone, #space .spbox[data-st="done"] .spdone, #space .spdone:is(.armed, .tk) { visibility: visible; }
+  #space .spdone:hover { background: var(--ctl-hi); color: var(--idle); }
+  #space .spbox[data-st="done"] .spdone:hover { color: var(--ink); }
+  #space .spdone.armed { color: var(--watch); background: var(--ctl-hi); }
+  #space .spdone.tk { color: var(--bg); background: var(--idle); }
+  /* the open PRs (2026-11-23): a pill on the box's bottom edge, open and draft counted; pointed at, their list, a row its PR on a tab */
+  #space .spt:hover .spbox { z-index: 3; }   /* its list over the next row's nodes */
+  #space .sppills { position: absolute; right: 10px; bottom: -11px; z-index: 2; display: flex; gap: 4px; }   /* the PRs' pill and the tickets' (2026-11-24) */
+  #space .sppr { position: relative; cursor: default; }
+  #space .sptk { display: inline-flex; align-items: center; gap: 4px; height: 20px; box-sizing: border-box; padding: 0 7px 0 6px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--tk-doing); color: var(--ink); font-size: var(--fs-2xs); font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
+  #space .sptk[data-cat="todo"] { border-color: var(--tk-todo); } #space .sptk[data-cat="done"] { border-color: var(--tk-done); }
+  #space .sptk svg { width: 10px; height: 10px; fill: currentColor; }
+  /* a node with no word for days fades (2026-11-24; prefs.spFade): by opacity, back under the pointer or the keys; its age in its folder's line */
+  #space .spt[style*="--fade"] { opacity: var(--fade); transition: opacity var(--t-hover) var(--ease-out); }
+  #space .spt:is(:hover, :focus-visible, .on, .hit) { opacity: 1; }
+  #space .spag { flex: none; color: var(--muted); }
+  /* the chat's card, its title pointed at (2026-11-24) */
+  #mxtip .spcc { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 5px 8px; margin: 8px 0 0; font-size: var(--fs-xs); }
+  #mxtip .spcc dt { color: var(--muted); } #mxtip .spcc dd { margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  #mxtip .spcs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--muted); font-size: var(--fs-2xs); }
+  #mxtip .spcs b { color: var(--c); font-weight: 650; }
+  #mxtip .spcs code { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  /* constellations (2026-11-24): chats tied together — merged, folded, branched, gone on — a faint dashed line under the nodes, named on it */
+  #space .spfield { position: relative; }
+  #space .spgrid { position: relative; z-index: 1; }
+  #space .splinks { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
+  #space .splinks line { stroke: color-mix(in oklab, var(--accent) 55%, var(--muted)); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .55; }
+  #space .splinks text { fill: var(--muted); font-size: var(--fs-2xs); font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
+  #space .splinks .lit line { opacity: 1; stroke: var(--accent); } #space .splinks .lit text { fill: var(--ink); }
+  /* the nodes by project (2026-11-24; prefs.spArrange): a head over each project's run, a row of its own */
+  #space .spar { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
+  #space .spar button { padding: 2px 9px; border: 0; border-radius: var(--r-2); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+  #space .spar button[aria-pressed="true"] { background: var(--ctl-hi); color: var(--ink); }
+  #space .sphead { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; margin: 10px 6px 0; padding: 0 0 4px; border-bottom: 1px dashed var(--line); color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
+  #space .sphead:first-child { margin-top: 0; }
+  #space .sphead i { width: 9px; height: 9px; border-radius: 2px; background: var(--repo, var(--nocolor)); }
+  #space .sphead b { color: var(--muted); font-weight: 600; }
+  #space .sppn { display: inline-flex; align-items: center; gap: 4px; height: 20px; box-sizing: border-box; padding: 0 7px 0 6px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--pr-open); color: var(--ink); font-size: var(--fs-2xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+  #space .sppn svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  #space .sppr.you .sppn { border-color: var(--working-ink); color: var(--working-ink); }
+  #space .sppn i { width: 6px; height: 6px; border-radius: 50%; background: var(--needs); }
+  #space .sppop { position: absolute; left: 50%; translate: -50% 0; top: 100%; width: 440px; max-width: 80vw; padding-top: 6px; display: none; text-align: left; }
+  #space .sppr:hover .sppop { display: block; }
+  #space .sppl { display: block; padding: 6px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -12px rgb(0 0 0 / .6); }
+  #space .spph { display: block; padding: 3px 6px 5px; color: var(--muted); font-size: var(--fs-2xs); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+  #space .spprr { display: grid; grid-template-columns: 10px auto minmax(0, 1fr) auto; align-items: baseline; gap: 7px; padding: 5px 6px; border-radius: var(--r-2); color: var(--ink); font-size: var(--fs-xs); cursor: pointer; }
+  #space .spprr:hover { background: var(--ctl-hi); }
+  #space .spprr .sq { width: 9px; height: 9px; border-radius: 2px; background: var(--pr-open); }
+  #space .spprr[data-state="draft"] .sq { background: none; box-shadow: inset 0 0 0 1.5px var(--pr-draft); }
+  #space .spprr .no { font: var(--fs-2xs) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: nowrap; }
+  #space .spprr .ti { overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }   /* up to 72 characters, on two lines (2026-11-23) */
+  #space .spprr .sq { align-self: start; margin-top: 3px; }
+  #space .spprr .tg { display: flex; align-items: center; gap: 5px; font-size: var(--fs-2xs); font-weight: 650; white-space: nowrap; }
+  #space .spprr .ym { color: var(--working-ink); }
+  /* a question answered from its node (2026-11-24): its pill on the box's edge, left; the panel under it, read off the drawer's screen */
+  #space .spask { position: absolute; left: 10px; bottom: -11px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 20px; box-sizing: border-box; padding: 0 8px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--needs); color: var(--needs); font-size: var(--fs-2xs); font-weight: 700; white-space: nowrap; cursor: pointer; }
+  #space .spask:hover, #space .spask[aria-expanded="true"] { background: color-mix(in srgb, var(--needs) 16%, var(--panel)); }
+  #space .spask.off { border-style: dashed; color: var(--muted); border-color: var(--line); cursor: default; }
+  #spaskp { position: fixed; z-index: 60; width: 360px; max-width: calc(100vw - 24px); max-height: 60vh; overflow: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 10px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 36px -14px rgb(0 0 0 / .7); color: var(--ink); font-size: var(--fs-sm); }
+  #spaskp[hidden] { display: none; }
+  #spaskp .spah { margin: 0 2px 4px; color: var(--needs); font-size: var(--fs-2xs); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+  #spaskp .spaq { margin: 0 2px 8px; font-weight: 600; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; }
+  #spaskp .spao { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; width: 100%; padding: 6px; border: 1px solid transparent; border-radius: var(--r-2); background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+  #spaskp .spao:hover, #spaskp .spao.sel { background: var(--ctl-hi); }
+  #spaskp .spao small { display: block; margin-top: 1px; color: var(--muted); font-size: var(--fs-xs); }
+  #spaskp .spao .k { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--needs) 18%, transparent); color: var(--needs); font: 700 var(--fs-2xs) ui-monospace, Menlo, monospace; }
+  #spaskp .spao.sent { background: color-mix(in srgb, var(--idle) 22%, transparent); }
+  #spaskp .spao.sent .k { background: var(--idle); color: var(--bg); }
+  #spaskp .spapre { margin: 0; max-height: 40vh; overflow: auto; padding: 8px; border-radius: var(--r-2); background: var(--bg); font: var(--fs-xs)/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+  #spaskp .spaf { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 2px 0; color: var(--muted); font-size: var(--fs-xs); }
+  #spaskp .spaty { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+  #spaskp kbd { font: var(--fs-2xs)/1 ui-monospace, Menlo, monospace; padding: 2px 5px; border-radius: var(--r-1); background: var(--ctl); }
+  #spminis { position: fixed; left: -10000px; top: 0; width: 1200px; visibility: hidden; pointer-events: none; }
+  #space .spprr .rv { font-weight: 600; color: var(--muted); } #space .spprr .rv[data-rv="open"], #space .spprr .rv[data-rv="chg"] { color: var(--needs); } #space .spprr .rv[data-rv="ok"] { color: var(--idle); }
+  #space .spprr .ck[data-ck="pass"] { color: var(--idle); } #space .spprr .ck[data-ck="fail"] { color: var(--needs); } #space .spprr .ck[data-ck="pending"] { color: var(--working-ink); }
+  #space .spra { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-2xs); font-weight: 700; color: oklch(.78 .12 var(--h)); }   /* the agent the chat runs as (2026-11-18, v8) */
+  :root[data-theme="light"] #space .spra { color: oklch(.48 .13 var(--h)); }
+  #space .spgrid .spa[data-ag]:not([data-st="joined"]) { cursor: pointer; }
+  #space .spbf { display: flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; min-width: 0; font: var(--fs-2xs)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #space .spbf i { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--repo, var(--nocolor)); }
+  #space .spwire { position: absolute; background: oklch(.72 .13 var(--h)); opacity: .6; }
+  #space .sppod { position: absolute; box-sizing: border-box; height: 34px; padding: 0 6px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 5px; background: oklch(.72 .13 var(--h) / .14); border: 1.5px solid oklch(.72 .13 var(--h) / .55); }
+  #space .spl { position: absolute; font-size: var(--fs-2xs); font-weight: 600; white-space: nowrap; color: oklch(.76 .12 var(--h)); }
+  :root[data-theme="light"] #space .spl { color: oklch(.48 .13 var(--h)); }
+  #space .spl { translate: -50% 0; }
+  #space .sppod.col { flex-direction: column; padding: 6px 0; }
+  /* an agent: its type's two letters in its type's colour, its state a badge on the corner, an arc that turns while it works */
+  #space .spa { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 700; color: #141413; background: oklch(.72 .13 var(--h)); }   /* dark ink: the mark is .72 light in every theme */
+  #space .spa[data-st="run"]::before, #space .spa[data-st="quiet"]::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--working-ink) 25%, transparent); border-top-color: var(--working-ink); border-right-color: var(--working-ink); }
+  #space .spa[data-st="run"]::before { animation: spspin 1.1s linear infinite; }
+  #space .spa[data-st="quiet"] { opacity: .7; }
+  #space .spa.past { filter: saturate(.3); }   /* a claude before this one's (2026-11-24): greyed, never faded — its letters keep their contrast */
+  #space .spa[data-st="joined"] { background: transparent; border: 1.5px dashed oklch(.72 .13 var(--h)); color: var(--muted); }
+  #space .spa > i { position: absolute; right: -4px; bottom: -4px; width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--bg); display: flex; align-items: center; justify-content: center; }
+  #space .spa[data-st="done"] > i { background: var(--idle); }
+  #space .spa[data-st="done"] > i::after { content: ""; width: 2.5px; height: 5px; margin-top: -1.5px; border: solid var(--bg); border-width: 0 1.5px 1.5px 0; rotate: 45deg; }
+  #space .spa[data-st="fail"] > i { background: var(--needs); }
+  #space .spa[data-st="fail"] > i::before, #space .spa[data-st="fail"] > i::after { content: ""; position: absolute; width: 6px; height: 1.5px; background: var(--bg); rotate: 45deg; }
+  #space .spa[data-st="fail"] > i::after { rotate: -45deg; }
+  #space .spa[data-st="wait"] > i { background: var(--bg); border: 2px dashed var(--watch); }
+  #space .spa[data-st="stop"] > i { border-radius: 3px; background: var(--muted); }
+  #space .spmore { flex: none; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
+  #space .spx { flex: none; min-width: 26px; height: 22px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted);
+    background: var(--ctl); border: 1px solid oklch(.72 .13 var(--h) / .5); cursor: pointer; }
+  #space .spx:hover { background: var(--ctl-hi); color: var(--ink); }
+  /* the chat open: its agents as lanes on one clock */
+  #space .spstate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: var(--fs-sm); color: var(--muted); }
+  #space .spw { color: var(--c); font-weight: 600; }
+  #space .spwin { display: flex; gap: 2px; margin-left: auto; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
+  #space .spwin button { font: inherit; font-size: var(--fs-xs); padding: 2px 8px; border: 0; border-radius: var(--r-2); background: transparent; color: var(--muted); cursor: pointer; }
+  #space .spwin button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 600; }
+  #space .splane { display: grid; grid-template-columns: 26px minmax(140px, 2fr) minmax(80px, 3fr) auto; gap: 0 12px; align-items: center; padding: 6px 6px 6px 0; border-top: 1px solid var(--line); border-radius: var(--r-2); }
+  #space .splane[data-ag] { cursor: pointer; } #space .splane[data-ag]:hover { background: var(--ctl); }
+  #space .spla { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); font-weight: 600; }
+  #space .spld { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
+  #space .splane[data-st="run"] .spld { color: var(--working-ink); } #space .splane[data-st="wait"] .spld { color: var(--watch); } #space .splane[data-st="fail"] .spld { color: var(--needs); } #space .splane[data-st="done"] .spld { color: var(--idle); }
+  #space .splt { display: grid; min-width: 0; }
+  #space .sptrack { position: relative; height: 7px; border-radius: var(--r-2); background: var(--ctl); }
+  #space .spbar { position: absolute; top: 0; bottom: 0; min-width: 4px; border-radius: var(--r-2); box-sizing: border-box; background: var(--c, var(--muted)); }
+  #space .spbar[data-st="run"] { --c: var(--working-ink); } #space .spbar[data-st="quiet"] { --c: color-mix(in srgb, var(--working-ink) 55%, transparent); } #space .spbar[data-st="done"] { --c: var(--idle); } #space .spbar[data-st="fail"] { --c: var(--needs); }
+  #space .spbar[data-st="wait"] { background: color-mix(in srgb, var(--watch) 16%, transparent); border: 1.5px dashed var(--watch); }
+  #space .spnow { position: absolute; right: 0; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; background: var(--accent); }
+  #space .spll { margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-xs)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  #space .spll b { font-weight: 600; color: var(--ink); }
+  #space .splane[data-st="fail"] .spll { color: var(--needs); }
+  #space .spnone { color: var(--muted); font-size: var(--fs-md); }
+  .shead .hspx { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin: -2px -4px -2px 2px; border: 0; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
+  .shead .hspx:hover { background: var(--ctl-hi); color: var(--ink); }
+  .shead .hspx svg { width: 11px; height: 11px; }
+  #sbSpace { align-self: center; height: 20px; margin-right: 4px; gap: 5px; font-size: var(--fs-xs); } #sbSpace .ic { width: 14px; height: 14px; fill: none; }
+  #sbSpace[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  @keyframes spspin { to { transform: rotate(360deg); } }
+  /* Space's sky (2026-11-18, later): a dark theme's night behind the nodes — the ground a shade under the theme's own, two
+     faint glows, a few stars in four layers (one still, three breathing on clocks of their own: opacity alone, on the
+     compositor), and now and then a falling star (spFall). Behind the field, which scrolls and zooms over it; none on a light theme. */
+  #space .spfield { position: relative; }
+  #space .spsky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: none; }
+  :root[data-theme="dark"] #space:not(.nosky) .spsky { display: block; background: radial-gradient(60% 50% at 18% 12%, oklch(.42 .1 285 / .12), transparent 70%), radial-gradient(50% 45% at 85% 80%, oklch(.45 .07 230 / .09), transparent 70%), color-mix(in oklab, var(--bg) 62%, oklch(.15 .03 270)); }
+  :root[data-theme="dark"] #space:not(.nosky) .spfield { background: transparent; }
+  #space.still .spsky > b { animation: none; }   /* Settings › Space: the stars, untwinkling */
+  #space .spsky > b { position: absolute; inset: 0; }
+  #space .spsky i { position: absolute; border-radius: 50%; background: color-mix(in oklab, var(--ink) 75%, white); }
+  #space .spsky .tw1 { animation: sptw 7s ease-in-out infinite; }
+  #space .spsky .tw2 { animation: sptw 11s ease-in-out -4s infinite; }
+  #space .spsky .tw3 { animation: sptw 13s ease-in-out -9s infinite; }
+  @keyframes sptw { 50% { opacity: .35; } }
+  #space .spsky .big { animation: sptw 17s ease-in-out -6s infinite; }   /* bigger stars (2026-11-19): a glow, slow */
+  #space .spsky .big i { background: color-mix(in oklab, var(--ink) 40%, white); box-shadow: 0 0 8px 2px color-mix(in oklab, var(--ink) 40%, transparent); }
+  #space .spsky .spvis { position: absolute; left: 0; opacity: 0; will-change: transform; border-radius: 0; background: none; }   /* a planet or a comet passing (spVisit) */
+  #space .spsky .spplanet s { position: absolute; width: var(--d); height: var(--d); translate: -50% -50%; border-radius: 50%;
+    background: radial-gradient(circle at 32% 30%, oklch(.85 .08 var(--h)), oklch(.55 .12 var(--h)) 55%, oklch(.22 .05 var(--h)) 100%); box-shadow: 0 0 14px 2px oklch(.7 .1 var(--h) / .25); }
+  #space .spsky .spplanet.ringed s::after { content: ""; position: absolute; left: -45%; right: -45%; top: 42%; height: 16%; border-radius: 50%; border: 1.5px solid oklch(.82 .06 var(--h) / .7); rotate: -18deg; }
+  #space .spsky .spcomet s { position: absolute; width: 5px; height: 5px; translate: -50% -50%; border-radius: 50%; background: white; box-shadow: 0 0 8px 3px oklch(.85 .08 220 / .7); }
+  #space .spsky .spcomet s::before { content: ""; position: absolute; top: 50%; right: 2px; width: 110px; height: 3px; translate: 0 -50%; border-radius: 3px; background: linear-gradient(90deg, transparent, oklch(.85 .08 220 / .55)); }
+  #space .spsky .spfall { position: absolute; width: 130px; height: 1.5px; border-radius: 2px; transform-origin: 0 50%; opacity: 0; background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ink) 35%, transparent) 60%, color-mix(in oklab, var(--ink) 40%, white)); }
+  @keyframes spsonar { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.07); opacity: 0; } }
+  #ov .ans button:disabled { opacity: .6; cursor: default; }
+  #ov .ans b { font: 700 var(--fs-xs) ui-monospace, monospace; color: var(--needs); margin-right: 6px; }
+  #ov .ot footer { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--muted); min-width: 0; }
+  #ov .ot footer .br { font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #ov .ot footer .a { color: var(--pr-open); font-family: ui-monospace, monospace; } #ov .ot footer .d { color: var(--pr-closed); font-family: ui-monospace, monospace; }
+  #ov .ot footer .r { margin-left: auto; white-space: nowrap; }
+  #ov .opr { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: var(--r-2); font: 700 var(--fs-xs)/16px -apple-system, sans-serif; color: var(--bg); background: var(--pr-open); }
+  #ov .opr[data-state="draft"] { background: var(--pr-draft); }
+  #ov .opr .ck { width: 11px; height: 11px; } #ov .opr .ck svg { width: 11px; height: 11px; fill: currentColor; }
+

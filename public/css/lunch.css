@@ -1,0 +1,72 @@
+  /* ---- lunch (2026-10-18): the sign and the day's dishes in the fish's lane, ⌥⌘M's chalkboard, Settings › Lunch ---- */
+  /* In the lane: the dishes scroll under the fish (one transform, the strip twice over, -50% a loop); the sign hangs over
+     both on two strings — dropped in, swung once, its word turned over. A chalkboard is a chalkboard in every theme:
+     its colours are its own tokens. */
+  #sbSwim .swimmer { z-index: 2; }
+  #sbSwim.school .swimmer { visibility: hidden; } #sbSwim.school .swimmer .ft { animation: none; }
+  #sbSwim canvas.bed { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  #sbSwim .schoolbox { position: absolute; inset: 0; z-index: 2; }
+  #sbSwim .sf { position: absolute; top: 0; bottom: 0; width: 32px; margin-left: -16px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--r-2); background: none; cursor: pointer; transition: left .45s var(--ease-out); }
+  #sbSwim .sf:hover { background: var(--ctl); }
+  #sbSwim .sf .sfw { display: flex; transform: scale(.72); } #sbSwim .sf .fw { display: flex; }
+  #sbSwim .sf :is(.b, .b.m) { fill: var(--c); } #sbSwim .sf .s { fill: color-mix(in srgb, var(--c) 60%, #000); }
+  #sbSwim .sf .ft { animation: none; }
+  #sbSwim .sf.s-work .fw { animation: sfswim 1.7s ease-in-out infinite alternate; } #sbSwim .sf.s-work .ft { animation: wag .26s ease-in-out infinite alternate; }
+  #sbSwim .sf.s-watch .fw { animation: sfswim 4.6s ease-in-out infinite alternate; }
+  #sbSwim .sf.s-ready .sfw { opacity: .45; }
+  #sbSwim .sf.s-ask { --c: var(--needs) !important; }
+  #sbSwim .sf.s-ask::before { content: ''; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; border-radius: 50%; border: 1.5px solid var(--needs); animation: sfping 1.9s ease-out infinite; pointer-events: none; }
+  #sbSwim .sfmore { position: absolute; right: 5px; top: 50%; translate: 0 -50%; font-size: var(--fs-2xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+  @keyframes sfswim { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
+  @keyframes sfping { from { transform: scale(.45); opacity: .9; } to { transform: scale(1.2); opacity: 0; } }
+  #sbSwim .lnews { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; border: 0; background: var(--bar, var(--panel)); color: var(--muted); font: inherit; white-space: nowrap; overflow: hidden; cursor: pointer; animation: lnewsin .32s var(--ease-out) both; }
+  #sbSwim .lnews b { color: var(--ink); font-weight: 650; } #sbSwim .lnews b.y { color: var(--spend); } #sbSwim .lnews i { font-style: normal; opacity: .6; } #sbSwim .lnews em { font-style: normal; color: var(--needs); font-weight: 650; }
+  #sbSwim .lnews:hover { background: var(--ctl); }
+  @keyframes lnewsin { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  #sbSwim.out .swimmer { visibility: hidden; }
+  #sbSwim .fsign { position: absolute; top: 0; left: 58%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 0; }
+  #sbSwim .lsign { position: absolute; top: 0; left: 38%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 0; }
+  #sbSwim :is(.lsign, .fsign) .lswing { display: block; position: relative; padding-top: 4px; transform-origin: 50% 0; }
+  #sbSwim :is(.lsign, .fsign) .lswing::before, #sbSwim :is(.lsign, .fsign) .lswing::after { content: ''; position: absolute; top: 0; width: 1px; height: 4px; background: var(--muted); }
+  #sbSwim :is(.lsign, .fsign) .lswing::before { left: 22%; } #sbSwim :is(.lsign, .fsign) .lswing::after { right: 22%; }
+  #sbSwim :is(.lsign, .fsign) b { display: block; padding: 2px 5px; border-radius: 2px; background: var(--accent); color: var(--bar, var(--panel)); font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; }
+  #sbSwim :is(.lsign, .fsign):focus-visible { outline: none; } #sbSwim :is(.lsign, .fsign):focus-visible b { outline: 2px solid var(--ink); outline-offset: 1px; }
+  #sbSwim .ltick { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; display: flex; align-items: center; white-space: nowrap; font-size: var(--fs-2xs); color: var(--muted); cursor: pointer;
+    animation: ltick var(--dur, 60s) linear infinite; will-change: transform; }
+  #sbSwim .ltick span { padding-right: 16px; } #sbSwim .ltick b { margin-right: 4px; color: var(--ink); font-weight: 600; }
+  #sbSwim .ltick i { display: inline-block; width: 5px; height: 5px; margin-right: 4px; border-radius: 1px; background: var(--c); vertical-align: 1px; }
+  #sbSwim:hover .ltick { animation-play-state: paused; }
+  @keyframes ltick { to { transform: translateX(-50%); } }
+  :root { --chalk: #243029; --chalk-ink: #eeede4; --chalk-dim: #a9b5aa; --chalk-hd: #f2d48c; --wood: #86643f; }
+  #lunchd { width: min(1000px, 94vw); max-width: none; max-height: 90vh; padding: 0; border: 0; background: transparent; overflow: visible; outline: none; }
+  #lunchd[open] { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; }
+  #lunchd::backdrop { background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(10px); }
+  .chalk { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 18px 24px 26px; border: 10px solid var(--wood); border-radius: 6px; background: var(--chalk);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, .45), 0 18px 50px rgba(0, 0, 0, .35); color: var(--chalk-ink); font-family: "Chalkboard SE", "Marker Felt", "Comic Sans MS", cursive; }
+  .chalk .chd { margin-bottom: 14px; text-align: center; }
+  .chalk h3 { margin: 0; font: 400 34px/1.1 Chalkduster, "Chalkboard SE", cursive; }
+  .chalk .chsub { margin: 4px 0 0; font-size: 15px; color: var(--chalk-dim); }
+  .chalk .ccols { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 18px 32px; }
+  .chalk .lp { min-width: 0; }
+  .chalk .lp h4 { margin: 0 0 4px; font: 400 20px/1.2 Chalkduster, "Chalkboard SE", cursive; color: var(--chalk-hd); }
+  .chalk .lp h4 i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; background: var(--c); vertical-align: 3px; }
+  .chalk .lgo { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .chalk .lgo:hover:not(:disabled) { text-decoration: underline 1px dotted; text-underline-offset: 4px; }
+  .chalk .lgo:disabled { cursor: default; }
+  .chalk .lgo:focus-visible { outline: 2px dashed var(--chalk-hd); outline-offset: 3px; }
+  .chalk p.cdish { display: flex; gap: 6px; align-items: baseline; margin: 0; font-size: 15px; line-height: 1.3; }
+  .chalk p.cdish > span:first-child { min-width: 0; }
+  .chalk p.cdish i { flex: 1 1 12px; min-width: 12px; border-bottom: 2px dotted color-mix(in srgb, var(--chalk-ink) 32%, transparent); transform: translateY(-4px); }
+  .chalk p.cdish .cprice { white-space: nowrap; color: var(--chalk-dim); }
+  .chalk .cfrom, .chalk .cwhy { margin: 3px 0 0; font-size: 13px; color: var(--chalk-dim); }
+  .chalk .lp:is(.waiting, .none, .closed) h4 { opacity: .7; }
+  .chalk .lp.story .cwhy { color: var(--chalk-ink); }
+  .chalk .cfish { position: absolute; right: 16px; bottom: 10px; width: 52px; height: auto; opacity: .75; }
+  .chalk .cfish path { fill: var(--chalk-ink); } .chalk .cfish .e { fill: var(--chalk); } .chalk .cfish .g { display: none; }
+  .chalk .chnone { margin: 10px 0 0; text-align: center; color: var(--chalk-dim); }
+  .chalk .chnone .btn { margin-top: 10px; font-family: inherit; }
+  #lunchd .lfoot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
+  #lunchd .lfoot .lstat { flex: 1 1 260px; min-width: 0; }
+  #lunchd .lfoot .serr { color: var(--needs); }
+  #lunchd .lfoot .btn.go { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink); }
+  #lunchd .lfoot kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }

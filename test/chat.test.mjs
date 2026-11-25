@@ -282,10 +282,8 @@ test('a repo with no chat in it: its admin\'s board starts one, a member\'s wait
 });
 
 test('the page\'s chat module draws words only: no drawer, no claude, no Reply…, its own sanitizer', () => {
-  const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
-  const at = page.indexOf('  // ---- the chat: '), end = page.indexOf('\n  // ---- ', at + 10);
-  assert.ok(at > 0 && end > at, 'the chat\'s section, by its banner');
-  const code = page.slice(at, end);
+  const code = readFileSync(new URL('../public/js/room.js', import.meta.url), 'utf8');   // the page's part (2026-11-25)
+  assert.ok(code.startsWith('  // ---- the chat: '), 'the chat\'s section, by its banner');
   for (const name of ['sendToClaude', 'typeInShell', 'answerInDrawer', 'peixReply', 'termSend', 'clearTerm', 'openTerminalFor', 'linkify', 'chatLinks', 'innerHTML = m.body', 'eval(', 'new Function'])
     assert.ok(!code.includes(name), `the chat's module names ${name}`);
   assert.ok(!/(?<![\w.])md\((?!\))/.test(code), 'the transcript\'s md() draws no chat message: its links open files and a chat\'s pages');

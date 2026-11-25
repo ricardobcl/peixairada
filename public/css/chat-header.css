@@ -1,0 +1,153 @@
+  /* ---- chat pane ---- */
+  .shead { position: relative; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
+  /* The title takes what is left and truncates. flex-basis must NOT be auto: a long title would then
+     exceed the line on its own and push the status, buttons and every chip onto the next one. */
+  .shead h2 { margin: 0; font-size: var(--fs-base); flex: 1 1 170px; min-width: 0; display: flex; gap: 12px; align-items: center; overflow: hidden; }   /* 12: the header's padding, so the name has the same room either side (2026-09-26) */
+  /* The repo is the identifier you navigate by, so it does not shrink — the title absorbs the
+     truncation instead, and only past 60% does the repo start to ellipsise too. */
+  .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  /* The tab is the filter's toggle, and says so (2026-11-04, round XXV): the funnel's own glyph under the pointer, kept while the list shows this project alone */
+  .shead h2 .repo .fun { width: 11px; height: 11px; margin: 0 -4px 0 6px; vertical-align: -1px; fill: currentColor; opacity: 0; transition: opacity var(--t-hover); }
+  .shead h2 .repo:hover .fun { opacity: .75; }
+  .shead h2 .repo.on .fun { opacity: 1; }
+  .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .shead h2.ag .t { flex-grow: 0; }   /* the agent's name right after the title (2026-11-06) */
+  .shead h2 .runas { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-left: -4px; font-size: var(--fs-sm); font-weight: 600; color: var(--hd-muted, var(--muted)); white-space: nowrap; }
+  .shead h2 .runas .asdot { width: 7px; height: 7px; }
+  /* a bar between the project and the title (2026-09-26): the header's
+     ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
+     2 px of room in the row; the bar is its ::before, positioned from the header (.shead is the containing block),
+     at the span's own x — so the h2's overflow: hidden, which clips the row, does not clip it. */
+  /* The same room either side of it, and of the name (2026-09-26): the row's gap is the header's padding, 12 px, and
+     the colour square — invisible at rest, so any room it took read as a gap — takes none: it sits on the bar, centred,
+     out of the flow (positioned from .shead like the bar, at the span's own x). */
+  /* The bar itself went on 2026-09-28; the span stays, the room between the name and the title and the colour square's
+     place — since 2026-10-11 (late night) the room the header's black fades in (--hfade-w, below), less 8 px a side. */
+  .shead { --hfade-w: 48px; --hfade-in: calc(var(--hfade-w) - 8px); }
+  .shead h2 .sep { flex: none; width: calc(var(--hfade-w) - 16px); align-self: stretch; }
+  /* The project's colour beside its name, and the picker for it (2026-09-22): the column's own
+     square, in the header where you are already looking. It keeps its place in the row always and only inks
+     itself while the pointer is in the header, so nothing moves under the pointer and the row stays as quiet as
+     it was. On a tinted header the square is the header's own colour, so it is read by its border — the ink that
+     reads on that tint, at a third. */
+  .shead h2 .sq { position: absolute; top: 50%; transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%); width: 11px; height: 11px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
+  .shead h2 .sq.pick:hover { transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%) scale(1.35); }   /* the picker's own scale, around the same centre */
+  .shead:hover h2 .sq, .shead h2 .sq:focus-visible { opacity: 1; }
+  .shead .path { font-size: var(--fs-sm); color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  /* Everything that was a button at the header's right lives under ··· (2026-09-24): the title, the PRs, a running
+     task's chip and ··· are all the row holds. The one exception is the >_ button while it has something to say — armed
+     to take a chat over ("sure?") or failed — because a warning under a fold is not a warning. */
+  .shead .hmore { flex: none; display: inline-flex; align-items: center; padding: 4px 6px; margin: -2px -4px -2px 0; border: 0; border-radius: var(--r-3); background: none; color: var(--muted); cursor: pointer; }
+  .shead .hmore .ic { width: 16px; height: 16px; fill: currentColor; }
+  .shead .hmore:hover, .shead .hmore.on { color: var(--ink); background: var(--inline-bg); }
+  #chat.tinted .shead .hmore { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .hmore:hover, #chat.tinted .shead .hmore.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 16%, transparent); }
+  /* The menu: a non-modal <dialog>, so the pane goes down while it is up (postPane sends no page with a dialog
+     open) and Esc closes it the way it closes every other; right-aligned under ···, one row per action — its mark,
+     what it does, and its state or key on the right. */
+  #hmenu { position: fixed; inset: auto; margin: 0; z-index: 45; width: 264px; padding: 5px; border-radius: var(--r-4); box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
+  #hmenu .hmi { display: grid; grid-template-columns: 18px 1fr auto; gap: 9px; align-items: center; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); text-align: left; cursor: pointer; }
+  #hmenu .hmi:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  #hmenu .hmi:disabled { opacity: .45; cursor: default; }
+  /* the right-click menu (2026-10-12): ···'s rows, at the pointer */
+  #ctxm { position: fixed; inset: auto; margin: 0; z-index: 46; min-width: 220px; max-width: 320px; padding: 5px; border-radius: var(--r-4); box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
+  #ctxm button { display: block; width: 100%; text-align: left; padding: 6px 9px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ctxm button:hover, #ctxm button:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); outline: none; }
+  #ctxm button.warn { color: var(--needs); } #ctxm hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+  /* a menu of choices (the list's filter, 2026-10-12): a tick before the one chosen, a mark and a count per row */
+  #ctxm.checks button { display: flex; align-items: center; position: relative; padding-left: 26px; }
+  #ctxm.checks button[aria-checked="true"]::before { content: ''; position: absolute; left: 10px; top: 50%; width: 8px; height: 4px; border: solid var(--accent); border-width: 0 0 1.5px 1.5px; rotate: -45deg; translate: 0 -75%; }
+  #ctxm .cmk { flex: none; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; }
+  #ctxm .cmk.move { background: var(--accent); border-radius: var(--r-1); rotate: 45deg; scale: .85; }
+  #ctxm .cmk.replied { background: var(--idle); }
+  #ctxm button:not(.two):has(> .ck) { display: flex; align-items: center; }   /* its time at the row's end, as a count's */
+  #ctxm .ck { display: inline-block; min-width: 16px; margin-right: 8px; padding: 0 3px; border-radius: var(--r-1); background: var(--ctl); font: 600 var(--fs-2xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); text-align: center; }   /* a row's digit (2026-11-24) */
+  #ctxm .cn { margin-left: auto; padding-left: 18px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* a row with a second line (2026-10-13): what it is, then where or why — the PR pickers */
+  #ctxm button.two, #ctxm.checks button.two { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline; white-space: normal; }
+  #ctxm button.two > .ct { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ctxm button.two .cn { padding-left: 0; font-size: var(--fs-xs); }
+  #ctxm .csub { grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--muted); }
+  #ctxm button:disabled { cursor: default; color: var(--muted); } #ctxm button:disabled:hover { background: none; }
+  #ctxm button:disabled .csub { color: var(--needs); }
+  #ctxm.wide { max-width: 380px; }
+  #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
+  #hmenu #muteBtn .ic { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  #hmenu :is(#prioBtn, #zzBtn) .ic { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }   /* Top priority and snooze (2026-11-24) */
+  #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
+  #hmenu .hmi .dot { justify-self: center; }
+  #hmenu .hmi .gl { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); font-weight: 700; letter-spacing: -1px; justify-self: center; }
+  #hmenu .hmi .k { font-size: var(--fs-xs); color: var(--muted); }
+  #hmenu .hmi.on .k { color: var(--accent); font-weight: 600; }
+  #hmenu .hmi.info { cursor: default; color: var(--vscode); font-size: var(--fs-sm); }
+  #hmenu .hmi.info:hover { background: none; }
+  #hmenu .sep { height: 1px; margin: 4px 6px; background: var(--line); }
+  .shead a { color: var(--accent); font-size: var(--fs-sm); }
+  /* Path, branch and the session chips fold away behind ··· — what stays in view is the status,
+     the PRs and the buttons. display:flex would beat the UA [hidden] rule, hence the override. */
+  .shead .details { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .shead .details[hidden] { display: none; }
+  /* The header in the project's colour, as Peacock painted VS Code's title bar (2026-09-20). #chat.tinted while the
+     chat's project has one; --rink is the ink that reads on it (white or near-black by the colour's luminance, set beside
+     --repo by tintChat), and every control in the header is redrawn in it. An armed or failed button keeps its warning
+     colour on a panel-coloured pill, so it reads on any project. */
+  /* A gradient, not a block (2026-09-20): the colour
+     itself at the top left, and towards the right — and, more lightly, down the header — a veil that pulls it *away*
+     from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; eased by the header, so a chat switch eases), so
+     the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
+  #chat.tinted .shead { background: var(--grain), linear-gradient(180deg, transparent 15%, var(--hveil2-eased)), linear-gradient(100deg, transparent 8%, var(--hveil-eased)), var(--hbg-eased); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg-eased)); }
+  /* Right of the project's name the header is black (2026-09-28): the camera housing's colour, so at the notch the
+     housing is part of it. Painted by ::after from --hsplit (the separator's right edge) down to --hrow (the first row;
+     the details under it keep the header's ground), both set by paintHeadSplit; the title and what follows it borrow
+     the dark theme's inks, as a black card does. It fades in (2026-10-11, late night; a hard edge before, a pixel dissolve
+     for an hour): the black's first --hfade-w is masked by a plain gradient, from 8 px after the name to 8 px past
+     --hsplit, where the title's room starts — no --hsplit, no black, as before. */
+  .shead { isolation: isolate; }
+  .shead::after { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--hsplit, calc(100% + var(--hfade-in))) - var(--hfade-in)); height: var(--hrow, 100%); background: var(--crust, #000); z-index: -1; pointer-events: none;
+    -webkit-mask: linear-gradient(90deg, transparent, #000 var(--hfade-w)); mask: linear-gradient(90deg, transparent, #000 var(--hfade-w)); }
+  /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it is a grey, so the project's box and the card still stand out of it. */
+  main.darkchat .shead::after { background: #4a4a45; }
+  /* In the board's own light theme the black follows the appearance (2026-10-12): it was the heaviest thing on a light
+     page, pulling the eye off the transcript, and a light theme's header (Latte's) showed a light one reads. The panel
+     and the light inks then — but at the notch, where the black is the camera housing's
+     colour and the header's right is the housing's own, it stays. A theme sets its own (below). */
+  :root[data-theme="light"]:not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
+  :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) .shead::after { background: var(--crust); }
+  /* a theme (2026-10-10) paints this black in its own darkest, --crust, and its inks are the theme's (--hd-*) */
+  .shead > :not(h2, .details) { --ink: var(--hd-ink, #e6e4dc); --muted: var(--hd-muted, #9d9c92); --line: var(--hd-line, #2e2e2b); --rink: var(--hd-ink, #e6e4dc); --panel: var(--hd-panel, #22221f); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
+  :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
+  .shead h2 .t { color: var(--hd-ink, #e6e4dc); }
+  #chat.tinted .shead :is(.status, .path, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .btn:hover { color: var(--rink); }
+  #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
+  #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
+  /* The git mark beside the header's matrix and how many it holds, PRs and tickets (2026-11-03, round XXIII's G4): a click unfolds #prlist under the
+     header, one row each, and folds it back. The fold is a pref (prsOpen), not the chat's. */
+  .shead .hgit { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 5px; margin: -2px -2px -2px -3px; border: 0; border-radius: var(--r-3); background: none; color: var(--muted); font: 600 var(--fs-sm)/1 ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer; }
+  .shead .hgit .ic { width: 15px; height: 15px; fill: currentColor; }
+  .shead .hgit:hover, .shead .hgit.on { color: var(--ink); background: var(--inline-bg); }
+  /* CI on the PR's head (2026-10-09): a round badge after its number, in the page's ground with the outcome's colour —
+     a tick, a cross, or a ring turning while the checks run */
+  :is(.shead .tmx, .prrow) .ck { --ckc: var(--pr-open); display: inline-grid; place-items: center; width: 13px; height: 13px; flex: none; margin: 0 -3px 0 4px; border-radius: 50%; background: var(--bg); vertical-align: -2px; }
+  :is(.shead .tmx, .prrow) .ck[data-checks="fail"] { --ckc: var(--pr-closed); }
+  :is(.shead .tmx, .prrow) .ck[data-checks="pending"] { --ckc: var(--working); }
+  :is(.shead .tmx, .prrow) .ck svg { width: 11px; height: 11px; fill: none; stroke: var(--ckc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  :is(.shead .tmx, .prrow) .ck[data-checks="pending"] svg { stroke-width: 2; stroke-dasharray: 18 11; animation: ring 1.1s linear infinite; }
+  /* …and the answer coming in (prMoments, 2026-10-11): the tick or the cross stroked in, once */
+  .shead .tmx .ck.now path { stroke-dasharray: 16; animation: ckdraw .26s ease-out .08s both; }
+  @keyframes ckdraw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+  /* ⌥ held over a PR's square in the header, or its row under it (2026-10-11): an ✕, white on red — ⌥-click takes the PR off the
+     chat (unlinkPr). Nothing moves: the row's number goes clear under it and pads by a shadow. */
+  :root[data-alt] :is(.shead .tmx .mxs[data-url]:hover, .prrow[data-url]:hover .num) { position: relative; color: transparent; background: var(--needs); border-color: var(--needs); box-shadow: 0 0 0 var(--xpad, 0) var(--needs); cursor: pointer; }
+  :root[data-alt] .prrow[data-url]:hover .num { --xpad: 3px; border-radius: var(--r-1); }
+  :root[data-alt] :is(.shead .tmx .mxs[data-url]:hover, .prrow[data-url]:hover .num)::before { content: ''; position: absolute; inset: 0; width: auto; height: auto; background: #fff;
+    -webkit-mask: var(--xmask) center / 18px no-repeat; mask: var(--xmask) center / 18px no-repeat; }
+  :root[data-alt] .shead .tmx .mxs[data-url]:hover { --prc: var(--needs); scale: 1.5; outline: 0; animation: none; }
+  :root[data-alt] .shead .tmx .mxs[data-url]:hover::before { -webkit-mask-size: 100%; mask-size: 100%; }
+  :root { --xmask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E"); }
+  .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); }
+  .prrow .ckw .ck { margin: 0; }
+  .prrow .ckw[data-checks="fail"] { color: var(--pr-closed); font-weight: 600; }
+  #chat.tinted .shead .hgit { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .hgit:hover, #chat.tinted .shead .hgit.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 12%, transparent); }

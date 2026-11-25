@@ -32,7 +32,7 @@ npm run shell                       # the real shell on a throwaway server, by t
 npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s)
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
-npm run map                         # rewrite the section maps at the top of server.mjs and index.html
+npm run map                         # rewrite the section map at the top of server.mjs
 ```
 
 * **The server is a launchd agent run from the repo; the app adopts whatever answers on 7331.** Quitting or
@@ -61,23 +61,24 @@ npm run map                         # rewrite the section maps at the top of ser
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/disclaim.c` | A drawer's claude exec'd as its own responsible process to macOS (2026-11-23); the server builds it with cc |
 | `lib/instagram.mjs` | Lunch's Instagram, in headless Chrome: a profile, logged out |
-| `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup, `waitFor`, `post` |
+| `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over CDP; a throwaway server with cleanup, `waitFor`, `post` |
 | `lib/refit.mjs` | A terminal's refit, the holder's copy |
 | `lib/version.mjs` | The version (2026-10-21): package.json's major.minor, the patch the commits since; the server's per HEAD, build.sh's into the app |
-| `public/index.html` | The frontend, one file, no build step. A section map at the top of its script |
+| `public/index.html`, `lib/page.mjs` | The page's skeleton, an include per part, put in as served (2026-11-25) |
+| `public/css/`, `public/js/` | The page by concern; the script one IIFE across its parts, in order |
 | `public/vendor/` | `marked` 18.1.2 + `DOMPurify` 3.4.17 + `highlight.js` 11.12.0 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version `lib/version.mjs`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
-| `scripts/worktree.sh` | A worktree per piece of parallel work (see above) |
-| `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness (see Verifying) |
-| `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's cost in WebKit (see Verifying) |
-| `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/main.swift` itself, driven (see Verifying) |
+| `scripts/worktree.sh` | A worktree per piece of parallel work |
+| `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness |
+| `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's cost in WebKit |
+| `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/main.swift` itself, driven |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView`, the app's engine |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/fake*.mjs` | What every test server runs instead of the real CLIs and services; each file's head says its knobs |
-| `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP) → `docs/shots/` |
-| `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
+| `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips → `docs/shots/` |
+| `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the server's section map |
 | `test/` | `node:test` files (`npm test`) |
 
 ## How it reads Claude Code

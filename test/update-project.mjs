@@ -9,11 +9,12 @@ import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readPage } from '../lib/page.mjs';
 import { tmpDir } from '../lib/testserver.mjs';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const TINY = `import { createServer } from 'node:http';\nconst s = createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); });\ns.listen(Number(process.env.PORT), '127.0.0.1', () => console.log('[tiny] listening on ' + process.env.PORT));\nprocess.on('SIGTERM', () => process.exit(0));\n`;
-export const PAGE = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
+export const PAGE = readPage();   // put together: the tiny project's page is one file
 
 /** origin.git, a clone the server updates (`co`) and one that commits and pushes (`dev`); the stand-ins write to `marks`;
  *  the installed app (`app`) built from the first commit's mac/, until a build stamps it again. */
@@ -29,7 +30,7 @@ export function project() {
   mkdirSync(dev);
   git(dev, 'init', '-q', '-b', 'main');
   write(dev, { 'server.mjs': TINY, 'package.json': '{ "name": "tiny" }\n', 'README.md': 'tiny\n', 'public/index.html': PAGE, '.github/allowed_signers': signers(signer) });
-  for (const f of ['lib/testserver.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
+  for (const f of ['lib/testserver.mjs', 'lib/page.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
   git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the first');
   git(root, 'init', '-q', '--bare', '-b', 'main', origin);
   git(dev, 'remote', 'add', 'origin', origin); git(dev, 'push', '-q', '-u', 'origin', 'main');

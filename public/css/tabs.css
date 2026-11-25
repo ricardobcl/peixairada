@@ -1,0 +1,130 @@
+  /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
+  /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
+     minimum, so the drawer's body stayed as wide as the terminal had last been and fit() measured that instead of
+     the pane — the terminal ran off the right edge whenever the pane got narrower or the font larger. */
+  .gterm { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .gterm[hidden] { display: none; }
+  /* The chat's tabs (2026-09-20): [claude|chat], [zsh ×] while a zsh lives, a [repo#n ×] per GitHub page the chat
+     opened and [VS Code ×] for its folder's editor — the pages the app's pane shows, a native view over the column
+     below this strip. Shown only while there is more than the chat; with a page's tab on, ‹ › ↻ ↗ at the right
+     drive its view through the shell. */
+  /* One family of controls (2026-10-11, the studies' Q1): every tab, nav button and field in the strip 26 px high with
+     a 6 px radius, the header's chips with them; no fill at rest, --ctl under the pointer; the tab in front, and the
+     rule of the half with the keys, in the chat's colour lifted to read on the panel (--tablit, as a card's --lift) —
+     never the accent, which is the board's call to you; the glyphs drawn (ICON's strokes). */
+  #chat { --tablit: oklch(from var(--repo, var(--accent)) min(l, .58) c h); }
+  :root[data-theme="dark"] #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); }
+  .ptabs { display: flex; gap: 4px; height: 38px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); align-items: center; container-type: inline-size; }
+  .ptabs[hidden] { display: none; }
+  /* A half holding one tab has nothing to choose between (2026-09-28): split, it has no strip — the tile's border says
+     which half the keys are in (a 2 px rule under the strip did, the accent under the keys, until tiles were the only
+     layout, 2026-10-14). A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty half, where a tab is
+     dropped. */
+  .ptabs.lone { padding: 0; height: 0; border: 0; overflow: hidden; }
+  .ptab, .ptabgone { position: relative; flex: none; font: inherit; font-size: var(--fs-sm); font-weight: 500; height: 26px; padding: 0 10px; border: 0; border-radius: var(--r-3); background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .ptab:hover { color: var(--ink); background: var(--ctl); }
+  .ptab > .ic { width: 13px; height: 13px; flex: none; fill: currentColor; opacity: .75; }
+  .ptab > .ic.burst { fill: var(--accent); opacity: 1; }
+  .ptab.on { color: var(--ink); background: color-mix(in srgb, var(--tablit) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tablit) 42%, transparent); }
+  .ptab.on > .ic:not(.burst) { fill: var(--tablit); opacity: 1; }
+  /* A tab's × is its mark's place under the pointer, not a glyph at its end; a strip short of room folds the tabs
+     behind the one in front to their marks, the name in the tooltip. */
+  .ptab > .x { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 15px; height: 15px; display: grid; place-items: center; border-radius: var(--r-2); opacity: 0; color: var(--ink); }
+  .ptab:hover > .x { opacity: 1; background: var(--ctl-hi); }
+  .ptab:hover:has(> .x) > .ic { opacity: 0; }
+  .ptab > .x:hover { color: var(--needs); }
+  @container (max-width: 640px) { .ptab:not(.on) { font-size: 0; gap: 0; padding-inline: 6px; } .ptab:not(.on) > .x { display: none; } .ptab:not(.on):hover > .ic { opacity: .75; } }   /* a tab that is its mark alone is chosen by it, never closed: ⌥⌘W */
+  /* The tabs scroll (2026-10-30, Safari's strip): more than it holds, they run on past its ends in a box of their own
+     (.ptrack, the half's ⋯ outside it) — a sideways swipe moves it, a wheel turned over it too (tabsWheel) —, an end
+     with more past it fading out (trackEdges, .ofl .ofr). The tab in front is never what gives way: a page's address
+     keeps its width (below) and the strip scrolls to whichever tab comes in front (revealTab). The box reaches 4 px
+     into the strip's padding, so a focus ring at its ends is not cut. */
+  .ptrack { flex: 1 1 auto; min-width: 0; align-self: stretch; display: flex; gap: 4px; align-items: center; margin: 0 -4px; padding: 0 4px; position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; --fl: 0px; --fr: 0px; }
+  .ptrack::-webkit-scrollbar { display: none; }
+  .ptrack:is(.ofl, .ofr) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+  .ptrack.ofl { --fl: 24px; }
+  .ptrack.ofr { --fr: 24px; }
+  .ptabs .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .ptab > .x .ic.st { width: 11px; height: 11px; stroke-width: 1.8; }
+  /* The page in front is its own address (2026-10-11, the studies' Q5): its tab grows into a field — the mark, where it
+     is (the host quieter than the path), and ‹ › ↻ ↗ inside it at its end. 420 px wide however many tabs are beside it
+     (2026-10-30: it shrank to make room for them, down to its buttons), the strip's whole width where that is less;
+     560 with room to spare. */
+  .ptab.addr { flex: 1 0 min(420px, 100%); min-width: 0; max-width: 560px; padding: 0 3px 0 10px; background: var(--ctl-hi); cursor: default; }
+  .ptab.addr .purl { flex: 1 1 auto; min-width: 0; margin: 0; color: var(--ink); text-align: left; }
+  .ptab.addr .purl .h { color: var(--muted); }
+  .ptab.addr .navs { margin: 0; flex: none; }
+  .ptab.addr .nav { width: 22px; height: 22px; border-radius: var(--r-2); }
+  /* The copy said in the address (addrSay, 2026-10-20): the address rolls up and away, the words roll in from below,
+     and the button's sheets give way to a ✓ drawn in the ready green; the tab clips the roll. What leaves goes quickly
+     and what arrives springs in just after it (each rule's transition is the one its state is reached by). --roll and
+     --pop are how far, nothing under reduced motion. */
+  .ptab.addr { overflow: hidden; --roll: 70%; --pop: .5; }
+  .ptab.addr .purl, .ptab.addr.copied .psaid { transition: opacity .14s .06s, translate .4s var(--spring) .04s; }
+  .ptab.addr.copied .purl, .ptab.addr .psaid { transition: opacity .1s, translate .18s var(--ease-out); }
+  .ptab.addr.copied .purl { opacity: 0; translate: 0 calc(var(--roll) * -1); }
+  .ptab.addr .psaid { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; overflow: hidden; white-space: nowrap; color: var(--ink); pointer-events: none;
+    opacity: 0; translate: 0 var(--roll); }
+  .ptab.addr.copied .psaid { opacity: 1; translate: none; }
+  @starting-style { .ptab.addr.copied .psaid { opacity: 0; translate: 0 var(--roll); } }
+  .ptab.addr.cperr .psaid { color: var(--needs); }
+  .pcopy > .ic { grid-area: 1 / 1; transition: opacity .14s, scale .32s var(--spring); }
+  .pcopy > .ok { opacity: 0; scale: var(--pop); color: var(--idle); }
+  .pcopy > .ok path { stroke-dasharray: 14; stroke-dashoffset: 14; transition: stroke-dashoffset .24s var(--ease-out) .05s; }
+  .ptab.addr.copied:not(.cperr) .pcopy { background: color-mix(in srgb, var(--idle) 18%, transparent); }
+  .ptab.addr.copied:not(.cperr) .pcopy > .cp { opacity: 0; scale: var(--pop); }
+  .ptab.addr.copied:not(.cperr) .pcopy > .ok { opacity: 1; scale: none; }
+  .ptab.addr.copied:not(.cperr) .pcopy > .ok path { stroke-dashoffset: 0; }
+  /* A blank tab (2026-10-13, ⌘T on a page): its address a box to type into, lit while it has the keys, and the half
+     under it the list of what ⏎ would open — the pickers' rows, on the panel. */
+  .ptab.addr.blank { cursor: text; }
+  .ptab.addr.blank:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
+  .ptab.addr :is(.paddr, .pedit) { flex: 1 1 auto; min-width: 0; height: 22px; margin: 0 4px 0 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }
+  .ptab.addr .paddr::placeholder { color: var(--muted); }
+  /* a page's address is a box when clicked (2026-10-27, addrEditAt), lit as a blank tab's while it has the keys */
+  .ptab.addr .purl[data-key^="gh"] { cursor: text; }
+  .ptab.addr.editing:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
+  .gblank { min-height: 0; overflow: auto; background: var(--panel); display: grid; align-content: start; justify-items: center; gap: 12px; padding: 28px 16px; }
+  .gblank .blist { width: min(640px, 100%); display: grid; gap: 2px; }
+  .gblank .bhd { padding: 0 8px 4px; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); }
+  .gblank .bnone { padding: 6px 8px; color: var(--muted); }
+  .gblank .bkeys { width: min(640px, 100%); padding: 0 8px; font-size: var(--fs-xs); color: var(--muted); }
+  .gblank .bkeys kbd { margin-left: 8px; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); font: 600 var(--fs-xs) ui-monospace, monospace; }
+  .gblank .bkeys kbd:first-child { margin-left: 0; }
+  /* the highlight on its way (tabMotion): a pill of the on tab's tint sliding over the strip; the tab it goes to plain
+     until it lands; a closed tab's stand-in folding */
+  .ptabs { position: relative; }
+  .ptabpill { position: absolute; left: 0; top: 6px; height: 26px; border-radius: var(--r-3); background: color-mix(in srgb, var(--tablit) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tablit) 42%, transparent); pointer-events: none; }
+  .ptab.on.slid { background: transparent; box-shadow: none; }
+  .ptabgone { overflow: hidden; white-space: nowrap; pointer-events: none; }
+  .ptabs .pdrop { height: 26px; line-height: 24px; padding: 0 10px; border: 1px dashed var(--line); border-radius: var(--r-3); color: var(--muted); }
+  /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
+     and the half under the pointer lights its strip — the one place the drop is always visible, the app's pane
+     being a native view over the body. */
+  .ptab.dragging { opacity: .35; }
+  .ptab.ghost { position: fixed; z-index: 70; pointer-events: none; opacity: .9; background: var(--panel); border-color: var(--accent); color: var(--ink); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); transform: translate(-50%, -50%); }
+  body.tabdrag, body.tabdrag * { cursor: grabbing !important; user-select: none; }
+  .grp.drop > .ptabs { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); box-shadow: inset 0 0 0 1px var(--accent); }
+  .grp.drop > .gbody { outline: 2px dashed var(--accent); outline-offset: -4px; }
+  .ptabs .nav.gclose:hover { color: var(--needs); }
+  /* …and the half's ◫ ⨯ behind a ⋯ at the strip's end (Q5): a click puts them out beside it, the pointer leaving the
+     strip folds them again (.gopen) */
+  .ptabs .gmore { margin-left: auto; }
+  .ptabs .gacts { display: none; gap: 2px; }
+  .ptabs.gopen .gacts { display: flex; }
+  .ptabs.gopen .gmore { color: var(--ink); background: var(--ctl); }
+  /* The address of the page on top (2026-09-21): without its scheme so the tail fits, selectable by hand, and a
+     click anywhere on it copies the whole URL. It takes whatever room is left between the tabs and ‹ › ↻ ↗. */
+  .ptabs .purl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--muted); cursor: pointer; user-select: text; }
+  .ptabs .purl:hover { color: var(--ink); }
+  .ptabs .navs { display: flex; gap: 2px; }
+  .ptabs :is(.nav, .gmore) { flex: none; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border: 0; border-radius: var(--r-3); background: transparent; color: var(--muted); cursor: pointer; }
+  .ptabs :is(.nav, .gmore):hover { color: var(--ink); background: var(--ctl); }
+  .ptabs .gmore .ic { width: 14px; height: 14px; fill: currentColor; }
+  /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
+     terminal element's own padding — under the page's border-box rule that is the padded size, one row or column too
+     many when the remainder is short, and the bottom row (or last column) clipped by up to the padding (measured: 51
+     rows × 15 px in a 762 px body). */
+  .gterm .tbody { box-sizing: content-box; min-height: 0; min-width: 0; overflow: hidden; padding: 4px 0 0 6px; background: var(--term-bg); }
+  .gterm .tbody .xterm { height: 100%; }

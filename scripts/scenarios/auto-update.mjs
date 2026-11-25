@@ -17,6 +17,7 @@ import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readPage } from '../../lib/page.mjs';
 import { tmpDir } from '../../lib/testserver.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -27,11 +28,11 @@ const gitAs = (sign, cwd, ...args) => execFileSync('git', [...signs(sign), '-c',
 const git = (cwd, ...args) => gitAs(true, cwd, ...args);
 const write = files => { for (const [f, body] of Object.entries(files)) { mkdirSync(dirname(join(dev, f)), { recursive: true }); writeFileSync(join(dev, f), body); } };
 const TINY = `import { createServer } from 'node:http';\nconst s = createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); });\ns.listen(Number(process.env.PORT), '127.0.0.1', () => console.log('[tiny] listening on ' + process.env.PORT));\nprocess.on('SIGTERM', () => process.exit(0));\n`;
-const PAGE = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
+const PAGE = readPage();   // put together: the tiny project's page is one file
 mkdirSync(dev);
 git(dev, 'init', '-q', '-b', 'main');
 write({ 'server.mjs': TINY, 'public/index.html': PAGE, '.github/allowed_signers': `test@example.com namespaces="git" ${readFileSync(`${signer}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}\n` });
-for (const f of ['lib/testserver.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
+for (const f of ['lib/testserver.mjs', 'lib/page.mjs', 'scripts/check-page.mjs', 'mac/Sources/main.swift']) cpSync(join(ROOT, f), join(dev, f));
 git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', 'the first');
 git(root, 'init', '-q', '--bare', '-b', 'main', origin);
 git(dev, 'remote', 'add', 'origin', origin); git(dev, 'push', '-q', '-u', 'origin', 'main');

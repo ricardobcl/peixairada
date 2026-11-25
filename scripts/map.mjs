@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Rewrite the section maps at the top of server.mjs and public/index.html from the files' own banners — the
-// `// -----… / // Name / // -----…` blocks and `// ---- name ----` lines in the server, the script's `// ---- name`
-// and the stylesheet's `/* ---- name ---- */` in the page. Names only, no line numbers (those drift): grep one to jump.
+// Rewrite the section map at the top of server.mjs from the file's own banners — the `// -----… / // Name / // -----…`
+// blocks and `// ---- name ----` lines. Names only, no line numbers (those drift): grep one to jump. The page has none:
+// its parts are files (public/css/, public/js/), listed in order by public/index.html (2026-11-25).
 //   node scripts/map.mjs        (npm run map)
 import { readFileSync, writeFileSync } from 'node:fs';
 const OPEN = '// Map ▾', CLOSE = '// Map ▴';
@@ -17,9 +17,4 @@ const small = [...s.matchAll(/^\/\/ ---- (.+?) -*$/gm)].map(m => ({ i: m.index, 
 const all = [...big, ...small].sort((a, b) => a.i - b.i).filter(x => !/^Map/.test(x.t));
 s = place(s, [`${OPEN} — the sections, from the file's own banners (node scripts/map.mjs rewrites this; grep a name to jump)`, ...all.map(x => `//${x.sub ? '      · ' : '  '}${x.t}`), CLOSE].join('\n'), /^\/\/   CLAUDE_DIR=.*$/m);
 writeFileSync('server.mjs', s);
-let h = readFileSync('public/index.html', 'utf8');
-const css = [...h.matchAll(/^  \/\* ---- (.+?) ---- \*\/$/gm)].map(m => `//   css · ${m[1].trim()}`);
-const js = [...h.matchAll(/^  \/\/ ---- (.+?) -*$/gm)].map(m => `//   js  · ${m[1].trim()}`);
-h = place(h, [`${OPEN} — the page's sections, from its own banners (node scripts/map.mjs rewrites this; grep a name to jump)`, ...css, ...js, CLOSE].join('\n'), /^<script>\n/m);
-writeFileSync('public/index.html', h);
-console.log(`map: ${all.length} server sections, ${css.length} css + ${js.length} js page sections`);
+console.log(`map: ${all.length} server sections`);

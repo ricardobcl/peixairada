@@ -79,8 +79,8 @@ test('done comes once the parked resize has landed, so a shrink that follows a g
   assert.deepEqual([t.cols, t.rows], [70, 8], 'the shrink after it is what the screen ends at');
 });
 
-// The page's copy, as it stands in index.html — run against the same screens (2026-10-14)
-const page = await import('node:fs').then(({ readFileSync }) => readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'));
+// The page's copy, as it stands in its part of the page (public/js/chat/xterm.js) — run against the same screens (2026-10-14)
+const page = await import('node:fs').then(({ readFileSync }) => readFileSync(new URL('../public/js/chat/xterm.js', import.meta.url), 'utf8'));
 const refitTerm = new Function(`return ${page.match(/function refitTerm\(xt, rows, resize, done = \(\) => \{\}\) \{\n[\s\S]*?\n  \}\n/)[0]}`)();
 const pageRefitted = (t, cols, rows) => new Promise(r => refitTerm(t, rows, () => t.resize(cols, rows), r));
 const cursorLine = t => { const b = t.buffer.active; return b.getLine(b.baseY + b.cursorY).translateToString(true).trim(); };

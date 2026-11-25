@@ -1,0 +1,69 @@
+  /* Settings › Lunch: a place a row — its colour, its name, its Instagram account —, the days a row of toggles */
+  .pop .srow.lplace { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 22px; gap: 6px; padding: 4px 10px; }
+  .pop .srow.lplace .lsq { justify-self: center; width: 10px; height: 10px; border-radius: 2px; background: var(--c, var(--nocolor)); }
+  .pop .srow.lplace.add .lsq { background: none; color: var(--accent); width: auto; height: auto; font-style: normal; }
+  .pop .ligw { display: inline-flex; align-items: center; min-width: 0; height: 28px; padding-left: 9px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-sm); color: var(--muted); cursor: text; }
+  .pop .ligw:focus-within { background: var(--panel); border-color: var(--accent); }
+  .pop .setup .ligw input[type=text] { flex: 1; width: 0; height: 26px; padding: 0 8px 0 1px; border: 0; background: transparent; font-weight: 600; }
+  .pop .setup .lslack { width: 170px; background: var(--ctl); }
+  .pop .setup input[type=time] { height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--ink); font: inherit; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  #settings .sseg.ldays button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+  @media (prefers-reduced-motion: reduce) {
+    .zewalk .zw, .zewalk .zw i { animation: none; } .zewalk .zw i { left: auto; right: 8px; } .zewalk .zw i + i { opacity: 0; }   /* Zé stands at the end of All caught up */
+    #sbSwim .lnews { animation: none; }
+    #sbSwim .sf .fw, #sbSwim .sf .ft, #sbSwim .sf::before { animation: none !important; } #sbSwim .sf { transition: none; }
+    #sbSwim .ltick { animation: none; }   /* lunch's dishes stand still in the lane (the sign drops in and turns at once: lunchSign reads REDUCED) */
+    #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
+    #sbList .lpane { transition: none; }   /* the list's switch: its pane there or not */
+    #space .spbox::after, #space .spa::before { animation: none !important; }   /* Space (⌥⌘X): the marks keep their shapes, still */
+    #space .sprg::before, #space .sphl::before { animation: none !important; rotate: .3turn; }   /* a working node's light stands, part way round */
+    #space .spsky > b { animation: none !important; }   /* its sky: the stars still, none falls (spFall) */
+    #news .nwbody.in { animation: none; }   /* what's new: a page comes in at once */
+    .gsep.lane .lc { transition: none; }   /* a lane's caret turns at once (its head kept since 2026-11-01; the lane itself folds at once: drawCards reads REDUCED) */
+    .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
+    .agr[data-st="run"] > .agd::before { animation: none; border-color: var(--glow, var(--working)); }   /* an agent's arc: a whole circle, still */
+    .agcar { transition: none; }
+    #pickq:disabled ~ #picklist .pkrow { transition: none; }   /* the picker's rows, a step under way */
+    :root[data-layout="sidebar"] #sessions #slist .card { transition: none; } :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover { translate: none; }   /* the shadow alone says it */
+    #slist .card.cdfrom, :root[data-layout="sidebar"] #slist .card.cdover { scale: none; } #cdghost { transition: none; }   /* a card in the hand: nothing comes up (cdLift and cdEnd read REDUCED) */
+    :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before, :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: none; background: var(--lit); }   /* the sidebar's ring, or its edge's light: its light, still, all round */
+    .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
+    .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
+    .card.landed { animation: none; }
+    .pop .srow.sflash { animation-timing-function: step-end; }   /* the row a link opened Settings on: lit, then not, no fade */
+    .card.heard { animation: none; } .card.heard::before { animation: none; }   /* answered: the red simply goes */
+    .card.landed::before { animation: none; content: none; }   /* no wash */
+    .dot.working, .dot.needs-input { animation: none; }
+    .pix, .pix svg { animation: none; }
+    #sbar .upg.run .ic { animation: none; }   /* the update under way: its words and its bar say it */
+    #sbSwim .ft, #sbSwim.rest .swimmer, #sbSwim .food { animation: none; }   /* the fish still, in the lane's left — and nothing to eat (no swim, no blurp) */
+    #sbar .conn .logo, #sbar .conn .logo .fishg { animation: none !important; }   /* belly-up, still; upright, at once */
+    #sbar .conn.off .logo .fishg { transform: scaleY(-1); }
+    .shim > .sw { display: none; }   /* no light runs across clauding */
+    .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
+    #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
+    .shead .tmx .ck.now path { animation: none; }   /* an answer: there, not drawn */
+    .shead .tmx .mxs[data-checks="pending"] { animation: none; opacity: .6; }   /* running: dim, not pulsing; the number's badge says it too */
+    #log > .in { animation: none; }
+    :is(#fillHint, #tvHint), :is(#fillHint, #tvHint).out { translate: -50% 0; } @starting-style { :is(#fillHint, #tvHint) { translate: -50% 0; } }   /* the fill's word and the timeline's fade, in place */
+    #tour :is(.thole, .tcard) { transition: outline-color .2s; } #tour .tin.in { animation: none; }   /* the tour jumps from part to part */
+    dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
+    @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
+    .toolgroup > summary::before, .codefold > summary::before { transition: none; }
+    :is(.toolgroup, .codefold)::details-content, :is(.toolgroup, .codefold):not([open])::details-content { transform: none; transition-duration: 0s; }
+    .sq.pick, .shead h2 .sq { transition: opacity .12s; }
+    #people button:hover, .pop .ssw:hover { transform: none; }
+    #people button:not(.pgh) { transition: opacity .12s, box-shadow .12s; }   /* the faces fold at once, and come back fading */
+    .pop input.sw::after, #tline .tl-thumb { transition: none; }
+    .card .top .tprs { transition: none; }   /* the stack fans at once */
+    #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
+    #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
+    :is(.card, .shead) .tmx .mxs { transition: filter var(--t-hover); } :is(.card, .shead) .tmx .mxs:is(:hover, .hot) { scale: none; }   /* a square under the pointer brightens, no lift */
+    #mxtip, #mxtip.on { transform: none; transition: opacity .12s var(--ease-out); } #mxtip.on::after { transition: none; }   /* a PR's card fades in where it stands */
+    /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
+    .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
+    .ptab.addr { --roll: 0%; --pop: 1; } .pcopy > .ok path { stroke-dasharray: none; }   /* the copy said: the words and the ✓ fade in place, not rolled, popped or drawn */
+    .prrow .prcopy { --pop: 1; }   /* a row's link copied: the ✓ fades in, not popped */
+    .card:active, :is(.btn, .ptab, .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .ax, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button):active { scale: none; }   /* a press does not dip */
+  }
+

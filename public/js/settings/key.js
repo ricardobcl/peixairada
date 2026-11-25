@@ -1,0 +1,29 @@
+  // Settings › Updates & access › Board key (2026-10-16): whether the board's key is required yet, and a new one — asked
+  // once more, in a line under the row that says what it does, before it is made (a destructive action looks it).
+  function showKey() {
+    const k = state.key; if (!k) return;
+    $('#keyWord').textContent = k.required ? 'Required' : 'Not required yet';
+    $('#keySay').textContent = k.required ? 'Every page and request carries the board’s key' : 'The board answers a request without it until the app opens with it';
+    $('#keyReq').hidden = k.required;
+  }
+  $('#keyReq').onclick = e => api('PUT', '/api/key').then(k => { state.key = k; showKey(); }).catch(err => note(e.target, err.message, true));
+  const keySure = on => { $('#keySure').hidden = !on; $('#keyNew').setAttribute('aria-expanded', String(on)); };
+  $('#keyNew').onclick = () => { keySure(true); $('#keyNo').focus(); };
+  $('#keyNo').onclick = () => { keySure(false); $('#keyNew').focus(); };
+  $('#keyYes').onclick = async e => {
+    const b = e.currentTarget;
+    try { const { key } = await api('POST', '/api/key/new'); if (IN_APP && window.PEIX_KEY) post({ type: 'key' }); else { takeKey(key); location.reload(); } }
+    catch (err) { note(b, `No new key: ${err.message}`, true); }
+  };
+  $('#lockGo').onclick = async () => {
+    const say = $('#lockSay'); say.classList.remove('err');
+    try { await api('POST', '/api/key/open'); say.textContent = 'A tab with the key is opening in this Mac\'s browser — this one follows it.'; }
+    catch (err) { say.classList.add('err'); say.textContent = err.message; }
+  };
+  $('#lockApp').onclick = () => post({ type: 'key' });
+  $('#lock').addEventListener('cancel', e => e.preventDefault());   // nothing behind it to go back to
+  $('#updBtn').addEventListener('click', e => {
+    const b = e.currentTarget, apply = b.dataset.apply === '1';
+    updAsked = Date.now(); b.disabled = true;
+    api('POST', '/api/update', { apply }).then(takeUpdate).catch(err => { showUpdate(); note(b, `Could not look: ${err.message}`, true); });
+  });

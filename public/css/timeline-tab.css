@@ -1,0 +1,80 @@
+  /* ---- the timeline tab: the chat and its PRs in one order (2026-10-17) ---- */
+  /* An agent's tab (2026-11-02): its transcript, read-only, a tab of the chat (placeAgent) */
+  #agv { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); }
+  #agv[hidden] { display: none; }
+  #agv .agvh { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 8px 18px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+  #agv .agvh .ic { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  #agv .agvh b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
+  #agv .agvh .say { flex: none; margin-left: auto; }
+  #agv .agvh .say.fail { color: var(--needs); }
+  #agv .agvx { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; }
+  #agv .agvx:hover { background: var(--ctl-hi); color: var(--ink); }
+  #agv .agvlog { overflow-y: auto; padding: 16px 18px 40px; overscroll-behavior: contain; zoom: var(--chat-zoom, 1); isolation: isolate; }
+  #tv { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); container: tv / inline-size; }
+  #tv[hidden] { display: none; }
+  #tv .tvbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); min-width: 0; }
+  #tv .tvchips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  #tv :is(.tvc, .tvscope) { font: inherit; font-size: var(--fs-sm); font-weight: 600; line-height: 22px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  #tv :is(.tvc, .tvscope):hover { background: var(--ctl-hi); }
+  #tv .tvc > i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--h, var(--muted)); flex: none; }
+  #tv .tvc.on { color: var(--ink); background: color-mix(in srgb, var(--h, var(--ink)) 18%, transparent); border-color: color-mix(in srgb, var(--h, var(--ink)) 40%, transparent); }
+  #tv .tvc.on > i { background: var(--h, var(--muted)); }
+  #tv .tvc .st { font-weight: 500; font-size: var(--fs-xs); color: var(--muted); }
+  #tv .tvc .st[data-k="you"] { color: var(--accent); font-weight: 700; }
+  #tv .tvscope { display: none; }   /* the chips folded into one button where the tab is narrow (below) */
+  #tv .tvgap { flex: 1 1 0; min-width: 4px; }
+  #tv .tvseg { display: inline-flex; padding: 2px; border-radius: var(--r-3); background: var(--ctl); flex: none; }
+  #tv .tvseg button { font: inherit; font-size: var(--fs-sm); padding: 1px 9px; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  #tv .tvseg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
+  @container tv (max-width: 460px) { #tv .tvchips { display: none; } #tv .tvscope { display: inline-flex; } }   /* a half split three ways or narrower: the chips wrap above the switches until then */
+  #tv .tvl { overflow: auto; overscroll-behavior: contain; position: relative; padding-top: 6px; }
+  #tv .tvr { display: grid; grid-template-columns: 52px var(--lw, 14px) minmax(0, 1fr); column-gap: 8px; padding: 0 14px 0 6px; min-height: 26px; }
+  #tv .tvr:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  #tv .tvr .tm { font-size: var(--fs-xs); color: var(--muted); text-align: right; padding-top: 5px; white-space: nowrap; }
+  #tv .tvr .lns { display: flex; align-self: stretch; }
+  #tv .ln { position: relative; width: 14px; flex: none; --dy: 13px; }
+  #tv .ln > b { position: absolute; left: 50%; translate: -50% 0; width: 2px; background: color-mix(in srgb, var(--c) 55%, transparent); }
+  #tv .ln > b.u { top: 0; height: var(--dy); } #tv .ln > b.d { top: var(--dy); bottom: 0; }
+  #tv .ln > b.thick { width: 4px; background: var(--c); }
+  #tv .ln > b.dash { width: 0; background: none; border-left: 2px dashed color-mix(in srgb, var(--c) 60%, transparent); }
+  #tv .ln > em { position: absolute; left: 50%; top: var(--dy); translate: -50% -50%; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  #tv .ln > em.move { width: 11px; height: 11px; box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--accent); }
+  #tv .ln > em.close { width: 12px; height: 12px; background: var(--pr-open); display: grid; place-items: center; }
+  #tv .ln > em.close::after { content: ""; width: 5px; height: 3px; border: solid var(--panel); border-width: 0 0 1.6px 1.6px; translate: 0 -1px; rotate: -45deg; }
+  #tv .ln > em.let { width: 9px; height: 9px; background: var(--panel); border: 1.5px solid var(--muted); }
+  #tv .ln > em.ref { width: 7px; height: 7px; background: var(--panel); border: 1.5px solid var(--c); }
+  #tv .ln > em.small { width: 5px; height: 5px; }
+  #tv .ln > em.bad { background: var(--pr-closed); }
+  #tv .ln > em.you { width: 7px; height: 7px; border-radius: 2px; background: var(--muted); }
+  #tv .ln > em.cl { width: 7px; height: 7px; background: var(--accent); }
+  #tv .tvr .ct { min-width: 0; padding: 3px 0 4px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+  #tv .tvr .ct > .ri { align-self: center; margin-top: 0; }
+  #tv .tvr .who { font-weight: 600; }
+  #tv .tvr .w { min-width: 0; overflow-wrap: anywhere; }
+  #tv .tvr.you .bub { min-width: 0; background: var(--user-bg); border-radius: 10px 10px 3px 10px; padding: 1px 8px; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+  #tv .tvr.cl { cursor: pointer; }
+  #tv .tvr.cl .rep { flex-basis: 100%; min-width: 0; color: var(--muted); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tv .tvr.cl .sum .tvat { color: var(--working-ink); }
+  #tv .tvr.cl .tools { flex-basis: 100%; display: grid; gap: 1px; font: var(--fs-xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  #tv .tvr.cl .tools span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tv .tvr.cl .rep.all { white-space: normal; }
+  #tv .tvr.ev[data-u] { cursor: pointer; }
+  #tv .tvr.fold { cursor: pointer; color: var(--muted); } #tv .tvr.fold .ct { font-size: var(--fs-sm); }
+  #tv .tvr.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  #tv .tvr .ok { color: var(--pr-open); font-weight: 600; }
+  #tv .tvr .bad { color: var(--pr-closed); font-weight: 600; }
+  #tv .tvr .span { color: var(--muted); }
+  #tv .tvday { margin: 12px 0 6px; text-align: center; }
+  #tv .tvday b { font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }
+  #tv .tvnone { padding: 36px 20px; color: var(--muted); text-align: center; }
+  #tv .tvold { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 4px 14px 8px; }
+  #tv .tvgh { font: inherit; font-size: var(--fs-xs); color: var(--muted); padding: 1px 8px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); cursor: pointer; }
+  #tv .tvgh:hover { background: var(--ctl-hi); color: var(--ink); }
+  #tv .tvnow { position: sticky; bottom: 0; z-index: 1; display: grid; gap: 3px; margin-top: 8px; padding: 6px 14px 8px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(8px); }
+  #tv .tvnr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--fs-sm); min-width: 0; }
+  #tv .tvnr .was { color: var(--muted); }
+  #tv .tvgo { margin-left: auto; font: inherit; font-size: var(--fs-xs); font-weight: 600; line-height: 20px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
+  #tv .tvgo:hover { background: var(--ctl-hi); }
+  #tv .tvr.flash, #log .msg.tvhit { animation: tvflash 1.4s var(--ease-out); }
+  @keyframes tvflash { 0%, 30% { background: color-mix(in srgb, var(--accent) 26%, transparent); } 100% { background: transparent; } }
+

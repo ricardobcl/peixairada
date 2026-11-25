@@ -73,6 +73,7 @@ import { execFile, execFileSync, spawn } from 'node:child_process';
 import { format, promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { readPage } from './lib/page.mjs';
 import { versionFrom } from './lib/version.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -6725,9 +6726,8 @@ function sortedSummaries() {
 // The page follows a restart (2026-10-13): it is served with a stamp of itself and the boot of the server serving it
 // (`SINCE`) in its head's meta, and every snapshot says which page is on disk now (`page`) — so a page that hears a
 // server started since it was served, with another page on disk, reloads itself as an update's does (`pageFollows` in
-// index.html): a restart by hand after a pull brings the page along. Read whole each time, as it is served: the agent
-// serves the working tree's.
-const PAGE_FILE = join(__dirname, 'public', 'index.html');
+// index.html): a restart by hand after a pull brings the page along. Put together from its parts each time, as it is
+// served (lib/page.mjs): the agent serves the working tree's.
 const pageStamp = html => createHash('sha1').update(html).digest('hex').slice(0, 12);
 // The page's policy (2026-11-06): its script is its own two inline blocks — by their hashes, worked out from the page as
 // it is served, so an edit needs nothing here — and the vendored files; its connections this server alone, its pictures
@@ -6760,7 +6760,7 @@ const server = createServer(async (req, res) => {
     if (want) { res.setHeader('connection', 'close'); return json(res, 401, { error: want === 'wrong' ? 'not this board\'s key' : 'this board wants its key', key: want }); }   // its body unread: the socket goes
     if (req.method !== 'GET' && p !== '/api/update' && p !== '/api/chat/watch' && !p.endsWith('/seen')) lastTouchAt = Date.now();   // something done on the board (a reply shown is the page's own doing): no update until it rests
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
-      const html = readFileSync(PAGE_FILE, 'utf8');
+      const html = readPage();
       const body = html.replace('<meta name="peix-page" content="">', `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': pageCsp(body, req.headers.host), 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
       return res.end(body);
@@ -7273,7 +7273,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, priority, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), chat: chatSummary(), lunch: lunchSummary(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, priority, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), chat: chatSummary(), lunch: lunchSummary(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readPage()) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       res.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key'));   // one come in with no key goes when it is required (requireKey)

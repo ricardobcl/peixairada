@@ -1,0 +1,26 @@
+  /* ---- tiles (2026-10-10; main.tiles is in the markup, and its rules are the panels' — the sidebar's below draws over
+     them, the one layout since 2026-11-01): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
+     project's colour (--tile-edge, set by tintChat: a black one --tile-grey), faint, and whole on the panel the keys
+     are in ---- */
+  :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
+  main.tiles { padding: 8px 8px 0; }
+  main.tiles :is(#sessions, #chat) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); }
+  main.tiles .kf:is(#sessions, #chat) { border-color: var(--tile-edge, var(--nocolor)); }
+  /* at the notch, the panel the housing reaches cut round it and its border round the cut (tileNotch) */
+  main.tiles :is(#sessions, #chat).ncutp { position: relative; }
+  .ncut { position: absolute; z-index: 6; pointer-events: none; border: 2px solid; border-top: 0; border-color: inherit; }
+  .ncap { position: absolute; z-index: 6; pointer-events: none; border: 0 solid; border-color: inherit; }
+  .ncap.l { border-top-width: 2px; border-right-width: 2px; } .ncap.r { border-top-width: 2px; border-left-width: 2px; }
+  main.tiles.notch #sessions.npad #slist { padding-top: calc(var(--notch-top, 0px) + 6px); }
+  /* …and on that screen — a housing says it is a MacBook's own, never an external display — the tiles in its two top
+     corners round as the screen's corners are, concentric with them the gap in (the screen's radius by eye, 18 px:
+     the tile's is that less the gap). Clipped, so a header's black does not square the corner off again. */
+  main.tiles.notch { --screen-r: 10px; }
+  main.tiles.notch > #sessions { border-top-left-radius: var(--screen-r); overflow: hidden; }
+  main.tiles.notch > #chat { border-top-right-radius: var(--screen-r); overflow: hidden; }
+  main.tiles.notch.lhide > #chat { border-top-left-radius: var(--screen-r); }   /* the list hidden: the chat's tile has that corner too */
+  main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
+  /* Black, the theme (2026-10-30): its grounds black — the transcript without the chat's wash —, the colours on what
+     they mark */
+  :root[data-skin="black"] #log, :root[data-skin="black"] #chat #groups .gbody.haslog { background: none; }
+

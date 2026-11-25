@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readPage } from '../lib/page.mjs';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { updateParts } from '../server.mjs';
 import { PAGE, ROOT, TINY, project } from './update-project.mjs';
@@ -167,7 +168,7 @@ test('the page follows a restart: served with a stamp of itself and the boot tha
     const html = await (await fetch(srv.url)).text();
     const m = /<meta name="peix-page" content="([0-9a-f]{12})" data-since="(\d+)">/.exec(html);
     assert.ok(m, 'the head carries the stamp and the boot');
-    assert.equal(m[1], createHash('sha1').update(readFileSync(join(ROOT, 'public', 'index.html'))).digest('hex').slice(0, 12), 'the stamp is the file\'s, not the page as served');
+    assert.equal(m[1], createHash('sha1').update(readPage()).digest('hex').slice(0, 12), 'the stamp is the page\'s as put together, not as served');
     const a = await snapshot();
     assert.deepEqual([a.page, a.about.since], [m[1], Number(m[2])], 'the server that served it: the same page, the same boot');
     await srv.restart();

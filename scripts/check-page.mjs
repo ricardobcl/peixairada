@@ -1,24 +1,40 @@
 #!/usr/bin/env node
-// Compile every inline <script> of a page (syntax only), pointing at the line in the HTML on an error.
-import { readFileSync } from 'node:fs';
+// Compile every inline <script> of a page (syntax only), pointing at the line in the file it came from on an error: the
+// page is put together from its parts (lib/page.mjs), so a line of it is a line of public/js/… or public/css/….
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import vm from 'node:vm';
+import { assemblePage } from '../lib/page.mjs';
 const file = process.argv[2] || 'public/index.html';
-const html = readFileSync(file, 'utf8');
+const { html, parts, where } = assemblePage(file);
+const lineAt = i => html.slice(0, i).split('\n').length;
+const at = n => { const w = where(n); return `${w.file}:${w.line}`; };   // the part's path as the page's was given
 let n = 0, bad = 0;
 for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
   n++;
-  const lineOffset = html.slice(0, m.index).split('\n').length - 1;
+  const lineOffset = lineAt(m.index) - 1;
   try { new vm.Script(m[1], { filename: file, lineOffset }); }
-  catch (e) { bad++; console.error(`${file}: ${e.message}${e.stack?.split('\n')[0]?.includes(file) ? '\n  ' + e.stack.split('\n')[0] : ''}`); }
+  catch (e) { bad++; const l = Number(/:(\d+)$/m.exec(e.stack?.split('\n')[0] || '')?.[1]); console.error(`${l ? where(l).file : file}: ${e.message}${l ? `\n  ${at(l)}` : ''}`); }
 }
 if (!n) { console.error(`${file}: no inline script found`); process.exit(1); }
 if (bad) process.exit(1);
-console.log(`${file}: ${n} inline script${n === 1 ? '' : 's'} compile`);
+console.log(`${file}: ${n} inline script${n === 1 ? '' : 's'} compile, put together from ${parts.length} parts`);
+
+// Every part is the page's once, and nothing in its folders is left out (2026-11-25): a file there that no include names
+// would be code that never runs, and one named twice would run twice.
+{
+  const dir = join(file, '..'), named = parts.map(p => relative(dir, p));
+  const twice = named.filter((p, i) => named.indexOf(p) !== i);
+  const files = sub => { try { return readdirSync(join(dir, sub), { recursive: true }).filter(f => /\.(css|js)$/.test(f)).map(f => join(sub, f)); } catch { return []; } };
+  const left = [...files('css'), ...files('js')].filter(f => !named.includes(f));
+  if (twice.length) { console.error(`${file}: a part included twice: ${twice.join(', ')}`); process.exit(1); }
+  if (left.length) { console.error(`${file}: a part no include names, so it never runs: ${left.join(', ')}`); process.exit(1); }
+}
 
 // An attribute's value in single quotes is never built from `${…}` (2026-10-14): esc() escapes `"` and not `'`, so a
 // value with a quote in it would close the attribute and run on into the markup. Double quotes, as everywhere else.
-const quoted = [...html.matchAll(/=\s*'\$\{/g)].map(m => html.slice(0, m.index).split('\n').length);
-if (quoted.length) { console.error(`${file}: an attribute in single quotes built from \${…} (esc() leaves ' alone) at line ${quoted.join(', ')}`); process.exit(1); }
+const quoted = [...html.matchAll(/=\s*'\$\{/g)].map(m => at(lineAt(m.index)));
+if (quoted.length) { console.error(`an attribute in single quotes built from \${…} (esc() leaves ' alone) at ${quoted.join(', ')}`); process.exit(1); }
 
 // The keys (2026-10-12): every code in HOTKEYS and CMDKEYS has its row in KEYS — the Keys pane and the ? sheet are
 // drawn from it —, every row's code is one of theirs, and the app forwards every ⌥⌘ letter the board answers while a
@@ -26,16 +42,16 @@ if (quoted.length) { console.error(`${file}: an attribute in single quotes built
 // and ⌘, are the menus', not the forwarder's).
 // A dialog up lowers the pane (2026-11-04): a page in the app is a native view, so a dialog opened with one up is drawn under
 // it, and Chrome, with no view there, shows nothing wrong. Each opener says so on its own line.
-const unlowered = [...html.matchAll(/^.*\.showModal\(\).*$/gm)].filter(m => !/\.showModal\(\);.*\brepostPane\(\)/.test(m[0])).map(m => html.slice(0, m.index).split('\n').length);
-if (unlowered.length) { console.error(`${file}: a showModal() with no repostPane() after it on its line, so it opens under a page in the pane, at line ${unlowered.join(', ')}`); process.exit(1); }
+const unlowered = [...html.matchAll(/^.*\.showModal\(\).*$/gm)].filter(m => !/\.showModal\(\);.*\brepostPane\(\)/.test(m[0])).map(m => at(lineAt(m.index)));
+if (unlowered.length) { console.error(`a showModal() with no repostPane() after it on its line, so it opens under a page in the pane, at ${unlowered.join(', ')}`); process.exit(1); }
 // A function declared twice in the script's own scope (2026-11-05): the later one wins, silently — a drawer's `letGo` took over
 // the round let go's of that name, and only a scenario's ⌥-click found it. The page's script is one IIFE: its own scope is the
 // declarations two spaces in.
 {
   const seen = new Map();
-  for (const m of html.matchAll(/^  (?:async )?function\*? ?(\w+)\s*\(/gm)) { const at = html.slice(0, m.index).split('\n').length; (seen.get(m[1]) || seen.set(m[1], []).get(m[1])).push(at); }
+  for (const m of html.matchAll(/^  (?:async )?function\*? ?(\w+)\s*\(/gm)) (seen.get(m[1]) || seen.set(m[1], []).get(m[1])).push(at(lineAt(m.index)));
   const twice = [...seen].filter(([, at]) => at.length > 1);
-  if (twice.length) { console.error(`${file}: a function declared twice, the later one silently replacing the first: ${twice.map(([n, at]) => `${n} at lines ${at.join(', ')}`).join('; ')}`); process.exit(1); }
+  if (twice.length) { console.error(`a function declared twice, the later one silently replacing the first: ${twice.map(([n, where]) => `${n} at ${where.join(', ')}`).join('; ')}`); process.exit(1); }
 }
 if (file.endsWith('public/index.html')) {
   const keysOf = name => { const m = html.match(new RegExp(`const ${name} = \\{(.*?)\\};`)); return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null; };
