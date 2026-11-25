@@ -4,7 +4,7 @@
 // What this keeps honest: the tree the tiles are
 // (state().tiles) and where each tile lands; every tile's terminal attached and fitted to its own body; ⌘2 turning the
 // split the keys' tile is half of; the divider dragged into the tree; a terminal that exits taking
-// its tile with it; the tiles across a reload; ⌘0 back to one half, nothing ended; and the switch off: today's tabs.
+// its tile with it, the keys back in the tile it was cut from (2026-11-25, later); the tiles across a reload; ⌘0 back to one half, nothing ended; and the switch off: today's tabs.
 export const meta = { server: true, fake: true, fixture: 'auto', prefs: { autoTile: true } };
 
 const grp = g => `document.querySelector('#groups > .grp[data-g="${g}"]')`;
@@ -139,13 +139,21 @@ export default async function (ctx) {
     { what: 'the fourth tile folded' },
   );
   ctx.assert.equal(await box(ctx, 3), null, 'its tile hidden');
+  ctx.assert.equal(await ctx.peix('state().focusG'), 2, 'the keys back in the tile it was cut from, not the first');
   await fits(ctx, [0, 1, 2]);
 
-  // ⌘0: only the tile the keys are in — one half, every tab in its strip, nothing ended
+  // exit in the second tile, a first part: the keys go to its sibling's nearest tile — the third, not claude's
   await ctx.evaluate(
-    `document.querySelector('#termBody3').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`,
+    `document.querySelector('#termBodyB').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`,
   );
-  await ctx.waitFor(`window.peix.state().focusG === 2`, { what: 'the keys in the third tile' });
+  await ctx.waitFor(`window.peix.state().focusG === 1`, { what: 'the keys in the second tile' });
+  await ctx.type('exit', 1);
+  await ctx.waitFor(`JSON.stringify(window.peix.state().tiles?.b) === JSON.stringify({ g: 2 })`, {
+    what: 'the second tile folded',
+  });
+  ctx.assert.equal(await ctx.peix('state().focusG'), 2, 'the keys in the tile beside it');
+
+  // ⌘0: only the tile the keys are in — one half, every tab in its strip, nothing ended
   await ctx.cmd('Digit0');
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'one half' });
   ctx.assert.equal(await tiles(ctx), null, 'no tree');
@@ -156,8 +164,8 @@ export default async function (ctx) {
   );
   ctx.assert.equal(
     (await ctx.peix(`session(${JSON.stringify(chat.id)})`)).shells.filter(x => x.exited === null).length,
-    2,
-    'both zshs still run',
+    1,
+    'the zsh left still runs',
   );
 
   // the switch off: today's — the next terminal splits once, the one after is a tab beside it
@@ -165,11 +173,11 @@ export default async function (ctx) {
   ctx.assert.equal((await ctx.peix('prefs()')).autoTile, false, 'the setting is off');
   await ctx.key('KeyC');
   await ctx.cmd('KeyT');
-  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().strips[1].length === 3`, {
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().strips[1].length === 2`, {
     what: 'the new zsh in the second half',
   });
   await ctx.cmd('KeyT');
-  await ctx.waitFor(`window.peix.state().strips[1].length === 4`, { what: 'another, as a tab' });
+  await ctx.waitFor(`window.peix.state().strips[1].length === 3`, { what: 'another, as a tab' });
   ctx.assert.equal(await tiles(ctx), null, 'still two halves');
   await ctx.shot('off');
   return { tree: t };

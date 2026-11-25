@@ -33,7 +33,11 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   number for life, so no terminal is re-attached when another tile goes (a re-attach is a resize and a nudge).
 * **Going**: a tile emptied — its zsh exited, its last tab dragged off — folds, its sibling taking the room
   (`foldTiles`); its ⨯ or ⌘W on it gives its tabs to that sibling (`closeTile`); ⌘0 is the one tile the keys are in,
-  every tab in its strip, nothing ended. Down to one tile, the column is unsplit.
+  every tab in its strip, nothing ended. Down to one tile, the column is unsplit. **The keys go back the way the
+  cut came** (later still: *"the focus direction should also be backtracked based on the previous split. currently
+  it picks the first tab"*): to the sibling's tile nearest the one gone — a second part's to its sibling's last tile,
+  a first part's to its first (`backOf`), as i3 falls back to the window it split — never claude's tile, the first,
+  as the halves' ⌥⌘W does.
 * **A floor, lower than first said**: `TILE_MIN` 24 × 6, not the 80 × 15 proposed — a side-by-side half on a laptop is
   under 80 columns already, so 80 would have refused the second terminal almost always. Under it the terminal is a
   tab beside the chat, as with the setting off.

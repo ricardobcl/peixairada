@@ -89,6 +89,12 @@ const parentOf = (n, g) =>
     : ('g' in n.a && n.a.g === g) || ('g' in n.b && n.b.g === g)
       ? n
       : parentOf(n.a, g) || parentOf(n.b, g);
+/** Where the keys go back to when tile `g` goes (2026-11-25): the part it was cut from, at the tile nearest it — a
+ *  second part's sibling's last leaf, a first part's sibling's first — as i3's focus falls back to the window it split. */
+const backOf = (n, g) => {
+  const par = parentOf(n, g);
+  return !par ? null : 'g' in par.a && par.a.g === g ? leavesOf(par.b)[0] : leavesOf(par.a).at(-1);
+};
 let focusG = 0; // the half the keys, the pickers and a new tab act on
 const curTerm = () => terms[focusG];
 const termFor = id => (id ? terms.find(t => t.id === id) || null : null);

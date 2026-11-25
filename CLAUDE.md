@@ -725,10 +725,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   where the chat is *not*, and Esc, ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`).
   A tab that exists is `openTab()`, never a split. A split the board made (`autoSplit`) folds back on its
   own when the chat is down to one tab (`syncTerm`).
-* **Tile new terminals** (2026-11-25; Settings › Terminal, `prefs.autoTile`, off): a zsh or vim fills an empty half or
-  tile, else cuts the keys' tile along its longer side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid
-  (`tileLayout`, `.tdiv`), groups at need (`ensureGroups`, `onGroup`); an empty tile folds (`foldTiles`), ⨯
-  gives its sibling its tabs (`closeTile`); ⌘1 ⌘2 by tree order, ⌥ turns its split. → `auto-tile.mjs`.
+* **Tile new terminals** (2026-11-25; Settings › Terminal, `prefs.autoTile`, off): a zsh or vim fills an empty tile,
+  else cuts the keys' tile along its longer side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`), a grid
+  (`tileLayout`, `.tdiv`), groups at need (`ensureGroups`, `onGroup`); one gone (`foldTiles`, ⨯
+  `closeTile`) leaves its tabs and the keys to its sibling's nearest (`backOf`); ⌘1 ⌘2 by tree order, ⌥ turns
+  its split. → `auto-tile.mjs`.
 * **A tab lives in exactly one half, and split, each strip lists only its own**: one transcript element, one xterm
   per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other right
   (`homeOf`) — written only for a tab **dragged across** (`moveTab`; a press under 5 px is a click) and forgotten
@@ -1018,7 +1019,7 @@ to the page, load it**: `check-page` only compiles, and a `const` read before it
   a drawer's every frame.
 * **`npm run scenarios` runs a failure once more**: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
-* **The harness makes no sound** (2026-11-01): headless Chrome has no audio device (`--disable-audio-output`), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs`, `ze-webkit.mjs`.
+* **The harness makes no sound** (2026-11-01): Chrome has no audio (`--disable-audio-output`), the WKWebView is muted (`_setPageMuted:`, `muted()`). → `ze-sound-off.mjs`, `ze-webkit.mjs`.
 * **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it
   is noon now (`meta.tz` another or `false`; `ctx.tz`).
 * **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp

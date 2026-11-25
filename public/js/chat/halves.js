@@ -410,9 +410,10 @@ function dropTab(s, k) {
     last = keysIn(s, g).length === 1;
   if (closeTab(s, k) === false) return; // vim, asked to quit
   if (last && g === focusG) {
-    showChat(s);
+    if (isTiled(s) && groupsOf(s).length > 2) focusG = backOf(trees.get(s.id), g) ?? 0;
+    else showChat(s);
     syncTerm(s);
-  }
+  } // tiles: back to the one it was cut from
   focusBoard();
   focusTerm();
 }

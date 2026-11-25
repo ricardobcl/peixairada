@@ -232,20 +232,20 @@ function roomFor(g, d) {
 }
 /** Tile g closed (⌘W on it, its ⨯): its tabs go to the tile it was split from, and the room with them. */
 function closeTile(s, g) {
-  const par = parentOf(trees.get(s.id), g);
-  if (!par) return;
-  const to = leavesOf('g' in par.a && par.a.g === g ? par.b : par.a)[0];
+  const to = backOf(trees.get(s.id), g);
+  if (to === null) return;
   for (const k of keysIn(s, g)) homes.get(s.id).set(k, to);
   if (focusG === g) focusG = to;
   dropLeaf(s, g);
 }
 /** Leaf g out of the chat's tree, its sibling taking its place; down to one, the column is one again. */
 function dropLeaf(s, g) {
-  const t = treeMap(trees.get(s.id), g, () => null);
+  const back = backOf(trees.get(s.id), g),
+    t = treeMap(trees.get(s.id), g, () => null);
   if (zoomed.get(s.id) === g) zoomed.delete(s.id);
   if (t && !('g' in t)) {
     trees.set(s.id, t);
-    if (!leavesOf(t).includes(focusG)) focusG = leavesOf(t)[0];
+    if (!leavesOf(t).includes(focusG)) focusG = back ?? leavesOf(t)[0];
     return;
   }
   const left = t ? placeOf(s)[t.g] : null;
