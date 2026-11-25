@@ -7,5 +7,8 @@
 !*.cjs
 !*.css
 public/vendor/
+# shell and JavaScript at once: its first statement must stay `true /*`, no semicolon
+scripts/fakes/fakecaffeinate.mjs
+scripts/fakes/fakepmset.mjs
 docs/
 mac/build/

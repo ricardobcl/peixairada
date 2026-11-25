@@ -1,20 +1,39 @@
-  /* ---- sessions of the selected project ---- */
-  /* no room above the first card (2026-09-29): its top is the chat header's */
-  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; scroll-padding-top: var(--stick, 0px); }   /* positioned: the cards' offsetTop is the list's; a card scrolled to stops under the stuck lane head */
-  /* …and a stacking context of its own (2026-10-13): WebKit scrolls the list on the compositor, and a card — positioned,
+/* ---- sessions of the selected project ---- */
+/* no room above the first card (2026-09-29): its top is the chat header's */
+#slist {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  position: relative;
+  scrollbar-width: none;
+  scroll-padding-top: var(--stick, 0px);
+} /* positioned: the cards' offsetTop is the list's; a card scrolled to stops under the stuck lane head */
+/* …and a stacking context of its own (2026-10-13): WebKit scrolls the list on the compositor, and a card — positioned,
      its own stacking context — in a scroller that is not one has to be a layer of its own to scroll with it, each with
      a clip layer the list's size: 1,325 CALayers for 400 cards, 117 with this, and every frame that restyles walks them
      all (36 % of a core at rest → 25 % on its own, measured in a WKWebView). Nothing in a card reaches past the list. */
-  #slist { isolation: isolate; }
-  /* …and each card a layer of its own inside it (2026-10-13), as it was before but now without a clip layer each: with
+#slist {
+  isolation: isolate;
+}
+/* …and each card a layer of its own inside it (2026-10-13), as it was before but now without a clip layer each: with
      the cards painted into the list's tiles, every scroll exposed cards to paint and every glow under the pointer
      repainted the tile it is in — a scroll driven a frame at a time dropped 34–44 frames in 6 s, 0 with this; the glow
      followed by the pointer 41 % of a core, 21 % with this; at rest and opening a chat the same or a hair better, and
      the memory the same (WebKit gives no backing to a layer out of sight). 544 CALayers for 400 cards. */
-  #slist > .card { will-change: transform; }
-  #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
-  #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
-  /* Between the clauding cards and the ready ones, Claude's mark in pixels, alone and centred (2026-09-27; a
+#slist > .card {
+  will-change: transform;
+}
+#slist::-webkit-scrollbar {
+  display: none;
+} /* the timeline beside it is the scrollbar, with the days on it */
+#slist > * {
+  flex: none;
+} /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
+/* Between the clauding cards and the ready ones, Claude's mark in pixels, alone and centred (2026-09-27; a
      school of ><> swimming right since 2026-09-20, kept as one node across renders so it did not jolt, then for an
      evening the smooth starburst turning and breathing between two hairlines). The window is one frame, 9 × 9 pixels of
      2 px; the strip behind it holds the frames side by side (PIX_SHEET), and `pix` slides it a whole frame at a time —
@@ -26,128 +45,739 @@
      before its boundary — never steps() (2026-10-15): WebKit runs a steps() animation on the main thread, a style pass
      and a walk of every layer each frame, ~2.5 % of a core for as long as anything is clauding; held pairs it composites,
      and they show the same frames. */
-  .gsep { margin: 2px 10px; font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); white-space: nowrap; overflow: hidden; user-select: none; }
-  /* A lane's head (2026-10-09; L1 since 2026-10-31, round XIII — Linear's states): a status glyph in the lane's colour —
+.gsep {
+  margin: 2px 10px;
+  font:
+    600 var(--fs-xs)/14px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 1px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+/* A lane's head (2026-10-09; L1 since 2026-10-31, round XIII — Linear's states): a status glyph in the lane's colour —
      asking a filled dot with a halo, clauding a half-filled ring, watching a dashed ring round a dot, ready a ring round
      a dot, idle a dotted ring, done filled —, the name in ink, the count bare. Still glyphs: no lane's mark moves (the
      clauding one was Claude's in pixels, its name shimmering). Sticky at the list's top while its lane scrolls under
      it, on the list's own ground, reaching over the list's padding; a later head slides over it. The tiles' in small
      caps, the sidebar's in sentence case. */
-  .gsep.lane { --lanec: var(--muted); display: flex; align-items: center; gap: 8px; margin: 6px -8px 1px; padding: 5px 10px 4px 12px; font: 750 var(--fs-xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--ink); overflow: visible; }
-  .gsep.lane[data-lane] { position: sticky; top: 0; z-index: 4; background: var(--bg); }
-  .gsep.lane.covered { visibility: hidden; }   /* stuck under a later one (drawEdges) */
-  #sessions.npad .gsep.lane.stuck::before { content: ''; position: absolute; inset: auto 0 100%; height: var(--lpad, 0px); background: inherit; }   /* stuck under the notch's strip: its ground over the strip too */
-  .gsep.lane:first-child { margin-top: 0; }
-  .gsep.lane > i { width: 12px; height: 12px; flex: none; margin: 0 3px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--lanec); }
-  .gsep.lane b { margin-left: auto; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0; line-height: 16px; }
-  .gsep.lane.asking { --lanec: var(--needs); } .gsep.lane.working { --lanec: var(--working); } .gsep.lane.watching { --lanec: var(--watch); } .gsep.lane.ready { --lanec: var(--idle); }
-  .gsep.lane.asking > i { background: var(--lanec); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lanec) 22%, transparent); }
-  .gsep.lane.working > i { padding: 2px; background: conic-gradient(var(--lanec) 0 50%, transparent 0) content-box; }
-  .gsep.lane.watching > i { border-style: dashed; background: radial-gradient(var(--lanec) 30%, transparent 36%); }
-  .gsep.lane.ready > i { background: radial-gradient(var(--lanec) 32%, transparent 38%); }
-  .gsep.lane.idle > i { border-style: dotted; }
-  .gsep.lane.done > i { background: var(--lanec); }
-  #sbar .seg.ask { cursor: pointer; }
-  #sbar .seg.nx.none { color: var(--muted); } #sbar .seg.nx .nxw { color: var(--ink); font-weight: 600; max-width: 220px; overflow: hidden; }
-  #sbar .seg.nx .nxw.over { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
-  #sbar .seg.nx.ask .nxw { color: var(--needs); } #sbar .seg.nx.move .nxw { color: var(--spend); }
-  #sbar .seg.mute { color: var(--working-ink); font-weight: 600; } #sbar .seg.mute .ic { width: 13px; height: 13px; }
-  /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
+.gsep.lane {
+  --lanec: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px -8px 1px;
+  padding: 5px 10px 4px 12px;
+  font:
+    750 var(--fs-xs)/18px -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink);
+  overflow: visible;
+}
+.gsep.lane[data-lane] {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--bg);
+}
+.gsep.lane.covered {
+  visibility: hidden;
+} /* stuck under a later one (drawEdges) */
+#sessions.npad .gsep.lane.stuck::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 100%;
+  height: var(--lpad, 0px);
+  background: inherit;
+} /* stuck under the notch's strip: its ground over the strip too */
+.gsep.lane:first-child {
+  margin-top: 0;
+}
+.gsep.lane > i {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  margin: 0 3px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--lanec);
+}
+.gsep.lane b {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 16px;
+}
+.gsep.lane.asking {
+  --lanec: var(--needs);
+}
+.gsep.lane.working {
+  --lanec: var(--working);
+}
+.gsep.lane.watching {
+  --lanec: var(--watch);
+}
+.gsep.lane.ready {
+  --lanec: var(--idle);
+}
+.gsep.lane.asking > i {
+  background: var(--lanec);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lanec) 22%, transparent);
+}
+.gsep.lane.working > i {
+  padding: 2px;
+  background: conic-gradient(var(--lanec) 0 50%, transparent 0) content-box;
+}
+.gsep.lane.watching > i {
+  border-style: dashed;
+  background: radial-gradient(var(--lanec) 30%, transparent 36%);
+}
+.gsep.lane.ready > i {
+  background: radial-gradient(var(--lanec) 32%, transparent 38%);
+}
+.gsep.lane.idle > i {
+  border-style: dotted;
+}
+.gsep.lane.done > i {
+  background: var(--lanec);
+}
+#sbar .seg.ask {
+  cursor: pointer;
+}
+#sbar .seg.nx.none {
+  color: var(--muted);
+}
+#sbar .seg.nx .nxw {
+  color: var(--ink);
+  font-weight: 600;
+  max-width: 220px;
+  overflow: hidden;
+}
+#sbar .seg.nx .nxw.over {
+  -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent);
+  mask-image: linear-gradient(90deg, #000 86%, transparent);
+}
+#sbar .seg.nx.ask .nxw {
+  color: var(--needs);
+}
+#sbar .seg.nx.move .nxw {
+  color: var(--spend);
+}
+#sbar .seg.mute {
+  color: var(--working-ink);
+  font-weight: 600;
+}
+#sbar .seg.mute .ic {
+  width: 13px;
+  height: 13px;
+}
+/* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
      down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
-  .gsep.lane[data-lane] { cursor: pointer; user-select: none; }
-  /* the rest of a long lane, held back (renderSessionList, LANE_CAP; 2026-10-13): a quiet line, a click shows it */
-  .gsep.more { margin: 4px 10px 2px; padding: 3px 0; text-align: center; cursor: pointer; border-radius: var(--r-2); }
-  .gsep.more:hover { color: var(--ink); background: var(--ctl); }
-  .gsep.more .ms { display: none; }
-  .gsep.others { flex: none; display: flex; align-items: center; gap: 8px; margin: 2px 0 0; padding: 7px 12px; border-radius: 7px; font: 500 var(--fs-sm)/16px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0; cursor: pointer; }
-  .gsep.others:hover { color: var(--ink); background: var(--ctl); }
-  .gsep.others .sqs { flex: none; display: inline-flex; gap: 2px; }
-  .gsep.others .sqs i { width: 8px; height: 8px; border-radius: 2px; background: oklch(from var(--repo, var(--nocolor)) clamp(.5, l, .72) c h); }
-  .gsep.others .ln { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .gsep.others b { flex: none; margin-left: auto; font-weight: 600; color: var(--ink); }
-  .gsep.lane[data-lane]:hover .lc { opacity: 1; }
-  .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
-  .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
-  .gsep.lane.shut > :is(i, .ln, b) { opacity: .7; }   /* the head's ground stays whole: cards pass under it */
-  .gsep.lane.shut:hover > :is(i, .ln, b) { opacity: 1; }
-  .gsep.lane.still { cursor: default; } .gsep.lane.still .lc { display: none; }   /* under a filter: every match shown, nothing to fold */
-  /* Pinned and snooze (2026-11-24, round XXX; Pinned was Top priority till 2026-11-25): the section's head a pin, its
+.gsep.lane[data-lane] {
+  cursor: pointer;
+  user-select: none;
+}
+/* the rest of a long lane, held back (renderSessionList, LANE_CAP; 2026-10-13): a quiet line, a click shows it */
+.gsep.more {
+  margin: 4px 10px 2px;
+  padding: 3px 0;
+  text-align: center;
+  cursor: pointer;
+  border-radius: var(--r-2);
+}
+.gsep.more:hover {
+  color: var(--ink);
+  background: var(--ctl);
+}
+.gsep.more .ms {
+  display: none;
+}
+.gsep.others {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font:
+    500 var(--fs-sm)/16px -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.gsep.others:hover {
+  color: var(--ink);
+  background: var(--ctl);
+}
+.gsep.others .sqs {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+}
+.gsep.others .sqs i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: oklch(from var(--repo, var(--nocolor)) clamp(0.5, l, 0.72) c h);
+}
+.gsep.others .ln {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gsep.others b {
+  flex: none;
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--ink);
+}
+.gsep.lane[data-lane]:hover .lc {
+  opacity: 1;
+}
+.gsep.lane .lc {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin: 0 3px 0 -2px;
+  border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0;
+  rotate: 45deg;
+  translate: 0 -2px;
+  opacity: 0.7;
+  transition:
+    rotate 0.15s var(--ease-out),
+    translate 0.15s var(--ease-out);
+}
+.gsep.lane.shut .lc {
+  rotate: -45deg;
+  translate: -1px 0;
+}
+.gsep.lane.shut > :is(i, .ln, b) {
+  opacity: 0.7;
+} /* the head's ground stays whole: cards pass under it */
+.gsep.lane.shut:hover > :is(i, .ln, b) {
+  opacity: 1;
+}
+.gsep.lane.still {
+  cursor: default;
+}
+.gsep.lane.still .lc {
+  display: none;
+} /* under a filter: every match shown, nothing to fold */
+/* Pinned and snooze (2026-11-24, round XXX; Pinned was Top priority till 2026-11-25): the section's head a pin, its
      tally and Clear done; the empty section a place to drop; a card's number in it, ticked there dimmed and struck;
      snoozed, when it wakes; back from one, a tag; and the two marks under the pointer, close by the ✓ (card parts, on) */
-  .gsep.lane.prio { --lanec: var(--accent); }
-  .gsep.lane.prio > i { border: 0; border-radius: 0; background: var(--lanec); clip-path: polygon(30% 2%, 70% 2%, 70% 15%, 62% 15%, 62% 42%, 85% 64%, 85% 73%, 56% 73%, 53% 100%, 47% 100%, 44% 73%, 15% 73%, 15% 64%, 38% 42%, 38% 15%, 30% 15%); }
-  .gsep.lane.snoozed > i { border: 0; background: radial-gradient(circle at 74% 28%, transparent 40%, var(--lanec) 43%); }
-  .gsep.lane .tally { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
-  .gsep.lane .tally em { font-style: normal; color: var(--needs); } .gsep.lane .tally u { text-decoration: none; color: var(--working-ink); }
-  .gsep.lane .ln + .tally::before, .gsep.lane .tally + .tally::before { content: "· "; }
-  .gsep.lane .clr { font: inherit; color: var(--ink); background: none; border: 0; padding: 0 2px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 2px; }
-  .gsep.lane .clr:hover { text-decoration-color: currentColor; }
-  .gsep.pempty { margin: 0 2px 4px; padding: 12px; border: 1.5px dashed var(--line); border-radius: var(--r-3); font: 500 var(--fs-sm)/1.35 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0; color: var(--muted); white-space: normal; text-align: center; }
-  .gsep.pempty.cdin { border-color: var(--accent); color: var(--ink); }
-  .card .trow .pn { flex: none; align-self: flex-start; min-width: 1.1em; margin-right: 2px; font: 700 var(--fs-xs)/18px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }   /* the accent is no small ink on the list's grounds: 3.8:1 in the light themes */
-  .card.active .trow .pn { color: inherit; }
-  .card.pdone { filter: saturate(.2); } .card.pdone .title { text-decoration: line-through; text-decoration-thickness: 1px; }
-  .card .lback { flex: none; align-self: flex-start; margin: 2px 0 0 4px; padding: 0 5px; border-radius: var(--r-1); font: 700 var(--fs-2xs)/15px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .4px; text-transform: uppercase; color: var(--idle); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--idle) 50%, transparent); }   /* a new reply's colour, on the ground as it is */
-  .card.active .lback { color: inherit; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 50%, transparent); }
-  .card .snz { flex: none; display: inline-flex; align-items: center; gap: 4px; max-width: 50%; margin-left: 4px; overflow: hidden; white-space: nowrap; font: 600 var(--fs-2xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--muted); }
-  .card.active .snz { color: inherit; } .card .snz > span { overflow: hidden; text-overflow: ellipsis; }
-  :is(.card .snz, .ax, #stitle .n, #ctxm, .pkrow .zzt) .ic { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  #stitle .n .ic { margin-right: 5px; }
-  .card.slept { filter: saturate(.45); }
-  .ax { font: inherit; width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); cursor: pointer; flex: none; opacity: .7; display: none; place-items: center; }
-  .card .top .ax { width: 20px; height: 18px; margin-right: -5px; }   /* the pin, the moon and the ✓ 2 px apart, not the row's 7 (2026-11-25) */
-  #sessions:not([data-hide~="pin"]) #slist .card:hover .top .ax.pin, #sessions:not([data-hide~="nap"]) #slist .card:hover .top .ax.zz, .ax:focus-visible { display: inline-grid; }
-  .ax:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); } .ax.on { color: var(--accent); }
-  #settings .clabs .clab .card .top .ax { display: inline-grid; }
-  .pkrow .cur.zzt { display: inline-flex; align-items: center; gap: 3px; }
-  #cdgap { position: fixed; left: 0; top: 0; z-index: 69; height: 0; border-top: 2px solid var(--accent); border-radius: 2px; pointer-events: none; }
-  #cdgap::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-  /* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
+.gsep.lane.prio {
+  --lanec: var(--accent);
+}
+.gsep.lane.prio > i {
+  border: 0;
+  border-radius: 0;
+  background: var(--lanec);
+  clip-path: polygon(
+    30% 2%,
+    70% 2%,
+    70% 15%,
+    62% 15%,
+    62% 42%,
+    85% 64%,
+    85% 73%,
+    56% 73%,
+    53% 100%,
+    47% 100%,
+    44% 73%,
+    15% 73%,
+    15% 64%,
+    38% 42%,
+    38% 15%,
+    30% 15%
+  );
+}
+.gsep.lane.snoozed > i {
+  border: 0;
+  background: radial-gradient(circle at 74% 28%, transparent 40%, var(--lanec) 43%);
+}
+.gsep.lane .tally {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.gsep.lane .tally em {
+  font-style: normal;
+  color: var(--needs);
+}
+.gsep.lane .tally u {
+  text-decoration: none;
+  color: var(--working-ink);
+}
+.gsep.lane .ln + .tally::before,
+.gsep.lane .tally + .tally::before {
+  content: '· ';
+}
+.gsep.lane .clr {
+  font: inherit;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--muted);
+  text-underline-offset: 2px;
+}
+.gsep.lane .clr:hover {
+  text-decoration-color: currentColor;
+}
+.gsep.pempty {
+  margin: 0 2px 4px;
+  padding: 12px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-3);
+  font:
+    500 var(--fs-sm)/1.35 -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  letter-spacing: 0;
+  color: var(--muted);
+  white-space: normal;
+  text-align: center;
+}
+.gsep.pempty.cdin {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.card .trow .pn {
+  flex: none;
+  align-self: flex-start;
+  min-width: 1.1em;
+  margin-right: 2px;
+  font:
+    700 var(--fs-xs)/18px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--muted);
+} /* the accent is no small ink on the list's grounds: 3.8:1 in the light themes */
+.card.active .trow .pn {
+  color: inherit;
+}
+.card.pdone {
+  filter: saturate(0.2);
+}
+.card.pdone .title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.card .lback {
+  flex: none;
+  align-self: flex-start;
+  margin: 2px 0 0 4px;
+  padding: 0 5px;
+  border-radius: var(--r-1);
+  font:
+    700 var(--fs-2xs)/15px -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--idle);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--idle) 50%, transparent);
+} /* a new reply's colour, on the ground as it is */
+.card.active .lback {
+  color: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 50%, transparent);
+}
+.card .snz {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 50%;
+  margin-left: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  font:
+    600 var(--fs-2xs)/18px -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  color: var(--muted);
+}
+.card.active .snz {
+  color: inherit;
+}
+.card .snz > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:is(.card .snz, .ax, #stitle .n, #ctxm, .pkrow .zzt) .ic {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#stitle .n .ic {
+  margin-right: 5px;
+}
+.card.slept {
+  filter: saturate(0.45);
+}
+.ax {
+  font: inherit;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-3);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+  opacity: 0.7;
+  display: none;
+  place-items: center;
+}
+.card .top .ax {
+  width: 20px;
+  height: 18px;
+  margin-right: -5px;
+} /* the pin, the moon and the ✓ 2 px apart, not the row's 7 (2026-11-25) */
+#sessions:not([data-hide~='pin']) #slist .card:hover .top .ax.pin,
+#sessions:not([data-hide~='nap']) #slist .card:hover .top .ax.zz,
+.ax:focus-visible {
+  display: inline-grid;
+}
+.ax:hover {
+  opacity: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.ax.on {
+  color: var(--accent);
+}
+#settings .clabs .clab .card .top .ax {
+  display: inline-grid;
+}
+.pkrow .cur.zzt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+#cdgap {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 69;
+  height: 0;
+  border-top: 2px solid var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+#cdgap::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+/* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
      and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
      stays over it. Phased with the rings (phaseAnims). */
-  .shim { position: relative; display: inline-block; }
-  .presence .verb { display: inline-grid; overflow: hidden; vertical-align: bottom; }   /* the fish verbs swap in one cell */
-  .presence .verb > .vw { grid-area: 1 / 1; white-space: nowrap; }
-  .shim > .sw { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
-    -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%); mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%);
-    animation: shimw 2.4s ease-in-out infinite; }
-  .shim > .sw::before { content: attr(data-t); display: block; white-space: nowrap; color: var(--ink); animation: shimi 2.4s ease-in-out infinite; }
-  @keyframes shimw { 0% { transform: translateX(-70%); } 60%, 100% { transform: translateX(70%); } }
-  @keyframes shimi { 0% { transform: translateX(70%); } 60%, 100% { transform: translateX(-70%); } }
-  /* All caught up (2026-10-11): the clauding mark at rest, in the ready green — and, reached by a tick, a hop and a few
-     pixel sparks (caughtUp), from where the mark is. */
-  .gsep.lane.zero { position: relative; color: var(--idle); }
-  .gsep.lane.zero .pix, .gsep.lane.zero .pix svg { animation: none; }
-  .gsep.lane.zero .pix svg { fill: var(--idle); }
-  .gsep.lane.zero .spark { position: absolute; width: 3px; height: 3px; pointer-events: none; }
-  /* Zé when you are caught up (2026-10-30, the next round): his game's pixels walking right to left along the head, his
-     two running frames (--ze1, --ze2, drawn by the game) swapped by opacity on held keyframes; a click on him is ⌥⌘Z. */
-  .gsep.lane.zero { min-height: 34px; }
-  .gsep.lane.zero .zewalk { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-  .zewalk .zw { position: absolute; inset: auto 0 0 0; height: 33px; animation: zewalk 18s linear infinite; }
-  .zewalk .zw i { position: absolute; left: 0; bottom: 0; width: 27px; height: 33px; background: var(--ze1) 0 0 / 27px 33px no-repeat; image-rendering: pixelated; pointer-events: auto; cursor: pointer; animation: zestep .36s linear infinite reverse; }
-  .zewalk .zw i + i { background-image: var(--ze2); animation-direction: normal; }
-  @keyframes zewalk { from { transform: translateX(100%); } to { transform: translateX(-30px); } }
-  @keyframes zestep { 0%, 49.99% { opacity: 0; } 50%, 100% { opacity: 1; } }
-  .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s linear infinite; }
-  .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s linear infinite; }
-  @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
-    0%, 29.157% { transform: translateX(-90px); }   /* 5, at rest for 7 frames */
-    29.167%, 33.323% { transform: translateX(-108px); } 33.333%, 37.49% { transform: translateX(-126px); } 37.5%, 41.657% { transform: translateX(-108px); } 41.667%, 45.823% { transform: translateX(-126px); }   /* 6 7 6 7 */
-    45.833%, 62.49% { transform: translateX(-90px); }   /* 5 again, 4 frames */
-    62.5%, 66.657% { transform: translateX(-72px); } 66.667%, 70.823% { transform: translateX(-54px); } 70.833%, 74.99% { transform: translateX(-36px); } 75%, 79.157% { transform: translateX(-18px); } 79.167%, 83.323% { transform: translateX(0); }   /* 4 3 2 1 0: down to a dot */
-    83.333%, 87.49% { transform: translateX(-18px); } 87.5%, 91.657% { transform: translateX(-36px); } 91.667%, 95.823% { transform: translateX(-54px); } 95.833%, 99.99% { transform: translateX(-72px); }   /* 1 2 3 4, and back to 5 */
-    100% { transform: translateX(-90px); }
+.shim {
+  position: relative;
+  display: inline-block;
+}
+.presence .verb {
+  display: inline-grid;
+  overflow: hidden;
+  vertical-align: bottom;
+} /* the fish verbs swap in one cell */
+.presence .verb > .vw {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+.shim > .sw {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%);
+  mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%);
+  animation: shimw 2.4s ease-in-out infinite;
+}
+.shim > .sw::before {
+  content: attr(data-t);
+  display: block;
+  white-space: nowrap;
+  color: var(--ink);
+  animation: shimi 2.4s ease-in-out infinite;
+}
+@keyframes shimw {
+  0% {
+    transform: translateX(-70%);
   }
-  @keyframes pixhop { 0%, 83.323% { transform: translateY(0); } 83.333%, 87.49% { transform: translateY(-2px); } 87.5%, 95.823% { transform: translateY(-4px); } 95.833%, 99.99% { transform: translateY(-2px); } 100% { transform: translateY(0); } }
-  /* A day's label (2026-09-23): over its run since 2026-10-12, at the left with a hairline running on to the right —
+  60%,
+  100% {
+    transform: translateX(70%);
+  }
+}
+@keyframes shimi {
+  0% {
+    transform: translateX(70%);
+  }
+  60%,
+  100% {
+    transform: translateX(-70%);
+  }
+}
+/* All caught up (2026-10-11): the clauding mark at rest, in the ready green — and, reached by a tick, a hop and a few
+     pixel sparks (caughtUp), from where the mark is. */
+.gsep.lane.zero {
+  position: relative;
+  color: var(--idle);
+}
+.gsep.lane.zero .pix,
+.gsep.lane.zero .pix svg {
+  animation: none;
+}
+.gsep.lane.zero .pix svg {
+  fill: var(--idle);
+}
+.gsep.lane.zero .spark {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  pointer-events: none;
+}
+/* Zé when you are caught up (2026-10-30, the next round): his game's pixels walking right to left along the head, his
+     two running frames (--ze1, --ze2, drawn by the game) swapped by opacity on held keyframes; a click on him is ⌥⌘Z. */
+.gsep.lane.zero {
+  min-height: 34px;
+}
+.gsep.lane.zero .zewalk {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.zewalk .zw {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 33px;
+  animation: zewalk 18s linear infinite;
+}
+.zewalk .zw i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 27px;
+  height: 33px;
+  background: var(--ze1) 0 0 / 27px 33px no-repeat;
+  image-rendering: pixelated;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: zestep 0.36s linear infinite reverse;
+}
+.zewalk .zw i + i {
+  background-image: var(--ze2);
+  animation-direction: normal;
+}
+@keyframes zewalk {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-30px);
+  }
+}
+@keyframes zestep {
+  0%,
+  49.99% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+.pix {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  animation: pixhop 2.4s linear infinite;
+}
+.pix svg {
+  display: block;
+  width: 144px;
+  height: 18px;
+  fill: var(--accent);
+  transform: translateX(-90px);
+  animation: pix 2.4s linear infinite;
+}
+@keyframes pix {
+  /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
+  0%,
+  29.157% {
+    transform: translateX(-90px);
+  } /* 5, at rest for 7 frames */
+  29.167%,
+  33.323% {
+    transform: translateX(-108px);
+  }
+  33.333%,
+  37.49% {
+    transform: translateX(-126px);
+  }
+  37.5%,
+  41.657% {
+    transform: translateX(-108px);
+  }
+  41.667%,
+  45.823% {
+    transform: translateX(-126px);
+  } /* 6 7 6 7 */
+  45.833%,
+  62.49% {
+    transform: translateX(-90px);
+  } /* 5 again, 4 frames */
+  62.5%,
+  66.657% {
+    transform: translateX(-72px);
+  }
+  66.667%,
+  70.823% {
+    transform: translateX(-54px);
+  }
+  70.833%,
+  74.99% {
+    transform: translateX(-36px);
+  }
+  75%,
+  79.157% {
+    transform: translateX(-18px);
+  }
+  79.167%,
+  83.323% {
+    transform: translateX(0);
+  } /* 4 3 2 1 0: down to a dot */
+  83.333%,
+  87.49% {
+    transform: translateX(-18px);
+  }
+  87.5%,
+  91.657% {
+    transform: translateX(-36px);
+  }
+  91.667%,
+  95.823% {
+    transform: translateX(-54px);
+  }
+  95.833%,
+  99.99% {
+    transform: translateX(-72px);
+  } /* 1 2 3 4, and back to 5 */
+  100% {
+    transform: translateX(-90px);
+  }
+}
+@keyframes pixhop {
+  0%,
+  83.323% {
+    transform: translateY(0);
+  }
+  83.333%,
+  87.49% {
+    transform: translateY(-2px);
+  }
+  87.5%,
+  95.823% {
+    transform: translateY(-4px);
+  }
+  95.833%,
+  99.99% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+/* A day's label (2026-09-23): over its run since 2026-10-12, at the left with a hairline running on to the right —
      Yesterday, the weekday, else DD-MM-YYYY; today has none since 2026-10-14. Under its run, centred and alone, before. */
-  .gsep.day { display: flex; align-items: center; gap: 8px; text-align: left; }
-  .gsep.day b { font-weight: 700; color: var(--muted); flex: none; }
-  .gsep.day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-  #slist .none { color: var(--muted); font-size: var(--fs-sm); text-align: center; padding: 30px 0; display: grid; justify-items: center; gap: 4px; }
-  #slist .none b { color: var(--ink); font-weight: 600; font-size: var(--fs-md); }
-  #slist .none .nfish { position: relative; margin-bottom: 6px; }
-  #slist .none .nfish svg { display: block; opacity: .85; }
-  #slist .none .nfish .b { fill: var(--accent); } #slist .none .nfish .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #slist .none .nfish .e { fill: var(--bg); }
-  #slist .none .bub { position: absolute; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--muted); pointer-events: none; }
+.gsep.day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+.gsep.day b {
+  font-weight: 700;
+  color: var(--muted);
+  flex: none;
+}
+.gsep.day::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+#slist .none {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+  padding: 30px 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+#slist .none b {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+#slist .none .nfish {
+  position: relative;
+  margin-bottom: 6px;
+}
+#slist .none .nfish svg {
+  display: block;
+  opacity: 0.85;
+}
+#slist .none .nfish .b {
+  fill: var(--accent);
+}
+#slist .none .nfish .s {
+  fill: color-mix(in srgb, var(--accent) 60%, #000);
+}
+#slist .none .nfish .e {
+  fill: var(--bg);
+}
+#slist .none .bub {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  pointer-events: none;
+}

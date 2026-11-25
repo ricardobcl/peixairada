@@ -7,12 +7,31 @@
 // — the keys turn the rest — and the zsh's × is the ··· menu's (or ⌥⌘W).
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
-const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0]));   // a zsh's tab is shell:<its id>
-const rects = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries(['#grp', '#grpB', '#gsplit', '#groups'].map(id => { const r = document.querySelector(id).getBoundingClientRect(); return [id.slice(1), { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }]; })))`).then(JSON.parse);
-const layout = ctx => ctx.evaluate(`JSON.stringify({ stack: document.querySelector('#groups').classList.contains('stack'), dir: getComputedStyle(document.querySelector('#groups')).flexDirection, cursor: getComputedStyle(document.querySelector('#gsplit')).cursor, turn: document.querySelector('#ptabsB .gturn')?.dataset.to || null })`).then(JSON.parse);
+const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0])); // a zsh's tab is shell:<its id>
+const rects = ctx =>
+  ctx
+    .evaluate(
+      `JSON.stringify(Object.fromEntries(['#grp', '#grpB', '#gsplit', '#groups'].map(id => { const r = document.querySelector(id).getBoundingClientRect(); return [id.slice(1), { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }]; })))`,
+    )
+    .then(JSON.parse);
+const layout = ctx =>
+  ctx
+    .evaluate(
+      `JSON.stringify({ stack: document.querySelector('#groups').classList.contains('stack'), dir: getComputedStyle(document.querySelector('#groups')).flexDirection, cursor: getComputedStyle(document.querySelector('#gsplit')).cursor, turn: document.querySelector('#ptabsB .gturn')?.dataset.to || null })`,
+    )
+    .then(JSON.parse);
 const ids = ctx => Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
 // settled first: a claude's grid waits for its repaint (2026-11-05)
-const fits = async ctx => { await ctx.settle(); for (const g of [0, 1]) { const d = await ctx.peix(`term(${g})`); ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`); } };
+const fits = async ctx => {
+  await ctx.settle();
+  for (const g of [0, 1]) {
+    const d = await ctx.peix(`term(${g})`);
+    ctx.assert.ok(
+      d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5,
+      `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`,
+    );
+  }
+};
 
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
@@ -22,15 +41,31 @@ export default async function (ctx) {
 
   // ⌥⌘2 splits one over the other: the second half is under the first, the divider lies across, the keys are below
   await ctx.key('Digit2');
-  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().stacked === true`, { what: 'the stacked split' });
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().stacked === true`, {
+    what: 'the stacked split',
+  });
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌥⌘2 put the keys in the bottom half');
-  let l = await layout(ctx), r = await rects(ctx);
-  ctx.assert.deepEqual({ stack: l.stack, dir: l.dir, cursor: l.cursor }, { stack: true, dir: 'column', cursor: 'row-resize' }, 'the column stands, the divider resizes up and down');
-  ctx.assert.ok(r.grpB.y >= r.grp.y + r.grp.h, `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`);
-  const inner = r.groups.w;   // the halves meet the column's edges (the tiles' 8 px round them until 2026-11-01)
-  ctx.assert.ok(Math.abs(r.grp.w - inner) <= 1 && Math.abs(r.grpB.w - inner) <= 1, 'both halves are as wide as the column');
-  ctx.assert.ok(r.gsplit.h === 5 && Math.abs(r.gsplit.w - inner) <= 1, `the divider is a 5 px rule across the column (${r.gsplit.w}×${r.gsplit.h})`);
-  ctx.assert.equal(l.turn, 'side', 'the empty half\'s strip offers the side-by-side layout (◫)');
+  let l = await layout(ctx),
+    r = await rects(ctx);
+  ctx.assert.deepEqual(
+    { stack: l.stack, dir: l.dir, cursor: l.cursor },
+    { stack: true, dir: 'column', cursor: 'row-resize' },
+    'the column stands, the divider resizes up and down',
+  );
+  ctx.assert.ok(
+    r.grpB.y >= r.grp.y + r.grp.h,
+    `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`,
+  );
+  const inner = r.groups.w; // the halves meet the column's edges (the tiles' 8 px round them until 2026-11-01)
+  ctx.assert.ok(
+    Math.abs(r.grp.w - inner) <= 1 && Math.abs(r.grpB.w - inner) <= 1,
+    'both halves are as wide as the column',
+  );
+  ctx.assert.ok(
+    r.gsplit.h === 5 && Math.abs(r.gsplit.w - inner) <= 1,
+    `the divider is a 5 px rule across the column (${r.gsplit.w}×${r.gsplit.h})`,
+  );
+  ctx.assert.equal(l.turn, 'side', "the empty half's strip offers the side-by-side layout (◫)");
   await ctx.shot('stacked-empty');
   // …and turns it: side by side, then stacked again
   await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
@@ -41,22 +76,48 @@ export default async function (ctx) {
 
   // ⌥⌘T puts the zsh in the bottom half: two live terminals, one over the other, each fitted to its own body
   await ctx.key('KeyT');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'the zsh in the bottom half' });
+  await ctx.waitFor(
+    `JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`,
+    { what: 'the zsh in the bottom half' },
+  );
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
-  await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`, { what: 'the zsh prompt in the bottom half' });
+  await ctx.waitFor(
+    `[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`,
+    { what: 'the zsh prompt in the bottom half' },
+  );
   await fits(ctx);
-  ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => { const e = document.querySelector(id); return [e.classList.contains('lone'), Math.round(e.getBoundingClientRect().height)]; }))`).then(JSON.parse),
-    [[true, 0], [true, 0]], 'one tab in each half: no strip over either');
+  ctx.assert.deepEqual(
+    await ctx
+      .evaluate(
+        `JSON.stringify(['#ptabs', '#ptabsB'].map(id => { const e = document.querySelector(id); return [e.classList.contains('lone'), Math.round(e.getBoundingClientRect().height)]; }))`,
+      )
+      .then(JSON.parse),
+    [
+      [true, 0],
+      [true, 0],
+    ],
+    'one tab in each half: no strip over either',
+  );
   await ctx.shot('stacked');
 
   // ⌘2 on a stacked split turns it side by side — the same terminals in the same halves, nothing re-attached
   const before = await ids(ctx);
   await ctx.cmd('Digit2');
-  await ctx.waitFor(`window.peix.state().stacked === false && window.peix.state().split === true`, { what: 'turned side by side' });
+  await ctx.waitFor(`window.peix.state().stacked === false && window.peix.state().split === true`, {
+    what: 'turned side by side',
+  });
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌘2 kept the keys in pane 2');
-  l = await layout(ctx); r = await rects(ctx);
-  ctx.assert.deepEqual({ dir: l.dir, cursor: l.cursor, turn: l.turn }, { dir: 'row', cursor: 'col-resize', turn: null }, 'a row again, the divider upright — and no ⊟, neither half having a strip');
-  ctx.assert.ok(r.grpB.x >= r.grp.x + r.grp.w, `the second half (x ${r.grpB.x}) is right of the first (ends ${r.grp.x + r.grp.w})`);
+  l = await layout(ctx);
+  r = await rects(ctx);
+  ctx.assert.deepEqual(
+    { dir: l.dir, cursor: l.cursor, turn: l.turn },
+    { dir: 'row', cursor: 'col-resize', turn: null },
+    'a row again, the divider upright — and no ⊟, neither half having a strip',
+  );
+  ctx.assert.ok(
+    r.grpB.x >= r.grp.x + r.grp.w,
+    `the second half (x ${r.grpB.x}) is right of the first (ends ${r.grp.x + r.grp.w})`,
+  );
   ctx.assert.deepEqual(await halves(ctx), ['chat', 'shell'], 'the tabs stayed where they were');
   ctx.assert.deepEqual(await ids(ctx), before, 'the same two terminals, still attached');
   await fits(ctx);
@@ -70,12 +131,18 @@ export default async function (ctx) {
 
   // the divider drags up and down, into its own pref: side by side keeps its place
   r = await rects(ctx);
-  await ctx.drag('#gsplit', { x: r.groups.x + Math.round(r.groups.w / 2), y: r.groups.y + Math.round(r.groups.h * .3) });
+  await ctx.drag('#gsplit', {
+    x: r.groups.x + Math.round(r.groups.w / 2),
+    y: r.groups.y + Math.round(r.groups.h * 0.3),
+  });
   const p = await ctx.peix('prefs()');
-  ctx.assert.ok(Math.abs(p.stackAt - .3) < .02, `the stacked divider is at ${p.stackAt}`);
-  ctx.assert.equal(p.splitAt, .5, 'the side-by-side divider did not move');
+  ctx.assert.ok(Math.abs(p.stackAt - 0.3) < 0.02, `the stacked divider is at ${p.stackAt}`);
+  ctx.assert.equal(p.splitAt, 0.5, 'the side-by-side divider did not move');
   r = await rects(ctx);
-  ctx.assert.ok(Math.abs(r.grp.h - (r.grp.h + r.grpB.h) * .3) <= 3, `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`);
+  ctx.assert.ok(
+    Math.abs(r.grp.h - (r.grp.h + r.grpB.h) * 0.3) <= 3,
+    `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`,
+  );
   await fits(ctx);
   await ctx.shot('dragged');
 
@@ -83,27 +150,38 @@ export default async function (ctx) {
   const other = ctx.fixture.chats[0];
   await ctx.openChat(other.id);
   await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(other.id)}`, { what: 'the other chat' });
-  ctx.assert.deepEqual([await ctx.peix('state().split'), (await layout(ctx)).stack], [false, false], 'the other chat is one half, in a row');
+  ctx.assert.deepEqual(
+    [await ctx.peix('state().split'), (await layout(ctx)).stack],
+    [false, false],
+    'the other chat is one half, in a row',
+  );
   await ctx.openChat(chat.id);
   await ctx.waitFor(`window.peix.state().stacked === true`, { what: 'the stacked chat still stacked' });
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'both halves back as they were' });
+  await ctx.waitFor(
+    `JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`,
+    { what: 'both halves back as they were' },
+  );
 
   // ⌘W closes the half the keys are in — the top one — and the zsh is the column
   await ctx.cmd('Digit1');
-  ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), true, '⌘W was the board\'s to take');
+  ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), true, "⌘W was the board's to take");
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'the split closed' });
   ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the bottom half is what stayed');
   ctx.assert.equal((await layout(ctx)).stack, false, 'one half stands in a row');
 
   // the modifier says the layout of a split asked for by hand: ⌘2 now is side by side, ⌥⌘2 stacked
   await ctx.cmd('Digit2');
-  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().stacked === false`, { what: '⌘2: side by side' });
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().stacked === false`, {
+    what: '⌘2: side by side',
+  });
   ctx.assert.deepEqual(await halves(ctx), ['chat', 'shell'], 'claude on the left, the zsh beside it');
   await ctx.cmd('Digit0');
   await ctx.waitFor(`window.peix.state().split === false`, { what: '⌘0 closed the other half' });
   ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the half the keys were in stayed');
   await ctx.key('Digit2');
-  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().stacked === true`, { what: '⌥⌘2: stacked' });
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().stacked === true`, {
+    what: '⌥⌘2: stacked',
+  });
   ctx.assert.deepEqual(await halves(ctx), ['chat', 'shell'], 'claude on top, the zsh under it');
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys in the bottom half');
 
@@ -114,11 +192,22 @@ export default async function (ctx) {
 
   // the layout outlives the split: the zsh ended and opened again, the board's own split comes back stacked
   await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab^="shell:"] .x').click()`);
-  await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, { what: 'the zsh ended' });   // it lingers, exited, for a while
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat",null]'`, { what: 'the chat alone' });
+  await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, {
+    what: 'the zsh ended',
+  }); // it lingers, exited, for a while
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat",null]'`, {
+    what: 'the chat alone',
+  });
   await ctx.key('KeyT');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'a new zsh beside the chat' });
-  ctx.assert.equal(await ctx.peix('state().stacked'), true, 'the split the board made itself is stacked, as the chat was left');
+  await ctx.waitFor(
+    `JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`,
+    { what: 'a new zsh beside the chat' },
+  );
+  ctx.assert.equal(
+    await ctx.peix('state().stacked'),
+    true,
+    'the split the board made itself is stacked, as the chat was left',
+  );
   await ctx.waitFor(`window.peix.term(1).ws === 1`, { what: 'the new zsh attached below' });
   await fits(ctx);
   await ctx.shot('remembered');
@@ -128,11 +217,17 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
   await ctx.evaluate(`document.querySelector('#hmenu #shellEndBtn').click()`);
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went back to claude at once');
-  await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, { what: 'the zsh ended from ···' });
-  await ctx.waitFor(`window.peix.state().split === false`, { what: 'the board\'s own split folded' });
+  await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, {
+    what: 'the zsh ended from ···',
+  });
+  await ctx.waitFor(`window.peix.state().split === false`, { what: "the board's own split folded" });
   ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'claude is the column');
   await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
-  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#hmenu #shellEndBtn')`), false, 'and ··· has no zsh to end');
+  ctx.assert.equal(
+    await ctx.evaluate(`!!document.querySelector('#hmenu #shellEndBtn')`),
+    false,
+    'and ··· has no zsh to end',
+  );
   await ctx.evaluate(`document.querySelector('#hmenu').close()`);
 
   return { stackAt: p.stackAt, splitAt: p.splitAt };

@@ -1,54 +1,199 @@
-  /* ---- the chat list's timeline: its days, down the left edge ---- */
-  /* (2026-09-25; pared down 2026-09-26) A slim rail down the far left of the list, beside its coloured edge, the list
+/* ---- the chat list's timeline: its days, down the left edge ---- */
+/* (2026-09-25; pared down 2026-09-26) A slim rail down the far left of the list, beside its coloured edge, the list
      in miniature: at rest the thumb alone, an orange pill where the window is — an overlay scrollbar, on the left.
      Pointed at, the thumb widens and the rail swells like the Dock: the days come out over the cards as labels, the
      ones near the pointer largest, pushed apart. Dragged, it scrolls the list; a day clicked is scrolled to.
      Everything in it is placed by script (drawTimeline). It had a track in the state groups' colours and a tick per
      day, 26 px wide and lined up under the fish and the cog: the divider and the day lines in the list say the same,
      and the labels say it in words. TL_W in the script is this width. */
-  #tline { width: 12px; position: relative; z-index: 5; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-  /* Out of sight until called, like the Dock (2026-09-28): the pointer held on the list's coloured edge for TL_DWELL_MS
+#tline {
+  width: 12px;
+  position: relative;
+  z-index: 5;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Out of sight until called, like the Dock (2026-09-28): the pointer held on the list's coloured edge for TL_DWELL_MS
      brings it out, over the cards, with its days; off it, it goes after TL_HIDE_MS. Hidden, nothing on it takes the
      pointer (visibility, which its labels' own pointer-events cannot undo), and the cards have the whole width. */
-  #tline { visibility: hidden; opacity: 0; transition: opacity .18s, visibility 0s .18s; }
-  #sessions.tlshow #tline { visibility: visible; opacity: 1; transition: opacity .18s, visibility 0s; }
-  #tline.drag { cursor: grabbing; }
-  /* While the days are out, a pane of glass over the cards (2026-09-25):
+#tline {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.18s,
+    visibility 0s 0.18s;
+}
+#sessions.tlshow #tline {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 0.18s,
+    visibility 0s;
+}
+#tline.drag {
+  cursor: grabbing;
+}
+/* While the days are out, a pane of glass over the cards (2026-09-25):
      a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
      a frosted list rather than on card text. Lets every pointer event through. */
-  .tl-glass { grid-row: 2; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
-    background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
-  #sessions.tlon .tl-glass { opacity: 1; }
-  #tline > *, #tline .tl-lab { position: absolute; }
-  #tline .tl-labs { inset: 0; pointer-events: none; }
-  /* The rail's reach for the pointer (2026-09-25): from the window's left edge — over the list's 4 px coloured edge,
+.tl-glass {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  -webkit-backdrop-filter: blur(3px) saturate(0.85);
+  backdrop-filter: blur(3px) saturate(0.85);
+}
+#sessions.tlon .tl-glass {
+  opacity: 1;
+}
+#tline > *,
+#tline .tl-lab {
+  position: absolute;
+}
+#tline .tl-labs {
+  inset: 0;
+  pointer-events: none;
+}
+/* The rail's reach for the pointer (2026-09-25): from the window's left edge — over the list's 4 px coloured edge,
      as the cog's cell is, so a pointer thrown into the edge lands on it — to the cards' edge, over the list's own
      padding, and, while the days are out, as far right as they have reached, so the gaps between the labels are still
      the rail. Under everything else on it. TL_CATCH in the script is this width. */
-  #tline .tl-catch { left: -4px; top: 0; bottom: 0; width: 24px; }
-  /* The thumb, the one thing on the rail at rest: the board's orange (the usage bars' --spend, under it), which reads
+#tline .tl-catch {
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+}
+/* The thumb, the one thing on the rail at rest: the board's orange (the usage bars' --spend, under it), which reads
      beside any project's edge — on the edge itself it vanished on an orange project. Wider under the pointer. */
-  #tline .tl-thumb { left: 3px; width: 5px; border-radius: var(--r-1); background: var(--spend); opacity: .9; transition: left .15s, width .15s, opacity .15s; }
-  #tline:hover .tl-thumb, #tline.drag .tl-thumb { left: 2px; width: 8px; opacity: 1; }
-  #tline .tl-thumb[hidden] { display: none; }
-  /* A day's label: the day, then how many of that run and in which state — out over the cards, from the rail (TL_LX in). */
-  #tline .tl-lab { left: 16px; top: 0; transform-origin: 0 50%; white-space: nowrap; font-size: var(--fs-xs); line-height: 15px; padding: 0 7px; border-radius: var(--r-3);
-    background: var(--panel); border: 1px solid transparent; color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; opacity: 0; font-weight: 600; }
-  #tline .tl-lab i { font-style: normal; font-weight: 400; color: var(--muted); }
-  #tline .tl-lab.on { pointer-events: auto; cursor: pointer; }
-  #tline .tl-lab.near { border-color: var(--spend); }
-  /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
+#tline .tl-thumb {
+  left: 3px;
+  width: 5px;
+  border-radius: var(--r-1);
+  background: var(--spend);
+  opacity: 0.9;
+  transition:
+    left 0.15s,
+    width 0.15s,
+    opacity 0.15s;
+}
+#tline:hover .tl-thumb,
+#tline.drag .tl-thumb {
+  left: 2px;
+  width: 8px;
+  opacity: 1;
+}
+#tline .tl-thumb[hidden] {
+  display: none;
+}
+/* A day's label: the day, then how many of that run and in which state — out over the cards, from the rail (TL_LX in). */
+#tline .tl-lab {
+  left: 16px;
+  top: 0;
+  transform-origin: 0 50%;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  line-height: 15px;
+  padding: 0 7px;
+  border-radius: var(--r-3);
+  background: var(--panel);
+  border: 1px solid transparent;
+  color: var(--ink);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  opacity: 0;
+  font-weight: 600;
+}
+#tline .tl-lab i {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--muted);
+}
+#tline .tl-lab.on {
+  pointer-events: auto;
+  cursor: pointer;
+}
+#tline .tl-lab.near {
+  border-color: var(--spend);
+}
+/* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
-  .sedge { grid-row: 2; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
-  .sedge.up { align-self: start; align-items: flex-start; margin-top: var(--stick, 0px); padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }   /* under the stuck lane head */
-  /* the lower one at the right, on a shorter fog (2026-10-12): centred, it sat on the last card's your-move line — the
+.sedge {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  height: 30px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sedge.up {
+  align-self: start;
+  align-items: flex-start;
+  margin-top: var(--stick, 0px);
+  padding-top: 5px;
+  background: linear-gradient(var(--bg) 25%, transparent);
+} /* under the stuck lane head */
+/* the lower one at the right, on a shorter fog (2026-10-12): centred, it sat on the last card's your-move line — the
      line that card most had to say, and left-aligned, so the right is where a card's last line is most often empty */
-  .sedge.down { align-self: end; align-items: flex-end; justify-content: flex-end; height: 24px; padding: 0 14px 4px 0; background: linear-gradient(transparent, var(--bg) 80%); }
-  .sedge.on { opacity: 1; }
-  :is(.sedge, .lognew, .pedge) button { pointer-events: auto; font: inherit; font-size: var(--fs-xs); line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: var(--r-4); padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
-  .sedge:not(.on) button { pointer-events: none; }
-  :is(.sedge, .lognew, .pedge) button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 15%, var(--panel)); }
-  :is(.sedge, .pedge) b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
-  .sedge i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-  .sedge i.ask { background: var(--needs); } .sedge i.work { background: var(--working); }
+.sedge.down {
+  align-self: end;
+  align-items: flex-end;
+  justify-content: flex-end;
+  height: 24px;
+  padding: 0 14px 4px 0;
+  background: linear-gradient(transparent, var(--bg) 80%);
+}
+.sedge.on {
+  opacity: 1;
+}
+:is(.sedge, .lognew, .pedge) button {
+  pointer-events: auto;
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: 16px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--ink) 9%, var(--panel));
+  border: 1px solid transparent;
+  border-radius: var(--r-4);
+  padding: 1px 9px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+}
+.sedge:not(.on) button {
+  pointer-events: none;
+}
+:is(.sedge, .lognew, .pedge) button:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 15%, var(--panel));
+}
+:is(.sedge, .pedge) b {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.sedge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.sedge i.ask {
+  background: var(--needs);
+}
+.sedge i.work {
+  background: var(--working);
+}

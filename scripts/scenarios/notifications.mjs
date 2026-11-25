@@ -36,9 +36,14 @@ export default async function (ctx) {
   await ctx.shot('1-on', { x: 0, y: 0, width: 620, height: 1000 });
   await ctx.evaluate(`${sw}.click()`);
   ctx.assert.equal(await ctx.evaluate(`${sw}.checked`), false, 'the switch is off');
-  for (let i = 0; i < 20 && (await ctx.server.api('api/sessions')).body.notifications !== false; i++) await ctx.sleep(100);
+  for (let i = 0; i < 20 && (await ctx.server.api('api/sessions')).body.notifications !== false; i++)
+    await ctx.sleep(100);
   ctx.assert.equal((await ctx.server.api('api/sessions')).body.notifications, false, 'the server says off');
-  ctx.assert.equal(JSON.parse(readFileSync(join(ctx.server.dir, 'state.json'), 'utf8')).notifications, false, '…and has it in the state file');
+  ctx.assert.equal(
+    JSON.parse(readFileSync(join(ctx.server.dir, 'state.json'), 'utf8')).notifications,
+    false,
+    '…and has it in the state file',
+  );
   await ctx.shot('2-off', { x: 0, y: 0, width: 620, height: 1000 });
 
   await ctx.server.api('api/test-notify', { method: 'POST' });
@@ -48,10 +53,22 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.off, { quiet: true, banners: 1 }, 'the alert still comes, quiet, and no banner follows it');
 
   // The server's word reaches every page: another tab (here, the API) turns it back on and this page's switch follows
-  await ctx.server.api('api/notifications', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: true }) });
+  await ctx.server.api('api/notifications', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ on: true }),
+  });
   await ctx.waitFor(`${sw}.checked === true`, { what: 'the switch following the server back on' });
-  ctx.assert.equal((await ctx.server.api('api/notifications', { method: 'PUT', body: '{"on":"yes"}' })).status, 400, 'anything but a boolean is refused');
-  await ctx.server.api('api/notifications', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: false }) });
+  ctx.assert.equal(
+    (await ctx.server.api('api/notifications', { method: 'PUT', body: '{"on":"yes"}' })).status,
+    400,
+    'anything but a boolean is refused',
+  );
+  await ctx.server.api('api/notifications', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ on: false }),
+  });
   await ctx.waitFor(`${sw}.checked === false`, { what: 'and off again' });
 
   // A restart keeps it, and a fresh page reads it from the snapshot (the markup's own default is on)

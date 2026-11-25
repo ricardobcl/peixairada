@@ -1,4 +1,4 @@
-  /* The card's PRs as a matrix (2026-11-01, round XVI's M5; cardMatrix): a square a PR in its state's colour, a draft
+/* The card's PRs as a matrix (2026-11-01, round XVI's M5; cardMatrix): a square a PR in its state's colour, a draft
      hollow, one GitHub has not answered for a faint grey; a stack's squares joined by a line (<s>), base first. One size
      however many, nothing round them (2026-11-01, later: 9 px). The number before them stays put while the squares
      scroll in their own box (.mxg) — past the row's room, its ends with more past them faded (.ofl .ofr, fadeOver and
@@ -7,92 +7,553 @@
      three squares (--nw, --mn: cardMatrix's), so the project's name keeps its room. Each square's hit area reaches into
      the gaps round it (::after). Under the pointer a square springs up, and its PR's card comes (#mxtip, mxtShow); the
      number lifts the square it names (.hot). */
-  .card .top .tmx { --q: 9px; --c: 4px; --g: 4px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); display: flex; align-items: center; gap: 2px; flex: 0 999 auto; min-width: calc(var(--nw) + 2px + var(--mn)); margin-right: -3px;
-    font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  :is(.card, .shead) .tmx .mxn { flex: none; max-width: 9ch; overflow: hidden; color: var(--ink); cursor: pointer; }
-  :root[data-theme="dark"] :is(.card .top, .shead) .tmx { --mxyou: color-mix(in srgb, var(--accent) 82%, var(--ink)); }
-  :is(.card, .shead) .tmx .mxn.you { color: var(--mxyou); }   /* the accent towards the ink, so it reads at 11 px: 4.9:1 at least on the sidebar's light grey (the accent 3.9 on white) */
-  :is(.card, .shead) .tmx .mxg { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--g); padding: 3px; position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; --fl: 0px; --fr: 0px; }
-  :is(.card, .shead) .tmx .mxg::-webkit-scrollbar { display: none; }
-  :is(.card, .shead) .tmx .mxg:is(.ofl, .ofr) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
-  :is(.card, .shead) .tmx .mxg.ofl { --fl: 12px; } :is(.card, .shead) .tmx .mxg.ofr { --fr: 12px; }
-  :is(.card, .shead) .tmx .mxc { flex: none; display: flex; align-items: center; }
-  :is(.card, .shead) .tmx .mxc > s { flex: none; width: var(--c); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
-  :is(.card, .shead) .tmx .mxs, :is(#rpop, #mxtip) .rsq { --prc: initial; position: relative; flex: none; display: block; width: var(--q); height: var(--q); border-radius: 2px; box-sizing: border-box; background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent)); }
-  :is(.card, .shead) .tmx .mxs[data-state="open"], :is(#rpop, #mxtip) .rsq[data-state="open"] { --prc: var(--pr-open); } :is(.card, .shead) .tmx .mxs[data-state="merged"], :is(#rpop, #mxtip) .rsq[data-state="merged"] { --prc: var(--pr-merged); }
-  :is(.card, .shead) .tmx .mxs[data-state="closed"], :is(#rpop, #mxtip) .rsq[data-state="closed"] { --prc: var(--pr-closed); }
-  :is(.card, .shead) .tmx .mxs[data-state="draft"], :is(#rpop, #mxtip) .rsq[data-state="draft"] { --prc: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
-  :is(.card, .shead) .tmx .mxs { cursor: pointer; transition: scale .32s var(--spring), filter var(--t-hover); }
-  :is(.card, .shead) .tmx .mxs::after { content: ''; position: absolute; inset: var(--hy, -5px) calc(var(--g) / -2); }
-  :is(.card, .shead) .tmx .mxs:is(:hover, .hot) { scale: 1.3; filter: brightness(1.1); }
-  /* The chat header's PRs (2026-11-03; headMatrix, fitHeadPrs): the same squares, in as many rows as the toolbar's room asks, three at most, the
+.card .top .tmx {
+  --q: 9px;
+  --c: 4px;
+  --g: 4px;
+  --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 999 auto;
+  min-width: calc(var(--nw) + 2px + var(--mn));
+  margin-right: -3px;
+  font:
+    600 var(--fs-xs)/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+:is(.card, .shead) .tmx .mxn {
+  flex: none;
+  max-width: 9ch;
+  overflow: hidden;
+  color: var(--ink);
+  cursor: pointer;
+}
+:root[data-theme='dark'] :is(.card .top, .shead) .tmx {
+  --mxyou: color-mix(in srgb, var(--accent) 82%, var(--ink));
+}
+:is(.card, .shead) .tmx .mxn.you {
+  color: var(--mxyou);
+} /* the accent towards the ink, so it reads at 11 px: 4.9:1 at least on the sidebar's light grey (the accent 3.9 on white) */
+:is(.card, .shead) .tmx .mxg {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--g);
+  padding: 3px;
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  --fl: 0px;
+  --fr: 0px;
+}
+:is(.card, .shead) .tmx .mxg::-webkit-scrollbar {
+  display: none;
+}
+:is(.card, .shead) .tmx .mxg:is(.ofl, .ofr) {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+}
+:is(.card, .shead) .tmx .mxg.ofl {
+  --fl: 12px;
+}
+:is(.card, .shead) .tmx .mxg.ofr {
+  --fr: 12px;
+}
+:is(.card, .shead) .tmx .mxc {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+:is(.card, .shead) .tmx .mxc > s {
+  flex: none;
+  width: var(--c);
+  height: 1.5px;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+:is(.card, .shead) .tmx .mxs,
+:is(#rpop, #mxtip) .rsq {
+  --prc: initial;
+  position: relative;
+  flex: none;
+  display: block;
+  width: var(--q);
+  height: var(--q);
+  border-radius: 2px;
+  box-sizing: border-box;
+  background: var(--prc, color-mix(in srgb, var(--muted) 35%, transparent));
+}
+:is(.card, .shead) .tmx .mxs[data-state='open'],
+:is(#rpop, #mxtip) .rsq[data-state='open'] {
+  --prc: var(--pr-open);
+}
+:is(.card, .shead) .tmx .mxs[data-state='merged'],
+:is(#rpop, #mxtip) .rsq[data-state='merged'] {
+  --prc: var(--pr-merged);
+}
+:is(.card, .shead) .tmx .mxs[data-state='closed'],
+:is(#rpop, #mxtip) .rsq[data-state='closed'] {
+  --prc: var(--pr-closed);
+}
+:is(.card, .shead) .tmx .mxs[data-state='draft'],
+:is(#rpop, #mxtip) .rsq[data-state='draft'] {
+  --prc: var(--pr-draft);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--prc);
+}
+:is(.card, .shead) .tmx .mxs {
+  cursor: pointer;
+  transition:
+    scale 0.32s var(--spring),
+    filter var(--t-hover);
+}
+:is(.card, .shead) .tmx .mxs::after {
+  content: '';
+  position: absolute;
+  inset: var(--hy, -5px) calc(var(--g) / -2);
+}
+:is(.card, .shead) .tmx .mxs:is(:hover, .hot) {
+  scale: 1.3;
+  filter: brightness(1.1);
+}
+/* The chat header's PRs (2026-11-03; headMatrix, fitHeadPrs): the same squares, in as many rows as the toolbar's room asks, three at most, the
      rows reaching into its padding (5 px left above and below three). Flat, for a grid: a stack's line is the square's own (.j), none at a row's
      start (.jw). What only the header says: a PR's CI — the number's badge, a failing square's ring, a running square's pulse — and the chat's
      tickets, dots after the squares. Past three rows' room the box scrolls as a card's does, which fitHeadPrs says by --mxw. */
-  .shead .tmx { --q: 9px; --g: 4px; --gr: 3px; --hy: -1.5px; --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink)); flex: none; display: flex; align-items: center; gap: 3px; margin: -6px -3px -6px 0; font: 600 var(--fs-sm)/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .shead .tmx[data-rows="1"] { --hy: -5px; }
-  .shead .tmx .mxn { display: inline-flex; align-items: center; max-width: none; }
-  .shead .tmx .mxg { display: grid; grid-template-columns: repeat(var(--cols, 12), var(--q)); gap: var(--gr) var(--g); max-width: var(--mxw, none); }
-  .shead .tmx .mxc { display: contents; }
-  .shead .tmx .mxs.j::before { content: ''; position: absolute; right: 100%; top: calc(50% - .75px); width: var(--g); height: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
-  .shead .tmx .mxs.j.jw::before { content: none; }
-  .shead .tmx .mxs[data-checks="fail"] { outline: 1.5px solid var(--pr-closed); outline-offset: 1px; }   /* a failing PR is seen from across the room */
-  .shead .tmx .mxs[data-checks="pending"] { animation: mxrun 1.2s ease-in-out infinite alternate; }
-  @keyframes mxrun { to { opacity: .35; } }
-  .shead .tmx .mxs.tk { border-radius: 50%; }
-  .shead .tmx .mxs.tk[data-cat="todo"] { --prc: var(--tk-todo); } .shead .tmx .mxs.tk[data-cat="doing"] { --prc: var(--tk-doing); } .shead .tmx .mxs.tk[data-cat="done"] { --prc: var(--tk-done); }
-  /* A PR's card (2026-11-01, later; mxCardHtml, mxtShow): its repo and state, the number and title, its CI and its place
+.shead .tmx {
+  --q: 9px;
+  --g: 4px;
+  --gr: 3px;
+  --hy: -1.5px;
+  --mxyou: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: -6px -3px -6px 0;
+  font:
+    600 var(--fs-sm)/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.shead .tmx[data-rows='1'] {
+  --hy: -5px;
+}
+.shead .tmx .mxn {
+  display: inline-flex;
+  align-items: center;
+  max-width: none;
+}
+.shead .tmx .mxg {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 12), var(--q));
+  gap: var(--gr) var(--g);
+  max-width: var(--mxw, none);
+}
+.shead .tmx .mxc {
+  display: contents;
+}
+.shead .tmx .mxs.j::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: calc(50% - 0.75px);
+  width: var(--g);
+  height: 1.5px;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+.shead .tmx .mxs.j.jw::before {
+  content: none;
+}
+.shead .tmx .mxs[data-checks='fail'] {
+  outline: 1.5px solid var(--pr-closed);
+  outline-offset: 1px;
+} /* a failing PR is seen from across the room */
+.shead .tmx .mxs[data-checks='pending'] {
+  animation: mxrun 1.2s ease-in-out infinite alternate;
+}
+@keyframes mxrun {
+  to {
+    opacity: 0.35;
+  }
+}
+.shead .tmx .mxs.tk {
+  border-radius: 50%;
+}
+.shead .tmx .mxs.tk[data-cat='todo'] {
+  --prc: var(--tk-todo);
+}
+.shead .tmx .mxs.tk[data-cat='doing'] {
+  --prc: var(--tk-doing);
+}
+.shead .tmx .mxs.tk[data-cat='done'] {
+  --prc: var(--tk-done);
+}
+/* A PR's card (2026-11-01, later; mxCardHtml, mxtShow): its repo and state, the number and title, its CI and its place
      in a stack, whose move, who had a hand and when GitHub last updated it — over the square, its arrow on it, kept in
      the list. It comes on a spring from a little below (above, when it opens under the square) and glides from square
      to square; nothing in it takes the pointer. */
-  #mxtip { position: fixed; z-index: 46; left: 0; top: 0; width: var(--w, 280px); box-sizing: border-box; display: grid; gap: 8px; padding: 11px 12px 10px;
-    border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); color: var(--ink); box-shadow: 0 12px 30px rgb(0 0 0 / .26), 0 2px 6px rgb(0 0 0 / .1);
-    font-size: var(--fs-sm); line-height: 1.35; pointer-events: none; --dy: 8px; --oy: 100%;
-    opacity: 0; transform: translateY(var(--dy)) scale(.86); transform-origin: var(--ax, 50%) var(--oy); transition: opacity .1s var(--ease-out), transform .1s var(--ease-out); }
-  #mxtip.below { --dy: -8px; --oy: 0%; }
-  #mxtip.on { opacity: 1; transform: none; transition: opacity .14s var(--ease-out), transform .46s var(--spring), left .2s var(--ease-out), top .2s var(--ease-out); }
-  #mxtip::after { content: ''; position: absolute; left: calc(var(--ax, 50%) - 5px); bottom: -5.5px; width: 9px; height: 9px; box-sizing: border-box; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; rotate: 45deg; }
-  #mxtip.below::after { top: -5.5px; bottom: auto; border-width: 1px 0 0 1px; }
-  #mxtip.far::after { display: none; }   /* a pane page under the header: over the list, no arrow to point with */
-  #mxtip.on::after { transition: left .2s var(--ease-out); }
-  #mxtip .mts[data-state="run"] { --prc: var(--working-ink); } #mxtip .mts[data-state="quiet"] { --prc: var(--working-ink); } #mxtip .mts[data-state="wait"] { --prc: var(--watch); } #mxtip .mts[data-state="done"] { --prc: var(--idle); } #mxtip .mts[data-state="fail"] { --prc: var(--needs); }
-  #mxtip .agi { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 9px; margin: 0; font-size: var(--fs-xs); }
-  #mxtip .agi dt { color: var(--muted); } #mxtip .agi dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-  /* an agent's card in Space (2026-11-18, later): its type in its colour, the error in red, what is still being read faint */
-  #mxtip .spch { color: var(--ink); }
-  #mxtip .spct { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: 750; color: #141413; background: oklch(.72 .13 var(--h)); }   /* dark ink: the chip is .72 light in every theme */
-  #mxtip .spck { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); color: oklch(.78 .12 var(--h)); }
-  :root[data-theme="light"] #mxtip .spck { color: oklch(.48 .13 var(--h)); }
-  #mxtip .spcm { flex: none; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); }
-  #mxtip .spcn { margin: -4px 0 0 30px; font: var(--fs-2xs)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
-  #mxtip .spcp { padding-top: 0; border-top: 0; margin-top: -4px; }
-  #mxtip .spcw dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
-  #mxtip .spcw dd:has(.spce) { white-space: normal; }
-  #mxtip .spce { color: var(--needs); }
-  #mxtip .spcv { padding-top: 7px; border-top: 1px solid var(--line); }
-  #mxtip .spcr { color: var(--muted); opacity: .7; }
-  #mxtip .agp { margin: 0; padding-top: 7px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  #mxtip .mth { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); color: var(--muted); }
-  #mxtip .mtr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #mxtip .mts { --prc: var(--muted); margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 7px; border-radius: 999px; font-weight: 600; line-height: 1.2;
-    color: var(--prc); background: color-mix(in srgb, var(--prc) 10%, transparent); }
-  #mxtip .mts::before { content: ''; width: 7px; height: 7px; border-radius: 2px; box-sizing: border-box; background: var(--prc); }
-  #mxtip .mts[data-state="open"] { --prc: var(--pr-open); } #mxtip .mts[data-state="merged"] { --prc: var(--pr-merged); } #mxtip .mts[data-state="closed"] { --prc: var(--pr-closed); }
-  #mxtip .mts[data-state="draft"] { --prc: var(--pr-draft); } #mxtip .mts[data-state="draft"]::before { background: none; box-shadow: inset 0 0 0 1.5px var(--prc); }
-  #mxtip .mtt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-size: var(--fs-md); font-weight: 600; line-height: 1.3; text-wrap: pretty; }
-  #mxtip .mtt b { margin-right: 4px; font: 600 var(--fs-sm) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
-  #mxtip .mtt i { font-weight: 500; color: var(--muted); }
-  #mxtip .mtx { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: var(--fs-xs); color: var(--muted); }
-  #mxtip .mtck, #mxtip .mtk { display: inline-flex; align-items: center; gap: 6px; }
-  #mxtip .mtck i { width: 7px; height: 7px; border-radius: 50%; background: var(--ck); } #mxtip .mtck[data-ck="pass"] { --ck: var(--pr-open); } #mxtip .mtck[data-ck="fail"] { --ck: var(--pr-closed); }
-  #mxtip .mtck[data-ck="pending"] i { background: none; box-shadow: inset 0 0 0 1.5px var(--working); }
-  #mxtip .mtc { display: inline-flex; align-items: center; } #mxtip .mtc .rsq { --q: 6px; opacity: .4; } #mxtip .mtc .rsq.on { opacity: 1; }
-  #mxtip .mtc > s { width: 3px; height: 1px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
-  #mxtip .mtm { display: flex; align-items: baseline; gap: 7px; min-width: 0; padding: 6px 8px; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-xs); color: var(--ink); }
-  #mxtip .mtm.you { background: color-mix(in srgb, var(--accent) 11%, transparent); }
-  #mxtip .mtm > span { min-width: 0; overflow-wrap: anywhere; }
-  #mxtip .mtf { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-xs); color: var(--muted); }
-  #mxtip .mtp { display: flex; flex: none; padding-left: 4px; } #mxtip .mtp > * { width: 18px; height: 18px; margin-left: -4px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); }
-  #mxtip .mtp > .face { display: grid; place-items: center; font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; }
-  #mxtip .mtp + .mtw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #mxtip .mtu { margin-left: auto; flex: none; white-space: nowrap; }
+#mxtip {
+  position: fixed;
+  z-index: 46;
+  left: 0;
+  top: 0;
+  width: var(--w, 280px);
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow:
+    0 12px 30px rgb(0 0 0 / 0.26),
+    0 2px 6px rgb(0 0 0 / 0.1);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  pointer-events: none;
+  --dy: 8px;
+  --oy: 100%;
+  opacity: 0;
+  transform: translateY(var(--dy)) scale(0.86);
+  transform-origin: var(--ax, 50%) var(--oy);
+  transition:
+    opacity 0.1s var(--ease-out),
+    transform 0.1s var(--ease-out);
+}
+#mxtip.below {
+  --dy: -8px;
+  --oy: 0%;
+}
+#mxtip.on {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.14s var(--ease-out),
+    transform 0.46s var(--spring),
+    left 0.2s var(--ease-out),
+    top 0.2s var(--ease-out);
+}
+#mxtip::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--ax, 50%) - 5px);
+  bottom: -5.5px;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  background: var(--panel);
+  border: solid var(--line);
+  border-width: 0 1px 1px 0;
+  rotate: 45deg;
+}
+#mxtip.below::after {
+  top: -5.5px;
+  bottom: auto;
+  border-width: 1px 0 0 1px;
+}
+#mxtip.far::after {
+  display: none;
+} /* a pane page under the header: over the list, no arrow to point with */
+#mxtip.on::after {
+  transition: left 0.2s var(--ease-out);
+}
+#mxtip .mts[data-state='run'] {
+  --prc: var(--working-ink);
+}
+#mxtip .mts[data-state='quiet'] {
+  --prc: var(--working-ink);
+}
+#mxtip .mts[data-state='wait'] {
+  --prc: var(--watch);
+}
+#mxtip .mts[data-state='done'] {
+  --prc: var(--idle);
+}
+#mxtip .mts[data-state='fail'] {
+  --prc: var(--needs);
+}
+#mxtip .agi {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1px 9px;
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+#mxtip .agi dt {
+  color: var(--muted);
+}
+#mxtip .agi dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+/* an agent's card in Space (2026-11-18, later): its type in its colour, the error in red, what is still being read faint */
+#mxtip .spch {
+  color: var(--ink);
+}
+#mxtip .spct {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-2xs);
+  font-weight: 750;
+  color: #141413;
+  background: oklch(0.72 0.13 var(--h));
+} /* dark ink: the chip is .72 light in every theme */
+#mxtip .spck {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-md);
+  color: oklch(0.78 0.12 var(--h));
+}
+:root[data-theme='light'] #mxtip .spck {
+  color: oklch(0.48 0.13 var(--h));
+}
+#mxtip .spcm {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+#mxtip .spcn {
+  margin: -4px 0 0 30px;
+  font:
+    var(--fs-2xs)/1.3 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+#mxtip .spcp {
+  padding-top: 0;
+  border-top: 0;
+  margin-top: -4px;
+}
+#mxtip .spcw dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+#mxtip .spcw dd:has(.spce) {
+  white-space: normal;
+}
+#mxtip .spce {
+  color: var(--needs);
+}
+#mxtip .spcv {
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+}
+#mxtip .spcr {
+  color: var(--muted);
+  opacity: 0.7;
+}
+#mxtip .agp {
+  margin: 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+#mxtip .mth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#mxtip .mtr {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#mxtip .mts {
+  --prc: var(--muted);
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--prc);
+  background: color-mix(in srgb, var(--prc) 10%, transparent);
+}
+#mxtip .mts::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  box-sizing: border-box;
+  background: var(--prc);
+}
+#mxtip .mts[data-state='open'] {
+  --prc: var(--pr-open);
+}
+#mxtip .mts[data-state='merged'] {
+  --prc: var(--pr-merged);
+}
+#mxtip .mts[data-state='closed'] {
+  --prc: var(--pr-closed);
+}
+#mxtip .mts[data-state='draft'] {
+  --prc: var(--pr-draft);
+}
+#mxtip .mts[data-state='draft']::before {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--prc);
+}
+#mxtip .mtt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+#mxtip .mtt b {
+  margin-right: 4px;
+  font:
+    600 var(--fs-sm) ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--muted);
+}
+#mxtip .mtt i {
+  font-weight: 500;
+  color: var(--muted);
+}
+#mxtip .mtx {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#mxtip .mtck,
+#mxtip .mtk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#mxtip .mtck i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ck);
+}
+#mxtip .mtck[data-ck='pass'] {
+  --ck: var(--pr-open);
+}
+#mxtip .mtck[data-ck='fail'] {
+  --ck: var(--pr-closed);
+}
+#mxtip .mtck[data-ck='pending'] i {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--working);
+}
+#mxtip .mtc {
+  display: inline-flex;
+  align-items: center;
+}
+#mxtip .mtc .rsq {
+  --q: 6px;
+  opacity: 0.4;
+}
+#mxtip .mtc .rsq.on {
+  opacity: 1;
+}
+#mxtip .mtc > s {
+  width: 3px;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+#mxtip .mtm {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+}
+#mxtip .mtm.you {
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+#mxtip .mtm > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#mxtip .mtf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#mxtip .mtp {
+  display: flex;
+  flex: none;
+  padding-left: 4px;
+}
+#mxtip .mtp > * {
+  width: 18px;
+  height: 18px;
+  margin-left: -4px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--panel);
+  background: var(--ctl-hi);
+}
+#mxtip .mtp > .face {
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+#mxtip .mtp + .mtw {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#mxtip .mtu {
+  margin-left: auto;
+  flex: none;
+  white-space: nowrap;
+}

@@ -10,20 +10,40 @@ const HOT = `(() => { const real = window.fetch, soon = h => new Date(Date.now()
 export default async function (ctx) {
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: HOT });
   await ctx.reload();
-  await ctx.waitFor(`/!96%/.test(document.querySelector('#sbRight').textContent) && /!93%/.test(document.querySelector('#sbRight').textContent)`, { what: 'the meters past 90 % with their !' });
-  const read = () => ctx.evaluate(`JSON.stringify((() => {
+  await ctx.waitFor(
+    `/!96%/.test(document.querySelector('#sbRight').textContent) && /!93%/.test(document.querySelector('#sbRight').textContent)`,
+    { what: 'the meters past 90 % with their !' },
+  );
+  const read = () =>
+    ctx
+      .evaluate(
+        `JSON.stringify((() => {
     const css = v => { const d = document.createElement('i'); d.style.color = 'var(' + v + ')'; document.querySelector('#sbar').append(d); const c = getComputedStyle(d).color; d.remove(); return c; };
     const red = css('--needs'), ink = css('--ink');
     const reds = [...document.querySelectorAll('#sbar *')].filter(e => e.offsetParent && (getComputedStyle(e).color === red || e.style.getPropertyValue('--u') === 'var(--needs)') && e.textContent.trim()).map(e => e.textContent.trim().slice(0, 30));
     const hot = [...document.querySelectorAll('#sbRight .m')].map(m => [m.firstChild.textContent, m.querySelector('i')?.style.getPropertyValue('--u'), m.querySelector('b')?.textContent]);
     return { reds, hot, lidRed: getComputedStyle(document.querySelector('#sbLid')).color === red };
-  })())`).then(JSON.parse);
+  })())`,
+      )
+      .then(JSON.parse);
   const out = await read();
   ctx.assert.deepEqual(out.reds, [], `nothing on the bar is red while nothing asks: ${JSON.stringify(out.reds)}`);
-  ctx.assert.ok(out.hot.some(([l, u, t]) => l === 'CPU' && u === 'var(--ink)' && t === '!96%'), `CPU past 90 %: the ink and a !: ${JSON.stringify(out.hot)}`);
-  ctx.assert.ok(out.hot.some(([l, u, t]) => l === 'RAM' && u === 'var(--ink)' && t === '!95%'), 'RAM likewise');
-  ctx.assert.ok(out.hot.some(([, u, t]) => u === 'var(--ink)' && t === '!93%'), 'and the plan usage');
-  ctx.assert.ok(out.hot.some(([, u, t]) => u === 'var(--spend)' && t === '42%'), 'a meter under 90 % keeps its colour and no !');
+  ctx.assert.ok(
+    out.hot.some(([l, u, t]) => l === 'CPU' && u === 'var(--ink)' && t === '!96%'),
+    `CPU past 90 %: the ink and a !: ${JSON.stringify(out.hot)}`,
+  );
+  ctx.assert.ok(
+    out.hot.some(([l, u, t]) => l === 'RAM' && u === 'var(--ink)' && t === '!95%'),
+    'RAM likewise',
+  );
+  ctx.assert.ok(
+    out.hot.some(([, u, t]) => u === 'var(--ink)' && t === '!93%'),
+    'and the plan usage',
+  );
+  ctx.assert.ok(
+    out.hot.some(([, u, t]) => u === 'var(--spend)' && t === '42%'),
+    'a meter under 90 % keeps its colour and no !',
+  );
   await ctx.evaluate(`document.querySelector('#sbLid').classList.remove('off')`);
   ctx.assert.equal((await read()).lidRed, false, "the lid's switch, on, is not red");
   return out;

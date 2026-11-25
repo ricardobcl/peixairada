@@ -1,18 +1,72 @@
-  /* ---- a card in the hand (2026-11-02, round XIV's I5): dragged onto another to fold it in (cdLift) ----
+/* ---- a card in the hand (2026-11-02, round XIV's I5): dragged onto another to fold it in (cdLift) ----
      The ghost by the pointer says what letting go would do; the card it came from and the chats it cannot go into fade; the
      one under the pointer lights in the accent and comes up a little, on the card's own scale spring. */
-  body.carddrag, body.carddrag * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
-  body.carddrag.cdno, body.carddrag.cdno * { cursor: not-allowed !important; }
-  #slist .card:is(.cdfrom, .cdoff) { opacity: .4; }
-  #slist .card.cdfrom { scale: .98; }
-  :root[data-layout="sidebar"] #slist .card.cdover { z-index: 1; scale: 1.015; }
-  :root[data-layout="sidebar"] #sessions #slist .card.cdover { translate: none; box-shadow: inset 0 0 0 2px var(--accent); }
-  :root[data-layout="sidebar"] #sessions #slist .card.cdover:not(.active) { background: color-mix(in srgb, var(--accent) 14%, var(--step)); }
-  :root[data-layout="sidebar"] #sessions #slist .card.active.cdover { box-shadow: inset 0 0 0 2px #fff; }   /* on the open row's solid colour, white as all on it */
-  :root[data-layout="sidebar"] .gsep.lane.cdhold[data-lane] { background: color-mix(in srgb, var(--accent) 18%, var(--side)); }   /* a shut lane's head, held on: it is about to open */
-  #cdghost { position: fixed; left: 0; top: 0; z-index: 70; box-sizing: border-box; width: min(320px, calc(100vw - 16px)); padding: 8px 11px; display: grid; gap: 4px; pointer-events: none;
-    color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-4); box-shadow: 0 10px 28px rgb(0 0 0 / .3); transform-origin: 0 0; will-change: translate; transition: border-color var(--t-hover); }
-  #cdghost.go { border-color: var(--accent); }
-  #cdghost .cdsay { font-size: var(--fs-sm); line-height: 1.35; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-  #cdghost.go .cdsay { color: var(--ink); font-weight: 600; }
-
+body.carddrag,
+body.carddrag * {
+  cursor: grabbing !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body.carddrag.cdno,
+body.carddrag.cdno * {
+  cursor: not-allowed !important;
+}
+#slist .card:is(.cdfrom, .cdoff) {
+  opacity: 0.4;
+}
+#slist .card.cdfrom {
+  scale: 0.98;
+}
+:root[data-layout='sidebar'] #slist .card.cdover {
+  z-index: 1;
+  scale: 1.015;
+}
+:root[data-layout='sidebar'] #sessions #slist .card.cdover {
+  translate: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.cdover:not(.active) {
+  background: color-mix(in srgb, var(--accent) 14%, var(--step));
+}
+:root[data-layout='sidebar'] #sessions #slist .card.active.cdover {
+  box-shadow: inset 0 0 0 2px #fff;
+} /* on the open row's solid colour, white as all on it */
+:root[data-layout='sidebar'] .gsep.lane.cdhold[data-lane] {
+  background: color-mix(in srgb, var(--accent) 18%, var(--side));
+} /* a shut lane's head, held on: it is about to open */
+#cdghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 70;
+  box-sizing: border-box;
+  width: min(320px, calc(100vw - 16px));
+  padding: 8px 11px;
+  display: grid;
+  gap: 4px;
+  pointer-events: none;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.3);
+  transform-origin: 0 0;
+  will-change: translate;
+  transition: border-color var(--t-hover);
+}
+#cdghost.go {
+  border-color: var(--accent);
+}
+#cdghost .cdsay {
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+#cdghost.go .cdsay {
+  color: var(--ink);
+  font-weight: 600;
+}

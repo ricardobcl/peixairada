@@ -1,208 +1,1007 @@
-  /* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
+/* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
      controls nobody touched twice a day. The fish sits at the top left of the chat list (of the projects strip until
      2026-09-24) and is a light, not a button (it goes dim when the SSE stream drops); everything the board has to
      say for itself is in the one popover at the bottom left, behind the cog: the notifications switch and the keys.
      The fish and the plan usage are the status bar's since 2026-10-09 (the list's foot row's until it was the only way,
      2026-10-14); the logo is a template (#logo) the bar, the About box and the welcome draw. */
-  /* The settings (2026-09-28; a popover off the cog at the list's foot before): a modal dialog, centred, from
+/* The settings (2026-09-28; a popover off the cog at the list's foot before): a modal dialog, centred, from
      the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down.
      A sidebar and search since 2026-10-16 (the settings study, direction B — macOS System Settings' shape): the search
      box over seven panes by task, each short enough not to scroll, and the shortcuts and the tour at the sidebar's foot;
      the head names the pane in front. Every setting is one row (`.srow.set`): its name and one line on the left, its
      control on the right, rows in rounded groups (`.sgrp` > `.sgh` + `.slist` + `.sgf`) — the setup's look, everywhere.
      The class is still `pop`: every row inside is styled as `.pop …`. */
-  #settings { width: min(820px, 94vw); height: min(600px, 88vh); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; background: var(--panel); color: var(--ink); font-size: var(--fs-sm);
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 90px rgba(0, 0, 0, .45); }
-  #settings[open] { display: grid; grid-template-columns: 200px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); outline: none; }   /* its one row the dialog's height, not its content's: a long pane scrolls in .sbody (2026-10-18) */
-  #settings .snav { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 14px 10px 12px; background: color-mix(in srgb, var(--ink) 3%, var(--panel)); border-right: 1px solid var(--line); }
-  #settings .sfind { position: relative; display: block; margin-bottom: 10px; }
-  #settings .sfind .ic { position: absolute; left: 9px; top: 8px; width: 13px; height: 13px; fill: var(--muted); pointer-events: none; }
-  #settings .sfind input { width: 100%; box-sizing: border-box; height: 29px; padding: 0 8px 0 28px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font: inherit; font-size: var(--fs-md); color: var(--ink); outline: none; }
-  #settings .sfind input::placeholder { color: var(--muted); }
-  #settings .sfind input:focus { background: var(--panel); border-color: var(--accent); }
-  #settings .stabs { display: grid; gap: 1px; }
-  #settings .stabs button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 5px 8px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); text-align: left; white-space: nowrap; cursor: pointer; }
-  #settings .stabs button:hover { background: var(--ctl); }
-  #settings .stabs button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); }
-  #settings .stabs .ic { flex: none; width: 15px; height: 15px; fill: var(--sic); }
-  #settings .stabs span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  #settings .stabs .sn { margin-left: auto; font-size: var(--fs-xs); color: var(--accent); }
-  #settings.finding .stabs button.on:not(:focus-visible) { background: none; }   /* searching: no pane is in front */
-  #settings.finding .stabs button.dim { opacity: .45; }
-  #settings .sfootnav { display: grid; gap: 1px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
-  #settings .sfootnav button { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-sm); color: var(--muted); text-align: left; cursor: pointer; }
-  #settings .sfootnav button:hover { background: var(--ctl); color: var(--ink); }
-  #settings .skeys { display: flex; gap: 6px; flex: none; }
-  #settings .sfootnav kbd { margin-left: auto; font: inherit; font-weight: 600; padding: 0 6px; border-radius: var(--r-2); background: var(--ctl); }
-  #settings .smain { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
-  #settings .shd2 { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px 22px; }
-  .pop h4 { margin: 0; flex: 1; font-size: var(--fs-lg); display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  #settings .sclose { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--ctl); color: var(--muted); font: inherit; font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
-  #settings .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
-  #settings .sbody { display: grid; gap: 24px; align-content: start; overflow: auto; padding: 4px 20px 22px; }
-  #settings .spane { display: grid; gap: 18px; align-content: start; }
-  #settings .spane[hidden] { display: none; }
-  #settings .sph { display: none; margin: 0 4px -10px; font-size: var(--fs-sm); font-weight: 650; }   /* a pane's name over its matches */
-  #settings.finding .sph { display: block; cursor: pointer; }
-  #settings.finding .sph:hover { color: var(--accent); }
-  #settings.finding .sgf, #settings .nomatch { display: none !important; }
-  #settings .snone { margin: 30px 8px; color: var(--muted); text-align: center; }
-  ::highlight(sfind) { background-color: color-mix(in srgb, var(--accent) 32%, transparent); color: inherit; }
-  /* a group: a small heading, an inset list of rows, a line under it */
-  .pop .sgrp { display: grid; min-width: 0; }
-  .pop .sgrp[hidden] { display: none; }
-  .pop .sgh { margin: 0 6px 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
-  .pop .sgf { margin: 6px 6px 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--muted); }
-  .pop .sgf code { font-size: var(--fs-xs); }
-  .pop .sgf.serr, .pop .sgf .serr { color: var(--needs); }
-  /* a setting: its name and one line, its control on the right; a dependent one indented under its parent, and off
+#settings {
+  width: min(820px, 94vw);
+  height: min(600px, 88vh);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-5);
+  overflow: hidden;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset,
+    0 30px 90px rgba(0, 0, 0, 0.45);
+}
+#settings[open] {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  outline: none;
+} /* its one row the dialog's height, not its content's: a long pane scrolls in .sbody (2026-10-18) */
+#settings .snav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 10px 12px;
+  background: color-mix(in srgb, var(--ink) 3%, var(--panel));
+  border-right: 1px solid var(--line);
+}
+#settings .sfind {
+  position: relative;
+  display: block;
+  margin-bottom: 10px;
+}
+#settings .sfind .ic {
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  width: 13px;
+  height: 13px;
+  fill: var(--muted);
+  pointer-events: none;
+}
+#settings .sfind input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 29px;
+  padding: 0 8px 0 28px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--ink);
+  outline: none;
+}
+#settings .sfind input::placeholder {
+  color: var(--muted);
+}
+#settings .sfind input:focus {
+  background: var(--panel);
+  border-color: var(--accent);
+}
+#settings .stabs {
+  display: grid;
+  gap: 1px;
+}
+#settings .stabs button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--r-3);
+  background: none;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#settings .stabs button:hover {
+  background: var(--ctl);
+}
+#settings .stabs button.on {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+#settings .stabs .ic {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: var(--sic);
+}
+#settings .stabs span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#settings .stabs .sn {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--accent);
+}
+#settings.finding .stabs button.on:not(:focus-visible) {
+  background: none;
+} /* searching: no pane is in front */
+#settings.finding .stabs button.dim {
+  opacity: 0.45;
+}
+#settings .sfootnav {
+  display: grid;
+  gap: 1px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+#settings .sfootnav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--r-3);
+  background: none;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+#settings .sfootnav button:hover {
+  background: var(--ctl);
+  color: var(--ink);
+}
+#settings .skeys {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+#settings .sfootnav kbd {
+  margin-left: auto;
+  font: inherit;
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: var(--r-2);
+  background: var(--ctl);
+}
+#settings .smain {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+}
+#settings .shd2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 6px 22px;
+}
+.pop h4 {
+  margin: 0;
+  flex: 1;
+  font-size: var(--fs-lg);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+#settings .sclose {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ctl);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+#settings .sclose:hover {
+  background: var(--ctl-hi);
+  color: var(--ink);
+}
+#settings .sbody {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+  overflow: auto;
+  padding: 4px 20px 22px;
+}
+#settings .spane {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+#settings .spane[hidden] {
+  display: none;
+}
+#settings .sph {
+  display: none;
+  margin: 0 4px -10px;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+} /* a pane's name over its matches */
+#settings.finding .sph {
+  display: block;
+  cursor: pointer;
+}
+#settings.finding .sph:hover {
+  color: var(--accent);
+}
+#settings.finding .sgf,
+#settings .nomatch {
+  display: none !important;
+}
+#settings .snone {
+  margin: 30px 8px;
+  color: var(--muted);
+  text-align: center;
+}
+::highlight(sfind) {
+  background-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: inherit;
+}
+/* a group: a small heading, an inset list of rows, a line under it */
+.pop .sgrp {
+  display: grid;
+  min-width: 0;
+}
+.pop .sgrp[hidden] {
+  display: none;
+}
+.pop .sgh {
+  margin: 0 6px 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+.pop .sgf {
+  margin: 6px 6px 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.pop .sgf code {
+  font-size: var(--fs-xs);
+}
+.pop .sgf.serr,
+.pop .sgf .serr {
+  color: var(--needs);
+}
+/* a setting: its name and one line, its control on the right; a dependent one indented under its parent, and off
      with the reason in its line rather than gone (2026-10-16) */
-  .pop .srow.set { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 8px 12px; }
-  .pop .srow.set + .srow::before, .pop .srow + .srow.set::before { left: 12px; }
-  .pop .srow.set.sub { padding-left: 34px; }
-  .pop .srow.set.sub::before { left: 34px; }
-  .pop .srow.set[hidden] { display: none; }
-  .pop .srow.sflash { border-radius: var(--r-4); animation: sflash 1.6s var(--ease-out); }   /* a row a link opened Settings on (settingsAt) */
-  @keyframes sflash { 0%, 30% { background-color: color-mix(in srgb, var(--accent) 24%, transparent); } }
-  .pop .sl { display: grid; gap: 1px; min-width: 0; cursor: default; }
-  .pop label.sl { cursor: pointer; }
-  .pop .sl b { font-size: var(--fs-md); font-weight: 500; color: var(--ink); }
-  .pop .sl small { font-size: var(--fs-xs); line-height: 1.4; color: var(--muted); }
-  .pop .sl small:empty { display: none; }
-  .pop .srow.set.off .sl b { color: var(--muted); }
-  .pop .srow.set.off label.sl { cursor: default; }
-  .pop .btn.danger { color: var(--needs); }
-  .pop .btn:disabled { opacity: .45; cursor: default; }
-  .pop .ssure { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; border-radius: var(--r-3); background: color-mix(in srgb, var(--needs) 10%, transparent); font-size: var(--fs-xs); color: var(--ink); }
-  .pop .ssure[hidden] { display: none; }
-  .pop .ssure span { flex: 1 1 220px; }
-  .pop .srow.set .btn kbd { font: inherit; color: var(--muted); }
-  .pop .ssel select { appearance: none; -webkit-appearance: none; height: 26px; padding: 0 26px 0 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; font-size: var(--fs-sm); color: var(--ink); cursor: pointer;
-    background: var(--ctl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 9px 5px; }
-  .pop .ssel select:hover { background-color: var(--ctl-hi); }
-  .pop .ssel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .pop .srow.set.wide { grid-template-columns: minmax(0, 1fr); }
-  /* A card you click (2026-11-03, round XXII's T2; cardLab): one real card with every part on it, the board's rules reaching it through a
-     copy made while the pane shows (clabCss). A part hidden stays here, faint, to be clicked back. The size and its two switches share the row. */
-  #settings .clabs { display: block; width: auto; min-width: 0; max-width: none; padding: 10px; border-radius: var(--r-4); }
-  #settings .clab { display: block; height: auto; padding: 0; overflow: visible; }
-  #settings .clabs .card .title { -webkit-line-clamp: 1; }
-  :root[data-layout="sidebar"] #settings .clabs .clab .card .trow .time { display: inline; opacity: .8; }
-  :root[data-layout="sidebar"] #settings .clabs .clab .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) { width: 22px; margin-left: 0; opacity: .7; }
-  #settings .clabs [data-part] { cursor: pointer; outline: 1.5px dashed transparent; outline-offset: 1px; transition: outline-color var(--t-hover), opacity var(--t-hover); }
-  #settings .clabs [data-part]:is(:hover, :focus-visible) { outline-color: var(--accent); }
-  #settings .clabs [data-part].cpoff { opacity: .3 !important; }
-  .pop .clabsay { display: block; margin: 2px 2px 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--muted); }
-  .pop .cctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .pop .csubs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px 22px; }
-  .pop .csub { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; cursor: pointer; }
-  .pop .csub.off { cursor: default; } .pop .csub.off .sl b { color: var(--muted); }
-  /* a theme: its family's two halves on one swatch, dark | light, each with its accent, the family's name under it
-     (2026-11-01, round XVII) */
-  .pop .sfams { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 10px 8px; padding: 4px 2px; }
-  .pop .sfams button { display: grid; gap: 5px; justify-items: center; min-width: 0; padding: 0; border: 0; background: none; font: inherit; font-size: var(--fs-xs); color: var(--muted); cursor: pointer; }
-  .pop .sfams i { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: var(--r-3); overflow: hidden;
-    background: linear-gradient(135deg, var(--db) calc(50% - .5px), var(--lb) calc(50% + .5px)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent); }
-  .pop .sfams i::before, .pop .sfams i::after { content: ''; position: absolute; width: 8px; height: 8px; border-radius: 50%; }
-  .pop .sfams i::before { left: 14%; top: 20%; background: var(--da); }
-  .pop .sfams i::after { right: 14%; bottom: 20%; background: var(--la); }
-  .pop .sfams span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pop .sfams button:hover i { box-shadow: 0 0 0 1px var(--ink); }
-  .pop .sfams button[aria-checked="true"] { color: var(--ink); }
-  .pop .sfams button[aria-checked="true"] i { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
-  .pop .sfams button:focus-visible { outline: none; }
-  .pop .sfams button:focus-visible i { outline: 2px solid var(--accent); outline-offset: 4px; }
-  .pop .slink { padding: 0 5px; border: 0; border-radius: var(--r-2); background: var(--ctl); font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; }
-  .pop .slink:hover { background: var(--ctl-hi); }
-  .pop .schecks { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
-  .pop .schecks label { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-sm); color: var(--ink); white-space: nowrap; cursor: pointer; }
-  .pop .schecks input { margin: 0; accent-color: var(--accent); }
-  .pop .edsay { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-xs); color: var(--muted); }   /* Zed not here: installing, failed, or where to get it (2026-10-13) */
-  .pop .edsay[hidden] { display: none; }
-  .pop .edsay .err { color: var(--needs); }
-  .pop .edsay .edwhy { flex-basis: 100%; }   /* what Zed is not: in the pane (2026-10-13, later) */
-  .pop .srow.stat .uerr { color: var(--needs); }
-  .pop .smore { font-size: var(--fs-xs); color: var(--muted); }   /* a status row's Details: the commands, the rest (2026-10-16) */
-  .pop .smore[hidden] { display: none; }
-  .pop .smore summary { width: max-content; margin-top: 2px; color: var(--accent); cursor: pointer; }
-  .pop .smore div { margin-top: 4px; line-height: 1.5; }
-  .pop .smore code { font-size: var(--fs-xs); overflow-wrap: anywhere; }
-  /* a switch: a checkbox drawn as one, role=switch */
-  .pop input.sw { flex: none; appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 30px; height: 18px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 22%, transparent); cursor: pointer; transition: background .15s; }
-  .pop input.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
-  .pop input.sw:checked { background: var(--accent); }
-  .pop input.sw:checked::after { transform: translateX(12px); }
-  .pop input.sw:disabled { opacity: .45; cursor: default; }
-  .pop input.sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  /* What ⌥⌘N's ✕ took off the board, and the only way back to it: the Projects pane's Hidden group, there while
-     something is hidden. */
-  .pop .srow.hrow { grid-template-columns: minmax(0, 1fr) auto; }
-  .pop .srow.hrow .btn { font-size: var(--fs-xs); }
-  @media (max-width: 640px) {
-    #settings[open] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-    #settings .snav { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-    #settings .stabs { display: flex; overflow-x: auto; }
-    #settings .stabs button { width: auto; }
-    #settings .sfootnav { display: none; }
+.pop .srow.set {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  padding: 8px 12px;
+}
+.pop .srow.set + .srow::before,
+.pop .srow + .srow.set::before {
+  left: 12px;
+}
+.pop .srow.set.sub {
+  padding-left: 34px;
+}
+.pop .srow.set.sub::before {
+  left: 34px;
+}
+.pop .srow.set[hidden] {
+  display: none;
+}
+.pop .srow.sflash {
+  border-radius: var(--r-4);
+  animation: sflash 1.6s var(--ease-out);
+} /* a row a link opened Settings on (settingsAt) */
+@keyframes sflash {
+  0%,
+  30% {
+    background-color: color-mix(in srgb, var(--accent) 24%, transparent);
   }
-  /* The setup (2026-09-28; dressed the same night): the folders of repos, ⌥⌘O's project, the projects' colours (the
+}
+.pop .sl {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  cursor: default;
+}
+.pop label.sl {
+  cursor: pointer;
+}
+.pop .sl b {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--ink);
+}
+.pop .sl small {
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--muted);
+}
+.pop .sl small:empty {
+  display: none;
+}
+.pop .srow.set.off .sl b {
+  color: var(--muted);
+}
+.pop .srow.set.off label.sl {
+  cursor: default;
+}
+.pop .btn.danger {
+  color: var(--needs);
+}
+.pop .btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.pop .ssure {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-3);
+  background: color-mix(in srgb, var(--needs) 10%, transparent);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+}
+.pop .ssure[hidden] {
+  display: none;
+}
+.pop .ssure span {
+  flex: 1 1 220px;
+}
+.pop .srow.set .btn kbd {
+  font: inherit;
+  color: var(--muted);
+}
+.pop .ssel select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 26px;
+  padding: 0 26px 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  cursor: pointer;
+  background: var(--ctl)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 9px center / 9px 5px;
+}
+.pop .ssel select:hover {
+  background-color: var(--ctl-hi);
+}
+.pop .ssel select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pop .srow.set.wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* A card you click (2026-11-03, round XXII's T2; cardLab): one real card with every part on it, the board's rules reaching it through a
+     copy made while the pane shows (clabCss). A part hidden stays here, faint, to be clicked back. The size and its two switches share the row. */
+#settings .clabs {
+  display: block;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  padding: 10px;
+  border-radius: var(--r-4);
+}
+#settings .clab {
+  display: block;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+}
+#settings .clabs .card .title {
+  -webkit-line-clamp: 1;
+}
+:root[data-layout='sidebar'] #settings .clabs .clab .card .trow .time {
+  display: inline;
+  opacity: 0.8;
+}
+:root[data-layout='sidebar'] #settings .clabs .clab .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) {
+  width: 22px;
+  margin-left: 0;
+  opacity: 0.7;
+}
+#settings .clabs [data-part] {
+  cursor: pointer;
+  outline: 1.5px dashed transparent;
+  outline-offset: 1px;
+  transition:
+    outline-color var(--t-hover),
+    opacity var(--t-hover);
+}
+#settings .clabs [data-part]:is(:hover, :focus-visible) {
+  outline-color: var(--accent);
+}
+#settings .clabs [data-part].cpoff {
+  opacity: 0.3 !important;
+}
+.pop .clabsay {
+  display: block;
+  margin: 2px 2px 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.pop .cctl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.pop .csubs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 8px 22px;
+}
+.pop .csub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  cursor: pointer;
+}
+.pop .csub.off {
+  cursor: default;
+}
+.pop .csub.off .sl b {
+  color: var(--muted);
+}
+/* a theme: its family's two halves on one swatch, dark | light, each with its accent, the family's name under it
+     (2026-11-01, round XVII) */
+.pop .sfams {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 10px 8px;
+  padding: 4px 2px;
+}
+.pop .sfams button {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  cursor: pointer;
+}
+.pop .sfams i {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--r-3);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--db) calc(50% - 0.5px), var(--lb) calc(50% + 0.5px));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+.pop .sfams i::before,
+.pop .sfams i::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.pop .sfams i::before {
+  left: 14%;
+  top: 20%;
+  background: var(--da);
+}
+.pop .sfams i::after {
+  right: 14%;
+  bottom: 20%;
+  background: var(--la);
+}
+.pop .sfams span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pop .sfams button:hover i {
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.pop .sfams button[aria-checked='true'] {
+  color: var(--ink);
+}
+.pop .sfams button[aria-checked='true'] i {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent);
+}
+.pop .sfams button:focus-visible {
+  outline: none;
+}
+.pop .sfams button:focus-visible i {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.pop .slink {
+  padding: 0 5px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: var(--ctl);
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pop .slink:hover {
+  background: var(--ctl-hi);
+}
+.pop .schecks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 12px;
+}
+.pop .schecks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pop .schecks input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+.pop .edsay {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+} /* Zed not here: installing, failed, or where to get it (2026-10-13) */
+.pop .edsay[hidden] {
+  display: none;
+}
+.pop .edsay .err {
+  color: var(--needs);
+}
+.pop .edsay .edwhy {
+  flex-basis: 100%;
+} /* what Zed is not: in the pane (2026-10-13, later) */
+.pop .srow.stat .uerr {
+  color: var(--needs);
+}
+.pop .smore {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+} /* a status row's Details: the commands, the rest (2026-10-16) */
+.pop .smore[hidden] {
+  display: none;
+}
+.pop .smore summary {
+  width: max-content;
+  margin-top: 2px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.pop .smore div {
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.pop .smore code {
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+/* a switch: a checkbox drawn as one, role=switch */
+.pop input.sw {
+  flex: none;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  margin: 0;
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pop input.sw::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+.pop input.sw:checked {
+  background: var(--accent);
+}
+.pop input.sw:checked::after {
+  transform: translateX(12px);
+}
+.pop input.sw:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.pop input.sw:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* What ⌥⌘N's ✕ took off the board, and the only way back to it: the Projects pane's Hidden group, there while
+     something is hidden. */
+.pop .srow.hrow {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.pop .srow.hrow .btn {
+  font-size: var(--fs-xs);
+}
+@media (max-width: 640px) {
+  #settings[open] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  #settings .snav {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+  }
+  #settings .stabs {
+    display: flex;
+    overflow-x: auto;
+  }
+  #settings .stabs button {
+    width: auto;
+  }
+  #settings .sfootnav {
+    display: none;
+  }
+}
+/* The setup (2026-09-28; dressed the same night): the folders of repos, ⌥⌘O's project, the projects' colours (the
      Projects pane), and Jira's (its own) — groups as every pane's are. A path or a name is text until the
      pointer or the keyboard is on it; the small fields (the org) and the pickers wear a fill; a project's row leads
      with its square, in its colour; × comes with the pointer. */
-  .pop .setup { display: grid; gap: 18px; font-size: var(--fs-sm); color: var(--muted); }
-  .pop .slist { border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
-  .pop .srow { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 22px; gap: 8px; align-items: center; min-height: 44px; padding: 7px 10px 7px 12px; }
-  .pop .srow + .srow::before { content: ''; position: absolute; top: 0; left: 42px; right: 0; border-top: 1px solid var(--line); }
-  .pop .srow.proj { grid-template-columns: 42px minmax(0, 1fr) 22px; gap: 4px 10px; }
-  .pop .srow.proj .sedit { display: none; grid-column: 2 / -1; align-items: center; gap: 8px; padding: 2px 0 2px; }
-  .pop .srow.proj.open .sedit { display: flex; }
-  .pop .sedc { font-size: var(--fs-sm); color: var(--muted); }
-  .pop .srow.proj + .srow::before { left: 64px; }
-  .pop .srow.padd { grid-template-columns: 22px minmax(0, 1fr); }
-  .pop .srow.quick { grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; }
-  .pop .srow.jsite { grid-template-columns: 22px minmax(0, 1.25fr) minmax(0, 1fr) 0; }
-  .pop .srow.jtok { grid-template-columns: 22px minmax(0, 1fr) 22px; }
-  .pop .srow .sic { display: grid; place-items: center; color: var(--muted); font-size: var(--fs-base); }
-  .pop .srow .sic .ic { width: 16px; height: 16px; fill: currentColor; }
-  .pop .srow.add .sic, .pop .srow.padd .sic { color: var(--accent); }
-  .pop .srow.padd { padding-left: 22px; }   /* its ＋ under the squares' middle */
-  .pop .setup :is(input[type=text], input[type=password]) { font: inherit; font-size: var(--fs-md); min-width: 0; height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: transparent; color: var(--ink); }
-  .pop .setup :is(input[type=text], input[type=password]):hover { background: var(--ctl); }
-  .pop .setup :is(input[type=text], input[type=password]):focus { outline: none; background: var(--panel); border-color: var(--accent); }
-  .pop .setup input:disabled { opacity: .5; pointer-events: none; }
-  .pop .setup input::placeholder { color: var(--muted); opacity: .85; }
-  /* the sites a page still opens in the board (2026-10-21): a box as the setup's, with its edge at rest — it stands alone */
-  #boardSites { font: inherit; font-size: var(--fs-md); width: 240px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: var(--ink); }
-  #boardSites:focus { outline: none; background: var(--panel); border-color: var(--accent); }
-  #boardSites:disabled { opacity: .5; }
-  #boardSites::placeholder { color: var(--muted); opacity: .85; }
-  /* the org: github.com/ and the name, one pill */
-  .pop .sorgw { display: inline-flex; align-items: center; height: 28px; padding-left: 9px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-sm); color: var(--muted); cursor: text; }
-  .pop .sorgw:hover { background: var(--ctl-hi); }
-  .pop .sorgw:focus-within { background: var(--panel); border-color: var(--accent); }
-  .pop .setup .sorgw input[type=text] { width: 88px; height: 26px; padding: 0 8px 0 1px; border: 0; border-radius: 0 7px 7px 0; background: transparent; font-weight: 600; }
-  .pop .srow .pn { display: grid; min-width: 0; }
-  .pop .srow .pn b { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); font-weight: 600; color: var(--ink); }
-  .pop .srow .pn small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* a project's square: its short name on its colour, the ink that reads there (--nocolor without one) */
-  .pop .stile { display: grid; place-items: center; width: 42px; height: 30px; padding: 0; border: 0; background: var(--nocolor); color: var(--ink); font: inherit; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; overflow: hidden; white-space: nowrap; }
-  .pop button.stile { cursor: pointer; }
-  .pop button.stile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .pop .srow.proj.open .stile { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
-  .pop .ssw { position: relative; width: 22px; height: 22px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 20%, transparent); cursor: pointer; transition: transform .12s; }
-  .pop .ssw:hover { transform: scale(1.1); }
-  .pop .ssw.none { background: none; box-shadow: none; border: 1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent); }
-  .pop .ssw:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .pop .ssw input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
-  .pop .sdel { font: inherit; font-size: var(--fs-lg); line-height: 1; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .12s, background-color .12s, color .12s; }
-  .pop .srow:hover .sdel, .pop .sdel:focus-visible { opacity: 1; }
-  .pop .sdel:hover { color: var(--needs); background: color-mix(in srgb, var(--needs) 14%, transparent); }
-  .pop .srow.quick kbd { font: inherit; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); padding: 2px 7px; border-radius: var(--r-3); background: var(--ctl); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 14%, transparent); }
-  .pop .srow.quick .ssel { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .pop .srow.quick .ssel .ic { flex: none; width: 15px; height: 15px; fill: var(--accent); }
-  .pop .setup select { appearance: none; -webkit-appearance: none; flex: 1; min-width: 0; width: 100%; max-width: none; height: 28px; padding: 0 28px 0 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; font-size: var(--fs-md); color: var(--ink); cursor: pointer;
-    background: var(--ctl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 10px 6px; }
-  .pop .setup select:hover { background-color: var(--ctl-hi); }
-  .pop .setup select.sadd { background-color: transparent; color: var(--muted); }
-  .pop .setup select.sadd:hover { background-color: var(--ctl); color: var(--ink); }
-  .pop select { font: inherit; font-size: var(--fs-sm); padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: inherit; max-width: 180px; }
+.pop .setup {
+  display: grid;
+  gap: 18px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.pop .slist {
+  border-radius: var(--r-4);
+  background: color-mix(in srgb, var(--ink) 4.5%, transparent);
+}
+.pop .srow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto 22px;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 10px 7px 12px;
+}
+.pop .srow + .srow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 42px;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+.pop .srow.proj {
+  grid-template-columns: 42px minmax(0, 1fr) 22px;
+  gap: 4px 10px;
+}
+.pop .srow.proj .sedit {
+  display: none;
+  grid-column: 2 / -1;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 2px;
+}
+.pop .srow.proj.open .sedit {
+  display: flex;
+}
+.pop .sedc {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.pop .srow.proj + .srow::before {
+  left: 64px;
+}
+.pop .srow.padd {
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+.pop .srow.quick {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 10px;
+}
+.pop .srow.jsite {
+  grid-template-columns: 22px minmax(0, 1.25fr) minmax(0, 1fr) 0;
+}
+.pop .srow.jtok {
+  grid-template-columns: 22px minmax(0, 1fr) 22px;
+}
+.pop .srow .sic {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: var(--fs-base);
+}
+.pop .srow .sic .ic {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.pop .srow.add .sic,
+.pop .srow.padd .sic {
+  color: var(--accent);
+}
+.pop .srow.padd {
+  padding-left: 22px;
+} /* its ＋ under the squares' middle */
+.pop .setup :is(input[type='text'], input[type='password']) {
+  font: inherit;
+  font-size: var(--fs-md);
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: transparent;
+  color: var(--ink);
+}
+.pop .setup :is(input[type='text'], input[type='password']):hover {
+  background: var(--ctl);
+}
+.pop .setup :is(input[type='text'], input[type='password']):focus {
+  outline: none;
+  background: var(--panel);
+  border-color: var(--accent);
+}
+.pop .setup input:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.pop .setup input::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+/* the sites a page still opens in the board (2026-10-21): a box as the setup's, with its edge at rest — it stands alone */
+#boardSites {
+  font: inherit;
+  font-size: var(--fs-md);
+  width: 240px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: transparent;
+  color: var(--ink);
+}
+#boardSites:focus {
+  outline: none;
+  background: var(--panel);
+  border-color: var(--accent);
+}
+#boardSites:disabled {
+  opacity: 0.5;
+}
+#boardSites::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+/* the org: github.com/ and the name, one pill */
+.pop .sorgw {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding-left: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  cursor: text;
+}
+.pop .sorgw:hover {
+  background: var(--ctl-hi);
+}
+.pop .sorgw:focus-within {
+  background: var(--panel);
+  border-color: var(--accent);
+}
+.pop .setup .sorgw input[type='text'] {
+  width: 88px;
+  height: 26px;
+  padding: 0 8px 0 1px;
+  border: 0;
+  border-radius: 0 7px 7px 0;
+  background: transparent;
+  font-weight: 600;
+}
+.pop .srow .pn {
+  display: grid;
+  min-width: 0;
+}
+.pop .srow .pn b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+.pop .srow .pn small {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* a project's square: its short name on its colour, the ink that reads there (--nocolor without one) */
+.pop .stile {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: var(--nocolor);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pop button.stile {
+  cursor: pointer;
+}
+.pop button.stile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pop .srow.proj.open .stile {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent);
+}
+.pop .ssw {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 20%, transparent);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.pop .ssw:hover {
+  transform: scale(1.1);
+}
+.pop .ssw.none {
+  background: none;
+  box-shadow: none;
+  border: 1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent);
+}
+.pop .ssw:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pop .ssw input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.pop .sdel {
+  font: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    background-color 0.12s,
+    color 0.12s;
+}
+.pop .srow:hover .sdel,
+.pop .sdel:focus-visible {
+  opacity: 1;
+}
+.pop .sdel:hover {
+  color: var(--needs);
+  background: color-mix(in srgb, var(--needs) 14%, transparent);
+}
+.pop .srow.quick kbd {
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--ink);
+  padding: 2px 7px;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 14%, transparent);
+}
+.pop .srow.quick .ssel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.pop .srow.quick .ssel .ic {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: var(--accent);
+}
+.pop .setup select {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  height: 28px;
+  padding: 0 28px 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--ink);
+  cursor: pointer;
+  background: var(--ctl)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 10px center / 10px 6px;
+}
+.pop .setup select:hover {
+  background-color: var(--ctl-hi);
+}
+.pop .setup select.sadd {
+  background-color: transparent;
+  color: var(--muted);
+}
+.pop .setup select.sadd:hover {
+  background-color: var(--ctl);
+  color: var(--ink);
+}
+.pop select {
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: transparent;
+  color: inherit;
+  max-width: 180px;
+}

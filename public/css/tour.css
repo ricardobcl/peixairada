@@ -1,118 +1,786 @@
-  /* The tour (2026-10-14): the board's main parts one at a time — a hole cut in a dim veil round the part, and a card
+/* The tour (2026-10-14): the board's main parts one at a time — a hole cut in a dim veil round the part, and a card
      beside it saying what it is and its keys. A modal dialog the size of the window, so the pane goes down and the keys
      are swallowed while it is up. The veil is the hole's own shadow, so hole and card glide from part to part together
      (tourPlace); a step with no part to show has the hole shut in the middle, the veil whole, the card centred. */
-  #tour { --veil: rgb(0 0 0 / .42); position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; overflow: hidden; outline: none; }
-  :root[data-theme="dark"] #tour { --veil: rgb(0 0 0 / .6); }
-  #tour, #tour:not([open]) { transform: none; }   /* it fades: a veil the size of the window does not rise */
-  @starting-style { #tour[open] { transform: none; } }
-  #tour::backdrop { background: transparent; }
-  #tour .thole { position: absolute; left: 0; top: 0; width: 0; height: 0; border-radius: var(--r-3); outline: 2px solid var(--accent); box-shadow: 0 0 0 200vmax var(--veil); pointer-events: none;
-    transition: translate .34s var(--ease-out), width .34s var(--ease-out), height .34s var(--ease-out), outline-color .2s; }
-  #tour .thole.none { outline-color: transparent; }
-  #tour .tcard { position: absolute; left: 0; top: 0; width: min(340px, calc(100vw - 24px)); padding: 16px 18px 14px; border-radius: var(--r-5); background: var(--panel); color: var(--ink);
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 24px 70px rgba(0, 0, 0, .45); transition: translate .34s var(--ease-out); }
-  #tour.still :is(.thole, .tcard) { transition: none; }   /* its first place is taken, not travelled to */
-  #tour .tcard.mid { width: min(420px, calc(100vw - 24px)); text-align: center; }   /* a step with no part: hello, the keys, goodbye */
-  #tour .tin.in { animation: tourIn .24s var(--ease-out); }
-  @keyframes tourIn { from { opacity: 0; translate: 0 4px; } }
-  #tour .tlogo { display: block; width: 56px; height: 56px; margin: 2px auto 10px; } #tour .tlogo[hidden] { display: none; } #tour .tlogo .logo { width: 100%; height: 100%; }
-  #tour .tstep { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
-  #tour .tcard.mid .tstep { justify-content: center; }
-  #tour .tdots { display: flex; gap: 4px; } #tour .tdots i { width: 6px; height: 6px; border-radius: 3px; background: var(--ctl-hi); } #tour .tdots i.on { width: 16px; background: var(--accent); } #tour .tdots i.past { background: color-mix(in srgb, var(--accent) 40%, transparent); }
-  #tour h3 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; text-wrap: balance; }
-  #tour p { margin: 6px 0 0; font-size: var(--fs-md); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
-  #tour p :is(b, em) { color: var(--ink); font-weight: 600; font-style: normal; }
-  #tour p.thow { margin-top: 10px; font-size: var(--fs-sm); } #tour p.thow:empty { display: none; }
-  #tour kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
-  /* a step's picture: its keys as rows, a picker or a split drawn small, a PR said and the chips it becomes — in the
+#tour {
+  --veil: rgb(0 0 0 / 0.42);
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+  outline: none;
+}
+:root[data-theme='dark'] #tour {
+  --veil: rgb(0 0 0 / 0.6);
+}
+#tour,
+#tour:not([open]) {
+  transform: none;
+} /* it fades: a veil the size of the window does not rise */
+@starting-style {
+  #tour[open] {
+    transform: none;
+  }
+}
+#tour::backdrop {
+  background: transparent;
+}
+#tour .thole {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-radius: var(--r-3);
+  outline: 2px solid var(--accent);
+  box-shadow: 0 0 0 200vmax var(--veil);
+  pointer-events: none;
+  transition:
+    translate 0.34s var(--ease-out),
+    width 0.34s var(--ease-out),
+    height 0.34s var(--ease-out),
+    outline-color 0.2s;
+}
+#tour .thole.none {
+  outline-color: transparent;
+}
+#tour .tcard {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(340px, calc(100vw - 24px));
+  padding: 16px 18px 14px;
+  border-radius: var(--r-5);
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset,
+    0 24px 70px rgba(0, 0, 0, 0.45);
+  transition: translate 0.34s var(--ease-out);
+}
+#tour.still :is(.thole, .tcard) {
+  transition: none;
+} /* its first place is taken, not travelled to */
+#tour .tcard.mid {
+  width: min(420px, calc(100vw - 24px));
+  text-align: center;
+} /* a step with no part: hello, the keys, goodbye */
+#tour .tin.in {
+  animation: tourIn 0.24s var(--ease-out);
+}
+@keyframes tourIn {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+#tour .tlogo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 2px auto 10px;
+}
+#tour .tlogo[hidden] {
+  display: none;
+}
+#tour .tlogo .logo {
+  width: 100%;
+  height: 100%;
+}
+#tour .tstep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+#tour .tcard.mid .tstep {
+  justify-content: center;
+}
+#tour .tdots {
+  display: flex;
+  gap: 4px;
+}
+#tour .tdots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ctl-hi);
+}
+#tour .tdots i.on {
+  width: 16px;
+  background: var(--accent);
+}
+#tour .tdots i.past {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+#tour h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+#tour p {
+  margin: 6px 0 0;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+#tour p :is(b, em) {
+  color: var(--ink);
+  font-weight: 600;
+  font-style: normal;
+}
+#tour p.thow {
+  margin-top: 10px;
+  font-size: var(--fs-sm);
+}
+#tour p.thow:empty {
+  display: none;
+}
+#tour kbd {
+  font:
+    600 var(--fs-xs) ui-monospace,
+    monospace;
+  padding: 1px 5px;
+  border-radius: var(--r-2);
+  background: var(--ctl-hi);
+  color: var(--ink);
+  white-space: nowrap;
+}
+/* a step's picture: its keys as rows, a picker or a split drawn small, a PR said and the chips it becomes — in the
      board's tokens, never its own classes but the your-move tag (.ymove), which nothing selects outside a card or the header */
-  #tour .tpic { margin-top: 10px; text-align: left; } #tour .tpic:empty { display: none; }
-  #tour .tkeys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: baseline; font-size: var(--fs-sm); color: var(--muted); }
-  #tour .tkeys > span:nth-child(odd) { white-space: nowrap; }
-  #tour .tmock { display: grid; gap: 1px; padding: 6px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); font-size: var(--fs-sm); color: var(--ink); }
-  #tour .tmock .hd { padding: 2px 8px 4px; font-size: var(--fs-xs); color: var(--muted); }
-  #tour .tmock .r { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 8px; border-radius: var(--r-3); white-space: nowrap; }
-  #tour .tmock .r.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  #tour .tmock .r i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
-  #tour .tmock .r small { margin-left: auto; padding-left: 10px; font-size: var(--fs-xs); color: var(--muted); }
-  #tour .tsplit { display: flex; justify-content: center; gap: 18px; }
-  #tour .tsplit figure { display: grid; justify-items: center; gap: 6px; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
-  #tour .tsplit .w { display: grid; gap: 3px; width: 128px; height: 74px; padding: 3px; border-radius: var(--r-2); background: color-mix(in srgb, var(--ink) 9%, transparent); }
-  #tour .tsplit .w i { display: grid; place-items: center; border-radius: 2px; background: color-mix(in srgb, var(--ink) 14%, transparent); font: 700 var(--fs-xs) ui-monospace, monospace; font-style: normal; color: var(--ink); }
-  #tour .tsplit .w i.a { background: color-mix(in srgb, var(--accent) 45%, transparent); } #tour .tsplit .w i.b { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-  #tour .tsplit .side { grid-template: 1fr / 1fr 2fr 2fr; }
-  #tour .tsplit .stack { grid-template: 1fr 1fr / 1fr 4fr; } #tour .tsplit .stack i:first-child { grid-row: span 2; }
-  #tour .tlink { display: grid; gap: 6px; padding: 8px 10px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); font-size: var(--fs-sm); }
-  #tour .tlink .tq { color: var(--muted); font-style: italic; }
-  #tour .tlink .tto { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-  #tour .tlink .ymove { font-style: normal; }
-  #tour .tchip { display: inline-block; width: 9px; height: 9px; box-sizing: border-box; border-radius: 2px; background: var(--c, var(--pr-open)); }
-  #tour .tchip[data-state="draft"] { --c: var(--pr-draft); background: none; box-shadow: inset 0 0 0 1.5px var(--c); } #tour .tchip.tk { --c: var(--tk-doing); border-radius: 50%; }
-  #tour .tfoot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
-  #tour .tfoot .spacer { flex: 1; }
-  #tour .tfoot [hidden] { display: none; }
-  #tour .tskip { background: none; color: var(--muted); } #tour .tskip:hover { background: var(--ctl); color: var(--ink); }
-  #tour .tnext { background: var(--accent); color: var(--bg); font-weight: 600; }
-  #tour .tnext:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
-  #keysheet .kshd :is(#ksTour, #ksNews) { flex: none; }
-  /* What's new (2026-11-24; `NEWS`, `newsOpen`): a page per example, its picture that example at work — in the board's
+#tour .tpic {
+  margin-top: 10px;
+  text-align: left;
+}
+#tour .tpic:empty {
+  display: none;
+}
+#tour .tkeys {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: baseline;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+#tour .tkeys > span:nth-child(odd) {
+  white-space: nowrap;
+}
+#tour .tmock {
+  display: grid;
+  gap: 1px;
+  padding: 6px;
+  border-radius: var(--r-4);
+  background: color-mix(in srgb, var(--ink) 4.5%, transparent);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+#tour .tmock .hd {
+  padding: 2px 8px 4px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#tour .tmock .r {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: var(--r-3);
+  white-space: nowrap;
+}
+#tour .tmock .r.on {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+#tour .tmock .r i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+}
+#tour .tmock .r small {
+  margin-left: auto;
+  padding-left: 10px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#tour .tsplit {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+#tour .tsplit figure {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#tour .tsplit .w {
+  display: grid;
+  gap: 3px;
+  width: 128px;
+  height: 74px;
+  padding: 3px;
+  border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+#tour .tsplit .w i {
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  font:
+    700 var(--fs-xs) ui-monospace,
+    monospace;
+  font-style: normal;
+  color: var(--ink);
+}
+#tour .tsplit .w i.a {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+#tour .tsplit .w i.b {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+#tour .tsplit .side {
+  grid-template: 1fr / 1fr 2fr 2fr;
+}
+#tour .tsplit .stack {
+  grid-template: 1fr 1fr / 1fr 4fr;
+}
+#tour .tsplit .stack i:first-child {
+  grid-row: span 2;
+}
+#tour .tlink {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--r-4);
+  background: color-mix(in srgb, var(--ink) 4.5%, transparent);
+  font-size: var(--fs-sm);
+}
+#tour .tlink .tq {
+  color: var(--muted);
+  font-style: italic;
+}
+#tour .tlink .tto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+#tour .tlink .ymove {
+  font-style: normal;
+}
+#tour .tchip {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border-radius: 2px;
+  background: var(--c, var(--pr-open));
+}
+#tour .tchip[data-state='draft'] {
+  --c: var(--pr-draft);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--c);
+}
+#tour .tchip.tk {
+  --c: var(--tk-doing);
+  border-radius: 50%;
+}
+#tour .tfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+#tour .tfoot .spacer {
+  flex: 1;
+}
+#tour .tfoot [hidden] {
+  display: none;
+}
+#tour .tskip {
+  background: none;
+  color: var(--muted);
+}
+#tour .tskip:hover {
+  background: var(--ctl);
+  color: var(--ink);
+}
+#tour .tnext {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+#tour .tnext:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+}
+#keysheet .kshd :is(#ksTour, #ksNews) {
+  flex: none;
+}
+/* What's new (2026-11-24; `NEWS`, `newsOpen`): a page per example, its picture that example at work — in the board's
      tokens, its own classes alone, nothing that moves but the page coming in */
-  #news { width: min(480px, 94vw); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 80px rgba(0, 0, 0, .5); }
-  #news::backdrop { background: rgba(0, 0, 0, .5); }
-  #news .nwpic { position: relative; height: 210px; overflow: hidden; background: radial-gradient(55% 60% at 18% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), color-mix(in srgb, var(--ink) 5%, var(--bg)); }
-  :root[data-theme="dark"] #news .nwpic { background: radial-gradient(55% 60% at 18% 10%, rgba(98, 84, 160, .3), transparent 70%), radial-gradient(40% 50% at 85% 90%, color-mix(in srgb, var(--watch) 14%, transparent), transparent 70%), var(--bg); }
-  #news .nwpic .st { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: var(--ink); opacity: .35; }
-  #news .nwtag { position: absolute; left: 16px; top: 14px; z-index: 2; display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 22%, var(--panel)); color: var(--ink); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
-  #news .nwx { position: absolute; right: 12px; top: 12px; z-index: 2; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: var(--r-3); font-size: var(--fs-lg); line-height: 1; color: var(--ink); background: color-mix(in srgb, var(--panel) 70%, transparent); }
-  #news .nwx:hover { background: var(--panel); }
-  #news .nn { position: absolute; box-sizing: border-box; width: 136px; height: 78px; padding: 6px 10px; border-radius: var(--r-5); border: 2px solid var(--c, var(--idle)); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; color: var(--ink); }
-  #news .nn[data-st="ask"] { --c: var(--needs); box-shadow: 0 0 0 6px color-mix(in srgb, var(--needs) 22%, transparent); } #news .nn[data-st="work"] { --c: var(--working-ink); } #news .nn[data-st="ready"] { --c: var(--idle); }
-  #news .nn b { font-size: var(--fs-xs); font-weight: 650; line-height: 1.25; }
-  #news .nn small { font: var(--fs-2xs) ui-monospace, monospace; color: var(--muted); }
-  #news .nn.on { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--accent); }
-  #news .nbox { position: absolute; padding: 8px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .6); font-size: var(--fs-xs); color: var(--ink); }
-  #news .nbox .q { margin: 0 2px 6px; font-weight: 600; line-height: 1.35; }
-  #news .nbox .o { display: flex; gap: 6px; padding: 4px 6px; border-radius: var(--r-2); color: var(--muted); white-space: nowrap; }
-  #news .nbox .o.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--ink); }
-  #news .nbox .o kbd { font: 700 var(--fs-xs) ui-monospace, monospace; color: var(--ink); background: none; padding: 0; }
-  #news .npill { position: absolute; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: var(--fs-2xs); font-weight: 700; white-space: nowrap; background: var(--panel); color: var(--ink); border: 1.5px solid var(--c, var(--pr-open)); }
-  #news .npill.q { --c: var(--needs); background: var(--needs); color: var(--bg); }
-  #news .nfind { position: absolute; left: 24px; right: 24px; top: 58px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 9px; border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--accent); font-size: var(--fs-sm); color: var(--ink); }
-  #news .nfind code, #news .nwbody code { font: var(--fs-xs) ui-monospace, monospace; padding: 1px 6px; border-radius: var(--r-2); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--ink); }
-  #news .nfind .n { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
-  #news .nbox .pr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 6px; white-space: nowrap; }
-  #news .nbox .pr i { width: 8px; height: 8px; border-radius: 2px; background: var(--pr-open); }
-  #news .nbox .pr span { overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-  #news .nbox .pr em { font-style: normal; font-weight: 600; } #news .nbox .pr em.chg { color: var(--needs); } #news .nbox .pr em.ok { color: var(--pr-open); }
-  #news .nbar { position: absolute; display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-radius: var(--r-4); background: var(--panel); border: 1px solid var(--line); box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .6); font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; }
-  #news .nbar span { padding: 3px 9px; border-radius: var(--r-2); background: var(--ctl-hi); font-weight: 600; }
-  #news .nbar span.go { background: var(--accent); color: var(--bg); }
-  #news .nwbody { padding: 16px 20px 4px; }
-  #news .nwbody.in { animation: newsIn .24s var(--ease-out); }
-  @keyframes newsIn { from { opacity: 0; translate: 6px 0; } }
-  #news h3 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; text-wrap: balance; }
-  #news p { margin: 6px 0 0; font-size: var(--fs-md); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
-  #news p b { color: var(--ink); font-weight: 600; }
-  #news kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
-  #news .nwfoot { display: flex; align-items: center; gap: 8px; padding: 14px 20px 16px; }
-  #news .nwfoot [hidden] { display: none; }
-  #news .nwdots { display: flex; gap: 5px; margin-right: auto; } #news .nwdots button { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 3px; background: var(--ctl-hi); } #news .nwdots button.on { width: 18px; background: var(--accent); }
-  #news .nwskip { background: none; color: var(--muted); } #news .nwskip:hover { background: var(--ctl); color: var(--ink); }
-  #news .nwnext { background: var(--accent); color: var(--bg); font-weight: 600; }
-  #news .nwnext:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
-  #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
-  #pick input:focus { border-color: var(--accent); }
-  #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
-  #settings .sseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
-  #settings .sseg button { font: inherit; font-size: var(--fs-sm); border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: var(--r-2); cursor: pointer; }
-  #settings .sseg button[aria-checked="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
-  #pickfoot { margin: 6px 4px 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
-  #pickfoot[hidden] { display: none; }   /* (2026-10-28) the flex above beat the attribute: the chats step's foot stayed on under every step after it */
-  #pickfoot kbd { font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
-  .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: var(--r-3); cursor: pointer; min-width: 0; }
-  #pickq:disabled ~ #picklist .pkrow { opacity: .5; cursor: progress; transition: opacity var(--t-hover) .12s; }   /* a step under way (pickChoose, 2026-11-04); the delay: an answer at once dims nothing */
-  .pkrow .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); }
-  .pkrow .n { font-weight: 700; font-size: var(--fs-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .pkrow :is(.n, .num) b { color: var(--accent); }
-  .pkrow .n .cur { font-weight: 400; font-size: var(--fs-xs); color: var(--muted); margin-left: 6px; }
+#news {
+  width: min(480px, 94vw);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-5);
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+#news::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+#news .nwpic {
+  position: relative;
+  height: 210px;
+  overflow: hidden;
+  background:
+    radial-gradient(55% 60% at 18% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    color-mix(in srgb, var(--ink) 5%, var(--bg));
+}
+:root[data-theme='dark'] #news .nwpic {
+  background:
+    radial-gradient(55% 60% at 18% 10%, rgba(98, 84, 160, 0.3), transparent 70%),
+    radial-gradient(40% 50% at 85% 90%, color-mix(in srgb, var(--watch) 14%, transparent), transparent 70%), var(--bg);
+}
+#news .nwpic .st {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0.35;
+}
+#news .nwtag {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--panel));
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+#news .nwx {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-3);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+#news .nwx:hover {
+  background: var(--panel);
+}
+#news .nn {
+  position: absolute;
+  box-sizing: border-box;
+  width: 136px;
+  height: 78px;
+  padding: 6px 10px;
+  border-radius: var(--r-5);
+  border: 2px solid var(--c, var(--idle));
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+  color: var(--ink);
+}
+#news .nn[data-st='ask'] {
+  --c: var(--needs);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--needs) 22%, transparent);
+}
+#news .nn[data-st='work'] {
+  --c: var(--working-ink);
+}
+#news .nn[data-st='ready'] {
+  --c: var(--idle);
+}
+#news .nn b {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  line-height: 1.25;
+}
+#news .nn small {
+  font:
+    var(--fs-2xs) ui-monospace,
+    monospace;
+  color: var(--muted);
+}
+#news .nn.on {
+  box-shadow:
+    0 0 0 3px var(--panel),
+    0 0 0 5px var(--accent);
+}
+#news .nbox {
+  position: absolute;
+  padding: 8px;
+  border-radius: var(--r-4);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+}
+#news .nbox .q {
+  margin: 0 2px 6px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+#news .nbox .o {
+  display: flex;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--r-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+#news .nbox .o.on {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--ink);
+}
+#news .nbox .o kbd {
+  font:
+    700 var(--fs-xs) ui-monospace,
+    monospace;
+  color: var(--ink);
+  background: none;
+  padding: 0;
+}
+#news .npill {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.5px solid var(--c, var(--pr-open));
+}
+#news .npill.q {
+  --c: var(--needs);
+  background: var(--needs);
+  color: var(--bg);
+}
+#news .nfind {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 58px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: var(--r-3);
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+#news .nfind code,
+#news .nwbody code {
+  font:
+    var(--fs-xs) ui-monospace,
+    monospace;
+  padding: 1px 6px;
+  border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--ink);
+}
+#news .nfind .n {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+#news .nbox .pr {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+#news .nbox .pr i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--pr-open);
+}
+#news .nbox .pr span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+#news .nbox .pr em {
+  font-style: normal;
+  font-weight: 600;
+}
+#news .nbox .pr em.chg {
+  color: var(--needs);
+}
+#news .nbox .pr em.ok {
+  color: var(--pr-open);
+}
+#news .nbar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border-radius: var(--r-4);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+  white-space: nowrap;
+}
+#news .nbar span {
+  padding: 3px 9px;
+  border-radius: var(--r-2);
+  background: var(--ctl-hi);
+  font-weight: 600;
+}
+#news .nbar span.go {
+  background: var(--accent);
+  color: var(--bg);
+}
+#news .nwbody {
+  padding: 16px 20px 4px;
+}
+#news .nwbody.in {
+  animation: newsIn 0.24s var(--ease-out);
+}
+@keyframes newsIn {
+  from {
+    opacity: 0;
+    translate: 6px 0;
+  }
+}
+#news h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+#news p {
+  margin: 6px 0 0;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+#news p b {
+  color: var(--ink);
+  font-weight: 600;
+}
+#news kbd {
+  font:
+    600 var(--fs-xs) ui-monospace,
+    monospace;
+  padding: 1px 5px;
+  border-radius: var(--r-2);
+  background: var(--ctl-hi);
+  color: var(--ink);
+  white-space: nowrap;
+}
+#news .nwfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px 16px;
+}
+#news .nwfoot [hidden] {
+  display: none;
+}
+#news .nwdots {
+  display: flex;
+  gap: 5px;
+  margin-right: auto;
+}
+#news .nwdots button {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: var(--ctl-hi);
+}
+#news .nwdots button.on {
+  width: 18px;
+  background: var(--accent);
+}
+#news .nwskip {
+  background: none;
+  color: var(--muted);
+}
+#news .nwskip:hover {
+  background: var(--ctl);
+  color: var(--ink);
+}
+#news .nwnext {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+#news .nwnext:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+}
+#pick input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--fs-base);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: inherit;
+  outline: none;
+}
+#pick input:focus {
+  border-color: var(--accent);
+}
+#picklist {
+  margin-top: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+  display: grid;
+  gap: 1px;
+}
+#settings .sseg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+}
+#settings .sseg button {
+  font: inherit;
+  font-size: var(--fs-sm);
+  border: 0;
+  background: none;
+  color: var(--muted);
+  padding: 3px 10px;
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+#settings .sseg button[aria-checked='true'] {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+#pickfoot {
+  margin: 6px 4px 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+}
+#pickfoot[hidden] {
+  display: none;
+} /* (2026-10-28) the flex above beat the attribute: the chats step's foot stayed on under every step after it */
+#pickfoot kbd {
+  font:
+    600 var(--fs-xs)/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--ink);
+  background: var(--ctl);
+  border-radius: var(--r-2);
+  padding: 2px 5px;
+  margin-left: 4px;
+}
+#pickfoot s {
+  text-decoration: none;
+  opacity: 0.6;
+}
+.pkrow {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 9px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: var(--r-3);
+  cursor: pointer;
+  min-width: 0;
+}
+#pickq:disabled ~ #picklist .pkrow {
+  opacity: 0.5;
+  cursor: progress;
+  transition: opacity var(--t-hover) 0.12s;
+} /* a step under way (pickChoose, 2026-11-04); the delay: an answer at once dims nothing */
+.pkrow .sq {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-1);
+  background: var(--repo, var(--nocolor));
+}
+.pkrow .n {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.pkrow :is(.n, .num) b {
+  color: var(--accent);
+}
+.pkrow .n .cur {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  margin-left: 6px;
+}

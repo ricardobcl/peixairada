@@ -21,9 +21,9 @@ export default [
   {
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
     rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],   // a catch that lets go on purpose
-      'no-unused-vars': ['error', { ignoreRestSiblings: true }],   // `const { key, ...rest }` leaves key out on purpose
-      'no-control-regex': 'off',   // a terminal's bytes are matched on purpose
+      'no-empty': ['error', { allowEmptyCatch: true }], // a catch that lets go on purpose
+      'no-unused-vars': ['error', { ignoreRestSiblings: true }], // `const { key, ...rest }` leaves key out on purpose
+      'no-control-regex': 'off', // a terminal's bytes are matched on purpose
     },
   },
   // the harness's bodies run in the page: a scenario's, a check's, a test's

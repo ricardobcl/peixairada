@@ -29,7 +29,10 @@ const STUB = `(() => {
   };
 })()`;
 
-const bar = ctx => ctx.evaluate(`JSON.stringify((() => {
+const bar = ctx =>
+  ctx
+    .evaluate(
+      `JSON.stringify((() => {
   const u = document.querySelector('#sbar .us'), panel = document.querySelector('#sbar .sbpanel');
   return { shown: !!u, stale: !!u?.classList.contains('stale'), open: !!panel, title: u?.title || '', note: u?.querySelector('.unote')?.textContent || null,
     meters: u ? [...u.querySelectorAll('.m')].map(m => m.textContent.trim()) : [],
@@ -37,11 +40,16 @@ const bar = ctx => ctx.evaluate(`JSON.stringify((() => {
       return { label: row.querySelector('.ul').textContent, pct: row.querySelector('.up').textContent, reset: row.querySelector('.ur').textContent,
         colour: row.querySelector('.ubar i').style.getPropertyValue('--u'), tick: tick ? Math.round(parseFloat(tick.style.left)) : null,
         money: row.querySelector('.umoney')?.textContent || null }; }) };
-})())`).then(JSON.parse);
+})())`,
+    )
+    .then(JSON.parse);
 
 export default async function (ctx) {
   const out = {};
-  const board = () => ctx.waitFor(`document.querySelectorAll('#slist > .card').length > 0 && !!document.querySelector('#sbar .clock')`, { what: 'the board and its bar' });
+  const board = () =>
+    ctx.waitFor(`document.querySelectorAll('#slist > .card').length > 0 && !!document.querySelector('#sbar .clock')`, {
+      what: 'the board and its bar',
+    });
   const click = () => ctx.evaluate(`document.querySelector('#sbar .us').click()`);
   await board();
 
@@ -52,23 +60,52 @@ export default async function (ctx) {
 
   // Numbers, from the stub: a pie and a percent per limit, the credit grant only in the rows
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: STUB });
-  await ctx.reload(); await board();
+  await ctx.reload();
+  await board();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 3`, { what: 'the meters' });
   out.rest = await bar(ctx);
-  ctx.assert.deepEqual(out.rest.meters, ['T42%', '1W75%', 'F!95%'], 'a tag and a percent for each limit — the credit grant only in the rows');
+  ctx.assert.deepEqual(
+    out.rest.meters,
+    ['T42%', '1W75%', 'F!95%'],
+    'a tag and a percent for each limit — the credit grant only in the rows',
+  );
   ctx.assert.equal(out.rest.open, false, 'the rows out of sight');
 
   // A click: the rows over the bar; again, or a click elsewhere, and they go
   await click();
   await ctx.waitFor(`document.querySelectorAll('#sbar .sbpanel .urow').length === 4`, { what: 'four rows' });
   out.rows = await bar(ctx);
-  ctx.assert.deepEqual(out.rows.rows.map(r => r.pct), ['42%', '75%', '95%', '12%']);
-  ctx.assert.deepEqual(out.rows.rows.map(r => r.colour), ['var(--spend)', 'var(--spend)', 'var(--ink)', 'var(--spend)'], 'orange, the ink from 90: red is for asking (round XIX\'s S3)');
+  ctx.assert.deepEqual(
+    out.rows.rows.map(r => r.pct),
+    ['42%', '75%', '95%', '12%'],
+  );
+  ctx.assert.deepEqual(
+    out.rows.rows.map(r => r.colour),
+    ['var(--spend)', 'var(--spend)', 'var(--ink)', 'var(--spend)'],
+    "orange, the ink from 90: red is for asking (round XIX's S3)",
+  );
   // 12 h left of a day, 3 d 12 h of seven days: both clocks stand half way; a credit grant has no clock
-  ctx.assert.deepEqual(out.rows.rows.map(r => r.tick), [50, 50, 50, null], 'a tick where the clock stands, where the window has one');
-  ctx.assert.deepEqual(out.rows.rows.map(r => r.reset), ['12h 0m', '3d 12h', '3d 12h', '']);
-  ctx.assert.ok(await ctx.evaluate(`document.querySelector('#sbar .sbpanel').getBoundingClientRect().bottom <= document.querySelector('#sbar').getBoundingClientRect().top`), 'over the bar');
-  await ctx.shot('1-rows', await ctx.evaluate(`(r => ({ x: Math.max(0, r.right - 520), y: Math.max(0, r.top - 240), width: 520, height: 280 }))(document.querySelector('#sbar').getBoundingClientRect())`));
+  ctx.assert.deepEqual(
+    out.rows.rows.map(r => r.tick),
+    [50, 50, 50, null],
+    'a tick where the clock stands, where the window has one',
+  );
+  ctx.assert.deepEqual(
+    out.rows.rows.map(r => r.reset),
+    ['12h 0m', '3d 12h', '3d 12h', ''],
+  );
+  ctx.assert.ok(
+    await ctx.evaluate(
+      `document.querySelector('#sbar .sbpanel').getBoundingClientRect().bottom <= document.querySelector('#sbar').getBoundingClientRect().top`,
+    ),
+    'over the bar',
+  );
+  await ctx.shot(
+    '1-rows',
+    await ctx.evaluate(
+      `(r => ({ x: Math.max(0, r.right - 520), y: Math.max(0, r.top - 240), width: 520, height: 280 }))(document.querySelector('#sbar').getBoundingClientRect())`,
+    ),
+  );
   await click();
   ctx.assert.equal((await bar(ctx)).open, false, 'a second click puts them away');
   await click();
@@ -77,31 +114,57 @@ export default async function (ctx) {
 
   // A cap in money (2026-10-08): "$ 54%" in the bar, and in its row the amounts under the bar, the month's clock ticked
   await ctx.evaluate(`sessionStorage.setItem('usageMode', 'cap')`);
-  await ctx.reload(); await board();
-  await ctx.waitFor(`(document.querySelector('#sbar .us .m')?.textContent || '').startsWith('$')`, { what: 'the cap in the bar' });
+  await ctx.reload();
+  await board();
+  await ctx.waitFor(`(document.querySelector('#sbar .us .m')?.textContent || '').startsWith('$')`, {
+    what: 'the cap in the bar',
+  });
   await click();
   await ctx.waitFor(`document.querySelectorAll('#sbar .sbpanel .urow').length === 1`, { what: 'its row' });
   out.cap = await bar(ctx);
   ctx.assert.deepEqual(out.cap.meters, ['$54%'], 'the cap, its tag a $');
-  ctx.assert.deepEqual(out.cap.rows.map(r => [r.label, r.pct]), [['spend · this month', '54%']]);
-  ctx.assert.ok(out.cap.rows[0].tick > 40 && out.cap.rows[0].tick < 60, `the month's clock about half way: ${out.cap.rows[0].tick}`);
-  ctx.assert.equal(out.cap.rows[0].money, '$271 of $500', 'what is spent of it, in its currency — whole units from 100 up');
+  ctx.assert.deepEqual(
+    out.cap.rows.map(r => [r.label, r.pct]),
+    [['spend · this month', '54%']],
+  );
+  ctx.assert.ok(
+    out.cap.rows[0].tick > 40 && out.cap.rows[0].tick < 60,
+    `the month's clock about half way: ${out.cap.rows[0].tick}`,
+  );
+  ctx.assert.equal(
+    out.cap.rows[0].money,
+    '$271 of $500',
+    'what is spent of it, in its currency — whole units from 100 up',
+  );
   await ctx.evaluate(`document.querySelector('#slist').click(); sessionStorage.removeItem('usageMode')`);
-  await ctx.reload(); await board();
+  await ctx.reload();
+  await board();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 3`, { what: 'the windows back' });
 
   // A failure once there are numbers: kept, dimmed, the error on hover. Two minutes on and back into view is due.
-  await ctx.evaluate(`sessionStorage.setItem('usageMode', 'fail'); { const real = Date.now; Date.now = () => real() + 3 * 60e3; } document.dispatchEvent(new Event('visibilitychange'))`);
-  await ctx.waitFor(`document.querySelector('#sbar .us')?.classList.contains('stale')`, { what: 'the usage marked stale' });
+  await ctx.evaluate(
+    `sessionStorage.setItem('usageMode', 'fail'); { const real = Date.now; Date.now = () => real() + 3 * 60e3; } document.dispatchEvent(new Event('visibilitychange'))`,
+  );
+  await ctx.waitFor(`document.querySelector('#sbar .us')?.classList.contains('stale')`, {
+    what: 'the usage marked stale',
+  });
   out.stale = await bar(ctx);
   ctx.assert.equal(out.stale.meters.length, 3, 'the last numbers stay');
   ctx.assert.match(out.stale.title, /keychain access refused/, 'the error on hover');
 
   // A failure with no numbers yet is a sentence
-  await ctx.reload(); await board();
-  await ctx.waitFor(`(document.querySelector('#sbar .us .unote')?.textContent || '').includes('keychain')`, { what: 'the error in the bar' });
+  await ctx.reload();
+  await board();
+  await ctx.waitFor(`(document.querySelector('#sbar .us .unote')?.textContent || '').includes('keychain')`, {
+    what: 'the error in the bar',
+  });
   out.none = await bar(ctx);
   ctx.assert.match(out.none.note, /keychain access refused/);
-  await ctx.shot('2-error', await ctx.evaluate(`(r => ({ x: Math.max(0, r.right - 700), y: Math.max(0, r.top - 20), width: 700, height: 60 }))(document.querySelector('#sbar').getBoundingClientRect())`));
+  await ctx.shot(
+    '2-error',
+    await ctx.evaluate(
+      `(r => ({ x: Math.max(0, r.right - 700), y: Math.max(0, r.top - 20), width: 700, height: 60 }))(document.querySelector('#sbar').getBoundingClientRect())`,
+    ),
+  );
   return out;
 }

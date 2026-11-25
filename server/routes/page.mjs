@@ -21,20 +21,41 @@ export const pageStamp = html => createHash('sha1').update(html).digest('hex').s
 const PAGE_SCRIPTS = /<script>([\s\S]*?)<\/script>/g;
 const SAFE_HOST = /^[\w.-]+(:\d+)?$|^\[[0-9a-f:.]+\](:\d+)?$/i;
 export function pageCsp(html, host) {
-  const hashes = [...html.matchAll(PAGE_SCRIPTS)].map(m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
-  const ws = SAFE_HOST.test(host || '') ? ` ws://${host}` : '';   // 'self' covers ws: in CSP 3; an older WebKit wants it named
-  return [`default-src 'self'`, `script-src 'self' ${hashes.join(' ')}`, `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob: https://avatars.githubusercontent.com`, `connect-src 'self'${ws}`, `font-src 'self' data:`,
-    `media-src 'self' data: blob:`, `worker-src 'self' blob:`, `object-src 'none'`, `frame-src 'none'`, `base-uri 'none'`,
-    `form-action 'none'`, `frame-ancestors 'none'`].join('; ');
+  const hashes = [...html.matchAll(PAGE_SCRIPTS)].map(
+    m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`,
+  );
+  const ws = SAFE_HOST.test(host || '') ? ` ws://${host}` : ''; // 'self' covers ws: in CSP 3; an older WebKit wants it named
+  return [
+    `default-src 'self'`,
+    `script-src 'self' ${hashes.join(' ')}`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob: https://avatars.githubusercontent.com`,
+    `connect-src 'self'${ws}`,
+    `font-src 'self' data:`,
+    `media-src 'self' data: blob:`,
+    `worker-src 'self' blob:`,
+    `object-src 'none'`,
+    `frame-src 'none'`,
+    `base-uri 'none'`,
+    `form-action 'none'`,
+    `frame-ancestors 'none'`,
+  ].join('; ');
 }
 
 /** The page, put together and stamped, under its policy. */
 export async function pageRoute(req, res, url, p) {
   if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
     const html = readPage();
-    const body = html.replace('<meta name="peix-page" content="">', `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`);
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': pageCsp(body, req.headers.host), 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
+    const body = html.replace(
+      '<meta name="peix-page" content="">',
+      `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`,
+    );
+    res.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'content-security-policy': pageCsp(body, req.headers.host),
+      'x-frame-options': 'DENY',
+    }); // nobody's frame (foreignTo)
     return res.end(body);
   }
   return NEXT;
@@ -47,7 +68,10 @@ export async function vendorRoute(req, res, url, p) {
     const f = join(ROOT, 'public', 'vendor', m[1]);
     if (!existsSync(f)) return json(res, 404, { error: 'not found' });
     const body = readFileSync(f);
-    res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
+    res.writeHead(200, {
+      'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8',
+      'cache-control': 'public, max-age=86400',
+    });
     return res.end(body);
   }
   return NEXT;

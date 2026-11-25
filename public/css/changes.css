@@ -1,75 +1,497 @@
-  /* ---- the changes tab: what this chat changed in its folder (2026-10-10) ---- */
-  #chg { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--panel); font-size: var(--fs-md); }
-  #chg[hidden] { display: none; }
-  #chg .cbar { display: grid; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  #chg .r1, #chg .r2 { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  #chg .br { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--fs-sm) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: nowrap; }
-  #chg .br .ic { width: 14px; height: 14px; fill: var(--muted); }
-  #chg .br.base { color: var(--muted); } #chg .arrow { color: var(--muted); }
-  #chg .up { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  #chg .acts { margin-left: auto; display: flex; gap: 6px; flex: none; }
-  #chg .cbtn { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 3px 10px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--ink); cursor: pointer; white-space: nowrap; }
-  #chg .cbtn:hover { background: var(--ctl-hi); }
-  #chg .cbtn.pr { background: color-mix(in srgb, var(--pr-open) 22%, transparent); color: var(--pr-open); }
-  #chg .cbtn.pri { background: var(--accent); color: var(--bg); }
-  #chg .cseg { display: inline-flex; padding: 2px; border-radius: var(--r-3); background: var(--ctl); flex: none; }
-  #chg .cseg button { font: inherit; font-size: var(--fs-sm); padding: 2px 10px; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; }
-  #chg .cseg button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
-  #chg .sum { color: var(--muted); white-space: nowrap; } #chg .r2 .cbtn { margin-left: auto; }
-  #chg .cseg button.prsc { white-space: nowrap; }   /* PR #n ▾ (2026-10-13): the scope that is a PR, its picker behind the ▾ */
-  #chg .csrc { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  #chg .csrc b { color: var(--ink); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); }
-  #chg .a { color: var(--pr-open); } #chg .d { color: var(--pr-closed); }
-  #chg .sum .a, #chg .sum .d, #chg em .a, #chg em .d { font: 600 var(--fs-sm) ui-monospace, monospace; }
-  #chg .cbody { display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); min-height: 0; }
-  #chg .cfiles { overflow-y: auto; border-right: 1px solid var(--line); padding: 6px 0; display: grid; align-content: start; }
-  #chg .cf { display: flex; align-items: center; gap: 7px; padding: 4px 12px; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; min-width: 0; }
-  #chg .cf:hover { background: var(--ctl); } #chg .cf.on { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 2px 0 var(--accent); }
-  #chg .cf b { font: 700 var(--fs-2xs) ui-monospace, monospace; color: var(--working-ink); width: 10px; flex: none; } #chg .cf b.a { color: var(--pr-open); } #chg .cf b.d { color: var(--pr-closed); }
-  #chg .cf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; min-width: 0; flex: 1; }
-  #chg .cf .nm .dir { color: var(--muted); }
-  #chg .cf em { font-style: normal; flex: none; }
-  #chg .cdiff { overflow: auto; font: var(--fs-sm)/19px ui-monospace, SFMono-Regular, Menlo, monospace; }
-  #chg .fh { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg); font-weight: 600; color: var(--ink); }
-  #chg .fh em { margin-left: auto; font-style: normal; }
-  #chg .dl { position: relative; display: grid; grid-template-columns: 40px 40px 18px minmax(0, 1fr); white-space: pre; color: var(--ink); min-width: max-content; }
-  #chg .dl .na, #chg .dl .nb { text-align: right; padding-right: 8px; color: var(--muted); opacity: .7; font-size: var(--fs-xs); user-select: none; }
-  #chg .dl .sg { position: relative; color: var(--muted); user-select: none; }
-  #chg .dl code { font: inherit; padding-right: 16px; }
-  #chg .dl.add { background: color-mix(in srgb, var(--pr-open) 14%, transparent); } #chg .dl.add .sg, #chg .dl.add .nb { color: var(--pr-open); opacity: 1; }
-  #chg .dl.del { background: color-mix(in srgb, var(--pr-closed) 14%, transparent); } #chg .dl.del .sg, #chg .dl.del .na { color: var(--pr-closed); opacity: 1; }
-  #chg .dl.hunk { background: color-mix(in srgb, var(--hl-fn) 10%, transparent); } #chg .dl.hunk code { color: var(--hl-meta); }
-  #chg .dl.meta code { color: var(--muted); font-style: italic; }
-  #chg .dlp { position: absolute; left: -2px; top: 1px; width: 17px; height: 17px; padding: 0; border: 0; border-radius: var(--r-2); background: var(--accent); color: var(--bg); font: 700 var(--fs-sm)/17px -apple-system, sans-serif; cursor: pointer; opacity: 0; }
-  #chg :is(.dl:hover, .dl.held) .dlp, #chg .dlp:focus-visible { opacity: 1; }
-  /* a range's lines (2026-10-28), as GitHub's: tinted and barred while its box is open, a drag picks them or its comment is under the pointer */
-  #chg .dl:is(.sel, .lit) { background-image: linear-gradient(color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 16%, transparent)); box-shadow: inset 3px 0 var(--accent); }
-  #chg .lnote { display: grid; gap: 8px; margin: 4px 14px 8px 98px; padding: 9px 11px; border-radius: var(--r-3); border: 1px solid var(--accent); background: var(--bg); font: var(--fs-md)/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
-  #chg .lnote .who { font-size: var(--fs-xs); color: var(--muted); }
-  #chg .lnote textarea { font: inherit; resize: vertical; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); color: inherit; outline: none; }
-  #chg .lnote textarea:focus { border-color: var(--accent); }
-  #chg .lnote .row { display: flex; gap: 6px; justify-content: flex-end; }
-  #chg .lnote .row .sp { flex: 1; }
-  /* a review's comments (2026-10-28): each under its line until the review goes to Claude, the bar at the tab's foot */
-  #chg .lcmt { display: grid; gap: 3px; margin: 4px 14px 8px 98px; padding: 7px 11px; border-radius: var(--r-3); border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--bg); font: var(--fs-md)/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
-  #chg .lcmt .who { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--muted); }
-  #chg .lcmt .who .cbtn { padding: 1px 7px; font-size: var(--fs-xs); font-weight: 500; }
-  #chg .lcmt .who .cbtn:first-of-type { margin-left: auto; }
-  #chg .lcmt .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
-  #chg .cgone { padding: 4px 0 6px; border-bottom: 1px solid var(--line); }
-  #chg .cgone .ghd { padding: 4px 12px 0; font: 600 var(--fs-xs) -apple-system, sans-serif; color: var(--muted); }
-  #chg .cgone .gone { margin: 6px 12px; }
-  #chg .dl.cmted :is(.na, .nb) { color: var(--accent); opacity: 1; font-weight: 700; }
-  #chg .cf .rc { font: 600 var(--fs-2xs) -apple-system, sans-serif; font-style: normal; flex: none; min-width: 15px; padding: 0 4px; border-radius: var(--r-5); background: var(--accent); color: var(--bg); text-align: center; line-height: 15px; }
-  #chg .crev { display: flex; align-items: flex-end; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--panel); }
-  #chg .crev .rh { align-self: center; flex: none; color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
-  #chg .crev .rh b { color: var(--ink); }
-  #chg .crev textarea { flex: 1; min-width: 0; font: var(--fs-md)/1.4 -apple-system, BlinkMacSystemFont, sans-serif; resize: none; field-sizing: content; max-height: 8lh; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); outline: none; }
-  #chg .crev textarea:focus { border-color: var(--accent); }
-  #chg .crev .cbtn { flex: none; }
-  #chg .cempty { padding: 40px 20px; color: var(--muted); text-align: center; } #chg .cempty.sm { padding: 10px 16px; text-align: left; }
-  /* the header's +n −n (2026-10-10), the drawn black's inks, before the your-move tag and the PR chips */
-  .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font: 600 var(--fs-sm) ui-monospace, monospace; cursor: pointer; }
-  .shead .hdiff:hover { background: var(--ctl-hi); }
-  .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
-
+/* ---- the changes tab: what this chat changed in its folder (2026-10-10) ---- */
+#chg {
+  grid-row: 1;
+  grid-column: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--panel);
+  font-size: var(--fs-md);
+}
+#chg[hidden] {
+  display: none;
+}
+#chg .cbar {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+#chg .r1,
+#chg .r2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+#chg .br {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font:
+    600 var(--fs-sm) ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--ink);
+  white-space: nowrap;
+}
+#chg .br .ic {
+  width: 14px;
+  height: 14px;
+  fill: var(--muted);
+}
+#chg .br.base {
+  color: var(--muted);
+}
+#chg .arrow {
+  color: var(--muted);
+}
+#chg .up {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+#chg .acts {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+#chg .cbtn {
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+#chg .cbtn:hover {
+  background: var(--ctl-hi);
+}
+#chg .cbtn.pr {
+  background: color-mix(in srgb, var(--pr-open) 22%, transparent);
+  color: var(--pr-open);
+}
+#chg .cbtn.pri {
+  background: var(--accent);
+  color: var(--bg);
+}
+#chg .cseg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  flex: none;
+}
+#chg .cseg button {
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 2px 10px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+#chg .cseg button.on {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+#chg .sum {
+  color: var(--muted);
+  white-space: nowrap;
+}
+#chg .r2 .cbtn {
+  margin-left: auto;
+}
+#chg .cseg button.prsc {
+  white-space: nowrap;
+} /* PR #n ▾ (2026-10-13): the scope that is a PR, its picker behind the ▾ */
+#chg .csrc {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+#chg .csrc b {
+  color: var(--ink);
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs);
+}
+#chg .a {
+  color: var(--pr-open);
+}
+#chg .d {
+  color: var(--pr-closed);
+}
+#chg .sum .a,
+#chg .sum .d,
+#chg em .a,
+#chg em .d {
+  font:
+    600 var(--fs-sm) ui-monospace,
+    monospace;
+}
+#chg .cbody {
+  display: grid;
+  grid-template-columns: minmax(150px, 230px) minmax(0, 1fr);
+  min-height: 0;
+}
+#chg .cfiles {
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  padding: 6px 0;
+  display: grid;
+  align-content: start;
+}
+#chg .cf {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+#chg .cf:hover {
+  background: var(--ctl);
+}
+#chg .cf.on {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 2px 0 var(--accent);
+}
+#chg .cf b {
+  font:
+    700 var(--fs-2xs) ui-monospace,
+    monospace;
+  color: var(--working-ink);
+  width: 10px;
+  flex: none;
+}
+#chg .cf b.a {
+  color: var(--pr-open);
+}
+#chg .cf b.d {
+  color: var(--pr-closed);
+}
+#chg .cf .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  min-width: 0;
+  flex: 1;
+}
+#chg .cf .nm .dir {
+  color: var(--muted);
+}
+#chg .cf em {
+  font-style: normal;
+  flex: none;
+}
+#chg .cdiff {
+  overflow: auto;
+  font:
+    var(--fs-sm)/19px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+#chg .fh {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--ink);
+}
+#chg .fh em {
+  margin-left: auto;
+  font-style: normal;
+}
+#chg .dl {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 40px 18px minmax(0, 1fr);
+  white-space: pre;
+  color: var(--ink);
+  min-width: max-content;
+}
+#chg .dl .na,
+#chg .dl .nb {
+  text-align: right;
+  padding-right: 8px;
+  color: var(--muted);
+  opacity: 0.7;
+  font-size: var(--fs-xs);
+  user-select: none;
+}
+#chg .dl .sg {
+  position: relative;
+  color: var(--muted);
+  user-select: none;
+}
+#chg .dl code {
+  font: inherit;
+  padding-right: 16px;
+}
+#chg .dl.add {
+  background: color-mix(in srgb, var(--pr-open) 14%, transparent);
+}
+#chg .dl.add .sg,
+#chg .dl.add .nb {
+  color: var(--pr-open);
+  opacity: 1;
+}
+#chg .dl.del {
+  background: color-mix(in srgb, var(--pr-closed) 14%, transparent);
+}
+#chg .dl.del .sg,
+#chg .dl.del .na {
+  color: var(--pr-closed);
+  opacity: 1;
+}
+#chg .dl.hunk {
+  background: color-mix(in srgb, var(--hl-fn) 10%, transparent);
+}
+#chg .dl.hunk code {
+  color: var(--hl-meta);
+}
+#chg .dl.meta code {
+  color: var(--muted);
+  font-style: italic;
+}
+#chg .dlp {
+  position: absolute;
+  left: -2px;
+  top: 1px;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-2);
+  background: var(--accent);
+  color: var(--bg);
+  font:
+    700 var(--fs-sm)/17px -apple-system,
+    sans-serif;
+  cursor: pointer;
+  opacity: 0;
+}
+#chg :is(.dl:hover, .dl.held) .dlp,
+#chg .dlp:focus-visible {
+  opacity: 1;
+}
+/* a range's lines (2026-10-28), as GitHub's: tinted and barred while its box is open, a drag picks them or its comment is under the pointer */
+#chg .dl:is(.sel, .lit) {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--accent) 16%, transparent),
+    color-mix(in srgb, var(--accent) 16%, transparent)
+  );
+  box-shadow: inset 3px 0 var(--accent);
+}
+#chg .lnote {
+  display: grid;
+  gap: 8px;
+  margin: 4px 14px 8px 98px;
+  padding: 9px 11px;
+  border-radius: var(--r-3);
+  border: 1px solid var(--accent);
+  background: var(--bg);
+  font:
+    var(--fs-md)/1.45 -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  color: var(--ink);
+  max-width: 640px;
+}
+#chg .lnote .who {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#chg .lnote textarea {
+  font: inherit;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--panel);
+  color: inherit;
+  outline: none;
+}
+#chg .lnote textarea:focus {
+  border-color: var(--accent);
+}
+#chg .lnote .row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+#chg .lnote .row .sp {
+  flex: 1;
+}
+/* a review's comments (2026-10-28): each under its line until the review goes to Claude, the bar at the tab's foot */
+#chg .lcmt {
+  display: grid;
+  gap: 3px;
+  margin: 4px 14px 8px 98px;
+  padding: 7px 11px;
+  border-radius: var(--r-3);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+  font:
+    var(--fs-md)/1.45 -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  color: var(--ink);
+  max-width: 640px;
+}
+#chg .lcmt .who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#chg .lcmt .who .cbtn {
+  padding: 1px 7px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+#chg .lcmt .who .cbtn:first-of-type {
+  margin-left: auto;
+}
+#chg .lcmt .tx {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#chg .cgone {
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+#chg .cgone .ghd {
+  padding: 4px 12px 0;
+  font:
+    600 var(--fs-xs) -apple-system,
+    sans-serif;
+  color: var(--muted);
+}
+#chg .cgone .gone {
+  margin: 6px 12px;
+}
+#chg .dl.cmted :is(.na, .nb) {
+  color: var(--accent);
+  opacity: 1;
+  font-weight: 700;
+}
+#chg .cf .rc {
+  font:
+    600 var(--fs-2xs) -apple-system,
+    sans-serif;
+  font-style: normal;
+  flex: none;
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: var(--r-5);
+  background: var(--accent);
+  color: var(--bg);
+  text-align: center;
+  line-height: 15px;
+}
+#chg .crev {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+#chg .crev .rh {
+  align-self: center;
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+#chg .crev .rh b {
+  color: var(--ink);
+}
+#chg .crev textarea {
+  flex: 1;
+  min-width: 0;
+  font:
+    var(--fs-md)/1.4 -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  resize: none;
+  field-sizing: content;
+  max-height: 8lh;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: var(--ink);
+  outline: none;
+}
+#chg .crev textarea:focus {
+  border-color: var(--accent);
+}
+#chg .crev .cbtn {
+  flex: none;
+}
+#chg .cempty {
+  padding: 40px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+#chg .cempty.sm {
+  padding: 10px 16px;
+  text-align: left;
+}
+/* the header's +n −n (2026-10-10), the drawn black's inks, before the your-move tag and the PR chips */
+.shead .hdiff {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  flex: none;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  font:
+    600 var(--fs-sm) ui-monospace,
+    monospace;
+  cursor: pointer;
+}
+.shead .hdiff:hover {
+  background: var(--ctl-hi);
+}
+.shead .hdiff .a {
+  color: var(--pr-open);
+}
+.shead .hdiff .d {
+  color: var(--pr-closed);
+}

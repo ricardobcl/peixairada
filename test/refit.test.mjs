@@ -22,11 +22,18 @@ async function screen({ rows = 24, lines = 100 } = {}) {
   return t;
 }
 const view = t => {
-  const b = t.buffer.active, out = [];
+  const b = t.buffer.active,
+    out = [];
   for (let i = 0; i < t.rows; i++) out.push((b.getLine(b.viewportY + i)?.translateToString(true) || '').trim());
   return out;
 };
-const lastFilled = t => { let last = -1; view(t).forEach((r, i) => { if (r) last = i; }); return last; };
+const lastFilled = t => {
+  let last = -1;
+  view(t).forEach((r, i) => {
+    if (r) last = i;
+  });
+  return last;
+};
 
 test('a grow pulls the scrollback down: the bottom row still has the live region on it', async () => {
   const t = await screen();
@@ -73,33 +80,66 @@ test('done comes once the parked resize has landed, so a shrink that follows a g
   // the holder's order (lib/termhold.mjs, resizeScreen): the next resize waits for the last one's done (2026-10-03)
   const t = await screen();
   const sizes = [];
-  await new Promise(done => refit(t, 30, () => t.resize(80, 30), () => { sizes.push([t.cols, t.rows]); refit(t, 8, () => t.resize(70, 8), done); }));
+  await new Promise(done =>
+    refit(
+      t,
+      30,
+      () => t.resize(80, 30),
+      () => {
+        sizes.push([t.cols, t.rows]);
+        refit(t, 8, () => t.resize(70, 8), done);
+      },
+    ),
+  );
   await write(t, '');
   assert.deepEqual(sizes, [[80, 30]], 'the grow was applied before done');
   assert.deepEqual([t.cols, t.rows], [70, 8], 'the shrink after it is what the screen ends at');
 });
 
 // The page's copy, as it stands in its part of the page (public/js/chat/xterm.js) — run against the same screens (2026-10-14)
-const page = await import('node:fs').then(({ readFileSync }) => readFileSync(new URL('../public/js/chat/xterm.js', import.meta.url), 'utf8'));
-const refitTerm = new Function(`return ${page.match(/function refitTerm\(xt, rows, resize, done = \(\) => \{\}\) \{\n[\s\S]*?\n {2}\}\n/)[0]}`)();
+const page = await import('node:fs').then(({ readFileSync }) =>
+  readFileSync(new URL('../public/js/chat/xterm.js', import.meta.url), 'utf8'),
+);
+const refitTerm = new Function(
+  `return ${page.match(/function refitTerm\(xt, rows, resize, done = \(\) => \{\}\) \{\n[\s\S]*?\n\}\n/)[0]}`,
+)();
 const pageRefitted = (t, cols, rows) => new Promise(r => refitTerm(t, rows, () => t.resize(cols, rows), r));
-const cursorLine = t => { const b = t.buffer.active; return b.getLine(b.baseY + b.cursorY).translateToString(true).trim(); };
+const cursorLine = t => {
+  const b = t.buffer.active;
+  return b
+    .getLine(b.baseY + b.cursorY)
+    .translateToString(true)
+    .trim();
+};
 
 test('a scroll region stops the park at its bottom margin: the cursor comes back to its own line, in both copies (2026-10-14)', async () => {
-  for (const [name, grow] of [['lib/refit.mjs', refitted], ['the page\'s refitTerm', pageRefitted]]) {
+  for (const [name, grow] of [
+    ['lib/refit.mjs', refitted],
+    ["the page's refitTerm", pageRefitted],
+  ]) {
     const t = await screen({ rows: 20, lines: 60 });
-    await write(t, '\x1b[1;15r\x1b[8;1H');   // a DECSTBM renderer's region over the top 15 rows, the cursor on row 8 in it
+    await write(t, '\x1b[1;15r\x1b[8;1H'); // a DECSTBM renderer's region over the top 15 rows, the cursor on row 8 in it
     const before = cursorLine(t);
     await grow(t, 80, 30);
-    assert.equal(cursorLine(t), before, `${name}: the cursor is on the line it was on — a CUU of the whole park put it 5 rows up`);
+    assert.equal(
+      cursorLine(t),
+      before,
+      `${name}: the cursor is on the line it was on — a CUU of the whole park put it 5 rows up`,
+    );
   }
 });
 
-test('the page\'s copy parks from where the cursor is once what was written before has landed (2026-10-14)', async () => {
+test("the page's copy parks from where the cursor is once what was written before has landed (2026-10-14)", async () => {
   const t = await screen({ rows: 20, lines: 60 });
-  t.write('\x1b[5A');   // queued, not parsed yet: the cursor read at the call is 5 rows too low
+  t.write('\x1b[5A'); // queued, not parsed yet: the cursor read at the call is 5 rows too low
   await pageRefitted(t, 80, 30);
-  const ref = await screen({ rows: 20, lines: 60 }); await write(ref, '\x1b[5A'); await refitted(ref, 80, 30);
-  assert.equal(cursorLine(t), cursorLine(ref), 'on the same line as the holder\'s screen, which reads it behind the queue');
+  const ref = await screen({ rows: 20, lines: 60 });
+  await write(ref, '\x1b[5A');
+  await refitted(ref, 80, 30);
+  assert.equal(
+    cursorLine(t),
+    cursorLine(ref),
+    "on the same line as the holder's screen, which reads it behind the queue",
+  );
   assert.deepEqual(view(t), view(ref), 'and the same screen');
 });

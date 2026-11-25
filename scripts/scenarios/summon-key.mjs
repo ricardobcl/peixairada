@@ -6,14 +6,23 @@ export const meta = { server: true, fixture: 'auto' };
 const HUB = `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };`;
 
 export default async function (ctx) {
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#fishRow').hidden`), true, 'in a browser the row is not shown');
+  ctx.assert.equal(
+    await ctx.evaluate(`document.querySelector('#fishRow').hidden`),
+    true,
+    'in a browser the row is not shown',
+  );
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: HUB });
   await ctx.reload();
-  const told = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'summon').pop())`).then(JSON.parse);
+  const told = () =>
+    ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'summon').pop())`).then(JSON.parse);
   ctx.assert.deepEqual(await told(), { type: 'summon', code: '', mods: [] }, 'no key by default');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#fishRow').hidden`), false, 'in the app it is');
-  await ctx.cmd('Comma'); await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
-  const press = (code, key, m) => ctx.evaluate(`dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', key: '${key}', bubbles: true, cancelable: true, ${m} }))`);
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+  const press = (code, key, m) =>
+    ctx.evaluate(
+      `dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', key: '${key}', bubbles: true, cancelable: true, ${m} }))`,
+    );
   const btn = () => ctx.evaluate(`document.querySelector('#summonSet').textContent`);
   await ctx.evaluate(`document.querySelector('#summonSet').click()`);
   ctx.assert.equal(await btn(), 'Press the keys…');
@@ -29,8 +38,13 @@ export default async function (ctx) {
   ctx.assert.equal(await btn(), '⌃⌥⌘F', 'the key, spelled');
   ctx.assert.deepEqual(await told(), { type: 'summon', code: 'KeyF', mods: ['ctrl', 'alt', 'cmd'] }, 'told to the app');
   await ctx.reload();
-  ctx.assert.deepEqual(await told(), { type: 'summon', code: 'KeyF', mods: ['ctrl', 'alt', 'cmd'] }, 'and again at each load');
-  await ctx.cmd('Comma'); await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+  ctx.assert.deepEqual(
+    await told(),
+    { type: 'summon', code: 'KeyF', mods: ['ctrl', 'alt', 'cmd'] },
+    'and again at each load',
+  );
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
   await ctx.evaluate(`document.querySelector('#summonSet').click()`);
   await press('F18', 'F18', 'metaKey: false');
   ctx.assert.equal(await btn(), 'F18', 'an F key alone will do');

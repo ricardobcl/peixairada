@@ -1,59 +1,201 @@
-  /* The type scale and the radii (2026-10-12): eighteen sizes from 9 to 19 px in half-pixel steps and fourteen radii
+/* The type scale and the radii (2026-10-12): eighteen sizes from 9 to 19 px in half-pixel steps and fourteen radii
      were one of each a rule wanted. Seven sizes, five radii; a new rule takes one of them (a fit that needs its own —
      the initials in a 16 px face — keeps its number). */
-  :root { --fs-2xs: 10px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
-    --r-1: 3px; --r-2: 4px; --r-3: 6px; --r-4: 10px; --r-5: 14px; }
-  /* The board's own light and dark are round XV's Inset (2026-11-01, T3): a frame — the window's ground, the sidebar, the
+:root {
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --r-1: 3px;
+  --r-2: 4px;
+  --r-3: 6px;
+  --r-4: 10px;
+  --r-5: 14px;
+}
+/* The board's own light and dark are round XV's Inset (2026-11-01, T3): a frame — the window's ground, the sidebar, the
      status bar, the tiles' wallpaper (--frame) — and the chat a sheet laid in it a step lighter; nothing in light above
      L* 95, the whites gone; in dark the frame Settings' grey, a step lighter than the chat (2026-11-01, round XVIII:
      near-black before, which left the list and the status bar black). */
-  :root {
-    --bg: #f1f0ec; --panel: #f5f4f0; --ink: #21211e; --muted: #5c5b54; --line: #d6d5cd; --accent: #ad5030; --frame: #dedcd6; --bar: var(--frame);
-    --working: #d9a82a; --working-ink: #795b01; --idle: #116e3d; --needs: #a61e22; --ended: #a1a19a; --unread: #9c4426;   /* --working is a fill; set as text, its ink */
-    --watch: #066b6b;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
-    --ag-l: .7; --ag-c: .12;   /* an agent's dot (.asdot): its colour's lightness and chroma, the hue Claude Code's name for it */
-    --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
-    --prg: 28%;          /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
-    --user-bg: #e5e3db; --tool-bg: #e9e8e2; --code-bg: #e7e5de; --code-line: #d5d3ca;
-    --code-ink: #9b3d1c; --inline-bg: rgb(40 38 30 / .07);
-    --you: #116a60; --snip-claude: #42413b; --vscode: #0060ae;
-    --pr-open: #086231; --pr-merged: #6533bf; --pr-closed: #a31b20; --pr-draft: #55554f;
-    --tk-todo: #4a5566; --tk-doing: #0f51a8; --tk-done: #00613e;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper */
-    --term-bg: #eae8e2; --term-sel: rgba(173, 80, 48, .28);   /* the accent, as ::selection is */
-    --nocolor: #b3b3ac;   /* light gray: a project without a colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
-    /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
-    --hl-com: #5f5e57; --hl-key: #9c27a0; --hl-str: #36722c; --hl-num: #82560f;
-    --hl-fn: #2560be; --hl-cls: #855e06; --hl-var: #b5392c; --hl-meta: #536684;
-    /* Motion (2026-10-11): one ease out for what settles, and a spring for what arrives with a touch of overshoot — a
+:root {
+  --bg: #f1f0ec;
+  --panel: #f5f4f0;
+  --ink: #21211e;
+  --muted: #5c5b54;
+  --line: #d6d5cd;
+  --accent: #ad5030;
+  --frame: #dedcd6;
+  --bar: var(--frame);
+  --working: #d9a82a;
+  --working-ink: #795b01;
+  --idle: #116e3d;
+  --needs: #a61e22;
+  --ended: #a1a19a;
+  --unread: #9c4426; /* --working is a fill; set as text, its ink */
+  --watch: #066b6b; /* a monitor or a background command still running: cool, because nothing is waiting on you */
+  --ag-l: 0.7;
+  --ag-c: 0.12; /* an agent's dot (.asdot): its colour's lightness and chroma, the hue Claude Code's name for it */
+  --spend: #e8782a; /* the plan usage's bars and rings: what is spent, in orange */
+  --prg: 28%; /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
+  --user-bg: #e5e3db;
+  --tool-bg: #e9e8e2;
+  --code-bg: #e7e5de;
+  --code-line: #d5d3ca;
+  --code-ink: #9b3d1c;
+  --inline-bg: rgb(40 38 30 / 0.07);
+  --you: #116a60;
+  --snip-claude: #42413b;
+  --vscode: #0060ae;
+  --pr-open: #086231;
+  --pr-merged: #6533bf;
+  --pr-closed: #a31b20;
+  --pr-draft: #55554f;
+  --tk-todo: #4a5566;
+  --tk-doing: #0f51a8;
+  --tk-done: #00613e; /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper */
+  --term-bg: #eae8e2;
+  --term-sel: rgba(173, 80, 48, 0.28); /* the accent, as ::selection is */
+  --nocolor: #b3b3ac; /* light gray: a project without a colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
+  /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
+  --hl-com: #5f5e57;
+  --hl-key: #9c27a0;
+  --hl-str: #36722c;
+  --hl-num: #82560f;
+  --hl-fn: #2560be;
+  --hl-cls: #855e06;
+  --hl-var: #b5392c;
+  --hl-meta: #536684;
+  /* Motion (2026-10-11): one ease out for what settles, and a spring for what arrives with a touch of overshoot — a
        linear() curve of a damped oscillator (damping .6) sampled at 40 stops; --t-hover the small controls' ease. The
        script reads the spring from here (SPRING), so the curve is written once. */
-    --ease-out: cubic-bezier(.2, .7, .2, 1); --t-hover: .12s;
-    /* Grain (2026-10-11): a tile of still noise, faint white speckles, laid over the board's broad gradients — the chat
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-hover: 0.12s;
+  /* Grain (2026-10-11): a tile of still noise, faint white speckles, laid over the board's broad gradients — the chat
        header's and the tiles' wallpaper — where a dark gradient across a wide box bands into steps. */
-    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-    --spring: linear(0, .025, .09, .182, .29, .405, .52, .63, .731, .819, .895, .957, 1.006, 1.043, 1.068, 1.085, 1.093, 1.095, 1.092, 1.085, 1.076, 1.065, 1.055, 1.044, 1.033, 1.024, 1.016, 1.009, 1.003, .999, .995, .993, .992, .991, .991, .991, .992, .993, .994, .995, 1);
-    color-scheme: light;
-  }
-  /* The board's appearance is its own (2026-10-12): data-theme on the root, dark or light — set before the first paint by
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --spring: linear(
+    0,
+    0.025,
+    0.09,
+    0.182,
+    0.29,
+    0.405,
+    0.52,
+    0.63,
+    0.731,
+    0.819,
+    0.895,
+    0.957,
+    1.006,
+    1.043,
+    1.068,
+    1.085,
+    1.093,
+    1.095,
+    1.092,
+    1.085,
+    1.076,
+    1.065,
+    1.055,
+    1.044,
+    1.033,
+    1.024,
+    1.016,
+    1.009,
+    1.003,
+    0.999,
+    0.995,
+    0.993,
+    0.992,
+    0.991,
+    0.991,
+    0.991,
+    0.992,
+    0.993,
+    0.994,
+    0.995,
+    1
+  );
+  color-scheme: light;
+}
+/* The board's appearance is its own (2026-10-12): data-theme on the root, dark or light — set before the first paint by
      the head's script and kept by applySkin from the theme worn, which follows macOS only when asked (prefs.skinFollow).
      Every dark rule reads it; none reads prefers-color-scheme. */
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #1c1c1a; --panel: #22221f; --ink: #e6e4dc; --muted: #9d9c92; --line: #2e2e2b; --accent: #e08a68; --frame: #282825;
-    --user-bg: #2a2a27; --tool-bg: #242422; --code-bg: #131312; --code-line: #30302c; --ended: #5d5d58;
-    --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
-    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
-    --pr-open: #3fb950; --pr-merged: #ae81ff; --pr-closed: #ff6258; --needs: #f36464; --pr-draft: #9a9a93; --working-ink: #d9a82a; --idle: #2f9e5b;
-    --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97; --ag-l: .74; --ag-c: .11;
-    --term-bg: #121211; --term-sel: rgba(224, 138, 104, .32);
-    --hl-com: #808078; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
-    --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
-  }
-  * { box-sizing: border-box; }
-  /* A control's fill, and its fill under the pointer (2026-09-28): the ink over whatever is under it. Set where --ink is
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1c1c1a;
+  --panel: #22221f;
+  --ink: #e6e4dc;
+  --muted: #9d9c92;
+  --line: #2e2e2b;
+  --accent: #e08a68;
+  --frame: #282825;
+  --user-bg: #2a2a27;
+  --tool-bg: #242422;
+  --code-bg: #131312;
+  --code-line: #30302c;
+  --ended: #5d5d58;
+  --code-ink: #e0a284;
+  --inline-bg: rgba(255, 255, 255, 0.075);
+  --you: #4fb8a8;
+  --snip-claude: #c9c7bd;
+  --vscode: #4aa5f0;
+  --nocolor: #66665f;
+  --watch: #45c8c8;
+  --spend: #f28a3c;
+  --prg: 44%;
+  --pr-open: #3fb950;
+  --pr-merged: #ae81ff;
+  --pr-closed: #ff6258;
+  --needs: #f36464;
+  --pr-draft: #9a9a93;
+  --working-ink: #d9a82a;
+  --idle: #2f9e5b;
+  --tk-todo: #8c9bab;
+  --tk-doing: #579dff;
+  --tk-done: #4bce97;
+  --ag-l: 0.74;
+  --ag-c: 0.11;
+  --term-bg: #121211;
+  --term-sel: rgba(224, 138, 104, 0.32);
+  --hl-com: #808078;
+  --hl-key: #c678dd;
+  --hl-str: #98c379;
+  --hl-num: #d19a66;
+  --hl-fn: #61afef;
+  --hl-cls: #e5c07b;
+  --hl-var: #e06c75;
+  --hl-meta: #8fa6c4;
+}
+* {
+  box-sizing: border-box;
+}
+/* A control's fill, and its fill under the pointer (2026-09-28): the ink over whatever is under it. Set where --ink is
      (2026-10-03; on every element before — two colour mixes resolved on each transcript node and terminal span): the
      root, and the two places that borrow the dark theme's ink, so it follows a black card and the header's black. A new
      rule that sets --ink sets these two beside it. */
-  :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: var(--fs-base)/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }   /* the board, then the status bar */
-
+:root,
+.card.black:is(:hover, .active, .qsel),
+.shead > :not(h2, .details) {
+  --ctl: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    var(--fs-base)/1.45 -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+} /* the board, then the status bar */

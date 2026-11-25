@@ -1,128 +1,486 @@
-  /* The card's age (2026-09-27, later; top left under the pointer only for an afternoon, the title row's end before):
+/* The card's age (2026-09-27, later; top left under the pointer only for an afternoon, the title row's end before):
      in the top row after the spacer, before the ✓ / ↩ and the F, 10 px — the tooltip says when you last wrote and when
      Claude last replied. Every card has the row now, so it is 18 px at least (the marks' height) and a tick appearing
      changes no card's height. Only under the pointer (2026-09-27, later still): transparent at rest but keeping its
      room, so nothing in the row moves when it comes — the one mark there that is a reading, not a state. */
-  /* The age and the F moved beside the title on 2026-09-28: after it and its chips, before the unread
+/* The age and the F moved beside the title on 2026-09-28: after it and its chips, before the unread
      count, on its first line — 18 px, the title's line. */
-  .card .trow .time { flex: none; font-size: var(--fs-2xs); line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
-  .card:hover .trow .time { opacity: .8; }
-  /* on Fable (2026-09-27): a stylized F with a spark, in the accent — the card's own ink on the solid tint */
-  .card .trow .fable { color: var(--accent); flex: none; display: inline-flex; align-items: center; height: 18px; }
-  .card .trow .fable .ic { width: 15px; height: 15px; }
-  .card:is(.active, :hover, .qsel) .fable { color: inherit; }
-  .card .top .act { height: 18px; }
-  .card .title { margin-top: 4px; font-size: var(--fs-md); font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .card .snip { margin-top: 5px; font-size: var(--fs-sm); line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .card .snip.you { -webkit-line-clamp: 2; }
-  /* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
+.card .trow .time {
+  flex: none;
+  font-size: var(--fs-2xs);
+  line-height: 18px;
+  color: inherit;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.card:hover .trow .time {
+  opacity: 0.8;
+}
+/* on Fable (2026-09-27): a stylized F with a spark, in the accent — the card's own ink on the solid tint */
+.card .trow .fable {
+  color: var(--accent);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+}
+.card .trow .fable .ic {
+  width: 15px;
+  height: 15px;
+}
+.card:is(.active, :hover, .qsel) .fable {
+  color: inherit;
+}
+.card .top .act {
+  height: 18px;
+}
+.card .title {
+  margin-top: 4px;
+  font-size: var(--fs-md);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.card .snip {
+  margin-top: 5px;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.card .snip.you {
+  -webkit-line-clamp: 2;
+}
+/* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
      compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
-  #sessions[data-cards="medium"] .card .snip.older, #sessions[data-cards="compact"] .card .snip { display: none; }
-  /* …and its words on one line each (2026-11-03; a switch to try, prefs.cardsSnipOne → data-snipone): medium's last word, large's prompt and reply */
-  #sessions[data-snipone] .card .snip { -webkit-line-clamp: 1; }
-  /* …and compact's own switch, one height for every card (2026-09-29; data-even, prefs.cardsEven): the title on one
+#sessions[data-cards='medium'] .card .snip.older,
+#sessions[data-cards='compact'] .card .snip {
+  display: none;
+}
+/* …and its words on one line each (2026-11-03; a switch to try, prefs.cardsSnipOne → data-snipone): medium's last word, large's prompt and reply */
+#sessions[data-snipone] .card .snip {
+  -webkit-line-clamp: 1;
+}
+/* …and compact's own switch, one height for every card (2026-09-29; data-even, prefs.cardsEven): the title on one
      line, the question left to the card's blinking edge, and the *your move* line kept (the same morning: "the same
      height should preserve the 'your move' row") — on a card without one, an invisible one of the same size holds its
      place (.moveslot, always in the markup and shown only here; not .prmove, which the harness reads the real line by),
      so every card is the top row, one title line and that row. */
-  .card .state.moveslot { display: none; }
-  /* The live line (fillLive, 2026-10-11): one line of what is happening now — a monitor's newest event — each new one
+.card .state.moveslot {
+  display: none;
+}
+/* The live line (fillLive, 2026-10-11): one line of what is happening now — a monitor's newest event — each new one
      rolled in from below; the line's spans share one grid cell while they swap. Not at compact. */
-  .card .state.live { display: grid; margin-top: 4px; overflow: hidden; font: var(--fs-xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
-  .card .state.live:empty { display: none; }
-  .card .state.live .ll { grid-area: 1 / 1; display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; }
-  .card .state.live .ll > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .card .state.live .ic { width: 11px; height: 11px; flex: none; color: var(--watch); }
-  .card .state.live { perspective: 160px; }
-  .card .state.live b { flex: none; font: 600 var(--fs-xs)/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
-  #sessions[data-cards="compact"] .card .state.live:not(.wake) { display: none; }   /* a wake-up is the reason it is Watching: at every size (2026-10-31) */
-  #sessions[data-even] .card .state.live.wake { display: none; }
-  #sessions[data-cards="compact"]:not([data-hide~="agents"]) .card .state.live.agwho:not(:empty) { display: grid; }   /* a card whose agents are folded: who stepped last, at every size (2026-11-02) */
-  .card .state.live.agwho b:first-child { flex: 0 1 auto; max-width: 48%; overflow: hidden; text-overflow: ellipsis; }
-  .card .state.live.wake .ll > span b { font: inherit; font-weight: 700; color: var(--watch); }
-  .card .state.live .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  /* A chat's agents on its card (2026-11-02, round XX; fillAgents): a row each, what it was asked and what it does now, its age
+.card .state.live {
+  display: grid;
+  margin-top: 4px;
+  overflow: hidden;
+  font:
+    var(--fs-xs)/16px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--muted);
+}
+.card .state.live:empty {
+  display: none;
+}
+.card .state.live .ll {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.card .state.live .ll > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.card .state.live .ic {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  color: var(--watch);
+}
+.card .state.live {
+  perspective: 160px;
+}
+.card .state.live b {
+  flex: none;
+  font:
+    600 var(--fs-xs)/16px -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  color: var(--ink);
+}
+#sessions[data-cards='compact'] .card .state.live:not(.wake) {
+  display: none;
+} /* a wake-up is the reason it is Watching: at every size (2026-10-31) */
+#sessions[data-even] .card .state.live.wake {
+  display: none;
+}
+#sessions[data-cards='compact']:not([data-hide~='agents']) .card .state.live.agwho:not(:empty) {
+  display: grid;
+} /* a card whose agents are folded: who stepped last, at every size (2026-11-02) */
+.card .state.live.agwho b:first-child {
+  flex: 0 1 auto;
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card .state.live.wake .ll > span b {
+  font: inherit;
+  font-weight: 700;
+  color: var(--watch);
+}
+.card .state.live .ic.st {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* A chat's agents on its card (2026-11-02, round XX; fillAgents): a row each, what it was asked and what it does now, its age
      on the right — filled after the render, so a step keeps the card's node. A shape for each state, colour on top; the arc
      turns on the ring's clock (`ring`, phased), and only while at work. A card told not to shows none. */
-  .card .trow .chip.agents { display: inline-flex; align-items: center; gap: 2px; flex: none; max-width: none; font-family: inherit; cursor: pointer; }
-  .card .trow .chip.agents[hidden] { display: none; }
-  .card .trow .chip.agents:hover { background: color-mix(in srgb, var(--working) 28%, transparent); }
-  .card .trow .chip.agents.bad { color: var(--needs); background: color-mix(in srgb, var(--needs) 16%, transparent); }
-  .agcar { width: 10px; height: 10px; flex: none; transition: transform .18s var(--ease-out); transform: rotate(-90deg); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-  .chip.agents.on .agcar, .agr.open .agcar { transform: none; }
-  .agl { display: grid; gap: 5px; margin-top: 7px; min-width: 0; }
-  .agl[hidden] { display: none; }
-  .presence > .agl { flex: 0 0 100%; margin: 2px 0 0; padding-left: 28px; box-sizing: border-box; --glow: var(--working-ink); --lift: var(--working-ink); }
-  .presence > .agl > .agr { max-width: 64ch; }
-  #ov .ot .agl { margin-top: 6px; }
-  #sessions[data-hide~="agents"] .card .agl { display: none; }
-  /* same height is for a card with nothing more to say (2026-11-03): its agents' rows, or its folded line, take the place .moveslot holds and grow it as they must; a summary alone fits */
-  #sessions[data-even]:not([data-hide~="agents"]) .card :is(.agl:not([hidden]), .state.live.agwho:not(:empty)) ~ .moveslot { display: none; }
-  #sessions[data-even] .card .agl { margin-top: 4px; min-height: 16px; }
-  .agr { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 6px; align-items: baseline; font-size: var(--fs-xs); line-height: 15px; color: var(--ink); min-width: 0; cursor: pointer; }
-  .agr .agd { grid-column: 1; align-self: center; display: block; position: relative; width: 10px; height: 10px; }
-  .aga { grid-column: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-  .aga b { font-weight: 650; }
-  .agr:hover .aga { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; }
-  .agt { grid-column: 3; font-size: var(--fs-2xs); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .agn { grid-column: 2 / -1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .agn:empty { display: none; }
-  .agn b { color: var(--ink); font-weight: 600; opacity: .85; }
-  .agr[data-k^="_"], .agr[data-st="done"] .aga, .agr[data-st="stop"] .aga, .agr[data-st="joined"] .aga { color: var(--muted); font-weight: 400; }
-  .agr[data-st="quiet"] .agt { color: var(--working-ink); font-weight: 600; }
-  .agr[data-st="wait"] .agt { color: var(--watch); }
-  .agr[data-st="fail"] :is(.agt, .agn) { color: var(--needs); font-weight: 500; }
-  .agbad { color: var(--needs); font-weight: 600; }
-  .agr[data-st="more"] .agd { visibility: hidden; }
-  .agd::before, .agd::after { content: ''; position: absolute; inset: 0; }
-  .agr[data-st="run"] > .agd::before { border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--lift, var(--working)) 22%, transparent); border-top-color: var(--glow, var(--working)); animation: ring 1.4s linear infinite; }
-  .agr[data-st="quiet"] > .agd::before { border-radius: 50%; border: 1.5px dotted var(--working-ink); }
-  .agr[data-st="wait"] > .agd::before { border-radius: 50%; border: 1.5px dashed var(--watch); }
-  .agr[data-st="joined"] > .agd::before { inset: 2px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); }
-  .agr[data-st="done"] > .agd::before { inset: 1px 0 0 1px; border: solid var(--idle); border-width: 0 0 1.6px 1.6px; width: 8px; height: 4px; transform: rotate(-45deg) translate(1px, 0); }
-  .agr[data-st="fail"] > .agd::before, .agr[data-st="fail"] > .agd::after { inset: auto; left: 0; top: 4.2px; width: 10px; height: 1.6px; background: var(--needs); transform: rotate(45deg); }
-  .agr[data-st="fail"] > .agd::after { transform: rotate(-45deg); }
-  .agr[data-st="stop"] > .agd::before { inset: 2px; background: var(--muted); }
-  :root[data-frame="light"] #slist .card .agd { --glow: var(--lift); }   /* the ring's light is near white: on a light frame, the colour */
-  /* …unless cards go by lane (2026-10-12, data-bylane, prefs.cardsByLane): a card in a lane that wants you is large. */
-  #sessions[data-bylane] .card.roomy .snip { display: -webkit-box; }
-  #sessions[data-bylane] .card.roomy .state.live:not(:empty) { display: grid; }
-  #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
-  #sessions[data-even] .card .state.needs-input { display: none; }
-  #sessions[data-even] .card .state.stopped { display: none; }   /* one height: the words in the card's .vh */
-  #sessions[data-even] .card .state.moveslot { display: flex; visibility: hidden; }
-  /* the rows hold the height, not what is in them (2026-11-02): a chip or a line with metrics of its own moved a card and all under it */
-  #sessions[data-even] .card :is(.top, .trow) { height: 18px; }
-  #sessions[data-even] .card .state:is(.prmove, .prans, .moveslot) { height: 16px; }
-  /* One line (2026-11-03, round XXII's S1; prefs.cards 'line' → data-line, beside data-even and compact's rules): same height's third
+.card .trow .chip.agents {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  max-width: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.card .trow .chip.agents[hidden] {
+  display: none;
+}
+.card .trow .chip.agents:hover {
+  background: color-mix(in srgb, var(--working) 28%, transparent);
+}
+.card .trow .chip.agents.bad {
+  color: var(--needs);
+  background: color-mix(in srgb, var(--needs) 16%, transparent);
+}
+.agcar {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  transition: transform 0.18s var(--ease-out);
+  transform: rotate(-90deg);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chip.agents.on .agcar,
+.agr.open .agcar {
+  transform: none;
+}
+.agl {
+  display: grid;
+  gap: 5px;
+  margin-top: 7px;
+  min-width: 0;
+}
+.agl[hidden] {
+  display: none;
+}
+.presence > .agl {
+  flex: 0 0 100%;
+  margin: 2px 0 0;
+  padding-left: 28px;
+  box-sizing: border-box;
+  --glow: var(--working-ink);
+  --lift: var(--working-ink);
+}
+.presence > .agl > .agr {
+  max-width: 64ch;
+}
+#ov .ot .agl {
+  margin-top: 6px;
+}
+#sessions[data-hide~='agents'] .card .agl {
+  display: none;
+}
+/* same height is for a card with nothing more to say (2026-11-03): its agents' rows, or its folded line, take the place .moveslot holds and grow it as they must; a summary alone fits */
+#sessions[data-even]:not([data-hide~='agents'])
+  .card
+  :is(.agl:not([hidden]), .state.live.agwho:not(:empty))
+  ~ .moveslot {
+  display: none;
+}
+#sessions[data-even] .card .agl {
+  margin-top: 4px;
+  min-height: 16px;
+}
+.agr {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  column-gap: 6px;
+  align-items: baseline;
+  font-size: var(--fs-xs);
+  line-height: 15px;
+  color: var(--ink);
+  min-width: 0;
+  cursor: pointer;
+}
+.agr .agd {
+  grid-column: 1;
+  align-self: center;
+  display: block;
+  position: relative;
+  width: 10px;
+  height: 10px;
+}
+.aga {
+  grid-column: 2;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.aga b {
+  font-weight: 650;
+}
+.agr:hover .aga {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 2px;
+}
+.agt {
+  grid-column: 3;
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.agn {
+  grid-column: 2 / -1;
+  min-width: 0;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agn:empty {
+  display: none;
+}
+.agn b {
+  color: var(--ink);
+  font-weight: 600;
+  opacity: 0.85;
+}
+.agr[data-k^='_'],
+.agr[data-st='done'] .aga,
+.agr[data-st='stop'] .aga,
+.agr[data-st='joined'] .aga {
+  color: var(--muted);
+  font-weight: 400;
+}
+.agr[data-st='quiet'] .agt {
+  color: var(--working-ink);
+  font-weight: 600;
+}
+.agr[data-st='wait'] .agt {
+  color: var(--watch);
+}
+.agr[data-st='fail'] :is(.agt, .agn) {
+  color: var(--needs);
+  font-weight: 500;
+}
+.agbad {
+  color: var(--needs);
+  font-weight: 600;
+}
+.agr[data-st='more'] .agd {
+  visibility: hidden;
+}
+.agd::before,
+.agd::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.agr[data-st='run'] > .agd::before {
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--lift, var(--working)) 22%, transparent);
+  border-top-color: var(--glow, var(--working));
+  animation: ring 1.4s linear infinite;
+}
+.agr[data-st='quiet'] > .agd::before {
+  border-radius: 50%;
+  border: 1.5px dotted var(--working-ink);
+}
+.agr[data-st='wait'] > .agd::before {
+  border-radius: 50%;
+  border: 1.5px dashed var(--watch);
+}
+.agr[data-st='joined'] > .agd::before {
+  inset: 2px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--muted);
+}
+.agr[data-st='done'] > .agd::before {
+  inset: 1px 0 0 1px;
+  border: solid var(--idle);
+  border-width: 0 0 1.6px 1.6px;
+  width: 8px;
+  height: 4px;
+  transform: rotate(-45deg) translate(1px, 0);
+}
+.agr[data-st='fail'] > .agd::before,
+.agr[data-st='fail'] > .agd::after {
+  inset: auto;
+  left: 0;
+  top: 4.2px;
+  width: 10px;
+  height: 1.6px;
+  background: var(--needs);
+  transform: rotate(45deg);
+}
+.agr[data-st='fail'] > .agd::after {
+  transform: rotate(-45deg);
+}
+.agr[data-st='stop'] > .agd::before {
+  inset: 2px;
+  background: var(--muted);
+}
+:root[data-frame='light'] #slist .card .agd {
+  --glow: var(--lift);
+} /* the ring's light is near white: on a light frame, the colour */
+/* …unless cards go by lane (2026-10-12, data-bylane, prefs.cardsByLane): a card in a lane that wants you is large. */
+#sessions[data-bylane] .card.roomy .snip {
+  display: -webkit-box;
+}
+#sessions[data-bylane] .card.roomy .state.live:not(:empty) {
+  display: grid;
+}
+#sessions[data-even] .card .title {
+  -webkit-line-clamp: 1;
+}
+#sessions[data-even] .card .state.needs-input {
+  display: none;
+}
+#sessions[data-even] .card .state.stopped {
+  display: none;
+} /* one height: the words in the card's .vh */
+#sessions[data-even] .card .state.moveslot {
+  display: flex;
+  visibility: hidden;
+}
+/* the rows hold the height, not what is in them (2026-11-02): a chip or a line with metrics of its own moved a card and all under it */
+#sessions[data-even] .card :is(.top, .trow) {
+  height: 18px;
+}
+#sessions[data-even] .card .state:is(.prmove, .prans, .moveslot) {
+  height: 16px;
+}
+/* One line (2026-11-03, round XXII's S1; prefs.cards 'line' → data-line, beside data-even and compact's rules): same height's third
      row says the first thing there is to say, on one line — the question, the move, what it is doing, else the last word — and costs
      nothing, the row being paid for. Agents still grow the card. What comes before the words in the markup is told by siblings, a
      question and a move by the card's classes (.asking, .rowmove), the rows of agents by .agrows (agPaint). */
-  #sessions[data-line] .card .snip:not(.older) { display: -webkit-box; -webkit-line-clamp: 1; margin-top: 4px; height: 16px; font-size: var(--fs-xs); line-height: 16px; }
-  #sessions[data-line] .card .state.needs-input { display: flex; height: 16px; align-items: center; line-height: 16px; overflow: hidden; white-space: nowrap; }
-  #sessions[data-line]:not([data-hide~="live"]) .card .state.live:not(:empty) { display: grid; height: 16px; }
-  #sessions[data-line]:not([data-hide~="agents"]) .card.agrows .state.live, #sessions[data-line] .card.asking :is(.state.live, .snip), #sessions[data-line]:not([data-hide~="move"]) .card.rowmove :is(.state.live, .snip),
-  #sessions[data-line]:not([data-hide~="live"]) .card .state.live:not(:empty) ~ .snip, #sessions[data-line]:not([data-hide~="agents"]) .card .agl:not([hidden]) ~ .snip { display: none; }
-  #sessions[data-line] .card :is(.snip:not(.older), .state.needs-input) ~ .moveslot, #sessions[data-line]:not([data-hide~="live"]) .card .state.live:not(:empty) ~ .moveslot { display: none; }
-  :root[data-layout="sidebar"] #sessions[data-line] #slist .card.gone:not(.active) > .snip { opacity: 1; }   /* your word on a row with no process: dimmed it read 3.4:1 */
-  /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
+#sessions[data-line] .card .snip:not(.older) {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  margin-top: 4px;
+  height: 16px;
+  font-size: var(--fs-xs);
+  line-height: 16px;
+}
+#sessions[data-line] .card .state.needs-input {
+  display: flex;
+  height: 16px;
+  align-items: center;
+  line-height: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+#sessions[data-line]:not([data-hide~='live']) .card .state.live:not(:empty) {
+  display: grid;
+  height: 16px;
+}
+#sessions[data-line]:not([data-hide~='agents']) .card.agrows .state.live,
+#sessions[data-line] .card.asking :is(.state.live, .snip),
+#sessions[data-line]:not([data-hide~='move']) .card.rowmove :is(.state.live, .snip),
+#sessions[data-line]:not([data-hide~='live']) .card .state.live:not(:empty) ~ .snip,
+#sessions[data-line]:not([data-hide~='agents']) .card .agl:not([hidden]) ~ .snip {
+  display: none;
+}
+#sessions[data-line] .card :is(.snip:not(.older), .state.needs-input) ~ .moveslot,
+#sessions[data-line]:not([data-hide~='live']) .card .state.live:not(:empty) ~ .moveslot {
+  display: none;
+}
+:root[data-layout='sidebar'] #sessions[data-line] #slist .card.gone:not(.active) > .snip {
+  opacity: 1;
+} /* your word on a row with no process: dimmed it read 3.4:1 */
+/* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
      prompt that produced it recedes. */
-  .card .snip.claude { color: var(--snip-claude); }
-  .card .snip b { font-weight: 600; margin-right: 5px; display: inline; }
+.card .snip.claude {
+  color: var(--snip-claude);
+}
+.card .snip b {
+  font-weight: 600;
+  margin-right: 5px;
+  display: inline;
+}
 /* backticks in a title or a snippet (2026-10-12, ticks()): the transcript's inline code, a size down, no border */
-code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: var(--inline-bg); padding: .08em .3em; border-radius: var(--r-1); overflow-wrap: anywhere; hyphens: none; }
-  .card .snip.you b { color: var(--you); }
-  .card .snip.claude b { color: var(--accent); }
-  /* The speaker is a glyph, so it has to sit on the text baseline rather than above it, and it
+code.icode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--inline-bg);
+  padding: 0.08em 0.3em;
+  border-radius: var(--r-1);
+  overflow-wrap: anywhere;
+  hyphens: none;
+}
+.card .snip.you b {
+  color: var(--you);
+}
+.card .snip.claude b {
+  color: var(--accent);
+}
+/* The speaker is a glyph, so it has to sit on the text baseline rather than above it, and it
      must not become a line box of its own when the snippet wraps. */
-  .ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -.14em; flex: none; }
-  .card .snip .ic { width: 11px; height: 11px; }
-  .card .snip.claude .ic { width: 14px; height: 14px; vertical-align: -.24em; }
-  /* Only needs-input gets a status line: the dot says stale / working / your turn, this is the one
+.ic {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  vertical-align: -0.14em;
+  flex: none;
+}
+.card .snip .ic {
+  width: 11px;
+  height: 11px;
+}
+.card .snip.claude .ic {
+  width: 14px;
+  height: 14px;
+  vertical-align: -0.24em;
+}
+/* Only needs-input gets a status line: the dot says stale / working / your turn, this is the one
      state worth a word. Entrypoint, session name and branch live in the chat header. */
-  .card .state { font-size: var(--fs-xs); font-weight: 600; margin-top: 4px; }
-  /* A card's tickets, a stack (2026-10-04, then the PRs' too, whose matrix came later): the first on top at the row's end, three under it 5 px further left
+.card .state {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  margin-top: 4px;
+}
+/* A card's tickets, a stack (2026-10-04, then the PRs' too, whose matrix came later): the first on top at the row's end, three under it 5 px further left
      each, so a sliver of their colour shows, and every other one under the third; the pointer on the stack fans them
      all out side by side, the row makes room, and past the room the fan scrolls (fanWheel).
      Every chip is in the grid's first column — the right one: the grid runs right to left, so what overflows it does
@@ -135,26 +493,89 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      takes the folder's name down first and a fan wider than the row scrolls rather than push it. The margin's 5 px
      past the deepest sliver go under the row's gap. A lone chip has no --under: the template is invalid, the grid
      none, the chip its own width. */
-  .card .top .tprs { flex: 999 0 0; min-width: min-content; max-width: max-content; margin-left: -5px; display: grid; direction: rtl; grid-template-columns: 1fr repeat(var(--under), 0fr); column-gap: 5px;
-    overflow-x: auto; scrollbar-width: none; transition: grid-template-columns .3s var(--spring), column-gap .3s var(--spring); }
-  .card .top .tprs::-webkit-scrollbar { display: none; }
-  /* what a card leaves out (2026-10-21, Settings › Chat list › Show on a card) */
-  #sessions[data-hide~="prs"] .card .top .tmx, #sessions[data-hide~="tickets"] .card .top .tprs.ttks,
-  #sessions[data-hide~="rounds"] .card .prpips { display: none; }
-  /* …and the rest of it (2026-11-03, round XXII; a click on the card in Settings › Chat list). Same height keeps a hidden move's row. */
-  #sessions[data-hide~="tab"] .card .top .repo, #sessions[data-hide~="branch"] .card .top .chip.wtb, #sessions[data-hide~="where"] .card .top .chip:is(.elsewhere, .vsc, .rival), #sessions[data-hide~="watch"] .card .trow .chip.watch,
-  #sessions[data-hide~="fable"] .card .trow .fable, #sessions[data-hide~="unread"] .card .trow .badge, #sessions[data-hide~="move"] .card .state:is(.prmove, .prans), #sessions[data-hide~="live"] .card .state.live:not(.agwho) { display: none; }
-  #sessions[data-even][data-hide~="move"]:not([data-line]) .card .state:is(.prmove, .prans) { display: flex; visibility: hidden; }
-  :root[data-layout="sidebar"] #sessions[data-hide~="tab"] #slist .card .top { height: 18px; margin: 0 0 2px; }
-  .card .top .tprs:hover { grid-template-columns: 1fr repeat(var(--under), var(--span)); column-gap: 0; }
-  .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
-  .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
-  /* #slist: the small controls' one hover ease (below) is an :is() with ids in it, so it weighs an id. */
-  #slist .card .top .tprs > * { transition: transform .3s var(--spring), clip-path 0s .3s, color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), box-shadow var(--t-hover), scale .25s var(--spring); }
-  #slist .card .top .tprs:hover > * { transition-delay: 0s; }
-  /* Stacked, a chip over another has an edge of the panel's colour on its left, so an overlap reads; one under
+.card .top .tprs {
+  flex: 999 0 0;
+  min-width: min-content;
+  max-width: max-content;
+  margin-left: -5px;
+  display: grid;
+  direction: rtl;
+  grid-template-columns: 1fr repeat(var(--under), 0fr);
+  column-gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  transition:
+    grid-template-columns 0.3s var(--spring),
+    column-gap 0.3s var(--spring);
+}
+.card .top .tprs::-webkit-scrollbar {
+  display: none;
+}
+/* what a card leaves out (2026-10-21, Settings › Chat list › Show on a card) */
+#sessions[data-hide~='prs'] .card .top .tmx,
+#sessions[data-hide~='tickets'] .card .top .tprs.ttks,
+#sessions[data-hide~='rounds'] .card .prpips {
+  display: none;
+}
+/* …and the rest of it (2026-11-03, round XXII; a click on the card in Settings › Chat list). Same height keeps a hidden move's row. */
+#sessions[data-hide~='tab'] .card .top .repo,
+#sessions[data-hide~='branch'] .card .top .chip.wtb,
+#sessions[data-hide~='where'] .card .top .chip:is(.elsewhere, .vsc, .rival),
+#sessions[data-hide~='watch'] .card .trow .chip.watch,
+#sessions[data-hide~='fable'] .card .trow .fable,
+#sessions[data-hide~='unread'] .card .trow .badge,
+#sessions[data-hide~='move'] .card .state:is(.prmove, .prans),
+#sessions[data-hide~='live'] .card .state.live:not(.agwho) {
+  display: none;
+}
+#sessions[data-even][data-hide~='move']:not([data-line]) .card .state:is(.prmove, .prans) {
+  display: flex;
+  visibility: hidden;
+}
+:root[data-layout='sidebar'] #sessions[data-hide~='tab'] #slist .card .top {
+  height: 18px;
+  margin: 0 0 2px;
+}
+.card .top .tprs:hover {
+  grid-template-columns: 1fr repeat(var(--under), var(--span));
+  column-gap: 0;
+}
+.card .top .tprs > * {
+  grid-area: 1 / 1;
+  direction: ltr;
+  margin-left: 5px;
+  z-index: calc(999 - var(--i, 0));
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(calc(var(--d, 0) * -5px));
+}
+.card .top .tprs:hover > * {
+  transform: translateX(calc(var(--i, 0) * (-100% - 5px)));
+}
+/* #slist: the small controls' one hover ease (below) is an :is() with ids in it, so it weighs an id. */
+#slist .card .top .tprs > * {
+  transition:
+    transform 0.3s var(--spring),
+    clip-path 0s 0.3s,
+    color var(--t-hover),
+    border-color var(--t-hover),
+    background-color var(--t-hover),
+    box-shadow var(--t-hover),
+    scale 0.25s var(--spring);
+}
+#slist .card .top .tprs:hover > * {
+  transition-delay: 0s;
+}
+/* Stacked, a chip over another has an edge of the panel's colour on its left, so an overlap reads; one under
      another shows its sliver and no number (a chip still in outline is see-through), and is clipped to the sliver
      and its radius for the same reason — not until it has slid back under, and no longer from the moment it fans. */
-  .card .top .tprs:not(:hover) > :not(:last-child) { box-shadow: -1px 0 0 var(--panel); }
-  .card .top .tprs > :not(:first-child) { clip-path: inset(0 0 0 -2px); }
-  .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; clip-path: inset(0 calc(100% - 9px) 0 -2px); }
+.card .top .tprs:not(:hover) > :not(:last-child) {
+  box-shadow: -1px 0 0 var(--panel);
+}
+.card .top .tprs > :not(:first-child) {
+  clip-path: inset(0 0 0 -2px);
+}
+.card .top .tprs:not(:hover) > :not(:first-child) {
+  color: transparent;
+  clip-path: inset(0 calc(100% - 9px) 0 -2px);
+}

@@ -12,32 +12,45 @@ export default async function (ctx) {
   const out = {};
   await ctx.openChat(chat.id);
   const vims = async () => (await ctx.server.terminals()).filter(t => t.editor === 'vim' && t.exited === null);
-  const st = () => ctx.evaluate(`JSON.stringify({ tab: window.peix.state().tab, zoomed: window.peix.state().zoomed, focusG: window.peix.state().focusG,
-    tabs: [...document.querySelectorAll('.ptab[data-tab]')].map(b => b.textContent.trim()), lbl: document.querySelector('#webBtn .lbl')?.textContent })`).then(JSON.parse);
+  const st = () =>
+    ctx
+      .evaluate(
+        `JSON.stringify({ tab: window.peix.state().tab, zoomed: window.peix.state().zoomed, focusG: window.peix.state().focusG,
+    tabs: [...document.querySelectorAll('.ptab[data-tab]')].map(b => b.textContent.trim()), lbl: document.querySelector('#webBtn .lbl')?.textContent })`,
+      )
+      .then(JSON.parse);
 
   // the pick: Vim, and ··· says so
   out.before = await st();
   ctx.assert.equal(out.before.lbl, 'VS Code Web', 'VS Code Web by default');
   await ctx.evaluate(`document.querySelector('#inEdPick [data-ined="vim"]').click()`);
-  out.pick = await ctx.evaluate(`JSON.stringify({ pref: window.peix.prefs().inEditor, checked: [...document.querySelectorAll('#inEdPick [data-ined]')].map(b => b.dataset.ined + ':' + b.getAttribute('aria-checked')), lbl: document.querySelector('#webBtn .lbl').textContent })`).then(JSON.parse);
+  out.pick = await ctx
+    .evaluate(
+      `JSON.stringify({ pref: window.peix.prefs().inEditor, checked: [...document.querySelectorAll('#inEdPick [data-ined]')].map(b => b.dataset.ined + ':' + b.getAttribute('aria-checked')), lbl: document.querySelector('#webBtn .lbl').textContent })`,
+    )
+    .then(JSON.parse);
   ctx.assert.deepEqual(out.pick, { pref: 'vim', checked: ['vscode:false', 'vim:true'], lbl: 'Vim' });
 
   // ⌥⌘E: vim on a tab of its own, beside the chat, in its folder
   await ctx.key('KeyE');
-  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab) && window.peix.term(1)?.ws === 1`, { what: 'vim on a tab, attached' });
-  await ctx.waitFor(`document.querySelector('#termBodyB .xterm-rows')?.textContent.includes('fake vim')`, { what: 'vim\'s screen' });
+  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab) && window.peix.term(1)?.ws === 1`, {
+    what: 'vim on a tab, attached',
+  });
+  await ctx.waitFor(`document.querySelector('#termBodyB .xterm-rows')?.textContent.includes('fake vim')`, {
+    what: "vim's screen",
+  });
   out.vim = { st: await st(), screen: (await ctx.screen(1)).join(''), server: await vims() };
   ctx.assert.equal(out.vim.server.length, 1, 'one vim');
   ctx.assert.equal(out.vim.st.tab, 'shell:' + out.vim.server[0].id, 'its tab in front');
   ctx.assert.match(out.vim.screen, /^fake vim — \/.*\/repo-a — \.~/, 'vim on its folder (the line wraps)');
-  ctx.assert.equal(out.vim.server[0].cwd, chat.cwd, 'in the chat\'s folder');
+  ctx.assert.equal(out.vim.server[0].cwd, chat.cwd, "in the chat's folder");
   ctx.assert.equal(await ctx.evaluate(`window.peix.state().split`), true, 'beside the chat, in the second half');
   await ctx.settle();
   await ctx.shot('vim-tab');
 
   // ⌥⌘E again from it: its half fills the column; once more, both back
   await ctx.key('KeyE');
-  await ctx.waitFor(`window.peix.state().zoomed === 1`, { what: 'vim\'s half filling the column' });
+  await ctx.waitFor(`window.peix.state().zoomed === 1`, { what: "vim's half filling the column" });
   await ctx.key('KeyE');
   await ctx.waitFor(`window.peix.state().zoomed === null`, { what: 'both halves back' });
 
@@ -51,18 +64,27 @@ export default async function (ctx) {
 
   // ⌥⌘T from the vim tab: a zsh, never the vim
   await ctx.key('KeyT');
-  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab) && window.peix.state().tab !== ${JSON.stringify(out.vim.st.tab)}`, { what: 'a zsh tab' });
+  await ctx.waitFor(
+    `/^shell:/.test(window.peix.state().tab) && window.peix.state().tab !== ${JSON.stringify(out.vim.st.tab)}`,
+    { what: 'a zsh tab' },
+  );
   out.zshTab = (await st()).tab;
   out.zsh = (await ctx.server.terminals()).find(t => 'shell:' + t.id === out.zshTab);
   ctx.assert.deepEqual([out.zsh?.shell, out.zsh?.editor], [true, null], 'a zsh');
-  ctx.assert.ok((await st()).tabs.some(t => /^vim$/.test(t)), `the vim tab named vim: ${JSON.stringify((await st()).tabs)}`);
+  ctx.assert.ok(
+    (await st()).tabs.some(t => /^vim$/.test(t)),
+    `the vim tab named vim: ${JSON.stringify((await st()).tabs)}`,
+  );
 
   // ⌥⌘W on the vim tab: asked to quit, it does, and the tab goes
   await ctx.key('KeyE');
   await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(out.vim.st.tab)}`, { what: 'the vim tab' });
   await ctx.key('KeyW');
   await waitFor(async () => (await vims()).length === 0, { what: 'vim quitting' });
-  await ctx.waitFor(`![...document.querySelectorAll('.ptab[data-tab]')].some(b => b.dataset.tab === ${JSON.stringify(out.vim.st.tab)}) && window.peix.state().tab !== ${JSON.stringify(out.vim.st.tab)}`, { what: 'its tab gone' });
+  await ctx.waitFor(
+    `![...document.querySelectorAll('.ptab[data-tab]')].some(b => b.dataset.tab === ${JSON.stringify(out.vim.st.tab)}) && window.peix.state().tab !== ${JSON.stringify(out.vim.st.tab)}`,
+    { what: 'its tab gone' },
+  );
   out.quit = (await ctx.server.terminals()).find(t => t.id === out.vim.server[0].id)?.exited ?? null;
   ctx.assert.equal(out.quit, 0, 'vim quit of its own, on :qa — not killed');
 

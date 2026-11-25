@@ -24,16 +24,28 @@ import { pidAlive, procStarts, squash } from '../registry.mjs';
 // the holder reports the PTY's pid, and is told the id back so an adoption after a restart knows it too.
 export const TERMS_DIR = process.env.TERMS_DIR || join(dirname(STATE_FILE), 'terms');
 export const HOLDER = join(ROOT, 'lib', 'termhold.mjs');
-export const TERM_LINGER_MS = Number(process.env.TERM_LINGER_MS || 5 * 60_000);   // an exited holder keeps its last screen this long (the holder's own timer; this one forgets it here)
+export const TERM_LINGER_MS = Number(process.env.TERM_LINGER_MS || 5 * 60_000); // an exited holder keeps its last screen this long (the holder's own timer; this one forgets it here)
 export const HOLDER_START_MS = 15_000;
-export const SOCK_MAX = 103;   // bytes in a Unix socket's path: macOS's sun_path holds 104, one kept for its NUL (lib/termhold.mjs has its copy)
-export const terms = new Map();              // id -> { id, sessionId, cwd, pid, holderPid, resume, startedAt, exited, cols, rows, sock, clients, snapQ, lastSnap }
+export const SOCK_MAX = 103; // bytes in a Unix socket's path: macOS's sun_path holds 104, one kept for its NUL (lib/termhold.mjs has its copy)
+export const terms = new Map(); // id -> { id, sessionId, cwd, pid, holderPid, resume, startedAt, exited, cols, rows, sock, clients, snapQ, lastSnap }
 export const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 
 /** The chat's drawer (`shell` false) or its zsh (true) — a live one over an exited one still lingering in `terms`. The
  *  same rule as termIndex, for one chat. An editor's tab (`editor`, 2026-10-21) is a shell's kind, and never its zsh. */
-function drawerOf(s, shell) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !!t.shell === shell && !t.editor && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
-export const termOf = s => drawerOf(s, false), shellOf = s => drawerOf(s, true);
+function drawerOf(s, shell) {
+  let hit = null;
+  for (const t of terms.values())
+    if (
+      t.sessionId === s.id &&
+      !!t.shell === shell &&
+      !t.editor &&
+      (!hit || (hit.exited !== null && t.exited === null))
+    )
+      hit = t;
+  return hit;
+}
+export const termOf = s => drawerOf(s, false),
+  shellOf = s => drawerOf(s, true);
 /** Every zsh of the chat (2026-10-13: ⌘T opens another) and its editors' (vim), the exited ones still lingering too,
  *  oldest first — each its tab. */
 const byStart = (a, b) => String(a.startedAt).localeCompare(String(b.startedAt));
@@ -45,7 +57,8 @@ export function termIndex() {
   const m = new Map();
   for (const t of terms.values()) {
     if (!t.sessionId) continue;
-    let e = m.get(t.sessionId); if (!e) m.set(t.sessionId, e = { term: null, shell: null, shells: [] });
+    let e = m.get(t.sessionId);
+    if (!e) m.set(t.sessionId, (e = { term: null, shell: null, shells: [] }));
     const k = t.shell ? 'shell' : 'term';
     if (!t.editor && (!e[k] || (e[k].exited !== null && t.exited === null))) e[k] = t;
     if (t.shell) e.shells.push(t);
@@ -54,21 +67,44 @@ export function termIndex() {
   return m;
 }
 export function termSummary(t) {
-  return t ? {
-    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, editor: t.editor || null, task: t.task || null, startedAt: t.startedAt, exited: t.exited,
-    cols: t.cols, rows: t.rows, clients: t.clients.size, connected: !!(t.sock && !t.sock.destroyed), lastSnapshotChars: t.lastSnap,
-  } : null;
+  return t
+    ? {
+        id: t.id,
+        sessionId: t.sessionId,
+        cwd: t.cwd,
+        pid: t.pid,
+        holderPid: t.holderPid,
+        resume: t.resume,
+        shell: !!t.shell,
+        editor: t.editor || null,
+        task: t.task || null,
+        startedAt: t.startedAt,
+        exited: t.exited,
+        cols: t.cols,
+        rows: t.rows,
+        clients: t.clients.size,
+        connected: !!(t.sock && !t.sock.destroyed),
+        lastSnapshotChars: t.lastSnap,
+      }
+    : null;
 }
 
 // The server's own environment minus anything that says "you are inside a Claude session" — under
 // `npm start` from a Claude shell that is exactly what it says, and the CLI refuses to nest. Only the nesting markers
 // go: CLAUDECODE and CLAUDE_CODE_*. CLAUDE_DIR is this project's own (a fixture in tests — the fake claude reads it)
 // and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI.
-export const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)));
+export const cleanEnv = () =>
+  Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)));
 export function termEnv() {
   const env = cleanEnv();
   // PEIXAIRADA_DRAWER tells a script that its shell is a drawer (launchd.sh and build.sh check it).
-  return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8', PEIXAIRADA_DRAWER: '1' };
+  return {
+    ...env,
+    TERM: 'xterm-256color',
+    COLORTERM: 'truecolor',
+    LANG: env.LANG || 'en_US.UTF-8',
+    PEIXAIRADA_DRAWER: '1',
+  };
 }
 // …and minus the board's own configuration, for what you work in — a drawer, a zsh tab, VS Code Web's terminals (2026-10-14):
 // PORT is the agent's 7331 or the app's, and a `rails s`, `next dev` or `process.env.PORT || 3000` run there took the
@@ -76,12 +112,80 @@ export function termEnv() {
 // reads off its environment goes but CLAUDE_DIR (see above), the ones that are the system's or a tool's too (PATH, XDG_*,
 // VSCODE_CLI_DATA_DIR, JIRA_API_TOKEN) and the holder's TERM_LINGER_MS, which the holder keeps from its PTY. A knob
 // added to the server joins the list (terminals.test reads the server for them).
-const BOARD_ENV = new Set(['WT_ASK_MS', 'PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
-  'MAX_ENTRIES', 'TAIL_BYTES', 'HEAD_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
-  'AGENT_STALE_MS', 'AGENT_WORDS_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
-  'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'APP_LOOK_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
-  'GITHUB_API', 'CHAT_FAST_MS', 'CHAT_SLOW_MS', 'CHAT_GAP_MS', 'CHAT_INVITES_MS', 'LUNCH_TICK_MS', 'INSTAGRAM_BIN', 'READER_BIN', 'VIM_BIN', 'DISCLAIM',
-  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'osascript', 'cc'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
+const BOARD_ENV = new Set([
+  'WT_ASK_MS',
+  'PORT',
+  'HOST',
+  'NOTIFY',
+  'USAGE',
+  'STATE_FILE',
+  'CONFIG_FILE',
+  'TERMS_DIR',
+  'SCRATCH_DIR',
+  'ORG',
+  'ORG_DIR',
+  'APP_DIRS',
+  'BOARD_APP',
+  'AWAKE_ADMIN',
+  'MAX_ENTRIES',
+  'TAIL_BYTES',
+  'HEAD_BYTES',
+  'CHANGES_MAX',
+  'JIRA_TOKEN_FILE',
+  'JIRA_CONFIG_FILE',
+  'UPDATE_DIR',
+  'VSWEB_PORT',
+  'VSWEB_UPDATE_URL',
+  'CLAUDE_JSON',
+  'KEY_MODE',
+  'AGENT_STALE_MS',
+  'AGENT_WORDS_MS',
+  'CLONE_MS',
+  'CONFIG_POLL_MS',
+  'POWER_POLL_MS',
+  'DRAWER_IDLE_MS',
+  'MONITOR_MS',
+  'PR_TTL_MS',
+  'PR_WATCH_MS',
+  'REGISTRY_POLL_MS',
+  'TASK_GRACE_MS',
+  'TASK_MAX_MS',
+  'TICKET_TTL_MS',
+  'UPDATE_EVERY_MS',
+  'UPDATE_QUIET_MS',
+  'APP_LOOK_MS',
+  'VSWEB_FRESH_MS',
+  'WT_SWEEP_MS',
+  'UPDATE_RESTART_BIN',
+  'UPDATE_BUILD_BIN',
+  'PEIX_TEST_PARENT',
+  'GITHUB_API',
+  'CHAT_FAST_MS',
+  'CHAT_SLOW_MS',
+  'CHAT_GAP_MS',
+  'CHAT_INVITES_MS',
+  'LUNCH_TICK_MS',
+  'INSTAGRAM_BIN',
+  'READER_BIN',
+  'VIM_BIN',
+  'DISCLAIM',
+  ...[
+    'claude',
+    'gh',
+    'git',
+    'task',
+    'code',
+    'npm',
+    'brew',
+    'caffeinate',
+    'pmset',
+    'lsregister',
+    'lsof',
+    'ps',
+    'osascript',
+    'cc',
+  ].map(n => `${n.toUpperCase()}_BIN`),
+]); // findBin's
 export const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
@@ -101,23 +205,41 @@ function sameProcess({ pid, procStart }) {
   return procStarts([pid]).get(Number(pid)) === squash(procStart);
 }
 /** A background session's job (2026-11-04): what `claude attach` and `claude stop` take, as the registry names it. */
-export const jobOf = l => l?.kind === 'bg' && /^[0-9a-f]{8}$/.test(l.jobId || '') ? l.jobId : null;
+export const jobOf = l => (l?.kind === 'bg' && /^[0-9a-f]{8}$/.test(l.jobId || '') ? l.jobId : null);
 export function endClaude(entry) {
   const { pid } = entry;
   return new Promise(resolve => {
-    if (!sameProcess(entry)) return resolve({ code: 409, error: `pid ${pid} is no longer that claude — its registry file outlived it` });
+    if (!sameProcess(entry))
+      return resolve({ code: 409, error: `pid ${pid} is no longer that claude — its registry file outlived it` });
     // A background session is the daemon's (2026-11-04): one SIGTERMed reads *crashed*, and the daemon may start it again
     // (measured: 11 s later, one run in two). Its own stop keeps the conversation, and the wait below still holds.
-    const job = jobOf(entry), bin = job && claudeBin();
-    if (bin) execFile(bin, ['stop', job], { env: drawerEnv(), timeout: 15_000 }, err => { if (err) console.error(`[peixairada] claude stop ${job}: ${err.message}`); });
+    const job = jobOf(entry),
+      bin = job && claudeBin();
+    if (bin)
+      execFile(bin, ['stop', job], { env: drawerEnv(), timeout: 15_000 }, err => {
+        if (err) console.error(`[peixairada] claude stop ${job}: ${err.message}`);
+      });
     // gone between the look and the signal (2026-11-06) — a drawer's claude ends with its holder, which the delete ends
     // first — is ended: what was asked
-    else try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve(e.code === 'ESRCH' ? { ok: true } : { code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
-    const t0 = Date.now(); let hard = false;
+    else
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch (e) {
+        return resolve(
+          e.code === 'ESRCH' ? { ok: true } : { code: 500, error: `could not signal pid ${pid}: ${e.message}` },
+        );
+      }
+    const t0 = Date.now();
+    let hard = false;
     const tick = () => {
       if (!pidAlive(pid)) return resolve({ ok: true });
       if (Date.now() - t0 > TAKEOVER_WAIT_MS) return resolve({ code: 504, error: `pid ${pid} is still running` });
-      if (!hard && Date.now() - t0 > 5000) { hard = true; try { process.kill(pid, 'SIGKILL'); } catch {} }
+      if (!hard && Date.now() - t0 > 5000) {
+        hard = true;
+        try {
+          process.kill(pid, 'SIGKILL');
+        } catch {}
+      }
       setTimeout(tick, 200);
     };
     setTimeout(tick, 200);

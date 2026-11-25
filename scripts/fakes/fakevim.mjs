@@ -10,7 +10,8 @@ if (process.stdin.isTTY) process.stdin.setRawMode(true);
 process.stdin.on('data', d => {
   typed += d.toString('utf8');
   for (;;) {
-    const m = /:(qa?!?)\r/.exec(typed); if (!m) break;
+    const m = /:(qa?!?)\r/.exec(typed);
+    if (!m) break;
     typed = typed.slice(m.index + m[0].length);
     if (m[1].endsWith('!') || !dirty) process.exit(0);
     say('\r\nE162: No write since last change for buffer "notes.txt"\r\n');

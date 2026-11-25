@@ -1,152 +1,475 @@
-  /* ---- the sidebar layout (2026-10-30, round X; the one layout since 2026-11-01 — <html data-layout="sidebar"> in the
+/* ---- the sidebar layout (2026-10-30, round X; the one layout since 2026-11-01 — <html data-layout="sidebar"> in the
      markup, never toggled): the Mac's own window — no gaps and no edges, the list a sidebar of rows, the header a
      toolbar — with the board's signals kept on the rows: the board's ring round a row at work and its sonar round a
      question, the open row solid in its project's colour, the list flat on the frame (round X's D2, Ring; its other
      styles — Edge, Tinted, and Glass, the list frosted over a wallpaper in the open chat's colour — gone 2026-11-01).
      The sidebar is the frame (the inset, below). ---- */
-  :root[data-layout="sidebar"] { --side: var(--frame); }
-  /* the panels meet, square at the screen's corners too; the cut round the housing stays, with no border round it */
-  :root[data-layout="sidebar"] main.tiles { padding: 0; }
-  :root[data-layout="sidebar"] main.tiles :is(#sessions, #chat) { border: 0; }
-  :root[data-layout="sidebar"] main.tiles.notch { --screen-r: 0px; }
-  :root[data-layout="sidebar"] :is(.ncut, .ncap) { display: none; }
-  /* the list and the status bar under it in the sidebar's grey */
-  :root[data-layout="sidebar"] #sessions { background: var(--side); }
-  :root[data-layout="sidebar"] main.tiles ~ #sbar { margin: 0; border: 0; border-top: 1px solid var(--line); background: var(--side); }
-  :root[data-layout="sidebar"] .sedge.up { background: linear-gradient(color-mix(in srgb, var(--side) 85%, transparent) 25%, transparent); }
-  :root[data-layout="sidebar"] .sedge.down { background: linear-gradient(transparent, color-mix(in srgb, var(--side) 85%, transparent) 80%); }
-  /* the splitter a hairline, its grip 7 px wide still */
-  :root[data-layout="sidebar"] #splitter { width: 1px; background: color-mix(in srgb, var(--ink) 10%, transparent); }
-  :root[data-layout="sidebar"] #splitter::before { content: ''; position: absolute; inset: 0 -3px; z-index: 5; }
-  :root[data-layout="sidebar"] #splitter:is(:hover, .drag) { background: color-mix(in srgb, var(--ink) 25%, transparent); }
-  /* split, the halves meet at a hairline too, and the one with the keys says so by a faint edge of the chat's colour
+:root[data-layout='sidebar'] {
+  --side: var(--frame);
+}
+/* the panels meet, square at the screen's corners too; the cut round the housing stays, with no border round it */
+:root[data-layout='sidebar'] main.tiles {
+  padding: 0;
+}
+:root[data-layout='sidebar'] main.tiles :is(#sessions, #chat) {
+  border: 0;
+}
+:root[data-layout='sidebar'] main.tiles.notch {
+  --screen-r: 0px;
+}
+:root[data-layout='sidebar'] :is(.ncut, .ncap) {
+  display: none;
+}
+/* the list and the status bar under it in the sidebar's grey */
+:root[data-layout='sidebar'] #sessions {
+  background: var(--side);
+}
+:root[data-layout='sidebar'] main.tiles ~ #sbar {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: var(--side);
+}
+:root[data-layout='sidebar'] .sedge.up {
+  background: linear-gradient(color-mix(in srgb, var(--side) 85%, transparent) 25%, transparent);
+}
+:root[data-layout='sidebar'] .sedge.down {
+  background: linear-gradient(transparent, color-mix(in srgb, var(--side) 85%, transparent) 80%);
+}
+/* the splitter a hairline, its grip 7 px wide still */
+:root[data-layout='sidebar'] #splitter {
+  width: 1px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+:root[data-layout='sidebar'] #splitter::before {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+  z-index: 5;
+}
+:root[data-layout='sidebar'] #splitter:is(:hover, .drag) {
+  background: color-mix(in srgb, var(--ink) 25%, transparent);
+}
+/* split, the halves meet at a hairline too, and the one with the keys says so by a faint edge of the chat's colour
      (the strip's tab says it as well; a lone half has no strip) */
-  :root[data-layout="sidebar"] main.tiles.split #groups { padding: var(--float-h, 0px) 0 0; }
-  :root[data-layout="sidebar"] main.tiles.split #gsplit { width: 5px; background: linear-gradient(90deg, transparent 2px, var(--line) 2px 3px, transparent 3px); }
-  :root[data-layout="sidebar"] main.tiles.split #groups.stack > #gsplit { width: auto; height: 5px; background: linear-gradient(transparent 2px, var(--line) 2px 3px, transparent 3px); }
-  :root[data-layout="sidebar"] main.tiles.split #gsplit:is(:hover, .drag) { background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent); }
-  :root[data-layout="sidebar"] main.tiles.split .grp:not([hidden]) { border: 1px solid transparent; }
-  :root[data-layout="sidebar"] main.tiles.split .grp.on { border-color: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 55%, transparent); }
-  /* the transcript on the chat's plain ground */
-  :root[data-layout="sidebar"] #log, :root[data-layout="sidebar"] #chat #groups .gbody.haslog { background: none; }
-  /* the header a toolbar: the window's width, an edge at its foot alone, glass of the panel; no black beside the
+:root[data-layout='sidebar'] main.tiles.split #groups {
+  padding: var(--float-h, 0px) 0 0;
+}
+:root[data-layout='sidebar'] main.tiles.split #gsplit {
+  width: 5px;
+  background: linear-gradient(90deg, transparent 2px, var(--line) 2px 3px, transparent 3px);
+}
+:root[data-layout='sidebar'] main.tiles.split #groups.stack > #gsplit {
+  width: auto;
+  height: 5px;
+  background: linear-gradient(transparent 2px, var(--line) 2px 3px, transparent 3px);
+}
+:root[data-layout='sidebar'] main.tiles.split #gsplit:is(:hover, .drag) {
+  background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent);
+}
+:root[data-layout='sidebar'] main.tiles.split .grp:not([hidden]) {
+  border: 1px solid transparent;
+}
+:root[data-layout='sidebar'] main.tiles.split .grp.on {
+  border-color: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 55%, transparent);
+}
+/* the transcript on the chat's plain ground */
+:root[data-layout='sidebar'] #log,
+:root[data-layout='sidebar'] #chat #groups .gbody.haslog {
+  background: none;
+}
+/* the header a toolbar: the window's width, an edge at its foot alone, glass of the panel; no black beside the
      project, the theme's own inks. Lowered at the notch by padding, not a margin — the toolbar reaches the top whatever
      it holds. */
-  :root[data-layout="sidebar"] main.notch > #chat.npad > #shead { --htop: calc(7px + var(--notch-top, 0px)); }   /* under the housing with no hole for it: below the strip (the rule under it outweighed the tiles', 2026-11-01) */
-  :root[data-layout="sidebar"] #chat > #shead { --htop: calc(7px + var(--hdrop, 0px)); margin: 0; padding-top: var(--htop); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink);
-    background: color-mix(in srgb, var(--panel) 76%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
-    --hfade-w: 24px; --rink: var(--ink); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
-  :root[data-layout="sidebar"] #chat > #prlist { margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
-  :root[data-layout="sidebar"] #chat .shead::after { display: none; }
-  /* The project in the toolbar (2026-11-03, round XXI): the row's corner tab, in the sheet's corner, which rounds its
+:root[data-layout='sidebar'] main.notch > #chat.npad > #shead {
+  --htop: calc(7px + var(--notch-top, 0px));
+} /* under the housing with no hole for it: below the strip (the rule under it outweighed the tiles', 2026-11-01) */
+:root[data-layout='sidebar'] #chat > #shead {
+  --htop: calc(7px + var(--hdrop, 0px));
+  margin: 0;
+  padding-top: var(--htop);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+  --hfade-w: 24px;
+  --rink: var(--ink);
+  --hd-ink: var(--ink);
+  --hd-muted: var(--muted);
+  --hd-line: var(--line);
+  --hd-panel: var(--panel);
+  --hd-inline: var(--inline-bg);
+}
+:root[data-layout='sidebar'] #chat > #prlist {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+:root[data-layout='sidebar'] #chat .shead::after {
+  display: none;
+}
+/* The project in the toolbar (2026-11-03, round XXI): the row's corner tab, in the sheet's corner, which rounds its
      other one, its words on the row's line and on the row's title's edge. The h2 reaches the toolbar's edges by its padding, so
      what it clips leaves the tab whole and all else in it stands where it stood; a header with no project is words alone. */
-  :root[data-layout="sidebar"] #chat > #shead > h2 { align-self: stretch; margin: calc(-1 * var(--htop)) 0 -7px -12px; padding: var(--htop) 0 7px 12px; }
-  :root[data-layout="sidebar"] #chat .shead h2 .repo { align-self: stretch; align-content: center; margin: calc(-1 * var(--htop)) 0 -7px -12px; padding: calc(var(--htop) - 7px) 13px 0 12px; border-radius: 0 0 8px; font-weight: 700;
-    color: oklch(from var(--repo, var(--nocolor)) min(l, .3) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.62, l, .72) c h) 34%, transparent); }
-  :root[data-layout="sidebar"][data-theme="dark"] #chat .shead h2 .repo {
-    color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
-  :root[data-layout="sidebar"][data-theme] #chat .shead h2 .repo.on { color: #fff; background: oklch(from var(--repo, var(--nocolor)) min(l, .52) min(c, .16) h); }   /* solid while on, as the list's own tab is */
-  /* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
+:root[data-layout='sidebar'] #chat > #shead > h2 {
+  align-self: stretch;
+  margin: calc(-1 * var(--htop)) 0 -7px -12px;
+  padding: var(--htop) 0 7px 12px;
+}
+:root[data-layout='sidebar'] #chat .shead h2 .repo {
+  align-self: stretch;
+  align-content: center;
+  margin: calc(-1 * var(--htop)) 0 -7px -12px;
+  padding: calc(var(--htop) - 7px) 13px 0 12px;
+  border-radius: 0 0 8px;
+  font-weight: 700;
+  color: oklch(from var(--repo, var(--nocolor)) min(l, 0.3) c h);
+  background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(0.62, l, 0.72) c h) 34%, transparent);
+}
+:root[data-layout='sidebar'][data-theme='dark'] #chat .shead h2 .repo {
+  color: oklch(from var(--repo, var(--nocolor)) max(l, 0.95) c h);
+  background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(0.55, l, 0.62) c h) 34%, transparent);
+}
+:root[data-layout='sidebar'][data-theme] #chat .shead h2 .repo.on {
+  color: #fff;
+  background: oklch(from var(--repo, var(--nocolor)) min(l, 0.52) min(c, 0.16) h);
+} /* solid while on, as the list's own tab is */
+/* a PR's or a ticket's chip a tint of its state's colour, the colour its ink — not solid — on the sidebar's grey and
      the toolbar's ground, opaque: the card's chips overlap */
-  :root[data-layout="sidebar"] #slist .card .ctk[data-cat] {
-    background: color-mix(in srgb, var(--prc) 12%, var(--side)); border-color: color-mix(in srgb, var(--prc) 34%, var(--side)); color: var(--prc); }
-  :root[data-layout="sidebar"] #slist .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; }   /* a stack's slivers carry no number (the tint's ink beat the stack's rule, 2026-11-01) */
-  :root[data-layout="sidebar"] #chat .shead .tmx .ck { background: transparent; }
-  /* the lanes as the tiles' were (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
+:root[data-layout='sidebar'] #slist .card .ctk[data-cat] {
+  background: color-mix(in srgb, var(--prc) 12%, var(--side));
+  border-color: color-mix(in srgb, var(--prc) 34%, var(--side));
+  color: var(--prc);
+}
+:root[data-layout='sidebar'] #slist .card .top .tprs:not(:hover) > :not(:first-child) {
+  color: transparent;
+} /* a stack's slivers carry no number (the tint's ink beat the stack's rule, 2026-11-01) */
+:root[data-layout='sidebar'] #chat .shead .tmx .ck {
+  background: transparent;
+}
+/* the lanes as the tiles' were (L1, 2026-10-31): the glyph, the name in ink, the count bare — in sentence case, on the
      sidebar's ground; all caught up keeps its still mark, where its sparks start */
-  /* on the rows' edges (2026-11-03, round XXI): the mark on the title's, the name on an agent row's words, the chevron's tip on the chips' right; a day and a lane's rest on the title's */
-  :root[data-layout="sidebar"] .gsep.lane { margin: 2px -8px -2px; padding: 7px 18px 5px 19px; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; text-transform: none; }
-  :root[data-layout="sidebar"] .gsep.lane[data-lane] { background: var(--side); }
-  :root[data-layout="sidebar"] .gsep.lane:first-child { margin-top: 0; }
-  :root[data-layout="sidebar"] .gsep.lane > i { width: 13px; height: 13px; margin: 0 1px; }
-  :root[data-layout="sidebar"] .gsep.lane .ln { margin-left: -4px; }
-  :root[data-layout="sidebar"] .gsep:is(.day, .more) { margin-inline: 12px; }
-  :root[data-layout="sidebar"] .gsep.day { margin-block: 2px -2px; }
-  :root[data-layout="sidebar"] .gsep.more { margin-block: 0 2px; }
-  :root[data-layout="sidebar"] .gsep.lane b { font-size: var(--fs-sm); font-weight: 500; }
-  :root[data-layout="sidebar"] .gsep.lane.zero { color: var(--idle); }
-  /* the cards: no lit edge, no glow and no light under the pointer (their ground and their rise further on, 2026-11-03);
+/* on the rows' edges (2026-11-03, round XXI): the mark on the title's, the name on an agent row's words, the chevron's tip on the chips' right; a day and a lane's rest on the title's */
+:root[data-layout='sidebar'] .gsep.lane {
+  margin: 2px -8px -2px;
+  padding: 7px 18px 5px 19px;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-layout='sidebar'] .gsep.lane[data-lane] {
+  background: var(--side);
+}
+:root[data-layout='sidebar'] .gsep.lane:first-child {
+  margin-top: 0;
+}
+:root[data-layout='sidebar'] .gsep.lane > i {
+  width: 13px;
+  height: 13px;
+  margin: 0 1px;
+}
+:root[data-layout='sidebar'] .gsep.lane .ln {
+  margin-left: -4px;
+}
+:root[data-layout='sidebar'] .gsep:is(.day, .more) {
+  margin-inline: 12px;
+}
+:root[data-layout='sidebar'] .gsep.day {
+  margin-block: 2px -2px;
+}
+:root[data-layout='sidebar'] .gsep.more {
+  margin-block: 0 2px;
+}
+:root[data-layout='sidebar'] .gsep.lane b {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+:root[data-layout='sidebar'] .gsep.lane.zero {
+  color: var(--idle);
+}
+/* the cards: no lit edge, no glow and no light under the pointer (their ground and their rise further on, 2026-11-03);
      the project a tag, its name in its colour on a tint of it (2026-10-31, round XI: a dot read as one more light) */
-  :root[data-layout="sidebar"] #slist { gap: 6px; }   /* a row's tab clear of the words above it, two rows' rings and fills apart; a head or a day line keeps to its own rows, its margins taking the gap back (2026-11-03) */
-  :root[data-layout="sidebar"] #slist .card { background: none; border: 0; outline: 0; box-shadow: none; border-radius: 7px; padding: 8px 12px; }
-  /* The project a corner tab (2026-11-03, round XXI): in the row's top-left corner, that corner the row's own 7 px and
+:root[data-layout='sidebar'] #slist {
+  gap: 6px;
+} /* a row's tab clear of the words above it, two rows' rings and fills apart; a head or a day line keeps to its own rows, its margins taking the gap back (2026-11-03) */
+:root[data-layout='sidebar'] #slist .card {
+  background: none;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  border-radius: 7px;
+  padding: 8px 12px;
+}
+/* The project a corner tab (2026-11-03, round XXI): in the row's top-left corner, that corner the row's own 7 px and
      its one free one a step rounder, its words on the title's edge; the top row its height from the row's top, so the PRs
      and the marks share its line. The same card on a project in view as on ALL (2026-11-04, round XXV): nothing on it
      moves when the filter goes on or off. */
-  :root[data-layout="sidebar"] #slist .card .top { height: 26px; margin: -8px 0 7px; }
-  :root[data-layout="sidebar"] #slist .card .top .repo { height: 26px; margin-left: -12px; padding: 0 10px 0 12px; border-radius: 7px 0 8px; line-height: 26px; font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; text-transform: none;
-    color: oklch(from var(--repo, var(--nocolor)) min(l, .3) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.62, l, .72) c h) 34%, transparent); }
-  :root[data-layout="sidebar"][data-frame="dark"] #slist .card .top .repo { color: oklch(from var(--repo, var(--nocolor)) max(l, .95) c h); background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(.55, l, .62) c h) 34%, transparent); }
-  /* its words 4.5:1 on any colour in every theme (INK_CHECK): the fill held in a band of its own, and a chat with no process dims
+:root[data-layout='sidebar'] #slist .card .top {
+  height: 26px;
+  margin: -8px 0 7px;
+}
+:root[data-layout='sidebar'] #slist .card .top .repo {
+  height: 26px;
+  margin-left: -12px;
+  padding: 0 10px 0 12px;
+  border-radius: 7px 0 8px;
+  line-height: 26px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: oklch(from var(--repo, var(--nocolor)) min(l, 0.3) c h);
+  background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(0.62, l, 0.72) c h) 34%, transparent);
+}
+:root[data-layout='sidebar'][data-frame='dark'] #slist .card .top .repo {
+  color: oklch(from var(--repo, var(--nocolor)) max(l, 0.95) c h);
+  background: color-mix(in srgb, oklch(from var(--repo, var(--nocolor)) clamp(0.55, l, 0.62) c h) 34%, transparent);
+}
+/* its words 4.5:1 on any colour in every theme (INK_CHECK): the fill held in a band of its own, and a chat with no process dims
      what is on its row, not its tab, which that opacity took under; the open row none of it, all white on its solid colour */
-  :root[data-layout="sidebar"] #slist .card.gone { opacity: 1; }
-  :root[data-layout="sidebar"] #slist .card.gone:not(.active) > :not(.top, .rg), :root[data-layout="sidebar"] #slist .card.gone:not(.active) > .top > :not(.repo, .act, .vh, .grow) { opacity: .8; }
-  /* The right edge holds (2026-11-03, round XXI): what only the pointer shows keeps no room at rest — the chips run to the
+:root[data-layout='sidebar'] #slist .card.gone {
+  opacity: 1;
+}
+:root[data-layout='sidebar'] #slist .card.gone:not(.active) > :not(.top, .rg),
+:root[data-layout='sidebar'] #slist .card.gone:not(.active) > .top > :not(.repo, .act, .vh, .grow) {
+  opacity: 0.8;
+}
+/* The right edge holds (2026-11-03, round XXI): what only the pointer shows keeps no room at rest — the chips run to the
      edge, and it pushes them left when it comes. The ✓ stays in the keys' way (no display: none), and in sight armed or ticked.
      A title that wraps keeps that room, and the age a least width, so the pointer never shortens a row under itself. */
-  :root[data-layout="sidebar"] #slist .card:not(:hover) .trow .time { display: none; }
-  @starting-style { :root[data-layout="sidebar"] #slist .card:hover .trow .time { opacity: 0; } }
-  :root[data-layout="sidebar"] #slist .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) { width: 0; margin-left: -7px; }
-  :root[data-layout="sidebar"] #slist .card .trow .time { min-width: 21px; text-align: right; }
-  :root[data-layout="sidebar"] #sessions[data-hide~="age"]:not([data-even]) .card:not(:hover) .trow .title { margin-right: 28px; }
-  /* …unless they are kept at rest (2026-11-03, round XXII: both are parts of the card, off by default) */
-  :root[data-layout="sidebar"] #sessions:not([data-hide~="age"]) #slist .card:not(:hover) .trow .time { display: inline; opacity: .8; }
-  :root[data-layout="sidebar"] #sessions:not([data-hide~="tick"]) #slist .card:not(:hover) .top .act:not(.armed, .tk) { width: 22px; margin-left: 0; opacity: .7; }
-  /* Every chip the toolbar's corner (2026-11-03, round XXI) */
-  :root[data-layout="sidebar"] :is(#slist .card, #chat .shead) :is(.ymove, .chip, .ctk) { border-radius: var(--r-3); }
-  /* The open row: its project's colour, solid — darkened till white reads on it (2026-10-31: the system's blue
+:root[data-layout='sidebar'] #slist .card:not(:hover) .trow .time {
+  display: none;
+}
+@starting-style {
+  :root[data-layout='sidebar'] #slist .card:hover .trow .time {
+    opacity: 0;
+  }
+}
+:root[data-layout='sidebar'] #slist .card:not(:hover) .top .act:not(.armed, .tk, :focus-visible) {
+  width: 0;
+  margin-left: -7px;
+}
+:root[data-layout='sidebar'] #slist .card .trow .time {
+  min-width: 21px;
+  text-align: right;
+}
+:root[data-layout='sidebar'] #sessions[data-hide~='age']:not([data-even]) .card:not(:hover) .trow .title {
+  margin-right: 28px;
+}
+/* …unless they are kept at rest (2026-11-03, round XXII: both are parts of the card, off by default) */
+:root[data-layout='sidebar'] #sessions:not([data-hide~='age']) #slist .card:not(:hover) .trow .time {
+  display: inline;
+  opacity: 0.8;
+}
+:root[data-layout='sidebar'] #sessions:not([data-hide~='tick']) #slist .card:not(:hover) .top .act:not(.armed, .tk) {
+  width: 22px;
+  margin-left: 0;
+  opacity: 0.7;
+}
+/* Every chip the toolbar's corner (2026-11-03, round XXI) */
+:root[data-layout='sidebar'] :is(#slist .card, #chat .shead) :is(.ymove, .chip, .ctk) {
+  border-radius: var(--r-3);
+}
+/* The open row: its project's colour, solid — darkened till white reads on it (2026-10-31: the system's blue
      before) —, all on it white, a question on it too (its red line and pings say it) */
-  :root[data-layout="sidebar"] #slist .card { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .55) min(c, .16) h); }
-  :root[data-layout="sidebar"] #slist .card.active { background: var(--selc); }
-  :root[data-layout="sidebar"] #slist .card.active :is(*, .top .repo) { color: #fff; }
-  :root[data-layout="sidebar"] #slist .card.active :is(.snip, .state.live, .agt, .agn, .agn b, .agr[data-k^="_"]) { color: rgb(255 255 255 / .84); }
-  :root[data-layout="sidebar"] #slist .card.active .agl { --lift: #fff; --glow: #fff; --working-ink: #fff; --watch: #fff; --idle: #fff; --needs: #fff; --muted: rgb(255 255 255 / .84); }
-  :root[data-layout="sidebar"] #slist .card.active .chip.agents { background: rgb(0 0 0 / .2); }
-  :root[data-layout="sidebar"] #slist .card.active .top .repo { background: rgb(0 0 0 / .2); }   /* the tag a shade, where a tint of its colour would bleach what is on it */
-  :root[data-layout="sidebar"] #slist .card.active :is(.ctk, .top .chip.cmute) { background: rgb(255 255 255 / .2); border-color: transparent; }
-  /* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
+:root[data-layout='sidebar'] #slist .card {
+  --selc: oklch(from var(--repo, var(--nocolor)) min(l, 0.55) min(c, 0.16) h);
+}
+:root[data-layout='sidebar'] #slist .card.active {
+  background: var(--selc);
+}
+:root[data-layout='sidebar'] #slist .card.active :is(*, .top .repo) {
+  color: #fff;
+}
+:root[data-layout='sidebar'] #slist .card.active :is(.snip, .state.live, .agt, .agn, .agn b, .agr[data-k^='_']) {
+  color: rgb(255 255 255 / 0.84);
+}
+:root[data-layout='sidebar'] #slist .card.active .agl {
+  --lift: #fff;
+  --glow: #fff;
+  --working-ink: #fff;
+  --watch: #fff;
+  --idle: #fff;
+  --needs: #fff;
+  --muted: rgb(255 255 255 / 0.84);
+}
+:root[data-layout='sidebar'] #slist .card.active .chip.agents {
+  background: rgb(0 0 0 / 0.2);
+}
+:root[data-layout='sidebar'] #slist .card.active .top .repo {
+  background: rgb(0 0 0 / 0.2);
+} /* the tag a shade, where a tint of its colour would bleach what is on it */
+:root[data-layout='sidebar'] #slist .card.active :is(.ctk, .top .chip.cmute) {
+  background: rgb(255 255 255 / 0.2);
+  border-color: transparent;
+}
+/* the matrix on the solid colour (2026-11-01): the number white as the rest, the squares on the tag's black .2 —
      an open PR's green on a green project's row is otherwise gone; one ground under them all, nothing round each
      (2026-11-01, later) —, a stack's line white */
-  :root[data-layout="sidebar"] #slist .card.active .tmx .mxg { background: rgb(0 0 0 / .2); border-radius: var(--r-1); }
-  :root[data-layout="sidebar"] #slist .card.active .tmx .mxc > s { background: rgb(255 255 255 / .6); }
-  /* At work and watching, the card's own ring gives way to the row's (the board's ring is a square under a cover in the
+:root[data-layout='sidebar'] #slist .card.active .tmx .mxg {
+  background: rgb(0 0 0 / 0.2);
+  border-radius: var(--r-1);
+}
+:root[data-layout='sidebar'] #slist .card.active .tmx .mxc > s {
+  background: rgb(255 255 255 / 0.6);
+}
+/* At work and watching, the card's own ring gives way to the row's (the board's ring is a square under a cover in the
      card's ground, which a row has none of): .rg, a box of the card's own (cardHtml), carries it. */
-  .card > .rg { display: none; }
-  :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking)::before, :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking)::after { content: none; animation: none; }
-  /* the board's ring, masked — .rg cut to a 1.5 px band round the row by a still mask, its ::before the board's square
+.card > .rg {
+  display: none;
+}
+:root[data-layout='sidebar'] #slist .card:is(.working, .watching):not(.asking)::before,
+:root[data-layout='sidebar'] #slist .card:is(.working, .watching):not(.asking)::after {
+  content: none;
+  animation: none;
+}
+/* the board's ring, masked — .rg cut to a 1.5 px band round the row by a still mask, its ::before the board's square
      turned by a transform, the compositor's as the card's is; and a glow */
-  :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg { display: block; position: absolute; z-index: -1; inset: 0; padding: 1.5px; border-radius: inherit; overflow: hidden; pointer-events: none;
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-  :root[data-layout="sidebar"] #slist .card:is(.working, .watching):not(.asking) > .rg::before { content: ''; position: absolute; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%;
-    background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg)); animation: ring var(--spins, 1.4s) linear infinite; }
-  :root[data-layout="sidebar"] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
-  /* …and a question: a red hairline, a red wash (not on the open row's solid colour) and the sonar's two pings leaving
+:root[data-layout='sidebar'] #slist .card:is(.working, .watching):not(.asking) > .rg {
+  display: block;
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+:root[data-layout='sidebar'] #slist .card:is(.working, .watching):not(.asking) > .rg::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160%;
+  aspect-ratio: 1;
+  margin: -80% 0 0 -80%;
+  background: repeating-conic-gradient(
+    var(--track) 0 calc(var(--seg) * var(--tail, 0.45)),
+    var(--lit) calc(var(--seg) * 0.92),
+    var(--track) var(--seg)
+  );
+  animation: ring var(--spins, 1.4s) linear infinite;
+}
+:root[data-layout='sidebar'] #slist .card.heard:is(.working, .watching):not(.asking) > .rg::before {
+  animation:
+    ring var(--spins, 1.4s) linear infinite,
+    ringin 0.5s ease-out backwards;
+}
+/* …and a question: a red hairline, a red wash (not on the open row's solid colour) and the sonar's two pings leaving
      the row's own outline */
-  :root[data-layout="sidebar"] #slist .card.asking::before, :root[data-layout="sidebar"] #slist .card.asking::after { inset: 0; border-width: 1.5px; border-radius: inherit; }
-  /* A card is raised (2026-11-03, round XXII's E4 and H1; the one look since that afternoon): the chat's own material a
+:root[data-layout='sidebar'] #slist .card.asking::before,
+:root[data-layout='sidebar'] #slist .card.asking::after {
+  inset: 0;
+  border-width: 1.5px;
+  border-radius: inherit;
+}
+/* A card is raised (2026-11-03, round XXII's E4 and H1; the one look since that afternoon): the chat's own material a
      step lower — a ground between the frame and the chat, the chat's hairline, a 2 px shadow — and under the pointer a card rises to
      about the chat's height. In the dark the chat's ground is darker than the frame (round XVIII), so the step goes towards the ink, or
      the cards would sink. --side is the card's ground, which its PR chips tint against. A state keeps its own edge: the ring, the red,
      the open row's colour. */
-  :root[data-layout="sidebar"] #sessions { --step: color-mix(in srgb, var(--panel) 62%, var(--side)); --lo: 0 1px 2px rgb(0 0 0 / .07); --hi: 0 8px 18px -8px rgb(0 0 0 / .34), 0 2px 5px -2px rgb(0 0 0 / .12); }
-  :root[data-layout="sidebar"][data-frame="dark"] #sessions { --step: color-mix(in srgb, var(--ink) 6%, var(--side)); --lo: 0 1px 2px rgb(0 0 0 / .4); --hi: 0 10px 22px -8px rgb(0 0 0 / .9), 0 2px 6px -2px rgb(0 0 0 / .5); }
-  :root[data-layout="sidebar"] #sessions #slist .card { box-shadow: 0 0 0 1px var(--sheet-edge), var(--lo); transition: translate .28s var(--spring), box-shadow .18s var(--ease-out), scale .3s var(--spring); }
-  :root[data-layout="sidebar"] #sessions #slist .card:not(.active) { --side: var(--step); background: var(--step); }
-  :root[data-layout="sidebar"] #sessions #slist .card.active { box-shadow: none; }
-  :root[data-layout="sidebar"] #sessions #slist .card.watching:not(.asking) { box-shadow: var(--lo); }
-  :root[data-layout="sidebar"] #sessions #slist .card.working:not(.asking) { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent), var(--lo); }
-  :root[data-layout="sidebar"] #sessions #slist .card.asking { box-shadow: inset 0 0 0 1.5px var(--needs), var(--lo); }
-  :root[data-layout="sidebar"] #sessions #slist .card.asking:not(.active) { background: color-mix(in srgb, var(--needs) 9%, var(--step)); }
-  :root[data-layout="sidebar"] #sessions #slist .card.qsel:not(.active) { background: color-mix(in srgb, var(--ink) 8%, var(--step)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent), var(--lo); }
-  :root[data-layout="sidebar"] #sessions #slist .card:active:not(:has(:is(button, a, .ctk):active)) { transition-duration: .28s, .18s, .06s; transition-timing-function: var(--spring), var(--ease-out), ease-out; }
-  /* under the pointer; a question keeps still, its pings leave from where it is */
-  :root[data-layout="sidebar"] #sessions #slist .card:hover { z-index: 1; box-shadow: 0 0 0 1px var(--sheet-edge), var(--hi); }
-  :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover { translate: 0 -1px; }
-  :root[data-layout="sidebar"] #sessions #slist .card.active:hover { box-shadow: var(--hi); }
-  :root[data-layout="sidebar"] #sessions #slist .card.watching:not(.asking):hover { box-shadow: var(--hi); }
-  :root[data-layout="sidebar"] #sessions #slist .card.working:not(.asking):hover { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent), var(--hi); }
-  :root[data-layout="sidebar"] #sessions #slist .card.asking:hover { box-shadow: inset 0 0 0 1.5px var(--needs), var(--hi); }
-  /* risen 1 px, the pointer on its lowest pixel would be off the card, and it would drop, and rise: 2 px of the card below it, in the pseudo-element no state uses but a question's */
-  :root[data-layout="sidebar"] #sessions #slist .card:not(.asking):hover::before { content: ''; position: absolute; inset: 0 0 -2px; z-index: -1; width: auto; height: auto; margin: 0; border: 0; background: none; transform: none; animation: none; }
-
+:root[data-layout='sidebar'] #sessions {
+  --step: color-mix(in srgb, var(--panel) 62%, var(--side));
+  --lo: 0 1px 2px rgb(0 0 0 / 0.07);
+  --hi: 0 8px 18px -8px rgb(0 0 0 / 0.34), 0 2px 5px -2px rgb(0 0 0 / 0.12);
+}
+:root[data-layout='sidebar'][data-frame='dark'] #sessions {
+  --step: color-mix(in srgb, var(--ink) 6%, var(--side));
+  --lo: 0 1px 2px rgb(0 0 0 / 0.4);
+  --hi: 0 10px 22px -8px rgb(0 0 0 / 0.9), 0 2px 6px -2px rgb(0 0 0 / 0.5);
+}
+:root[data-layout='sidebar'] #sessions #slist .card {
+  box-shadow:
+    0 0 0 1px var(--sheet-edge),
+    var(--lo);
+  transition:
+    translate 0.28s var(--spring),
+    box-shadow 0.18s var(--ease-out),
+    scale 0.3s var(--spring);
+}
+:root[data-layout='sidebar'] #sessions #slist .card:not(.active) {
+  --side: var(--step);
+  background: var(--step);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.active {
+  box-shadow: none;
+}
+:root[data-layout='sidebar'] #sessions #slist .card.watching:not(.asking) {
+  box-shadow: var(--lo);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.working:not(.asking) {
+  box-shadow:
+    0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent),
+    var(--lo);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.asking {
+  box-shadow:
+    inset 0 0 0 1.5px var(--needs),
+    var(--lo);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.asking:not(.active) {
+  background: color-mix(in srgb, var(--needs) 9%, var(--step));
+}
+:root[data-layout='sidebar'] #sessions #slist .card.qsel:not(.active) {
+  background: color-mix(in srgb, var(--ink) 8%, var(--step));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--lift) 60%, transparent),
+    var(--lo);
+}
+:root[data-layout='sidebar'] #sessions #slist .card:active:not(:has(:is(button, a, .ctk):active)) {
+  transition-duration: 0.28s, 0.18s, 0.06s;
+  transition-timing-function: var(--spring), var(--ease-out), ease-out;
+}
+/* under the pointer; a question keeps still, its pings leave from where it is */
+:root[data-layout='sidebar'] #sessions #slist .card:hover {
+  z-index: 1;
+  box-shadow:
+    0 0 0 1px var(--sheet-edge),
+    var(--hi);
+}
+:root[data-layout='sidebar'] #sessions #slist .card:not(.asking):hover {
+  translate: 0 -1px;
+}
+:root[data-layout='sidebar'] #sessions #slist .card.active:hover {
+  box-shadow: var(--hi);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.watching:not(.asking):hover {
+  box-shadow: var(--hi);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.working:not(.asking):hover {
+  box-shadow:
+    0 0 18px -6px color-mix(in srgb, var(--glow) 70%, transparent),
+    var(--hi);
+}
+:root[data-layout='sidebar'] #sessions #slist .card.asking:hover {
+  box-shadow:
+    inset 0 0 0 1.5px var(--needs),
+    var(--hi);
+}
+/* risen 1 px, the pointer on its lowest pixel would be off the card, and it would drop, and rise: 2 px of the card below it, in the pseudo-element no state uses but a question's */
+:root[data-layout='sidebar'] #sessions #slist .card:not(.asking):hover::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -2px;
+  z-index: -1;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+  background: none;
+  transform: none;
+  animation: none;
+}

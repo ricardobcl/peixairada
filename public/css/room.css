@@ -1,92 +1,628 @@
-  /* ---- the chat (2026-10-17): a GitHub repo's issue, in a panel over the board's foot ---- */
-  /* A non-modal dialog at the left of the status bar, where its segment is: one chat (2026-10-18) — the messages, the box.
+/* ---- the chat (2026-10-17): a GitHub repo's issue, in a panel over the board's foot ---- */
+/* A non-modal dialog at the left of the status bar, where its segment is: one chat (2026-10-18) — the messages, the box.
      The owner's people view takes the messages' place. Square to the board's other panels; the words are other people's,
      drawn plain — no images, no colours of their own. */
-  #room[open] { position: fixed; inset: auto auto 34px 8px; margin: 0; z-index: 44; width: min(420px, calc(100vw - 16px)); height: min(560px, calc(100vh - 92px)); padding: 0; box-sizing: border-box;
-    display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-radius: var(--r-4); box-shadow: 0 14px 40px rgba(0, 0, 0, .28); overflow: hidden; }
-  #room [hidden] { display: none !important; }   /* the buttons and the box set a display of their own */
-  #room :is(.rmlog, .rmpeople) { grid-row: 2; } #room .rmfoot { grid-row: 3; }   /* placed by hand: the people view stands in the messages' row */
-  #room .rmhd { display: flex; align-items: center; gap: 2px; min-width: 0; padding: 6px 6px 6px 8px; border-bottom: 1px solid var(--line); }
-  #room .rmtitle { flex: 1 1 auto; min-width: 0; padding-left: 2px; font-size: var(--fs-sm); font-weight: 650; color: var(--ink); }
-  #room .rmbtn { flex: none; height: 26px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: var(--r-3); background: none; font: inherit; color: var(--muted); cursor: pointer; }
-  #room .rmbtn { width: 26px; justify-content: center; padding: 0; } #room .rmbtn .ic { width: 14px; height: 14px; }
-  #room .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }   /* × close, × delete: strokes, drawn by none of the board's rules here */
-  #room .rmbtn:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
-  #sbar .chatseg b { min-width: 16px; box-sizing: border-box; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 16px; text-align: center; }
-  #room :is(.rmlog, .rmpeople) { overflow-y: auto; padding: 8px 12px; font-size: var(--fs-md); }
-  #room .rmday { margin: 12px 0 2px; text-align: center; color: var(--muted); font-size: var(--fs-2xs); letter-spacing: .06em; text-transform: uppercase; }
-  #room .rmmsg { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 9px; margin-top: 10px; }
-  #room .rmmsg.cont { margin-top: 2px; } #room .rmmsg.cont :is(.face, .rmwho) { display: none; }
-  #room .face { grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; background: var(--ctl); }
-  #room .rmwho { grid-column: 2; font-size: var(--fs-xs); color: var(--muted); } #room .rmwho b { margin-right: 6px; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
-  #room .rmmsg.mine .rmwho b { color: var(--accent); }
-  #room .rmbody { grid-column: 2; min-width: 0; line-height: 1.45; overflow-wrap: anywhere; }
-  #room .rmbody > :first-child { margin-top: 0; } #room .rmbody > :last-child { margin-bottom: 0; }
-  #room .rmbody :is(p, ul, ol, table) { margin: 0 0 6px; } #room .rmbody :is(ul, ol) { padding-left: 20px; }
-  #room .rmbody :is(h1, h2, h3, h4, h5, h6) { margin: 6px 0 4px; font-size: inherit; }
-  #room .rmbody code { padding: 1px 4px; border-radius: var(--r-1); background: var(--ctl); font-size: .92em; }
-  #room .rmbody pre { margin: 4px 0; padding: 8px; border-radius: var(--r-2); background: var(--ctl); overflow-x: auto; } #room .rmbody pre code { padding: 0; background: none; }
-  #room .rmbody blockquote { margin: 4px 0; padding-left: 10px; border-left: 2px solid var(--line); color: var(--muted); }
-  #room .rmbody a { color: var(--accent); } #room .rmbody :is(td, th) { padding: 2px 6px; border: 1px solid var(--line); }
-  #room .rmmsg .edited { margin-left: 4px; font-size: var(--fs-2xs); color: var(--muted); }
-  #room .rmdel { position: absolute; top: -2px; right: -4px; width: 22px; height: 22px; opacity: 0; } #room .rmmsg:is(:hover, :focus-within) .rmdel { opacity: 1; }
-  #room .rmmsg.going { opacity: .45; }
-  /* yours on its way (chatSend, 2026-10-27): faded until GitHub has it; one that did not go, its words as typed and why */
-  #room .rmmsg.out:not(.fail) .rmbody { opacity: .55; }
-  #room .rmfail { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 3px; font-size: var(--fs-xs); color: var(--needs); }
-  #room .rmfail .btn { height: 22px; padding: 0 8px; font-size: var(--fs-xs); }
-  #room .rmnone { padding: 36px 16px; color: var(--muted); font-size: var(--fs-sm); text-align: center; text-wrap: balance; }
-  #room .rmfoot { display: grid; gap: 4px; padding: 8px; border-top: 1px solid var(--line); }
-  #room :is(.rmfoot textarea, .rmfind, .rmform input[type="text"]) { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
-  #room .rmfoot textarea { min-height: 34px; max-height: 140px; resize: none; display: block; }
-  #room :is(.rmfoot textarea, .rmfind, .rmform input[type="text"]):focus { border-color: var(--accent); }
-  #room .rmrow { display: flex; gap: 4px; align-items: flex-end; } #room .rmrow textarea { flex: 1 1 auto; min-width: 0; } #room .rmrow .rmbtn { height: 34px; width: 30px; }
-  #room #rmPicBtn[aria-disabled="true"] { opacity: .45; }
-  /* pictures (2026-11-25): a place in a message, its size once the bytes are here (the log is drawn whole: what is here
+#room[open] {
+  position: fixed;
+  inset: auto auto 34px 8px;
+  margin: 0;
+  z-index: 44;
+  width: min(420px, calc(100vw - 16px));
+  height: min(560px, calc(100vh - 92px));
+  padding: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: var(--r-4);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+#room [hidden] {
+  display: none !important;
+} /* the buttons and the box set a display of their own */
+#room :is(.rmlog, .rmpeople) {
+  grid-row: 2;
+}
+#room .rmfoot {
+  grid-row: 3;
+} /* placed by hand: the people view stands in the messages' row */
+#room .rmhd {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 6px 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+#room .rmtitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 2px;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--ink);
+}
+#room .rmbtn {
+  flex: none;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: none;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+#room .rmbtn {
+  width: 26px;
+  justify-content: center;
+  padding: 0;
+}
+#room .rmbtn .ic {
+  width: 14px;
+  height: 14px;
+}
+#room .ic.st {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+} /* × close, × delete: strokes, drawn by none of the board's rules here */
+#room .rmbtn:is(:hover, .on) {
+  background: var(--ctl);
+  color: var(--ink);
+}
+#sbar .chatseg b {
+  min-width: 16px;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+#room :is(.rmlog, .rmpeople) {
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-size: var(--fs-md);
+}
+#room .rmday {
+  margin: 12px 0 2px;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#room .rmmsg {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 9px;
+  margin-top: 10px;
+}
+#room .rmmsg.cont {
+  margin-top: 2px;
+}
+#room .rmmsg.cont :is(.face, .rmwho) {
+  display: none;
+}
+#room .face {
+  grid-row: span 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ctl);
+}
+#room .rmwho {
+  grid-column: 2;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#room .rmwho b {
+  margin-right: 6px;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+}
+#room .rmmsg.mine .rmwho b {
+  color: var(--accent);
+}
+#room .rmbody {
+  grid-column: 2;
+  min-width: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+#room .rmbody > :first-child {
+  margin-top: 0;
+}
+#room .rmbody > :last-child {
+  margin-bottom: 0;
+}
+#room .rmbody :is(p, ul, ol, table) {
+  margin: 0 0 6px;
+}
+#room .rmbody :is(ul, ol) {
+  padding-left: 20px;
+}
+#room .rmbody :is(h1, h2, h3, h4, h5, h6) {
+  margin: 6px 0 4px;
+  font-size: inherit;
+}
+#room .rmbody code {
+  padding: 1px 4px;
+  border-radius: var(--r-1);
+  background: var(--ctl);
+  font-size: 0.92em;
+}
+#room .rmbody pre {
+  margin: 4px 0;
+  padding: 8px;
+  border-radius: var(--r-2);
+  background: var(--ctl);
+  overflow-x: auto;
+}
+#room .rmbody pre code {
+  padding: 0;
+  background: none;
+}
+#room .rmbody blockquote {
+  margin: 4px 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+#room .rmbody a {
+  color: var(--accent);
+}
+#room .rmbody :is(td, th) {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+}
+#room .rmmsg .edited {
+  margin-left: 4px;
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+#room .rmdel {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  opacity: 0;
+}
+#room .rmmsg:is(:hover, :focus-within) .rmdel {
+  opacity: 1;
+}
+#room .rmmsg.going {
+  opacity: 0.45;
+}
+/* yours on its way (chatSend, 2026-10-27): faded until GitHub has it; one that did not go, its words as typed and why */
+#room .rmmsg.out:not(.fail) .rmbody {
+  opacity: 0.55;
+}
+#room .rmfail {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: var(--needs);
+}
+#room .rmfail .btn {
+  height: 22px;
+  padding: 0 8px;
+  font-size: var(--fs-xs);
+}
+#room .rmnone {
+  padding: 36px 16px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+  text-wrap: balance;
+}
+#room .rmfoot {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-top: 1px solid var(--line);
+}
+#room :is(.rmfoot textarea, .rmfind, .rmform input[type='text']) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-md);
+  outline: none;
+}
+#room .rmfoot textarea {
+  min-height: 34px;
+  max-height: 140px;
+  resize: none;
+  display: block;
+}
+#room :is(.rmfoot textarea, .rmfind, .rmform input[type='text']):focus {
+  border-color: var(--accent);
+}
+#room .rmrow {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+#room .rmrow textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#room .rmrow .rmbtn {
+  height: 34px;
+  width: 30px;
+}
+#room #rmPicBtn[aria-disabled='true'] {
+  opacity: 0.45;
+}
+/* pictures (2026-11-25): a place in a message, its size once the bytes are here (the log is drawn whole: what is here
      fills at once, so nothing jumps), a GIF moving — still under reduced motion till the pointer or the keys are on it;
      the tray of yours over the box, each going up; the panel taking a drop */
-  #room .rmpic { display: block; max-width: min(100%, 300px); margin: 4px 0; padding: 0; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); overflow: hidden; cursor: zoom-in; font: inherit; color: inherit; }
-  #room .rmpic:not(.on) { width: 180px; height: 110px; }
-  #room .rmpic.wait { animation: rmwait 1s var(--ease-out) infinite alternate; }
-  @keyframes rmwait { from { opacity: 1; } to { opacity: .45; } }
-  #room .rmpic img { display: block; max-width: 100%; max-height: 260px; width: auto; height: auto; }
-  #room .rmpic.still img:first-child { display: none; } #room .rmpic.still:is(:hover, :focus-visible) img:first-child { display: block; } #room .rmpic.still:is(:hover, :focus-visible) img + img { display: none; }
-  #room .rmpic.bad { width: auto; height: auto; padding: 5px 9px; cursor: pointer; color: var(--muted); font-size: var(--fs-sm); text-align: left; }
-  #room .rmoutpics { display: flex; flex-wrap: wrap; gap: 4px; } #room .rmoutpics .rmpic { cursor: default; }
-  #room .rmpics { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; }
-  #room .rmtp { position: relative; width: 56px; height: 56px; border-radius: var(--r-3); background: var(--ctl); overflow: hidden; }
-  #room .rmtp img { width: 100%; height: 100%; object-fit: cover; } #room .rmtp.up img { opacity: .5; } #room .rmtp.up { animation: rmwait 1s var(--ease-out) infinite alternate; }
-  #room .rmtp.fail { outline: 2px solid var(--needs); outline-offset: -2px; }
-  #room .rmtp .rmbtn { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--ink); }
-  #room .rmtp .rmbtn .ic { width: 10px; height: 10px; }
-  #room.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
-  /* the picture large: its box as wide as the picture fitted to the window (never the dialogs' 600 px, which cropped a
+#room .rmpic {
+  display: block;
+  max-width: min(100%, 300px);
+  margin: 4px 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  overflow: hidden;
+  cursor: zoom-in;
+  font: inherit;
+  color: inherit;
+}
+#room .rmpic:not(.on) {
+  width: 180px;
+  height: 110px;
+}
+#room .rmpic.wait {
+  animation: rmwait 1s var(--ease-out) infinite alternate;
+}
+@keyframes rmwait {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+#room .rmpic img {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  width: auto;
+  height: auto;
+}
+#room .rmpic.still img:first-child {
+  display: none;
+}
+#room .rmpic.still:is(:hover, :focus-visible) img:first-child {
+  display: block;
+}
+#room .rmpic.still:is(:hover, :focus-visible) img + img {
+  display: none;
+}
+#room .rmpic.bad {
+  width: auto;
+  height: auto;
+  padding: 5px 9px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+#room .rmoutpics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+#room .rmoutpics .rmpic {
+  cursor: default;
+}
+#room .rmpics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0 4px;
+}
+#room .rmtp {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  overflow: hidden;
+}
+#room .rmtp img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#room .rmtp.up img {
+  opacity: 0.5;
+}
+#room .rmtp.up {
+  animation: rmwait 1s var(--ease-out) infinite alternate;
+}
+#room .rmtp.fail {
+  outline: 2px solid var(--needs);
+  outline-offset: -2px;
+}
+#room .rmtp .rmbtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  color: var(--ink);
+}
+#room .rmtp .rmbtn .ic {
+  width: 10px;
+  height: 10px;
+}
+#room.dropping {
+  outline: 2px dashed var(--accent);
+  outline-offset: -5px;
+}
+/* the picture large: its box as wide as the picture fitted to the window (never the dialogs' 600 px, which cropped a
      big one), the picture whole inside it, never past its own size */
-  #rmview[open] { width: fit-content; max-width: 94vw; max-height: 92vh; padding: 0; border: 0; border-radius: var(--r-4); background: var(--panel); overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .4); cursor: zoom-out; }
-  #rmview::backdrop { background: rgba(0, 0, 0, .6); }
-  #rmview img { display: block; width: auto; height: auto; max-width: 94vw; max-height: calc(92vh - 40px); margin: 0 auto; }
-  #rmview .rmvfoot { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 12px; font-size: var(--fs-sm); color: var(--muted); } #rmview .rmvfoot span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* a poll (2026-10-20): an answer a row, its share of the people who answered a fill from the left; yours edged in the accent */
-  #room .rmpoll { display: grid; gap: 4px; margin-top: 2px; }
-  #room .rmq { display: flex; gap: 6px; align-items: center; font-weight: 650; } #room .rmq .ic { flex: none; width: 14px; height: 14px; color: var(--accent); }
-  #room .rmopt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 6px 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; color: var(--ink); text-align: left; cursor: pointer;
-    background-color: var(--ctl); background-image: linear-gradient(to right, color-mix(in srgb, var(--accent) 20%, transparent) var(--p), transparent var(--p)); }
-  #room .rmopt:hover { background-color: var(--ctl-hi); } #room .rmopt.mine { border-color: var(--accent); }
-  #room .rmopt .rmol { min-width: 0; overflow-wrap: anywhere; } #room .rmopt b { font-weight: 650; color: var(--muted); } #room .rmopt.mine b { color: var(--accent); }
-  #room .rmvs { grid-column: 1 / -1; display: flex; align-items: center; gap: 3px; min-width: 0; font-size: var(--fs-2xs); color: var(--muted); }
-  #room .rmvs .vf { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--ctl); } #room .rmvs span { margin-left: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #room .rmpf { font-size: var(--fs-2xs); color: var(--muted); }
-  #room .rmform { display: grid; gap: 6px; } #room .rma { display: flex; gap: 4px; align-items: center; } #room .rma input { flex: 1 1 auto; min-width: 0; }
-  #room .rmpfoot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--fs-sm); color: var(--muted); } #room .rmpfoot .spacer { flex: 1; }
-  #room .rmpfoot label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; } #room .btn.go { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-  #room .rmsay { display: flex; gap: 10px; justify-content: space-between; font-size: var(--fs-2xs); color: var(--muted); } #room .rmsay a { color: inherit; }
-  #room .rmpeople h6 { margin: 14px 0 6px; color: var(--muted); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; } #room .rmpeople h6:first-of-type { margin-top: 10px; }
-  #room .rmp { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 4px 0; }
-  #room .rmp .face { grid-row: auto; } #room .rmp span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #room .rmp small { margin-left: 6px; color: var(--muted); }
-  #room .rmp .btn { padding: 3px 9px; } #room .btn.danger { color: var(--needs); }
-  #room .rmsure { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: var(--r-3); background: color-mix(in srgb, var(--needs) 12%, transparent); font-size: var(--fs-sm); }
-  #room .rmsure span { flex: 1; }
-  #sbar .chatseg .ic { width: 13px; height: 13px; flex: none; } #sbar .chatseg.err { color: var(--needs); } #sbar .chatseg.inv { color: var(--accent); }
-  #chatSet .face { width: 18px; height: 18px; margin-right: 4px; border-radius: 50%; vertical-align: -4px; }
-  .pop .setup .schat { display: flex; align-items: center; gap: 6px; } .pop .setup .schat input[type=text] { width: 180px; background: var(--ctl); }
-
+#rmview[open] {
+  width: fit-content;
+  max-width: 94vw;
+  max-height: 92vh;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-4);
+  background: var(--panel);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  cursor: zoom-out;
+}
+#rmview::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+#rmview img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 94vw;
+  max-height: calc(92vh - 40px);
+  margin: 0 auto;
+}
+#rmview .rmvfoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 8px 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+#rmview .rmvfoot span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* a poll (2026-10-20): an answer a row, its share of the people who answered a fill from the left; yours edged in the accent */
+#room .rmpoll {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+}
+#room .rmq {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 650;
+}
+#room .rmq .ic {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+#room .rmopt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--ctl);
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--accent) 20%, transparent) var(--p),
+    transparent var(--p)
+  );
+}
+#room .rmopt:hover {
+  background-color: var(--ctl-hi);
+}
+#room .rmopt.mine {
+  border-color: var(--accent);
+}
+#room .rmopt .rmol {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#room .rmopt b {
+  font-weight: 650;
+  color: var(--muted);
+}
+#room .rmopt.mine b {
+  color: var(--accent);
+}
+#room .rmvs {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+#room .rmvs .vf {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ctl);
+}
+#room .rmvs span {
+  margin-left: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#room .rmpf {
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+#room .rmform {
+  display: grid;
+  gap: 6px;
+}
+#room .rma {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+#room .rma input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#room .rmpfoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+#room .rmpfoot .spacer {
+  flex: 1;
+}
+#room .rmpfoot label {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  cursor: pointer;
+}
+#room .btn.go {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+#room .rmsay {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+#room .rmsay a {
+  color: inherit;
+}
+#room .rmpeople h6 {
+  margin: 14px 0 6px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#room .rmpeople h6:first-of-type {
+  margin-top: 10px;
+}
+#room .rmp {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 4px 0;
+}
+#room .rmp .face {
+  grid-row: auto;
+}
+#room .rmp span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#room .rmp small {
+  margin-left: 6px;
+  color: var(--muted);
+}
+#room .rmp .btn {
+  padding: 3px 9px;
+}
+#room .btn.danger {
+  color: var(--needs);
+}
+#room .rmsure {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--r-3);
+  background: color-mix(in srgb, var(--needs) 12%, transparent);
+  font-size: var(--fs-sm);
+}
+#room .rmsure span {
+  flex: 1;
+}
+#sbar .chatseg .ic {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+#sbar .chatseg.err {
+  color: var(--needs);
+}
+#sbar .chatseg.inv {
+  color: var(--accent);
+}
+#chatSet .face {
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border-radius: 50%;
+  vertical-align: -4px;
+}
+.pop .setup .schat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pop .setup .schat input[type='text'] {
+  width: 180px;
+  background: var(--ctl);
+}

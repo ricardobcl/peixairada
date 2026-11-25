@@ -16,17 +16,28 @@ export function readRaw(req, max) {
   return new Promise((resolve, reject) => {
     // a body declared too large is read to its end too, kept nowhere, and refused only then (2026-10-14): refused at
     // once, the close after the 413 met a body still coming, and the reset could reach the page before the answer
-    const chunks = []; let n = Number(req.headers['content-length']) > max ? max + 1 : 0;
-    req.on('data', c => { n += c.length; if (n <= max) chunks.push(c); else chunks.length = 0; });
-    req.on('end', () => n <= max ? resolve(Buffer.concat(chunks)) : reject(new Error('too large')));
+    const chunks = [];
+    let n = Number(req.headers['content-length']) > max ? max + 1 : 0;
+    req.on('data', c => {
+      n += c.length;
+      if (n <= max) chunks.push(c);
+      else chunks.length = 0;
+    });
+    req.on('end', () => (n <= max ? resolve(Buffer.concat(chunks)) : reject(new Error('too large'))));
     req.on('error', reject);
   });
 }
 export function saveAttachment(sid, name, buf) {
   const dir = join(ATTACH_DIR, /^[\w-]{1,80}$/.test(sid) ? sid : 'inbox');
   mkdirSync(dir, { recursive: true });
-  const clean = (basename(name || 'file').replace(/[^\w.() -]+/g, '_').replace(/^\.+/, '') || 'file').slice(0, 120);
-  const dot = clean.lastIndexOf('.'), stem = dot > 0 ? clean.slice(0, dot) : clean, ext = dot > 0 ? clean.slice(dot) : '';
+  const clean = (
+    basename(name || 'file')
+      .replace(/[^\w.() -]+/g, '_')
+      .replace(/^\.+/, '') || 'file'
+  ).slice(0, 120);
+  const dot = clean.lastIndexOf('.'),
+    stem = dot > 0 ? clean.slice(0, dot) : clean,
+    ext = dot > 0 ? clean.slice(dot) : '';
   let file = join(dir, clean);
   for (let i = 2; existsSync(file); i++) file = join(dir, `${stem}-${i}${ext}`);
   writeFileSync(file, buf);

@@ -17,9 +17,13 @@ export default async function (ctx) {
   ctx.assert.equal(await seg(), 'muted');
   ctx.assert.equal(await muted(), true, 'the app hears they are off');
   // the hour turned: it says how long, and nods
-  await ctx.evaluate(`(k => { const p = JSON.parse(localStorage.getItem(k)); p.mutedAt = Date.now() - 2 * 3600e3 - 60e3; localStorage.setItem(k, JSON.stringify(p)); })('peixairada-prefs')`);
+  await ctx.evaluate(
+    `(k => { const p = JSON.parse(localStorage.getItem(k)); p.mutedAt = Date.now() - 2 * 3600e3 - 60e3; localStorage.setItem(k, JSON.stringify(p)); })('peixairada-prefs')`,
+  );
   await ctx.reload();
-  await ctx.waitFor(`/muted · 2h/.test(document.querySelector('#sbLeft .mute')?.textContent)`, { what: 'how long, past the first hour' });
+  await ctx.waitFor(`/muted · 2h/.test(document.querySelector('#sbLeft .mute')?.textContent)`, {
+    what: 'how long, past the first hour',
+  });
   // a click turns them on, the server hearing it, and the mark goes
   await ctx.evaluate(`document.querySelector('#sbLeft .mute').click()`);
   await ctx.waitFor(`!document.querySelector('#sbLeft .mute')`, { what: 'the mark gone' });
@@ -27,6 +31,6 @@ export default async function (ctx) {
   ctx.assert.equal(await muted(), false, 'and the app');
   await ctx.reload();
   ctx.assert.equal(await seg(), null, 'the server kept it');
-  await ctx.evaluate(`window.peixNotifyOn()`);   // the fish's menu's row: on when on is harmless
+  await ctx.evaluate(`window.peixNotifyOn()`); // the fish's menu's row: on when on is harmless
   return 'ok';
 }

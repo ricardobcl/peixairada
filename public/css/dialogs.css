@@ -1,137 +1,740 @@
-  /* ---- project editor ---- */
-  dialog { border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
-  dialog::backdrop { background: rgba(0, 0, 0, .35); }
-  /* Dialogs come and go rather than pop (2026-09-27, night): @starting-style gives the open state something to
+/* ---- project editor ---- */
+dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 16px 18px;
+  width: min(600px, 92vw);
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+/* Dialogs come and go rather than pop (2026-09-27, night): @starting-style gives the open state something to
      transition from, and `display` and `overlay` with allow-discrete hold the element — and its place in the top
      layer — until the exit has run. In 120 ms with a 4 px rise and a touch of scale, out 140 ms; the backdrop fades
      with it. The pickers' rows inside stay instant: a keyboard move is never eased. The harness and the Esc handler
      read the `open` attribute, which flips at once as before. */
-  dialog { opacity: 1; transform: none; transition: opacity .12s ease-out, transform .12s ease-out, overlay .12s allow-discrete, display .12s allow-discrete; }
-  @starting-style { dialog[open] { opacity: 0; transform: translateY(4px) scale(.985); } }
-  dialog:not([open]) { opacity: 0; transform: translateY(3px); transition-duration: .14s; transition-timing-function: ease-in; }
-  dialog::backdrop { transition: background-color .14s, overlay .14s allow-discrete, display .14s allow-discrete; }
-  @starting-style { dialog[open]::backdrop { background-color: rgba(0, 0, 0, 0); } }
-  dialog:not([open])::backdrop { background-color: rgba(0, 0, 0, 0); }
-  /* The ··· menu is anchored to its button, so it fades in place — a menu that slides off its anchor reads as loose. */
-  #hmenu, #hmenu:not([open]) { transform: none; }
-  @starting-style { #hmenu[open] { transform: none; } }
-  /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
-  #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
-  /* ⌥⌘Y, the themes (2026-10-10): a grid of tiles, each the board drawn small in the theme's colours — the list's
+dialog {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.12s ease-out,
+    transform 0.12s ease-out,
+    overlay 0.12s allow-discrete,
+    display 0.12s allow-discrete;
+}
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+dialog:not([open]) {
+  opacity: 0;
+  transform: translateY(3px);
+  transition-duration: 0.14s;
+  transition-timing-function: ease-in;
+}
+dialog::backdrop {
+  transition:
+    background-color 0.14s,
+    overlay 0.14s allow-discrete,
+    display 0.14s allow-discrete;
+}
+@starting-style {
+  dialog[open]::backdrop {
+    background-color: rgba(0, 0, 0, 0);
+  }
+}
+dialog:not([open])::backdrop {
+  background-color: rgba(0, 0, 0, 0);
+}
+/* The ··· menu is anchored to its button, so it fades in place — a menu that slides off its anchor reads as loose. */
+#hmenu,
+#hmenu:not([open]) {
+  transform: none;
+}
+@starting-style {
+  #hmenu[open] {
+    transform: none;
+  }
+}
+/* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
+#pick {
+  padding: 8px;
+  width: min(520px, 92vw);
+  margin-top: 10vh;
+}
+/* ⌥⌘Y, the themes (2026-10-10): a grid of tiles, each the board drawn small in the theme's colours — the list's
      cards with their edges, the header's project and black, a transcript, the palette along the foot. */
-  #themes { padding: 12px; width: min(980px, 94vw); margin-top: 8vh; }
-  #themes .thin input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
-  #themes .thin input:focus { border-color: var(--accent); }
-  #themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; max-height: 64vh; overflow-y: auto; padding: 3px; }
-  #themegrid .tt { padding: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; min-width: 0; }
-  #themegrid .tshot { position: relative; display: grid; grid-template-columns: 38% 1fr; height: 104px; background: var(--tbg); border-radius: var(--r-3); overflow: hidden; outline: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); }
-  #themegrid .tt.sel .tshot { outline: 2px solid var(--accent); outline-offset: 2px; }
-  #themegrid .tt:hover:not(.sel) .tshot { outline-color: color-mix(in srgb, var(--ink) 30%, transparent); }
-  #themegrid .ml { display: grid; align-content: start; gap: 4px; padding: 6px 5px; }
-  #themegrid .mc { display: grid; gap: 3px; height: 17px; padding: 4px 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 34%, var(--tpn)), var(--tpn) 70%); border-left: 2px solid var(--c); }
-  #themegrid .mc.ask { outline: 1px solid var(--tnd); }
-  #themegrid .mc u { display: block; height: 3px; border-radius: var(--r-1); background: color-mix(in srgb, var(--tink) 55%, transparent); }
-  #themegrid .mc u + u { background: color-mix(in srgb, var(--tmu) 60%, transparent); }
-  #themegrid .mr { display: grid; grid-template-rows: 13px 1fr; background: var(--tpn); }
-  #themegrid .mh { display: flex; background: var(--tcr); } #themegrid .mh b { width: 34%; background: var(--thd); }
-  #themegrid .mt { display: grid; align-content: start; gap: 6px; padding: 8px; }
-  #themegrid .mt u { display: block; height: 3px; border-radius: var(--r-1); background: color-mix(in srgb, var(--tink) 45%, transparent); }
-  #themegrid .mt u.code { height: 16px; border-radius: var(--r-1); background: var(--tcr); }
-  #themegrid .mt s { justify-self: end; width: 40%; height: 8px; border-radius: var(--r-2); background: color-mix(in srgb, var(--tink) 14%, var(--tpn)); }
-  #themegrid .sw { position: absolute; left: 38%; right: 0; bottom: 0; height: 4px; display: flex; } #themegrid .sw i { flex: 1; }
-  #themegrid .nm { display: flex; align-items: baseline; gap: 7px; margin-top: 7px; font-size: var(--fs-md); font-weight: 600; }
-  #themegrid .nm em { font-style: normal; font-weight: 500; font-size: var(--fs-xs); color: var(--accent); }
-  #themegrid .nm small { margin-left: auto; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
-  #themegrid .none { color: var(--muted); padding: 8px; }
-  #themes .thfoot { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
-  #themes .thfoot #themenote { color: var(--ink); }
-  #themes .thfoot .spacer { flex: 1; }
-  /* ⌥⌘L, the launcher (2026-10-10): the pickers' rows with a mark in front and a section's head over its first */
-  .pkhd { padding: 8px 8px 3px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
-  .pkrow.lx { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
-  .pkrow.lx .g { display: grid; place-items: center; min-width: 0; color: var(--muted); font-size: var(--fs-md); }
-  .pkrow.lx .g .ic { width: 14px; height: 14px; fill: currentColor; }
-  .pkrow.lx.sel .g { color: var(--accent); }
-  .pkrow.lx .num { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
-  .pkrow.lx .num kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); }
-  .pkrow.lx .t { color: var(--muted); font-size: var(--fs-sm); min-width: 14px; text-align: right; }
-  .pkrow.lx .st { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
-  .pkrow.lx .st[data-state="asking"] { color: var(--needs); } .pkrow.lx .st[data-state="clauding"] { color: var(--working-ink); } .pkrow.lx .st[data-state="ready"] { color: var(--idle); }
-  .pkrow.lx .ac { font: 700 var(--fs-sm) ui-monospace, monospace; color: var(--accent); }
-  .pkrow.lx .lpr { font: 700 var(--fs-xs)/15px -apple-system, sans-serif; padding: 0 4px; border-radius: var(--r-2); color: var(--bg); background: var(--pr-open); }
-  .pkrow.lx .lpr[data-state="merged"] { background: var(--pr-merged); } .pkrow.lx .lpr[data-state="closed"] { background: var(--pr-closed); } .pkrow.lx .lpr[data-state="draft"] { background: var(--pr-draft); } .pkrow.lx .lpr[data-state=""] { background: var(--muted); }
-  .pkrow.lx.pr, .pkrow.lx.ticket { grid-template-columns: auto minmax(0, 1fr) auto auto; }
-  .pkrow.lx .ltk { font: 700 var(--fs-xs)/15px -apple-system, sans-serif; padding: 0 4px; border-radius: var(--r-2); color: #fff; background: var(--tk-todo); }
-  .pkrow.lx .ltk[data-cat="doing"] { background: var(--tk-doing); } .pkrow.lx .ltk[data-cat="done"] { background: var(--tk-done); }
-  .pkrow.lx .ymove { font-size: var(--fs-xs); color: var(--accent); }
-  .lsw { display: inline-block; position: relative; width: 26px; height: 15px; border-radius: var(--r-3); background: var(--ctl-hi); vertical-align: middle; }
-  .lsw i { position: absolute; left: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--muted); transition: left .12s; }
-  .lsw.on { background: var(--accent); } .lsw.on i { left: 13px; background: #fff; }
-  /* ?, every key on a sheet (2026-10-10): the settings' Keys, two columns, a box that narrows them */
-  #keysheet { width: min(1100px, 94vw); max-height: 88vh; padding: 16px 20px; margin-top: 5vh; display: none; }
-  #keysheet[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; }
-  #keysheet .kshd { display: flex; align-items: center; gap: 14px; }
-  #keysheet .kshd h3 { margin: 0; font-size: var(--fs-xl); }
-  #keysheet .kshd input { flex: 0 1 340px; font: inherit; font-size: var(--fs-md); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
-  #keysheet .kshd input:focus { border-color: var(--accent); }
-  #keysheet .kswhere { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
-  #keysheet kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
-  #ksbody { overflow-y: auto; columns: 2; column-gap: 32px; }
-  #ksbody .kr { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; font-size: var(--fs-md); color: var(--muted); }
-  #ksbody .kr[hidden] { display: none; }
-  #ksbody .ksh { display: block; break-after: avoid; margin: 14px 0 2px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
-  #ksbody .kr i { display: block; font-style: normal; color: var(--muted); font-size: var(--fs-sm); margin-top: 2px; }
-  #ksbody .kr kbd { justify-self: start; }
-  #ksbody .kr em { font-style: normal; color: var(--ink); font-weight: 600; }
-  #keysheet .none { margin: 0; color: var(--muted); }
-  @media (max-width: 760px) { #ksbody { columns: 1; } }
-  /* About (2026-09-27): a modal
+#themes {
+  padding: 12px;
+  width: min(980px, 94vw);
+  margin-top: 8vh;
+}
+#themes .thin input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--fs-base);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: inherit;
+  outline: none;
+}
+#themes .thin input:focus {
+  border-color: var(--accent);
+}
+#themegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding: 3px;
+}
+#themegrid .tt {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  min-width: 0;
+}
+#themegrid .tshot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38% 1fr;
+  height: 104px;
+  background: var(--tbg);
+  border-radius: var(--r-3);
+  overflow: hidden;
+  outline: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+}
+#themegrid .tt.sel .tshot {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#themegrid .tt:hover:not(.sel) .tshot {
+  outline-color: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+#themegrid .ml {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 6px 5px;
+}
+#themegrid .mc {
+  display: grid;
+  gap: 3px;
+  height: 17px;
+  padding: 4px 5px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 34%, var(--tpn)), var(--tpn) 70%);
+  border-left: 2px solid var(--c);
+}
+#themegrid .mc.ask {
+  outline: 1px solid var(--tnd);
+}
+#themegrid .mc u {
+  display: block;
+  height: 3px;
+  border-radius: var(--r-1);
+  background: color-mix(in srgb, var(--tink) 55%, transparent);
+}
+#themegrid .mc u + u {
+  background: color-mix(in srgb, var(--tmu) 60%, transparent);
+}
+#themegrid .mr {
+  display: grid;
+  grid-template-rows: 13px 1fr;
+  background: var(--tpn);
+}
+#themegrid .mh {
+  display: flex;
+  background: var(--tcr);
+}
+#themegrid .mh b {
+  width: 34%;
+  background: var(--thd);
+}
+#themegrid .mt {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 8px;
+}
+#themegrid .mt u {
+  display: block;
+  height: 3px;
+  border-radius: var(--r-1);
+  background: color-mix(in srgb, var(--tink) 45%, transparent);
+}
+#themegrid .mt u.code {
+  height: 16px;
+  border-radius: var(--r-1);
+  background: var(--tcr);
+}
+#themegrid .mt s {
+  justify-self: end;
+  width: 40%;
+  height: 8px;
+  border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--tink) 14%, var(--tpn));
+}
+#themegrid .sw {
+  position: absolute;
+  left: 38%;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  display: flex;
+}
+#themegrid .sw i {
+  flex: 1;
+}
+#themegrid .nm {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 7px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+#themegrid .nm em {
+  font-style: normal;
+  font-weight: 500;
+  font-size: var(--fs-xs);
+  color: var(--accent);
+}
+#themegrid .nm small {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--muted);
+}
+#themegrid .none {
+  color: var(--muted);
+  padding: 8px;
+}
+#themes .thfoot {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+#themes .thfoot #themenote {
+  color: var(--ink);
+}
+#themes .thfoot .spacer {
+  flex: 1;
+}
+/* ⌥⌘L, the launcher (2026-10-10): the pickers' rows with a mark in front and a section's head over its first */
+.pkhd {
+  padding: 8px 8px 3px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pkrow.lx {
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+}
+.pkrow.lx .g {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+.pkrow.lx .g .ic {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.pkrow.lx.sel .g {
+  color: var(--accent);
+}
+.pkrow.lx .num {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pkrow.lx .num kbd {
+  font:
+    600 var(--fs-xs) ui-monospace,
+    monospace;
+  padding: 1px 5px;
+  border-radius: var(--r-2);
+  background: var(--ctl);
+  color: var(--ink);
+}
+.pkrow.lx .t {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  min-width: 14px;
+  text-align: right;
+}
+.pkrow.lx .st {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.pkrow.lx .st[data-state='asking'] {
+  color: var(--needs);
+}
+.pkrow.lx .st[data-state='clauding'] {
+  color: var(--working-ink);
+}
+.pkrow.lx .st[data-state='ready'] {
+  color: var(--idle);
+}
+.pkrow.lx .ac {
+  font:
+    700 var(--fs-sm) ui-monospace,
+    monospace;
+  color: var(--accent);
+}
+.pkrow.lx .lpr {
+  font:
+    700 var(--fs-xs)/15px -apple-system,
+    sans-serif;
+  padding: 0 4px;
+  border-radius: var(--r-2);
+  color: var(--bg);
+  background: var(--pr-open);
+}
+.pkrow.lx .lpr[data-state='merged'] {
+  background: var(--pr-merged);
+}
+.pkrow.lx .lpr[data-state='closed'] {
+  background: var(--pr-closed);
+}
+.pkrow.lx .lpr[data-state='draft'] {
+  background: var(--pr-draft);
+}
+.pkrow.lx .lpr[data-state=''] {
+  background: var(--muted);
+}
+.pkrow.lx.pr,
+.pkrow.lx.ticket {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+.pkrow.lx .ltk {
+  font:
+    700 var(--fs-xs)/15px -apple-system,
+    sans-serif;
+  padding: 0 4px;
+  border-radius: var(--r-2);
+  color: #fff;
+  background: var(--tk-todo);
+}
+.pkrow.lx .ltk[data-cat='doing'] {
+  background: var(--tk-doing);
+}
+.pkrow.lx .ltk[data-cat='done'] {
+  background: var(--tk-done);
+}
+.pkrow.lx .ymove {
+  font-size: var(--fs-xs);
+  color: var(--accent);
+}
+.lsw {
+  display: inline-block;
+  position: relative;
+  width: 26px;
+  height: 15px;
+  border-radius: var(--r-3);
+  background: var(--ctl-hi);
+  vertical-align: middle;
+}
+.lsw i {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: left 0.12s;
+}
+.lsw.on {
+  background: var(--accent);
+}
+.lsw.on i {
+  left: 13px;
+  background: #fff;
+}
+/* ?, every key on a sheet (2026-10-10): the settings' Keys, two columns, a box that narrows them */
+#keysheet {
+  width: min(1100px, 94vw);
+  max-height: 88vh;
+  padding: 16px 20px;
+  margin-top: 5vh;
+  display: none;
+}
+#keysheet[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+}
+#keysheet .kshd {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+#keysheet .kshd h3 {
+  margin: 0;
+  font-size: var(--fs-xl);
+}
+#keysheet .kshd input {
+  flex: 0 1 340px;
+  font: inherit;
+  font-size: var(--fs-md);
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: inherit;
+  outline: none;
+}
+#keysheet .kshd input:focus {
+  border-color: var(--accent);
+}
+#keysheet .kswhere {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+#keysheet kbd {
+  font:
+    600 var(--fs-xs) ui-monospace,
+    monospace;
+  padding: 1px 5px;
+  border-radius: var(--r-2);
+  background: var(--ctl-hi);
+  color: var(--ink);
+  white-space: nowrap;
+}
+#ksbody {
+  overflow-y: auto;
+  columns: 2;
+  column-gap: 32px;
+}
+#ksbody .kr {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  break-inside: avoid;
+  font-size: var(--fs-md);
+  color: var(--muted);
+}
+#ksbody .kr[hidden] {
+  display: none;
+}
+#ksbody .ksh {
+  display: block;
+  break-after: avoid;
+  margin: 14px 0 2px;
+  font:
+    700 var(--fs-xs)/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+#ksbody .kr i {
+  display: block;
+  font-style: normal;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  margin-top: 2px;
+}
+#ksbody .kr kbd {
+  justify-self: start;
+}
+#ksbody .kr em {
+  font-style: normal;
+  color: var(--ink);
+  font-weight: 600;
+}
+#keysheet .none {
+  margin: 0;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  #ksbody {
+    columns: 1;
+  }
+}
+/* About (2026-09-27): a modal
      dialog, centred by the browser, the pane down under it like under any dialog; Esc or a click on the backdrop
      closes it. Its facts come with the snapshot (state.about). */
-  #about { width: min(400px, 92vw); text-align: center; padding: 24px 24px 18px; outline: none; }   /* nothing in it takes focus, so the dialog would wear the ring */
-  #about .logo { width: 72px; height: 72px; }
-  #about h3 { margin: 8px 0 0; font-size: var(--fs-xl); }
-  #about h3 em { font-style: normal; color: var(--accent); }
-  #about .tag { margin: 4px 0 14px; font-size: var(--fs-md); color: var(--muted); }
-  #about .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
-  #about .facts b { color: var(--ink); font-weight: 600; text-align: right; }
-  #about .help { margin: 14px 0 0; }
-  #about #aboutDetails { margin: 12px 0 0; padding: 8px 10px; max-height: 230px; overflow: auto; overscroll-behavior: contain; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--fs-2xs) / 1.5 ui-monospace, monospace; color: var(--muted); background: var(--ctl); border-radius: var(--r-3); }
-  /* The first run (2026-10-01): where the repos live, asked once, About's look — the fish, a question, a line of why —
+#about {
+  width: min(400px, 92vw);
+  text-align: center;
+  padding: 24px 24px 18px;
+  outline: none;
+} /* nothing in it takes focus, so the dialog would wear the ring */
+#about .logo {
+  width: 72px;
+  height: 72px;
+}
+#about h3 {
+  margin: 8px 0 0;
+  font-size: var(--fs-xl);
+}
+#about h3 em {
+  font-style: normal;
+  color: var(--accent);
+}
+#about .tag {
+  margin: 4px 0 14px;
+  font-size: var(--fs-md);
+  color: var(--muted);
+}
+#about .facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+#about .facts b {
+  color: var(--ink);
+  font-weight: 600;
+  text-align: right;
+}
+#about .help {
+  margin: 14px 0 0;
+}
+#about #aboutDetails {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  max-height: 230px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font:
+    var(--fs-2xs) / 1.5 ui-monospace,
+    monospace;
+  color: var(--muted);
+  background: var(--ctl);
+  border-radius: var(--r-3);
+}
+/* The first run (2026-10-01): where the repos live, asked once, About's look — the fish, a question, a line of why —
      over the server's guesses as the setup's inset rows, the two boxes, and Skip beside the answer. */
-  :is(#welcome, #lock) { width: min(500px, 92vw); padding: 24px 24px 16px; outline: none; }
-  :is(#welcome, #lock) .wlogo { display: block; width: 56px; height: 56px; margin: 0 auto; }
-  :is(#welcome, #lock) .wlogo .logo { width: 100%; height: 100%; }
-  :is(#welcome, #lock) h3 { margin: 8px 0 0; font-size: var(--fs-xl); text-align: center; }
-  :is(#welcome, #lock) .tag { margin: 6px 8px 16px; font-size: var(--fs-md); line-height: 1.45; color: var(--muted); text-align: center; }
-  #welcome .wsugs { display: grid; margin-bottom: 14px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
-  #welcome .wsugs:empty { display: none; }
-  #welcome .wsug { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 7px 12px; border: 1px solid transparent; border-radius: var(--r-4); background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
-  #welcome .wsug + .wsug::before { content: ''; position: absolute; top: -1px; left: 44px; right: 0; border-top: 1px solid var(--line); }
-  #welcome .wsug:hover { background: var(--ctl); }
-  #welcome .wsug.on { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-  #welcome .wsug.on + .wsug::before, #welcome .wsug.on::before { border-color: transparent; }
-  #welcome .wsug .ic { width: 16px; height: 16px; fill: currentColor; justify-self: center; }
-  #welcome .wsug.on .ic { color: var(--accent); }
-  #welcome .wsug .pn { display: grid; min-width: 0; }
-  #welcome .wsug b { font-size: var(--fs-md); font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #welcome .wsug small { font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #welcome .wsug .wo { font-size: var(--fs-sm); white-space: nowrap; }
-  #welcome .wform { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: var(--fs-sm); }
-  #welcome .wform > label { color: var(--muted); text-align: right; }
-  #welcome .wrow { display: flex; gap: 8px; min-width: 0; }
-  #welcome .wrow input[type=text] { flex: 1; min-width: 0; }
-  #welcome .worgw { flex: 1; display: inline-flex; align-items: center; min-width: 0; padding-left: 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--muted); font-size: var(--fs-md); cursor: text; }
-  #welcome .worgw:focus-within { border-color: var(--accent); }
-  #welcome .worgw input[type=text] { padding-left: 1px; border: 0; background: transparent; font-weight: 600; outline: none; }
-  #welcome #wdir:focus { outline: none; border-color: var(--accent); }
-  #welcome .werr { min-height: 16px; margin: 8px 0 0; font-size: var(--fs-sm); color: var(--needs); text-align: center; }
-  #welcome .dfoot { margin-top: 6px; }
-  #welcome .wwhere { min-width: 0; font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  :is(#welcome, #lock) .wok { background: var(--accent); color: var(--bg); font-weight: 600; }
-  :is(#welcome, #lock) .wok:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
-  /* the board's key (2026-10-16): the lock, the welcome's look; what it says, and the way to the key from a terminal */
-  #lock .lsay { min-height: 16px; margin: 8px 0 0; font-size: var(--fs-sm); text-align: center; }
-  #lock .lsay.err { color: var(--needs); }
-  #lock .help { margin: 4px 0 10px; font-size: var(--fs-sm); color: var(--muted); text-align: center; }
-  #lock .dfoot { margin-top: 6px; }
+:is(#welcome, #lock) {
+  width: min(500px, 92vw);
+  padding: 24px 24px 16px;
+  outline: none;
+}
+:is(#welcome, #lock) .wlogo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+}
+:is(#welcome, #lock) .wlogo .logo {
+  width: 100%;
+  height: 100%;
+}
+:is(#welcome, #lock) h3 {
+  margin: 8px 0 0;
+  font-size: var(--fs-xl);
+  text-align: center;
+}
+:is(#welcome, #lock) .tag {
+  margin: 6px 8px 16px;
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--muted);
+  text-align: center;
+}
+#welcome .wsugs {
+  display: grid;
+  margin-bottom: 14px;
+  border-radius: var(--r-4);
+  background: color-mix(in srgb, var(--ink) 4.5%, transparent);
+}
+#welcome .wsugs:empty {
+  display: none;
+}
+#welcome .wsug {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-4);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+#welcome .wsug + .wsug::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 44px;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+#welcome .wsug:hover {
+  background: var(--ctl);
+}
+#welcome .wsug.on {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+#welcome .wsug.on + .wsug::before,
+#welcome .wsug.on::before {
+  border-color: transparent;
+}
+#welcome .wsug .ic {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  justify-self: center;
+}
+#welcome .wsug.on .ic {
+  color: var(--accent);
+}
+#welcome .wsug .pn {
+  display: grid;
+  min-width: 0;
+}
+#welcome .wsug b {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#welcome .wsug small {
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#welcome .wsug .wo {
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+#welcome .wform {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  font-size: var(--fs-sm);
+}
+#welcome .wform > label {
+  color: var(--muted);
+  text-align: right;
+}
+#welcome .wrow {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+#welcome .wrow input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+#welcome .worgw {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding-left: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: var(--fs-md);
+  cursor: text;
+}
+#welcome .worgw:focus-within {
+  border-color: var(--accent);
+}
+#welcome .worgw input[type='text'] {
+  padding-left: 1px;
+  border: 0;
+  background: transparent;
+  font-weight: 600;
+  outline: none;
+}
+#welcome #wdir:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+#welcome .werr {
+  min-height: 16px;
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--needs);
+  text-align: center;
+}
+#welcome .dfoot {
+  margin-top: 6px;
+}
+#welcome .wwhere {
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(#welcome, #lock) .wok {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+:is(#welcome, #lock) .wok:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+}
+/* the board's key (2026-10-16): the lock, the welcome's look; what it says, and the way to the key from a terminal */
+#lock .lsay {
+  min-height: 16px;
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+#lock .lsay.err {
+  color: var(--needs);
+}
+#lock .help {
+  margin: 4px 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  text-align: center;
+}
+#lock .dfoot {
+  margin-top: 6px;
+}

@@ -7,13 +7,26 @@ export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   const card = `document.querySelector('#slist > .card[data-id=${JSON.stringify(chat.id)}]')`;
   await ctx.openChat(chat.id);
-  await ctx.key('KeyC'); await ctx.waitPrompt();
+  await ctx.key('KeyC');
+  await ctx.waitPrompt();
   ctx.assert.equal((await ctx.peix('state()')).termSession, chat.id, 'the drawer runs the chat');
-  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)}).status === 'idle'`, { what: 'the chat idle in its drawer', timeout: 8000 });
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)}).status === 'idle'`, {
+    what: 'the chat idle in its drawer',
+    timeout: 8000,
+  });
   await ctx.type('/compact');
-  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)}).lastPrompt === '/compact'`, { what: 'the typed /compact, a prompt line', timeout: 8000 });
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)}).lastPrompt === '/compact'`, {
+    what: 'the typed /compact, a prompt line',
+    timeout: 8000,
+  });
   // compacted: the card is ready again, the same chat, not clauding
-  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)}).status === 'idle' && !${card}.classList.contains('working')`, { what: 'the chat ready once compacted', timeout: 10_000 });
+  await ctx.waitFor(
+    `window.peix.session(${JSON.stringify(chat.id)}).status === 'idle' && !${card}.classList.contains('working')`,
+    { what: 'the chat ready once compacted', timeout: 10_000 },
+  );
   await ctx.shot('compacted', { x: 0, y: 0, width: 1270, height: 400 });
-  return { status: await ctx.peix(`session(${JSON.stringify(chat.id)}).status`), compacted: await ctx.evaluate(`!!document.querySelector('#log .sysline')`) };
+  return {
+    status: await ctx.peix(`session(${JSON.stringify(chat.id)}).status`),
+    compacted: await ctx.evaluate(`!!document.querySelector('#log .sysline')`),
+  };
 }

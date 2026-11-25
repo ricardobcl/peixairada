@@ -15,16 +15,30 @@ export default async function (ctx) {
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: STUB });
   await ctx.reload();
   await ctx.waitFor(`window.__posts.filter(m => m.type === 'state').pop()?.plan`, { what: 'the plan in the post' });
-  const last = await ctx.evaluate(`JSON.stringify({ ...window.__posts.filter(m => m.type === 'state').pop(), reset: window.__reset })`).then(JSON.parse);
-  ctx.assert.equal(last.plan, `Plan 93% of 1W · 42% of F · resets ${last.reset}`, 'each window and the next reset, a grant left out');
+  const last = await ctx
+    .evaluate(`JSON.stringify({ ...window.__posts.filter(m => m.type === 'state').pop(), reset: window.__reset })`)
+    .then(JSON.parse);
+  ctx.assert.equal(
+    last.plan,
+    `Plan 93% of 1W · 42% of F · resets ${last.reset}`,
+    'each window and the next reset, a grant left out',
+  );
   ctx.assert.ok(Array.isArray(last.watching) && Array.isArray(last.working), 'the lists the menu folds into submenus');
   // ⌥ on a reply's row marks it read (S8): gone from what wants you, the server hearing it
   const [one] = ctx.fixture.chats;
-  appendFileSync(one.file, replyLines({ id: one.id, cwd: one.cwd, text: 'Done, have a look.', at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
+  appendFileSync(
+    one.file,
+    replyLines({ id: one.id, cwd: one.cwd, text: 'Done, have a look.', at: new Date() })
+      .map(l => JSON.stringify(l))
+      .join('\n') + '\n',
+  );
   const replied = () => `window.__posts.filter(m => m.type === 'state').pop().replied.map(r => r.id)`;
   await ctx.waitFor(`${replied()}.includes('${one.id}')`, { what: 'a new reply wanting you', timeout: 15000 });
   await ctx.evaluate(`window.peixMarkRead('${one.id}')`);
   await ctx.waitFor(`!${replied()}.includes('${one.id}')`, { what: 'the reply marked read' });
-  ctx.assert.ok(await ctx.evaluate(`(s => s.seenAt >= s.lastReplyAt)(window.peix.session('${one.id}'))`), 'seen as of now');
+  ctx.assert.ok(
+    await ctx.evaluate(`(s => s.seenAt >= s.lastReplyAt)(window.peix.session('${one.id}'))`),
+    'seen as of now',
+  );
   return last.plan;
 }

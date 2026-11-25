@@ -1,16 +1,77 @@
-  /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
-  /* Written out here rather than shipping a hljs theme stylesheet, so the palette follows the
+/* ---- syntax highlighting (highlight.js class names, our colours) ---- */
+/* Written out here rather than shipping a hljs theme stylesheet, so the palette follows the
      app's light/dark tokens like everything else. */
-  .hljs-comment, .hljs-quote { color: var(--hl-com); font-style: italic; }
-  .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-formula { color: var(--hl-key); }
-  .hljs-string, .hljs-regexp, .hljs-symbol, .hljs-bullet, .hljs-addition, .hljs-selector-attr, .hljs-selector-pseudo { color: var(--hl-str); }
-  .hljs-number, .hljs-template-variable, .hljs-link, .hljs-operator { color: var(--hl-num); }
-  .hljs-title, .hljs-title.function_, .hljs-section, .hljs-name, .hljs-selector-id { color: var(--hl-fn); }
-  .hljs-title.class_, .hljs-type, .hljs-built_in, .hljs-class .hljs-title, .hljs-selector-class { color: var(--hl-cls); }
-  .hljs-variable, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-params, .hljs-tag, .hljs-deletion { color: var(--hl-var); }
-  .hljs-meta, .hljs-meta .hljs-keyword, .hljs-meta .hljs-string, .hljs-subst { color: var(--hl-meta); }
-  .hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 600; }
-  /* diff blocks read as a diff, not as stripes of text */
-  .language-diff .hljs-addition, .language-diff .hljs-deletion { display: inline-block; min-width: 100%; }
-  .language-diff .hljs-addition { background: color-mix(in srgb, var(--hl-str) 14%, transparent); }
-  .language-diff .hljs-deletion { background: color-mix(in srgb, var(--hl-var) 14%, transparent); }
+.hljs-comment,
+.hljs-quote {
+  color: var(--hl-com);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag,
+.hljs-formula {
+  color: var(--hl-key);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--hl-str);
+}
+.hljs-number,
+.hljs-template-variable,
+.hljs-link,
+.hljs-operator {
+  color: var(--hl-num);
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id {
+  color: var(--hl-fn);
+}
+.hljs-title.class_,
+.hljs-type,
+.hljs-built_in,
+.hljs-class .hljs-title,
+.hljs-selector-class {
+  color: var(--hl-cls);
+}
+.hljs-variable,
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-params,
+.hljs-tag,
+.hljs-deletion {
+  color: var(--hl-var);
+}
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-meta .hljs-string,
+.hljs-subst {
+  color: var(--hl-meta);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 600;
+}
+/* diff blocks read as a diff, not as stripes of text */
+.language-diff .hljs-addition,
+.language-diff .hljs-deletion {
+  display: inline-block;
+  min-width: 100%;
+}
+.language-diff .hljs-addition {
+  background: color-mix(in srgb, var(--hl-str) 14%, transparent);
+}
+.language-diff .hljs-deletion {
+  background: color-mix(in srgb, var(--hl-var) 14%, transparent);
+}

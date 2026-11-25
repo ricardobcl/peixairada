@@ -1,19 +1,78 @@
-  /* ---- the small print: wrapping, figures, selection, focus, overscroll ---- */
-  /* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
+/* ---- the small print: wrapping, figures, selection, focus, overscroll ---- */
+/* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
      hyphens) rather than anywhere, a snippet keeps `anywhere` for its paths. Every count, age and number sits in
      tabular figures, so a digit changing under it moves nothing beside it. The selection is the accent's — the
      default blue was the one foreign colour left on the board — and the terminal's matches it (--term-sel); a theme may
      name its own for both (--page-sel, 2026-11-24: Flashbang's macOS blue), never on the dark frame. One focus
      ring for the keyboard, the accent's, on every control; the text boxes keep their border as their focus (their own
      :focus rules out-specify :where). A fling at the end of a list stays in it. */
-  .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
-  .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
-  .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, .shead .hgit, :is(.card, .shead) .tmx .mxn, #mxtip, .pkrow .num, .sedge b, #chg .cf .rc, #chg .crev .rh, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room .rmwho, #room .rmopt b, #stitle > .cn, #stitle .ask { font-variant-numeric: tabular-nums; }
-  ::selection { background: var(--page-sel, color-mix(in srgb, var(--accent) 28%, transparent)); }
-  :root[data-frame="dark"] :is(#sessions, #sbar) { --page-sel: initial; }   /* a light theme's selection is not the dark frame's */
-  :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
-  #slist, #log, #picklist, #pfolders, #prScroll, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
-  .card .top .tprs, :is(.card, .shead) .tmx .mxg, .ptrack { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
-
+.card .title,
+.card .snip,
+.msg .text,
+.presence,
+.prrow .t {
+  text-wrap: pretty;
+}
+.empty,
+.gempty,
+dialog p.help,
+#slist .none,
+#picklist .none,
+.pop .sl small {
+  text-wrap: balance;
+}
+.card .title {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.badge,
+.chip,
+.shead .hgit,
+:is(.card, .shead) .tmx .mxn,
+#mxtip,
+.pkrow .num,
+.sedge b,
+#chg .cf .rc,
+#chg .crev .rh,
+.tl-lab,
+.prrow .num,
+.lognew b,
+#resume .n,
+.prround .say,
+.prpips,
+#rpop,
+#room .rmwho,
+#room .rmopt b,
+#stitle > .cn,
+#stitle .ask {
+  font-variant-numeric: tabular-nums;
+}
+::selection {
+  background: var(--page-sel, color-mix(in srgb, var(--accent) 28%, transparent));
+}
+:root[data-frame='dark'] :is(#sessions, #sbar) {
+  --page-sel: initial;
+} /* a light theme's selection is not the dark frame's */
+:where(button, [role='button'], a[href], summary, input, select, textarea, .pkrow):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#chat.tinted .shead :where(button, a[href]):focus-visible {
+  outline-color: var(--rink);
+}
+#slist,
+#log,
+#picklist,
+#pfolders,
+#prScroll,
+.gterm .tbody,
+.gblank,
+.pop,
+#room :is(.rmlog, .rmpeople) {
+  overscroll-behavior: contain;
+}
+.card .top .tprs,
+:is(.card, .shead) .tmx .mxg,
+.ptrack {
+  overscroll-behavior-x: contain;
+} /* sideways only: a wheel down a stack at rest is the list's */

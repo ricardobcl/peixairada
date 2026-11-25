@@ -7,14 +7,29 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = tmpDir('peix-late-gh-'), file = join(dir, 'prs.json');
-writeFileSync(file, JSON.stringify({ 'acme/repo-a#12': { state: 'OPEN', title: 'Base of the follow-up' }, 'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up' } }));
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file } };
+const dir = tmpDir('peix-late-gh-'),
+  file = join(dir, 'prs.json');
+writeFileSync(
+  file,
+  JSON.stringify({
+    'acme/repo-a#12': { state: 'OPEN', title: 'Base of the follow-up' },
+    'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up' },
+  }),
+);
+export const meta = {
+  server: true,
+  fixture: 'auto',
+  env: { GH_BIN: fileURLToPath(new URL('../fakes/fakegh.mjs', import.meta.url)), FAKEGH_PRS: file },
+};
 
 export default async function (ctx) {
-  const out = {}, [two, plain] = ctx.fixture.chats;   // the first names repo-a#12 and #13
+  const out = {},
+    [two, plain] = ctx.fixture.chats; // the first names repo-a#12 and #13
   const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
-  await ctx.waitFor(`${card(two.id)}?.querySelectorAll('.mxs[data-url]').length === 2`, { timeout: 10_000, what: 'the card with its two PRs' });
+  await ctx.waitFor(`${card(two.id)}?.querySelectorAll('.mxs[data-url]').length === 2`, {
+    timeout: 10_000,
+    what: 'the card with its two PRs',
+  });
   await ctx.openChat(plain.id);
   // the first chat's transcript held on its way until let go; a page opened in a browser is window.open, counted
   await ctx.evaluate(`(() => {
@@ -34,8 +49,12 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher' });
   await ctx.fill('#pickq', '#13');
   await ctx.waitFor(`document.querySelector('#picklist .pkrow.pr.sel')`, { what: 'the PR row' });
-  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
-  await ctx.waitFor(`window.__held === 1 && window.peix.state().current === '${two.id}'`, { what: 'the PR row’s chat asked for' });
+  await ctx.evaluate(
+    `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`,
+  );
+  await ctx.waitFor(`window.__held === 1 && window.peix.state().current === '${two.id}'`, {
+    what: 'the PR row’s chat asked for',
+  });
   await ctx.openChat(plain.id);
   await ctx.evaluate(`window.__release()`);
   await ctx.sleep(600);
@@ -45,10 +64,14 @@ export default async function (ctx) {
 
   // Rename… from the card's menu, the same way: no title box in the other chat's header
   await ctx.evaluate(`window.__arm()`);
-  await ctx.evaluate(`(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(${card(two.id)}.querySelector('.title'))`);
+  await ctx.evaluate(
+    `(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(${card(two.id)}.querySelector('.title'))`,
+  );
   await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the card’s menu' });
   await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent === 'Rename…').click()`);
-  await ctx.waitFor(`window.__held === 1 && window.peix.state().current === '${two.id}'`, { what: 'Rename…’s chat asked for' });
+  await ctx.waitFor(`window.__held === 1 && window.peix.state().current === '${two.id}'`, {
+    what: 'Rename…’s chat asked for',
+  });
   await ctx.openChat(plain.id);
   await ctx.evaluate(`window.__release()`);
   await ctx.sleep(600);

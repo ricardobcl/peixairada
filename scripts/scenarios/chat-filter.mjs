@@ -14,8 +14,12 @@ export const meta = { server: true, fixture: 'auto' };
 
 const titles = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > .card .title')].map(t => t.textContent)`);
 const type = (ctx, q) => ctx.fill('#q', q);
-const keyIn = (ctx, key) => ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true }))`);
-const marked = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > .card.qsel .title')].map(t => t.textContent)`);
+const keyIn = (ctx, key) =>
+  ctx.evaluate(
+    `document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true }))`,
+  );
+const marked = ctx =>
+  ctx.evaluate(`[...document.querySelectorAll('#slist > .card.qsel .title')].map(t => t.textContent)`);
 
 export default async function (ctx) {
   const out = {};
@@ -25,19 +29,43 @@ export default async function (ctx) {
   const now = Date.now();
   // The third chat's PR is in Claude's reply alone: no field the box searched before held its number.
   const [arrest, resolvers, bump] = makeFixture(ctx.fixture.dir, [
-    { cwd, title: 'Arrest the drift', prompt: 'why does the drawer drift?', reply: 'a resize read at another size', at: new Date(now - 60_000) },
+    {
+      cwd,
+      title: 'Arrest the drift',
+      prompt: 'why does the drawer drift?',
+      reply: 'a resize read at another size',
+      at: new Date(now - 60_000),
+    },
     { cwd, title: 'Wallet resolvers', prompt: 'tidy the graphql layer', reply: 'done', at: new Date(now - 3600_000) },
-    { cwd, title: 'Bump the ledger', prompt: 'bump it and open the PR', reply: 'Opened https://github.com/acme/widgets/pull/650 for it.', at: new Date(now - 7200_000) },
+    {
+      cwd,
+      title: 'Bump the ledger',
+      prompt: 'bump it and open the PR',
+      reply: 'Opened https://github.com/acme/widgets/pull/650 for it.',
+      at: new Date(now - 7200_000),
+    },
   ]).chats;
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the three chats and the fixture\'s two' });
-  await ctx.waitFor(`window.peix.session(${JSON.stringify(bump.id)})?.prs?.length === 1`, { what: 'the PR on its chat' });
-  out.before = { cards: await titles(ctx), lines: await ctx.evaluate(`document.querySelectorAll('#slist .gsep.day').length`) };
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, {
+    what: "the three chats and the fixture's two",
+  });
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(bump.id)})?.prs?.length === 1`, {
+    what: 'the PR on its chat',
+  });
+  out.before = {
+    cards: await titles(ctx),
+    lines: await ctx.evaluate(`document.querySelectorAll('#slist .gsep.day').length`),
+  };
   ctx.assert.ok(out.before.lines >= 1, 'with nothing typed the day lines are there');
-  ctx.assert.ok(out.before.cards.indexOf('Arrest the drift') < out.before.cards.indexOf('Wallet resolvers'), 'the board puts the newer chat first');
+  ctx.assert.ok(
+    out.before.cards.indexOf('Arrest the drift') < out.before.cards.indexOf('Wallet resolvers'),
+    'the board puts the newer chat first',
+  );
 
   // ⌥⌘F, the list hidden: the list shows and the box has the keyboard
-  await ctx.cmd('KeyB'); ctx.assert.equal(!!(await ctx.peix('prefs()')).listHidden, false, 'plain ⌘B is not the board\'s since 2026-10-02');
-  await ctx.key('KeyB'); ctx.assert.equal((await ctx.peix('prefs()')).listHidden, true, '⌥⌘B hides the list');
+  await ctx.cmd('KeyB');
+  ctx.assert.equal(!!(await ctx.peix('prefs()')).listHidden, false, "plain ⌘B is not the board's since 2026-10-02");
+  await ctx.key('KeyB');
+  ctx.assert.equal((await ctx.peix('prefs()')).listHidden, true, '⌥⌘B hides the list');
   await ctx.key('KeyF');
   out.opened = {
     hiddenList: (await ctx.peix('prefs()')).listHidden,
@@ -45,14 +73,22 @@ export default async function (ctx) {
     focused: await ctx.evaluate(`document.activeElement?.id || null`),
     searching: await ctx.evaluate(`document.querySelector('#filters').classList.contains('searching')`),
   };
-  ctx.assert.deepEqual(out.opened, { hiddenList: false, hidden: false, focused: 'q', searching: true }, '⌥⌘F shows the list and puts the keyboard in the box');
+  ctx.assert.deepEqual(
+    out.opened,
+    { hiddenList: false, hidden: false, focused: 'q', searching: true },
+    '⌥⌘F shows the list and puts the keyboard in the box',
+  );
 
   // fuzzy: no chat holds `pln cht` anywhere, the plain chat leads, its letters bolded, the lines gone, the first card marked
   await type(ctx, 'pln cht');
   out.fuzzy = {
     cards: await titles(ctx),
-    literal: await ctx.evaluate(`window.peix.sessions().map(s => window.peix.session(s.id)).filter(s => JSON.stringify(s).toLowerCase().includes('pln cht')).length`),
-    marks: await ctx.evaluate(`[...document.querySelector('#slist > .card').querySelectorAll('.title b')].map(b => b.textContent)`),
+    literal: await ctx.evaluate(
+      `window.peix.sessions().map(s => window.peix.session(s.id)).filter(s => JSON.stringify(s).toLowerCase().includes('pln cht')).length`,
+    ),
+    marks: await ctx.evaluate(
+      `[...document.querySelector('#slist > .card').querySelectorAll('.title b')].map(b => b.textContent)`,
+    ),
     lines: await ctx.evaluate(`document.querySelectorAll('#slist .gsep').length`),
     marked: await marked(ctx),
     lit: await ctx.evaluate(`document.querySelector('#qBtn').classList.contains('on')`),
@@ -68,63 +104,119 @@ export default async function (ctx) {
   // ranked against the board: `res` starts a word in the older chat's title, and sits inside a word of the newer one's
   await type(ctx, 'res');
   out.ranked = await titles(ctx);
-  ctx.assert.ok(out.ranked.indexOf('Wallet resolvers') < out.ranked.indexOf('Arrest the drift'), `the word's start beats the board's order: ${out.ranked}`);
+  ctx.assert.ok(
+    out.ranked.indexOf('Wallet resolvers') < out.ranked.indexOf('Arrest the drift'),
+    `the word's start beats the board's order: ${out.ranked}`,
+  );
   ctx.assert.equal(out.ranked[0], 'Wallet resolvers');
 
   // ↓ ↑ walk the marked card, ⏎ opens it and keeps the query
-  await keyIn(ctx, 'ArrowDown'); out.down = await marked(ctx);
+  await keyIn(ctx, 'ArrowDown');
+  out.down = await marked(ctx);
   ctx.assert.deepEqual(out.down, [out.ranked[1]], '↓ marks the next card');
-  await keyIn(ctx, 'ArrowUp'); await keyIn(ctx, 'ArrowUp'); out.up = await marked(ctx);
+  await keyIn(ctx, 'ArrowUp');
+  await keyIn(ctx, 'ArrowUp');
+  out.up = await marked(ctx);
   ctx.assert.deepEqual(out.up, [out.ranked[0]], '↑ goes back, and stops at the top');
   await keyIn(ctx, 'Enter');
-  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(resolvers.id)}`, { what: 'the marked chat opened' });
-  out.enter = { q: await ctx.evaluate(`document.querySelector('#q').value`), marked: await marked(ctx), focused: await ctx.evaluate(`document.activeElement?.id || null`) };
-  ctx.assert.deepEqual(out.enter, { q: 'res', marked: [], focused: null }, '⏎ opens it, the query stays, the box lets go of the keyboard');
+  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(resolvers.id)}`, {
+    what: 'the marked chat opened',
+  });
+  out.enter = {
+    q: await ctx.evaluate(`document.querySelector('#q').value`),
+    marked: await marked(ctx),
+    focused: await ctx.evaluate(`document.activeElement?.id || null`),
+  };
+  ctx.assert.deepEqual(
+    out.enter,
+    { q: 'res', marked: [], focused: null },
+    '⏎ opens it, the query stays, the box lets go of the keyboard',
+  );
 
   // ⌥⌘F again: the box has the keyboard back, the query selected so typing replaces it
   await ctx.key('KeyF');
-  out.again = await ctx.evaluate(`(() => { const b = document.querySelector('#q'); return { focused: document.activeElement === b, selected: b.selectionStart === 0 && b.selectionEnd === b.value.length }; })()`);
+  out.again = await ctx.evaluate(
+    `(() => { const b = document.querySelector('#q'); return { focused: document.activeElement === b, selected: b.selectionStart === 0 && b.selectionEnd === b.value.length }; })()`,
+  );
   ctx.assert.deepEqual(out.again, { focused: true, selected: true });
 
   // Esc empties the box, closes it, and the board's order and lines come back
   await keyIn(ctx, 'Escape');
-  out.esc = { hidden: await ctx.evaluate(`document.querySelector('#q').hidden`), cards: await titles(ctx), lines: await ctx.evaluate(`document.querySelectorAll('#slist .gsep.day').length`) };
+  out.esc = {
+    hidden: await ctx.evaluate(`document.querySelector('#q').hidden`),
+    cards: await titles(ctx),
+    lines: await ctx.evaluate(`document.querySelectorAll('#slist .gsep.day').length`),
+  };
   ctx.assert.equal(out.esc.hidden, true);
-  ctx.assert.deepEqual(out.esc.cards, out.before.cards, 'the board\'s order is back');
+  ctx.assert.deepEqual(out.esc.cards, out.before.cards, "the board's order is back");
   ctx.assert.equal(out.esc.lines, out.before.lines, 'and its lines');
 
   // a PR's number finds the chat that has it — no title, prompt or branch holds `650`
-  await ctx.key('KeyF'); await type(ctx, '650');
-  out.number = { cards: await titles(ctx), literal: await ctx.evaluate(`[${JSON.stringify(bump.id)}].map(id => window.peix.session(id)).filter(s => [s.title, s.lastPrompt, s.gitBranch].join(' ').includes('650')).length`) };
+  await ctx.key('KeyF');
+  await type(ctx, '650');
+  out.number = {
+    cards: await titles(ctx),
+    literal: await ctx.evaluate(
+      `[${JSON.stringify(bump.id)}].map(id => window.peix.session(id)).filter(s => [s.title, s.lastPrompt, s.gitBranch].join(' ').includes('650')).length`,
+    ),
+  };
   ctx.assert.equal(out.number.literal, 0, 'the number is in no field searched before');
   ctx.assert.deepEqual(out.number.cards, ['Bump the ledger'], 'the box finds the chat on PR 650');
   await keyIn(ctx, 'Escape');
   // …and so does ⌥⌘K, its row saying which PR matched, the number bolded
-  await ctx.key('KeyK'); await ctx.fill('#pickq', '650');
-  out.picker = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#picklist .pkrow.chat')].map(r => ({ title: r.querySelector('.n').firstChild.textContent, ids: r.querySelector('.ids')?.textContent ?? null, bold: [...r.querySelectorAll('.ids b')].map(b => b.textContent) })))`).then(JSON.parse);
-  ctx.assert.deepEqual(out.picker, [{ title: 'Bump the ledger', ids: 'widgets#650', bold: ['650'] }], `⌥⌘K finds it and names the PR — ${JSON.stringify(out.picker)}`);
+  await ctx.key('KeyK');
+  await ctx.fill('#pickq', '650');
+  out.picker = await ctx
+    .evaluate(
+      `JSON.stringify([...document.querySelectorAll('#picklist .pkrow.chat')].map(r => ({ title: r.querySelector('.n').firstChild.textContent, ids: r.querySelector('.ids')?.textContent ?? null, bold: [...r.querySelectorAll('.ids b')].map(b => b.textContent) })))`,
+    )
+    .then(JSON.parse);
+  ctx.assert.deepEqual(
+    out.picker,
+    [{ title: 'Bump the ledger', ids: 'widgets#650', bold: ['650'] }],
+    `⌥⌘K finds it and names the PR — ${JSON.stringify(out.picker)}`,
+  );
   await ctx.shot('pr-number', { x: 0, y: 0, width: 1200, height: 400 });
   await ctx.fill('#pickq', 'bump');
-  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat .ids').length`), 0, 'a query the PR does not hold names none');
+  ctx.assert.equal(
+    await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat .ids').length`),
+    0,
+    'a query the PR does not hold names none',
+  );
   // the PR's URL pasted finds it too (2026-10-28) — its files page, in any case — and whole: …/pull/65 is not #650
   await ctx.fill('#pickq', 'https://github.com/Acme/widgets/pull/650/files');
-  out.url = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#picklist .pkrow.chat')].map(r => ({ title: r.querySelector('.n').firstChild.textContent, ids: r.querySelector('.ids')?.textContent ?? null, bold: [...r.querySelectorAll('.ids b')].map(b => b.textContent) })))`).then(JSON.parse);
-  ctx.assert.deepEqual(out.url, [{ title: 'Bump the ledger', ids: 'widgets#650', bold: ['widgets#650'] }], `a PR's URL finds its chat — ${JSON.stringify(out.url)}`);
+  out.url = await ctx
+    .evaluate(
+      `JSON.stringify([...document.querySelectorAll('#picklist .pkrow.chat')].map(r => ({ title: r.querySelector('.n').firstChild.textContent, ids: r.querySelector('.ids')?.textContent ?? null, bold: [...r.querySelectorAll('.ids b')].map(b => b.textContent) })))`,
+    )
+    .then(JSON.parse);
+  ctx.assert.deepEqual(
+    out.url,
+    [{ title: 'Bump the ledger', ids: 'widgets#650', bold: ['widgets#650'] }],
+    `a PR's URL finds its chat — ${JSON.stringify(out.url)}`,
+  );
   await ctx.fill('#pickq', 'https://github.com/acme/widgets/pull/65');
   out.urlShort = await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat').length`);
-  ctx.assert.equal(out.urlShort, 0, 'another PR\'s URL finds none, though its letters are all in order');
+  ctx.assert.equal(out.urlShort, 0, "another PR's URL finds none, though its letters are all in order");
   await ctx.evaluate(`document.querySelector('#pick').close()`);
-  await ctx.key('KeyF'); await type(ctx, 'https://github.com/acme/widgets/pull/650');
+  await ctx.key('KeyF');
+  await type(ctx, 'https://github.com/acme/widgets/pull/650');
   out.urlBox = await titles(ctx);
-  ctx.assert.deepEqual(out.urlBox, ['Bump the ledger'], 'and so does the list\'s box');
+  ctx.assert.deepEqual(out.urlBox, ['Bump the ledger'], "and so does the list's box");
   await keyIn(ctx, 'Escape');
 
   // the keys sheet (?) lists the key, beside K — the settings' Keys pane did too, until 2026-10-16
-  await ctx.evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`);
+  await ctx.evaluate(
+    `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`,
+  );
   await ctx.waitFor(`document.querySelector('#keysheet').open`, { what: 'the keys sheet' });
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#ksbody .kr kbd')].map(k => k.textContent)`);
   await ctx.evaluate(`document.querySelector('#keysheet').close()`);
-  ctx.assert.equal(out.cog[out.cog.indexOf('⌥⌘K') + 3], '⌥⌘F', 'in Go to, after the launcher and the projects (the keys grouped, 2026-10-12)');
+  ctx.assert.equal(
+    out.cog[out.cog.indexOf('⌥⌘K') + 3],
+    '⌥⌘F',
+    'in Go to, after the launcher and the projects (the keys grouped, 2026-10-12)',
+  );
   out.arrest = arrest.id.slice(0, 8);
   return out;
 }

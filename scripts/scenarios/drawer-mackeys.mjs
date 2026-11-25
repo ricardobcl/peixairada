@@ -5,14 +5,18 @@
 // board's: nothing sent.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
-const KEYS = {   // key → [code, keyCode]
-  ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], Backspace: ['Backspace', 8], Delete: ['Delete', 46],
+const KEYS = {
+  // key → [code, keyCode]
+  ArrowLeft: ['ArrowLeft', 37],
+  ArrowRight: ['ArrowRight', 39],
+  Backspace: ['Backspace', 8],
+  Delete: ['Delete', 46],
 };
 
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
-  await ctx.key('KeyC');                       // ⌥⌘C: resume it in the drawer
+  await ctx.key('KeyC'); // ⌥⌘C: resume it in the drawer
   await ctx.waitPrompt();
   // every keystroke the page sends its holder, from here on
   await ctx.evaluate(`(() => { window.__sent = []; const send = WebSocket.prototype.send;
@@ -37,19 +41,24 @@ export default async function (ctx) {
     left: await press('ArrowLeft'),
     shiftCmdLeft: await press('ArrowLeft', { metaKey: true, shiftKey: true }),
   };
-  ctx.assert.equal(out.cmdLeft, '\x01', '⌘← is ⌃A, the line\'s start');
+  ctx.assert.equal(out.cmdLeft, '\x01', "⌘← is ⌃A, the line's start");
   ctx.assert.equal(out.cmdRight, '\x05', '⌘→ is ⌃E, its end');
   ctx.assert.equal(out.cmdBackspace, '\x15', '⌘⌫ is ⌃U, delete to the start');
   ctx.assert.equal(out.cmdDelete, '\x0b', '⌘⌦ is ⌃K, delete to the end');
   ctx.assert.equal(out.altDelete, '\x1bd', '⌥⌦ is ESC d, the word ahead');
-  ctx.assert.equal(out.altLeft, '\x1bb', '⌥← still xterm\'s ESC b');
-  ctx.assert.equal(out.altBackspace, '\x1b\x7f', '⌥⌫ still xterm\'s ESC DEL');
-  ctx.assert.ok(out.left === '\x1b[D' || out.left === '\x1bOD', `a plain ← its own sequence: ${JSON.stringify(out.left)}`);
+  ctx.assert.equal(out.altLeft, '\x1bb', "⌥← still xterm's ESC b");
+  ctx.assert.equal(out.altBackspace, '\x1b\x7f', "⌥⌫ still xterm's ESC DEL");
+  ctx.assert.ok(
+    out.left === '\x1b[D' || out.left === '\x1bOD',
+    `a plain ← its own sequence: ${JSON.stringify(out.left)}`,
+  );
   ctx.assert.equal(out.shiftCmdLeft, '', '⇧⌘← is not one of them');
 
   // ⌥⌘← is the board's (the tab beside), and nothing of it reaches the holder
   await ctx.evaluate(`window.__sent.length = 0`);
-  await ctx.evaluate(`document.querySelector('#termBody textarea')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37, metaKey: true, altKey: true, bubbles: true, cancelable: true }))`);
+  await ctx.evaluate(
+    `document.querySelector('#termBody textarea')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37, metaKey: true, altKey: true, bubbles: true, cancelable: true }))`,
+  );
   await ctx.sleep(150);
   out.altCmdLeft = await ctx.evaluate(`window.__sent.join('')`);
   ctx.assert.equal(out.altCmdLeft, '', '⌥⌘← sends nothing to claude');

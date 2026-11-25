@@ -10,15 +10,23 @@
 //
 // The server is server/, a module per concern (2026-11-25); this file is its entry. Run, it boots (server/boot.mjs);
 // imported — the tests —, it gives the parts they take and does nothing.
-import { isMain } from './server/env.mjs';   // first: it is the module every other one needs, and it sets the log up
+import { isMain } from './server/env.mjs'; // first: it is the module every other one needs, and it sets the log up
 import { main } from './server/boot.mjs';
 
 // What the tests take from the server, imported without booting it
 export { agentRunning } from './server/agents/subagents.mjs';
 export { lidRuns } from './server/awake.mjs';
 export {
-  addedPatch, branchWhere, changesOf, parseNameStatus, parseNumstat, parseWorktrees, patchStat, splitPatch,
-  worktreeBases, worktreesFor
+  addedPatch,
+  branchWhere,
+  changesOf,
+  parseNameStatus,
+  parseNumstat,
+  parseWorktrees,
+  patchStat,
+  splitPatch,
+  worktreeBases,
+  worktreesFor,
 } from './server/changes.mjs';
 export { picSnippet, pollBody, pollOf } from './server/chat.mjs';
 export { picType, picUrl } from './server/chat-pics.mjs';
@@ -34,7 +42,15 @@ export { notePr, notePrs, unlinkPr } from './server/prs/mentions.mjs';
 export { forgetRef, prTitle } from './server/prs/refs.mjs';
 export { duePrs, prStatus, setPrInfo } from './server/prs/status.mjs';
 export {
-  moveTurn, prChecks, prPeople, prRefs, prReview, prTurn, pruneLogs, unwaiveTurn, waiveTurn
+  moveTurn,
+  prChecks,
+  prPeople,
+  prRefs,
+  prReview,
+  prTurn,
+  pruneLogs,
+  unwaiveTurn,
+  waiveTurn,
 } from './server/prs/turn.mjs';
 export { ghRepoOf } from './server/repos.mjs';
 export { pageCsp } from './server/routes/page.mjs';
@@ -42,8 +58,18 @@ export { newSession, projectDir, projectInput, summary } from './server/sessions
 export { cleanSetup, movePeacock } from './server/setup.mjs';
 export { snoozeOf, wakeWhy } from './server/snooze.mjs';
 export {
-  doneMarks, favChats, forGoodMarks, isDone, mutedChats, priority, prLogs, prTurns, sessions, snoozed, unlinked,
-  worktreesMade
+  doneMarks,
+  favChats,
+  forGoodMarks,
+  isDone,
+  mutedChats,
+  priority,
+  prLogs,
+  prTurns,
+  sessions,
+  snoozed,
+  unlinked,
+  worktreesMade,
 } from './server/state.mjs';
 export { findTasks, pruneTasks, sweepTasks } from './server/tasks.mjs';
 export { agentFront, agentsFor } from './server/terminals/chat-agents.mjs';
@@ -52,11 +78,20 @@ export { dayOf, noteSpan } from './server/today.mjs';
 export { doingOf, fold, stopOf } from './server/transcript/fold.mjs';
 export { indexFile } from './server/transcript/read.mjs';
 export {
-  cleanPrompt, plain, snippet, summarizeToolInput, textOf, toolResultSnippet
+  cleanPrompt,
+  plain,
+  snippet,
+  summarizeToolInput,
+  textOf,
+  toolResultSnippet,
 } from './server/transcript/text.mjs';
 export { updateParts } from './server/update.mjs';
 export { usageWindows } from './server/usage.mjs';
 export { cronNext, nextWake, pruneWakes } from './server/wakes.mjs';
 export { ensureWorktree, linkModules, sweepWorktrees, switchGuard } from './server/worktrees.mjs';
 
-if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
+if (isMain)
+  main().catch(e => {
+    console.error('[peixairada] boot failed:', e);
+    process.exit(1);
+  });

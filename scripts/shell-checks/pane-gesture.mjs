@@ -12,12 +12,18 @@ export default async function (ctx) {
   const { key } = await ctx.halfOf(url);
   const t0 = Date.now();
   while (!(await ctx.win()).panes[key]?.up && Date.now() - t0 < 10_000) await new Promise(r => setTimeout(r, 100));
-  await ctx.page(key, `await new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r)); return true`);
-  await ctx.page(key, `const a = document.createElement('a'); a.href = 'vscode-insiders://peix-nothing/nowhere'; a.textContent = 'x'; document.body.append(a); a.click(); return true`);
+  await ctx.page(
+    key,
+    `await new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r)); return true`,
+  );
+  await ctx.page(
+    key,
+    `const a = document.createElement('a'); a.href = 'vscode-insiders://peix-nothing/nowhere'; a.textContent = 'x'; document.body.append(a); a.click(); return true`,
+  );
   const said = /pane: vscode-insiders: not opened, from \S+ — no click or key of yours there/;
   const t1 = Date.now();
   while (!said.test(ctx.appLog()) && Date.now() - t1 < 5000) await new Promise(r => setTimeout(r, 100));
-  ctx.assert.match(ctx.appLog(), said, 'a script\'s click on an editor link is not handed on');
+  ctx.assert.match(ctx.appLog(), said, "a script's click on an editor link is not handed on");
   ctx.assert.doesNotMatch(ctx.appLog(), /open: vscode-insiders/, 'nothing asked of the system');
   return { key };
 }

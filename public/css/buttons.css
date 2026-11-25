@@ -1,12 +1,54 @@
-  /* ---- header ---- */
-  .btn { font: inherit; font-size: var(--fs-sm); padding: 5px 10px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: var(--r-3); cursor: pointer; white-space: nowrap; }
-  .btn:hover { background: var(--ctl-hi); }
-  .btn.icon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--muted); }
-  .btn.icon .ic { width: 15px; height: 15px; vertical-align: 0; fill: currentColor; }
-  .btn.icon:hover { color: var(--ink); }
-  .btn.icon:disabled { opacity: .45; cursor: default; background: var(--ctl); }
-  .btn.icon.err { color: var(--needs); border-color: var(--needs); }
-  #termBtn.on { color: var(--accent); border-color: var(--accent); }
-  #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
-  #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
-  .btn.icon .lbl { font-size: var(--fs-xs); }
+/* ---- header ---- */
+.btn {
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  background: var(--ctl);
+  color: var(--ink);
+  border-radius: var(--r-3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--ctl-hi);
+}
+.btn.icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  color: var(--muted);
+}
+.btn.icon .ic {
+  width: 15px;
+  height: 15px;
+  vertical-align: 0;
+  fill: currentColor;
+}
+.btn.icon:hover {
+  color: var(--ink);
+}
+.btn.icon:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: var(--ctl);
+}
+.btn.icon.err {
+  color: var(--needs);
+  border-color: var(--needs);
+}
+#termBtn.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+#termBtn.take {
+  color: var(--ink);
+} /* live in another terminal: can be taken over */
+#termBtn.take.arm {
+  color: var(--needs);
+  border-color: var(--needs);
+} /* armed: the next click ends that claude */
+.btn.icon .lbl {
+  font-size: var(--fs-xs);
+}

@@ -1,61 +1,317 @@
-  /* ---- projects: a folder, or a named set of folders ---- */
-  /* The project in view is the list's own tab (2026-11-04, round XXV): the card's tab grown to the list's size, solid as
+/* ---- projects: a folder, or a named set of folders ---- */
+/* The project in view is the list's own tab (2026-11-04, round XXV): the card's tab grown to the list's size, solid as
      the open card is, on a rule the cards hang from — the list a folder — and level with the chat's toolbar (--cue-h,
      floatH). Its name, how many of how many, and the way out in words. Nothing at all on ALL. */
-  #stitle { --selc: oklch(from var(--repo, var(--nocolor)) min(l, .52) min(c, .16) h); display: flex; align-items: stretch; gap: 8px; box-sizing: border-box; height: var(--cue-h, 43px); min-width: 0; margin: 8px 8px 6px; box-shadow: inset 0 -2px 0 var(--selc); white-space: nowrap; }
-  #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
-  #slist:focus { outline: none; }   /* the keys there after Show all */
-  #stitle > .t { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 62%; padding: var(--cue-drop, 0px) 9px 0 12px; border: 0; border-radius: 7px 7px 0 0; background: var(--selc); color: #fff; font-family: inherit; font-size: var(--fs-md); font-weight: 700; line-height: 1.2; cursor: pointer; }
-  #stitle > .t:hover { background: oklch(from var(--selc) calc(l * .92) c h); }
-  #stitle > .t { transform-origin: 50% 100%; }   /* the wave grows from the rule */
-  .tabfly { position: fixed; z-index: 40; box-sizing: border-box; display: flex; align-items: center; padding: 0 9px 0 12px; overflow: hidden; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: var(--fs-md); font-weight: 700; pointer-events: none; transform-origin: 0 0; }
-  #stitle > .t .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* a long name ends in … */
-  #stitle > .t .ch { flex: none; width: 9px; height: 9px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  #stitle > .cn { flex: none; align-self: center; padding-top: var(--cue-drop, 0px); font-size: var(--fs-sm); color: var(--muted); }
-  /* the way out, in words, and the one question it would show: one raised ground, a card's, whose inks are fitted (2026-11-04), two presses */
-  #stitle > .out { flex: none; align-self: center; display: flex; align-items: center; height: 26px; margin: var(--cue-drop, 0px) 0 2px auto; border-radius: var(--r-3); background: var(--step); box-shadow: var(--lo); font-size: var(--fs-sm); font-weight: 600; }
-  #stitle > .out button { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0 10px; border: 0; border-radius: inherit; background: none; color: var(--ink); font: inherit; cursor: pointer; }
-  #stitle > .out button:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
-  #stitle > .out .ask { padding-right: 6px; color: var(--needs); font-weight: 700; }
-  #stitle > .out .ask i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-  #stitle > .out .ask + .sx { padding-left: 6px; }
-  @container (max-width: 380px) { #stitle > .cn { display: none; } #stitle > .t { max-width: 48%; } }   /* narrow, the count gives way first */
-  main.notch #sessions.npad #stitle { margin-top: calc(var(--notch-top, 0px) + 6px); }
-  main.tiles.notch #sessions.npad.scoped #slist { padding-top: 0; }   /* under the strip already: the cue took its place */
-  #sbar #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
-  /* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
+#stitle {
+  --selc: oklch(from var(--repo, var(--nocolor)) min(l, 0.52) min(c, 0.16) h);
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  box-sizing: border-box;
+  height: var(--cue-h, 43px);
+  min-width: 0;
+  margin: 8px 8px 6px;
+  box-shadow: inset 0 -2px 0 var(--selc);
+  white-space: nowrap;
+}
+#stitle[hidden] {
+  display: none;
+} /* on ALL; a flex box beats the attribute's own display */
+#slist:focus {
+  outline: none;
+} /* the keys there after Show all */
+#stitle > .t {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 62%;
+  padding: var(--cue-drop, 0px) 9px 0 12px;
+  border: 0;
+  border-radius: 7px 7px 0 0;
+  background: var(--selc);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+#stitle > .t:hover {
+  background: oklch(from var(--selc) calc(l * 0.92) c h);
+}
+#stitle > .t {
+  transform-origin: 50% 100%;
+} /* the wave grows from the rule */
+.tabfly {
+  position: fixed;
+  z-index: 40;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 9px 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+#stitle > .t .n {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+} /* a long name ends in … */
+#stitle > .t .ch {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#stitle > .cn {
+  flex: none;
+  align-self: center;
+  padding-top: var(--cue-drop, 0px);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+/* the way out, in words, and the one question it would show: one raised ground, a card's, whose inks are fitted (2026-11-04), two presses */
+#stitle > .out {
+  flex: none;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  margin: var(--cue-drop, 0px) 0 2px auto;
+  border-radius: var(--r-3);
+  background: var(--step);
+  box-shadow: var(--lo);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+#stitle > .out button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  padding: 0 10px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+#stitle > .out button:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+#stitle > .out .ask {
+  padding-right: 6px;
+  color: var(--needs);
+  font-weight: 700;
+}
+#stitle > .out .ask i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+#stitle > .out .ask + .sx {
+  padding-left: 6px;
+}
+@container (max-width: 380px) {
+  #stitle > .cn {
+    display: none;
+  }
+  #stitle > .t {
+    max-width: 48%;
+  }
+} /* narrow, the count gives way first */
+main.notch #sessions.npad #stitle {
+  margin-top: calc(var(--notch-top, 0px) + 6px);
+}
+main.tiles.notch #sessions.npad.scoped #slist {
+  padding-top: 0;
+} /* under the strip already: the cue took its place */
+#sbar #filters {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1 1 auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+/* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
      the chips' place while it was open; the chips went 2026-10-11, later): open, the icon is the field's left cap
      and the box takes the row's spare room. */
-  #sbar .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
-  #sbar #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
-  #sbar .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
-  /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
-  .fsearch { font: inherit; border: 1px solid transparent; background: var(--ctl); color: var(--muted); border-radius: var(--r-4); padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
-  .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
-  .fsearch:hover { color: var(--ink); background: var(--ctl-hi); }
-  .fsearch.on, .btn.icon.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
-  /* the list's filter (2026-10-12, #fBtn): a funnel after the magnifier, saying which filter while one is on */
-  #fBtn .fl { margin-left: 5px; font-size: var(--fs-xs); white-space: nowrap; }
-  #fBtn .fl:empty { display: none; }
-  .fq { font: inherit; font-size: var(--fs-xs); padding: 2px 8px; border: 1px solid var(--accent); border-radius: var(--r-4); background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
-  .fq[hidden] { display: none; }
-  .fq:focus { outline: none; }
-  /* a project's mark (PROJECT_ICONS), inline before its name */
-  .pic { width: 13px; height: 13px; fill: currentColor; vertical-align: -2px; margin-right: 4px; flex: none; }
-  .pc { font-size: var(--fs-xs); font-weight: 700; border-radius: var(--r-4); padding: 0 6px; line-height: 16px; color: #fff; }
-  .pc.working { background: var(--working); color: #2a2205; } .pc.ready { background: var(--idle); }
-  /* The square is the colour picker where it stands for one folder (the chat header's, beside the project's name):
+#sbar .fsearch {
+  flex: none;
+  height: 20px;
+} /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
+#sbar #filters.searching .fsearch {
+  flex: none;
+  min-width: 0;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  padding-right: 3px;
+}
+#sbar .fq {
+  flex: 1 1 0;
+  width: 0;
+  height: 20px;
+  margin-left: -3px;
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+  padding-left: 3px;
+} /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
+/* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
+.fsearch {
+  font: inherit;
+  border: 1px solid transparent;
+  background: var(--ctl);
+  color: var(--muted);
+  border-radius: var(--r-4);
+  padding: 2px 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.fsearch .ic {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.fsearch:hover {
+  color: var(--ink);
+  background: var(--ctl-hi);
+}
+.fsearch.on,
+.btn.icon.on {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+/* the list's filter (2026-10-12, #fBtn): a funnel after the magnifier, saying which filter while one is on */
+#fBtn .fl {
+  margin-left: 5px;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+#fBtn .fl:empty {
+  display: none;
+}
+.fq {
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-4);
+  background: var(--bg);
+  color: var(--ink);
+  width: 150px;
+  min-width: 0;
+}
+.fq[hidden] {
+  display: none;
+}
+.fq:focus {
+  outline: none;
+}
+/* a project's mark (PROJECT_ICONS), inline before its name */
+.pic {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  vertical-align: -2px;
+  margin-right: 4px;
+  flex: none;
+}
+.pc {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border-radius: var(--r-4);
+  padding: 0 6px;
+  line-height: 16px;
+  color: #fff;
+}
+.pc.working {
+  background: var(--working);
+  color: #2a2205;
+}
+.pc.ready {
+  background: var(--idle);
+}
+/* The square is the colour picker where it stands for one folder (the chat header's, beside the project's name):
      click opens the colour panel, ⌥-click clears. #colorInput is the one real control on the page, kept out of the re-rendered
      lists so the panel it opened is still wired to something after the next render. */
-  .sq.pick { cursor: pointer; transition: transform .12s; }
-  .sq.pick:hover { transform: scale(1.35); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--muted); }
-  #colorInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
-  .note { position: fixed; z-index: 60; font-size: var(--fs-xs); line-height: 1.4; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-3); padding: 4px 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); max-width: 340px; pointer-events: none; }
-  .note.err { border-color: var(--needs); color: var(--needs); }
-  .note { transition: opacity .12s, transform .12s; }   /* in from 3 px up; note() adds .out before it removes it */
-  @starting-style { .note { opacity: 0; transform: translateY(-3px); } }
-  .note.out { opacity: 0; transform: translateY(-3px); }
-  /* a file being dragged over the board (the shell says so in the app; the page sees it in a browser) */
-  #chat.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
-  #chat.dropping > * { pointer-events: none; }
-
+.sq.pick {
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.sq.pick:hover {
+  transform: scale(1.35);
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 3px var(--muted);
+}
+#colorInput {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
+.note {
+  position: fixed;
+  z-index: 60;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  padding: 4px 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  max-width: 340px;
+  pointer-events: none;
+}
+.note.err {
+  border-color: var(--needs);
+  color: var(--needs);
+}
+.note {
+  transition:
+    opacity 0.12s,
+    transform 0.12s;
+} /* in from 3 px up; note() adds .out before it removes it */
+@starting-style {
+  .note {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.note.out {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+/* a file being dragged over the board (the shell says so in the app; the page sees it in a browser) */
+#chat.dropping {
+  outline: 2px dashed var(--accent);
+  outline-offset: -5px;
+}
+#chat.dropping > * {
+  pointer-events: none;
+}

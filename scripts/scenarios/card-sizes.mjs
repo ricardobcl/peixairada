@@ -15,35 +15,98 @@ import { makeFixture, toolLines } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto', prefs: { cards: null } };
 
 // Per card: which words show (display, not markup — the markup always holds both), the question line, the height.
-const cards = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries([...document.querySelectorAll('#slist > .card')].map(c => [c.querySelector('.title').textContent, {
+const cards = ctx =>
+  ctx
+    .evaluate(
+      `JSON.stringify(Object.fromEntries([...document.querySelectorAll('#slist > .card')].map(c => [c.querySelector('.title').textContent, {
   words: [...c.querySelectorAll('.snip')].filter(x => getComputedStyle(x).display !== 'none').map(x => (x.classList.contains('you') ? 'you: ' : 'claude: ') + x.textContent.trim()),
   ask: !!c.querySelector('.state.needs-input') && getComputedStyle(c.querySelector('.state.needs-input')).display !== 'none',
   h: Math.round(c.getBoundingClientRect().height),
-}])))`).then(JSON.parse);
-const slider = ctx => ctx.evaluate(`({ v: document.querySelector('#cardsSize [aria-checked="true"]')?.dataset.v, list: document.querySelector('#sessions').dataset.cards, on: document.querySelector('#cardsSize [aria-checked="true"]')?.textContent.toLowerCase() || null })`);
+}])))`,
+    )
+    .then(JSON.parse);
+const slider = ctx =>
+  ctx.evaluate(
+    `({ v: document.querySelector('#cardsSize [aria-checked="true"]')?.dataset.v, list: document.querySelector('#sessions').dataset.cards, on: document.querySelector('#cardsSize [aria-checked="true"]')?.textContent.toLowerCase() || null })`,
+  );
 const pick = (ctx, v) => ctx.evaluate(`document.querySelector('#cardsSize [data-v="${v}"]').click()`);
 /** A dependent switch under the size: whether it is off, and the line under its name. */
-const dep = (ctx, row) => ctx.evaluate(`(r => ({ off: r.classList.contains('off') && r.querySelector('input').disabled, say: r.querySelector('small').textContent }))(document.querySelector('${row}'))`);
+const dep = (ctx, row) =>
+  ctx.evaluate(
+    `(r => ({ off: r.classList.contains('off') && r.querySelector('input').disabled, say: r.querySelector('small').textContent }))(document.querySelector('${row}'))`,
+  );
 
 export default async function (ctx) {
   const out = {};
   const cwd = join(tmpdir(), 'peix-card-sizes', 'sizes-repo');
-  const sleeper = spawn('sleep', ['120'], { stdio: 'ignore' }), watcher = spawn('sleep', ['120'], { stdio: 'ignore' });
+  const sleeper = spawn('sleep', ['120'], { stdio: 'ignore' }),
+    watcher = spawn('sleep', ['120'], { stdio: 'ignore' });
   try {
-    const at = new Date(Date.now() - 3600_000), ts = ms => new Date(at.getTime() + ms).toISOString();
-    const base = id => ({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: id, version: 'fixture', gitBranch: 'main' });
-    const said = (id, text, ms) => ({ ...base(id), parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: ts(ms), message: { role: 'user', content: [{ type: 'text', text }] } });
+    const at = new Date(Date.now() - 3600_000),
+      ts = ms => new Date(at.getTime() + ms).toISOString();
+    const base = id => ({
+      isSidechain: false,
+      userType: 'external',
+      entrypoint: 'cli',
+      cwd,
+      sessionId: id,
+      version: 'fixture',
+      gitBranch: 'main',
+    });
+    const said = (id, text, ms) => ({
+      ...base(id),
+      parentUuid: null,
+      type: 'user',
+      uuid: randomUUID(),
+      timestamp: ts(ms),
+      message: { role: 'user', content: [{ type: 'text', text }] },
+    });
     makeFixture(ctx.fixture.dir, [
       { cwd, title: 'Claude spoke last', prompt: 'is the build green?', reply: 'green on every job', at },
-      { cwd, title: 'You spoke last', prompt: 'rename the column', reply: 'renamed', at: new Date(at.getTime() - 60_000),
-        lines: id => [said(id, 'and the one beside it too', 30_000), said(id, '[Request interrupted by user]', 40_000)] },
-      { cwd, title: 'Asking you', prompt: 'clean the old branches', reply: 'on it', at: new Date(at.getTime() - 120_000),
-        live: { pid: sleeper.pid, startedAt: Date.now() - 600_000, status: 'waiting', waitingFor: 'permission prompt' } },
-      { cwd, title: 'A title long enough to run onto a second line of the card, and on to a third where the list is narrow', prompt: 'a long one', reply: 'yes', at: new Date(at.getTime() - 180_000) },
-      { cwd, title: 'Watching a run', prompt: 'watch the deploy', reply: 'watching', at: new Date(at.getTime() - 240_000), live: { pid: watcher.pid, startedAt: Date.now() - 600_000, status: 'idle', statusAt: Date.now() },
-        lines: id => toolLines({ id, cwd, name: 'Monitor', input: { command: 'gh run watch', description: 'the deploy run', timeout_ms: 1800_000 }, result: 'Monitor started (task dep99zz11, expires in 30m unless the source ends first).', at: new Date(Date.now() - 60_000) }) },
+      {
+        cwd,
+        title: 'You spoke last',
+        prompt: 'rename the column',
+        reply: 'renamed',
+        at: new Date(at.getTime() - 60_000),
+        lines: id => [said(id, 'and the one beside it too', 30_000), said(id, '[Request interrupted by user]', 40_000)],
+      },
+      {
+        cwd,
+        title: 'Asking you',
+        prompt: 'clean the old branches',
+        reply: 'on it',
+        at: new Date(at.getTime() - 120_000),
+        live: { pid: sleeper.pid, startedAt: Date.now() - 600_000, status: 'waiting', waitingFor: 'permission prompt' },
+      },
+      {
+        cwd,
+        title: 'A title long enough to run onto a second line of the card, and on to a third where the list is narrow',
+        prompt: 'a long one',
+        reply: 'yes',
+        at: new Date(at.getTime() - 180_000),
+      },
+      {
+        cwd,
+        title: 'Watching a run',
+        prompt: 'watch the deploy',
+        reply: 'watching',
+        at: new Date(at.getTime() - 240_000),
+        live: { pid: watcher.pid, startedAt: Date.now() - 600_000, status: 'idle', statusAt: Date.now() },
+        lines: id =>
+          toolLines({
+            id,
+            cwd,
+            name: 'Monitor',
+            input: { command: 'gh run watch', description: 'the deploy run', timeout_ms: 1800_000 },
+            result: 'Monitor started (task dep99zz11, expires in 30m unless the source ends first).',
+            at: new Date(Date.now() - 60_000),
+          }),
+      },
     ]);
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, { what: 'the five chats and the fixture\'s two' });
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, {
+      what: "the five chats and the fixture's two",
+    });
     await ctx.waitFor(`!!document.querySelector('#slist > .card .trow .chip.watch')`, { what: 'the watching chip' });
     await ctx.waitFor(`!!document.querySelector('#slist > .card.asking')`, { what: 'the asking card' });
 
@@ -53,18 +116,36 @@ export default async function (ctx) {
     await pick(ctx, 0);
     out.large = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.large.slider, { v: '0', list: 'large', on: 'large' });
-    ctx.assert.deepEqual(out.large.cards['Claude spoke last'].words, ['you: is the build green?', 'claude: green on every job']);
-    ctx.assert.deepEqual(out.large.cards['You spoke last'].words, ['you: and the one beside it too', 'claude: renamed']);
+    ctx.assert.deepEqual(out.large.cards['Claude spoke last'].words, [
+      'you: is the build green?',
+      'claude: green on every job',
+    ]);
+    ctx.assert.deepEqual(out.large.cards['You spoke last'].words, [
+      'you: and the one beside it too',
+      'claude: renamed',
+    ]);
     ctx.assert.equal(out.large.cards['Asking you'].ask, true);
-    ctx.assert.deepEqual(await dep(ctx, '#laneRow'), { off: true, say: 'Cards are already large' }, 'by lane: off, and why');
+    ctx.assert.deepEqual(
+      await dep(ctx, '#laneRow'),
+      { off: true, say: 'Cards are already large' },
+      'by lane: off, and why',
+    );
     await ctx.shot('large', { x: 0, y: 0, width: 420, height: 640 });
 
     // medium: the last word only — Claude's on one card, yours on the other
     await pick(ctx, 1);
     out.medium = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.medium.slider, { v: '1', list: 'medium', on: 'medium' });
-    ctx.assert.deepEqual(out.medium.cards['Claude spoke last'].words, ['claude: green on every job'], 'Claude had the last word');
-    ctx.assert.deepEqual(out.medium.cards['You spoke last'].words, ['you: and the one beside it too'], 'you had it — the reply is the turn before\'s');
+    ctx.assert.deepEqual(
+      out.medium.cards['Claude spoke last'].words,
+      ['claude: green on every job'],
+      'Claude had the last word',
+    );
+    ctx.assert.deepEqual(
+      out.medium.cards['You spoke last'].words,
+      ['you: and the one beside it too'],
+      "you had it — the reply is the turn before's",
+    );
     ctx.assert.equal(out.medium.cards['Asking you'].ask, true, 'the question stays');
     await ctx.shot('medium', { x: 0, y: 0, width: 420, height: 640 });
 
@@ -82,48 +163,107 @@ export default async function (ctx) {
     ctx.assert.equal((await ctx.peix('prefs()')).cards, 'compact');
 
     // by lane (2026-10-12): the asking card large — both its words — and the ready ones still compact
-    await ctx.evaluate(`document.querySelector('#cardsByLane').click()`); await ctx.settle();
-    out.byLane = { attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-bylane')`), cards: await cards(ctx) };
+    await ctx.evaluate(`document.querySelector('#cardsByLane').click()`);
+    await ctx.settle();
+    out.byLane = {
+      attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-bylane')`),
+      cards: await cards(ctx),
+    };
     ctx.assert.equal(out.byLane.attr, true);
-    ctx.assert.deepEqual(out.byLane.cards['Asking you'].words, ['you: clean the old branches', 'claude: on it'], 'the chat asking you, large');
+    ctx.assert.deepEqual(
+      out.byLane.cards['Asking you'].words,
+      ['you: clean the old branches', 'claude: on it'],
+      'the chat asking you, large',
+    );
     ctx.assert.deepEqual(out.byLane.cards['Claude spoke last'].words, [], 'a ready one at the size picked');
     await ctx.shot('by-lane', { x: 0, y: 0, width: 420, height: 640 });
-    await ctx.evaluate(`document.querySelector('#cardsByLane').click()`); await ctx.settle();
+    await ctx.evaluate(`document.querySelector('#cardsByLane').click()`);
+    await ctx.settle();
     ctx.assert.deepEqual((await cards(ctx))['Asking you'].words, [], 'off, the asking card compact again');
 
     // compact's own switch (2026-09-29):
     // on under compact only (off with why at the other sizes, 2026-10-16; hidden before); on, the title is one line and
     // nothing hangs under it, so every card is one height
     const heights = cs => [...new Set(Object.values(cs).map(c => c.h))];
-    ctx.assert.deepEqual(await dep(ctx, '#evenRow'), { off: false, say: 'Every compact card one title line tall' }, 'the switch is on offer under compact');
-    ctx.assert.ok(heights(out.compact.cards).length > 1, `compact cards are of several heights: ${heights(out.compact.cards)}`);
-    await ctx.evaluate(`document.querySelector('#cardsEven').click()`); await ctx.settle();
-    out.even = { cards: await cards(ctx), attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`) };
+    ctx.assert.deepEqual(
+      await dep(ctx, '#evenRow'),
+      { off: false, say: 'Every compact card one title line tall' },
+      'the switch is on offer under compact',
+    );
+    ctx.assert.ok(
+      heights(out.compact.cards).length > 1,
+      `compact cards are of several heights: ${heights(out.compact.cards)}`,
+    );
+    await ctx.evaluate(`document.querySelector('#cardsEven').click()`);
+    await ctx.settle();
+    out.even = {
+      cards: await cards(ctx),
+      attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`),
+    };
     ctx.assert.equal(out.even.attr, true);
-    ctx.assert.deepEqual(heights(out.even.cards).length, 1, `one height for every card: ${JSON.stringify(Object.fromEntries(Object.entries(out.even.cards).map(([t, c]) => [t, c.h])))}`);
-    const exact = await ctx.evaluate(`[...new Set([...document.querySelectorAll('#slist > .card')].map(c => c.getBoundingClientRect().height))]`);
+    ctx.assert.deepEqual(
+      heights(out.even.cards).length,
+      1,
+      `one height for every card: ${JSON.stringify(Object.fromEntries(Object.entries(out.even.cards).map(([t, c]) => [t, c.h])))}`,
+    );
+    const exact = await ctx.evaluate(
+      `[...new Set([...document.querySelectorAll('#slist > .card')].map(c => c.getBoundingClientRect().height))]`,
+    );
     ctx.assert.equal(exact.length, 1, `to the fraction, the watching chip's too: ${exact}`);
-    ctx.assert.equal(await ctx.evaluate(`(c => c.getBoundingClientRect().bottom <= c.closest('.trow').getBoundingClientRect().bottom)(document.querySelector('#slist > .card .trow .chip.watch'))`), true, 'the chip inside its row');
-    ctx.assert.equal(out.even.cards['Asking you'].ask, false, 'the question is left to the card\'s blinking edge');
-    ctx.assert.equal(await ctx.evaluate(`[...document.querySelectorAll('#slist > .card .state.moveslot')].every(x => getComputedStyle(x).visibility === 'hidden' && x.getClientRects().length)`), true, 'no card has a move here: each holds the line\'s place, unseen');
+    ctx.assert.equal(
+      await ctx.evaluate(
+        `(c => c.getBoundingClientRect().bottom <= c.closest('.trow').getBoundingClientRect().bottom)(document.querySelector('#slist > .card .trow .chip.watch'))`,
+      ),
+      true,
+      'the chip inside its row',
+    );
+    ctx.assert.equal(out.even.cards['Asking you'].ask, false, "the question is left to the card's blinking edge");
+    ctx.assert.equal(
+      await ctx.evaluate(
+        `[...document.querySelectorAll('#slist > .card .state.moveslot')].every(x => getComputedStyle(x).visibility === 'hidden' && x.getClientRects().length)`,
+      ),
+      true,
+      "no card has a move here: each holds the line's place, unseen",
+    );
     await ctx.shot('even', { x: 0, y: 0, width: 420, height: 640 });
     await pick(ctx, 1);
-    ctx.assert.deepEqual([await dep(ctx, '#evenRow'), await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`)], [{ off: true, say: 'Only with compact cards' }, false], 'medium: the switch off, with why, and nothing evened');
+    ctx.assert.deepEqual(
+      [await dep(ctx, '#evenRow'), await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`)],
+      [{ off: true, say: 'Only with compact cards' }, false],
+      'medium: the switch off, with why, and nothing evened',
+    );
     await pick(ctx, 2);
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`), true, 'back to compact, the switch as it was left');
+    ctx.assert.equal(
+      await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`),
+      true,
+      'back to compact, the switch as it was left',
+    );
     ctx.assert.equal((await ctx.peix('prefs()')).cardsEven, true, 'a pref');
 
     // the settings, to look at the size and its switches
-    await ctx.cmd('Comma'); await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`); await ctx.settle();
-    const r = await ctx.evaluate(`(r => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector('#settings').getBoundingClientRect())`);
+    await ctx.cmd('Comma');
+    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
+    await ctx.settle();
+    const r = await ctx.evaluate(
+      `(r => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector('#settings').getBoundingClientRect())`,
+    );
     await ctx.shot('cog', r);
     await ctx.cmd('Comma');
 
     // a reload keeps it: a pref of this window
     await ctx.reload();
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, { what: 'the list back after the reload' });
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, {
+      what: 'the list back after the reload',
+    });
     out.reloaded = { slider: await slider(ctx), words: Object.values(await cards(ctx)).flatMap(c => c.words) };
-    ctx.assert.deepEqual(out.reloaded, { slider: { v: '2', list: 'compact', on: 'compact' }, words: [] }, 'compact after a reload');
+    ctx.assert.deepEqual(
+      out.reloaded,
+      { slider: { v: '2', list: 'compact', on: 'compact' }, words: [] },
+      'compact after a reload',
+    );
     return out;
-  } finally { sleeper.kill(); watcher.kill(); }
+  } finally {
+    sleeper.kill();
+    watcher.kill();
+  }
 }

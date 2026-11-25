@@ -8,7 +8,8 @@ export default async function (ctx) {
   const settled = async (want, what) => {
     let w;
     for (const end = Date.now() + 15_000; Date.now() < end; await new Promise(r => setTimeout(r, 200))) {
-      w = await ctx.win(); if (w.full === want && w.barClear === !want) return w;
+      w = await ctx.win();
+      if (w.full === want && w.barClear === !want) return w;
     }
     if (w?.full !== want) throw new Error(`timed out waiting for ${what}`);
     return w;
@@ -19,7 +20,7 @@ export default async function (ctx) {
   await ctx.full();
   const full = await settled(true, "macOS's full screen");
   ctx.assert.ok(!full.barClear, 'full screen: the bar opaque');
-  ctx.assert.equal(full.ground, 'ffffff', 'the ground still the theme\'s white');
+  ctx.assert.equal(full.ground, 'ffffff', "the ground still the theme's white");
   await ctx.full();
   const back = await settled(false, 'a window again');
   ctx.assert.ok(back.barClear, 'a window again: the bar clear');

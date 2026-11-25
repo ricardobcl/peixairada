@@ -1,6 +1,10 @@
-  /* ---- layout: sessions | splitter | chat (one half or two) ---- */
-  main { display: flex; min-height: 0; min-width: 0; }
-  /* The chat's colour eases from one chat to the next (2026-09-27, night): a switch of chat slides the header from one
+/* ---- layout: sessions | splitter | chat (one half or two) ---- */
+main {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+/* The chat's colour eases from one chat to the next (2026-09-27, night): a switch of chat slides the header from one
      project's colour to the other's over 250 ms rather than cutting. The ink (--rink) still cuts: a grey half-way
      between white and black reads on neither. tintChat sets the colours — the header's ground and its two veils, the
      transcript's wash (--hbg, --hveil, --hveil2 on #chat), plain properties.
@@ -10,112 +14,348 @@
      switch, and in WebKit a walk of every layer after each: a clauding chat took 450–600 ms to open, 220–275 without
      it. A new surface in the chat's colour reads --hbg-eased and joins the rule below. --repo itself cannot be
      registered: its fallback to --nocolor is what a colourless card relies on. */
-  @property --hbg-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
-  @property --hveil-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
-  @property --hveil2-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
-  #chat { --hbg: var(--nocolor); }
-  :where(.shead, #log, .gbody) { --hbg-eased: var(--hbg); transition: --hbg-eased .25s; }   /* :where — the header's own list below wins */
-  .shead { --hveil-eased: var(--hveil); --hveil2-eased: var(--hveil2); transition: --hbg-eased .25s, --hveil-eased .25s, --hveil2-eased .25s; }
-  /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
-  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; container-type: inline-size; }
-  /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
+@property --hbg-eased {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+@property --hveil-eased {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+@property --hveil2-eased {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+#chat {
+  --hbg: var(--nocolor);
+}
+:where(.shead, #log, .gbody) {
+  --hbg-eased: var(--hbg);
+  transition: --hbg-eased 0.25s;
+} /* :where — the header's own list below wins */
+.shead {
+  --hveil-eased: var(--hveil);
+  --hveil2-eased: var(--hveil2);
+  transition:
+    --hbg-eased 0.25s,
+    --hveil-eased 0.25s,
+    --hveil2-eased 0.25s;
+}
+/* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
+#sessions {
+  width: 380px;
+  min-width: 300px;
+  max-width: 60vw;
+  flex: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  container-type: inline-size;
+}
+/* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
-  /* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
+/* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
      of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
      over the list's, which only a definite cell allows. */
-  #sessions { grid-template-columns: minmax(0, 1fr); }
-  /* The project in view, then the list (2026-11-04, round XXV: the cue at the top, where the list is read; it had been at
+#sessions {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* The project in view, then the list (2026-11-04, round XXV: the cue at the top, where the list is read; it had been at
      the foot since 2026-09-29, a row of its own there since 2026-10-08). The foot row of controls is the status bar's. */
-  #stitle { grid-row: 1; grid-column: 1 / -1; }
-  #tline { grid-row: 2; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 2; grid-column: 1 / -1; }
-  /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
-  main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
-  /* The list hidden (⌥⌘B, the status bar's first button — 2026-10-25; folded to a rail of squares from 2026-09-22):
+#stitle {
+  grid-row: 1;
+  grid-column: 1 / -1;
+}
+#tline {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+#slist {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+/* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
+main.notch #sessions.npad #slist {
+  padding-top: var(--notch-top, 0px);
+}
+/* The list hidden (⌥⌘B, the status bar's first button — 2026-10-25; folded to a rail of squares from 2026-09-22):
      it and its splitter out of the layout, the chat the whole width. display: none, so nothing on a card is drawn or
      runs while it is away — no ring turns, no ping goes out. Its width stays the splitter's, inline. */
-  main.lhide :is(#sessions, #splitter) { display: none; }
-  /* The bar between the list and the chat (2026-09-26): a gap of the tiles', dragged to size the list. It was the open
+main.lhide :is(#sessions, #splitter) {
+  display: none;
+}
+/* The bar between the list and the chat (2026-09-26): a gap of the tiles', dragged to size the list. It was the open
      chat's colour down to its card, black under it, until tiles were the only layout (2026-10-14). */
-  #splitter { width: 8px; flex: none; cursor: col-resize; position: relative; }
-  main { timeline-scope: --log; }
-  /* The header's shadow on the transcript (2026-10-11, the Mac's toolbars): there only once the transcript has scrolled —
+#splitter {
+  width: 8px;
+  flex: none;
+  cursor: col-resize;
+  position: relative;
+}
+main {
+  timeline-scope: --log;
+}
+/* The header's shadow on the transcript (2026-10-11, the Mac's toolbars): there only once the transcript has scrolled —
      a scroll-driven fade on the log's own timeline over its first 24 px, the compositor's; without scroll timelines,
      --shade from the log's scroll listener. The header lifts over what is under it to let it out. */
-  #log { scroll-timeline: --log y; }
-  .shead { z-index: 3; }
-  .shead::before { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; margin-top: 1px; pointer-events: none;
-    background: linear-gradient(color-mix(in srgb, #000 22%, transparent), transparent); opacity: var(--shade, 0); }
-  :root[data-theme="dark"] .shead::before { background: linear-gradient(rgba(0, 0, 0, .55), transparent); }
-  @supports (animation-timeline: scroll()) { .shead::before { animation: shade linear both; animation-timeline: --log; animation-range: 0 24px; } }
-  @keyframes shade { from { opacity: 0; } to { opacity: 1; } }
-  /* The dividers light up after a beat, as VS Code's sash does (2026-09-27, night): a pointer crossing on its way to the
+#log {
+  scroll-timeline: --log y;
+}
+.shead {
+  z-index: 3;
+}
+.shead::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 10px;
+  margin-top: 1px;
+  pointer-events: none;
+  background: linear-gradient(color-mix(in srgb, #000 22%, transparent), transparent);
+  opacity: var(--shade, 0);
+}
+:root[data-theme='dark'] .shead::before {
+  background: linear-gradient(rgba(0, 0, 0, 0.55), transparent);
+}
+@supports (animation-timeline: scroll()) {
+  .shead::before {
+    animation: shade linear both;
+    animation-timeline: --log;
+    animation-range: 0 24px;
+  }
+}
+@keyframes shade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* The dividers light up after a beat, as VS Code's sash does (2026-09-27, night): a pointer crossing on its way to the
      chat no longer flashes them; a drag lights at once. */
-  #gsplit { transition: background-color .15s; }
-  #gsplit:hover { transition-delay: .3s; }
-  #gsplit.drag { transition: none; }
-  #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
-  /* Placed by hand: #prlist, #rival and #resume hide with display:none, which takes them out of auto-placement
+#gsplit {
+  transition: background-color 0.15s;
+}
+#gsplit:hover {
+  transition-delay: 0.3s;
+}
+#gsplit.drag {
+  transition: none;
+}
+#chat {
+  --repo: initial;
+  flex: 1;
+  min-width: 320px;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+/* Placed by hand: #prlist, #rival and #resume hide with display:none, which takes them out of auto-placement
      and slid the body into an auto row — a gap under it on a short chat, the drawer pushed off the bottom
      on a long one. Everything below the header is #groups now, so there is one row to place, not three. */
-  #shead { grid-row: 1; } #prlist { grid-row: 2; } #rival { grid-row: 3; } #groups { grid-row: 4; } #resume { grid-row: 5; }
-  /* The app filling the screen, camera housing included (2026-09-27, ⌃⌘F): peixFill says where the housing is, in this
+#shead {
+  grid-row: 1;
+}
+#prlist {
+  grid-row: 2;
+}
+#rival {
+  grid-row: 3;
+}
+#groups {
+  grid-row: 4;
+}
+#resume {
+  grid-row: 5;
+}
+/* The app filling the screen, camera housing included (2026-09-27, ⌃⌘F): peixFill says where the housing is, in this
      page's px, and the strip either side of it is the top row's to use. The chat list's head stays put while the list
      ends short of the housing, and the chat header keeps its title left of the housing and its chips right of it — a
      hole in the row, the h2's width and right margin set by layoutNotch(). Whichever has not the room (a list dragged
      under the housing, a header too far left of it for a title) pads down by the strip instead, its own tint filling
      the room: .npad. The padding is the head's own plus the strip. */
-  main.notch #chat.npad .shead { padding-top: calc(7px + var(--notch-top, 0px)); }
-  /* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28):
+main.notch #chat.npad .shead {
+  padding-top: calc(7px + var(--notch-top, 0px));
+}
+/* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28):
      the h2 no longer grows there. */
-  .shead.hole > h2 + * { margin-left: auto; }
-  /* ⌃⌘F's word on the way in (2026-10-13, fillHint): a pill under the head row, centred on the housing (on the window
+.shead.hole > h2 + * {
+  margin-left: auto;
+}
+/* ⌃⌘F's word on the way in (2026-10-13, fillHint): a pill under the head row, centred on the housing (on the window
      without one), the panel's ink on the panel — nothing to press, gone after FILL_HINT_MS */
-  :is(#fillHint, #tvHint) { position: fixed; z-index: 60; translate: -50% 0; padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--r-5); background: var(--panel); color: var(--ink); font-size: var(--fs-sm); white-space: nowrap; pointer-events: none; box-shadow: 0 8px 26px rgba(0, 0, 0, .22); transition: opacity .25s var(--ease-out), translate .25s var(--ease-out); }
-  @starting-style { :is(#fillHint, #tvHint) { opacity: 0; translate: -50% -6px; } }
-  :is(#fillHint, #tvHint).out { opacity: 0; translate: -50% -4px; }
-  :is(#fillHint, #tvHint) b { font-weight: 650; }
-  :is(#fillHint, #tvHint) kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
-  /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
+:is(#fillHint, #tvHint) {
+  position: fixed;
+  z-index: 60;
+  translate: -50% 0;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-5);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
+  transition:
+    opacity 0.25s var(--ease-out),
+    translate 0.25s var(--ease-out);
+}
+@starting-style {
+  :is(#fillHint, #tvHint) {
+    opacity: 0;
+    translate: -50% -6px;
+  }
+}
+:is(#fillHint, #tvHint).out {
+  opacity: 0;
+  translate: -50% -4px;
+}
+:is(#fillHint, #tvHint) b {
+  font-weight: 650;
+}
+:is(#fillHint, #tvHint) kbd {
+  font:
+    600 var(--fs-xs) ui-monospace,
+    monospace;
+  padding: 1px 5px;
+  border-radius: var(--r-2);
+  background: var(--ctl-hi);
+  color: var(--ink);
+}
+/* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
      pane — and a tab belongs to exactly one of them. The left half keeps the plain ids: it is the whole column
      while nothing is split. */
-  #groups { display: flex; min-height: 0; min-width: 0; }
-  .grp { flex: 1 1 0; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); }
-  .grp[hidden] { display: none; }
-  /* Placed by hand, the same trap as #chat's rows: a hidden strip is display:none, which takes it out of
+#groups {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.grp {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
+}
+.grp[hidden] {
+  display: none;
+}
+/* Placed by hand, the same trap as #chat's rows: a hidden strip is display:none, which takes it out of
      auto-placement and slides the body into the `auto` row — where it sizes itself to the terminal it holds
      instead of to the pane, and the drawer stays whatever height it was first drawn at, black underneath
      (2026-09-22). */
-  .grp > .ptabs { grid-row: 1; }
-  .grp > .gbody { grid-row: 2; }
-  /* One cell, everything stacked in it: the transcript, the drawer and the "nothing here" note take turns. */
-  .gbody { min-height: 0; min-width: 0; display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); }
-  .gbody > * { grid-area: 1 / 1; }
-  #gsplit { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
-  #gsplit:hover, #gsplit.drag { background: var(--accent); }   /* eased and delayed, above */
-  #gsplit[hidden] { display: none; }
-  /* The same two halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2): #groups turns into a column and the divider lies
+.grp > .ptabs {
+  grid-row: 1;
+}
+.grp > .gbody {
+  grid-row: 2;
+}
+/* One cell, everything stacked in it: the transcript, the drawer and the "nothing here" note take turns. */
+.gbody {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 1fr;
+  grid-template-columns: minmax(0, 1fr);
+}
+.gbody > * {
+  grid-area: 1 / 1;
+}
+#gsplit {
+  width: 6px;
+  flex: none;
+  cursor: col-resize;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+#gsplit:hover,
+#gsplit.drag {
+  background: var(--accent);
+} /* eased and delayed, above */
+#gsplit[hidden] {
+  display: none;
+}
+/* The same two halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2): #groups turns into a column and the divider lies
      across it. The halves keep their flex basis (applySplit), which runs along whichever axis is the main one, so
      nothing else moves. */
-  #groups.stack { flex-direction: column; }
-  #groups.stack > #gsplit { width: auto; height: 6px; cursor: row-resize; border-left: 0; border-right: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  /* Each half a tile of its own (2026-10-11, the studies' Q7): with tiles and two halves, 8 px round and between them —
+#groups.stack {
+  flex-direction: column;
+}
+#groups.stack > #gsplit {
+  width: auto;
+  height: 6px;
+  cursor: row-resize;
+  border-left: 0;
+  border-right: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+/* Each half a tile of its own (2026-10-11, the studies' Q7): with tiles and two halves, 8 px round and between them —
      the divider is the gap — and each bordered as the tiles are, 30 % of the project's colour and whole on the half the
      keys are in, so the rule under a strip has nothing left to say and a lone strip is nothing at all. */
-  main.tiles.split #groups { padding: 8px; }
-  main.tiles.split #gsplit { width: 8px; border: 0; background: transparent; }
-  main.tiles.split #groups.stack > #gsplit { width: auto; height: 8px; border: 0; }
-  main.tiles.split #gsplit:is(:hover, .drag) { background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent); }
-  main.tiles.split .grp:not([hidden]) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); }
-  main.tiles.split .grp.on { border-color: var(--tile-edge, var(--nocolor)); }
-  /* …under the floating header, below it: the halves' tops are the tiles' own, not behind the bar */
-  :root[data-head="float"] main.tiles.split #groups { padding-top: calc(var(--float-h, 0px) + 4px); }
-  :root[data-head="float"] main.tiles.split #groups > .grp { padding-top: 0; }
-  :root[data-head="float"] main.tiles.split #groups > #gsplit { margin-top: 0; }
-  .gempty { color: var(--muted); text-align: center; align-self: center; padding: 0 20px; font-size: var(--fs-md); line-height: 1.8; }
-  /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
-  /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
+main.tiles.split #groups {
+  padding: 8px;
+}
+main.tiles.split #gsplit {
+  width: 8px;
+  border: 0;
+  background: transparent;
+}
+main.tiles.split #groups.stack > #gsplit {
+  width: auto;
+  height: 8px;
+  border: 0;
+}
+main.tiles.split #gsplit:is(:hover, .drag) {
+  background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent);
+}
+main.tiles.split .grp:not([hidden]) {
+  border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line));
+}
+main.tiles.split .grp.on {
+  border-color: var(--tile-edge, var(--nocolor));
+}
+/* …under the floating header, below it: the halves' tops are the tiles' own, not behind the bar */
+:root[data-head='float'] main.tiles.split #groups {
+  padding-top: calc(var(--float-h, 0px) + 4px);
+}
+:root[data-head='float'] main.tiles.split #groups > .grp {
+  padding-top: 0;
+}
+:root[data-head='float'] main.tiles.split #groups > #gsplit {
+  margin-top: 0;
+}
+.gempty {
+  color: var(--muted);
+  text-align: center;
+  align-self: center;
+  padding: 0 20px;
+  font-size: var(--fs-md);
+  line-height: 1.8;
+}
+/* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
+/* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
      transparent). Where the chat lives is the header menu's to say (its VS Code row), not a colour, since 2026-09-20. */
-  #log { background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg-eased) 24%, transparent), color-mix(in srgb, var(--hbg-eased) 6%, transparent) 70%, transparent); }
-  /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
-
+#log {
+  background:
+    var(--grain),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--hbg-eased) 24%, transparent),
+      color-mix(in srgb, var(--hbg-eased) 6%, transparent) 70%,
+      transparent
+    );
+}
+/* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */

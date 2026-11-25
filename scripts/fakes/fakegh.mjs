@@ -26,35 +26,52 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { isAbsolute, join } from 'node:path';
 
 /** A GraphQL document's tokens: names, punctuation, the spread, strings and numbers (arguments, skipped). */
-function tokens(src) { return src.match(/\.\.\.|[{}():,[\]$!=@]|"(?:[^"\\]|\\.)*"|-?\d[\d.]*|[A-Za-z_]\w*/g) || []; }
+function tokens(src) {
+  return src.match(/\.\.\.|[{}():,[\]$!=@]|"(?:[^"\\]|\\.)*"|-?\d[\d.]*|[A-Za-z_]\w*/g) || [];
+}
 /** The selection set at `at` (a `{`) as a tree: each field by its alias, else its name → { sub: its own tree or null for a
  *  scalar, on: the types of the inline fragments it came from, or null when it is asked for whatever the type }. */
 function selection(t, at) {
-  const sel = {}, put = (key, f) => {
-    const was = sel[key];
-    if (!was) return void (sel[key] = f);
-    if (f.sub) was.sub = { ...(was.sub || {}), ...f.sub };   // the same field twice (two fragments): what either asks
-    was.on = was.on && f.on ? new Set([...was.on, ...f.on]) : null;
-  };
+  const sel = {},
+    put = (key, f) => {
+      const was = sel[key];
+      if (!was) return void (sel[key] = f);
+      if (f.sub) was.sub = { ...(was.sub || {}), ...f.sub }; // the same field twice (two fragments): what either asks
+      was.on = was.on && f.on ? new Set([...was.on, ...f.on]) : null;
+    };
   let i = at + 1;
   while (i < t.length && t[i] !== '}') {
-    if (t[i] === '...') {   // `... on Type { … }`
-      const type = t[i + 2], r = selection(t, i + 3);
+    if (t[i] === '...') {
+      // `... on Type { … }`
+      const type = t[i + 2],
+        r = selection(t, i + 3);
       for (const [k, f] of Object.entries(r.sel)) put(k, { sub: f.sub, on: f.on || new Set([type]) });
-      i = r.end; continue;
+      i = r.end;
+      continue;
     }
     const key = t[i++];
-    if (t[i] === ':') i += 2;   // an alias: the answer is keyed by it
-    if (t[i] === '(') { let depth = 0; do { if (t[i] === '(') depth++; else if (t[i] === ')') depth--; i++; } while (depth && i < t.length); }
+    if (t[i] === ':') i += 2; // an alias: the answer is keyed by it
+    if (t[i] === '(') {
+      let depth = 0;
+      do {
+        if (t[i] === '(') depth++;
+        else if (t[i] === ')') depth--;
+        i++;
+      } while (depth && i < t.length);
+    }
     let sub = null;
-    if (t[i] === '{') { const r = selection(t, i); sub = r.sel; i = r.end; }
+    if (t[i] === '{') {
+      const r = selection(t, i);
+      sub = r.sel;
+      i = r.end;
+    }
     put(key, { sub, on: null });
   }
   return { sel, end: i + 1 };
 }
-const NOT_NULL = new Set(['isDraft', 'isCrossRepository']);   // Boolean! in GitHub's schema: false, never null
+const NOT_NULL = new Set(['isDraft', 'isCrossRepository']); // Boolean! in GitHub's schema: false, never null
 /** GitHub's answer for a field the entry leaves out. */
-const blank = (key, f) => f.sub ? ('nodes' in f.sub ? { nodes: [] } : null) : NOT_NULL.has(key) ? false : null;
+const blank = (key, f) => (f.sub ? ('nodes' in f.sub ? { nodes: [] } : null) : NOT_NULL.has(key) ? false : null);
 /** The entry's value cut to the selection `sel`; every key it holds that `sel` does not name goes to `unasked`. */
 function shape(v, sel, path, unasked) {
   if (v === null || v === undefined) return null;
@@ -72,17 +89,31 @@ function shape(v, sel, path, unasked) {
 const [cmd, sub, flag, arg] = process.argv.slice(2);
 if (cmd === 'repo' && sub === 'clone') {
   const [ref, dir] = [flag, arg];
-  if (!/^[\w.-]+\/[\w.-]+$/.test(ref || '') || !dir) { console.error(`fakegh: repo clone <owner/name> <dir>, not: ${process.argv.slice(2).join(' ')}`); process.exit(2); }
-  const progress = process.argv.includes('--progress'), ms = Number(process.env.FAKEGH_CLONE_MS ?? 1200), steps = 10;
+  if (!/^[\w.-]+\/[\w.-]+$/.test(ref || '') || !dir) {
+    console.error(`fakegh: repo clone <owner/name> <dir>, not: ${process.argv.slice(2).join(' ')}`);
+    process.exit(2);
+  }
+  const progress = process.argv.includes('--progress'),
+    ms = Number(process.env.FAKEGH_CLONE_MS ?? 1200),
+    steps = 10;
   mkdirSync(dir, { recursive: true });
   process.stderr.write(`Cloning into '${dir}'...\n`);
   if (ref.split('/')[1].startsWith('no-such-')) {
-    setTimeout(() => { rmSync(dir, { recursive: true, force: true }); console.error(`GraphQL: Could not resolve to a Repository with the name '${ref}'. (repository)`); process.exit(1); }, ms / 4);
+    setTimeout(() => {
+      rmSync(dir, { recursive: true, force: true });
+      console.error(`GraphQL: Could not resolve to a Repository with the name '${ref}'. (repository)`);
+      process.exit(1);
+    }, ms / 4);
   } else {
     let i = 0;
     const tick = setInterval(() => {
       i++;
-      if (progress) process.stderr.write(i <= 7 ? `Receiving objects: ${String(Math.round(i / 7 * 100)).padStart(3)}% (${i * 10}/70)\r` : `Resolving deltas: ${String(Math.round((i - 7) / 3 * 100)).padStart(3)}% (${i - 7}/3)\r`);
+      if (progress)
+        process.stderr.write(
+          i <= 7
+            ? `Receiving objects: ${String(Math.round((i / 7) * 100)).padStart(3)}% (${i * 10}/70)\r`
+            : `Resolving deltas: ${String(Math.round(((i - 7) / 3) * 100)).padStart(3)}% (${i - 7}/3)\r`,
+        );
       if (i < steps) return;
       clearInterval(tick);
       mkdirSync(join(dir, '.git'), { recursive: true });
@@ -91,32 +122,71 @@ if (cmd === 'repo' && sub === 'clone') {
       if (progress) process.stderr.write('Resolving deltas: 100% (3/3), done.\n');
     }, ms / steps);
   }
-} else if (cmd === 'auth' && sub === 'token') {   // the chat's token (2026-10-17): FAKEGH_TOKEN, else one the fake GitHub takes for FAKEGH_VIEWER
+} else if (cmd === 'auth' && sub === 'token') {
+  // the chat's token (2026-10-17): FAKEGH_TOKEN, else one the fake GitHub takes for FAKEGH_VIEWER
   process.stdout.write(`${process.env.FAKEGH_TOKEN || `fake-token-${process.env.FAKEGH_VIEWER || 'me'}`}\n`);
 } else if (cmd === 'pr' && sub === 'diff') {
   let prs = {};
-  try { prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8')); } catch {}
-  const m = /github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/.exec(flag || ''), pr = m && prs[`${m[1]}/${m[2]}#${m[3]}`];
+  try {
+    prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8'));
+  } catch {}
+  const m = /github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/.exec(flag || ''),
+    pr = m && prs[`${m[1]}/${m[2]}#${m[3]}`];
   if (pr?.diff) process.stdout.write(pr.diff);
-  else { console.error(`could not find pull request diff: ${pr ? 'no diff in the fixture' : 'HTTP 404: Not Found'}`); process.exitCode = 1; }
+  else {
+    console.error(`could not find pull request diff: ${pr ? 'no diff in the fixture' : 'HTTP 404: Not Found'}`);
+    process.exitCode = 1;
+  }
 } else {
-  if (cmd !== 'api' || sub !== 'graphql' || flag !== '-f' || !arg?.startsWith('query=')) { console.error(`fakegh: only \`api graphql -f query=…\` is faked, not: ${process.argv.slice(2).join(' ')}`); process.exit(2); }
+  if (cmd !== 'api' || sub !== 'graphql' || flag !== '-f' || !arg?.startsWith('query=')) {
+    console.error(`fakegh: only \`api graphql -f query=…\` is faked, not: ${process.argv.slice(2).join(' ')}`);
+    process.exit(2);
+  }
   const fail = process.env.FAKEGH_FAIL;
   if (fail && (!isAbsolute(fail) || existsSync(fail))) {
-    let why = fail; if (isAbsolute(fail)) { try { why = readFileSync(fail, 'utf8').trim(); } catch {} why ||= 'HTTP 502: Bad Gateway (https://api.github.com/graphql)'; }
-    console.error(`gh: ${why}`); process.exit(1);
+    let why = fail;
+    if (isAbsolute(fail)) {
+      try {
+        why = readFileSync(fail, 'utf8').trim();
+      } catch {}
+      why ||= 'HTTP 502: Bad Gateway (https://api.github.com/graphql)';
+    }
+    console.error(`gh: ${why}`);
+    process.exit(1);
   }
   let prs = {};
-  try { prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8')); } catch {}
+  try {
+    prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8'));
+  } catch {}
   const query = selection(tokens(arg.slice('query='.length)), 0).sel;
-  const data = { viewer: { login: process.env.FAKEGH_VIEWER || 'me' } }, errors = [], unasked = [];
-  for (const m of arg.matchAll(/(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ pullRequest\(number: (\d+)\)/g)) {
-    const key = `${m[2]}/${m[3]}#${m[4]}`, pr = prs[key];
-    if (pr) { const { diff, ...entry } = pr; data[m[1]] = { pullRequest: shape(entry, query[m[1]].sub.pullRequest.sub, key, unasked) }; }
-    else data[m[1]] = null;
-    if (!pr) errors.push({ type: 'NOT_FOUND', path: [m[1], 'pullRequest'], message: `Could not resolve to a PullRequest with the number of ${m[4]}.` });
+  const data = { viewer: { login: process.env.FAKEGH_VIEWER || 'me' } },
+    errors = [],
+    unasked = [];
+  for (const m of arg.matchAll(
+    /(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ pullRequest\(number: (\d+)\)/g,
+  )) {
+    const key = `${m[2]}/${m[3]}#${m[4]}`,
+      pr = prs[key];
+    if (pr) {
+      const { diff, ...entry } = pr;
+      data[m[1]] = { pullRequest: shape(entry, query[m[1]].sub.pullRequest.sub, key, unasked) };
+    } else data[m[1]] = null;
+    if (!pr)
+      errors.push({
+        type: 'NOT_FOUND',
+        path: [m[1], 'pullRequest'],
+        message: `Could not resolve to a PullRequest with the number of ${m[4]}.`,
+      });
   }
-  if (unasked.length) { console.error(`fakegh: the fixture has what the query does not ask for — ${unasked.join(', ')} (a field PR_FIELDS dropped or renamed?)`); process.exit(2); }
+  if (unasked.length) {
+    console.error(
+      `fakegh: the fixture has what the query does not ask for — ${unasked.join(', ')} (a field PR_FIELDS dropped or renamed?)`,
+    );
+    process.exit(2);
+  }
   process.stdout.write(JSON.stringify(errors.length ? { data, errors } : { data }) + '\n');
-  if (errors.length) { console.error(errors.map(e => `gh: ${e.message}`).join('\n')); process.exitCode = 1; }
+  if (errors.length) {
+    console.error(errors.map(e => `gh: ${e.message}`).join('\n'));
+    process.exitCode = 1;
+  }
 }

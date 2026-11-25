@@ -10,71 +10,163 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { freePort, sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 
-test('the newest build is fetched in the background, once, and serve-web started for it', { timeout: 60_000 }, async () => {
-  const cli = tmpDir('peix-vscli-'), log = join(cli, 'requests');
-  let newest = { name: '1.142.0', version: 'a'.repeat(40) };
-  const asked = [];
-  const upd = createServer((req, res) => { asked.push(req.url); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(newest)); });
-  await new Promise(r => upd.listen(0, '127.0.0.1', r));
-  const srv = await startTestServer({ env: {
-    CODE_BIN: fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url)), VSWEB_PORT: String(await freePort()), VSCODE_CLI_DATA_DIR: cli, FAKE_CODE_LOG: log,
-    VSWEB_UPDATE_URL: `http://127.0.0.1:${upd.address().port}/api/latest`, VSWEB_FRESH_MS: '400' } });
-  const requests = () => existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [];
-  try {
-    await waitFor(() => existsSync(join(cli, 'serve-web', 'a'.repeat(40), 'product.json')), { what: 'the newest build in serve-web\'s cache' });
-    assert.match(asked[0], /^\/api\/latest\/server-darwin-(arm64|x64)-web\/stable$/, 'the update service asked for the web server build of this Mac');
-    assert.deepEqual(requests(), [`GET /stable-${'a'.repeat(40)}/ → 403`, `GET /stable-${'a'.repeat(40)}/`], 'serve-web started for it and asked for that build by name — not its root, which starts a server —, first with no token, which it refuses: nothing is handed the token before its listener is shown to be the board\'s (2026-11-06)');
-    assert.match(srv.logText(), /VS Code Web: 1\.142\.0 is out — serve-web fetching it in the background, started for it/);
-    await sleep(1500);
-    assert.ok(asked.length >= 3, 'asked again on every tick');
-    assert.equal(requests().length, 2, 'the cache has it: serve-web is asked nothing more');
-    newest = { name: '1.143.0', version: 'b'.repeat(40) };   // a release comes out
-    await waitFor(() => existsSync(join(cli, 'serve-web', 'b'.repeat(40), 'product.json')), { what: 'the next build' });
-    assert.deepEqual(requests().slice(1), [`GET /stable-${'a'.repeat(40)}/`, `GET /stable-${'b'.repeat(40)}/`], 'the next one fetched the same way, from the serve-web already running — shown the board\'s already');
-  } finally {
-    await srv.stop(); upd.close();
-  }
-});
+test(
+  'the newest build is fetched in the background, once, and serve-web started for it',
+  { timeout: 60_000 },
+  async () => {
+    const cli = tmpDir('peix-vscli-'),
+      log = join(cli, 'requests');
+    let newest = { name: '1.142.0', version: 'a'.repeat(40) };
+    const asked = [];
+    const upd = createServer((req, res) => {
+      asked.push(req.url);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(newest));
+    });
+    await new Promise(r => upd.listen(0, '127.0.0.1', r));
+    const srv = await startTestServer({
+      env: {
+        CODE_BIN: fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url)),
+        VSWEB_PORT: String(await freePort()),
+        VSCODE_CLI_DATA_DIR: cli,
+        FAKE_CODE_LOG: log,
+        VSWEB_UPDATE_URL: `http://127.0.0.1:${upd.address().port}/api/latest`,
+        VSWEB_FRESH_MS: '400',
+      },
+    });
+    const requests = () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : []);
+    try {
+      await waitFor(() => existsSync(join(cli, 'serve-web', 'a'.repeat(40), 'product.json')), {
+        what: "the newest build in serve-web's cache",
+      });
+      assert.match(
+        asked[0],
+        /^\/api\/latest\/server-darwin-(arm64|x64)-web\/stable$/,
+        'the update service asked for the web server build of this Mac',
+      );
+      assert.deepEqual(
+        requests(),
+        [`GET /stable-${'a'.repeat(40)}/ → 403`, `GET /stable-${'a'.repeat(40)}/`],
+        "serve-web started for it and asked for that build by name — not its root, which starts a server —, first with no token, which it refuses: nothing is handed the token before its listener is shown to be the board's (2026-11-06)",
+      );
+      assert.match(
+        srv.logText(),
+        /VS Code Web: 1\.142\.0 is out — serve-web fetching it in the background, started for it/,
+      );
+      await sleep(1500);
+      assert.ok(asked.length >= 3, 'asked again on every tick');
+      assert.equal(requests().length, 2, 'the cache has it: serve-web is asked nothing more');
+      newest = { name: '1.143.0', version: 'b'.repeat(40) }; // a release comes out
+      await waitFor(() => existsSync(join(cli, 'serve-web', 'b'.repeat(40), 'product.json')), {
+        what: 'the next build',
+      });
+      assert.deepEqual(
+        requests().slice(1),
+        [`GET /stable-${'a'.repeat(40)}/`, `GET /stable-${'b'.repeat(40)}/`],
+        "the next one fetched the same way, from the serve-web already running — shown the board's already",
+      );
+    } finally {
+      await srv.stop();
+      upd.close();
+    }
+  },
+);
 
-test('VS Code Web wants a token of the board\'s own (2026-10-16): kept in the state folder, 0600, handed to the page, traded by serve-web for its cookie, the same after a restart', { timeout: 40_000 }, async () => {
-  const srv = await startTestServer();
-  try {
-    const r = await srv.post('api/vscode-web', {});
-    assert.equal(r.status, 200, JSON.stringify(r.body));
-    const file = join(srv.dir, 'vsweb-token');
-    assert.equal(statSync(file).mode & 0o777, 0o600, 'the token is this user\'s alone');
-    assert.match(r.body.token, /^[0-9a-f]{64}$/); assert.equal(r.body.token, readFileSync(file, 'utf8').trim(), 'the page is given the file\'s');
-    assert.equal((await fetch(r.body.url, { redirect: 'manual' })).status, 403, 'serve-web was started with it: no token, no editor');
-    const traded = await fetch(`${r.body.url}?folder=%2Ftmp&tkn=${r.body.token}`, { redirect: 'manual' });
-    assert.equal(traded.status, 302); assert.equal(traded.headers.get('location'), '/?folder=%2Ftmp', 'the address without it');
-    assert.match(traded.headers.get('set-cookie'), new RegExp(`^vscode-tkn=${r.body.token};`));
-    await srv.restart();
-    const again = await srv.post('api/vscode-web', {});
-    assert.equal(again.status, 200, JSON.stringify(again.body)); assert.equal(again.body.token, r.body.token, 'a restart keeps it — the pane\'s cookie with it');
-  } finally { await srv.stop(); }
-});
+test(
+  "VS Code Web wants a token of the board's own (2026-10-16): kept in the state folder, 0600, handed to the page, traded by serve-web for its cookie, the same after a restart",
+  { timeout: 40_000 },
+  async () => {
+    const srv = await startTestServer();
+    try {
+      const r = await srv.post('api/vscode-web', {});
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      const file = join(srv.dir, 'vsweb-token');
+      assert.equal(statSync(file).mode & 0o777, 0o600, "the token is this user's alone");
+      assert.match(r.body.token, /^[0-9a-f]{64}$/);
+      assert.equal(r.body.token, readFileSync(file, 'utf8').trim(), "the page is given the file's");
+      assert.equal(
+        (await fetch(r.body.url, { redirect: 'manual' })).status,
+        403,
+        'serve-web was started with it: no token, no editor',
+      );
+      const traded = await fetch(`${r.body.url}?folder=%2Ftmp&tkn=${r.body.token}`, { redirect: 'manual' });
+      assert.equal(traded.status, 302);
+      assert.equal(traded.headers.get('location'), '/?folder=%2Ftmp', 'the address without it');
+      assert.match(traded.headers.get('set-cookie'), new RegExp(`^vscode-tkn=${r.body.token};`));
+      await srv.restart();
+      const again = await srv.post('api/vscode-web', {});
+      assert.equal(again.status, 200, JSON.stringify(again.body));
+      assert.equal(again.body.token, r.body.token, "a restart keeps it — the pane's cookie with it");
+    } finally {
+      await srv.stop();
+    }
+  },
+);
 
-test('what holds the port and wants a token is handed none unless it is the board\'s own serve-web or this user\'s VS Code (2026-11-06)', { timeout: 40_000 }, async () => {
-  const port = await freePort(), got = [];
-  const squat = createServer((req, res) => { got.push(req.headers.cookie || ''); res.writeHead(403); res.end(); });   // refuses as serve-web does, and keeps what it is sent
-  await new Promise(r => squat.listen(port, '127.0.0.1', r));
-  const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
-  try {
-    const r = await srv.post('api/vscode-web', {});
-    assert.equal(r.status, 409, JSON.stringify(r.body)); assert.match(r.body.error, /listens on port \d+, not VS Code Web/);
-    assert.equal(r.body.token, undefined);
-    assert.ok(got.length >= 1 && got.every(c => !/vscode-tkn/.test(c)), `no cookie went to it: ${JSON.stringify(got)}`);
-  } finally { await srv.stop(); squat.close(); }
-});
+test(
+  "what holds the port and wants a token is handed none unless it is the board's own serve-web or this user's VS Code (2026-11-06)",
+  { timeout: 40_000 },
+  async () => {
+    const port = await freePort(),
+      got = [];
+    const squat = createServer((req, res) => {
+      got.push(req.headers.cookie || '');
+      res.writeHead(403);
+      res.end();
+    }); // refuses as serve-web does, and keeps what it is sent
+    await new Promise(r => squat.listen(port, '127.0.0.1', r));
+    const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
+    try {
+      const r = await srv.post('api/vscode-web', {});
+      assert.equal(r.status, 409, JSON.stringify(r.body));
+      assert.match(r.body.error, /listens on port \d+, not VS Code Web/);
+      assert.equal(r.body.token, undefined);
+      assert.ok(
+        got.length >= 1 && got.every(c => !/vscode-tkn/.test(c)),
+        `no cookie went to it: ${JSON.stringify(got)}`,
+      );
+    } finally {
+      await srv.stop();
+      squat.close();
+    }
+  },
+);
 
-test('a VS Code Web on the port that wants no token — one started before 2026-10-16 that outlived its board — is not taken for the board\'s', { timeout: 40_000 }, async () => {
-  const port = await freePort();
-  const old = spawn(process.execPath, [fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url)), 'serve-web', '--host', '127.0.0.1', '--port', String(port), '--without-connection-token'], { stdio: 'ignore' });
-  const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
-  try {
-    await waitFor(() => fetch(`http://127.0.0.1:${port}/`).then(r => r.status === 200, () => false), { what: 'the editor with no token answering' });
-    const r = await srv.post('api/vscode-web', {});
-    assert.equal(r.status, 409, JSON.stringify(r.body)); assert.match(r.body.error, /serves VS Code Web with no token — not this board's/);
-    assert.equal(r.body.token, undefined, 'nor is the token handed out for it');
-  } finally { await srv.stop(); old.kill(); }
-});
+test(
+  "a VS Code Web on the port that wants no token — one started before 2026-10-16 that outlived its board — is not taken for the board's",
+  { timeout: 40_000 },
+  async () => {
+    const port = await freePort();
+    const old = spawn(
+      process.execPath,
+      [
+        fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url)),
+        'serve-web',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(port),
+        '--without-connection-token',
+      ],
+      { stdio: 'ignore' },
+    );
+    const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
+    try {
+      await waitFor(
+        () =>
+          fetch(`http://127.0.0.1:${port}/`).then(
+            r => r.status === 200,
+            () => false,
+          ),
+        { what: 'the editor with no token answering' },
+      );
+      const r = await srv.post('api/vscode-web', {});
+      assert.equal(r.status, 409, JSON.stringify(r.body));
+      assert.match(r.body.error, /serves VS Code Web with no token — not this board's/);
+      assert.equal(r.body.token, undefined, 'nor is the token handed out for it');
+    } finally {
+      await srv.stop();
+      old.kill();
+    }
+  },
+);

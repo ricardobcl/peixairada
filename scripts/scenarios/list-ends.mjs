@@ -12,7 +12,10 @@ export const meta = { server: true, fixture: 'auto' };
 
 // What the pills say, and what the cards' rectangles say they should: a card is out of sight above when its middle is
 // above the list's visible top — under the lane head stuck there since 2026-10-31 —, below when under its visible bottom.
-const ends = ctx => ctx.evaluate(`(() => {
+const ends = ctx =>
+  ctx
+    .evaluate(
+      `(() => {
   const l = document.querySelector('#slist'), r = l.getBoundingClientRect(), edge = r.top + l.clientTop, bottom = edge + l.clientHeight;
   const head = [...l.querySelectorAll(':scope > .gsep.lane[data-lane]')].filter(h => l.scrollTop > 0 && Math.abs(h.getBoundingClientRect().top - edge) < 1 && getComputedStyle(h).visibility !== 'hidden').pop();
   const top = head ? head.getBoundingClientRect().bottom : edge;
@@ -20,35 +23,81 @@ const ends = ctx => ctx.evaluate(`(() => {
   // an end that is off keeps its last words while it fades out: what it says counts only while it is on
   const pill = id => { const e = document.querySelector(id), on = e.classList.contains('on'); return { on, n: on ? +(e.querySelector('b')?.textContent || 0) : 0, dot: on ? e.querySelector('i')?.className || null : null, text: on ? e.textContent.trim() : '' }; };
   return JSON.stringify({ up: pill('#sup'), down: pill('#sdown'), want: [cards.filter(m => m < top).length, cards.filter(m => m > bottom).length], total: cards.length, scroll: Math.round(l.scrollTop) });
-})()`).then(JSON.parse);
-const settle = async ctx => { await ctx.settle(); await ctx.sleep(250); };   // the list's moves (a fold shifts the cards under the pills), then a frame for the pills and the smooth scroll's end
-const scrollTo = async (ctx, where) => { await ctx.evaluate(`(l => { l.scrollTop = ${where}; })(document.querySelector('#slist'))`); await settle(ctx); };
+})()`,
+    )
+    .then(JSON.parse);
+const settle = async ctx => {
+  await ctx.settle();
+  await ctx.sleep(250);
+}; // the list's moves (a fold shifts the cards under the pills), then a frame for the pills and the smooth scroll's end
+const scrollTo = async (ctx, where) => {
+  await ctx.evaluate(`(l => { l.scrollTop = ${where}; })(document.querySelector('#slist'))`);
+  await settle(ctx);
+};
 
 export default async function (ctx) {
   const out = {};
   const cwd = join(tmpdir(), 'peix-ends', 'ends-repo');
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
   const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000, ...extra });
-  const long = 'This is a reply long enough to fill the three lines a large card gives it, so that the list runs well past the bottom of the window and has cards out of sight both ways once it is scrolled.';
+  const long =
+    'This is a reply long enough to fill the three lines a large card gives it, so that the list runs well past the bottom of the window and has cards out of sight both ways once it is scrolled.';
   const now = Date.now();
   makeFixture(ctx.fixture.dir, [
     // asking and clauding sort to the top of the list, so they are out of sight above once it is scrolled down
-    { cwd, title: 'Asking you', prompt: 'may I?', reply: long, at: new Date(now - 60_000), live: live(0, { status: 'waiting', waitingFor: 'permission prompt' }) },
-    { cwd, title: 'Clauding away', prompt: 'build it', reply: long, at: new Date(now - 120_000), live: live(1),
-      lines: id => toolLines({ id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'build' }, at: new Date(now - 30_000) }) },
-    ...Array.from({ length: 22 }, (_, i) => ({ cwd, title: `Ready chat ${i + 1}`, prompt: `question number ${i + 1}, asked at some length so the card has a prompt to show`, reply: long, at: new Date(now - (i + 3) * 3600_000) })),
+    {
+      cwd,
+      title: 'Asking you',
+      prompt: 'may I?',
+      reply: long,
+      at: new Date(now - 60_000),
+      live: live(0, { status: 'waiting', waitingFor: 'permission prompt' }),
+    },
+    {
+      cwd,
+      title: 'Clauding away',
+      prompt: 'build it',
+      reply: long,
+      at: new Date(now - 120_000),
+      live: live(1),
+      lines: id =>
+        toolLines({
+          id,
+          cwd,
+          name: 'Bash',
+          input: { command: 'npm run build', description: 'build' },
+          at: new Date(now - 30_000),
+        }),
+    },
+    ...Array.from({ length: 22 }, (_, i) => ({
+      cwd,
+      title: `Ready chat ${i + 1}`,
+      prompt: `question number ${i + 1}, asked at some length so the card has a prompt to show`,
+      reply: long,
+      at: new Date(now - (i + 3) * 3600_000),
+    })),
   ]);
   try {
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 26`, { what: 'the twenty-four chats and the fixture\'s two' });
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 26`, {
+      what: "the twenty-four chats and the fixture's two",
+    });
     await ctx.key('KeyP');
-    await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = 'ends-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`);
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 24 && document.querySelector('#slist > .card.asking') && document.querySelector('#slist > .card.working')`, { what: 'the list narrowed to the twenty-four, one asking and one clauding' });
+    await ctx.evaluate(
+      `(() => { const q = document.querySelector('#pickq'); q.value = 'ends-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`,
+    );
+    await ctx.waitFor(
+      `document.querySelectorAll('#slist > .card').length === 24 && document.querySelector('#slist > .card.asking') && document.querySelector('#slist > .card.working')`,
+      { what: 'the list narrowed to the twenty-four, one asking and one clauding' },
+    );
     await settle(ctx);
 
     // at the top: nothing above, the rest below
     out.top = await ends(ctx);
     ctx.assert.equal(out.top.up.on, false, 'nothing is out of sight above the top');
-    ctx.assert.ok(out.top.down.on && out.top.down.n === out.top.want[1] && out.top.down.n > 3, `the bottom counts what is below (${out.top.down.n} of ${out.top.want[1]})`);
+    ctx.assert.ok(
+      out.top.down.on && out.top.down.n === out.top.want[1] && out.top.down.n > 3,
+      `the bottom counts what is below (${out.top.down.n} of ${out.top.want[1]})`,
+    );
     ctx.assert.match(out.top.down.text, /^↓ \d+ more$/, 'an arrow, the number, the word');
     ctx.assert.equal(out.top.down.dot, null, 'no dot: every card below is only ready');
     await ctx.shot('top');
@@ -57,18 +106,37 @@ export default async function (ctx) {
     await scrollTo(ctx, 700);
     out.mid = await ends(ctx);
     ctx.assert.ok(out.mid.up.on && out.mid.down.on, 'both ends count in the middle');
-    ctx.assert.deepEqual([out.mid.up.n, out.mid.down.n], out.mid.want, 'the counts are the cards\' own');
-    ctx.assert.equal(out.mid.up.dot, 'ask', 'a card asking you is out of sight above: the red dot, over the clauding one');
-    ctx.assert.match(await ctx.evaluate(`document.querySelector('#sup button').title`), /asking you/, 'and the tooltip says so');
+    ctx.assert.deepEqual([out.mid.up.n, out.mid.down.n], out.mid.want, "the counts are the cards' own");
+    ctx.assert.equal(
+      out.mid.up.dot,
+      'ask',
+      'a card asking you is out of sight above: the red dot, over the clauding one',
+    );
+    ctx.assert.match(
+      await ctx.evaluate(`document.querySelector('#sup button').title`),
+      /asking you/,
+      'and the tooltip says so',
+    );
     await ctx.shot('middle');
 
     // a click on the bottom pill: a screenful down
     await ctx.evaluate(`document.querySelector('#sdown button').click()`);
-    await ctx.waitFor(`document.querySelector('#slist').scrollTop > ${out.mid.scroll + 300}`, { what: 'the list a screenful further down' });
-    for (let last = -1, now; (now = await ctx.evaluate(`document.querySelector('#slist').scrollTop`)) !== last; last = now) await ctx.sleep(150);   // the smooth scroll to its end
+    await ctx.waitFor(`document.querySelector('#slist').scrollTop > ${out.mid.scroll + 300}`, {
+      what: 'the list a screenful further down',
+    });
+    for (
+      let last = -1, now;
+      (now = await ctx.evaluate(`document.querySelector('#slist').scrollTop`)) !== last;
+      last = now
+    )
+      await ctx.sleep(150); // the smooth scroll to its end
     await settle(ctx);
     out.clicked = await ends(ctx);
-    ctx.assert.deepEqual([out.clicked.up.n, out.clicked.down.n], out.clicked.want, `still the cards' own after the scroll: ${JSON.stringify(out.clicked)}`);
+    ctx.assert.deepEqual(
+      [out.clicked.up.n, out.clicked.down.n],
+      out.clicked.want,
+      `still the cards' own after the scroll: ${JSON.stringify(out.clicked)}`,
+    );
 
     // at the end: nothing below
     await scrollTo(ctx, 1e6);
@@ -83,7 +151,11 @@ export default async function (ctx) {
     await settle(ctx);
     out.compact = await ends(ctx);
     ctx.assert.deepEqual([out.compact.up.n, out.compact.down.n], out.compact.want, 'compact cards, counted again');
-    ctx.assert.notDeepEqual([out.compact.up.n, out.compact.down.n], [before.up.n, before.down.n], 'and the counts moved with them');
+    ctx.assert.notDeepEqual(
+      [out.compact.up.n, out.compact.down.n],
+      [before.up.n, before.down.n],
+      'and the counts moved with them',
+    );
     await ctx.evaluate(`document.querySelector('#cardsSize [data-v="0"]').click()`);
 
     return out;

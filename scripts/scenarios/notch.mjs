@@ -14,17 +14,34 @@ const NOTCH = { top: 32, left: 771.5, right: 956.5 };
 
 export default async function (ctx) {
   const out = {};
-  await ctx.send('Emulation.setDeviceMetricsOverride', { width: 1728, height: 1117, deviceScaleFactor: 1, mobile: false });
+  await ctx.send('Emulation.setDeviceMetricsOverride', {
+    width: 1728,
+    height: 1117,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
   const urls = Array.from({ length: 6 }, (_, i) => `https://github.com/acme/repo-a/pull/${201 + i}`);
-  const [chat] = makeFixture(ctx.fixture.dir, [{ cwd: '/Users/test/repo-a', title: 'A long enough title to be truncated left of the housing, surely', prompt: `The stack: ${urls.join(' ')}`, reply: 'Six.' }]).chats;
+  const [chat] = makeFixture(ctx.fixture.dir, [
+    {
+      cwd: '/Users/test/repo-a',
+      title: 'A long enough title to be truncated left of the housing, surely',
+      prompt: `The stack: ${urls.join(' ')}`,
+      reply: 'Six.',
+    },
+  ]).chats;
   await ctx.waitFor(`!!window.peix.session(${JSON.stringify(chat.id)})`, { what: 'the chat on the board' });
   await ctx.openChat(chat.id);
   await ctx.waitFor(`document.querySelectorAll('#shead > .tmx .mxs').length === 6`, { what: 'the squares drawn' });
-  const fill = (on, notch = NOTCH) => ctx.evaluate(`window.peixFill(${on}, ${JSON.stringify(notch)})`).then(() => ctx.sleep(250));
-  const listWidth = w => ctx.evaluate(`document.querySelector('#sessions').style.width = '${w}px'`).then(() => ctx.sleep(250));
+  const fill = (on, notch = NOTCH) =>
+    ctx.evaluate(`window.peixFill(${on}, ${JSON.stringify(notch)})`).then(() => ctx.sleep(250));
+  const listWidth = w =>
+    ctx.evaluate(`document.querySelector('#sessions').style.width = '${w}px'`).then(() => ctx.sleep(250));
   // The row, measured: what is in the strip, and whether anything of the header sits under the housing (x within it,
   // and its top above the strip's bottom).
-  const read = () => ctx.evaluate(`JSON.stringify((() => {
+  const read = () =>
+    ctx
+      .evaluate(
+        `JSON.stringify((() => {
     const N = ${JSON.stringify(NOTCH)}, main = document.querySelector('#main'), list = document.querySelector('#sessions'), chat = document.querySelector('#chat');
     const head = document.querySelector('#shead'), h2 = head.querySelector('h2');
     const words = el => { const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect(); };
@@ -44,22 +61,47 @@ export default async function (ctx) {
       repoRight: Math.round(h2.querySelector('.repo').getBoundingClientRect().right), sepRight: Math.round(h2.querySelector('.sep').getBoundingClientRect().right),
       tailRight: Math.round(head.querySelector('.hmore').getBoundingClientRect().right + parseFloat(getComputedStyle(head.querySelector('.hmore')).marginRight)), headInner: Math.round(head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight) - parseFloat(getComputedStyle(head).borderRightWidth)),
       split: Math.round(head.getBoundingClientRect().left + parseFloat(head.style.getPropertyValue('--hsplit'))), oneLine: after ? Math.abs((after.getBoundingClientRect().top + after.getBoundingClientRect().bottom) / 2 - (h2.getBoundingClientRect().top + h2.getBoundingClientRect().bottom) / 2) < 12 : null };
-  })())`).then(JSON.parse);
+  })())`,
+      )
+      .then(JSON.parse);
 
   out.off = await read();
-  ctx.assert.deepEqual([out.off.notch, out.off.listPad, out.off.chatPad, out.off.hole], [false, false, false, false], 'no fill: nothing of it on the page');
+  ctx.assert.deepEqual(
+    [out.off.notch, out.off.listPad, out.off.chatPad, out.off.hole],
+    [false, false, false, false],
+    'no fill: nothing of it on the page',
+  );
 
   // The fill, the list at its usual width: both heads in the strip, the header with a hole where the housing is
   await fill(true);
   out.on = await read();
-  ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.tright], [true, '32px', false, false, true], `filled: the list lifted, the title past the housing: ${JSON.stringify(out.on)}`);
+  ctx.assert.deepEqual(
+    [out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.tright],
+    [true, '32px', false, false, true],
+    `filled: the list lifted, the title past the housing: ${JSON.stringify(out.on)}`,
+  );
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
-  ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [0, 7], 'the list\'s cards and the chat\'s header at the top, their own padding, the first card flush with the top (2026-09-29)');
+  ctx.assert.deepEqual(
+    [out.on.listPad0, out.on.headPad],
+    [0, 7],
+    "the list's cards and the chat's header at the top, their own padding, the first card flush with the top (2026-09-29)",
+  );
   ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
-  ctx.assert.ok(!out.on.tunder && out.on.tLeft >= NOTCH.right, `a title too long for the left starts past the housing (${out.on.tLeft}–${out.on.tRight})`);
+  ctx.assert.ok(
+    !out.on.tunder && out.on.tLeft >= NOTCH.right,
+    `a title too long for the left starts past the housing (${out.on.tLeft}–${out.on.tRight})`,
+  );
   ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);
-  ctx.assert.equal(out.on.tailRight, out.on.headInner, 'and what follows the title stands at the far right (2026-09-28)');
-  ctx.assert.deepEqual([out.on.underHousing, out.on.oneLine], [[], true], 'nothing of the row under the housing, and the row is one line');
+  ctx.assert.equal(
+    out.on.tailRight,
+    out.on.headInner,
+    'and what follows the title stands at the far right (2026-09-28)',
+  );
+  ctx.assert.deepEqual(
+    [out.on.underHousing, out.on.oneLine],
+    [[], true],
+    'nothing of the row under the housing, and the row is one line',
+  );
   ctx.assert.ok(out.on.title > 150, `the title keeps room (${out.on.title} px)`);
   ctx.assert.equal(out.on.chips, 6, 'the six squares right of the housing');
   await ctx.shot('1-filled', { x: 0, y: 0, width: 1728, height: 60 });
@@ -68,52 +110,97 @@ export default async function (ctx) {
   // the housing — pads down too, everything below the strip
   await listWidth(820);
   out.wide = await read();
-  ctx.assert.deepEqual([out.wide.listPad, out.wide.chatPad, out.wide.hole, out.wide.h2Flex], [true, true, false, ''], 'the list under the housing: both pad, no hole');
-  ctx.assert.deepEqual([out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32], [38, 39, true, true], `…by the strip and the tile's border round the housing, and the rows are under it: ${JSON.stringify(out.wide)}`);
+  ctx.assert.deepEqual(
+    [out.wide.listPad, out.wide.chatPad, out.wide.hole, out.wide.h2Flex],
+    [true, true, false, ''],
+    'the list under the housing: both pad, no hole',
+  );
+  ctx.assert.deepEqual(
+    [out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32],
+    [38, 39, true, true],
+    `…by the strip and the tile's border round the housing, and the rows are under it: ${JSON.stringify(out.wide)}`,
+  );
   ctx.assert.deepEqual(out.wide.underHousing, [], 'nothing under the housing');
   await ctx.shot('2-list-under', { x: 0, y: 0, width: 1728, height: 90 });
 
   // The list past the housing: the header is wholly right of it and lifts as it is
   await listWidth(1000);
   out.past = await read();
-  ctx.assert.deepEqual([out.past.listPad, out.past.chatPad, out.past.hole], [true, false, false], 'the header past the housing lifts, the list still pads');
+  ctx.assert.deepEqual(
+    [out.past.listPad, out.past.chatPad, out.past.hole],
+    [true, false, false],
+    'the header past the housing lifts, the list still pads',
+  );
   ctx.assert.ok(out.past.headLeft >= NOTCH.right, `the header starts past the housing (${out.past.headLeft})`);
   ctx.assert.equal(out.past.headPad, 7, '…at its own padding');
 
   // Back to the usual width, and the list hidden (⌥⌘B): the lifted case with a hole
   await listWidth(380);
-  await ctx.key('KeyB'); await ctx.sleep(250);
+  await ctx.key('KeyB');
+  await ctx.sleep(250);
   out.hidden = await read();
-  ctx.assert.deepEqual([out.hidden.listPad, out.hidden.chatPad, out.hidden.hole], [false, false, true], 'the list hidden: lifted, the header holed');
+  ctx.assert.deepEqual(
+    [out.hidden.listPad, out.hidden.chatPad, out.hidden.hole],
+    [false, false, true],
+    'the list hidden: lifted, the header holed',
+  );
   ctx.assert.deepEqual(out.hidden.underHousing, [], 'nothing under the housing with the list hidden');
   await ctx.shot('3-list-hidden', { x: 0, y: 0, width: 1728, height: 60 });
-  await ctx.key('KeyB'); await ctx.sleep(250);
+  await ctx.key('KeyB');
+  await ctx.sleep(250);
 
   // A redraw of the header keeps its way round the housing (the h2 is rebuilt): the chips' fold toggled
-  await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(250);
+  await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  await ctx.sleep(250);
   out.redrawn = await read();
-  ctx.assert.deepEqual([out.redrawn.tright, out.redrawn.underHousing], [true, []], 'redrawn, the title past the housing again');
-  await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(100);
+  ctx.assert.deepEqual(
+    [out.redrawn.tright, out.redrawn.underHousing],
+    [true, []],
+    'redrawn, the title past the housing again',
+  );
+  await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  await ctx.sleep(100);
 
   // A title short enough for the left of the housing stays there, the chips still at the far right
-  await ctx.server.api(`api/sessions/${chat.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'A short title' }) });
-  await ctx.waitFor(`document.querySelector('#shead h2 .t').textContent === 'A short title'`, { what: 'the short title drawn' });
+  await ctx.server.api(`api/sessions/${chat.id}/title`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title: 'A short title' }),
+  });
+  await ctx.waitFor(`document.querySelector('#shead h2 .t').textContent === 'A short title'`, {
+    what: 'the short title drawn',
+  });
   await ctx.sleep(250);
   out.short = await read();
-  ctx.assert.ok(!out.short.tright && out.short.tRight <= NOTCH.left - 9, `a short title left of the housing (${out.short.tRight})`);
-  ctx.assert.deepEqual([out.short.underHousing, out.short.tailRight], [[], out.short.headInner], 'nothing under it, the chips at the far right');
+  ctx.assert.ok(
+    !out.short.tright && out.short.tRight <= NOTCH.left - 9,
+    `a short title left of the housing (${out.short.tRight})`,
+  );
+  ctx.assert.deepEqual(
+    [out.short.underHousing, out.short.tailRight],
+    [[], out.short.headInner],
+    'nothing under it, the chips at the far right',
+  );
   await ctx.shot('4-short-title', { x: 0, y: 0, width: 1728, height: 60 });
 
   // A screen without a housing (an external display): filled, but nothing to lay around
   await fill(true, null);
   out.plain = await read();
-  ctx.assert.deepEqual([out.plain.notch, out.plain.hole, out.plain.h2Flex], [false, false, ''], 'filled on a plain screen: no hole, no pad');
+  ctx.assert.deepEqual(
+    [out.plain.notch, out.plain.hole, out.plain.h2Flex],
+    [false, false, ''],
+    'filled on a plain screen: no hole, no pad',
+  );
   ctx.assert.equal(await ctx.evaluate(`window.peix.state().fill`), true, '…though the fill is on');
 
   // Off: everything back
   await fill(false, null);
   out.back = await read();
-  ctx.assert.deepEqual([out.back.notch, out.back.listPad, out.back.chatPad, out.back.hole, out.back.h2Flex, out.back.headPad], [false, false, false, false, '', 7], 'off: the row as it was');
+  ctx.assert.deepEqual(
+    [out.back.notch, out.back.listPad, out.back.chatPad, out.back.hole, out.back.h2Flex, out.back.headPad],
+    [false, false, false, false, '', 7],
+    'off: the row as it was',
+  );
   ctx.assert.equal(await ctx.evaluate(`window.peix.state().fill`), false);
   return out;
 }

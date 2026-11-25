@@ -10,7 +10,15 @@ import { json, jsonBody, NEXT } from '../http.mjs';
 import { jiraInfo, jiraReset, saveJiraToken } from '../jira.mjs';
 import { lunchRoute, lunchSetupChanged } from '../lunch.mjs';
 import {
-  boardConfig, cleanSetup, configError, expandHome, reloadConfig, saveConfig, setSetup, setup, tildePath
+  boardConfig,
+  cleanSetup,
+  configError,
+  expandHome,
+  reloadConfig,
+  saveConfig,
+  setSetup,
+  setup,
+  tildePath,
 } from '../setup.mjs';
 import { broadcast } from '../sse.mjs';
 
@@ -20,30 +28,45 @@ export async function setupRoutes(req, res, url, p) {
   if (req.method === 'GET' && p === '/api/config') return json(res, 200, boardConfig());
   if (req.method === 'GET' && p === '/api/config/suggest') return json(res, 200, { roots: suggestRoots() });
   if (req.method === 'GET' && p === '/api/jira') return json(res, 200, await jiraInfo());
-  if (p === '/api/chat') return chatRoute(req, res, null, url);   // the chat (2026-10-17): its own routes
-  if (p === '/api/chat/pic' || p === '/api/chat/upload') return chatPicRoute(req, res, url, p);   // its pictures (2026-11-25): fetched for the page, yours uploaded
+  if (p === '/api/chat') return chatRoute(req, res, null, url); // the chat (2026-10-17): its own routes
+  if (p === '/api/chat/pic' || p === '/api/chat/upload') return chatPicRoute(req, res, url, p); // its pictures (2026-11-25): fetched for the page, yours uploaded
   if ((m = p.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, m[1], url);
-  if (p === '/api/lunch') return lunchRoute(req, res, url);   // lunch (2026-10-18)
-  if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {   // the Setup's token box: into the keychain, or out of it
+  if (p === '/api/lunch') return lunchRoute(req, res, url); // lunch (2026-10-18)
+  if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {
+    // the Setup's token box: into the keychain, or out of it
     const body = req.method === 'PUT' ? await jsonBody(req) : {};
     const token = req.method === 'PUT' ? (typeof body.token === 'string' ? body.token.trim() : '') : '';
-    if (req.method === 'PUT' && !/^[\x21-\x7e]{8,1024}$/.test(token)) return json(res, 400, { error: 'expected {token} — the API token, one line' });
-    try { await saveJiraToken(token); } catch (e) { return json(res, 400, { error: e.message }); }
+    if (req.method === 'PUT' && !/^[\x21-\x7e]{8,1024}$/.test(token))
+      return json(res, 400, { error: 'expected {token} — the API token, one line' });
+    try {
+      await saveJiraToken(token);
+    } catch (e) {
+      return json(res, 400, { error: e.message });
+    }
     return json(res, 200, await jiraInfo());
   }
-  if (req.method === 'PUT' && p === '/api/config') {   // the settings' Setup: the keys given replace theirs, the rest stand
-    reloadConfig();   // a hand edit since the last poll first: merged into, not saved over — nor a broken one written over
+  if (req.method === 'PUT' && p === '/api/config') {
+    // the settings' Setup: the keys given replace theirs, the rest stand
+    reloadConfig(); // a hand edit since the last poll first: merged into, not saved over — nor a broken one written over
     if (configError) return json(res, 409, { error: `${configError} — fix it by hand, or delete it to start over` });
     const body = await jsonBody(req);
     // `create`: the welcome's "make it" — a root under the home that is not there yet is made first, so a new Mac's
     // ~/code can be the answer before anything is cloned into it. Nowhere else: a typo in the Setup stays a refusal.
-    if (body.create === true && Array.isArray(body.roots)) for (const r of body.roots) {
-      const dir = typeof r?.dir === 'string' && r.dir.trim() ? resolve(expandHome(r.dir)) : '';
-      if (dir.startsWith(homedir() + '/') && !existsSync(dir)) try { mkdirSync(dir, { recursive: true }); } catch (e) { return json(res, 400, { error: `${tildePath(dir)}: ${e.message}` }); }
-    }
+    if (body.create === true && Array.isArray(body.roots))
+      for (const r of body.roots) {
+        const dir = typeof r?.dir === 'string' && r.dir.trim() ? resolve(expandHome(r.dir)) : '';
+        if (dir.startsWith(homedir() + '/') && !existsSync(dir))
+          try {
+            mkdirSync(dir, { recursive: true });
+          } catch (e) {
+            return json(res, 400, { error: `${tildePath(dir)}: ${e.message}` });
+          }
+      }
     const r = cleanSetup(body, true);
     if (r.error) return json(res, 400, { error: r.error });
-    const jiraWas = JSON.stringify(setup.jira ?? null), chatWas = setup.chat?.repo ?? null, lunchWas = JSON.stringify(setup.lunch ?? null);
+    const jiraWas = JSON.stringify(setup.jira ?? null),
+      chatWas = setup.chat?.repo ?? null,
+      lunchWas = JSON.stringify(setup.lunch ?? null);
     setSetup({ ...setup, ...r.setup });
     folderCache.clear();
     if (JSON.stringify(setup.jira ?? null) !== jiraWas) jiraReset();
@@ -51,7 +74,9 @@ export async function setupRoutes(req, res, url, p) {
     if (JSON.stringify(setup.lunch ?? null) !== lunchWas) lunchSetupChanged(lunchWas);
     const failed = saveConfig();
     broadcast('config', boardConfig());
-    return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, { ok: true, config: boardConfig() });
+    return failed
+      ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` })
+      : json(res, 200, { ok: true, config: boardConfig() });
   }
   return NEXT;
 }

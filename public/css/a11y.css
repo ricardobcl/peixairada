@@ -1,34 +1,126 @@
-  /* ---- reduced motion: the board says the same, still ---- */
-  /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
+/* ---- reduced motion: the board says the same, still ---- */
+/* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
      not. Under it every state keeps its reading without the motion: clauding and watching a steady edge in the light's
      colour, a question a steady red border, the dots still, the spinner its full frame, no flare; the list puts cards
      in place (drawCards reads REDUCED); dialogs, the popover and the note fade without moving; a fold's chevron and body
      switch. Colour eases stay — a fade is not motion. Every animation on the board has its line here; a new one gets
      one. → scripts/scenarios/reduced-motion.mjs */
-  /* macOS's Increase Contrast (2026-10-12): the muted ink nearer the ink, the lines and the controls' fills stronger,
+/* macOS's Increase Contrast (2026-10-12): the muted ink nearer the ink, the lines and the controls' fills stronger,
      and an edge on every control that is a fill alone — the board's controls have no border, which a fill of 7 % of
      the ink does not make up for. Three :roots deep, so it beats a theme's and the dark block's tokens. */
-  @media (prefers-contrast: more) {
-    :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
-    :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :root[data-theme][data-frame] :is(#sessions, #sbar) { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
-      --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }   /* the frame's own, under the dark frame */
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hgit, .pfold, .ptl, .act, .ax, .fsearch, .sedge button, .pedge button, #sbar .seg, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmbtn, #room .rmopt, #room .rmpic, #stitle > .out) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
-    .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
+@media (prefers-contrast: more) {
+  :root:root:root {
+    --muted: color-mix(in srgb, var(--ink) 78%, var(--bg));
+    --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
   }
-  /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
-  @media (prefers-reduced-transparency: reduce) {
-    #ov, .sedge, .tl-glass { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-    #ov { background: var(--bg); }
-    :root[data-layout="sidebar"] #chat > #shead { background: var(--panel) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }   /* the toolbar's glass */
+  :root,
+  .card.black:is(:hover, .active, .qsel),
+  .shead > :not(h2, .details) {
+    --ctl: color-mix(in srgb, var(--ink) 14%, transparent);
+    --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent);
   }
-  /* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
-  @media (forced-colors: active) {
-    .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
-    :root[data-layout="sidebar"] #slist .card { border: 1px solid CanvasText; } :root[data-layout="sidebar"] #slist .card.active { outline: 2px solid Highlight; }   /* the sidebar's rows */
-    :is(.gsep.lane > i, .ck, .tst, .pc, .badge, .agd, .card .trow .drift, :is(.card, .shead) .tmx .mxs, :is(#rpop, #mxtip) .rsq, #mxtip :is(.mts, .mtck)) { forced-color-adjust: none; }
-    :root[data-layout="sidebar"] #slist .card.cdover { outline: 2px solid Highlight; } #cdghost { border: 1px solid CanvasText; }   /* a card in the hand: its shadows are gone here */
-    #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
-    #stitle { border-bottom: 2px solid CanvasText; } #stitle > :is(.t, .out) { border: 1px solid CanvasText; }   /* the rule and the fills are gone here */
+  :root[data-theme][data-frame] :is(#sessions, #sbar) {
+    --muted: color-mix(in srgb, var(--ink) 78%, var(--bg));
+    --line: color-mix(in srgb, var(--ink) 38%, var(--bg));
+    --ctl: color-mix(in srgb, var(--ink) 14%, transparent);
+    --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent);
+  } /* the frame's own, under the dark frame */
+  :is(
+    .btn,
+    .chip,
+    .hdrift,
+    .ptab,
+    .hmore,
+    .hgit,
+    .pfold,
+    .ptl,
+    .act,
+    .ax,
+    .fsearch,
+    .sedge button,
+    .pedge button,
+    #sbar .seg,
+    .sseg,
+    .pkmode,
+    .seg button,
+    #ctxm,
+    #hmenu,
+    #room .rmbtn,
+    #room .rmopt,
+    #room .rmpic,
+    #stitle > .out
+  ) {
+    border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important;
   }
-
+  .card {
+    border-color: var(--line);
+  }
+  .card .snip,
+  .card .state.live {
+    color: var(--ink);
+  }
+}
+/* Reduce transparency: the blurs behind the overview and the list's ends go solid */
+@media (prefers-reduced-transparency: reduce) {
+  #ov,
+  .sedge,
+  .tl-glass {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  #ov {
+    background: var(--bg);
+  }
+  :root[data-layout='sidebar'] #chat > #shead {
+    background: var(--panel) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  } /* the toolbar's glass */
+}
+/* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
+@media (forced-colors: active) {
+  .card {
+    border: 1px solid CanvasText;
+  }
+  .card.active {
+    outline: 2px solid Highlight;
+  }
+  :root[data-layout='sidebar'] #slist .card {
+    border: 1px solid CanvasText;
+  }
+  :root[data-layout='sidebar'] #slist .card.active {
+    outline: 2px solid Highlight;
+  } /* the sidebar's rows */
+  :is(
+    .gsep.lane > i,
+    .ck,
+    .tst,
+    .pc,
+    .badge,
+    .agd,
+    .card .trow .drift,
+    :is(.card, .shead) .tmx .mxs,
+    :is(#rpop, #mxtip) .rsq,
+    #mxtip :is(.mts, .mtck)
+  ) {
+    forced-color-adjust: none;
+  }
+  :root[data-layout='sidebar'] #slist .card.cdover {
+    outline: 2px solid Highlight;
+  }
+  #cdghost {
+    border: 1px solid CanvasText;
+  } /* a card in the hand: its shadows are gone here */
+  #tour .thole {
+    outline-color: Highlight;
+  }
+  #tour .tcard {
+    border: 1px solid CanvasText;
+  } /* no veil (no shadows): the ring says where */
+  #stitle {
+    border-bottom: 2px solid CanvasText;
+  }
+  #stitle > :is(.t, .out) {
+    border: 1px solid CanvasText;
+  } /* the rule and the fills are gone here */
+}

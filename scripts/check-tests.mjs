@@ -16,50 +16,98 @@ const read = f => readFileSync(join(ROOT, f), 'utf8');
 const fails = [];
 
 const npmTest = JSON.parse(read('package.json')).scripts?.test || '';
-if (!/--import[= ]\.\/test\/env\.mjs\b/.test(npmTest)) fails.push(`package.json: the test script does not preload ./test/env.mjs (node --import ./test/env.mjs --test …): ${npmTest}`);
+if (!/--import[= ]\.\/test\/env\.mjs\b/.test(npmTest))
+  fails.push(
+    `package.json: the test script does not preload ./test/env.mjs (node --import ./test/env.mjs --test …): ${npmTest}`,
+  );
 
-const files = ['test', 'scripts/scenarios', 'scripts/shell-checks'].flatMap(d => readdirSync(join(ROOT, d)).filter(f => f.endsWith('.mjs')).map(f => `${d}/${f}`));
+const files = ['test', 'scripts/scenarios', 'scripts/shell-checks'].flatMap(d =>
+  readdirSync(join(ROOT, d))
+    .filter(f => f.endsWith('.mjs'))
+    .map(f => `${d}/${f}`),
+);
 for (const f of files) {
-  const t = read(f), at = re => { const m = re.exec(t); return m ? m.index : -1; };
-  if (/\bmkdtempSync\b/.test(t)) fails.push(`${f}: a bare mkdtempSync — tmpDir() from lib/testserver.mjs removes its folder on exit`);
+  const t = read(f),
+    at = re => {
+      const m = re.exec(t);
+      return m ? m.index : -1;
+    };
+  if (/\bmkdtempSync\b/.test(t))
+    fails.push(`${f}: a bare mkdtempSync — tmpDir() from lib/testserver.mjs removes its folder on exit`);
   if (!f.startsWith('test/')) continue;
-  const env = at(/^import '\.\/env\.mjs';/m), stat = at(/^import [^;]*from '\.\.\/server\.mjs';/m), dyn = at(/import\('\.\.\/server\.mjs'\)/), own = at(/process\.env\.STATE_FILE = /);
-  if (stat >= 0 && !(env >= 0 && env < stat)) fails.push(`${f}: imports ../server.mjs without import './env.mjs' above it`);
-  if (dyn >= 0 && !(env >= 0 && env < dyn) && !(own >= 0 && own < dyn)) fails.push(`${f}: imports ../server.mjs before setting STATE_FILE or importing ./env.mjs`);
+  const env = at(/^import '\.\/env\.mjs';/m),
+    stat = at(/^import [^;]*from '\.\.\/server\.mjs';/m),
+    dyn = at(/import\('\.\.\/server\.mjs'\)/),
+    own = at(/process\.env\.STATE_FILE = /);
+  if (stat >= 0 && !(env >= 0 && env < stat))
+    fails.push(`${f}: imports ../server.mjs without import './env.mjs' above it`);
+  if (dyn >= 0 && !(env >= 0 && env < dyn) && !(own >= 0 && own < dyn))
+    fails.push(`${f}: imports ../server.mjs before setting STATE_FILE or importing ./env.mjs`);
 }
 
 // Routes no test writes out, each with what drives it through the page (a click, not a path): one a test names may come
 // off, and one server.mjs no longer answers fails here.
 const DRIVEN = {
-  '/': 'lib/cdp.mjs',   // the page itself: every scenario opens it
-  '/vendor/:id': 'lib/cdp.mjs',   // its scripts and styles, with it
-  '/api/sessions/:id/drift': 'scripts/scenarios/branch-drift.mjs',   // the branch's chip clicked
-  '/api/sessions/:id/waive': 'scripts/scenarios/let-go.mjs',   // ⌥-click on your move
-  '/api/sessions/:id/unlink': 'scripts/scenarios/header-prs.mjs',   // ⌥-click on a PR chip
+  '/': 'lib/cdp.mjs', // the page itself: every scenario opens it
+  '/vendor/:id': 'lib/cdp.mjs', // its scripts and styles, with it
+  '/api/sessions/:id/drift': 'scripts/scenarios/branch-drift.mjs', // the branch's chip clicked
+  '/api/sessions/:id/waive': 'scripts/scenarios/let-go.mjs', // ⌥-click on your move
+  '/api/sessions/:id/unlink': 'scripts/scenarios/header-prs.mjs', // ⌥-click on a PR chip
   '/api/sessions/:id/changes': 'scripts/scenarios/changes-tab.mjs',
-  '/api/sessions/:id/switch': 'scripts/scenarios/editor-branch.mjs',   // Editor ▾'s Switch this folder…
+  '/api/sessions/:id/switch': 'scripts/scenarios/editor-branch.mjs', // Editor ▾'s Switch this folder…
   '/api/worktrees': 'scripts/scenarios/editor-branch.mjs',
-  '/api/worktrees/modules': 'scripts/scenarios/editor-branch.mjs',   // Link node_modules
-  '/api/worktrees/branch': 'scripts/scenarios/chat-worktree.mjs',   // ⌥⌘N's new worktree
-  '/api/worktrees/bases': 'scripts/scenarios/chat-worktree.mjs',    // …and what its new branch starts from (2026-10-28)
+  '/api/worktrees/modules': 'scripts/scenarios/editor-branch.mjs', // Link node_modules
+  '/api/worktrees/branch': 'scripts/scenarios/chat-worktree.mjs', // ⌥⌘N's new worktree
+  '/api/worktrees/bases': 'scripts/scenarios/chat-worktree.mjs', // …and what its new branch starts from (2026-10-28)
 };
 /** A route's regex literal as a path: each group a `:id`. */
-const asPath = src => { let out = '', depth = 0; for (const c of src.replace(/\\\//g, '/')) { if (c === '(' && !depth++) out += ':id'; else if (c === ')') depth--; else if (!depth) out += c; } return out; };
+const asPath = src => {
+  let out = '',
+    depth = 0;
+  for (const c of src.replace(/\\\//g, '/')) {
+    if (c === '(' && !depth++) out += ':id';
+    else if (c === ')') depth--;
+    else if (!depth) out += c;
+  }
+  return out;
+};
 // the routes: server/http.mjs and its route modules (2026-11-25: the HTTP section of server.mjs before)
-const routeFiles = ['server/http.mjs', ...(existsSync(join(ROOT, 'server/routes')) ? readdirSync(join(ROOT, 'server/routes')).filter(f => f.endsWith('.mjs')).map(f => `server/routes/${f}`) : [])];
+const routeFiles = [
+  'server/http.mjs',
+  ...(existsSync(join(ROOT, 'server/routes'))
+    ? readdirSync(join(ROOT, 'server/routes'))
+        .filter(f => f.endsWith('.mjs'))
+        .map(f => `server/routes/${f}`)
+    : []),
+];
 const http = routeFiles.map(read).join('\n');
 if (http.length < 1000) fails.push('server/http.mjs: the routes were not found');
-const routes = new Set([...http.matchAll(/\bp === '(\/[^']*)'/g)].map(m => m[1]).concat([...http.matchAll(/\bp\.match\(\/\^(.+?)\$\/\)/g)].map(m => asPath(m[1]))));
-const corpus = files.map(read).join('\n'), esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const routes = new Set(
+  [...http.matchAll(/\bp === '(\/[^']*)'/g)]
+    .map(m => m[1])
+    .concat([...http.matchAll(/\bp\.match\(\/\^(.+?)\$\/\)/g)].map(m => asPath(m[1]))),
+);
+const corpus = files.map(read).join('\n'),
+  esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 for (const r of routes) {
   if (DRIVEN[r]) continue;
-  const parts = r.slice(1).split(':id').map(esc), named = new RegExp(`(?<=['"\`/])${parts.join(".{1,60}?")}${r.endsWith(':id') ? "[^\\s'\"`)]" : '(?![\\w/-])'}`);
-  if (!named.test(corpus)) fails.push(`the server answers ${r}, which no test or scenario names: test it, or put it on DRIVEN (scripts/check-tests.mjs) with the scenario that drives it`);
+  const parts = r.slice(1).split(':id').map(esc),
+    named = new RegExp(`(?<=['"\`/])${parts.join('.{1,60}?')}${r.endsWith(':id') ? '[^\\s\'"`)]' : '(?![\\w/-])'}`);
+  if (!named.test(corpus))
+    fails.push(
+      `the server answers ${r}, which no test or scenario names: test it, or put it on DRIVEN (scripts/check-tests.mjs) with the scenario that drives it`,
+    );
 }
 for (const [r, by] of Object.entries(DRIVEN)) {
   if (!routes.has(r)) fails.push(`scripts/check-tests.mjs: DRIVEN names ${r}, which the server no longer answers`);
-  if (!existsSync(join(ROOT, by))) fails.push(`scripts/check-tests.mjs: DRIVEN's ${r} is driven by ${by}, which is not there`);
+  if (!existsSync(join(ROOT, by)))
+    fails.push(`scripts/check-tests.mjs: DRIVEN's ${r} is driven by ${by}, which is not there`);
 }
 
-if (fails.length) { console.error(fails.join('\n')); process.exit(1); }
-console.log(`${files.length} test and scenario files: their environment, their temp dirs; ${routes.size} routes, each named or driven`);
+if (fails.length) {
+  console.error(fails.join('\n'));
+  process.exit(1);
+}
+console.log(
+  `${files.length} test and scenario files: their environment, their temp dirs; ${routes.size} routes, each named or driven`,
+);

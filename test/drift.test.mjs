@@ -4,7 +4,7 @@
 // MOVE_SLACK_MS after it is seen — the chat's own switch can come on the next line — and only then shown. Commands that
 // never change the branch (stash, reset, pull, merge, merge-base…) explain nothing. And the disk's half: the checkout's
 // HEAD file, a worktree's its own, against the branch the chat's lines last said, judged on a second look.
-import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
+import './env.mjs'; // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -16,79 +16,197 @@ import { slugOf } from '../scripts/fixture.mjs';
 import { driftOf, fold, headOf, newSession, noteHead, settleDrift } from '../server.mjs';
 
 const CWD = '/Users/test/widgets';
-const T0 = Date.parse('2026-10-13T09:00:00Z'), at = s => new Date(T0 + s * 1000).toISOString();
+const T0 = Date.parse('2026-10-13T09:00:00Z'),
+  at = s => new Date(T0 + s * 1000).toISOString();
 const base = (t, branch, cwd = CWD) => ({ timestamp: at(t), gitBranch: branch, cwd });
 const user = (t, branch, text) => ({ ...base(t, branch), type: 'user', message: { role: 'user', content: text } });
-const bash = (t, branch, command, id = randomUUID()) => ({ ...base(t, branch), type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }], stop_reason: 'tool_use' } });
-const result = (t, branch, id = 'x') => ({ ...base(t, branch), type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] } });
-const say = (t, branch, text = 'working on it') => ({ ...base(t, branch), type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'tool_use' } });
-const rest = (t, branch, text = 'Done.') => ({ ...base(t, branch), type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } });   // the turn over: waiting on you
-const LATER = () => Date.now() + 60_000;   // past the slack: a held move is judged
-const chat = (...lines) => { const s = newSession(randomUUID(), null); s.alive = true; for (const l of lines) fold(s, l); settleDrift(s, LATER()); return s; };
-const look = (s, head, now) => { noteHead(s, head, now); return noteHead(s, head, now + 2000); };   // the disk's two looks
-const moved = s => { const d = driftOf(s); return d && `${d.from} → ${d.to}`; };
+const bash = (t, branch, command, id = randomUUID()) => ({
+  ...base(t, branch),
+  type: 'assistant',
+  message: {
+    role: 'assistant',
+    content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }],
+    stop_reason: 'tool_use',
+  },
+});
+const result = (t, branch, id = 'x') => ({
+  ...base(t, branch),
+  type: 'user',
+  message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] },
+});
+const say = (t, branch, text = 'working on it') => ({
+  ...base(t, branch),
+  type: 'assistant',
+  message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'tool_use' },
+});
+const rest = (t, branch, text = 'Done.') => ({
+  ...base(t, branch),
+  type: 'assistant',
+  message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' },
+}); // the turn over: waiting on you
+const LATER = () => Date.now() + 60_000; // past the slack: a held move is judged
+const chat = (...lines) => {
+  const s = newSession(randomUUID(), null);
+  s.alive = true;
+  for (const l of lines) fold(s, l);
+  settleDrift(s, LATER());
+  return s;
+};
+const look = (s, head, now) => {
+  noteHead(s, head, now);
+  return noteHead(s, head, now + 2000);
+}; // the disk's two looks
+const moved = s => {
+  const d = driftOf(s);
+  return d && `${d.from} → ${d.to}`;
+};
 
-test('a change no git of the chat\'s own explains is drift; a word of yours clears it', () => {
-  const s = chat(user(0, 'feat/tax-rounding', 'round the tax'), say(5, 'feat/tax-rounding'), result(10, 'feat/tax-rounding'), say(20, 'main'));
+test("a change no git of the chat's own explains is drift; a word of yours clears it", () => {
+  const s = chat(
+    user(0, 'feat/tax-rounding', 'round the tax'),
+    say(5, 'feat/tax-rounding'),
+    result(10, 'feat/tax-rounding'),
+    say(20, 'main'),
+  );
   assert.equal(moved(s), 'feat/tax-rounding → main', 'from the branch the chat was on, to the one its lines carry now');
   assert.equal(s.drift.at, at(20));
-  assert.deepEqual(s.branches.map(b => b.name), ['feat/tax-rounding', 'main'], 'the branches it was on, last few');
+  assert.deepEqual(
+    s.branches.map(b => b.name),
+    ['feat/tax-rounding', 'main'],
+    'the branches it was on, last few',
+  );
   fold(s, say(25, 'main'));
   assert.equal(moved(s), 'feat/tax-rounding → main', 'it stands while Claude goes on');
   fold(s, user(30, 'main', 'ok, carry on on main'));
   assert.equal(moved(s), null, 'your word clears it');
-  s.alive = false; fold(s, say(40, 'feat/other')); settleDrift(s, LATER());
+  s.alive = false;
+  fold(s, say(40, 'feat/other'));
+  settleDrift(s, LATER());
   assert.ok(s.drift, 'the transcript still says it…');
   assert.equal(driftOf(s), null, '…but only a chat whose claude runs shows it');
 });
 
-test('the chat\'s own switch, a `!` command of yours and one a sub-agent ran are no drift', () => {
-  const own = chat(user(0, 'main', 'start the branch'), bash(5, 'main', 'git switch -c feat/tax-rounding'), result(6, 'main'), say(8, 'feat/tax-rounding'));
+test("the chat's own switch, a `!` command of yours and one a sub-agent ran are no drift", () => {
+  const own = chat(
+    user(0, 'main', 'start the branch'),
+    bash(5, 'main', 'git switch -c feat/tax-rounding'),
+    result(6, 'main'),
+    say(8, 'feat/tax-rounding'),
+  );
   assert.equal(moved(own), null, 'its own git switch');
-  const opts = chat(user(0, 'main', 'go'), bash(5, 'main', 'git -C "/Users/test/widgets" --no-pager checkout feat/x'), say(8, 'feat/x'));
-  assert.equal(moved(opts), null, 'git\'s own options before the subcommand');
-  const mine = chat(user(0, 'main', 'look'), user(5, 'main', '<bash-input>git checkout feat/x</bash-input>'), user(6, 'main', '<bash-stdout>Switched to branch \'feat/x\'</bash-stdout><bash-stderr></bash-stderr>'), say(9, 'feat/x'));
+  const opts = chat(
+    user(0, 'main', 'go'),
+    bash(5, 'main', 'git -C "/Users/test/widgets" --no-pager checkout feat/x'),
+    say(8, 'feat/x'),
+  );
+  assert.equal(moved(opts), null, "git's own options before the subcommand");
+  const mine = chat(
+    user(0, 'main', 'look'),
+    user(5, 'main', '<bash-input>git checkout feat/x</bash-input>'),
+    user(6, 'main', "<bash-stdout>Switched to branch 'feat/x'</bash-stdout><bash-stderr></bash-stderr>"),
+    say(9, 'feat/x'),
+  );
   assert.equal(moved(mine), null, 'a ! command typed into the chat');
-  const msg = chat(user(0, 'main', 'commit it'), bash(5, 'main', 'git commit -m "switch to the new rounding"'), say(9, 'feat/x'));
+  const msg = chat(
+    user(0, 'main', 'commit it'),
+    bash(5, 'main', 'git commit -m "switch to the new rounding"'),
+    say(9, 'feat/x'),
+  );
   assert.equal(moved(msg), 'main → feat/x', 'a commit whose message says switch moves nothing');
-  const side = newSession(randomUUID(), null); side.alive = true;
-  for (const l of [user(0, 'main', 'go'), { ...bash(4, 'main', 'git checkout feat/side'), isSidechain: true }, say(9, 'feat/side')]) fold(side, l);
+  const side = newSession(randomUUID(), null);
+  side.alive = true;
+  for (const l of [
+    user(0, 'main', 'go'),
+    { ...bash(4, 'main', 'git checkout feat/side'), isSidechain: true },
+    say(9, 'feat/side'),
+  ])
+    fold(side, l);
   settleDrift(side, LATER());
-  assert.equal(moved(side), null, 'a sub-agent\'s line in the chat\'s own transcript');
+  assert.equal(moved(side), null, "a sub-agent's line in the chat's own transcript");
 });
 
-test('a sub-agent\'s own transcript explains a move, read only when nothing else does', () => {
-  const dir = tmpDir('peix-drift-'), id = randomUUID();
+test("a sub-agent's own transcript explains a move, read only when nothing else does", () => {
+  const dir = tmpDir('peix-drift-'),
+    id = randomUUID();
   try {
-    const file = join(dir, `${id}.jsonl`), agents = join(dir, id, 'subagents');
-    mkdirSync(agents, { recursive: true }); writeFileSync(file, '');
-    const s = newSession(id, file); s.alive = true;
+    const file = join(dir, `${id}.jsonl`),
+      agents = join(dir, id, 'subagents');
+    mkdirSync(agents, { recursive: true });
+    writeFileSync(file, '');
+    const s = newSession(id, file);
+    s.alive = true;
     for (const l of [user(0, 'main', 'have an agent do it'), say(5, 'main'), say(60, 'feat/agent')]) fold(s, l);
     assert.ok(s.drift, 'unexplained as the lines are folded');
-    writeFileSync(join(agents, 'agent-a1.jsonl'), [say(1, 'main', 'on it'), bash(30, 'main', 'git checkout -b feat/agent')].map(l => JSON.stringify({ ...l, isSidechain: true })).join('\n') + '\n');
+    writeFileSync(
+      join(agents, 'agent-a1.jsonl'),
+      [say(1, 'main', 'on it'), bash(30, 'main', 'git checkout -b feat/agent')]
+        .map(l => JSON.stringify({ ...l, isSidechain: true }))
+        .join('\n') + '\n',
+    );
     settleDrift(s, LATER());
-    assert.equal(moved(s), null, 'the agent\'s checkout, found once the move is judged');
-    fold(s, say(4000, 'feat/elsewhere')); settleDrift(s, LATER());
-    assert.equal(moved(s), 'feat/agent → feat/elsewhere', 'an agent\'s command over an hour old and not naming it explains nothing');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+    assert.equal(moved(s), null, "the agent's checkout, found once the move is judged");
+    fold(s, say(4000, 'feat/elsewhere'));
+    settleDrift(s, LATER());
+    assert.equal(
+      moved(s),
+      'feat/agent → feat/elsewhere',
+      "an agent's command over an hour old and not naming it explains nothing",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
-test('Claude Code\'s branch lags the chat\'s own checkout — by hours, the command still names it', () => {
-  const s = chat(user(0, 'main', 'start'), bash(5, 'main', 'git checkout -b feat/slow'), result(6, 'main'), say(7, 'main'), say(3 * 3600, 'feat/slow'));
+test("Claude Code's branch lags the chat's own checkout — by hours, the command still names it", () => {
+  const s = chat(
+    user(0, 'main', 'start'),
+    bash(5, 'main', 'git checkout -b feat/slow'),
+    result(6, 'main'),
+    say(7, 'main'),
+    say(3 * 3600, 'feat/slow'),
+  );
   assert.equal(moved(s), null, 'three hours later, the checkout named the branch');
-  const t = chat(user(0, 'main', 'tidy up'), bash(5, 'main', 'git checkout -- src/tax.js'), say(6, 'main'), say(2 * 3600, 'feat/other'));
+  const t = chat(
+    user(0, 'main', 'tidy up'),
+    bash(5, 'main', 'git checkout -- src/tax.js'),
+    say(6, 'main'),
+    say(2 * 3600, 'feat/other'),
+  );
   assert.equal(moved(t), 'main → feat/other', 'a checkout two hours before, not naming it, explains nothing');
-  const stashed = chat(user(0, 'main', 'put it aside'), bash(5, 'main', 'git stash branch feat/stashed'), say(6, 'main'), say(2 * 3600, 'feat/stashed'));
-  assert.equal(moved(stashed), null, 'git stash branch names the branch it makes: the chat\'s own, hours later');
+  const stashed = chat(
+    user(0, 'main', 'put it aside'),
+    bash(5, 'main', 'git stash branch feat/stashed'),
+    say(6, 'main'),
+    say(2 * 3600, 'feat/stashed'),
+  );
+  assert.equal(moved(stashed), null, "git stash branch names the branch it makes: the chat's own, hours later");
 });
 
 test('commands that never change the branch explain nothing — merge-base and merge-tree not even as merge', () => {
-  for (const cmd of ['git merge-base HEAD origin/main', 'git merge-tree --write-tree --name-only HEAD origin/main', 'git -C /Users/test/widgets merge-base --is-ancestor a b',
-    'git stash', 'git stash pop', 'git stash list', 'git pull --rebase', 'git reset --hard origin/main', 'git merge origin/main', 'git fetch && git status']) {
+  for (const cmd of [
+    'git merge-base HEAD origin/main',
+    'git merge-tree --write-tree --name-only HEAD origin/main',
+    'git -C /Users/test/widgets merge-base --is-ancestor a b',
+    'git stash',
+    'git stash pop',
+    'git stash list',
+    'git pull --rebase',
+    'git reset --hard origin/main',
+    'git merge origin/main',
+    'git fetch && git status',
+  ]) {
     const s = chat(user(0, 'feat/x', 'go'), bash(5, 'feat/x', cmd), result(6, 'feat/x'), say(60, 'main'));
     assert.equal(moved(s), 'feat/x → main', `\`${cmd}\` a minute before does not hide a move`);
   }
-  for (const cmd of ['git switch main', 'git checkout -q main', 'git rebase origin/main', 'git worktree add ../wt', 'git branch -m feat/y', 'gh pr checkout 14', 'git stash branch main']) {
+  for (const cmd of [
+    'git switch main',
+    'git checkout -q main',
+    'git rebase origin/main',
+    'git worktree add ../wt',
+    'git branch -m feat/y',
+    'gh pr checkout 14',
+    'git stash branch main',
+  ]) {
     const s = chat(user(0, 'feat/x', 'go'), bash(5, 'feat/x', cmd), result(6, 'feat/x'), say(60, 'main'));
     assert.equal(moved(s), null, `\`${cmd}\` is the chat's own`);
   }
@@ -96,18 +214,36 @@ test('commands that never change the branch explain nothing — merge-base and m
 
 test('a git command of many options is read at once — each option one way (2026-10-14)', () => {
   for (const opts of [' --a'.repeat(24), ' --a=b'.repeat(22), ' -c -c'.repeat(20), ' -C "x"'.repeat(24)]) {
-    const s = newSession(randomUUID(), null), t0 = performance.now();
+    const s = newSession(randomUUID(), null),
+      t0 = performance.now();
     fold(s, bash(5, 'feat/x', `git${opts} status`));
-    assert.ok(performance.now() - t0 < 100, `\`git${opts.slice(0, 12)}… status\` folded in ${(performance.now() - t0).toFixed(0)} ms`);
+    assert.ok(
+      performance.now() - t0 < 100,
+      `\`git${opts.slice(0, 12)}… status\` folded in ${(performance.now() - t0).toFixed(0)} ms`,
+    );
     assert.equal(s.gitCmds.length, 0, 'and it is no move');
   }
-  const s = chat(user(0, 'feat/x', 'go'), bash(5, 'feat/x', 'git -C /Users/test/widgets -c core.x=y --git-dir=/Users/test/widgets/.git --no-pager switch main'), say(60, 'main'));
+  const s = chat(
+    user(0, 'feat/x', 'go'),
+    bash(
+      5,
+      'feat/x',
+      'git -C /Users/test/widgets -c core.x=y --git-dir=/Users/test/widgets/.git --no-pager switch main',
+    ),
+    say(60, 'main'),
+  );
   assert.equal(moved(s), null, 'options before the subcommand still read');
 });
 
-test('the chat\'s own switch on the line after the one that first shows its branch: held, then no drift and nothing said', () => {
-  const s = newSession(randomUUID(), null); s.alive = true;
-  for (const l of [user(0, 'feat/a', 'start a branch for it'), bash(4, 'feat/a', 'git log --oneline -3'), result(5, 'feat/a', 'x')]) fold(s, l);
+test("the chat's own switch on the line after the one that first shows its branch: held, then no drift and nothing said", () => {
+  const s = newSession(randomUUID(), null);
+  s.alive = true;
+  for (const l of [
+    user(0, 'feat/a', 'start a branch for it'),
+    bash(4, 'feat/a', 'git log --oneline -3'),
+    result(5, 'feat/a', 'x'),
+  ])
+    fold(s, l);
   // Claude Code writes the message's text line once its call has run: the text carries the new branch, the call a
   // second later on the next line
   fold(s, say(10, 'feat/new', 'Starting the branch.'));
@@ -116,32 +252,58 @@ test('the chat\'s own switch on the line after the one that first shows its bran
   assert.equal(moved(s), null, 'nothing shown while held');
   fold(s, bash(11, 'feat/new', 'git switch -c feat/new'));
   settleDrift(s, LATER());
-  assert.deepEqual([moved(s), s.driftDue, s.driftSaid ?? null], [null, null, null], 'judged: the chat\'s own, never shown, never said');
+  assert.deepEqual(
+    [moved(s), s.driftDue, s.driftSaid ?? null],
+    [null, null, null],
+    "judged: the chat's own, never shown, never said",
+  );
 
   // a long thought before the call: the same message, its lines' own times 9 s apart — still the chat's own; a later
   // message's checkout of it, 9 s on, is not
   const inMsg = (line, id) => ({ ...line, message: { ...line.message, id } });
-  const slow = chat(user(0, 'feat/a', 'branch it'), inMsg(say(10, 'feat/slow', 'Thinking it over at length.'), 'msg_1'), inMsg(bash(19, 'feat/slow', 'git switch -c feat/slow'), 'msg_1'));
+  const slow = chat(
+    user(0, 'feat/a', 'branch it'),
+    inMsg(say(10, 'feat/slow', 'Thinking it over at length.'), 'msg_1'),
+    inMsg(bash(19, 'feat/slow', 'git switch -c feat/slow'), 'msg_1'),
+  );
   assert.equal(moved(slow), null, 'the same message names it, 9 s later by the clock');
-  const other = chat(user(0, 'feat/a', 'go on'), inMsg(say(10, 'feat/other', 'Carrying on.'), 'msg_1'), inMsg(bash(19, 'feat/other', 'git checkout feat/other'), 'msg_2'));
-  assert.equal(moved(other), 'feat/a → feat/other', 'another message\'s, past the slack: the move stands');
+  const other = chat(
+    user(0, 'feat/a', 'go on'),
+    inMsg(say(10, 'feat/other', 'Carrying on.'), 'msg_1'),
+    inMsg(bash(19, 'feat/other', 'git checkout feat/other'), 'msg_2'),
+  );
+  assert.equal(moved(other), 'feat/a → feat/other', "another message's, past the slack: the move stands");
 
-  const out = newSession(randomUUID(), null); out.alive = true;
-  for (const l of [user(0, 'feat/a', 'run the tests'), bash(4, 'feat/a', 'npm test'), say(10, 'main', 'Still running.')]) fold(out, l);
+  const out = newSession(randomUUID(), null);
+  out.alive = true;
+  for (const l of [
+    user(0, 'feat/a', 'run the tests'),
+    bash(4, 'feat/a', 'npm test'),
+    say(10, 'main', 'Still running.'),
+  ])
+    fold(out, l);
   assert.equal(out.driftDue.working, true, 'seen while the chat is at work');
   assert.equal(moved(out), null, 'held first…');
   fold(out, say(11, 'main', 'Tests pass.'));
   settleDrift(out, LATER());
-  assert.deepEqual([moved(out), out.driftSaid], ['feat/a → main', 'feat/a\u2192main'], '…then shown, and said once: the alert for a chat at work');
+  assert.deepEqual(
+    [moved(out), out.driftSaid],
+    ['feat/a → main', 'feat/a\u2192main'],
+    '…then shown, and said once: the alert for a chat at work',
+  );
   const shown = driftOf(out);
-  fold(out, say(12, 'main')); settleDrift(out, LATER());
+  fold(out, say(12, 'main'));
+  settleDrift(out, LATER());
   assert.equal(driftOf(out), shown, 'the same move, not said again');
 });
 
 test('through HEAD and back is no drift; through HEAD elsewhere is', () => {
   const s = chat(user(0, 'feat/x', 'go'), say(5, 'feat/x'), say(10, 'HEAD'), say(15, 'HEAD'), say(20, 'feat/x'));
   assert.equal(moved(s), null, 'a rebase by someone else, and back');
-  assert.deepEqual(s.branches.map(b => b.name), ['feat/x', 'HEAD', 'feat/x']);
+  assert.deepEqual(
+    s.branches.map(b => b.name),
+    ['feat/x', 'HEAD', 'feat/x'],
+  );
   const t = chat(user(0, 'feat/x', 'go'), say(5, 'feat/x'), say(10, 'HEAD'), say(20, 'feat/y'));
   assert.equal(moved(t), 'feat/x → feat/y', 'detached, then landed elsewhere');
   const u = chat(user(0, 'feat/x', 'go'), say(5, 'main'), say(10, 'feat/y'));
@@ -152,13 +314,21 @@ test('through HEAD and back is no drift; through HEAD elsewhere is', () => {
   assert.equal(moved(w), null, 'another folder is another branch');
 });
 
-test('the head is read from the checkout\'s HEAD file — a worktree\'s its own — and judged against the lines', () => {
-  const dir = realpathSync(tmpDir('peix-head-')), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
-  const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
+test("the head is read from the checkout's HEAD file — a worktree's its own — and judged against the lines", () => {
+  const dir = realpathSync(tmpDir('peix-head-')),
+    repo = join(dir, 'widgets'),
+    wt = join(dir, 'widgets-wt');
+  const git = (cwd, ...a) =>
+    execFileSync('git', ['-C', cwd, ...a], {
+      stdio: 'pipe',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    });
   try {
     mkdirSync(join(repo, 'src'), { recursive: true });
     git(repo, 'init', '-q', '-b', 'main');
-    writeFileSync(join(repo, 'a.txt'), 'a\n'); git(repo, 'add', '.'); git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'one');
+    writeFileSync(join(repo, 'a.txt'), 'a\n');
+    git(repo, 'add', '.');
+    git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'one');
     assert.equal(headOf(repo), 'main');
     assert.equal(headOf(join(repo, 'src')), 'main', 'from a folder inside it');
     git(repo, 'worktree', 'add', '-q', '-b', 'feat/wt', wt);
@@ -168,7 +338,10 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     assert.equal(headOf(dir), null, 'no checkout');
     git(repo, 'checkout', '-q', 'main');
 
-    const s = chat({ ...user(0, 'feat/tax-rounding', 'round it'), cwd: repo }, { ...rest(1, 'feat/tax-rounding'), cwd: repo });
+    const s = chat(
+      { ...user(0, 'feat/tax-rounding', 'round it'), cwd: repo },
+      { ...rest(1, 'feat/tax-rounding'), cwd: repo },
+    );
     const now = T0 + 60_000;
     assert.equal(noteHead(s, headOf(repo), now), true);
     assert.equal(s.headNow, 'main');
@@ -176,50 +349,88 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     noteHead(s, 'main', now + 1000);
     assert.equal(moved(s), null, '…one past the slack');
     noteHead(s, 'main', now + 2000);
-    assert.equal(moved(s), 'feat/tax-rounding → main', 'the folder is on main, the chat\'s lines on feat/tax-rounding');
+    assert.equal(moved(s), 'feat/tax-rounding → main', "the folder is on main, the chat's lines on feat/tax-rounding");
     assert.equal(noteHead(s, 'main', now + 10_000), false, 'the same move, judged once');
-    settleDrift(s, LATER()); const said = s.driftSaid;   // the news so far: the disk's move, said
-    fold(s, { ...say(70, 'main'), cwd: repo }); noteHead(s, 'main', now + 12_000);
-    assert.equal(moved(s), 'feat/tax-rounding → main', 'the lines catching up are held — the disk\'s word shown meanwhile');
-    settleDrift(s, LATER()); noteHead(s, 'main', now + 14_000);
-    assert.deepEqual([moved(s), s.driftSaid], ['feat/tax-rounding → main', said], 'judged: the same move, not said again');
+    settleDrift(s, LATER());
+    const said = s.driftSaid; // the news so far: the disk's move, said
+    fold(s, { ...say(70, 'main'), cwd: repo });
+    noteHead(s, 'main', now + 12_000);
+    assert.equal(
+      moved(s),
+      'feat/tax-rounding → main',
+      "the lines catching up are held — the disk's word shown meanwhile",
+    );
+    settleDrift(s, LATER());
+    noteHead(s, 'main', now + 14_000);
+    assert.deepEqual(
+      [moved(s), s.driftSaid],
+      ['feat/tax-rounding → main', said],
+      'judged: the same move, not said again',
+    );
     noteHead(s, 'feat/tax-rounding', now + 20_000);
-    assert.equal(moved(s), null, 'back on the chat\'s branch');
+    assert.equal(moved(s), null, "back on the chat's branch");
     noteHead(s, 'HEAD', now + 30_000);
-    assert.equal(moved(s), 'feat/tax-rounding → main', 'detached says nothing of its own: the transcript\'s move stands');
+    assert.equal(
+      moved(s),
+      'feat/tax-rounding → main',
+      "detached says nothing of its own: the transcript's move stands",
+    );
 
-    const own = chat({ ...user(0, 'feat/a', 'switch'), cwd: repo }, { ...bash(5, 'feat/a', 'git checkout main'), cwd: repo });
+    const own = chat(
+      { ...user(0, 'feat/a', 'switch'), cwd: repo },
+      { ...bash(5, 'feat/a', 'git checkout main'), cwd: repo },
+    );
     look(own, 'main', T0 + 2 * 3600_000);
     assert.equal(moved(own), null, 'its own checkout, its lines not caught up yet — however long that takes');
     const late = chat({ ...user(0, 'feat/a', 'make a branch'), cwd: repo });
-    noteHead(late, 'feat/late', now);   // its switch has run; the message that made it is not written yet
-    fold(late, { ...bash(65, 'feat/late', 'git switch -c feat/late'), cwd: repo }); settleDrift(late, LATER());
+    noteHead(late, 'feat/late', now); // its switch has run; the message that made it is not written yet
+    fold(late, { ...bash(65, 'feat/late', 'git switch -c feat/late'), cwd: repo });
+    settleDrift(late, LATER());
     noteHead(late, 'feat/late', now + 2000);
-    assert.equal(moved(late), null, 'the HEAD file moved before the line that moved it was written: its own, on the second look');
+    assert.equal(
+      moved(late),
+      null,
+      'the HEAD file moved before the line that moved it was written: its own, on the second look',
+    );
     // …and written after the second look: `git switch -c feat/slow && npm ci`, the message a minute later (2026-10-14)
-    for (const lag of ['feat/slow', 'feat/a']) {   // its lines carrying the new branch, or still the old one
+    for (const lag of ['feat/slow', 'feat/a']) {
+      // its lines carrying the new branch, or still the old one
       const slow = chat({ ...user(0, 'feat/a', 'make a branch and install'), cwd: repo });
-      noteHead(slow, 'feat/slow', now + 8000); noteHead(slow, 'feat/slow', now + 18_000); settleDrift(slow, LATER());
-      assert.deepEqual([moved(slow), slow.driftSaid ?? null], [null, null], `at work, no line of its own since: held, nothing said (${lag})`);
+      noteHead(slow, 'feat/slow', now + 8000);
+      noteHead(slow, 'feat/slow', now + 18_000);
+      settleDrift(slow, LATER());
+      assert.deepEqual(
+        [moved(slow), slow.driftSaid ?? null],
+        [null, null],
+        `at work, no line of its own since: held, nothing said (${lag})`,
+      );
       noteHead(slow, 'feat/slow', now + 60_000);
       assert.equal(moved(slow), null, `…a minute on still (${lag})`);
-      fold(slow, { ...bash(1, lag, 'git switch -c feat/slow && npm ci'), cwd: repo }); settleDrift(slow, LATER());
-      noteHead(slow, 'feat/slow', now + 70_000); settleDrift(slow, LATER());
-      assert.deepEqual([moved(slow), slow.driftSaid ?? null], [null, null], `the line that moved it come in: its own, never shown (${lag})`);
+      fold(slow, { ...bash(1, lag, 'git switch -c feat/slow && npm ci'), cwd: repo });
+      settleDrift(slow, LATER());
+      noteHead(slow, 'feat/slow', now + 70_000);
+      settleDrift(slow, LATER());
+      assert.deepEqual(
+        [moved(slow), slow.driftSaid ?? null],
+        [null, null],
+        `the line that moved it come in: its own, never shown (${lag})`,
+      );
     }
     const long = chat({ ...user(0, 'feat/a', 'install it all'), cwd: repo });
     look(long, 'feat/long', now);
-    noteHead(long, 'feat/long', now + 5 * 60_000);   // DISK_HOLD_MS
+    noteHead(long, 'feat/long', now + 5 * 60_000); // DISK_HOLD_MS
     assert.equal(moved(long), 'feat/a → feat/long', 'held five minutes at most: then shown');
-    fold(long, { ...bash(2, 'feat/a', 'git switch feat/long && npm ci'), cwd: repo }); settleDrift(long, LATER());
+    fold(long, { ...bash(2, 'feat/a', 'git switch feat/long && npm ci'), cwd: repo });
+    settleDrift(long, LATER());
     noteHead(long, 'feat/long', now + 5 * 60_000 + 10_000);
     assert.equal(moved(long), null, 'the line that moved it, come in later still: its own after all, and gone');
     const busy = chat({ ...user(0, 'feat/a', 'go on'), cwd: repo });
     look(busy, 'main', now);
     assert.equal(moved(busy), null, 'held while nothing of its own has come in…');
-    fold(busy, { ...say(80, 'feat/a', 'Still on it.'), cwd: repo }); settleDrift(busy, LATER());
+    fold(busy, { ...say(80, 'feat/a', 'Still on it.'), cwd: repo });
+    settleDrift(busy, LATER());
     noteHead(busy, 'main', now + 12_000);
-    assert.equal(moved(busy), 'feat/a → main', '…a line in, and no git of its own: someone else\'s move, shown');
+    assert.equal(moved(busy), 'feat/a → main', "…a line in, and no git of its own: someone else's move, shown");
 
     const heard = chat({ ...user(0, 'feat/a', 'go'), cwd: repo }, { ...rest(1, 'feat/a'), cwd: repo });
     look(heard, 'main', now);
@@ -227,58 +438,100 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     fold(heard, { ...user(100, 'feat/a', 'fine, stay on main'), cwd: repo });
     noteHead(heard, 'main', now + 120_000);
     assert.equal(moved(heard), null, 'your word took the head as it stood, the line still saying feat/a');
-    fold(heard, { ...say(130, 'main'), cwd: repo }); settleDrift(heard, LATER());
+    fold(heard, { ...say(130, 'main'), cwd: repo });
+    settleDrift(heard, LATER());
     assert.equal(moved(heard), null, '…and the lines catching up later are no move either');
 
-    const twice = chat({ ...user(0, 'feat/a', 'go'), cwd: repo }, { ...say(10, 'main'), cwd: repo }, { ...rest(11, 'main'), cwd: repo });
+    const twice = chat(
+      { ...user(0, 'feat/a', 'go'), cwd: repo },
+      { ...say(10, 'main'), cwd: repo },
+      { ...rest(11, 'main'), cwd: repo },
+    );
     look(twice, 'feat/b', now);
-    assert.equal(moved(twice), 'feat/a → feat/b', 'the disk\'s newer word, from where the chat was before anything moved');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+    assert.equal(
+      moved(twice),
+      'feat/a → feat/b',
+      "the disk's newer word, from where the chat was before anything moved",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
-test('a reftable checkout\'s branch is git\'s word, not its HEAD file\'s stub (2026-10-14)', t => {
-  const dir = realpathSync(tmpDir('peix-head-')), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
-  const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
+test("a reftable checkout's branch is git's word, not its HEAD file's stub (2026-10-14)", t => {
+  const dir = realpathSync(tmpDir('peix-head-')),
+    repo = join(dir, 'widgets'),
+    wt = join(dir, 'widgets-wt');
+  const git = (cwd, ...a) =>
+    execFileSync('git', ['-C', cwd, ...a], {
+      stdio: 'pipe',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    });
   try {
-    try { git(dir, 'init', '-q', '--ref-format=reftable', '-b', 'main', repo); } catch { return t.skip('this git has no reftable'); }
+    try {
+      git(dir, 'init', '-q', '--ref-format=reftable', '-b', 'main', repo);
+    } catch {
+      return t.skip('this git has no reftable');
+    }
     git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'one');
     assert.equal(headOf(repo), 'main', 'not `.invalid`');
     git(repo, 'checkout', '-q', '-b', 'feat/x');
     assert.equal(headOf(repo), 'feat/x', 'asked again once the tables changed');
     git(repo, 'worktree', 'add', '-q', '-b', 'feat/wt', wt);
-    assert.deepEqual([headOf(wt), headOf(repo)], ['feat/wt', 'feat/x'], 'a worktree\'s its own');
+    assert.deepEqual([headOf(wt), headOf(repo)], ['feat/wt', 'feat/x'], "a worktree's its own");
     git(repo, 'checkout', '-q', '--detach');
     assert.equal(headOf(repo), 'HEAD', 'detached');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('Claude in a folder of the same checkout is on the same branch; a worktree inside it is another (2026-10-14)', () => {
-  const dir = realpathSync(tmpDir('peix-tree-')), repo = join(dir, 'widgets'), wt = join(repo, '.claude', 'worktrees', 'feat-wt');
+  const dir = realpathSync(tmpDir('peix-tree-')),
+    repo = join(dir, 'widgets'),
+    wt = join(repo, '.claude', 'worktrees', 'feat-wt');
   try {
-    mkdirSync(join(repo, '.git'), { recursive: true }); mkdirSync(join(repo, 'src')); mkdirSync(wt, { recursive: true });
+    mkdirSync(join(repo, '.git'), { recursive: true });
+    mkdirSync(join(repo, 'src'));
+    mkdirSync(wt, { recursive: true });
     writeFileSync(join(wt, '.git'), `gitdir: ${join(repo, '.git', 'worktrees', 'feat-wt')}\n`);
     const in_ = (line, cwd) => ({ ...line, cwd });
     const s = chat(in_(user(0, 'feat/a', 'go'), repo), in_(say(5, 'feat/a'), repo), in_(say(20, 'main'), repo));
     assert.equal(moved(s), 'feat/a → main');
-    fold(s, in_(say(30, 'main'), join(repo, 'src'))); settleDrift(s, LATER());
+    fold(s, in_(say(30, 'main'), join(repo, 'src')));
+    settleDrift(s, LATER());
     assert.equal(moved(s), 'feat/a → main', 'a line from its src folder keeps the move');
-    fold(s, in_(say(40, 'main'), repo)); settleDrift(s, LATER());
+    fold(s, in_(say(40, 'main'), repo));
+    settleDrift(s, LATER());
     assert.equal(moved(s), 'feat/a → main', '…and back at the top it stands');
-    fold(s, in_(say(50, 'feat/wt'), wt)); settleDrift(s, LATER());
+    fold(s, in_(say(50, 'feat/wt'), wt));
+    settleDrift(s, LATER());
     assert.equal(moved(s), null, 'a worktree inside the repo is a checkout of its own');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 /** The `alert` events of a server's stream, from its snapshot on (as reindex.test reads them). */
 async function alerts(url, key) {
-  const res = await fetch(`${url}events?key=${key}`), reader = res.body.getReader(), dec = new TextDecoder(), got = [];
+  const res = await fetch(`${url}events?key=${key}`),
+    reader = res.body.getReader(),
+    dec = new TextDecoder(),
+    got = [];
   const { promise: snapshot, resolve } = Promise.withResolvers();
   (async () => {
     let buf = '';
     for (;;) {
-      const { value, done } = await reader.read(); if (done) break;
+      const { value, done } = await reader.read();
+      if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i; while ((i = buf.indexOf('\n\n')) >= 0) { const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i)); buf = buf.slice(i + 2); if (m?.[1] === 'snapshot') resolve(); if (m?.[1] === 'alert') got.push(JSON.parse(m[2])); }
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+        buf = buf.slice(i + 2);
+        if (m?.[1] === 'snapshot') resolve();
+        if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
+      }
     }
   })().catch(() => {});
   await snapshot;
@@ -286,19 +539,63 @@ async function alerts(url, key) {
 }
 
 test('a restart says no move again and keeps the one set aside (2026-10-14)', { timeout: 120_000 }, async () => {
-  const dir = realpathSync(tmpDir('peix-boot-')), repo = join(dir, 'widgets'), claude = tmpDir('peix-fx-');
-  const git = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
-  const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));   // a live pid each: any will do
+  const dir = realpathSync(tmpDir('peix-boot-')),
+    repo = join(dir, 'widgets'),
+    claude = tmpDir('peix-fx-');
+  const git = (...a) =>
+    execFileSync('git', ['-C', repo, ...a], {
+      stdio: 'pipe',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    });
+  const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' })); // a live pid each: any will do
   let srv, a1, a2;
   try {
-    mkdirSync(repo); git('init', '-q', '-b', 'feat/a'); git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'one');
-    const proj = join(claude, 'projects', slugOf(repo)); mkdirSync(proj, { recursive: true }); mkdirSync(join(claude, 'sessions'));
-    const line = (id, ms, type, content, extra = {}) => JSON.stringify({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd: repo, sessionId: id, version: 'fixture', gitBranch: 'feat/a', parentUuid: null, uuid: randomUUID(), timestamp: new Date(Date.now() + ms).toISOString(), type, message: { role: type, content, ...extra } }) + '\n';
-    const working = (id, ms) => line(id, ms, 'assistant', [{ type: 'text', text: 'Still on it.' }], { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), stop_reason: 'tool_use' });
-    const chats = sleeps.map(p => {   // two chats at work in the checkout, their lines on feat/a
-      const id = randomUUID(), file = join(proj, `${id}.jsonl`);
+    mkdirSync(repo);
+    git('init', '-q', '-b', 'feat/a');
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'one');
+    const proj = join(claude, 'projects', slugOf(repo));
+    mkdirSync(proj, { recursive: true });
+    mkdirSync(join(claude, 'sessions'));
+    const line = (id, ms, type, content, extra = {}) =>
+      JSON.stringify({
+        isSidechain: false,
+        userType: 'external',
+        entrypoint: 'cli',
+        cwd: repo,
+        sessionId: id,
+        version: 'fixture',
+        gitBranch: 'feat/a',
+        parentUuid: null,
+        uuid: randomUUID(),
+        timestamp: new Date(Date.now() + ms).toISOString(),
+        type,
+        message: { role: type, content, ...extra },
+      }) + '\n';
+    const working = (id, ms) =>
+      line(id, ms, 'assistant', [{ type: 'text', text: 'Still on it.' }], {
+        model: 'fixture-1',
+        id: 'msg_' + randomUUID().slice(0, 8),
+        stop_reason: 'tool_use',
+      });
+    const chats = sleeps.map(p => {
+      // two chats at work in the checkout, their lines on feat/a
+      const id = randomUUID(),
+        file = join(proj, `${id}.jsonl`);
       writeFileSync(file, line(id, -60_000, 'user', [{ type: 'text', text: 'round the tax' }]) + working(id, -50_000));
-      writeFileSync(join(claude, 'sessions', `${p.pid}.json`), JSON.stringify({ pid: p.pid, sessionId: id, cwd: repo, startedAt: Date.now() - 3600_000, version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'busy', statusUpdatedAt: Date.now() }));
+      writeFileSync(
+        join(claude, 'sessions', `${p.pid}.json`),
+        JSON.stringify({
+          pid: p.pid,
+          sessionId: id,
+          cwd: repo,
+          startedAt: Date.now() - 3600_000,
+          version: 'fixture',
+          kind: 'interactive',
+          entrypoint: 'cli',
+          status: 'busy',
+          statusUpdatedAt: Date.now(),
+        }),
+      );
       return { id, file };
     });
     const [acked, other] = chats;
@@ -306,19 +603,40 @@ test('a restart says no move again and keeps the one set aside (2026-10-14)', { 
     const sum = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
     a1 = await alerts(srv.url, srv.key);
     await waitFor(async () => (await sum(other.id))?.headNow === 'feat/a', { what: 'the checkout read' });
-    git('checkout', '-q', '-b', 'main');   // someone moves it under both
-    await waitFor(async () => (await sum(other.id))?.headNow === 'main' && (await sum(acked.id))?.headNow === 'main', { what: 'the move seen' });
-    for (const c of chats) appendFileSync(c.file, working(c.id, 0));   // a line of each's own, after it: judged
+    git('checkout', '-q', '-b', 'main'); // someone moves it under both
+    await waitFor(async () => (await sum(other.id))?.headNow === 'main' && (await sum(acked.id))?.headNow === 'main', {
+      what: 'the move seen',
+    });
+    for (const c of chats) appendFileSync(c.file, working(c.id, 0)); // a line of each's own, after it: judged
     await waitFor(() => a1.got.filter(a => a.kind === 'drift').length === 2, { timeout: 30_000, what: 'both told' });
     assert.equal((await srv.post(`api/sessions/${acked.id}/drift`, {})).status, 200, 'one set aside');
     a1.stop();
 
     await srv.restart();
-    a2 = await alerts(srv.url, srv.key);   // the stream waits for the boot: the boot's look is behind it
-    appendFileSync(acked.file, working(acked.id, 1000)); appendFileSync(other.file, working(other.id, 1000));   // lines in before the next look
-    await sleep(7500);   // two looks and the alerts' debounce
-    assert.deepEqual(a2.got.filter(a => a.kind === 'drift'), [], 'nobody told again');
-    assert.deepEqual(JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).driftAcks, { [acked.id]: 'feat/a\u2192main' }, 'the set-aside kept');
-    assert.deepEqual([(await sum(acked.id)).drift, (await sum(other.id)).drift?.to], [null, 'main'], 'aside still, and the other shown still');
-  } finally { a1?.stop(); a2?.stop(); await srv?.stop(); for (const p of sleeps) p.kill(); rmSync(dir, { recursive: true, force: true }); }
+    a2 = await alerts(srv.url, srv.key); // the stream waits for the boot: the boot's look is behind it
+    appendFileSync(acked.file, working(acked.id, 1000));
+    appendFileSync(other.file, working(other.id, 1000)); // lines in before the next look
+    await sleep(7500); // two looks and the alerts' debounce
+    assert.deepEqual(
+      a2.got.filter(a => a.kind === 'drift'),
+      [],
+      'nobody told again',
+    );
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).driftAcks,
+      { [acked.id]: 'feat/a\u2192main' },
+      'the set-aside kept',
+    );
+    assert.deepEqual(
+      [(await sum(acked.id)).drift, (await sum(other.id)).drift?.to],
+      [null, 'main'],
+      'aside still, and the other shown still',
+    );
+  } finally {
+    a1?.stop();
+    a2?.stop();
+    await srv?.stop();
+    for (const p of sleeps) p.kill();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

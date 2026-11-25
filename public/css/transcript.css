@@ -1,142 +1,619 @@
-  /* The chat is prose, so it gets prose spacing: a taller line box than the dense lists beside it
+/* The chat is prose, so it gets prose spacing: a taller line box than the dense lists beside it
      and a clear gap between turns. Everything below is tuned against that 1.62. */
-  .msg { margin: 0 0 18px; }
-  /* Your words on the right, a bubble as wide as they are (2026-10-08, as the agent apps draw a prompt — a full-width
+.msg {
+  margin: 0 0 18px;
+}
+/* Your words on the right, a bubble as wide as they are (2026-10-08, as the agent apps draw a prompt — a full-width
      block with the accent down its left edge before): Claude's run the width, under one who-line a turn */
-  .msg.user { display: flex; flex-direction: column; align-items: flex-end; }
-  .msg.user .who { margin: 0 4px 5px 0; }
-  .msg.user .bubble { max-width: min(82%, 760px); min-width: 0; background: var(--user-bg); border-radius: 14px 14px 4px 14px; padding: 9px 15px;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
-  .msg.assistant.cont { margin-top: -6px; }
-  .msg.assistant.cont .who { display: none; }   /* the turn's second word on: the who-line said it once */
-  /* under the reply that ends a turn (2026-10-08): copy the turn's words, and how long it worked */
-  .msg .turnfoot { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 2px; font-size: var(--fs-xs); color: var(--muted); }
-  .msg .turnfoot .tcopy { display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; margin-left: -5px; border: 0; border-radius: var(--r-2); background: none; font: inherit; color: inherit; cursor: pointer; }
-  .msg .turnfoot .tcopy .ic { width: 13px; height: 13px; fill: currentColor; }
-  .msg .turnfoot .tcopy:hover { color: var(--ink); background: var(--ctl); }
-  .msg .turnfoot .tcopy.did { color: var(--idle); }
-  .msg.assistant .bubble { padding: 4px 2px; }
-  /* A message from another chat (2026-10-31, peerHtml): neither yours nor Claude's — Claude's measure, in a box of its
+.msg.user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.msg.user .who {
+  margin: 0 4px 5px 0;
+}
+.msg.user .bubble {
+  max-width: min(82%, 760px);
+  min-width: 0;
+  background: var(--user-bg);
+  border-radius: 14px 14px 4px 14px;
+  padding: 9px 15px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.msg.assistant.cont {
+  margin-top: -6px;
+}
+.msg.assistant.cont .who {
+  display: none;
+} /* the turn's second word on: the who-line said it once */
+/* under the reply that ends a turn (2026-10-08): copy the turn's words, and how long it worked */
+.msg .turnfoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.msg .turnfoot .tcopy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  margin-left: -5px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.msg .turnfoot .tcopy .ic {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+.msg .turnfoot .tcopy:hover {
+  color: var(--ink);
+  background: var(--ctl);
+}
+.msg .turnfoot .tcopy.did {
+  color: var(--idle);
+}
+.msg.assistant .bubble {
+  padding: 4px 2px;
+}
+/* A message from another chat (2026-10-31, peerHtml): neither yours nor Claude's — Claude's measure, in a box of its
      own with the accent down its left, the sender a click away; one still waiting for the turn's end, the edge dashed */
-  .msg.peer .bubble { max-width: min(100%, 84ch); padding: 7px 12px; border-left: 2px solid var(--accent); border-radius: 0 var(--r-3) var(--r-3) 0; background: var(--ctl); }
-  .msg.peer.queued .bubble { border-left-style: dashed; color: var(--muted); }
-  .msg.peer .who { align-items: baseline; }
-  .msg.peer .pmode, .msg.peer .pq { font-size: var(--fs-2xs); font-weight: 600; padding: 0 5px; border-radius: var(--r-1); background: var(--ctl); color: var(--ink); }
-  .msg.peer .pq { text-transform: uppercase; letter-spacing: .4px; }
-  :is(.msg.peer, .tool) .peerlink { border: 0; padding: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; text-decoration: underline 1px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
-  :is(.msg.peer, .tool) .peerlink:hover { text-decoration-color: currentColor; }
-  .tool .peerlink { flex: none; }
+.msg.peer .bubble {
+  max-width: min(100%, 84ch);
+  padding: 7px 12px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--r-3) var(--r-3) 0;
+  background: var(--ctl);
+}
+.msg.peer.queued .bubble {
+  border-left-style: dashed;
+  color: var(--muted);
+}
+.msg.peer .who {
+  align-items: baseline;
+}
+.msg.peer .pmode,
+.msg.peer .pq {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  padding: 0 5px;
+  border-radius: var(--r-1);
+  background: var(--ctl);
+  color: var(--ink);
+}
+.msg.peer .pq {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+:is(.msg.peer, .tool) .peerlink {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+:is(.msg.peer, .tool) .peerlink:hover {
+  text-decoration-color: currentColor;
+}
+.tool .peerlink {
+  flex: none;
+}
 /* Claude's prose keeps to a reading measure (2026-10-12): at 1700 px a line ran to ~200 characters. Its paragraphs,
    lists, quotes and headings stop at 80ch; a code block, a table, a rule and an image take the width they need. */
-.msg.assistant .text > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, dl) { max-width: 80ch; }
-  .msg .who { font-size: var(--fs-xs); color: var(--muted); margin: 0 0 5px 2px; display: flex; gap: 8px; }
-  .msg .text { white-space: pre-wrap; word-break: break-word; line-height: 1.62; }
-  /* Inline code: a tint and a warm ink, no border. These paragraphs are dense with `code`, and a
+.msg.assistant .text > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, dl) {
+  max-width: 80ch;
+}
+.msg .who {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  margin: 0 0 5px 2px;
+  display: flex;
+  gap: 8px;
+}
+.msg .text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.62;
+}
+/* Inline code: a tint and a warm ink, no border. These paragraphs are dense with `code`, and a
      bordered chip per term turns a sentence into a fence of boxes — and, being taller than the words
      around it, it makes every line that contains one taller than the ones that don't. .88em keeps a
      monospace term the same visual size as the prose it sits in. */
-  .msg .text code { background: var(--inline-bg); color: var(--code-ink); padding: .12em .34em; border-radius: var(--r-2);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; }
-  /* Blocks do keep a border — there the point is to delimit, not to sit inside a sentence. */
-  .msg .text pre { background: var(--code-bg); border: 1px solid var(--code-line); padding: 11px 13px; border-radius: var(--r-3);
-    overflow-x: auto; font-size: var(--fs-md); line-height: 1.55; }
-  .msg .text pre code { background: none; padding: 0; color: inherit; border-radius: 0; font-size: inherit; }
-  .text.md { white-space: normal; }
-  .md p { margin: 0 0 11px; } .md > :last-child { margin-bottom: 0; } .md > :first-child { margin-top: 0; }
-  .md h1, .md h2, .md h3, .md h4 { margin: 18px 0 8px; line-height: 1.3; font-weight: 600; }
-  .md h1 { font-size: var(--fs-xl); } .md h2 { font-size: var(--fs-lg); } .md h3 { font-size: var(--fs-base); } .md h4 { font-size: var(--fs-md); }
-  .md ul, .md ol { margin: 8px 0 12px; padding-left: 22px; } .md li { margin: 5px 0; } .md li > p { margin: 0 0 5px; }
-  .md li > ul, .md li > ol { margin: 5px 0 0; }
-  .md pre { margin: 10px 0 13px; }
-  /* Code blocks (2026-09-27, night): the language in the corner and a copy button, both under the pointer only. The
+.msg .text code {
+  background: var(--inline-bg);
+  color: var(--code-ink);
+  padding: 0.12em 0.34em;
+  border-radius: var(--r-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+/* Blocks do keep a border — there the point is to delimit, not to sit inside a sentence. */
+.msg .text pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-line);
+  padding: 11px 13px;
+  border-radius: var(--r-3);
+  overflow-x: auto;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.msg .text pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  border-radius: 0;
+  font-size: inherit;
+}
+.text.md {
+  white-space: normal;
+}
+.md p {
+  margin: 0 0 11px;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 18px 0 8px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.md h1 {
+  font-size: var(--fs-xl);
+}
+.md h2 {
+  font-size: var(--fs-lg);
+}
+.md h3 {
+  font-size: var(--fs-base);
+}
+.md h4 {
+  font-size: var(--fs-md);
+}
+.md ul,
+.md ol {
+  margin: 8px 0 12px;
+  padding-left: 22px;
+}
+.md li {
+  margin: 5px 0;
+}
+.md li > p {
+  margin: 0 0 5px;
+}
+.md li > ul,
+.md li > ol {
+  margin: 5px 0 0;
+}
+.md pre {
+  margin: 10px 0 13px;
+}
+/* Code blocks (2026-09-27, night): the language in the corner and a copy button, both under the pointer only. The
      block is wrapped (.codebox, md()) so the bar sits inside its top right corner and stays put while the pre itself
      scrolls sideways; the wrapper takes the pre's margins. Inside a fold the summary already names the language. */
-  .md .codebox { position: relative; margin: 10px 0 13px; }
-  .md .codebox > pre { margin: 0; }
-  .codebox .cbar { position: absolute; top: 6px; right: 7px; display: flex; gap: 6px; align-items: center; font: 500 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); opacity: 0; transition: opacity .12s; }
-  .codebox:hover .cbar, .codebox .cbar:focus-within { opacity: 1; }
-  .codebox .lang { padding: 3px 4px; }
-  .codebox .copy { font: inherit; border: 1px solid transparent; background: color-mix(in srgb, var(--ink) 7%, var(--code-bg)); color: var(--muted); border-radius: var(--r-2); padding: 3px 7px; cursor: pointer; transition: color .12s, border-color .12s; }
-  .codebox .copy:hover { color: var(--ink); border-color: var(--accent); }
-  .codebox .copy.did { color: var(--idle); border-color: var(--idle); }
-  .md table { border-collapse: collapse; margin: 10px 0 13px; font-size: var(--fs-md); display: block; overflow-x: auto; max-width: 100%; }
-  .md th, .md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
-  .md th { background: var(--tool-bg); font-weight: 600; }
-  .md blockquote { margin: 10px 0; padding: 3px 13px; border-left: 3px solid var(--line); color: var(--muted); }
-  .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
-  .md a:is([href^="vscode:"], [href^="zed:"])::after { content: " ↗"; font-size: var(--fs-2xs); opacity: .6; }
-  /* the paths and pages a tool row names are links too (2026-09-26, linkify): quiet, the row is one muted line */
-  .tool a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; } .tool a:hover { color: var(--accent); }
-  .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
-  .md img { max-width: 100%; }
-  .md input[type=checkbox] { margin: 0 6px 0 0; }
-  .toolgroup { margin: 2px 0 10px; }
-  .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: var(--fs-sm); color: var(--muted); padding: 4px 8px; border-radius: var(--r-3); background: var(--tool-bg); border: 1px solid transparent; user-select: none; }
-  .toolgroup > summary::-webkit-details-marker, .codefold > summary::-webkit-details-marker { display: none; }
-  /* One chevron that turns (2026-09-27, night; ▸ swapped for ▾ before), and a body that fades and rises in as the
+.md .codebox {
+  position: relative;
+  margin: 10px 0 13px;
+}
+.md .codebox > pre {
+  margin: 0;
+}
+.codebox .cbar {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font:
+    500 var(--fs-xs)/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.codebox:hover .cbar,
+.codebox .cbar:focus-within {
+  opacity: 1;
+}
+.codebox .lang {
+  padding: 3px 4px;
+}
+.codebox .copy {
+  font: inherit;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--ink) 7%, var(--code-bg));
+  color: var(--muted);
+  border-radius: var(--r-2);
+  padding: 3px 7px;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+.codebox .copy:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.codebox .copy.did {
+  color: var(--idle);
+  border-color: var(--idle);
+}
+.md table {
+  border-collapse: collapse;
+  margin: 10px 0 13px;
+  font-size: var(--fs-md);
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.md th,
+.md td {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.md th {
+  background: var(--tool-bg);
+  font-weight: 600;
+}
+.md blockquote {
+  margin: 10px 0;
+  padding: 3px 13px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+.md a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.md a:hover {
+  text-decoration: underline;
+}
+.md a:is([href^='vscode:'], [href^='zed:'])::after {
+  content: ' ↗';
+  font-size: var(--fs-2xs);
+  opacity: 0.6;
+}
+/* the paths and pages a tool row names are links too (2026-09-26, linkify): quiet, the row is one muted line */
+.tool a {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.tool a:hover {
+  color: var(--accent);
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 12px 0;
+}
+.md img {
+  max-width: 100%;
+}
+.md input[type='checkbox'] {
+  margin: 0 6px 0 0;
+}
+.toolgroup {
+  margin: 2px 0 10px;
+}
+.toolgroup > summary,
+.codefold > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: var(--r-3);
+  background: var(--tool-bg);
+  border: 1px solid transparent;
+  user-select: none;
+}
+.toolgroup > summary::-webkit-details-marker,
+.codefold > summary::-webkit-details-marker {
+  display: none;
+}
+/* One chevron that turns (2026-09-27, night; ▸ swapped for ▾ before), and a body that fades and rises in as the
      fold opens — `::details-content`, both engines. Chrome also runs the height, which needs interpolate-size; WebKit
      has not got it (probed), so there the height still jumps under the fade. */
-  .toolgroup > summary::before, .codefold > summary::before { content: "▸"; display: inline-block; width: 1.05em; transform-origin: 50% 55%; transition: transform .15s; }
-  .toolgroup[open] > summary::before, .codefold[open] > summary::before { transform: rotate(90deg); }
-  :is(.toolgroup, .codefold)::details-content { opacity: 1; transform: none; transition: opacity .15s, transform .15s, content-visibility .15s allow-discrete; }
-  :is(.toolgroup, .codefold):not([open])::details-content { opacity: 0; transform: translateY(-3px); }
-  @supports (interpolate-size: allow-keywords) {
-    :is(.toolgroup, .codefold) { interpolate-size: allow-keywords; }
-    :is(.toolgroup, .codefold)::details-content { height: 0; overflow: clip; transition: height .18s, opacity .15s, transform .15s, content-visibility .18s allow-discrete; }
-    :is(.toolgroup, .codefold)[open]::details-content { height: auto; }
+.toolgroup > summary::before,
+.codefold > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 1.05em;
+  transform-origin: 50% 55%;
+  transition: transform 0.15s;
+}
+.toolgroup[open] > summary::before,
+.codefold[open] > summary::before {
+  transform: rotate(90deg);
+}
+:is(.toolgroup, .codefold)::details-content {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    content-visibility 0.15s allow-discrete;
+}
+:is(.toolgroup, .codefold):not([open])::details-content {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+@supports (interpolate-size: allow-keywords) {
+  :is(.toolgroup, .codefold) {
+    interpolate-size: allow-keywords;
   }
-  .toolgroup > summary:hover, .codefold > summary:hover { color: var(--ink); border-color: var(--accent); }
-  .toolgroup > summary .err { color: var(--needs); }
-  .toolgroup[open] > summary { margin-bottom: 4px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-  .toolgroup .tool { margin-left: 10px; }
-  .codefold { margin: 6px 0 10px; } .codefold > summary { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } .codefold[open] > summary { margin-bottom: 0; border-radius: 6px 6px 0 0; }
-  .codefold[open] > .codebox { margin-top: 0; }
-  .codefold[open] > .codebox > pre { border-top: 0; border-radius: 0 0 8px 8px; }   /* one seam, not two borders */
-  .tool { margin: 0 0 4px; font-size: var(--fs-sm); color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; gap: 8px; padding: 3px 8px; background: var(--tool-bg); border-radius: var(--r-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tool b { color: var(--ink); font-weight: 600; }
-  .tool .tst, .toolgroup > summary .tst { flex: none; align-self: center; position: relative; width: 9px; height: 9px; margin-right: -2px; border-radius: 50%; }
-  .toolgroup > summary .tst { display: inline-block; vertical-align: -1px; margin-right: 6px; }
-  .tool .tst.ok { background: color-mix(in srgb, var(--idle) 80%, transparent); scale: .6; }
-  .tool .tst.err::before, .tool .tst.err::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; margin: -1px 0 0 -5px; border-radius: var(--r-1); background: var(--needs); rotate: 45deg; }
-  .tool .tst.err::after { rotate: -45deg; }
-  :is(.tool, .toolgroup > summary) .tst.run { border: 1.5px solid var(--line); }
-  :is(#log, #agv).working :is(.tool, .toolgroup > summary) .tst.run { border-color: var(--working); border-right-color: transparent; animation: ring .8s linear infinite; }
-  .tool.err { color: var(--needs); }
-  /* an agent's call (2026-11-02; agCallHtml): a line of its own, out of the fold; the fold's look, and a click is its transcript. Its dot says the call went out, not that the agent ended */
-  .tool.agcall { width: 100%; box-sizing: border-box; margin-bottom: 6px; border: 1px solid transparent; font-size: var(--fs-sm); text-align: left; cursor: default; }
-  .tool.agcall[data-ag] { cursor: pointer; }
-  .tool.agcall[data-ag]:hover { color: var(--ink); border-color: var(--accent); }
-  .tool.agcall .tst.ok { background: var(--muted); }
-  .tool.agcall > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .tool.agcall .go { display: none; flex: none; margin-left: auto; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-  .tool.agcall[data-ag] .go { display: inline; }
-  .sysline { margin: 10px auto; text-align: center; font-size: var(--fs-xs); color: var(--muted); }
-  .sysline.day { margin: 14px auto 12px; }
-  .sysline.day b { font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
-  /* Times and ages in tabular figures (2026-09-27, night), so a digit changing under them moves nothing beside it. */
-  .msg .who, .card .trow .time, .card .prmove .mt, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
-  /* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
+  :is(.toolgroup, .codefold)::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height 0.18s,
+      opacity 0.15s,
+      transform 0.15s,
+      content-visibility 0.18s allow-discrete;
+  }
+  :is(.toolgroup, .codefold)[open]::details-content {
+    height: auto;
+  }
+}
+.toolgroup > summary:hover,
+.codefold > summary:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.toolgroup > summary .err {
+  color: var(--needs);
+}
+.toolgroup[open] > summary {
+  margin-bottom: 4px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.toolgroup .tool {
+  margin-left: 10px;
+}
+.codefold {
+  margin: 6px 0 10px;
+}
+.codefold > summary {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.codefold[open] > summary {
+  margin-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+.codefold[open] > .codebox {
+  margin-top: 0;
+}
+.codefold[open] > .codebox > pre {
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+} /* one seam, not two borders */
+.tool {
+  margin: 0 0 4px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  display: flex;
+  gap: 8px;
+  padding: 3px 8px;
+  background: var(--tool-bg);
+  border-radius: var(--r-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.tool .tst,
+.toolgroup > summary .tst {
+  flex: none;
+  align-self: center;
+  position: relative;
+  width: 9px;
+  height: 9px;
+  margin-right: -2px;
+  border-radius: 50%;
+}
+.toolgroup > summary .tst {
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 6px;
+}
+.tool .tst.ok {
+  background: color-mix(in srgb, var(--idle) 80%, transparent);
+  scale: 0.6;
+}
+.tool .tst.err::before,
+.tool .tst.err::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  margin: -1px 0 0 -5px;
+  border-radius: var(--r-1);
+  background: var(--needs);
+  rotate: 45deg;
+}
+.tool .tst.err::after {
+  rotate: -45deg;
+}
+:is(.tool, .toolgroup > summary) .tst.run {
+  border: 1.5px solid var(--line);
+}
+:is(#log, #agv).working :is(.tool, .toolgroup > summary) .tst.run {
+  border-color: var(--working);
+  border-right-color: transparent;
+  animation: ring 0.8s linear infinite;
+}
+.tool.err {
+  color: var(--needs);
+}
+/* an agent's call (2026-11-02; agCallHtml): a line of its own, out of the fold; the fold's look, and a click is its transcript. Its dot says the call went out, not that the agent ended */
+.tool.agcall {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  border: 1px solid transparent;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: default;
+}
+.tool.agcall[data-ag] {
+  cursor: pointer;
+}
+.tool.agcall[data-ag]:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.tool.agcall .tst.ok {
+  background: var(--muted);
+}
+.tool.agcall > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool.agcall .go {
+  display: none;
+  flex: none;
+  margin-left: auto;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.tool.agcall[data-ag] .go {
+  display: inline;
+}
+.sysline {
+  margin: 10px auto;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.sysline.day {
+  margin: 14px auto 12px;
+}
+.sysline.day b {
+  font:
+    600 var(--fs-xs)/14px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 1px;
+  color: var(--muted);
+} /* the list's day line, in the transcript */
+/* Times and ages in tabular figures (2026-09-27, night), so a digit changing under them moves nothing beside it. */
+.msg .who,
+.card .trow .time,
+.card .prmove .mt,
+.pkrow .t,
+.prrow .meta,
+#hmenu .hmi .k,
+#hmenu .hmi [data-at] {
+  font-variant-numeric: tabular-nums;
+}
+/* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
      divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
      only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
      red and the card's own markup (askHtml). renderPresence keeps it the last thing in the log. */
-  .presence { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 6px 2px; min-height: 18px; font-size: var(--fs-sm); color: var(--muted); }
-  .presence .pix { flex: none; }
-  .presence .w { font-weight: 600; }
-  .presence .w em { font-style: normal; font-weight: 400; }
-  .presence .state.needs-input { font-size: var(--fs-sm); font-weight: 600; min-width: 0; }
-  .presence .state.needs-input .ic { width: 12px; height: 12px; }
-  /* A message that arrives fades in from 4 px down (2026-09-27, night) — what comes while the chat is open; the first
+.presence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 6px 2px;
+  min-height: 18px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.presence .pix {
+  flex: none;
+}
+.presence .w {
+  font-weight: 600;
+}
+.presence .w em {
+  font-style: normal;
+  font-weight: 400;
+}
+.presence .state.needs-input {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  min-width: 0;
+}
+.presence .state.needs-input .ic {
+  width: 12px;
+  height: 12px;
+}
+/* A message that arrives fades in from 4 px down (2026-09-27, night) — what comes while the chat is open; the first
      fill stands still (renderLog marks `.in`). */
-  @keyframes msgin { from { opacity: 0; transform: translateY(4px); } }
-  #log > .in { animation: msgin .18s ease-out both; }
-  /* …and when you have scrolled up, a pill at the log's foot says what came — "new reply", "3 new replies", "more
+@keyframes msgin {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+#log > .in {
+  animation: msgin 0.18s ease-out both;
+}
+/* …and when you have scrolled up, a pill at the log's foot says what came — "new reply", "3 new replies", "more
      below" for tool activity alone — the twin of the list's ends: sticky at the bottom of the log's window (its box
      is the last thing in the log, of no height, the button drawn above it), a click scrolls to the end, and getting
      there yourself puts it away (logNew). */
-  .lognew { position: sticky; bottom: 10px; z-index: 2; height: 0; display: flex; justify-content: center; pointer-events: none; opacity: 0; transition: opacity .15s; }
-  .lognew.on { opacity: 1; }
-  .lognew button { transform: translateY(-100%); pointer-events: none; }
-  .lognew.on button { pointer-events: auto; }
-  .lognew button b { font-weight: 600; }
-  .empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
-
+.lognew {
+  position: sticky;
+  bottom: 10px;
+  z-index: 2;
+  height: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.lognew.on {
+  opacity: 1;
+}
+.lognew button {
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+.lognew.on button {
+  pointer-events: auto;
+}
+.lognew button b {
+  font-weight: 600;
+}
+.empty {
+  color: var(--muted);
+  text-align: center;
+  margin-top: 30vh;
+  padding: 0 20px;
+}

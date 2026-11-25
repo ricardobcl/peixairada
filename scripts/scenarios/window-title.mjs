@@ -7,9 +7,13 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
-  await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };` });
+  await ctx.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };`,
+  });
   await ctx.evaluate(`location.reload()`);
-  await ctx.waitFor(`window.__posts && document.querySelectorAll('#slist > .card').length === 2`, { what: 'the board again, with the bridge' });
+  await ctx.waitFor(`window.__posts && document.querySelectorAll('#slist > .card').length === 2`, {
+    what: 'the board again, with the bridge',
+  });
   const chats = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'chat'))`).then(JSON.parse);
   const [a, b] = ctx.fixture.chats;
   ctx.assert.deepEqual(await chats(), [], 'nothing said with no chat open');
@@ -18,7 +22,11 @@ export default async function (ctx) {
   await ctx.waitFor(`window.__posts.some(m => m.type === 'chat')`, { what: 'the chat told to the shell' });
   out.first = await chats();
   ctx.assert.equal(out.first.length, 1, 'once');
-  ctx.assert.deepEqual(out.first[0], { type: 'chat', project: 'repo-a', title: 'Two PRs mentioned', cwd: a.cwd }, 'its project, title and folder');
+  ctx.assert.deepEqual(
+    out.first[0],
+    { type: 'chat', project: 'repo-a', title: 'Two PRs mentioned', cwd: a.cwd },
+    'its project, title and folder',
+  );
 
   // a render that leaves the header as it was says nothing more
   await ctx.evaluate(`window.peix && document.dispatchEvent(new Event('visibilitychange'))`);
@@ -28,6 +36,10 @@ export default async function (ctx) {
   await ctx.openChat(b.id);
   await ctx.waitFor(`window.__posts.filter(m => m.type === 'chat').length === 2`, { what: 'the second chat told' });
   out.second = (await chats())[1];
-  ctx.assert.deepEqual([out.second.title, out.second.cwd], ['Plain chat', b.cwd], 'the second chat, its title and folder');
+  ctx.assert.deepEqual(
+    [out.second.title, out.second.cwd],
+    ['Plain chat', b.cwd],
+    'the second chat, its title and folder',
+  );
   return out;
 }

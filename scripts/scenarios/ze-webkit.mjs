@@ -19,8 +19,22 @@ export default async function (ctx) {
       if (st.gl || st.off || document.querySelector('#zeGL')) throw new Error('the stage is still here, or off');
     }
     return JSON.stringify(out);`;
-  const r = spawnSync('node', ['scripts/webkit.mjs', body], { encoding: 'utf8', timeout: 60000, env: { ...process.env, URL: ctx.server.url, KEY: ctx.server.key, SIZE: '1500x1100', PREFS: JSON.stringify({ toured: true, zeSound: false }), TIMEOUT: '55' } });
-  if (/the page is hidden/.test(r.stderr + r.stdout)) { ctx.log('the screen is locked: WebKit runs no frames, nothing checked'); return { skipped: 'the screen is locked' }; }
+  const r = spawnSync('node', ['scripts/webkit.mjs', body], {
+    encoding: 'utf8',
+    timeout: 60000,
+    env: {
+      ...process.env,
+      URL: ctx.server.url,
+      KEY: ctx.server.key,
+      SIZE: '1500x1100',
+      PREFS: JSON.stringify({ toured: true, zeSound: false }),
+      TIMEOUT: '55',
+    },
+  });
+  if (/the page is hidden/.test(r.stderr + r.stdout)) {
+    ctx.log('the screen is locked: WebKit runs no frames, nothing checked');
+    return { skipped: 'the screen is locked' };
+  }
   const line = r.stdout.split('\n').find(l => l.startsWith('"{'));
   assert.ok(line, `an answer from WebKit: ${(r.stderr + r.stdout).slice(-600)}`);
   const out = JSON.parse(JSON.parse(line));

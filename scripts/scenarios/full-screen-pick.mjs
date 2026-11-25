@@ -12,11 +12,17 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
     await ctx.settle();
   };
-  const row = () => ctx.evaluate(`JSON.stringify((() => {
+  const row = () =>
+    ctx
+      .evaluate(
+        `JSON.stringify((() => {
     const r = document.querySelector('#fsRow'), box = r.getBoundingClientRect();
     return { hidden: r.hidden, shown: box.height > 0, checked: [document.querySelector('#fsPick').value] };
-  })())`).then(JSON.parse);
-  const said = () => ctx.evaluate(`JSON.stringify((window.__posts || []).filter(m => m.type === 'fullscreen'))`).then(JSON.parse);
+  })())`,
+      )
+      .then(JSON.parse);
+  const said = () =>
+    ctx.evaluate(`JSON.stringify((window.__posts || []).filter(m => m.type === 'fullscreen'))`).then(JSON.parse);
 
   // a browser: no such row, nothing to tell
   await openLook();
@@ -25,7 +31,9 @@ export default async function (ctx) {
   ctx.assert.equal(out.browser.shown, false, 'and takes no room');
 
   // the app: the bridge there before the page's script runs
-  await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };` });
+  await ctx.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };`,
+  });
   await ctx.reload();
   ctx.assert.deepEqual(await said(), [{ type: 'fullscreen', space: false }], 'the fill, said on load');
   await openLook();
@@ -35,7 +43,10 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.app.checked, ['fill'], 'up to the notch by default');
   await ctx.shot('look');
 
-  const choose = v => ctx.evaluate(`(s => { s.value = '${v}'; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#fsPick'))`);
+  const choose = v =>
+    ctx.evaluate(
+      `(s => { s.value = '${v}'; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#fsPick'))`,
+    );
   await choose('space');
   ctx.assert.deepEqual((await said()).at(-1), { type: 'fullscreen', space: true }, 'its own Space, said at once');
   ctx.assert.deepEqual((await row()).checked, ['space']);

@@ -12,96 +12,271 @@ import { makeFixture, teamFiles, yesterday } from '../scripts/fixture.mjs';
 
 const standIn = () => spawn('sleep', ['120'], { stdio: 'ignore' });
 
-test('a lead\'s teammates: name, at work or done, last line — the roster\'s too; none for a lead alone or a lead gone', { timeout: 40_000 }, async () => {
-  const p1 = standIn(), p2 = standIn(), started = Date.now() - 3600_000;
-  const dir = tmpDir('peix-fx-');
+test(
+  "a lead's teammates: name, at work or done, last line — the roster's too; none for a lead alone or a lead gone",
+  { timeout: 40_000 },
+  async () => {
+    const p1 = standIn(),
+      p2 = standIn(),
+      started = Date.now() - 3600_000;
+    const dir = tmpDir('peix-fx-');
+    const fx = makeFixture(dir, [
+      {
+        cwd: '/tmp/acme/storefront',
+        title: 'Review the payments stack',
+        prompt: 'review it as a team',
+        reply: 'Team spun up.',
+        at: yesterday(),
+        live: { pid: p1.pid, startedAt: started },
+      },
+      {
+        cwd: '/tmp/acme/billing-api',
+        title: 'Alone',
+        prompt: 'just me',
+        reply: 'Fine.',
+        at: yesterday(),
+        live: { pid: p2.pid, startedAt: started },
+      },
+      { cwd: '/tmp/acme/web', title: 'Ended lead', prompt: 'team up', reply: 'Done.', at: yesterday() },
+    ]);
+    const [lead, alone, ended] = fx.chats;
+    const { sub } = teamFiles({
+      dir,
+      lead,
+      plain: true,
+      also: ['scribe'],
+      mates: [
+        { name: 'reviewer', summary: 'Review PR 71', work: 'Run the payment tests', color: 'green' },
+        { name: 'tester', summary: 'Test the retry path', said: 'All **12** retry tests pass.' },
+        { name: 'old-hand', summary: 'From before', said: 'Old news.' },
+      ],
+    });
+    // a teammate last written before the lead's claude started died with the one before
+    const old = readdirSync(sub).find(n => n.includes('old-hand') && n.endsWith('.jsonl')),
+      t = new Date(started - 600_000);
+    utimesSync(join(sub, old), t, t);
+    teamFiles({ dir, lead: alone, mates: [] }); // a team of the lead alone, as every chat on this Mac has
+    teamFiles({ dir, lead: ended, mates: [{ name: 'gone', summary: 'too late', said: 'Bye.' }] });
+    const srv = await startTestServer({ claudeDir: fx.dir });
+    try {
+      const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+      const mates = rows => rows.filter(m => m.mate).sort((a, b) => a.name.localeCompare(b.name));
+      const team = mates(await waitFor(async () => (await chat(lead.id))?.agentRows, { what: "the lead's rows" }));
+      assert.deepEqual(
+        team.map(m => [m.name, m.st]),
+        [
+          ['old-hand', 'joined'],
+          ['reviewer', 'run'],
+          ['scribe', 'joined'],
+          ['tester', 'done'],
+        ],
+        "by name; the old hand's file left out (the roster still names it), the explore agent no teammate",
+      );
+      assert.deepEqual(
+        team[1].last,
+        { kind: 'tool', name: 'Bash', text: 'Run the payment tests' },
+        'at work: what it is calling',
+      );
+      assert.deepEqual(
+        team[3].last,
+        { kind: 'text', text: 'All 12 retry tests pass.' },
+        'done: what it said last, as a sentence',
+      );
+      assert.deepEqual(
+        [team[2].name, team[2].st, team[2].last],
+        ['scribe', 'joined', null],
+        'on the roster with no file yet: joined',
+      );
+      assert.equal(
+        (await chat(lead.id)).agentRows.filter(m => !m.mate).length,
+        1,
+        'the explore agent, a row of its own',
+      );
+      assert.equal((await chat(lead.id)).agents, 1, 'the one at work still counts as a sub-agent at work');
+      assert.equal((await chat(alone.id)).agentRows, null, 'a team of the lead alone is none');
+      assert.equal((await chat(ended.id)).agentRows, null, 'a lead with no claude has no team');
+      // the teammate at work finishes: done, its last word
+      const rf = readdirSync(sub).find(n => n.includes('areviewer-') && n.endsWith('.jsonl'));
+      appendFileSync(
+        join(sub, rf),
+        JSON.stringify({
+          isSidechain: true,
+          type: 'assistant',
+          timestamp: new Date().toISOString(),
+          message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Approved with one nit.' }],
+            stop_reason: 'end_turn',
+          },
+        }) + '\n',
+      );
+      const after = await waitFor(
+        async () => {
+          const t = (await chat(lead.id))?.agentRows;
+          return t?.find(m => m.name === 'reviewer')?.st === 'done' && t;
+        },
+        { what: 'the reviewer done' },
+      );
+      assert.deepEqual(after.find(m => m.name === 'reviewer').last, { kind: 'text', text: 'Approved with one nit.' });
+      // a re-read of the lead (opening it) keeps its team
+      assert.ok(
+        (await srv.api(`api/sessions/${lead.id}/messages`)).body.session.agentRows?.length,
+        'kept over a re-read',
+      );
+      // the lead's claude ends: no team on its card
+      p1.kill();
+      await waitFor(async () => !(await chat(lead.id)).alive, { what: 'the lead gone' });
+      assert.equal((await chat(lead.id)).agentRows, null);
+    } finally {
+      await srv.stop();
+      p1.kill();
+      p2.kill();
+    }
+  },
+);
+
+test("a teammate's first prompt is its last line until it says or calls something", { timeout: 30_000 }, async () => {
+  const p = standIn(),
+    dir = tmpDir('peix-fx-');
   const fx = makeFixture(dir, [
-    { cwd: '/tmp/acme/storefront', title: 'Review the payments stack', prompt: 'review it as a team', reply: 'Team spun up.', at: yesterday(), live: { pid: p1.pid, startedAt: started } },
-    { cwd: '/tmp/acme/billing-api', title: 'Alone', prompt: 'just me', reply: 'Fine.', at: yesterday(), live: { pid: p2.pid, startedAt: started } },
-    { cwd: '/tmp/acme/web', title: 'Ended lead', prompt: 'team up', reply: 'Done.', at: yesterday() },
+    {
+      cwd: '/tmp/acme/storefront',
+      title: 'Lead',
+      prompt: 'go',
+      reply: 'ok',
+      at: yesterday(),
+      live: { pid: p.pid, startedAt: Date.now() - 3600_000 },
+    },
   ]);
-  const [lead, alone, ended] = fx.chats;
-  const { sub } = teamFiles({ dir, lead, plain: true, also: ['scribe'], mates: [
-    { name: 'reviewer', summary: 'Review PR 71', work: 'Run the payment tests', color: 'green' },
-    { name: 'tester', summary: 'Test the retry path', said: 'All **12** retry tests pass.' },
-    { name: 'old-hand', summary: 'From before', said: 'Old news.' },
-  ] });
-  // a teammate last written before the lead's claude started died with the one before
-  const old = readdirSync(sub).find(n => n.includes('old-hand') && n.endsWith('.jsonl')), t = new Date(started - 600_000);
-  utimesSync(join(sub, old), t, t);
-  teamFiles({ dir, lead: alone, mates: [] });   // a team of the lead alone, as every chat on this Mac has
-  teamFiles({ dir, lead: ended, mates: [{ name: 'gone', summary: 'too late', said: 'Bye.' }] });
-  const srv = await startTestServer({ claudeDir: fx.dir });
-  try {
-    const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
-    const mates = rows => rows.filter(m => m.mate).sort((a, b) => a.name.localeCompare(b.name));
-    const team = mates(await waitFor(async () => (await chat(lead.id))?.agentRows, { what: 'the lead\'s rows' }));
-    assert.deepEqual(team.map(m => [m.name, m.st]), [['old-hand', 'joined'], ['reviewer', 'run'], ['scribe', 'joined'], ['tester', 'done']],
-      'by name; the old hand\'s file left out (the roster still names it), the explore agent no teammate');
-    assert.deepEqual(team[1].last, { kind: 'tool', name: 'Bash', text: 'Run the payment tests' }, 'at work: what it is calling');
-    assert.deepEqual(team[3].last, { kind: 'text', text: 'All 12 retry tests pass.' }, 'done: what it said last, as a sentence');
-    assert.deepEqual([team[2].name, team[2].st, team[2].last], ['scribe', 'joined', null], 'on the roster with no file yet: joined');
-    assert.equal((await chat(lead.id)).agentRows.filter(m => !m.mate).length, 1, 'the explore agent, a row of its own');
-    assert.equal((await chat(lead.id)).agents, 1, 'the one at work still counts as a sub-agent at work');
-    assert.equal((await chat(alone.id)).agentRows, null, 'a team of the lead alone is none');
-    assert.equal((await chat(ended.id)).agentRows, null, 'a lead with no claude has no team');
-    // the teammate at work finishes: done, its last word
-    const rf = readdirSync(sub).find(n => n.includes('areviewer-') && n.endsWith('.jsonl'));
-    appendFileSync(join(sub, rf), JSON.stringify({ isSidechain: true, type: 'assistant', timestamp: new Date().toISOString(), message: { role: 'assistant', content: [{ type: 'text', text: 'Approved with one nit.' }], stop_reason: 'end_turn' } }) + '\n');
-    const after = await waitFor(async () => { const t = (await chat(lead.id))?.agentRows; return t?.find(m => m.name === 'reviewer')?.st === 'done' && t; }, { what: 'the reviewer done' });
-    assert.deepEqual(after.find(m => m.name === 'reviewer').last, { kind: 'text', text: 'Approved with one nit.' });
-    // a re-read of the lead (opening it) keeps its team
-    assert.ok((await srv.api(`api/sessions/${lead.id}/messages`)).body.session.agentRows?.length, 'kept over a re-read');
-    // the lead's claude ends: no team on its card
-    p1.kill();
-    await waitFor(async () => !(await chat(lead.id)).alive, { what: 'the lead gone' });
-    assert.equal((await chat(lead.id)).agentRows, null);
-  } finally { await srv.stop(); p1.kill(); p2.kill(); }
-});
-
-test('a teammate\'s first prompt is its last line until it says or calls something', { timeout: 30_000 }, async () => {
-  const p = standIn(), dir = tmpDir('peix-fx-');
-  const fx = makeFixture(dir, [{ cwd: '/tmp/acme/storefront', title: 'Lead', prompt: 'go', reply: 'ok', at: yesterday(), live: { pid: p.pid, startedAt: Date.now() - 3600_000 } }]);
-  const { sub } = teamFiles({ dir, lead: fx.chats[0], mates: [{ name: 'reader', summary: 'Read the &quot;old&quot; client', said: 'x' }] });
+  const { sub } = teamFiles({
+    dir,
+    lead: fx.chats[0],
+    mates: [{ name: 'reader', summary: 'Read the &quot;old&quot; client', said: 'x' }],
+  });
   const f = readdirSync(sub).find(n => n.endsWith('.jsonl'));
-  writeFileSync(join(sub, f), readFileSync(join(sub, f), 'utf8').split('\n')[0] + '\n');   // the lead's ask alone
+  writeFileSync(join(sub, f), readFileSync(join(sub, f), 'utf8').split('\n')[0] + '\n'); // the lead's ask alone
   const srv = await startTestServer({ claudeDir: fx.dir });
   try {
-    const team = await waitFor(async () => (await srv.api('api/sessions')).body.sessions[0]?.agentRows, { what: 'the team' });
-    assert.deepEqual([team[0].name, team[0].st, team[0].last], ['reader', 'run', { kind: 'asked', text: 'Read the "old" client' }]);
-  } finally { await srv.stop(); p.kill(); }
+    const team = await waitFor(async () => (await srv.api('api/sessions')).body.sessions[0]?.agentRows, {
+      what: 'the team',
+    });
+    assert.deepEqual(
+      [team[0].name, team[0].st, team[0].last],
+      ['reader', 'run', { kind: 'asked', text: 'Read the "old" client' }],
+    );
+  } finally {
+    await srv.stop();
+    p.kill();
+  }
 });
 
-test('a teammate\'s category is the type the lead spawned it as — never "teammate"; general-purpose when none was named (2026-11-18)', { timeout: 30_000 }, async () => {
-  const p = standIn(), dir = tmpDir('peix-fx-');
-  const fx = makeFixture(dir, [{ cwd: '/tmp/acme/storefront', title: 'Retry declined payments', prompt: 'as a team', reply: 'Team up.', at: yesterday(), live: { pid: p.pid, startedAt: Date.now() - 3600_000 } }]);
-  const [lead] = fx.chats;
-  teamFiles({ dir, lead, also: ['scribe', 'docs-writer'], spawned: { ana: 'api', tomas: 'api', rita: null, 'docs-writer': 'docs', sp1: { type: 'specifier', tool: 'Task' } }, mates: [
-    { name: 'ana', summary: 'Backoff in the client', work: 'Edit the client' },
-    { name: 'tomas', summary: 'Retry the queue', work: 'Edit the queue' },
-    { name: 'rita', summary: 'Cover the decline codes', said: 'Covered.' },
-    { name: 'joao', summary: 'Spawned before the tail', said: 'Done.' },
-    { name: 'sp1', summary: 'Specify the ticket', work: 'Search Notion' },
-  ] });
-  const srv = await startTestServer({ claudeDir: dir });
-  try {
-    const rows = await waitFor(async () => { const r = (await srv.api('api/sessions')).body.sessions.find(s => s.id === lead.id)?.agentRows; return r?.length === 7 && r; }, { what: 'the team\'s rows' });
-    assert.deepEqual(Object.fromEntries(rows.map(r => [r.name, r.type])), { ana: 'api', tomas: 'api', rita: 'general-purpose', joao: 'general-purpose', scribe: 'general-purpose', 'docs-writer': 'docs', sp1: 'specifier' },
-      'by the spawn\'s subagent_type — by Task, its older name, too —, a roster name\'s too; its own name never its category; none named, the Agent tool\'s default');
-  } finally { await srv.stop(); p.kill(); }
-});
+test(
+  'a teammate\'s category is the type the lead spawned it as — never "teammate"; general-purpose when none was named (2026-11-18)',
+  { timeout: 30_000 },
+  async () => {
+    const p = standIn(),
+      dir = tmpDir('peix-fx-');
+    const fx = makeFixture(dir, [
+      {
+        cwd: '/tmp/acme/storefront',
+        title: 'Retry declined payments',
+        prompt: 'as a team',
+        reply: 'Team up.',
+        at: yesterday(),
+        live: { pid: p.pid, startedAt: Date.now() - 3600_000 },
+      },
+    ]);
+    const [lead] = fx.chats;
+    teamFiles({
+      dir,
+      lead,
+      also: ['scribe', 'docs-writer'],
+      spawned: {
+        ana: 'api',
+        tomas: 'api',
+        rita: null,
+        'docs-writer': 'docs',
+        sp1: { type: 'specifier', tool: 'Task' },
+      },
+      mates: [
+        { name: 'ana', summary: 'Backoff in the client', work: 'Edit the client' },
+        { name: 'tomas', summary: 'Retry the queue', work: 'Edit the queue' },
+        { name: 'rita', summary: 'Cover the decline codes', said: 'Covered.' },
+        { name: 'joao', summary: 'Spawned before the tail', said: 'Done.' },
+        { name: 'sp1', summary: 'Specify the ticket', work: 'Search Notion' },
+      ],
+    });
+    const srv = await startTestServer({ claudeDir: dir });
+    try {
+      const rows = await waitFor(
+        async () => {
+          const r = (await srv.api('api/sessions')).body.sessions.find(s => s.id === lead.id)?.agentRows;
+          return r?.length === 7 && r;
+        },
+        { what: "the team's rows" },
+      );
+      assert.deepEqual(
+        Object.fromEntries(rows.map(r => [r.name, r.type])),
+        {
+          ana: 'api',
+          tomas: 'api',
+          rita: 'general-purpose',
+          joao: 'general-purpose',
+          scribe: 'general-purpose',
+          'docs-writer': 'docs',
+          sp1: 'specifier',
+        },
+        "by the spawn's subagent_type — by Task, its older name, too —, a roster name's too; its own name never its category; none named, the Agent tool's default",
+      );
+    } finally {
+      await srv.stop();
+      p.kill();
+    }
+  },
+);
 
-test('a teammate\'s own metadata names its category — spawnedAgentType — with no spawn call in sight (2026-11-18, v9)', { timeout: 30_000 }, async () => {
-  const p = standIn(), dir = tmpDir('peix-fx-');
-  const fx = makeFixture(dir, [{ cwd: '/tmp/acme/storefront', title: 'Pipeline', prompt: 'go', reply: 'Going.', at: yesterday(), live: { pid: p.pid, startedAt: Date.now() - 3600_000 } }]);
-  const [lead] = fx.chats;
-  teamFiles({ dir, lead, mates: [
-    { name: 'sp-1', summary: 'Specify it', said: 'Spec ready.', spawnedType: 'specifier' },
-    { name: 'rv-1', summary: 'Review it', work: 'Read the diff', spawnedType: 'evidence-reviewer' },
-  ] });
-  const srv = await startTestServer({ claudeDir: dir });
-  try {
-    const rows = await waitFor(async () => { const r = (await srv.api('api/sessions')).body.sessions.find(s => s.id === lead.id)?.agentRows; return r?.length === 2 && r; }, { what: 'the team\'s rows' });
-    assert.deepEqual(Object.fromEntries(rows.map(r => [r.name, r.type])), { 'sp-1': 'specifier', 'rv-1': 'evidence-reviewer' }, 'its record\'s spawnedAgentType, not its agentType (its own name)');
-  } finally { await srv.stop(); p.kill(); }
-});
+test(
+  "a teammate's own metadata names its category — spawnedAgentType — with no spawn call in sight (2026-11-18, v9)",
+  { timeout: 30_000 },
+  async () => {
+    const p = standIn(),
+      dir = tmpDir('peix-fx-');
+    const fx = makeFixture(dir, [
+      {
+        cwd: '/tmp/acme/storefront',
+        title: 'Pipeline',
+        prompt: 'go',
+        reply: 'Going.',
+        at: yesterday(),
+        live: { pid: p.pid, startedAt: Date.now() - 3600_000 },
+      },
+    ]);
+    const [lead] = fx.chats;
+    teamFiles({
+      dir,
+      lead,
+      mates: [
+        { name: 'sp-1', summary: 'Specify it', said: 'Spec ready.', spawnedType: 'specifier' },
+        { name: 'rv-1', summary: 'Review it', work: 'Read the diff', spawnedType: 'evidence-reviewer' },
+      ],
+    });
+    const srv = await startTestServer({ claudeDir: dir });
+    try {
+      const rows = await waitFor(
+        async () => {
+          const r = (await srv.api('api/sessions')).body.sessions.find(s => s.id === lead.id)?.agentRows;
+          return r?.length === 2 && r;
+        },
+        { what: "the team's rows" },
+      );
+      assert.deepEqual(
+        Object.fromEntries(rows.map(r => [r.name, r.type])),
+        { 'sp-1': 'specifier', 'rv-1': 'evidence-reviewer' },
+        "its record's spawnedAgentType, not its agentType (its own name)",
+      );
+    } finally {
+      await srv.stop();
+      p.kill();
+    }
+  },
+);

@@ -19,11 +19,22 @@ export function sweepDrawers() {
     const s = t.sessionId ? sessions.get(t.sessionId) : null;
     if (s) {
       const st = statusOf(s);
-      if (s.agentsRunning || s.tasks?.size || (s.live?.status ? s.live.status !== 'idle' : st === 'working' || st === 'needs-input')) continue;
+      if (
+        s.agentsRunning ||
+        s.tasks?.size ||
+        (s.live?.status ? s.live.status !== 'idle' : st === 'working' || st === 'needs-input')
+      )
+        continue;
     }
-    const last = Math.max(Date.parse(t.startedAt) || 0, Date.parse(s?.lastActivity) || 0, Date.parse(s?.startedAt) || 0);
+    const last = Math.max(
+      Date.parse(t.startedAt) || 0,
+      Date.parse(s?.lastActivity) || 0,
+      Date.parse(s?.startedAt) || 0,
+    );
     if (now - last < DRAWER_IDLE_MS) continue;
-    console.log(`[peixairada] terminal ${t.id}: idle ${Math.round((now - last) / 3600_000)} h with no page on it — ending it${s ? ` (chat ${s.id})` : ''}`);
+    console.log(
+      `[peixairada] terminal ${t.id}: idle ${Math.round((now - last) / 3600_000)} h with no page on it — ending it${s ? ` (chat ${s.id})` : ''}`,
+    );
     killTerm(t);
   }
 }

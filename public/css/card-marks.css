@@ -1,176 +1,908 @@
-  /* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
+/* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
      narrows the list to that person's chats and rings the face in the accent, the others dimmed; again, every chat. */
-  #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
-  #people[hidden] { display: none; }
-  #people > .ic { flex: none; width: 13px; height: 13px; fill: var(--muted); margin-right: 2px; }
-  /* GitHub's mark, the fold's button (2026-10-09): the count beside it while folded */
-  #people button.pgh { width: auto; height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; margin-right: 2px; border-radius: var(--r-4); color: var(--muted); font: inherit; font-size: var(--fs-xs); }
-  #people button.pgh:hover { transform: none; color: var(--ink); background: var(--ctl); }
-  #people button.pgh .ic { width: 14px; height: 14px; fill: currentColor; }
-  #people.on button.pgh:not(.on) { opacity: 1; }   /* the fold's button is not a face to dim */
-  #people button { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: opacity .12s, transform .12s, box-shadow .12s; }
-  #people button:hover { transform: scale(1.12); }
-  #people :is(img, .face) { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ctl-hi); font-size: var(--fs-xs); font-weight: 700; color: var(--ink); text-transform: uppercase; }
-  #people.on button:not(.on) { opacity: .35; }
-  #people.on button:not(.on):hover { opacity: .8; }
-  #people button.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
-  /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — on the card a stack of
+#people {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#people[hidden] {
+  display: none;
+}
+#people > .ic {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  fill: var(--muted);
+  margin-right: 2px;
+}
+/* GitHub's mark, the fold's button (2026-10-09): the count beside it while folded */
+#people button.pgh {
+  width: auto;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  margin-right: 2px;
+  border-radius: var(--r-4);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+#people button.pgh:hover {
+  transform: none;
+  color: var(--ink);
+  background: var(--ctl);
+}
+#people button.pgh .ic {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+#people.on button.pgh:not(.on) {
+  opacity: 1;
+} /* the fold's button is not a face to dim */
+#people button {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition:
+    opacity 0.12s,
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+#people button:hover {
+  transform: scale(1.12);
+}
+#people :is(img, .face) {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ctl-hi);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+#people.on button:not(.on) {
+  opacity: 0.35;
+}
+#people.on button:not(.on):hover {
+  opacity: 0.8;
+}
+#people button.on {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent);
+}
+/* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — on the card a stack of
      its own (.tprs.ttks, 2026-10-11; the first ticket and a count before), the branch's, else the last named, on top */
-  .card .ctk { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; white-space: nowrap; cursor: pointer; }
-  .card .ctk:hover { filter: brightness(1.12); }
-  :is(.card .ctk, .prrow.tk)[data-cat="todo"] { --prc: var(--tk-todo); }
-  :is(.card .ctk, .prrow.tk)[data-cat="doing"] { --prc: var(--tk-doing); }
-  :is(.card .ctk, .prrow.tk)[data-cat="done"] { --prc: var(--tk-done); }
-  .card .ctk[data-cat] { background: var(--prc); border-color: var(--prc); color: var(--bg); }
-  .prrow.tk .st { width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--prc); }
-  .prrow.tk .who { flex: none; color: var(--muted); font-size: var(--fs-xs); }
-  .prrow.tk .who.me { color: var(--accent); font-weight: 600; }
-  :is(.card, .presence) .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
-  :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
-  :is(.card, .presence) .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  :is(.card, .presence) .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
-  /* A turn that stopped short (stopHtml, 2026-10-31): the attention colour, a square for a stop, the reason in words */
-  .card .state.stopped { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
-  .card .state.stopped .ic { width: 10px; height: 10px; flex: none; align-self: center; }
-  .card .state.stopped .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-weight: 500; }
-  /* a PR come round to you: a tag filled in the accent — like the chip it names, it reads on any project's tint — on
+.card .ctk {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-2);
+  padding: 0 5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.card .ctk:hover {
+  filter: brightness(1.12);
+}
+:is(.card .ctk, .prrow.tk)[data-cat='todo'] {
+  --prc: var(--tk-todo);
+}
+:is(.card .ctk, .prrow.tk)[data-cat='doing'] {
+  --prc: var(--tk-doing);
+}
+:is(.card .ctk, .prrow.tk)[data-cat='done'] {
+  --prc: var(--tk-done);
+}
+.card .ctk[data-cat] {
+  background: var(--prc);
+  border-color: var(--prc);
+  color: var(--bg);
+}
+.prrow.tk .st {
+  width: 86px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--prc);
+}
+.prrow.tk .who {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.prrow.tk .who.me {
+  color: var(--accent);
+  font-weight: 600;
+}
+:is(.card, .presence) .state.needs-input {
+  color: var(--needs);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+:is(.card, .presence) .state.needs-input .ic {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  align-self: center;
+}
+:is(.card, .presence) .state.needs-input .q {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+:is(.card, .presence) .state.needs-input .opts {
+  color: var(--muted);
+  font-weight: 500;
+  flex: none;
+}
+/* A turn that stopped short (stopHtml, 2026-10-31): the attention colour, a square for a stop, the reason in words */
+.card .state.stopped {
+  color: var(--needs);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.card .state.stopped .ic {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  align-self: center;
+}
+.card .state.stopped .q {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-weight: 500;
+}
+/* a PR come round to you: a tag filled in the accent — like the chip it names, it reads on any project's tint — on
      the card's line (moveHtml), and in the chat header before the PR chips with the reason beside it (headMove) */
-  .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: var(--r-1); background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
-  .ymove .ic { width: 10px; height: 10px; }
-  .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
-  .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */
-  .card .state:is(.prmove, .moveslot) .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  /* how long ago the move came (2026-10-14): as the card's age, under the pointer only and keeping its room */
-  .card .state.prmove .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
-  .card:hover .state.prmove .mt { opacity: .8; }
-  /* a PR's rounds on the card (2026-10-15): "answered" a while after your word, in the move line's place, and a mark per PR in
+.ymove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px 0 4px;
+  border-radius: var(--r-1);
+  background: color-mix(in srgb, var(--accent) 82%, var(--ink));
+  color: var(--bg);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 15px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ymove .ic {
+  width: 10px;
+  height: 10px;
+}
+.card .state.prmove {
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.card .state.moveslot {
+  align-items: baseline;
+  gap: 6px;
+} /* the line's own metrics, for the place it holds */
+.card .state:is(.prmove, .moveslot) .q {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* how long ago the move came (2026-10-14): as the card's age, under the pointer only and keeping its room */
+.card .state.prmove .mt {
+  flex: none;
+  font-size: var(--fs-2xs);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.card:hover .state.prmove .mt {
+  opacity: 0.8;
+}
+/* a PR's rounds on the card (2026-10-15): "answered" a while after your word, in the move line's place, and a mark per PR in
      play when there is more than the one the line names — each PR in its own hue (prHue); the pointer on the card's PRs
      shows the rounds (#rpop) */
-  .card .state.prans { display: flex; align-items: baseline; gap: 6px; color: var(--ink); }
-  .card .state.prans .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--pr-open); }
-  .rtag { flex: none; display: inline-flex; align-items: center; padding: 0 5px; border-radius: var(--r-1); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
-  .rtag.move { background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); }
-  .rtag.ok { background: color-mix(in srgb, var(--pr-open) 20%, transparent); color: var(--pr-open); }
-  .rtag.let { background: var(--ctl-hi); color: var(--muted); }
-  .pchip { flex: none; display: inline-flex; align-items: center; padding: 0 5px; border-radius: var(--r-1); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; color: var(--ink);
-    background: color-mix(in srgb, var(--h) 22%, transparent); box-shadow: inset 2px 0 0 var(--h); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .card .prpips { display: flex; gap: 12px; margin-top: 6px; min-width: 0; overflow: hidden; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); white-space: nowrap; }
-  .card .prpips .pp { display: inline-flex; align-items: center; gap: 5px; flex: none; }
-  .card .prpips .pp i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
-  .card .prpips .pp[data-k="you"] { color: var(--accent); font-weight: 600; } .card .prpips .pp[data-k="you"] i { background: var(--accent); }
-  .card .prpips .pp[data-k="ok"] i { background: var(--pr-open); }
-  .card .prpips .pp[data-k="let"] i { background: none; box-shadow: inset 0 0 0 1px var(--muted); }
-  #sessions[data-even] .card .prpips { display: none; }   /* one height for every card: the rounds are the pointer's */
-  #rpop { position: fixed; z-index: 45; display: grid; gap: 6px; padding: 10px 10px 8px; border: 1px solid var(--line); border-radius: var(--r-4);
-    background: color-mix(in srgb, var(--panel) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-    box-shadow: 0 12px 34px rgba(0, 0, 0, .35); font-size: var(--fs-sm); line-height: 1.4; color: var(--ink); pointer-events: none; opacity: 0; transition: opacity .12s var(--ease-out); }
-  #rpop.on { opacity: 1; }
-  #rpop .rtt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); }
-  #rpop .rtt span { color: var(--ink); }
-  #rpop .rph { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
-  #rpop .rnow { display: grid; gap: 2px; }
-  #rpop .rpr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 6px; row-gap: 1px; align-items: baseline; padding: 6px 8px; border-radius: var(--r-3); }
-  #rpop .rpr[data-k="you"] { background: color-mix(in srgb, var(--accent) 11%, transparent); }
-  #rpop .rpr .h { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-  #rpop .rpr[data-k="them"] .h { color: var(--muted); font-weight: 500; }
-  #rpop .rpr .s { grid-column: 3; font-size: var(--fs-xs); color: var(--muted); }
-  #rpop .rpr .s .un { color: var(--accent); font-weight: 700; }
-  /* …every PR with the matrix (2026-11-01): its square, number and title, its state in its colour and its CI, its round
+.card .state.prans {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ink);
+}
+.card .state.prans .q {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  color: var(--pr-open);
+}
+.rtag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  border-radius: var(--r-1);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 15px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.rtag.move {
+  background: color-mix(in srgb, var(--accent) 82%, var(--ink));
+  color: var(--bg);
+}
+.rtag.ok {
+  background: color-mix(in srgb, var(--pr-open) 20%, transparent);
+  color: var(--pr-open);
+}
+.rtag.let {
+  background: var(--ctl-hi);
+  color: var(--muted);
+}
+.pchip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  border-radius: var(--r-1);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--h) 22%, transparent);
+  box-shadow: inset 2px 0 0 var(--h);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.card .prpips {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.card .prpips .pp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+}
+.card .prpips .pp i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.card .prpips .pp[data-k='you'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.card .prpips .pp[data-k='you'] i {
+  background: var(--accent);
+}
+.card .prpips .pp[data-k='ok'] i {
+  background: var(--pr-open);
+}
+.card .prpips .pp[data-k='let'] i {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+#sessions[data-even] .card .prpips {
+  display: none;
+} /* one height for every card: the rounds are the pointer's */
+#rpop {
+  position: fixed;
+  z-index: 45;
+  display: grid;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--ink);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease-out);
+}
+#rpop.on {
+  opacity: 1;
+}
+#rpop .rtt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#rpop .rtt span {
+  color: var(--ink);
+}
+#rpop .rph {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#rpop .rnow {
+  display: grid;
+  gap: 2px;
+}
+#rpop .rpr {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  column-gap: 6px;
+  row-gap: 1px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: var(--r-3);
+}
+#rpop .rpr[data-k='you'] {
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+#rpop .rpr .h {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+#rpop .rpr[data-k='them'] .h {
+  color: var(--muted);
+  font-weight: 500;
+}
+#rpop .rpr .s {
+  grid-column: 3;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#rpop .rpr .s .un {
+  color: var(--accent);
+  font-weight: 700;
+}
+/* …every PR with the matrix (2026-11-01): its square, number and title, its state in its colour and its CI, its round
      under them; a stack's rows joined by a line from square to square, as on the card */
-  #rpop .rpr.mx { position: relative; }
-  #rpop .rpr.mx .rsq { --q: 8px; align-self: start; margin-top: 4px; }
-  #rpop .rpr.mx[data-k] .h { color: var(--ink); font-weight: 600; }
-  #rpop .rpr.mx .h.pending { color: var(--muted); font-weight: 500; font-style: italic; }
-  #rpop .rpr.mx .s .st { font-weight: 600; } #rpop .rpr.mx .s .st[data-state="open"] { color: var(--pr-open); } #rpop .rpr.mx .s .st[data-state="merged"] { color: var(--pr-merged); }
-  #rpop .rpr.mx .s .st[data-state="closed"] { color: var(--pr-closed); } #rpop .rpr.mx .s .st[data-state="draft"] { color: var(--pr-draft); }
-  #rpop .rpr.mx .s .rtag { margin-right: 5px; vertical-align: 1px; } #rpop .rpr.mx .s .rh { font-weight: 600; color: var(--ink); }
-  #rpop .rstk { display: grid; gap: 2px; }
-  #rpop .rstk > .rpr:not(:last-child)::after { content: ''; position: absolute; left: 11.25px; top: 18px; bottom: -12px; width: 1.5px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
-  #rpop .rmore { padding: 2px 8px; font-size: var(--fs-xs); color: var(--muted); }
-  #rpop .rlat { display: grid; grid-template-columns: auto 16px minmax(0, 1fr); column-gap: 7px; }   /* the times one column, as wide as the widest: "Yesterday 9:41 AM" ran into the marks (2026-11-01, later) */
-  #rpop .rev { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; padding: 4px 6px 4px 0; border-radius: var(--r-3); }
-  #rpop .rev.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
-  #rpop .rev .t { padding-top: 1px; text-align: right; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
-  #rpop .rev .x { min-width: 0; }
-  #rpop .rev .x b { font-weight: 600; }
-  #rpop .rev .rr { margin-top: 2px; } #rpop .rev .rr.ok { font-size: var(--fs-xs); font-weight: 600; color: var(--pr-open); }
-  #rpop .rev .bub { display: inline-block; max-width: 100%; padding: 2px 8px; border-radius: 10px 10px 3px 10px; background: var(--user-bg); color: var(--ink); overflow-wrap: anywhere; }
-  :is(#rpop, #tv) .ri { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; object-fit: cover; flex: none; margin-top: 1px;
-    background: color-mix(in srgb, var(--h, var(--muted)) 75%, var(--panel)); color: var(--bg); font-size: 9px; font-weight: 700; font-style: normal; }
-  :is(#rpop, #tv) .ri .ic { width: 10px; height: 10px; }
-  :is(#rpop, #tv) .ri.you { background: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--you); }
-  :is(#rpop, #tv) .ri.me { background: color-mix(in srgb, var(--you) 75%, var(--panel)); font-size: 6.5px; letter-spacing: -.2px; }
-  :is(#rpop, #tv) .ri.chat { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
-  :is(#rpop, #tv) .ri.board { background: var(--ctl-hi); color: var(--muted); }
-  :is(#rpop, #tv) .ri.ci { background: color-mix(in srgb, var(--pr-open) 22%, transparent); color: var(--pr-open); } :is(#rpop, #tv) .ri.ci.bad { background: color-mix(in srgb, var(--pr-closed) 22%, transparent); color: var(--pr-closed); }
-  #rpop .rpf { padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-2xs); color: var(--muted); }
-  /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
+#rpop .rpr.mx {
+  position: relative;
+}
+#rpop .rpr.mx .rsq {
+  --q: 8px;
+  align-self: start;
+  margin-top: 4px;
+}
+#rpop .rpr.mx[data-k] .h {
+  color: var(--ink);
+  font-weight: 600;
+}
+#rpop .rpr.mx .h.pending {
+  color: var(--muted);
+  font-weight: 500;
+  font-style: italic;
+}
+#rpop .rpr.mx .s .st {
+  font-weight: 600;
+}
+#rpop .rpr.mx .s .st[data-state='open'] {
+  color: var(--pr-open);
+}
+#rpop .rpr.mx .s .st[data-state='merged'] {
+  color: var(--pr-merged);
+}
+#rpop .rpr.mx .s .st[data-state='closed'] {
+  color: var(--pr-closed);
+}
+#rpop .rpr.mx .s .st[data-state='draft'] {
+  color: var(--pr-draft);
+}
+#rpop .rpr.mx .s .rtag {
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+#rpop .rpr.mx .s .rh {
+  font-weight: 600;
+  color: var(--ink);
+}
+#rpop .rstk {
+  display: grid;
+  gap: 2px;
+}
+#rpop .rstk > .rpr:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 11.25px;
+  top: 18px;
+  bottom: -12px;
+  width: 1.5px;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+#rpop .rmore {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+#rpop .rlat {
+  display: grid;
+  grid-template-columns: auto 16px minmax(0, 1fr);
+  column-gap: 7px;
+} /* the times one column, as wide as the widest: "Yesterday 9:41 AM" ran into the marks (2026-11-01, later) */
+#rpop .rev {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: start;
+  padding: 4px 6px 4px 0;
+  border-radius: var(--r-3);
+}
+#rpop .rev.live {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+#rpop .rev .t {
+  padding-top: 1px;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+#rpop .rev .x {
+  min-width: 0;
+}
+#rpop .rev .x b {
+  font-weight: 600;
+}
+#rpop .rev .rr {
+  margin-top: 2px;
+}
+#rpop .rev .rr.ok {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--pr-open);
+}
+#rpop .rev .bub {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 10px 10px 3px 10px;
+  background: var(--user-bg);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+:is(#rpop, #tv) .ri {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  margin-top: 1px;
+  background: color-mix(in srgb, var(--h, var(--muted)) 75%, var(--panel));
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 700;
+  font-style: normal;
+}
+:is(#rpop, #tv) .ri .ic {
+  width: 10px;
+  height: 10px;
+}
+:is(#rpop, #tv) .ri.you {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  color: var(--you);
+}
+:is(#rpop, #tv) .ri.me {
+  background: color-mix(in srgb, var(--you) 75%, var(--panel));
+  font-size: 6.5px;
+  letter-spacing: -0.2px;
+}
+:is(#rpop, #tv) .ri.chat {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+:is(#rpop, #tv) .ri.board {
+  background: var(--ctl-hi);
+  color: var(--muted);
+}
+:is(#rpop, #tv) .ri.ci {
+  background: color-mix(in srgb, var(--pr-open) 22%, transparent);
+  color: var(--pr-open);
+}
+:is(#rpop, #tv) .ri.ci.bad {
+  background: color-mix(in srgb, var(--pr-closed) 22%, transparent);
+  color: var(--pr-closed);
+}
+#rpop .rpf {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+/* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
-  .shead .hmove { flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; }
-  .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
-  /* The branch moved under the chat (2026-10-13): a tint of the failure red, its words in that red pulled towards the
+.shead .hmove {
+  flex: 1 1 0;
+  min-width: var(--hmin, 0px);
+  max-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.shead .hmove .q {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.shead .hmove .n {
+  flex: none;
+  opacity: 0.7;
+  font-weight: 500;
+}
+/* The branch moved under the chat (2026-10-13): a tint of the failure red, its words in that red pulled towards the
      header's ink — so they read on the header's black and on the light theme's panel alike; it gives way as the move's
      line does (--hmin, fitHeadPrs), to the branch now, and folds last. The card's mark is the red branch alone. */
-  .shead .hdrift { --dr: color-mix(in oklab, var(--needs) 70%, var(--ink)); flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 7px; border: 1px solid transparent; border-radius: var(--r-3);
-    background: color-mix(in srgb, var(--needs) 16%, transparent); color: var(--dr); font: inherit; font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; overflow: hidden; cursor: pointer; }
-  .shead .hdrift:hover { background: color-mix(in srgb, var(--needs) 26%, transparent); }
-  .shead .hdrift .ic { width: 13px; height: 13px; flex: none; fill: currentColor; }
-  .shead .hdrift .n { flex: none; } .shead .hdrift .n b { font-weight: 700; }
-  .shead .hdrift .q { overflow: hidden; text-overflow: ellipsis; min-width: 0; opacity: .85; }
-  .card .trow .drift { color: var(--needs); flex: none; display: inline-flex; align-items: center; height: 18px; }
-  .card .trow .drift .ic { width: 13px; height: 13px; fill: currentColor; }
-  /* another chat messaged this one (2026-10-31, peerMark): ← from that chat, after the project, a click away */
-  .card .top .chip.peerin { flex: 0 1 auto; max-width: min(55%, 260px); font-size: var(--fs-xs); line-height: 16px; color: var(--ink); background: color-mix(in srgb, var(--accent) 18%, transparent); cursor: pointer; }
-  .card .top .chip.peerin > [aria-hidden] { margin-right: 3px; font-weight: 700; }
-  .shead > .hfold, .shead > .hdiff.hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it — the changes' count's own display, later and as specific, beat it until 2026-10-14 */
-  /* ⌥ held over a "your move" — a card's line or the chat header's (2026-10-12): its tag turns red, an ✕ for its PR
+.shead .hdrift {
+  --dr: color-mix(in oklab, var(--needs) 70%, var(--ink));
+  flex: 1 1 0;
+  min-width: var(--hmin, 0px);
+  max-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--r-3);
+  background: color-mix(in srgb, var(--needs) 16%, transparent);
+  color: var(--dr);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.shead .hdrift:hover {
+  background: color-mix(in srgb, var(--needs) 26%, transparent);
+}
+.shead .hdrift .ic {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: currentColor;
+}
+.shead .hdrift .n {
+  flex: none;
+}
+.shead .hdrift .n b {
+  font-weight: 700;
+}
+.shead .hdrift .q {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  opacity: 0.85;
+}
+.card .trow .drift {
+  color: var(--needs);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+}
+.card .trow .drift .ic {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+/* another chat messaged this one (2026-10-31, peerMark): ← from that chat, after the project, a click away */
+.card .top .chip.peerin {
+  flex: 0 1 auto;
+  max-width: min(55%, 260px);
+  font-size: var(--fs-xs);
+  line-height: 16px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  cursor: pointer;
+}
+.card .top .chip.peerin > [aria-hidden] {
+  margin-right: 3px;
+  font-weight: 700;
+}
+.shead > .hfold,
+.shead > .hdiff.hfold {
+  display: none;
+} /* put away by fitHeadPrs where the row has no room for it — the changes' count's own display, later and as specific, beat it until 2026-10-14 */
+/* ⌥ held over a "your move" — a card's line or the chat header's (2026-10-12): its tag turns red, an ✕ for its PR
      mark, and ⌥-click lets the round go (letGo): not your move until the next one, which alerts as ever. */
-  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover { cursor: pointer; }
-  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove { background: var(--needs); color: #fff; }
-  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove .ic { display: none; }
-  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove::before { content: ''; flex: none; width: 10px; height: 10px; background: currentColor; -webkit-mask: var(--xmask) center / contain no-repeat; mask: var(--xmask) center / contain no-repeat; }
-  /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
+:root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover {
+  cursor: pointer;
+}
+:root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove {
+  background: var(--needs);
+  color: #fff;
+}
+:root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove .ic {
+  display: none;
+}
+:root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove::before {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  background: currentColor;
+  -webkit-mask: var(--xmask) center / contain no-repeat;
+  mask: var(--xmask) center / contain no-repeat;
+}
+/* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
      the pointer, since 2026-09-26: it keeps its box at rest, so nothing in the row moves when it comes. */
-  .act { font: inherit; font-size: var(--fs-lg); line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent;
-    color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
-  .card:hover .act, .act:focus-visible { opacity: .7; }
-  .act .tk { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-  /* Ticked (2026-10-11): the button fills with the ready green and the ✓ draws its stroke — then the server is told
+.act {
+  font: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-3);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+  opacity: 0;
+  display: inline-grid;
+  place-items: center;
+  transition: opacity 0.12s;
+}
+.card:hover .act,
+.act:focus-visible {
+  opacity: 0.7;
+}
+.act .tk {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Ticked (2026-10-11): the button fills with the ready green and the ✓ draws its stroke — then the server is told
      (tickDone, TICK_MS) and the card folds or moves to the done ones as before. */
-  .act.tk { opacity: 1; color: #fff; background: var(--idle); }
-  .act.tk .tk path { stroke-dasharray: 14; animation: tkdraw .2s ease-out both; }
-  @keyframes tkdraw { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
-  /* ⌥ held over a card (2026-10-11; every card's, 2026-11-04): its button is delete's ✕, white on red under the pointer — and
+.act.tk {
+  opacity: 1;
+  color: #fff;
+  background: var(--idle);
+}
+.act.tk .tk path {
+  stroke-dasharray: 14;
+  animation: tkdraw 0.2s ease-out both;
+}
+@keyframes tkdraw {
+  from {
+    stroke-dashoffset: 14;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* ⌥ held over a card (2026-10-11; every card's, 2026-11-04): its button is delete's ✕, white on red under the pointer — and
      the ✕ is what draws when ⌥-clicked (.fg, removeChat). <html data-alt> is ⌥ held, off the keys and the pointer's own events
      (altHeld). A chat at work has no ✓: its button is the ✕ alone, and only ⌥ brings it. */
-  .act .fx { display: none; }
-  :root[data-alt] .card:hover .act .fx, .act.fg .fx, .act.armed.del .fx { display: block; }
-  :root[data-alt] .card:hover .act:has(.fx) .tk:not(.fx), .act.fg .tk:not(.fx) { display: none; }
-  :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
-  .act.tk.fg { color: #fff; background: var(--needs); }
-  .act .rv { display: grid; place-items: center; }
-  .act.del:not(.armed) { display: none; }
-  :root[data-alt] .card:hover .act.del:not(.armed) { display: inline-grid; }
-  /* A watching chat's ✓ armed by a first click (tickGate, 2026-10-31): it says what Done ends, in the attention colour,
+.act .fx {
+  display: none;
+}
+:root[data-alt] .card:hover .act .fx,
+.act.fg .fx,
+.act.armed.del .fx {
+  display: block;
+}
+:root[data-alt] .card:hover .act:has(.fx) .tk:not(.fx),
+.act.fg .tk:not(.fx) {
+  display: none;
+}
+:root[data-alt] .card:hover .act:hover:has(.fx) {
+  opacity: 1;
+  color: #fff;
+  background: var(--needs);
+}
+.act.tk.fg {
+  color: #fff;
+  background: var(--needs);
+}
+.act .rv {
+  display: grid;
+  place-items: center;
+}
+.act.del:not(.armed) {
+  display: none;
+}
+:root[data-alt] .card:hover .act.del:not(.armed) {
+  display: inline-grid;
+}
+/* A watching chat's ✓ armed by a first click (tickGate, 2026-10-31): it says what Done ends, in the attention colour,
      and a second click ticks — or it lets go after ARM_MS */
-  .act.armed, .act.armed:hover { opacity: 1; display: inline-flex; align-items: center; width: auto; min-width: 0; max-width: 62%; gap: 4px; padding: 0 7px 0 5px; color: var(--needs); background: color-mix(in srgb, var(--needs) 14%, transparent); }
-  .act.armed .tk { flex: none; }
-  .act.armed .aw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-2xs); font-weight: 600; line-height: 18px; }
-  /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hgit, .pfold, .ptl, .nav, .gmore, .chip.cmute, .act, .ax, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, #stitle > .t, #stitle > .out button) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
-  /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
+.act.armed,
+.act.armed:hover {
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  max-width: 62%;
+  gap: 4px;
+  padding: 0 7px 0 5px;
+  color: var(--needs);
+  background: color-mix(in srgb, var(--needs) 14%, transparent);
+}
+.act.armed .tk {
+  flex: none;
+}
+.act.armed .aw {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  line-height: 18px;
+}
+/* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
+:is(
+  .btn,
+  .ptab,
+  .hmi,
+  .hmore,
+  .hgit,
+  .pfold,
+  .ptl,
+  .nav,
+  .gmore,
+  .chip.cmute,
+  .act,
+  .ax,
+  .fsearch,
+  .pkx,
+  .pked,
+  .pkdone,
+  .sedge button,
+  .pedge button,
+  #stitle > .t,
+  #stitle > .out button
+) {
+  transition:
+    color var(--t-hover),
+    border-color var(--t-hover),
+    background-color var(--t-hover),
+    opacity var(--t-hover),
+    scale 0.25s var(--spring);
+}
+/* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hgit, .pfold, .ptl, .nav, .chip.cmute, .act, .ax, .fsearch, .pkx, .pked, .pkdone, .sedge button, .pedge button, .gsep.lane[data-lane], #stitle > .out button):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
-  .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
-  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-  .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
-  .dot.idle { background: var(--idle); }
-  .dot.needs-input { background: var(--idle); animation: pulse .8s ease-in-out infinite; }   /* ready, and asking */
-  .dot.stale, .dot.unknown, .dot.done { background: var(--ended); animation: none; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-  .badge { background: var(--unread); color: #fff; border-radius: var(--r-4); padding: 0 6px; font-size: var(--fs-xs); font-weight: 600; min-width: 18px; text-align: center; flex: none; }
-  .chip { font-size: var(--fs-2xs); border: 1px solid transparent; background: var(--ctl); border-radius: var(--r-2); padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
-
+:is(
+    .btn,
+    .ptab:not(.addr, :has(> .x:active)),
+    .hmore,
+    .hgit,
+    .pfold,
+    .ptl,
+    .nav,
+    .chip.cmute,
+    .act,
+    .ax,
+    .fsearch,
+    .pkx,
+    .pked,
+    .pkdone,
+    .sedge button,
+    .pedge button,
+    .gsep.lane[data-lane],
+    #stitle > .out button
+  ):active:not(:disabled) {
+  scale: 0.97;
+  transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), 0.06s;
+  transition-timing-function: ease, ease, ease, ease, ease-out;
+}
+.act:hover {
+  opacity: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.dot.working {
+  background: var(--working);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.dot.idle {
+  background: var(--idle);
+}
+.dot.needs-input {
+  background: var(--idle);
+  animation: pulse 0.8s ease-in-out infinite;
+} /* ready, and asking */
+.dot.stale,
+.dot.unknown,
+.dot.done {
+  background: var(--ended);
+  animation: none;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.badge {
+  background: var(--unread);
+  color: #fff;
+  border-radius: var(--r-4);
+  padding: 0 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  min-width: 18px;
+  text-align: center;
+  flex: none;
+}
+.chip {
+  font-size: var(--fs-2xs);
+  border: 1px solid transparent;
+  background: var(--ctl);
+  border-radius: var(--r-2);
+  padding: 0 4px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  min-width: 0;
+  flex: 0 1 auto;
+}

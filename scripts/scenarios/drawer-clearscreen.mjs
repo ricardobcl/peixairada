@@ -8,18 +8,25 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
-  await ctx.key('KeyT');                       // ⌥⌘T: a zsh in the chat's folder, its own holder
-  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab) && window.peix.term().ws === 1`, { what: 'the zsh tab, attached' });
+  await ctx.key('KeyT'); // ⌥⌘T: a zsh in the chat's folder, its own holder
+  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab) && window.peix.term().ws === 1`, {
+    what: 'the zsh tab, attached',
+  });
 
-  const type = text => ctx.type(text, 1);      // the zsh tab's keyboard, in the right half, as a hand would use it
-  const marked = negate => ctx.waitFor(`${negate ? '!' : ''}[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /peixmark/.test(r.textContent))`,
-    { what: `the marker ${negate ? 'gone from' : 'on'} the screen`, timeout: 20_000 });
+  const type = text => ctx.type(text, 1); // the zsh tab's keyboard, in the right half, as a hand would use it
+  const marked = negate =>
+    ctx.waitFor(
+      `${negate ? '!' : ''}[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /peixmark/.test(r.textContent))`,
+      { what: `the marker ${negate ? 'gone from' : 'on'} the screen`, timeout: 20_000 },
+    );
 
   // printf, not echo: the marker must reach the screen as output only, never as the line being typed — zsh echoes
   // what you type long before it runs it, and a clear between the two is a race that proves nothing.
   await type("printf 'peix%s\\n' mark");
   await marked(false);
-  await ctx.evaluate(`document.querySelector('#termBodyB textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', keyCode: 75, metaKey: true, bubbles: true, cancelable: true }))`);
+  await ctx.evaluate(
+    `document.querySelector('#termBodyB textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', keyCode: 75, metaKey: true, bubbles: true, cancelable: true }))`,
+  );
   await marked(true);
   await ctx.shot('cleared');
 
@@ -34,7 +41,10 @@ export default async function (ctx) {
   ctx.assert.ok(snap.length > 0, 'the second attach was served a screen at all');
   ctx.assert.ok(!/peixmark/.test(snap), "the holder's screen was cleared too, so a re-attach stays clear");
 
-  await type("printf 'sec%s\\n' ond");                   // and the shell is still there, prompt and all
-  await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /^second$/.test(r.textContent.trim()))`, { what: 'the shell still answering after the clear' });
+  await type("printf 'sec%s\\n' ond"); // and the shell is still there, prompt and all
+  await ctx.waitFor(
+    `[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /^second$/.test(r.textContent.trim()))`,
+    { what: 'the shell still answering after the clear' },
+  );
   return { snapChars: snap.length, screen: (await ctx.screen(1)).slice(-4) };
 }

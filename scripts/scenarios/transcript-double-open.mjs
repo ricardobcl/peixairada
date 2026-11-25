@@ -10,7 +10,8 @@ import { replyLines } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
-  const out = {}, [a, b] = ctx.fixture.chats;
+  const out = {},
+    [a, b] = ctx.fixture.chats;
   await ctx.openChat(b.id);
   // the page's second /messages ask for chat a: its answer held until the scenario lets it go
   await ctx.evaluate(`(() => {
@@ -26,21 +27,45 @@ export default async function (ctx) {
   })()`);
   // a double click on its card, as the pointer makes it: the second click lands on the card the first one redrew
   await ctx.settle();
-  const at0 = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + 14 }))(document.querySelector('#slist > .card[data-id="${a.id}"] .title').getBoundingClientRect())`);
+  const at0 = await ctx.evaluate(
+    `(r => ({ x: r.left + r.width / 2, y: r.top + 14 }))(document.querySelector('#slist > .card[data-id="${a.id}"] .title').getBoundingClientRect())`,
+  );
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at0.x, y: at0.y });
-  for (const clickCount of [1, 2]) for (const type of ['mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: at0.x, y: at0.y, button: 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount });
+  for (const clickCount of [1, 2])
+    for (const type of ['mousePressed', 'mouseReleased'])
+      await ctx.send('Input.dispatchMouseEvent', {
+        type,
+        x: at0.x,
+        y: at0.y,
+        button: 'left',
+        buttons: type === 'mousePressed' ? 1 : 0,
+        clickCount,
+      });
   await ctx.waitFor(`window.__first && window.__asks === 2`, { what: 'both asks out, the first answered' });
-  await ctx.sleep(300);   // the first answer taken, if it is
+  await ctx.sleep(300); // the first answer taken, if it is
   // a reply lands while the second ask is on its way: the server folds it and pushes it
-  const text = 'The reply that came between the two answers.', at = new Date(Date.now() + 1000);
-  appendFileSync(a.file, replyLines({ id: a.id, cwd: a.cwd, text, at }).map(l => JSON.stringify(l)).join('\n') + '\n');
-  await ctx.waitFor(`window.peix.session('${a.id}')?.lastReplyAt === '${at.toISOString()}'`, { what: 'the reply pushed' });
-  await ctx.sleep(300);   // its entries event, right after the summary's
+  const text = 'The reply that came between the two answers.',
+    at = new Date(Date.now() + 1000);
+  appendFileSync(
+    a.file,
+    replyLines({ id: a.id, cwd: a.cwd, text, at })
+      .map(l => JSON.stringify(l))
+      .join('\n') + '\n',
+  );
+  await ctx.waitFor(`window.peix.session('${a.id}')?.lastReplyAt === '${at.toISOString()}'`, {
+    what: 'the reply pushed',
+  });
+  await ctx.sleep(300); // its entries event, right after the summary's
   await ctx.evaluate(`window.__release()`);
   await ctx.sleep(500);
   out.last = await ctx.evaluate(`document.querySelector('#log > .msg:last-of-type')?.textContent || ''`);
-  out.count = await ctx.evaluate(`[...document.querySelectorAll('#log .msg')].filter(m => m.textContent.includes(${JSON.stringify(text)})).length`);
-  ctx.assert.ok(out.last.includes(text), `the log ends with the reply that came between the answers: ${JSON.stringify(out.last.slice(0, 120))}`);
+  out.count = await ctx.evaluate(
+    `[...document.querySelectorAll('#log .msg')].filter(m => m.textContent.includes(${JSON.stringify(text)})).length`,
+  );
+  ctx.assert.ok(
+    out.last.includes(text),
+    `the log ends with the reply that came between the answers: ${JSON.stringify(out.last.slice(0, 120))}`,
+  );
   ctx.assert.equal(out.count, 1, 'drawn once');
   return out;
 }

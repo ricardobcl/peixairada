@@ -1,27 +1,62 @@
-  /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
+/* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
-  .card { --repo: initial; background: var(--panel); border: 2px solid transparent; border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26; 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
-  /* Ready and done cards wear the plain edge (2026-09-20); the colour comes round the whole edge on the open card only
+.card {
+  --repo: initial;
+  background: var(--panel);
+  border: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 10px 7px; /* square since 2026-09-26; 10 px before */
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+}
+/* Ready and done cards wear the plain edge (2026-09-20); the colour comes round the whole edge on the open card only
      (2026-10-11, afternoon — on the clauding card under its ring and on hover too before; a ring is its light and a
      glow). The plain edge is no edge at all since 2026-09-28 — transparent, the background running under it
      (background-origin, below), so an edge that comes eases in from the card's own colour —, but for the lit 3 px on
      the left (ink cards, below). */
-  /* The glow eases (2026-09-27, night, for the wash it was then): registered percentages that the hover and the open
+/* The glow eases (2026-09-27, night, for the wash it was then): registered percentages that the hover and the open
      card raise, so the gradient transitions (a gradient cannot go to a flat colour, and two gradients only when nothing
      but their colours differ). In fast, out slower: the destination's transition is the one that runs, so .card:hover
      shortens it. The ring's ::after cover inherits the background and follows. */
-  @property --tint { syntax: '<percentage>'; inherits: false; initial-value: 37%; }
-  @property --reach { syntax: '<percentage>'; inherits: false; initial-value: 24%; }
-  @property --fall { syntax: '<number>'; inherits: false; initial-value: .5; }
-  /* The glow under the pointer (2026-10-09; a switch until 2026-10-14): a round light of the colour between the
+@property --tint {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 37%;
+}
+@property --reach {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 24%;
+}
+@property --fall {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.5;
+}
+/* The glow under the pointer (2026-10-09; a switch until 2026-10-14): a round light of the colour between the
      edge and the glow, at --mx / --my — where the pointer is in the card, written by the script once a frame — --spot
      strong; 0 % at rest, so it is transparent and the card is as it was, and it fades in and out with the pointer (the
      .card transition). Registered not inheriting, so a move restyles the card alone; the ring's ::after cover takes the
      card's background as computed, the light included. */
-  @property --spot { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
-  @property --mx { syntax: '<length-percentage>'; inherits: false; initial-value: 50%; }
-  @property --my { syntax: '<length-percentage>'; inherits: false; initial-value: 50%; }
-  /* Ink cards (2026-10-09, from the design studies — B; a wash of the colour over the whole card before): the card is
+@property --spot {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+@property --mx {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+@property --my {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+/* Ink cards (2026-10-09, from the design studies — B; a wash of the colour over the whole card before): the card is
      the panel, the project's colour a 3 px lit edge on its left and a glow of it bleeding in from there — --tint how
      strong the glow starts, --reach how far it runs before it is the panel. Hover, the open card and the magnifier's
      mark raise both, and the change eases (registered). The colour is the edge, the project's name and the glow; the
@@ -30,41 +65,103 @@
      dark panel): half the colour at the edge, over three fifths of the card, and a colour hint at --fall of the reach
      (a third), so it drops steeply off the edge and tails out — a glow, not a wash. The open card falls evenly (.5),
      or its middle sank darker than both its ends, the edge and the splitter's colour. */
-  .card { --edge: var(--lift); --wash: var(--lift); --tint: 50%; --reach: 60%; --fall: .35; --spotr: 190px; --spotc: var(--lift);
-    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--wash) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
-    outline: 1px solid transparent; outline-offset: 0;
-    transition: --tint .2s, --reach .2s, --fall .2s, --wash .2s, --spot .3s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s, scale .3s var(--spring); }
-  .card:hover { transition-duration: .1s, .1s, .1s, .1s, .1s, .1s, .1s, .1s, .1s, .1s, .3s; }
-  /* A press is felt (2026-10-11): the card dips to 99 % while held and springs back — the scale property, so the
+.card {
+  --edge: var(--lift);
+  --wash: var(--lift);
+  --tint: 50%;
+  --reach: 60%;
+  --fall: 0.35;
+  --spotr: 190px;
+  --spotc: var(--lift);
+  background:
+    linear-gradient(to right, var(--edge) 3px, transparent 3px),
+    radial-gradient(
+      circle var(--spotr) at var(--mx) var(--my),
+      color-mix(in srgb, var(--spotc) var(--spot), transparent),
+      transparent
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--wash) var(--tint), var(--panel)),
+      calc(var(--reach) * var(--fall)),
+      var(--panel) var(--reach)
+    );
+  background-origin: border-box;
+  outline: 1px solid transparent;
+  outline-offset: 0;
+  transition:
+    --tint 0.2s,
+    --reach 0.2s,
+    --fall 0.2s,
+    --wash 0.2s,
+    --spot 0.3s,
+    border-color 0.2s,
+    outline-color 0.2s,
+    outline-width 0.2s,
+    outline-offset 0.2s,
+    opacity 0.2s,
+    scale 0.3s var(--spring);
+}
+.card:hover {
+  transition-duration: 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.3s;
+}
+/* A press is felt (2026-10-11): the card dips to 99 % while held and springs back — the scale property, so the
      FLIP's transform and the ring's are left alone — but not while the press is on a control inside it, which dips
      itself. */
-  .card:active:not(:has(:is(button, a, .ctk):active)) { scale: .99; transition-duration: .06s; transition-timing-function: ease-out; }
-  /* Hover is that light — the edge's glow stays as it is at rest (it grew across the card until 2026-10-09); the open
+.card:active:not(:has(:is(button, a, .ctk):active)) {
+  scale: 0.99;
+  transition-duration: 0.06s;
+  transition-timing-function: ease-out;
+}
+/* Hover is that light — the edge's glow stays as it is at rest (it grew across the card until 2026-10-09); the open
      card and the magnifier's mark keep theirs. */
-  .card:hover { --spot: 55%; }
-  /* The colour as it reads on the panel (2026-10-09, late night): the edge, the glow, the light under the pointer, the
+.card:hover {
+  --spot: 55%;
+}
+/* The colour as it reads on the panel (2026-10-09, late night): the edge, the glow, the light under the pointer, the
      border of a hovered, open or clauding card and the ring's track wear --lift — the project's colour with its
      lightness held where it shows against the panel: no darker than .62 in the dark (a black, a navy, a maroon were a
      shadow there, the black's edge a fixed grey of its own), no lighter than .72 in the light (a yellow, a cyan were a
      haze on white). Hue and chroma kept, so a black is a grey; a colour already in range is itself. --repo stays the
      colour as set — the project's name reads its own way (below), and the header and the splitter
      (the open card's bleed into it too) wear it as it is. */
-  .card { --lift: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
-  :root[data-frame="dark"] .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
-  /* …but a black project's glow is its black (2026-10-09, towards morning): --wash, the glow's colour, is --lift on every
+.card {
+  --lift: oklch(from var(--repo, var(--nocolor)) min(l, 0.72) c h);
+}
+:root[data-frame='dark'] .card {
+  --lift: oklch(from var(--repo, var(--nocolor)) max(l, 0.62) c h);
+}
+/* …but a black project's glow is its black (2026-10-09, towards morning): --wash, the glow's colour, is --lift on every
      other card and the black itself on a black one — its lines (the edge, the border, the ring's track) the grey that
      shows, its ground black, the open card's too. The pointer on it, or the magnifier's mark, lights the ground in the
      grey; registered, so it eases there and back. */
-  @property --wash { syntax: '<color>'; inherits: false; initial-value: transparent; }
-  .card.black:not(:hover, .qsel) { --wash: var(--repo); }
-  /* in the dark a light is lighter than its colour: a dark project's (a forest green) was barely there */
-  :root[data-frame="dark"] .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); }
-  /* the project's name in its colour, a step towards what reads on the panel: lighter in the dark, darker in the light —
+@property --wash {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+.card.black:not(:hover, .qsel) {
+  --wash: var(--repo);
+}
+/* in the dark a light is lighter than its colour: a dark project's (a forest green) was barely there */
+:root[data-frame='dark'] .card {
+  --spotc: oklch(from var(--lift) calc(l + (1 - l) * 0.3) c h);
+}
+/* the project's name in its colour, a step towards what reads on the panel: lighter in the dark, darker in the light —
      in the dark from --lift's floor (2026-10-09, late night: a black's name, .45, sank into its grey glow) */
-  .card .top .repo { color: oklch(from var(--repo, var(--muted)) min(l, .5) c h); text-transform: uppercase; letter-spacing: .8px; font-size: var(--fs-xs); }
-  :root[data-frame="dark"] .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); }
-  .card.black .top .repo { color: var(--ink); }
-  /* Claude at work: a light runs round the card's edge. A conic gradient on a square pseudo-element bigger than
+.card .top .repo {
+  color: oklch(from var(--repo, var(--muted)) min(l, 0.5) c h);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-size: var(--fs-xs);
+}
+:root[data-frame='dark'] .card .top .repo {
+  color: oklch(from var(--repo, var(--muted)) calc(max(l, 0.62) + (1 - max(l, 0.62)) * 0.45) c h);
+}
+.card.black .top .repo {
+  color: var(--ink);
+}
+/* Claude at work: a light runs round the card's edge. A conic gradient on a square pseudo-element bigger than
      the card, turned by a transform — the one kind of motion a browser runs off its main thread: Chrome's compositor
      thread, Core Animation under WebKit (2026-09-27; before, the gradient's start angle was a registered property
      animated in place — repainted on the main thread every frame, so it froze with every transcript render and cost
@@ -82,134 +179,476 @@
      Every card is rebuilt on every SSE update and a CSS animation starts over on a new node, so phaseAnims() (in the
      script) puts every ring at start time 0 on the document clock after each render: the new light is where the old
      one was. */
-  /* A ring is the light and a glow round it, no edge (2026-10-11, afternoon; a 1 px line of it and its track in the
+/* A ring is the light and a glow round it, no edge (2026-10-11, afternoon; a 1 px line of it and its track in the
      colour before): the colour round the border is the open card's alone. A question keeps its red line. */
-  .card.working, .card.watching { box-shadow: 0 0 24px -2px color-mix(in srgb, var(--lit) 50%, transparent); }
-  .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
-  /* On the border, not inside it (2026-09-29): the card's overflow clips at its padding box, so the light ran 3 px
+.card.working,
+.card.watching {
+  box-shadow: 0 0 24px -2px color-mix(in srgb, var(--lit) 50%, transparent);
+}
+.card.asking {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent),
+    0 0 18px color-mix(in srgb, var(--lit) 35%, transparent);
+}
+/* On the border, not inside it (2026-09-29): the card's overflow clips at its padding box, so the light ran 3 px
      inside the 2 px edge. A card with a ring has no border — its padding takes the 2 px, so nothing inside moves — and
      the cover stands 2 px in: the band the light runs in is where the border was, and what it runs on is the border's
      colour (--track). */
-  .card:is(.working, .watching):not(.asking) { border-width: 0; padding: 10px 12px 9px; }
-  .card.active:is(.working, .watching) { outline-width: 1px; outline-offset: 0; }   /* the open card's edge outside the band, not over it */
-  .card.working::before, .card.watching::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%; pointer-events: none;
-    background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg));
-    animation: ring var(--spins, 1.4s) linear infinite; }
-  .card.working::after, .card.watching::after { content: ''; position: absolute; z-index: -1; inset: 2px; background: inherit; pointer-events: none; }
-  .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; --track: transparent; }
-  /* The clauding light is the colour lifted towards white (2026-10-02): the colour itself, on a track of the colour, went
+.card:is(.working, .watching):not(.asking) {
+  border-width: 0;
+  padding: 10px 12px 9px;
+}
+.card.active:is(.working, .watching) {
+  outline-width: 1px;
+  outline-offset: 0;
+} /* the open card's edge outside the band, not over it */
+.card.working::before,
+.card.watching::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 160%;
+  aspect-ratio: 1;
+  margin: -80% 0 0 -80%;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    var(--track) 0 calc(var(--seg) * var(--tail, 0.45)),
+    var(--lit) calc(var(--seg) * 0.92),
+    var(--track) var(--seg)
+  );
+  animation: ring var(--spins, 1.4s) linear infinite;
+}
+.card.working::after,
+.card.watching::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 2px;
+  background: inherit;
+  pointer-events: none;
+}
+.card.watching {
+  --lit: var(--watch);
+  --seg: 100%;
+  --spins: 6s;
+  --track: transparent;
+}
+/* The clauding light is the colour lifted towards white (2026-10-02): the colour itself, on a track of the colour, went
      round a dark one — a navy — unseen. In OKLCH, 85 % of the way from its lightness to white, hue and chroma kept, so
      every light is lighter than the edge it runs on, a dark colour's by far. --ring (white on a dark black card) wins. */
-  .card { --glow: var(--ring, oklch(from var(--repo, var(--working)) calc(l + (1 - l) * .85) c h)); }
-  /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
+.card {
+  --glow: var(--ring, oklch(from var(--repo, var(--working)) calc(l + (1 - l) * 0.85) c h));
+}
+/* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
      which had the work light running at the monitor's sixth of the speed. */
-  .card.working { --lit: var(--glow); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: transparent; --tail: .62; }
-  .card.working.active { --track: color-mix(in srgb, var(--lift) 85%, var(--line)); --tail: .45; }   /* the open card's edge, the light running on it */
-  /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
+.card.working {
+  --lit: var(--glow);
+  --seg: calc(100% / var(--lights, 1));
+  --spins: 1.4s;
+  --track: transparent;
+  --tail: 0.62;
+}
+.card.working.active {
+  --track: color-mix(in srgb, var(--lift) 85%, var(--line));
+  --tail: 0.45;
+} /* the open card's edge, the light running on it */
+/* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
      (2026-09-22): no ring at all. Its border is red, and since 2026-10-09 (the studies' M2, Sonar; the border blinking
      on and off before) pings leave it: two outlines of it, half a beat apart, growing out from the card and fading —
      a transform and an opacity, the compositor's; the card lets them out (overflow: visible — it has no ring to clip). */
-  .card.asking { --lit: var(--needs); --seg: 100%; border-color: var(--needs); overflow: visible; }
-  .card.asking::before, .card.asking::after { content: ''; position: absolute; z-index: -1; inset: -2px; width: auto; height: auto; margin: 0; aspect-ratio: auto; background: none;
-    border: 2px solid var(--needs); pointer-events: none; animation: sonar 1.8s cubic-bezier(.2, .6, .3, 1) infinite; }
-  .card.asking::after { animation-delay: -.9s; }
-  @keyframes sonar { from { transform: scale(1); opacity: .7; } to { transform: scale(1.035, 1.16); opacity: 0; } }
-  /* …and answered (2026-10-11, flareLanded from heardAt): the sonar once backwards — a red ring drawing in from where
+.card.asking {
+  --lit: var(--needs);
+  --seg: 100%;
+  border-color: var(--needs);
+  overflow: visible;
+}
+.card.asking::before,
+.card.asking::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -2px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  aspect-ratio: auto;
+  background: none;
+  border: 2px solid var(--needs);
+  pointer-events: none;
+  animation: sonar 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+.card.asking::after {
+  animation-delay: -0.9s;
+}
+@keyframes sonar {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.035, 1.16);
+    opacity: 0;
+  }
+}
+/* …and answered (2026-10-11, flareLanded from heardAt): the sonar once backwards — a red ring drawing in from where
      the pings fade to the card's edge — and the light of what it does next fading in. Its own delay (--heard-delay), as
      a rebuilt card carries a landing on; backwards only, so the card's own outline is its own once it has run. */
-  @keyframes heard { from { outline: 2px solid transparent; outline-offset: 10px; } 30% { outline-color: var(--needs); outline-offset: 5px; } to { outline: 2px solid transparent; outline-offset: -2px; } }
-  .card.heard { animation: heard .5s ease-out backwards; animation-delay: var(--heard-delay, 0ms); }
-  .card.heard:is(.working, .watching)::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
-  @keyframes ringin { from { opacity: 0; } }
-  @keyframes ring { to { transform: rotate(360deg); } }
-  /* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
+@keyframes heard {
+  from {
+    outline: 2px solid transparent;
+    outline-offset: 10px;
+  }
+  30% {
+    outline-color: var(--needs);
+    outline-offset: 5px;
+  }
+  to {
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+  }
+}
+.card.heard {
+  animation: heard 0.5s ease-out backwards;
+  animation-delay: var(--heard-delay, 0ms);
+}
+.card.heard:is(.working, .watching)::before {
+  animation:
+    ring var(--spins, 1.4s) linear infinite,
+    ringin 0.5s ease-out backwards;
+}
+@keyframes ringin {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
      watched for all day — its edge flares in the card's own light and settles to the plain edge over LANDED_MS, once.
      drawCards sets the class from landedAt, with a negative delay, so a card rebuilt mid-flare carries on where it was;
      the light is the ring's (--glow). The unread badge that comes with it pops in (onAlert). */
-  /* No `to`: it settles to whatever edge the card has (2026-10-03; a grey one before, which no card at rest wears since
+/* No `to`: it settles to whatever edge the card has (2026-10-03; a grey one before, which no card at rest wears since
      2026-09-28 — it snapped away at the end, and the open card's colour came back with a jump). */
-  @keyframes landed {
-    from { border-color: var(--glow); box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent), 0 0 22px color-mix(in srgb, var(--glow) 45%, transparent); }
+@keyframes landed {
+  from {
+    border-color: var(--glow);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent),
+      0 0 22px color-mix(in srgb, var(--glow) 45%, transparent);
   }
-  .card.landed { animation: landed 1.1s ease-out both; }
-  /* …and a wash of that light spreads from the ✓ corner over the card, once (2026-10-09, the studies' M3): a round
+}
+.card.landed {
+  animation: landed 1.1s ease-out both;
+}
+/* …and a wash of that light spreads from the ✓ corner over the card, once (2026-10-09, the studies' M3): a round
      blob at the top right corner scaled out and faded — the compositor's — under the card's content, clipped by it.
      Not on a card still watching something: its ::before is the ring's. The delay is the card's own (inherit), so a
      card rebuilt mid-landing carries the wash on as it carries the flare. */
-  .card.landed:not(.watching)::before { content: ''; position: absolute; z-index: -1; right: -48px; top: -48px; width: 96px; height: 96px; border-radius: 50%; pointer-events: none;
-    background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 80%, transparent), transparent); animation: wash 1.1s ease-out both; animation-delay: inherit; }
-  /* Located (locateCard, 2026-10-11): a band of the card's light sweeping across it, once — its own box, so the card's
+.card.landed:not(.watching)::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -48px;
+  top: -48px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 80%, transparent), transparent);
+  animation: wash 1.1s ease-out both;
+  animation-delay: inherit;
+}
+/* Located (locateCard, 2026-10-11): a band of the card's light sweeping across it, once — its own box, so the card's
      two pseudo-elements stay the ring's and its cover's, and so an asking card's let-out pings are not clipped. */
-  /* the circle a new look spreads in (revealFrom): no cross-fade of the two pages, the new one clipped */
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-  /* Fade, not … (fadeOver): a one-line name's end, and a card title's last line's end, fade out over 2.2 em. */
-  :is(.shead h2 .t, .ptabs .purl).over { text-overflow: clip; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); }
-  .card .title.over { -webkit-mask-image: linear-gradient(#000 calc(100% - 1lh), transparent calc(100% - 1lh)), linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); mask-image: linear-gradient(#000 calc(100% - 1lh), transparent calc(100% - 1lh)), linear-gradient(90deg, #000 calc(100% - 2.2em), transparent); }
-  .card > .loc { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
-  .card > .loc i { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent); }
-  @keyframes wash { from { transform: scale(0); opacity: 1; } 40% { transform: scale(5); opacity: .55; } to { transform: scale(7.5); opacity: 0; } }
-  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the light under the
+/* the circle a new look spreads in (revealFrom): no cross-fade of the two pages, the new one clipped */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+/* Fade, not … (fadeOver): a one-line name's end, and a card title's last line's end, fade out over 2.2 em. */
+:is(.shead h2 .t, .ptabs .purl).over {
+  text-overflow: clip;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 2.2em), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2.2em), transparent);
+}
+.card .title.over {
+  -webkit-mask-image:
+    linear-gradient(#000 calc(100% - 1lh), transparent calc(100% - 1lh)),
+    linear-gradient(90deg, #000 calc(100% - 2.2em), transparent);
+  mask-image:
+    linear-gradient(#000 calc(100% - 1lh), transparent calc(100% - 1lh)),
+    linear-gradient(90deg, #000 calc(100% - 2.2em), transparent);
+}
+.card > .loc {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.card > .loc i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent);
+}
+@keyframes wash {
+  from {
+    transform: scale(0);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(5);
+    opacity: 0.55;
+  }
+  to {
+    transform: scale(7.5);
+    opacity: 0;
+  }
+}
+/* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the light under the
      pointer; the open card adds a 2px ring of the colour over its border — a three-pixel edge. Hover lit the border
      too, with a halo, until 2026-10-11, afternoon: the colour round the edge is the open and the clauding card's alone. */
-  .chip.vsc { color: var(--vscode); background: color-mix(in srgb, var(--vscode) 16%, transparent); }
-  /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
+.chip.vsc {
+  color: var(--vscode);
+  background: color-mix(in srgb, var(--vscode) 16%, transparent);
+}
+/* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
      in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is
      what the bordered chips on the other side of the row are. No border for that reason: it reads as the second half
      of the folder's name, quietly. It shows wherever the server has a record, so only the folders whose Taskfile
      launches claude ever wear one. A card too dark or too tinted for the colour borrows the card's own ink. */
-  .card .top .chip.env { color: var(--repo, var(--muted)); background: none; padding-left: 0; font-weight: 600; }
-  /* a chat in a worktree of its project's repo (2026-10-13): its branch, beside the project's name */
-  .card .top .chip.wtb { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--muted); background: none; padding-left: 0; font-weight: 600; text-transform: none; letter-spacing: 0; }
-  .card .top .chip.wtb .ic { width: 10px; height: 10px; fill: currentColor; flex: none; }
-  /* the agent it runs as (2026-11-06, round XXVIII): @name and its dot, after the project, as quiet as the branch */
-  .card .top .chip.runas { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; color: var(--muted); background: none; padding-left: 0; font-weight: 600; text-transform: none; letter-spacing: 0; }
-  .card .top .chip.runas .asdot { width: 6px; height: 6px; }
-  /* a chat muted (2026-11-02, muteChip): the word on the top row, whatever the card's size; a click unmutes */
-  .card .top .chip.cmute { display: inline-flex; align-items: center; gap: 3px; flex: none; max-width: none; padding: 0 5px 0 3px; font-family: inherit; font-weight: 600; cursor: pointer; color: color-mix(in srgb, var(--working-ink) 80%, var(--ink)); background: color-mix(in srgb, var(--working) 14%, var(--panel)); }   /* its own ground: 4.5:1 in every theme, and on a card asking (chat-mute.mjs) */
-  .card .top .chip.cmute:hover { background: color-mix(in srgb, var(--working) 24%, var(--panel)); }
-  .card .top .chip.cmute .ic { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-  .card .top .chip.elsewhere { display: inline-flex; align-items: center; padding: 0 4px; } .card .top .chip.elsewhere .ic { width: 11px; height: 11px; }
-  .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
-  /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
+.card .top .chip.env {
+  color: var(--repo, var(--muted));
+  background: none;
+  padding-left: 0;
+  font-weight: 600;
+}
+/* a chat in a worktree of its project's repo (2026-10-13): its branch, beside the project's name */
+.card .top .chip.wtb {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  background: none;
+  padding-left: 0;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.card .top .chip.wtb .ic {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  flex: none;
+}
+/* the agent it runs as (2026-11-06, round XXVIII): @name and its dot, after the project, as quiet as the branch */
+.card .top .chip.runas {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  background: none;
+  padding-left: 0;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.card .top .chip.runas .asdot {
+  width: 6px;
+  height: 6px;
+}
+/* a chat muted (2026-11-02, muteChip): the word on the top row, whatever the card's size; a click unmutes */
+.card .top .chip.cmute {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  max-width: none;
+  padding: 0 5px 0 3px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--working-ink) 80%, var(--ink));
+  background: color-mix(in srgb, var(--working) 14%, var(--panel));
+} /* its own ground: 4.5:1 in every theme, and on a card asking (chat-mute.mjs) */
+.card .top .chip.cmute:hover {
+  background: color-mix(in srgb, var(--working) 24%, var(--panel));
+}
+.card .top .chip.cmute .ic {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.card .top .chip.elsewhere {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+}
+.card .top .chip.elsewhere .ic {
+  width: 11px;
+  height: 11px;
+}
+.card.black .top .chip.env,
+.card.active .top .chip.env,
+.card:hover .top .chip.env {
+  color: inherit;
+  opacity: 0.8;
+}
+/* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
      wash */
-  .card.active { border-color: var(--lift); outline: 2px solid var(--lift); outline-offset: -1px; --tint: 65%; --reach: 100%; --fall: .5; }
-  /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
+.card.active {
+  border-color: var(--lift);
+  outline: 2px solid var(--lift);
+  outline-offset: -1px;
+  --tint: 65%;
+  --reach: 100%;
+  --fall: 0.5;
+}
+/* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
-  .card.black:hover, .card.black.active, .card.black.qsel { --ring: #fff; }
-  /* The light that runs round a clauding card is the card's colour, which on a black card is black on black
+.card.black:hover,
+.card.black.active,
+.card.black.qsel {
+  --ring: #fff;
+}
+/* The light that runs round a clauding card is the card's colour, which on a black card is black on black
      (2026-09-20). --ring is what the light
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
      hovered and open card wear in either theme (above). On the light theme's pale wash the black's own light, lifted
      (--glow), a grey on the black edge. */
-  :root[data-frame="dark"] .card.black { --ring: #fff; }
-  /* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
+:root[data-frame='dark'] .card.black {
+  --ring: #fff;
+}
+/* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
      them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
-  /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
-  .card.done { filter: saturate(.45); } .card.done :is(.title, .snip) { color: var(--muted); }   /* dimmed by colour, not opacity (2026-10-12: its snippet read 2.15 to 1) */
-  /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
-  .card.forgood .tmx { filter: grayscale(1); }
-  .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
-  #slist > .leaving { pointer-events: none; overflow: hidden; display: flex; flex-direction: column; gap: inherit; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it — or a lane's, all in one (foldRun, 2026-11-01), laid out as they stood */
-  #slist > .leaving > * { flex: none; }   /* never squashed as the box closes */
-  .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 18px; margin-bottom: 2px; }
-  .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
-  .card .trow .title { flex: 1; margin-top: 0; }
-  .card .trow .badge { margin-top: 2px; }
-  .card .trow .chip.agents { margin-top: 3px; color: var(--working-ink); background: color-mix(in srgb, var(--working) 16%, transparent); }
-  /* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
+/* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
+.card.done {
+  filter: saturate(0.45);
+}
+.card.done :is(.title, .snip) {
+  color: var(--muted);
+} /* dimmed by colour, not opacity (2026-10-12: its snippet read 2.15 to 1) */
+/* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
+.card.forgood .tmx {
+  filter: grayscale(1);
+}
+.card.gone {
+  opacity: 0.8;
+} /* no live process: still ready, but a resume is coming */
+#slist > .leaving {
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+} /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it — or a lane's, all in one (foldRun, 2026-11-01), laid out as they stood */
+#slist > .leaving > * {
+  flex: none;
+} /* never squashed as the box closes */
+.card .top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 18px;
+  margin-bottom: 2px;
+}
+.card .trow {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+.card .trow .title {
+  flex: 1;
+  margin-top: 0;
+}
+.card .trow .badge {
+  margin-top: 2px;
+}
+.card .trow .chip.agents {
+  margin-top: 3px;
+  color: var(--working-ink);
+  background: color-mix(in srgb, var(--working) 16%, transparent);
+}
+/* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
      radar mark — it says *something is running here*, next to the agents chip that says *Claude is* */
-  .chip.watch { display: inline-flex; align-items: center; gap: 4px; color: var(--watch); background: color-mix(in srgb, var(--watch) 16%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .chip.watch .ic { width: 11px; height: 11px; flex: none; }
-  /* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
-  .card .trow .chip.watch { margin-top: 3px; max-width: 50%; line-height: 12px; }   /* as tall as the agents' chip: inside the title's row */
-  .shead .chip.watch { flex: 1 1 0; min-width: 64px; max-width: max-content; }   /* as the move's line: room left, never a second row */
-  .card .repo { font-weight: 800; font-size: var(--fs-md); letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* The letters the magnifier's query landed on (2026-09-25), as ⌥⌘K bolds them — underlined here as well, because
+.chip.watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--watch);
+  background: color-mix(in srgb, var(--watch) 16%, transparent);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip.watch .ic {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+/* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
+.card .trow .chip.watch {
+  margin-top: 3px;
+  max-width: 50%;
+  line-height: 12px;
+} /* as tall as the agents' chip: inside the title's row */
+.shead .chip.watch {
+  flex: 1 1 0;
+  min-width: 64px;
+  max-width: max-content;
+} /* as the move's line: room left, never a second row */
+.card .repo {
+  font-weight: 800;
+  font-size: var(--fs-md);
+  letter-spacing: 0.1px;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The letters the magnifier's query landed on (2026-09-25), as ⌥⌘K bolds them — underlined here as well, because
      a card is tinted in its project's colour and the accent alone does not read on every one of them. */
-  .card :is(.title, .repo) b { font-weight: 700; color: var(--accent); text-decoration: underline 1.5px; text-underline-offset: 2px; }
-  .card:is(.active, :hover, .qsel) :is(.title, .repo) b { color: inherit; }   /* the solid tint: the card's own ink */
-  /* ↑↓ in the magnifier's box walk the cards it ranked; ⏎ opens this one. The hover's look, with no halo. */
-  .card.qsel { border-color: var(--lift); --tint: 60%; --reach: 90%; }
-  .card .grow { flex: 1; }
+.card :is(.title, .repo) b {
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: underline 1.5px;
+  text-underline-offset: 2px;
+}
+.card:is(.active, :hover, .qsel) :is(.title, .repo) b {
+  color: inherit;
+} /* the solid tint: the card's own ink */
+/* ↑↓ in the magnifier's box walk the cards it ranked; ⏎ opens this one. The hover's look, with no halo. */
+.card.qsel {
+  border-color: var(--lift);
+  --tint: 60%;
+  --reach: 90%;
+}
+.card .grow {
+  flex: 1;
+}

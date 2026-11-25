@@ -1,34 +1,120 @@
-  /* ---- the inset (2026-11-01, round XV's T3; every theme's, round XVII's C1): the chat laid in a frame — the window's
+/* ---- the inset (2026-11-01, round XV's T3; every theme's, round XVII's C1): the chat laid in a frame — the window's
      ground, the wallpaper, the sidebar and the status bar in --frame (the board's own: the window's own ground,
      Window.swift's; a theme's, its crust) —, the chat a sheet, rounded, 8 px in from the frame's edges, a hairline and a
      soft shadow round it. ---- */
-  :root { --sheet-edge: rgb(0 0 0 / .07); --sheet-shade: 0 2px 10px -4px rgb(0 0 0 / .14); }
-  :root[data-theme="dark"] { --sheet-edge: rgb(255 255 255 / .06); --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / .7); }
-  :root body { background: var(--frame); }
-  :root[data-layout="sidebar"] main.tiles > #chat { margin: 8px 8px 8px 0; border-radius: 12px; overflow: clip; box-shadow: 0 0 0 1px var(--sheet-edge), var(--sheet-shade); }
-  :root[data-layout="sidebar"] main.tiles.lhide > #chat { margin-left: 8px; }   /* the list hidden: the frame on every side */
-  :root[data-layout="sidebar"] main.tiles.notch > #chat { border-top-right-radius: 10px; }   /* concentric with the screen's corner, as the tiles' are */
-  :root[data-layout="sidebar"] main.tiles.notch.lhide > #chat { border-top-left-radius: 10px; }   /* the list hidden: that corner too (2026-11-01) */
-  :root[data-layout="sidebar"] #splitter:not(:hover, .drag) { background: transparent; }   /* the frame between them; its grip stays */
-  :root[data-layout="sidebar"] main.tiles ~ #sbar { border-top: 0; }
-  /* the board's own dark on its frame (2026-11-01, round XVIII): the inks that fell under 4.5:1 on the lighter grey,
+:root {
+  --sheet-edge: rgb(0 0 0 / 0.07);
+  --sheet-shade: 0 2px 10px -4px rgb(0 0 0 / 0.14);
+}
+:root[data-theme='dark'] {
+  --sheet-edge: rgb(255 255 255 / 0.06);
+  --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / 0.7);
+}
+:root body {
+  background: var(--frame);
+}
+:root[data-layout='sidebar'] main.tiles > #chat {
+  margin: 8px 8px 8px 0;
+  border-radius: 12px;
+  overflow: clip;
+  box-shadow:
+    0 0 0 1px var(--sheet-edge),
+    var(--sheet-shade);
+}
+:root[data-layout='sidebar'] main.tiles.lhide > #chat {
+  margin-left: 8px;
+} /* the list hidden: the frame on every side */
+:root[data-layout='sidebar'] main.tiles.notch > #chat {
+  border-top-right-radius: 10px;
+} /* concentric with the screen's corner, as the tiles' are */
+:root[data-layout='sidebar'] main.tiles.notch.lhide > #chat {
+  border-top-left-radius: 10px;
+} /* the list hidden: that corner too (2026-11-01) */
+:root[data-layout='sidebar'] #splitter:not(:hover, .drag) {
+  background: transparent;
+} /* the frame between them; its grip stays */
+:root[data-layout='sidebar'] main.tiles ~ #sbar {
+  border-top: 0;
+}
+/* the board's own dark on its frame (2026-11-01, round XVIII): the inks that fell under 4.5:1 on the lighter grey,
      lifted for the list and the status bar alone (themeInks' rule, run once) */
-  :root[data-theme="dark"]:not([data-skin]) #sbar { --needs: #fc6c6b; --idle: #35a360; --pr-merged: #b38bff; --pr-closed: #ff7368; --pr-draft: #a1a19a; --tk-todo: #93a2b3; --tk-doing: #5fa1fe; }
-  /* …and the list's a step lighter again (2026-11-03): a card's ground is lighter than the frame (themeInks' rule, run once; a theme's: raisedInks) */
-  :root[data-theme="dark"]:not([data-skin]) #sessions { --needs: #ff8380; --idle: #43ae6b; --pr-open: #4bc35a; --pr-merged: #bd9dfe; --pr-closed: #ff8c80; --pr-draft: #afafa8; --tk-todo: #a0b0c1; --tk-doing: #76afff; }
-  /* The dark frame (Settings › Appearance › Dark frame; T5's Ink, 2026-11-01): a graphite frame round the light chat
+:root[data-theme='dark']:not([data-skin]) #sbar {
+  --needs: #fc6c6b;
+  --idle: #35a360;
+  --pr-merged: #b38bff;
+  --pr-closed: #ff7368;
+  --pr-draft: #a1a19a;
+  --tk-todo: #93a2b3;
+  --tk-doing: #5fa1fe;
+}
+/* …and the list's a step lighter again (2026-11-03): a card's ground is lighter than the frame (themeInks' rule, run once; a theme's: raisedInks) */
+:root[data-theme='dark']:not([data-skin]) #sessions {
+  --needs: #ff8380;
+  --idle: #43ae6b;
+  --pr-open: #4bc35a;
+  --pr-merged: #bd9dfe;
+  --pr-closed: #ff8c80;
+  --pr-draft: #afafa8;
+  --tk-todo: #a0b0c1;
+  --tk-doing: #76afff;
+}
+/* The dark frame (Settings › Appearance › Dark frame; T5's Ink, 2026-11-01): a graphite frame round the light chat
      (Stage, T6's paper frame round a dark one, gone with round XVII). <html data-frame> is the frame's appearance; what
      sits on it — the list, the status bar — wears the frame's own tokens here (a theme's, its dark half's: skinCss), and
      its rules read data-frame, never data-theme (the card's lift, its project's name, the ALL card's ring). A token
      derived from others is set again beside them. */
-  :root[data-theme="light"][data-frame="dark"] { --frame: #1e1e1c; --sheet-edge: rgb(0 0 0 / .3); --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / .5); }
-  :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark;
-    --bg: #1e1e1c; --panel: #262624; --ink: #ebe9e2; --muted: #a3a197; --line: #333330; --accent: #e08a68; --user-bg: #2c2c29; --tool-bg: #262624; --inline-bg: rgb(255 255 255 / .08);
-    --code-bg: #141413; --code-ink: #e0a284; --snip-claude: #cfcdc3; --nocolor: #6a6a63; --ended: #605f5a; --prg: 44%;
-    --needs: #f96968; --watch: #45c8c8; --working: #d9a82a; --working-ink: #d9a82a; --idle: #32a15d; --you: #4fb8a8; --spend: #f28a3c; --vscode: #4aa5f0;
-    --pr-open: #3fb950; --pr-merged: #b186ff; --pr-closed: #fe6e63; --pr-draft: #9e9e98; --tk-todo: #91a0b0; --tk-doing: #5a9efe; --tk-done: #4bce97; }
-  :root[data-theme="light"][data-frame="dark"] :is(#sessions, #sbar) { --side: var(--bg); --bar: var(--bg);
-    --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
-    --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
-  :root[data-theme="light"][data-frame="dark"] #sessions { --needs: #fc6c6a; --idle: #35a45f; --pr-merged: #b48cfe; --pr-closed: #ff756a; --pr-draft: #a2a29c; --tk-todo: #95a4b4; --tk-doing: #5fa1fe; }
-
+:root[data-theme='light'][data-frame='dark'] {
+  --frame: #1e1e1c;
+  --sheet-edge: rgb(0 0 0 / 0.3);
+  --sheet-shade: 0 2px 14px -4px rgb(0 0 0 / 0.5);
+}
+:root[data-theme='light'][data-frame='dark'] :is(#sessions, #sbar) {
+  color-scheme: dark;
+  --bg: #1e1e1c;
+  --panel: #262624;
+  --ink: #ebe9e2;
+  --muted: #a3a197;
+  --line: #333330;
+  --accent: #e08a68;
+  --user-bg: #2c2c29;
+  --tool-bg: #262624;
+  --inline-bg: rgb(255 255 255 / 0.08);
+  --code-bg: #141413;
+  --code-ink: #e0a284;
+  --snip-claude: #cfcdc3;
+  --nocolor: #6a6a63;
+  --ended: #605f5a;
+  --prg: 44%;
+  --needs: #f96968;
+  --watch: #45c8c8;
+  --working: #d9a82a;
+  --working-ink: #d9a82a;
+  --idle: #32a15d;
+  --you: #4fb8a8;
+  --spend: #f28a3c;
+  --vscode: #4aa5f0;
+  --pr-open: #3fb950;
+  --pr-merged: #b186ff;
+  --pr-closed: #fe6e63;
+  --pr-draft: #9e9e98;
+  --tk-todo: #91a0b0;
+  --tk-doing: #5a9efe;
+  --tk-done: #4bce97;
+}
+:root[data-theme='light'][data-frame='dark'] :is(#sessions, #sbar) {
+  --side: var(--bg);
+  --bar: var(--bg);
+  --ctl: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent);
+  --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg));
+  --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg));
+}
+:root[data-theme='light'][data-frame='dark'] #sessions {
+  --needs: #fc6c6a;
+  --idle: #35a45f;
+  --pr-merged: #b48cfe;
+  --pr-closed: #ff756a;
+  --pr-draft: #a2a29c;
+  --tk-todo: #95a4b4;
+  --tk-doing: #5fa1fe;
+}

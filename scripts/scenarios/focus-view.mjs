@@ -9,13 +9,14 @@ export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   const out = {};
   const lit = () => ctx.evaluate(`document.querySelector('#viewBtn')?.classList.contains('on') ?? null`);
-  const noted = re => ctx.waitFor(`${re}.test(document.querySelector('.note')?.textContent || '')`, { what: `the note ${re}` });
+  const noted = re =>
+    ctx.waitFor(`${re}.test(document.querySelector('.note')?.textContent || '')`, { what: `the note ${re}` });
   const said = re => ctx.peix('buffer()').then(rows => rows.filter(r => re.test(r)).length);
-  const type = (text, g = 0) => ctx.type(text, g);   // the drawer's keyboard, as a hand would use it
+  const type = (text, g = 0) => ctx.type(text, g); // the drawer's keyboard, as a hand would use it
 
   await ctx.openChat(chat.id);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#viewBtn')`), false, 'no drawer, no button');
-  await ctx.key('KeyC');                       // ⌥⌘C: resume it in the drawer
+  await ctx.key('KeyC'); // ⌥⌘C: resume it in the drawer
   await ctx.waitPrompt();
   await ctx.waitFor(`!!document.querySelector('#viewBtn')`, { what: 'the focus-view button, once a claude runs here' });
   out.startsUnlit = await lit();
@@ -39,19 +40,28 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#viewBtn').click()`);
   await noted('/Focus view on/');
   out.fromShell = { lit: await lit(), typedInShell: await said(/focus/) };
-  ctx.assert.deepEqual(out.fromShell, { lit: true, typedInShell: 0 }, "the chat's claude took the command, and nothing was typed into the shell");
-  await ctx.evaluate(`document.querySelector('#viewBtn').click()`);   // …and off again, so what follows starts from a session that says off
+  ctx.assert.deepEqual(
+    out.fromShell,
+    { lit: true, typedInShell: 0 },
+    "the chat's claude took the command, and nothing was typed into the shell",
+  );
+  await ctx.evaluate(`document.querySelector('#viewBtn').click()`); // …and off again, so what follows starts from a session that says off
   await noted('/Focus view off/');
 
   // a /focus typed in the drawer by hand never reaches the board — the next attach reads it off the screen instead.
   // ⌥⌘C takes the keys back to the claude drawer, which kept the left half (2026-09-25: a split never moves claude
   // out of it), so nothing re-attaches on the way.
   await ctx.key('KeyC');
-  await ctx.waitFor(`window.peix.state().tab === 'chat' && window.peix.state().focusG === 0 && window.peix.state().termId === window.peix.session().terminal.id`, { what: 'the claude drawer under the keys, in the left half' });
+  await ctx.waitFor(
+    `window.peix.state().tab === 'chat' && window.peix.state().focusG === 0 && window.peix.state().termId === window.peix.session().terminal.id`,
+    { what: 'the claude drawer under the keys, in the left half' },
+  );
   await ctx.waitPrompt(30_000, 0);
   const wasOn = await said(/Focus view enabled/);
   await type('/focus', 0);
-  await ctx.waitFor(`window.peix.buffer().filter(r => /Focus view enabled/.test(r)).length === ${wasOn + 1}`, { what: 'the session turned its focus view on, by hand' });
+  await ctx.waitFor(`window.peix.buffer().filter(r => /Focus view enabled/.test(r)).length === ${wasOn + 1}`, {
+    what: 'the session turned its focus view on, by hand',
+  });
   out.byHand = { litBefore: await lit() };
   ctx.assert.equal(out.byHand.litBefore, false, 'the board was not told — nothing lights yet');
   // The next attach is a reloaded board — what the app does every time it is restarted, and the one re-attach that
@@ -61,7 +71,9 @@ export default async function (ctx) {
   // leaves on screen (measured 2026-09-22; the re-sync is still not written).
   await ctx.reload();
   await ctx.openChat(chat.id);
-  await ctx.waitFor(`document.querySelector('#viewBtn')?.classList.contains('on') === true`, { what: 'the button lit by what the re-attached screen says' });
+  await ctx.waitFor(`document.querySelector('#viewBtn')?.classList.contains('on') === true`, {
+    what: 'the button lit by what the re-attached screen says',
+  });
   out.byHand.litAfterReattach = await lit();
   await ctx.shot('2-read-back');
   return out;
