@@ -26,7 +26,7 @@ function hotUntab() {
     here = keysIn(s, isSplit(s) ? focusG : 0);
   if (!k || here.length < 2) return note($('#shead'), 'Its only tab — a tile of its own already');
   const at = isSplit(s) ? focusG : 0,
-    d = tallOf(GEL[at].grp) ? 'col' : 'row',
+    d = tallTile(s, at) ? 'col' : 'row',
     rest = here.filter(x => x !== k);
   if (!roomFor(s, at, d)) return note($('#shead'), 'No room for another tile here');
   if (!isSplit(s)) {

@@ -197,6 +197,8 @@ const tallOf = sel => {
   const r = $(sel).getBoundingClientRect();
   return r.height > r.width;
 };
+/** Whether tile g is taller than wide as the tree lays it out (2026-11-26): zoomed, its own shape, not the column's. */
+const tallTile = (s, g) => (z => z.h > z.w)(tileSizes(s, treeOf(s))[g]);
 const TILE_MIN = { cols: 24, rows: 6 }; // the least a tile is for: a half side by side is under 80 already
 function tileTerm(s, k, cut) {
   if (!isSplit(s)) return false;
@@ -209,7 +211,7 @@ function tileTerm(s, k, cut) {
     return true;
   }
   const at = gs.includes(focusG) ? focusG : gs[0],
-    d = cut || (tallOf(GEL[at].grp) ? 'col' : 'row');
+    d = cut || (tallTile(s, at) ? 'col' : 'row');
   if (!roomFor(s, at, d)) {
     if (cut)
       note(

@@ -125,6 +125,24 @@ export default async function (ctx) {
   );
   await fits(ctx, [0, 1, 2, 3]);
 
+  // the second tile, tall and narrow, zoomed to the wide column; ⌘T (2026-11-26): cut by its own shape — one over the
+  // other — not the zoomed box's, which would have cut it side by side. ⌥⌘W folds the new tile again.
+  await ctx.key('KeyT'); // its zsh's key again: the tile fills the column
+  await ctx.waitFor(`window.peix.state().zoomed === 1`, { what: 'the second tile zoomed' });
+  await ctx.cmd('KeyT');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().tiles).includes('"g":4') && window.peix.term(4).ws === 1`, {
+    what: 'a fifth tile, attached',
+  });
+  ctx.assert.equal(await ctx.peix('state().zoomed'), null, 'the zoom gone with the cut');
+  ctx.assert.deepEqual(
+    (await tiles(ctx)).b.a,
+    { d: 'col', r: 0.5, a: { g: 1 }, b: { g: 4 } },
+    'the tall tile cut one over the other',
+  );
+  await ctx.key('KeyW');
+  await ctx.waitFor(`!JSON.stringify(window.peix.state().tiles).includes('"g":4')`, { what: 'the fifth tile folded' });
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys back in the second tile');
+
   // the root's divider dragged to 30 %: claude's part narrows, the tree keeps it
   const g = await box(ctx, 0),
     all = await ctx
