@@ -467,9 +467,7 @@ function i3Move(tree, g, dir, seen) {
 /** Whether every tile of a tree laid out in the column holds a terminal of TILE_MIN, by a drawn terminal's cell. */
 function treeFits(tree) {
   const b = $('#groups').getBoundingClientRect(),
-    tm = terms.find(t => t.xt?.cols && $(t.el.tbody).clientWidth);
-  const cw = tm ? $(tm.el.tbody).clientWidth / tm.xt.cols : 8,
-    ch = tm ? $(tm.el.tbody).clientHeight / tm.xt.rows : 17;
+    { cw, ch } = termCell();
   return Object.values(tileRects(tree)).every(
     r => ((r[2] - r[0]) * b.width - 5) / cw >= TILE_MIN.cols && ((r[3] - r[1]) * b.height - 5) / ch >= TILE_MIN.rows,
   );
@@ -524,21 +522,12 @@ function hotSplitTile(d) {
   startShell(s, true, d);
 }
 // A tile by the mouse (2026-11-26, i3's floating modifier): with ⌥⌘⇧ held, Auto-tiling on and the column split, the
-// pointer is the move cursor over the tiles (body.tilegrab) and a press anywhere on one lifts the whole tile — strip or none,
-// a terminal's screen too, never a selection there. Dropped on another tile's outer quarter that way, it is a tile on
-// that side of it (the room it left closing up); on its middle, the two trade places. The half it would take, or the
-// tile it would swap with, is shown while held (#tdrop). Only the tree changes: every tile keeps its terminal.
-const swapLeaves = (n, a, b) =>
-  'g' in n
-    ? n.g === a
-      ? { g: b }
-      : n.g === b
-        ? { g: a }
-        : n
-    : { ...n, a: swapLeaves(n.a, a, b), b: swapLeaves(n.b, a, b) };
-/** The tree with tile g dropped on tile t: at its `side`, a split of t with g there; none, the two swapped. */
+// pointer is the move cursor over the tiles (body.tilegrab) and a press anywhere on one lifts the whole tile — strip or
+// none, a terminal's screen too, never a selection there. Dropped on another tile's outer quarter that way, it is a tile
+// on that side of it (the room it left closing up); on its middle or its strip, its tabs join that tile's, as a tab
+// dropped there does, and it folds (2026-11-26, later). Where it would go is shown while held (#tdrop).
+/** The tree with tile g dropped at a side of tile t: out of where it was, a split of t with g there. */
 function tileDropTree(tree, g, t, side) {
-  if (!side) return swapLeaves(tree, g, t);
   const rest = treeMap(tree, g, () => null),
     d = side === 'left' || side === 'right' ? 'row' : 'col',
     before = side === 'left' || side === 'top';
@@ -553,7 +542,7 @@ function tileDropTree(tree, g, t, side) {
   const zoneEl = () =>
     $('#tdrop') ||
     document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tdrop', hidden: true }));
-  /** Where a tile held at (x, y) would go: the tile under it, and a side of it or none (a swap); null over its own. */
+  /** Where a tile held at (x, y) would go: the tile under it, and a side of it or none (into its tabs); null over its own. */
   const dropAt = (x, y) => {
     const grp = document.elementFromPoint(x, y)?.closest('#groups > .grp');
     if (!grp || grp.hidden || +grp.dataset.g === lift.g) return null;
@@ -568,9 +557,9 @@ function tileDropTree(tree, g, t, side) {
       ['bottom', 1 - fy],
     ].sort((a, b) => a[1] - b[1])[0];
     const s = state.sessions.get(state.current),
-      edge = near <= 0.25 ? side : null,
-      next = tileDropTree(trees.get(s.id) || halvesTree(s), lift.g, t, edge);
-    if (!treeFits(next)) return null;
+      edge = near <= 0.25 && !document.elementFromPoint(x, y).closest('.ptabs') ? side : null,
+      next = edge ? tileDropTree(trees.get(s.id) || halvesTree(s), lift.g, t, edge) : null;
+    if (next && !treeFits(next)) return null;
     const box =
       edge === 'left'
         ? [r.left, r.top, r.width / 2, r.height]
@@ -581,12 +570,18 @@ function tileDropTree(tree, g, t, side) {
             : edge === 'bottom'
               ? [r.left, r.top + r.height / 2, r.width, r.height / 2]
               : [r.left, r.top, r.width, r.height];
-    return { t, side: edge || 'swap', next, box };
+    return { t, side: edge || 'into', next, box };
   };
+  // the two intentions drawn as a tab's drag draws them (2026-11-26): a tile moved, the solid half it would take
+  // (#tdrop); its tabs into a group, the tile's own dashed outline (.grp.drop)
   const show = z => {
-    const el = zoneEl();
-    el.hidden = !z;
-    if (!z) return;
+    const el = zoneEl(),
+      into = z?.side === 'into';
+    el.hidden = !z || into;
+    for (const x of document.querySelectorAll('#groups > .grp.drop'))
+      x.classList.toggle('drop', into && +x.dataset.g === z.t);
+    if (into && GEL[z.t]) $(GEL[z.t].grp).classList.add('drop');
+    if (!z || into) return;
     Object.assign(el.style, {
       left: z.box[0] + 'px',
       top: z.box[1] + 'px',
@@ -643,9 +638,11 @@ function tileDropTree(tree, g, t, side) {
     end();
     if (!z || !s) return;
     haptic('generic');
-    trees.set(s.id, z.next);
     zoomed.delete(s.id);
-    focusG = g;
+    if (z.next) {
+      trees.set(s.id, z.next);
+      focusG = g;
+    } else tileInto(s, g, z.t);
     applySplit();
     syncTerm(s);
     fitTerm();
@@ -654,6 +651,17 @@ function tileDropTree(tree, g, t, side) {
   });
   window.addEventListener('pointercancel', end);
   window.addEventListener('blur', end);
+}
+/** Tile g's tabs into tile t's strip (2026-11-26), its front tab in front there, and g folded — down to one tile, the
+ *  column one half. */
+function tileInto(s, g, t) {
+  if (!homes.has(s.id)) homes.set(s.id, new Map());
+  const front = placeOf(s)[g];
+  for (const k of keysIn(s, g)) homes.get(s.id).set(k, t);
+  if (!isTiled(s)) trees.set(s.id, halvesTree(s));
+  focusG = t;
+  dropLeaf(s, g);
+  if (front) setTab(s, front);
 }
 applySplit();
 {

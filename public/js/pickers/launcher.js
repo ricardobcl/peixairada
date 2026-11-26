@@ -8,6 +8,7 @@ const SWITCHES = [
   ['autoUpdate', 'Update itself'],
   ['soundsOn', 'Sounds'],
   ['optMeta', '⌥ is Meta in the terminal'],
+  ['autoTile', 'Auto-tiling — every new terminal a tile, as i3'], // 2026-11-26
   ['darkFrame', 'Dark frame round a light chat'],
   ['cardsSnipOne', 'A card’s words on one line'],
   ['prioOn', 'Pinned section'],
@@ -467,7 +468,7 @@ const KEYS = [
   ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there · tiles on and the column split: the tile to the left / right, by where it stands', ['alt:ArrowLeft', 'alt:ArrowRight']],
   ['⌥⌘⇧←→', 'Layout', 'tiles: the tile the keys are in moved left / right', 'Settings › Terminal › Auto-tiling, the column split · the rest close over the room it left · two side by side trade places · ↑↓ the same up and down', ['shift:ArrowLeft', 'shift:ArrowRight']],
   ['⌘D ⇧⌘D', 'Layout', 'tiles: a new zsh beside this tile, or under it', 'Settings › Terminal › Auto-tiling · ⌘D cuts it side by side, ⇧⌘D one over the other, whatever its shape', ['cmd:KeyD', 'cmdshift:KeyD']],
-  ['⌥⌘⇧ + drag', 'Layout', 'tiles: a whole tile moved by the mouse', 'with Auto-tiling on, the column split: held, the pointer the move cursor (four arrows) · press anywhere on a tile and drag — onto another\'s middle the two trade places, onto its outer quarter it goes to that side', []],
+  ['⌥⌘⇧ + drag', 'Layout', 'tiles: a whole tile moved by the mouse', 'with Auto-tiling on, the column split: held, the pointer the move cursor (four arrows) · press anywhere on a tile and drag — onto another\'s middle or tabs its tabs join them, onto its outer quarter it goes to that side', []],
   ['⌃⌥⌘T', 'Layout', 'the tab in front out into a tile of its own', 'with Auto-tiling on: cut from its tile along the longer side, as a new terminal is — a zsh, a page, the chat · ⌥⌘⇧T the other way, a zsh onto this tile', ['ctrlalt:KeyT']],
   ['⌃⌘←→', 'Layout', 'the tab to the left / right in this half or tile', 'its own strip alone, round from the end to the start · drag a tab onto another to move it there', ['ctrl:ArrowLeft', 'ctrl:ArrowRight']],
   ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],

@@ -125,6 +125,11 @@ export default async function (ctx) {
     `window.peix.prefs().sounds === true && document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel .lsw.on')`,
     { what: 'the sounds on, the menu up' },
   );
+  // Auto-tiling is one of them (2026-11-26), the setting's own checkbox flipped
+  ctx.assert.ok(
+    (await rows()).some(r => r.kind === 'toggle' && r.text.startsWith('Auto-tiling')),
+    'Auto-tiling among the switches',
+  );
   await ctx.settle();
   await ctx.shot('toggle');
   await key('Enter');

@@ -200,7 +200,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#tdrop').hidden`), true, 'the zone gone');
 
   // ⌥⌘⇧ and the mouse (2026-11-26): held, the move cursor over the tiles; a press anywhere on a tile — one with no strip too —
-  // lifts it whole: on another's middle the two trade places, on its outer quarter it goes to that side
+  // lifts it whole: on another's middle its tabs join that tile's and it folds, on its outer quarter it goes to that side
   const shape = () =>
     ctx.peix('state().tiles').then(n =>
       JSON.stringify(
@@ -233,7 +233,11 @@ export default async function (ctx) {
       await ctx.evaluate(
         `document.dispatchEvent(new PointerEvent('pointermove', { clientX: ${a.x + (at.x - a.x) * f}, clientY: ${a.y + (at.y - a.y) * f}, ${mods} }))`,
       );
-    const seen = await ctx.evaluate(`(z => z.hidden ? null : z.dataset.side)(document.querySelector('#tdrop'))`);
+    await ctx.shot('tile-drag-' + look.split(':')[0]);
+    // a move: the solid half (#tdrop); into a group: the tile's dashed outline, as a tab's drag draws it (2026-11-26)
+    const seen = await ctx.evaluate(
+      `(() => { const z = document.querySelector('#tdrop'), d = document.querySelector('#groups > .grp.drop'); return !z.hidden ? (d ? 'both' : z.dataset.side + ':' + getComputedStyle(z).boxShadow.includes('inset')) : d ? 'into:' + d.dataset.g + ':' + getComputedStyle(d.querySelector('.gbody')).outlineStyle : null; })()`,
+    );
     await ctx.evaluate(
       `document.dispatchEvent(new PointerEvent('pointerup', { clientX: ${at.x}, clientY: ${at.y}, ${mods} }))`,
     );
@@ -251,28 +255,36 @@ export default async function (ctx) {
     true,
     'tile 5 has one tab',
   );
-  await tileDrag(5, await mid(1), 'swap');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().tiles).includes('"a":{"g":0},"b":{"g":1}')`, {
-    what: '5 and 1 traded places',
-  });
+  const fiveTab = (await ctx.peix('state().strips[5]'))[0],
+    oneTabs = await ctx.peix('state().strips[1]');
+  await tileDrag(5, await mid(1), 'into:1:dashed');
+  await ctx.waitFor(`!JSON.stringify(window.peix.state().tiles).includes('"g":5')`, { what: '5 folded into 1' });
   ctx.assert.equal(
     await shape(),
-    JSON.stringify(['col', ['row', 3, 4], ['row', ['col', 0, 1], ['col', 5, 2]]]),
-    'swapped',
+    JSON.stringify(['col', ['row', 3, 4], ['row', 0, ['col', 1, 2]]]),
+    "tile 5 gone, its room to claude's",
   );
-  ctx.assert.equal(await focus(ctx), 5, 'the keys with the tile moved');
+  ctx.assert.deepEqual(await ctx.peix('state().strips[1]'), [...oneTabs, fiveTab], "its tab among tile 1's");
+  ctx.assert.equal((await ctx.peix('state().halves'))[1], fiveTab, 'in front there');
+  ctx.assert.equal(await focus(ctx), 1, 'the keys with it');
+  await ctx.waitFor(`window.peix.term(1).ws === 1`, { what: 'its zsh attached in tile 1' });
   const two = await mid(2);
-  await tileDrag(4, { x: two.l + two.w - 8, y: two.y }, 'right');
+  await tileDrag(4, { x: two.l + two.w - 8, y: two.y }, 'right:true');
   await ctx.waitFor(`!JSON.stringify(window.peix.state().tiles).includes('"a":{"g":3},"b":{"g":4}')`, {
     what: '4 moved',
   });
   ctx.assert.equal(
+    await ctx.evaluate(`document.querySelectorAll('#groups > .grp.drop').length`),
+    0,
+    'no tile outlined after the drops',
+  );
+  ctx.assert.equal(
     await shape(),
-    JSON.stringify(['col', 3, ['row', ['col', 0, 1], ['col', 5, ['row', 2, 4]]]]),
+    JSON.stringify(['col', 3, ['row', 0, ['col', 1, ['row', 2, 4]]]]),
     '4 at the right of 2, 3 the whole top',
   );
   ctx.assert.ok(
-    (await Promise.all([1, 2, 3, 4, 5].map(g => ctx.peix(`term(${g}).ws`)))).every(w => w === 1),
+    (await Promise.all([1, 2, 3, 4].map(g => ctx.peix(`term(${g}).ws`)))).every(w => w === 1),
     'every tile still attached',
   );
   await ctx.evaluate(

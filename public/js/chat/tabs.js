@@ -262,12 +262,19 @@ function tabToSide(s, k, at, side) {
 /** Whether half of group g's body, cut along d, holds a terminal of TILE_MIN — by the cell of a terminal drawn now. */
 function roomFor(g, d) {
   const b = $(GEL[g].body).getBoundingClientRect(),
-    tm = terms.find(t => t.xt?.cols && $(t.el.tbody).clientWidth);
-  const cw = tm ? $(tm.el.tbody).clientWidth / tm.xt.cols : 8,
-    ch = tm ? $(tm.el.tbody).clientHeight / tm.xt.rows : 17;
+    { cw, ch } = termCell();
   const w = d === 'row' ? (b.width - 5) / 2 : b.width,
     h = d === 'col' ? (b.height - 5) / 2 : b.height;
   return w / cw >= TILE_MIN.cols && h / ch >= TILE_MIN.rows;
+}
+/** A terminal's cell in px, read off a drawn terminal's screen (2026-11-26): its body is no measure — a TUI that has
+ *  not filled it (claude's 14 rows in a tile of 30) made a row twice its height, and tiles that fit were refused. */
+function termCell() {
+  for (const t of terms) {
+    const sc = t.xt?.cols && $(t.el.tbody)?.querySelector('.xterm-screen')?.getBoundingClientRect();
+    if (sc?.width && sc.height) return { cw: sc.width / t.xt.cols, ch: sc.height / t.xt.rows };
+  }
+  return { cw: 8, ch: 17 };
 }
 /** Tile g closed (⌘W on it, its ⨯): its tabs go to the tile it was split from, and the room with them. */
 function closeTile(s, g) {
