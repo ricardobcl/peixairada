@@ -1,4 +1,4 @@
-// Tile new terminals (2026-11-25, Settings › Terminal, prefs.autoTile): the first terminal splits the column by its shape; each
+// Auto-tiling (2026-11-25, Settings › Terminal, prefs.autoTile): the first terminal splits the column by its shape; each
 // one after it cuts the tile the keys are in in two along its longer side, as i3's autotiling (2026-11-25, later): a
 // tall tile one over the other, a wide one side by side, so the cuts take turns; the new terminal in the second part.
 // What this keeps honest: the tree the tiles are
@@ -122,11 +122,34 @@ export default async function (ctx) {
   ctx.assert.ok(Math.abs((await box(ctx, 0)).w - all.width * 0.3) < 12, "claude's tile is 30 % of the column");
   await fits(ctx, [0, 1, 2, 3]);
 
-  // ··· › tidy the tiles (2026-11-25): a spiral, even cuts, claude's on the left, the rest turning clockwise — 1 top
-  // right, 2 at the bottom's right, 3 left of it; nothing re-attached; the keys where they were
-  const kept = await ctx.peix('state().focusG');
-  await ctx.evaluate(`document.querySelector('#spiralBtn').click()`);
+  // ··· › tidy the tiles (2026-11-25): even cuts, claude's on the left, each next the left or top half of the room
+  // left, the keys' tile the first of them (2026-11-26) — the keys in 3: 3 top right, then 1 and 2 at the bottom;
+  // nothing re-attached; the keys where they were
+  await ctx.evaluate(
+    `document.querySelector('#termBody4').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`,
+  );
+  await ctx.waitFor(`window.peix.state().focusG === 3`, { what: 'the keys in the fourth tile' });
+  await ctx.evaluate(`document.querySelector('#tidyBtn').click()`);
   await ctx.waitFor(`window.peix.state().tiles?.r === .5`, { what: 'the tiles tidied' });
+  ctx.assert.deepEqual(
+    await tiles(ctx),
+    {
+      d: 'row',
+      r: 0.5,
+      a: { g: 0 },
+      b: { d: 'col', r: 0.5, a: { g: 3 }, b: { d: 'row', r: 0.5, a: { g: 1 }, b: { g: 2 } } },
+    },
+    "the keys' tile the biggest after claude's",
+  );
+  ctx.assert.equal(await ctx.peix('state().focusG'), 3, 'the keys stayed');
+  // the keys in 1: tidied again, 1 top right, then the rest in the tree's order — 3, 2 — under it
+  await ctx.evaluate(
+    `document.querySelector('#termBodyB').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`,
+  );
+  await ctx.waitFor(`window.peix.state().focusG === 1`, { what: 'the keys in the second tile' });
+  const kept = 1;
+  await ctx.evaluate(`document.querySelector('#tidyBtn').click()`);
+  await ctx.waitFor(`window.peix.state().tiles?.b.a.g === 1`, { what: 'tidied again' });
   ctx.assert.deepEqual(
     await tiles(ctx),
     {
@@ -135,7 +158,7 @@ export default async function (ctx) {
       a: { g: 0 },
       b: { d: 'col', r: 0.5, a: { g: 1 }, b: { d: 'row', r: 0.5, a: { g: 3 }, b: { g: 2 } } },
     },
-    'a spiral',
+    'tidied, the bigger tiles left and up',
   );
   ctx.assert.equal(await ctx.peix('state().focusG'), kept, 'the keys stayed');
   ctx.assert.deepEqual(
@@ -154,7 +177,7 @@ export default async function (ctx) {
     `0 | 1 over (3 | 2): ${JSON.stringify(b)}`,
   );
   await fits(ctx, [0, 1, 2, 3]);
-  await ctx.shot('spiral');
+  await ctx.shot('tidy');
   // ⌘2 turns its split back side by side, as before the tidy, for what follows
   await ctx.cmd('Digit2');
   await ctx.waitFor(`window.peix.state().tiles?.b.d === 'row'`, { what: 'the right side by side again' });

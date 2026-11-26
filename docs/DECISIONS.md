@@ -78,12 +78,25 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   split, by the column's shape, the rest staying in the first half (the chat out, the chat's half the left). Its tile's
   only tab, or no room, a note. With the setting on only (`keyLive`; a fifth map, `CTRLALTKEYS`, forwarded as
   `ctrlalt` while `tileKeys`): ⌥⌘⇧T is its way back, a zsh onto a tile. No drag yet.
-* **Tidy the tiles: a spiral** (later: *"if auto tiling is turned on there should be a button to reset every tile into
-  a neatly packed spiral."* — *"with claude being on the left."*): ··· › *tidy the tiles*, the ⋯ of a tile's strip
-  and the launcher (`hotSpiral`, `spiralTree`), while the setting is on and the column split. The tile holding the
-  chat first, on the column's longer side — the left on a wide one —, then the rest in the tree's order, each turning
-  clockwise into the room left (left, top, right, bottom, again), every cut even: bspwm's *spiral*, not its
-  *dwindle* (every next one right and below), which is what i3's autotiling makes from the newest tile. Only the tree
+* **Named Auto-tiling** (2026-11-26: *"rebrand the settings toggle to Auto-tiling, saying its i3 inspired etc."*):
+  the switch was *Tile new terminals*; its line now says it is i3's and its autotiling's, and names the keys, the
+  drag and the tidy. `prefs.autoTile` as it was, so nobody's setting moves.
+* **A tab dragged to a tile's edge** (2026-11-26: *"yes add the dragging too."*): the outer quarter of a tile's body
+  that way — not its strip, which is the tile as ever — is a tile of its own on that side (`tabToSide`, `cutTile`,
+  `tileTerm`'s cut made general), the half it would take shown while held there (`#tdrop`); the middle drops into
+  the tile as before. A tile's only tab has no edge of its own tile, and no room (`roomFor`) is no edge — the drop is
+  the tile's. With one half the drag starts too, the setting on: an edge splits the column, that side the tab's. In the
+  app a page in the pane is a native view over the body, so over one the zone is drawn under it,
+  out of sight — the drop works all the same.
+* **Tidy the tiles** (later: *"if auto tiling is turned on there should be a button to reset every tile into a neatly
+  packed spiral."* — *"with claude being on the left."*): ··· › *tidy the tiles*, the ⋯ of a tile's strip and the
+  launcher (`hotTidy`, `tidyTree`), while the setting is on and the column split. The tile holding the chat first, on
+  the column's longer side — the left on a wide one —, then the rest in the tree's order, each the first part (left
+  or top) of the room left and the rest its second, the cuts taking turns, every cut even: bspwm's *dwindle*, what
+  i3's autotiling makes from the newest tile. First made as bspwm's *spiral* (each next turning clockwise — left, top,
+  right, bottom), then: *"the tidy shouldnt be a spiral but rather clockwise split. so bigger tiles should snap to the
+  left instead of outwards"*. The tile the keys are in comes second, the biggest after claude's (2026-11-26: *"the
+  current focused tile if not claude should be the second branch of the tree"*). Only the tree
   changes: every tile keeps its tabs and terminal, the keys stay. Two halves untiled go side by side, even, no tree
   made. Under `TILE_MIN` anywhere, refused with a note. No key: a button was asked for.
 * **page-load.test skips without CHROME** (found the same day): run bare, it passed over a board dead at load — a

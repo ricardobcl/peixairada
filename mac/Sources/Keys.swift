@@ -44,7 +44,7 @@ extension AppDelegate {
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r", "j", "m", "z", "x", "i", "s", "u"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t", "d"]
   static let cmdShiftKeys: Set<String> = ["d"]
-  // Tile new terminals' keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→, ⌃⌥⌘T — only while the page says the setting is on (`tiles`):
+  // Auto-tiling' keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→, ⌃⌥⌘T — only while the page says the setting is on (`tiles`):
   // off, VS Code Web keeps them.
   static var tileKeys = false
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {

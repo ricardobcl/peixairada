@@ -218,6 +218,11 @@ function tileTerm(s, k, cut) {
       );
     return false;
   }
+  cutTile(s, k, at, d, false);
+  return true;
+}
+/** Tile `at` cut in two along d, tab k alone in the new part — its second, or its first (`before`: the left or top). */
+function cutTile(s, k, at, d, before) {
   if (!trees.has(s.id)) trees.set(s.id, halvesTree(s)); // the halves as they stand
   const have = leavesOf(trees.get(s.id));
   let g = 1;
@@ -227,11 +232,32 @@ function tileTerm(s, k, cut) {
   if (p) p[g] = null; // whatever a tile there before showed
   trees.set(
     s.id,
-    treeMap(trees.get(s.id), at, leaf => ({ d, r: 0.5, a: leaf, b: { g } })),
+    treeMap(trees.get(s.id), at, leaf =>
+      before ? { d, r: 0.5, a: { g }, b: leaf } : { d, r: 0.5, a: leaf, b: { g } },
+    ),
   );
+  zoomed.delete(s.id);
   homes.get(s.id).set(k, g);
   setTab(s, k);
-  return true;
+}
+/** A tab put in a tile of its own at a side of tile `at` (2026-11-25; a drag to a tile's edge): the tile cut there. One
+ *  half: the split, that side the tab's, the rest the other's. */
+function tabToSide(s, k, at, side) {
+  const d = side === 'left' || side === 'right' ? 'row' : 'col',
+    before = side === 'left' || side === 'top';
+  if (isSplit(s)) return cutTile(s, k, at, d, before);
+  if (d === 'col') stacked.add(s.id);
+  else stacked.delete(s.id);
+  const here = keysIn(s, 0),
+    rest = here.filter(x => x !== k),
+    mine = before ? 0 : 1;
+  splitChat(s, false);
+  for (const x of here) homes.get(s.id).set(x, x === k ? mine : 1 - mine);
+  const p = [null, null];
+  p[mine] = k;
+  p[1 - mine] = rest.includes(placeOf(s)[0]) ? placeOf(s)[0] : rest[0];
+  tabs.set(s.id, p);
+  focusG = mine;
 }
 /** Whether half of group g's body, cut along d, holds a terminal of TILE_MIN — by the cell of a terminal drawn now. */
 function roomFor(g, d) {
@@ -426,7 +452,7 @@ function renderTabs(s, p = placeOf(s)) {
       ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">` +
         `<button class="nav gturn" data-to="${over ? 'side' : 'over'}" title="${over ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${over ? ICON.side : ICON.over}</button>` +
         (prefs.autoTile
-          ? `<button class="nav gspiral" title="Every tile in a spiral, Claude's on the left">${ICON.spiral}</button>`
+          ? `<button class="nav gtidy" title="Tidy the tiles: Claude's on the left, each next one half of the room left, the bigger ones left and up">${ICON.tidy}</button>`
           : '') +
         `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘0 from that one">${ICON.close}</button></span>`
       : '';
@@ -703,7 +729,7 @@ $('#groups').addEventListener('click', e => {
   if (e.target.closest('.gclose')) return closeHalf(g);
   const s = state.sessions.get(state.current);
   if (!s) return;
-  if (e.target.closest('.gspiral')) return hotSpiral();
+  if (e.target.closest('.gtidy')) return hotTidy();
   if (e.target.closest('.gturn')) {
     if (!isTiled(s)) return stackSplit(s, !stacked.has(s.id));
     focusGroup(g);
@@ -810,19 +836,75 @@ window.peixPaneOpen = (key, url) => {
   const lit = g => {
     for (const tm of terms) $(tm.el.grp).classList.toggle('drop', g === tm.g && g !== drag?.from);
   };
+  // a tile's edge (2026-11-25, Auto-tiling on): the outer quarter of its body that way is a tile of its own
+  // there — shown as the half it would take (#tdrop) —, its middle or its strip the tile as ever. No room: no edge.
+  const EDGE = 0.25;
+  const edgeAt = (x, y) => {
+    if (!prefs.autoTile) return null;
+    const el = document.elementFromPoint(x, y),
+      grp = el?.closest('.grp');
+    if (!grp || el.closest('.ptabs')) return null;
+    const g = +grp.dataset.g,
+      s = state.sessions.get(state.current);
+    if (!s) return null;
+    if (g === drag.from && keysIn(s, isSplit(s) ? g : 0).length < 2) return null; // its only tab: it is a tile of its own
+    const r = $(GEL[g].body).getBoundingClientRect(),
+      fx = (x - r.left) / r.width,
+      fy = (y - r.top) / r.height;
+    const [side, near] = [
+      ['left', fx],
+      ['right', 1 - fx],
+      ['top', fy],
+      ['bottom', 1 - fy],
+    ].sort((a, b) => a[1] - b[1])[0];
+    if (near > EDGE || near < 0 || !roomFor(g, side === 'left' || side === 'right' ? 'row' : 'col')) return null;
+    const half =
+      side === 'left'
+        ? [r.left, r.top, r.width / 2, r.height]
+        : side === 'right'
+          ? [r.left + r.width / 2, r.top, r.width / 2, r.height]
+          : side === 'top'
+            ? [r.left, r.top, r.width, r.height / 2]
+            : [r.left, r.top + r.height / 2, r.width, r.height / 2];
+    return { g, side, half };
+  };
+  const zone =
+    $('#tdrop') ||
+    document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tdrop', hidden: true }));
+  const showZone = z => {
+    zone.hidden = !z;
+    if (drag) drag.zone = z;
+    if (z)
+      (Object.assign(zone.style, {
+        left: z.half[0] + 'px',
+        top: z.half[1] + 'px',
+        width: z.half[2] + 'px',
+        height: z.half[3] + 'px',
+      }),
+        (zone.dataset.side = z.side));
+  };
   const end = () => {
     if (!drag) return;
     drag.ghost?.remove();
     drag.b.classList.remove('dragging');
     document.body.classList.remove('tabdrag');
     lit(null);
+    showZone(null);
     drag = null;
   };
   $('#groups').addEventListener('pointerdown', e => {
     const b = e.target.closest('.ptab');
     if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl, .paddr, .pedit')) return; // the address and its buttons are not the tab's handle
-    if (!splitNow()) return;
-    drag = { k: b.dataset.tab, from: +b.closest('.grp').dataset.g, x: e.clientX, y: e.clientY, b, ghost: null };
+    if (!splitNow() && !prefs.autoTile) return; // one half: nowhere to go but a tile's edge
+    drag = {
+      k: b.dataset.tab,
+      from: +b.closest('.grp').dataset.g,
+      x: e.clientX,
+      y: e.clientY,
+      b,
+      ghost: null,
+      zone: null,
+    };
   });
   window.addEventListener('pointermove', e => {
     if (!drag) return;
@@ -836,11 +918,13 @@ window.peixPaneOpen = (key, url) => {
     }
     drag.ghost.style.left = e.clientX + 'px';
     drag.ghost.style.top = e.clientY + 'px';
-    lit(halfAt(e.clientX, e.clientY));
+    const z = edgeAt(e.clientX, e.clientY);
+    showZone(z);
+    lit(z ? null : splitNow() ? halfAt(e.clientX, e.clientY) : null);
   });
   window.addEventListener('pointerup', e => {
     if (!drag) return;
-    const { k, from, ghost } = drag,
+    const { k, from, ghost, zone: z } = drag,
       to = ghost ? halfAt(e.clientX, e.clientY) : null;
     end();
     if (!ghost) return;
@@ -853,8 +937,13 @@ window.peixPaneOpen = (key, url) => {
     window.addEventListener('click', swallow, { capture: true, once: true });
     setTimeout(() => window.removeEventListener('click', swallow, true), 0);
     const s = state.sessions.get(state.current);
-    if (!s || to === null || to === from || !tabKeys(s).includes(k)) return;
-    moveTab(s, k, to);
+    if (!s || !tabKeys(s).includes(k)) return;
+    if (z) {
+      haptic('generic');
+      tabToSide(s, k, z.g, z.side);
+      fitTerm();
+    } else if (to === null || to === from || !splitNow()) return;
+    else moveTab(s, k, to);
     if (isPageTab(k)) {
       shownPr.url = pageUrl(k);
       syncTerm(s);

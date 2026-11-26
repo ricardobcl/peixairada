@@ -1,4 +1,4 @@
-// The tiles by the keys (2026-11-25), Tile new terminals on and the column split: ⌥⌘←→↑↓ take the keys to the tile that
+// The tiles by the keys (2026-11-25), Auto-tiling on and the column split: ⌥⌘←→↑↓ take the keys to the tile that
 // way by where it stands (of several, the one the keys were in last), ⌥⌘⇧ + an arrow moves the tile — two side by side trade
 // places, none that way and it is that whole side —, ⌘D / ⇧⌘D a new zsh in a tile cut side by side / one over the
 // other whatever its shape, ⌥⌘⇧T a zsh on a tab where the keys are, never a tile. What this keeps honest: the tree (state().tiles) and the boxes after each key; no
@@ -173,6 +173,31 @@ export default async function (ctx) {
   ctx.assert.equal(await focus(ctx), 4, 'the keys went with it');
   await ctrlAlt('KeyT');
   ctx.assert.ok(!JSON.stringify(await tiles(ctx)).includes('"g":5'), 'alone in its tile: nothing to take out');
+  // a tab dragged to a tile's edge (2026-11-25): there, a tile of its own — another zsh in that tile, dropped at the
+  // foot of claude's, which is cut one over the other, the zsh under it; in flight, the half it would take
+  await shift('KeyT');
+  await ctx.waitFor(`window.peix.state().strips[4]?.length === 2`, { what: 'a second tab in the new tile' });
+  const another = (await ctx.peix('state().strips[4]'))[1];
+  const foot = await ctx
+    .evaluate(
+      `(r => JSON.stringify({ x: Math.round(r.left + r.width / 2), y: Math.round(r.bottom - 12) }))(document.querySelector('#groups > .grp[data-g="0"] > .gbody').getBoundingClientRect())`,
+    )
+    .then(JSON.parse);
+  const zoneSeen = await ctx.drag(`#groups > .grp[data-g="4"] .ptab[data-tab="${another}"]`, foot, () =>
+    ctx.evaluate(`(z => z && !z.hidden ? z.dataset.side : null)(document.querySelector('#tdrop'))`),
+  );
+  ctx.assert.equal(zoneSeen, 'bottom', 'the bottom half shown while over the foot');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().tiles).includes('"g":5') && window.peix.term(5).ws === 1`, {
+    what: 'the dragged tab a tile of its own',
+  });
+  ctx.assert.deepEqual(
+    (await tiles(ctx)).b.a,
+    { d: 'col', r: 0.5, a: { g: 0 }, b: { g: 5 } },
+    "claude's tile cut, the tab under it",
+  );
+  ctx.assert.deepEqual(await ctx.peix('state().strips[5]'), [another], 'it alone there');
+  ctx.assert.deepEqual(await ctx.peix('state().strips[4]'), [first], 'the tile it left as it was');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#tdrop').hidden`), true, 'the zone gone');
 
   // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
   await ctx.openChat(other.id);
@@ -201,7 +226,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.peix('state().stacked'), true, '⇧⌘D: one over the other');
   ctx.assert.ok(below(await box(ctx, 0), await box(ctx, 1)), 'the zsh under the chat');
   // tidied (2026-11-25): two halves on a wide column go side by side, claude's on the left — no tree made
-  await ctx.evaluate(`document.querySelector('#spiralBtn').click()`);
+  await ctx.evaluate(`document.querySelector('#tidyBtn').click()`);
   await ctx.waitFor(`window.peix.state().stacked === false`, { what: 'the halves side by side' });
   ctx.assert.equal(await ctx.peix('state().tiles'), null, 'still two halves');
   ctx.assert.ok(right(await box(ctx, 0), await box(ctx, 1)), 'the chat on the left');

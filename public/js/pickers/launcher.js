@@ -100,7 +100,7 @@ const actionRows = () => {
             : []),
           ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
           ...(prefs.autoTile && isSplit(s)
-            ? [{ name: 'Tidy the tiles into a spiral', sub: ' — Claude’s on the left', fn: hotSpiral }]
+            ? [{ name: 'Tidy the tiles', sub: ' — Claude’s on the left, the bigger ones left and up', fn: hotTidy }]
             : []),
           { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
           ...(inApp || onVim() ? [{ name: `Its folder in ${inEdName()}`, sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
@@ -465,9 +465,9 @@ const KEYS = [
   ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
   ['⌥⌘1 ⌥⌘2', 'Layout', 'the top half, the bottom one', '⌥⌘2 splits the chat that way the first time; side by side, either turns it', ['alt:Digit1', 'alt:Digit2']],
   ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there · tiles on and the column split: the tile to the left / right, by where it stands', ['alt:ArrowLeft', 'alt:ArrowRight']],
-  ['⌥⌘⇧←→', 'Layout', 'tiles: the tile the keys are in moved left / right', 'Settings › Terminal › Tile new terminals, the column split · the rest close over the room it left · two side by side trade places · ↑↓ the same up and down', ['shift:ArrowLeft', 'shift:ArrowRight']],
-  ['⌘D ⇧⌘D', 'Layout', 'tiles: a new zsh beside this tile, or under it', 'Settings › Terminal › Tile new terminals · ⌘D cuts it side by side, ⇧⌘D one over the other, whatever its shape', ['cmd:KeyD', 'cmdshift:KeyD']],
-  ['⌃⌥⌘T', 'Layout', 'the tab in front out into a tile of its own', 'with Tile new terminals on: cut from its tile along the longer side, as a new terminal is — a zsh, a page, the chat · ⌥⌘⇧T the other way, a zsh onto this tile', ['ctrlalt:KeyT']],
+  ['⌥⌘⇧←→', 'Layout', 'tiles: the tile the keys are in moved left / right', 'Settings › Terminal › Auto-tiling, the column split · the rest close over the room it left · two side by side trade places · ↑↓ the same up and down', ['shift:ArrowLeft', 'shift:ArrowRight']],
+  ['⌘D ⇧⌘D', 'Layout', 'tiles: a new zsh beside this tile, or under it', 'Settings › Terminal › Auto-tiling · ⌘D cuts it side by side, ⇧⌘D one over the other, whatever its shape', ['cmd:KeyD', 'cmdshift:KeyD']],
+  ['⌃⌥⌘T', 'Layout', 'the tab in front out into a tile of its own', 'with Auto-tiling on: cut from its tile along the longer side, as a new terminal is — a zsh, a page, the chat · ⌥⌘⇧T the other way, a zsh onto this tile', ['ctrlalt:KeyT']],
   ['⌃⌘←→', 'Layout', 'the tab to the left / right in this half or tile', 'its own strip alone, round from the end to the start · drag a tab onto another to move it there', ['ctrl:ArrowLeft', 'ctrl:ArrowRight']],
   ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
   ['⌥⌘B', 'Layout', 'hide the chat list, and show it again', 'the chat takes the whole width · the status bar\'s first button too', ['alt:KeyB']],
@@ -613,7 +613,7 @@ const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // tile the keys are in — never a new tile, never a split.
 // ⌃⌘ (2026-11-25): the tabs of the half or tile the keys are in, its strip alone — ⌥⌘←→ walk the tiles once tiled.
 const CTRLKEYS = { ArrowLeft: () => hotStripTab(-1), ArrowRight: () => hotStripTab(1) };
-// ⌃⌥⌘ (2026-11-25): ⌃⌥⌘T, the tab in front out into a tile of its own — with Tile new terminals on.
+// ⌃⌥⌘ (2026-11-25): ⌃⌥⌘T, the tab in front out into a tile of its own — with Auto-tiling on.
 const CTRLALTKEYS = { KeyT: hotUntab };
 // The tiles' own keys are no keys while they have nothing to do (2026-11-25): ⌘D ⇧⌘D with the setting off, ⌥⌘⇧←→ but
 // tiled — the key goes on, to a page or the browser, and the app forwards none of them (`tiles`, Keys.swift's tileKeys).

@@ -301,7 +301,7 @@ function stackSplit(s, on) {
   syncTerm(s);
   fitTerm();
 }
-// The tiles by the arrows (2026-11-25): with Tile new terminals on and the column split, ⌥⌘←→↑↓ take the keys to the
+// The tiles by the arrows (2026-11-25): with Auto-tiling on and the column split, ⌥⌘←→↑↓ take the keys to the
 // tile that way, by where the tiles stand — not their order — and ⌥⌘⇧ moves the tile itself, the rest closing over
 // the room it left. Off, or one half, they are the tabs', the list's and the pinned cards' as ever.
 const tileKeysOn = () => !!prefs.autoTile && splitNow() && state.sessions.has(state.current);
@@ -474,21 +474,21 @@ function treeFits(tree) {
     r => ((r[2] - r[0]) * b.width - 5) / cw >= TILE_MIN.cols && ((r[3] - r[1]) * b.height - 5) / ch >= TILE_MIN.rows,
   );
 }
-/** The tiles tidied (2026-11-25): groups gs as a spiral, the first along the column's longer side and on the left (or
- *  top), each next one turning clockwise into the room left — left, top, right, bottom —, every cut even. */
-function spiralTree(gs, d, k = 0) {
+/** The tiles tidied (2026-11-25): groups gs cut in turn, the first along the column's longer side, each the first
+ *  part — the left, or the top — of the room left and the rest in its second, the cuts taking turns: the bigger tiles
+ *  left and up, the smaller ones winding down to the bottom right. Every cut even. */
+function tidyTree(gs, d) {
   if (gs.length === 1) return { g: gs[0] };
-  const leaf = { g: gs[0] },
-    more = spiralTree(gs.slice(1), d === 'row' ? 'col' : 'row', k + 1);
-  return k % 4 < 2 ? { d, r: 0.5, a: leaf, b: more } : { d, r: 0.5, a: more, b: leaf };
+  return { d, r: 0.5, a: { g: gs[0] }, b: tidyTree(gs.slice(1), d === 'row' ? 'col' : 'row') };
 }
-/** Every tile of the open chat put back in a spiral, Claude's first — the left, on a wide column. Each tile keeps its
+/** Every tile of the open chat put back in order, Claude's first, then the one the keys are in, then the rest in the
+ *  tree's order (2026-11-26) — the left, on a wide column. Each tile keeps its
  *  group (its tabs, its terminal attached), the keys stay where they were; the halves of an untiled split go side by
  *  side, even. */
-function hotSpiral() {
+function hotTidy() {
   const s = state.sessions.get(state.current);
   if (!s) return noChat();
-  if (!prefs.autoTile) return note($('#shead'), 'Tiles are off — Settings › Terminal › Tile new terminals');
+  if (!prefs.autoTile) return note($('#shead'), 'Auto-tiling is off — Settings › Terminal › Auto-tiling');
   if (!isSplit(s)) return note($('#shead'), 'One tile — nothing to tidy');
   const b = $('#groups').getBoundingClientRect(),
     d = b.width >= b.height ? 'row' : 'col';
@@ -504,8 +504,9 @@ function hotSpiral() {
   }
   const gs = groupsOf(s),
     cg = gs.find(g => keysIn(s, g).includes('chat')) ?? gs[0];
-  const next = spiralTree([cg, ...gs.filter(g => g !== cg)], d);
-  if (!treeFits(next)) return note($('#shead'), `No room for ${gs.length} tiles in a spiral`);
+  const fg = gs.includes(focusG) && focusG !== cg ? [focusG] : []; // the keys' tile next: the biggest after claude's
+  const next = tidyTree([cg, ...fg, ...gs.filter(g => g !== cg && !fg.includes(g))], d);
+  if (!treeFits(next)) return note($('#shead'), `No room to tidy ${gs.length} tiles`);
   trees.set(s.id, next);
   zoomed.delete(s.id);
   applySplit();
@@ -518,7 +519,7 @@ function hotSpiral() {
 function hotSplitTile(d) {
   const s = state.sessions.get(state.current);
   if (!s) return noChat();
-  if (!prefs.autoTile) return note($('#shead'), 'Tiles are off — Settings › Terminal › Tile new terminals');
+  if (!prefs.autoTile) return note($('#shead'), 'Auto-tiling is off — Settings › Terminal › Auto-tiling');
   focusBoard();
   startShell(s, true, d);
 }

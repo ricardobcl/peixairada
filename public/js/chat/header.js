@@ -211,7 +211,7 @@ function renderHead(s) {
       ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">⌥⌘V</span></button>`
       : '',
     prefs.autoTile && isSplit(s)
-      ? `<button class="hmi" id="spiralBtn" title="Every tile back in a spiral, even cuts: Claude's on the left, the rest turning clockwise into the room left — each keeps its tabs">${ICON.spiral}<span class="lbl">tidy the tiles</span><span class="k"></span></button>`
+      ? `<button class="hmi" id="tidyBtn" title="Every tile back in order, even cuts: Claude's on the left, each next one the left or top half of the room left, so the bigger tiles sit left and up — each keeps its tabs">${ICON.tidy}<span class="lbl">tidy the tiles</span><span class="k"></span></button>`
       : '',
     // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
     shellLive(s)
@@ -350,11 +350,11 @@ function renderHead(s) {
       menu.close();
       termAction(s);
     };
-  const spb = $('#spiralBtn');
+  const spb = $('#tidyBtn');
   if (spb)
     spb.onclick = () => {
       menu.close();
-      hotSpiral();
+      hotTidy();
     };
   const cb = $('#chgBtn');
   if (cb)
