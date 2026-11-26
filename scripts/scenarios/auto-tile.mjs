@@ -216,11 +216,14 @@ export default async function (ctx) {
   await ctx.cmd('Digit2');
   await ctx.waitFor(`window.peix.state().tiles?.b.d === 'row'`, { what: 'the right side by side again' });
 
-  // across a reload: the same tree, every tile attached again
+  // across a reload: the same tree, every tile attached again, and the arrows' memory of the tiles (2026-11-26)
+  const seen = await ctx.peix('state().seen');
+  ctx.assert.ok(seen.length > 2, `the tiles the keys were in: ${seen}`);
   await ctx.reload();
   await ctx.openChat(chat.id);
   await attached(ctx, [0, 1, 2, 3]);
   ctx.assert.deepEqual(leaves(await tiles(ctx)), [0, 1, 3, 2], 'the tiles came back, as tidied');
+  ctx.assert.deepEqual(await ctx.peix('state().seen'), seen, 'which the keys were in last, as before');
 
   // ⌥⌘W on the fourth: its zsh ends, and its tile with it — the one it was cut from takes the room
   await ctx.evaluate(

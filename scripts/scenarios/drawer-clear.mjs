@@ -37,6 +37,7 @@ export default async function (ctx) {
     { split: true, stacked: true, changes: true, halves: ['chat', 'changes'] },
     `the split, its layout and the changes tab came along — ${JSON.stringify({ split: after.split, stacked: after.stacked, tabs: after.tabs, halves: after.halves })}`,
   );
+  ctx.assert.deepEqual(after.seen, before.seen, "the arrows' memory of its halves too (2026-11-26)");
   // The new chat has a card before its first word (2026-09-27): the empty chat's, first in the list by its start — the
   // moment the board saw the id, not the process's own start, which /clear keeps —, and the open one. new-chat-card.mjs
   // checks the same for ＋. The fake writes the /clear lines before the registry names the id, as Claude Code does; a

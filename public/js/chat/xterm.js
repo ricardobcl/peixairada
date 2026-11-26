@@ -524,6 +524,7 @@ window.peix = {
       ? placeOf(state.sessions.get(state.current)).map((_, g) => keysIn(state.sessions.get(state.current), g))
       : [[], []],
     tiles: trees.has(state.current) && splitNow() ? JSON.parse(JSON.stringify(trees.get(state.current))) : null,
+    seen: [...(tileSeen.get(state.current) || [])], // the arrows' memory, the keys' last tile first
     timeline: {
       k: tl.k,
       want: tl.want,
