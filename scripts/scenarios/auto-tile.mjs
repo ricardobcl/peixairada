@@ -121,6 +121,28 @@ export default async function (ctx) {
   ctx.assert.ok(Math.abs(t.r - 0.3) < 0.03, `the root at ${t.r}`);
   ctx.assert.ok(Math.abs((await box(ctx, 0)).w - all.width * 0.3) < 12, "claude's tile is 30 % of the column");
   await fits(ctx, [0, 1, 2, 3]);
+  // a divider pressed, then the window left mid-drag (2026-11-26: ⌘-Tab, a release in another app — no pointerup):
+  // the drag ends with the window's blur, and the pointer back over the board moves nothing
+  const tdiv = `document.querySelector('#groups > .tdiv[data-path=""]')`,
+    press = await ctx
+      .evaluate(`(r => JSON.stringify({ x: r.left + r.width / 2, y: r.top + 100 }))(${tdiv}.getBoundingClientRect())`)
+      .then(JSON.parse);
+  await ctx.evaluate(
+    `${tdiv}.dispatchEvent(new PointerEvent('pointerdown', { clientX: ${press.x}, clientY: ${press.y}, button: 0, bubbles: true }))`,
+  );
+  ctx.assert.equal(await ctx.evaluate(`${tdiv}.classList.contains('drag')`), true, 'the divider pressed');
+  await ctx.evaluate(`window.dispatchEvent(new Event('blur'))`);
+  await ctx.evaluate(
+    `window.dispatchEvent(new PointerEvent('pointermove', { clientX: ${Math.round(all.left + all.width * 0.6)}, clientY: ${press.y} }))`,
+  );
+  ctx.assert.equal((await tiles(ctx)).r, t.r, 'a move after the blur moves nothing');
+  ctx.assert.deepEqual(
+    await ctx
+      .evaluate(`JSON.stringify([${tdiv}.classList.contains('drag'), document.body.style.userSelect])`)
+      .then(JSON.parse),
+    [false, ''],
+    'the divider let go, text selectable again',
+  );
 
   // ··· › tidy the tiles (2026-11-25): even cuts, claude's on the left, each next the left or top half of the room
   // left, the keys' tile the first of them (2026-11-26) — the keys in 3: 3 top right, then 1 and 2 at the bottom;

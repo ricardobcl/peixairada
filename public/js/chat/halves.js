@@ -148,15 +148,18 @@ function dividersSoon() {
       n.r = near ? 0.5 : raw;
       applySplit();
     };
+    // let go however the press ends (2026-11-26): a release out of the window, or ⌘-Tab mid-drag, brings no pointerup
+    const ends = ['pointerup', 'pointercancel', 'blur'];
     const up = () => {
       removeEventListener('pointermove', move);
+      for (const ev of ends) removeEventListener(ev, up);
       d.classList.remove('drag');
       document.body.style.userSelect = '';
       keepTabsSoon();
       fitTerm();
     };
     addEventListener('pointermove', move);
-    addEventListener('pointerup', up, { once: true });
+    for (const ev of ends) addEventListener(ev, up);
   });
 }
 /** The half the keys are in fills the column, or the two come back. False with nothing split. */
