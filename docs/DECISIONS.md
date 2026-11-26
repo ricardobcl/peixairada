@@ -83,7 +83,7 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
   drag and the tidy. `prefs.autoTile` as it was, so nobody's setting moves.
 * **⌥⌘⇧ and the mouse move a whole tile** (2026-11-26: *"cmd option shift should turn the mouse into a dragger & make me
   be able to drag tiles without tabs around too"*), as i3's floating modifier does: held, with the setting on and the
-  column split, the pointer is a hand over the tiles (`body.tilegrab`); a press anywhere on a tile lifts it whole — no
+  column split, the pointer is the move cursor over the tiles (`body.tilegrab`, `cursor: move` — the four arrows, 2026-11-26: *"it should be the 4 arrow cross icon btw."*, a grab hand first); a press anywhere on a tile lifts it whole — no
   strip needed, a terminal's screen too, its own mousedown (a selection) held off by a capture-phase handler. Onto
   another tile's outer quarter it goes to that side (`tileDropTree`: out of the tree, then a split of that tile); onto
   its middle the two trade places (`swapLeaves`) — the drop zones of a tab's drag, the same `#tdrop`. Under `TILE_MIN`

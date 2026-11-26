@@ -524,7 +524,7 @@ function hotSplitTile(d) {
   startShell(s, true, d);
 }
 // A tile by the mouse (2026-11-26, i3's floating modifier): with ⌥⌘⇧ held, Auto-tiling on and the column split, the
-// pointer is a hand over the tiles (body.tilegrab) and a press anywhere on one lifts the whole tile — strip or none,
+// pointer is the move cursor over the tiles (body.tilegrab) and a press anywhere on one lifts the whole tile — strip or none,
 // a terminal's screen too, never a selection there. Dropped on another tile's outer quarter that way, it is a tile on
 // that side of it (the room it left closing up); on its middle, the two trade places. The half it would take, or the
 // tile it would swap with, is shown while held (#tdrop). Only the tree changes: every tile keeps its terminal.

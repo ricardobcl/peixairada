@@ -434,14 +434,15 @@ body.tabdrag * {
 #tdrop[hidden] {
   display: none;
 }
-/* ⌥⌘⇧ held over the tiles (2026-11-26): a hand, a terminal's own cursor too; a tile lifted, dimmed where it was */
+/* ⌥⌘⇧ held over the tiles (2026-11-26): the move cursor, the four arrows — over a terminal's own too; a tile lifted,
+   dimmed where it was */
 body.tilegrab #groups > .grp,
 body.tilegrab #groups > .grp * {
-  cursor: grab !important;
+  cursor: move !important;
 }
 body.tiledrag,
 body.tiledrag * {
-  cursor: grabbing !important;
+  cursor: move !important;
   user-select: none;
 }
 #groups > .grp.lifted {

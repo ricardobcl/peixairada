@@ -199,7 +199,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await ctx.peix('state().strips[4]'), [first], 'the tile it left as it was');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#tdrop').hidden`), true, 'the zone gone');
 
-  // ⌥⌘⇧ and the mouse (2026-11-26): held, a hand over the tiles; a press anywhere on a tile — one with no strip too —
+  // ⌥⌘⇧ and the mouse (2026-11-26): held, the move cursor over the tiles; a press anywhere on a tile — one with no strip too —
   // lifts it whole: on another's middle the two trade places, on its outer quarter it goes to that side
   const shape = () =>
     ctx.peix('state().tiles').then(n =>
@@ -213,7 +213,11 @@ export default async function (ctx) {
   await ctx.evaluate(
     `document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', key: 'Shift', ${mods} }))`,
   );
-  ctx.assert.equal(await ctx.evaluate(`document.body.classList.contains('tilegrab')`), true, '⌥⌘⇧ held: the hand');
+  ctx.assert.equal(
+    await ctx.evaluate(`document.body.classList.contains('tilegrab')`),
+    true,
+    '⌥⌘⇧ held: the move cursor',
+  );
   const mid = g =>
     ctx
       .evaluate(
@@ -274,7 +278,11 @@ export default async function (ctx) {
   await ctx.evaluate(
     `document.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft', key: 'Shift', bubbles: true }))`,
   );
-  ctx.assert.equal(await ctx.evaluate(`document.body.classList.contains('tilegrab')`), false, 'let go: the hand gone');
+  ctx.assert.equal(
+    await ctx.evaluate(`document.body.classList.contains('tilegrab')`),
+    false,
+    'let go: the cursor back',
+  );
   await ctx.shot('tile-dragged');
 
   // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
