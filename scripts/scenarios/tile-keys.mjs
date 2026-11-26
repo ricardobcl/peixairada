@@ -13,6 +13,19 @@ const box = (ctx, g) =>
       `(() => { const e = ${grp(g)}; if (!e || e.hidden) return 'null'; const r = e.getBoundingClientRect(); return JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }); })()`,
     )
     .then(JSON.parse);
+// what the room checks read (2026-11-26, tileSizes: each tile's box and body by the tree) is the tiles as laid out
+const sized = async (ctx, what) => {
+  await ctx.settle();
+  const off = await ctx
+    .evaluate(
+      `JSON.stringify(Object.entries(window.peix.tileSizes()).map(([g, z]) => { const e = document.querySelector('#groups > .grp[data-g="' + g + '"]'), r = e.getBoundingClientRect(), b = e.querySelector('.gbody').getBoundingClientRect(); return [+g, Math.max(Math.abs(z.w - r.width), Math.abs(z.h - r.height), Math.abs(z.bw - b.width), Math.abs(z.bh - b.height))]; }))`,
+    )
+    .then(JSON.parse);
+  ctx.assert.ok(
+    off.every(([, d]) => d < 1.5),
+    `${what}: the tree's sizes are the tiles' own, to a pixel (${JSON.stringify(off)})`,
+  );
+};
 const right = (a, b) => b.x >= a.x + a.w - 1,
   below = (a, b) => b.y >= a.y + a.h - 1;
 const tiles = ctx => ctx.peix('state().tiles');
@@ -152,6 +165,7 @@ export default async function (ctx) {
   ctx.assert.equal(await focus(ctx), 3, 'the keys still in it');
   const [first, added] = await ctx.peix('state().strips[3]');
   ctx.assert.equal((await ctx.peix('state().halves'))[3], added, 'the new one in front');
+  await sized(ctx, 'a tile with a strip');
   await ctx.evaluate(
     `document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'x', metaKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`,
   );

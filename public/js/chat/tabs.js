@@ -210,7 +210,7 @@ function tileTerm(s, k, cut) {
   }
   const at = gs.includes(focusG) ? focusG : gs[0],
     d = cut || (tallOf(GEL[at].grp) ? 'col' : 'row');
-  if (!roomFor(at, d)) {
+  if (!roomFor(s, at, d)) {
     if (cut)
       note(
         $('#shead'),
@@ -259,13 +259,60 @@ function tabToSide(s, k, at, side) {
   tabs.set(s.id, p);
   focusG = mine;
 }
-/** Whether half of group g's body, cut along d, holds a terminal of TILE_MIN — by the cell of a terminal drawn now. */
-function roomFor(g, d) {
-  const b = $(GEL[g].body).getBoundingClientRect(),
+/** Whether both parts of group g, cut in two along d, hold a terminal of TILE_MIN — read off the tree (tileSizes). */
+function roomFor(s, g, d) {
+  const NEW = -1; // the part to come: no group yet
+  return tilesFit(
+    s,
+    treeMap(treeOf(s), g, leaf => ({ d, r: 0.5, a: leaf, b: { g: NEW } })),
+    [g, NEW],
+  );
+}
+/** The chat's column as a tree: its tiles, its two halves, or its one. */
+const treeOf = s => (isTiled(s) ? trees.get(s.id) : isSplit(s) ? halvesTree(s) : { g: 0 });
+const TILE_GAP = 5, // #groups.tiled's gap, #gsplit's width (layout.css, sidebar.css)
+  TILE_EDGE = 2, // a tile's border, a pixel a side (sidebar.css)
+  STRIP_H = 38; // .ptabs' height, where none is drawn to read it off
+/** Each tile's box and body in px as `tree` lays out the split column (2026-11-26): #groups' content box — split, it
+ *  pads down under the floating header — cut along the tree's lines, less the gaps between tiles, each one's border,
+ *  and its strip when its tabs give it one. The tree's reading, not the boxes': zoomed, a tile's box is the column's,
+ *  and a tile to come has none. A group the chat does not show yet has no strip: a terminal alone in its tile. */
+function tileSizes(s, tree) {
+  const box = $('#groups'),
+    cs = getComputedStyle(box),
+    px = v => parseFloat(v) || 0,
+    split = isSplit(s),
+    top = split ? px(cs.paddingTop) : px($('#chat').style.getPropertyValue('--float-h')), // one half pads its tile, not #groups
+    W = box.clientWidth - (split ? px(cs.paddingLeft) + px(cs.paddingRight) : 0),
+    H = box.clientHeight - top - (split ? px(cs.paddingBottom) : 0);
+  const rects = tileRects(tree),
+    q = v => Math.round(v * 1e4),
+    lines = i => [...new Set(Object.values(rects).flatMap(r => [q(r[i]), q(r[i + 2])]))].sort((a, b) => a - b),
+    xs = lines(0),
+    ys = lines(1),
+    span = (l, a, b) => l.indexOf(q(b)) - l.indexOf(q(a)),
+    fw = W - (xs.length - 2) * TILE_GAP,
+    fh = H - (ys.length - 2) * TILE_GAP;
+  const stripH = Math.max(0, ...terms.map(t => $(t.el.tabs).offsetHeight)) || STRIP_H,
+    gs = groupsOf(s),
+    strip = g => {
+      if (!gs.includes(g)) return false;
+      const ks = keysIn(s, g);
+      return ks.length !== 1 || isPageTab(ks[0]) || isBlankTab(ks[0]); // renderTabs' .lone, the other way round
+    };
+  const out = {};
+  for (const [g, r] of Object.entries(rects)) {
+    const w = (r[2] - r[0]) * fw + (span(xs, r[0], r[2]) - 1) * TILE_GAP,
+      h = (r[3] - r[1]) * fh + (span(ys, r[1], r[3]) - 1) * TILE_GAP;
+    out[g] = { w, h, bw: w - TILE_EDGE, bh: h - TILE_EDGE - (strip(+g) ? stripH : 0) };
+  }
+  return out;
+}
+/** Whether the tiles `gs` of a tree (all of them, by default) each hold a terminal of TILE_MIN, by the cell of one drawn now. */
+function tilesFit(s, tree, gs = null) {
+  const z = tileSizes(s, tree),
     { cw, ch } = termCell();
-  const w = d === 'row' ? (b.width - 5) / 2 : b.width,
-    h = d === 'col' ? (b.height - 5) / 2 : b.height;
-  return w / cw >= TILE_MIN.cols && h / ch >= TILE_MIN.rows;
+  return (gs || Object.keys(z)).every(g => z[g].bw / cw >= TILE_MIN.cols && z[g].bh / ch >= TILE_MIN.rows);
 }
 /** A terminal's cell in px, read off a drawn terminal's screen (2026-11-26): its body is no measure — a TUI that has
  *  not filled it (claude's 14 rows in a tile of 30) made a row twice its height, and tiles that fit were refused. */
@@ -864,7 +911,7 @@ window.peixPaneOpen = (key, url) => {
       ['top', fy],
       ['bottom', 1 - fy],
     ].sort((a, b) => a[1] - b[1])[0];
-    if (near > EDGE || near < 0 || !roomFor(g, side === 'left' || side === 'right' ? 'row' : 'col')) return null;
+    if (near > EDGE || near < 0 || !roomFor(s, g, side === 'left' || side === 'right' ? 'row' : 'col')) return null;
     const half =
       side === 'left'
         ? [r.left, r.top, r.width / 2, r.height]

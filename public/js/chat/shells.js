@@ -28,7 +28,7 @@ function hotUntab() {
   const at = isSplit(s) ? focusG : 0,
     d = tallOf(GEL[at].grp) ? 'col' : 'row',
     rest = here.filter(x => x !== k);
-  if (!roomFor(at, d)) return note($('#shead'), 'No room for another tile here');
+  if (!roomFor(s, at, d)) return note($('#shead'), 'No room for another tile here');
   if (!isSplit(s)) {
     // one half: the rest stay in the first, it in the second (the chat out on its own: the chat left)
     if (d === 'col') stacked.add(s.id);

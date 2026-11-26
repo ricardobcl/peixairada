@@ -33,6 +33,19 @@ const prompt = (ctx, g) =>
     `[...document.querySelectorAll('${g ? `#termBody${g + 1}` : '#termBody'} .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`,
     { what: `a prompt in tile ${g}` },
   );
+// what the room checks read (2026-11-26, tileSizes: each tile's box and body by the tree) is the tiles as laid out
+const sized = async (ctx, what) => {
+  await ctx.settle();
+  const off = await ctx
+    .evaluate(
+      `JSON.stringify(Object.entries(window.peix.tileSizes()).map(([g, z]) => { const e = document.querySelector('#groups > .grp[data-g="' + g + '"]'), r = e.getBoundingClientRect(), b = e.querySelector('.gbody').getBoundingClientRect(); return [+g, Math.max(Math.abs(z.w - r.width), Math.abs(z.h - r.height), Math.abs(z.bw - b.width), Math.abs(z.bh - b.height))]; }))`,
+    )
+    .then(JSON.parse);
+  ctx.assert.ok(
+    off.every(([, d]) => d < 1.5),
+    `${what}: the tree's sizes are the tiles' own, to a pixel (${JSON.stringify(off)})`,
+  );
+};
 const right = (a, b) => b.x >= a.x + a.w - 1,
   below = (a, b) => b.y >= a.y + a.h - 1;
 
@@ -95,6 +108,7 @@ export default async function (ctx) {
     3,
     'a divider a split',
   );
+  await sized(ctx, 'four tiles');
   await ctx.shot('four');
 
   // ⌘2: the second tile, and the split it is half of turned side by side — the same terminals, nothing re-attached

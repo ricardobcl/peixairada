@@ -358,7 +358,7 @@ function hotTileMove(dir) {
     [, , words, edge] = TILE_DIRS[dir];
   const next = i3Move(tree, g, dir, tileSeen.get(s.id) || []);
   if (!next) return note($('#shead'), `It is the column's whole ${edge} already`);
-  if (!treeFits(next)) return note($('#shead'), `No room for it ${words}`);
+  if (!tilesFit(s, next)) return note($('#shead'), `No room for it ${words}`);
   trees.set(s.id, next);
   zoomed.delete(s.id);
   applySplit();
@@ -464,14 +464,6 @@ function i3Move(tree, g, dir, seen) {
     ];
   return fromKids(tidyKids({ d, kids: sg > 0 ? half : half.reverse() })); // none: the column's whole side, round the rest
 }
-/** Whether every tile of a tree laid out in the column holds a terminal of TILE_MIN, by a drawn terminal's cell. */
-function treeFits(tree) {
-  const b = $('#groups').getBoundingClientRect(),
-    { cw, ch } = termCell();
-  return Object.values(tileRects(tree)).every(
-    r => ((r[2] - r[0]) * b.width - 5) / cw >= TILE_MIN.cols && ((r[3] - r[1]) * b.height - 5) / ch >= TILE_MIN.rows,
-  );
-}
 /** The tiles tidied (2026-11-25): groups gs cut in turn, the first along the column's longer side, each the first
  *  part — the left, or the top — of the room left and the rest in its second, the cuts taking turns: the bigger tiles
  *  left and up, the smaller ones winding down to the bottom right. Every cut even. */
@@ -504,7 +496,7 @@ function hotTidy() {
     cg = gs.find(g => keysIn(s, g).includes('chat')) ?? gs[0];
   const fg = gs.includes(focusG) && focusG !== cg ? [focusG] : []; // the keys' tile next: the biggest after claude's
   const next = tidyTree([cg, ...fg, ...gs.filter(g => g !== cg && !fg.includes(g))], d);
-  if (!treeFits(next)) return note($('#shead'), `No room to tidy ${gs.length} tiles`);
+  if (!tilesFit(s, next)) return note($('#shead'), `No room to tidy ${gs.length} tiles`);
   trees.set(s.id, next);
   zoomed.delete(s.id);
   applySplit();
@@ -559,7 +551,7 @@ function tileDropTree(tree, g, t, side) {
     const s = state.sessions.get(state.current),
       edge = near <= 0.25 && !document.elementFromPoint(x, y).closest('.ptabs') ? side : null,
       next = edge ? tileDropTree(trees.get(s.id) || halvesTree(s), lift.g, t, edge) : null;
-    if (next && !treeFits(next)) return null;
+    if (next && !tilesFit(s, next)) return null;
     const box =
       edge === 'left'
         ? [r.left, r.top, r.width / 2, r.height]

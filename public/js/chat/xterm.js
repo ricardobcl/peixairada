@@ -548,6 +548,10 @@ window.peix = {
       eaten: swim.eaten,
     },
   }), // the bar's fish: its pace without a dart, what it has to eat (lane x)
+  tileSizes: () =>
+    state.sessions.has(state.current)
+      ? tileSizes(state.sessions.get(state.current), treeOf(state.sessions.get(state.current)))
+      : null, // each tile's box and body as the room checks read them (2026-11-26)
   spMini: tid => sp.minis.get(tid) || null, // Space's hidden xterm of a drawer asking (2026-11-24), live
   session: id => {
     const s = state.sessions.get(id || state.current);
