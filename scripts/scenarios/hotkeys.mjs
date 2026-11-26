@@ -402,7 +402,7 @@ export default async function (ctx) {
   out.groups = await ctx.evaluate(`[...document.querySelectorAll('#ksbody .kh')].map(k => k.textContent)`);
   await ctx.evaluate(`document.querySelector('#keysheet').close()`);
   ctx.assert.deepEqual(out.groups, ['Go to', 'This chat', 'Layout', 'Look', 'In the drawer', 'In a page']);
-  ctx.assert.deepEqual(out.cog.slice(0, 22), [
+  ctx.assert.deepEqual(out.cog.slice(0, 23), [
     '⌥⌘K',
     '⌥⌘L',
     '⌥⌘P',
@@ -419,6 +419,7 @@ export default async function (ctx) {
     '?',
     '⌥⌘C',
     '⌘T',
+    '⌥⌘⇧T', // a zsh on a tab where the keys are (2026-11-25)
     '⌥⌘T',
     '⌥⌘E',
     '⌥⌘V',
