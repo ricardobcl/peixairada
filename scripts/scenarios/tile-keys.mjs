@@ -358,6 +358,28 @@ export default async function (ctx) {
   );
   ctx.assert.ok(await ctx.peix('state().tab'), 'a tab where the keys are');
 
+  // tidied with Claude's tab dragged to the second half (2026-11-26): the halves trade places, Claude's on the left as
+  // the button says — two tiles, so no terminal is attached again
+  await shift('KeyT');
+  await ctx.waitFor(`window.peix.state().strips[0]?.length === 2`, { what: 'a zsh on a tab beside the chat' });
+  await ctx.settle();
+  await ctx.drag(`#groups > .grp[data-g="0"] .ptab[data-tab="chat"]`, `#groups > .grp[data-g="1"] > .gbody`);
+  await ctx.waitFor(`window.peix.state().strips[1]?.includes('chat')`, { what: "the chat's tab in the second half" });
+  await ctx.settle(); // the drop's click swallow gone (a setTimeout 0), or it takes the button's click
+  const held = await Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
+  await ctx.evaluate(`document.querySelector('#tidyBtn').click()`);
+  ctx.assert.ok(await tiles(ctx), 'the halves as two tiles, to trade places');
+  ctx.assert.equal(await shape(), JSON.stringify(['row', 1, 0]), "Claude's half first");
+  await ctx.settle();
+  ctx.assert.ok(right(await box(ctx, 1), await box(ctx, 0)), "Claude's half on the left");
+  ctx.assert.deepEqual(
+    await Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`))),
+    held,
+    'the same terminals in the same halves',
+  );
+  await ctx.cmd('Digit0');
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'one half again' });
+
   // the switch off: ⌘D and ⌥⌘⇧← are no keys of the board's (they go on, to a page or the browser), ⌥⌘↑↓ the list's
   await ctx.evaluate(`document.querySelector('#autoTile').click()`);
   ctx.assert.equal((await ctx.peix('prefs()')).autoTile, false, 'the setting is off');

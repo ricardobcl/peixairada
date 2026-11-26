@@ -479,7 +479,7 @@ function tidyTree(gs, d) {
 /** Every tile of the open chat put back in order, Claude's first, then the one the keys are in, then the rest in the
  *  tree's order (2026-11-26) — the left, on a wide column. Each tile keeps its
  *  group (its tabs, its terminal attached), the keys stay where they were; the halves of an untiled split go side by
- *  side, even. */
+ *  side, even — Claude's dragged to the second, they trade places as two tiles do (2026-11-26). */
 function hotTidy() {
   const s = state.sessions.get(state.current);
   if (!s) return noChat();
@@ -487,7 +487,7 @@ function hotTidy() {
   if (!isSplit(s)) return note($('#shead'), 'One tile — nothing to tidy');
   const b = $('#groups').getBoundingClientRect(),
     d = b.width >= b.height ? 'row' : 'col';
-  if (!isTiled(s)) {
+  if (!isTiled(s) && homeOf(s, 'chat') === 0) {
     if (d === 'row') prefs.splitAt = 0.5;
     else prefs.stackAt = 0.5;
     savePrefs();
