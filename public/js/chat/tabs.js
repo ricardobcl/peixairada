@@ -298,16 +298,13 @@ function dropLeaf(s, g) {
   unsplit(s, left || 'chat');
   focusG = 0;
 }
-/** A tile emptied — its zsh exited, its last tab dragged away — goes, as a split the board made goes with its half. */
+/** A tile emptied — its zsh exited, its last tab dragged away — goes, as a split the board made goes with its half.
+ *  Down to two tiles, they are a split's halves (2026-11-26): one asked for by hand keeps its empty half, moved or not. */
 function foldTiles(s) {
-  for (let again = true; again && isTiled(s);) {
-    again = false;
-    for (const g of groupsOf(s))
-      if (!keysIn(s, g).length) {
-        dropLeaf(s, g);
-        again = true;
-        break;
-      }
+  while (isTiled(s) && (autoSplit.has(s.id) || groupsOf(s).length > 2)) {
+    const g = groupsOf(s).find(x => !keysIn(s, x).length);
+    if (g === undefined) return;
+    dropLeaf(s, g);
   }
 }
 /** The chat tab brought forward — Esc from a page, ⌥⌘C, the focus view's row: into its own half, the left one

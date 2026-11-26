@@ -299,6 +299,21 @@ export default async function (ctx) {
 
   // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
   await ctx.openChat(other.id);
+  // ⌘2 by hand, its second half empty, the keys in it; ⌥⌘⇧← trades the halves' places (2026-11-26) — the empty one
+  // kept, as a split asked for by hand keeps it, two tiles of a tree or two halves
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().focusG === 1`, {
+    what: '⌘2: the keys in the empty half',
+  });
+  ctx.assert.deepEqual(await ctx.peix('state().halves'), ['chat', null], 'the second half empty');
+  await shift('ArrowLeft');
+  ctx.assert.equal(await ctx.peix('state().split'), true, 'still split');
+  ctx.assert.equal(await shape(), JSON.stringify(['row', 1, 0]), 'the empty half on the left now');
+  await ctx.settle();
+  ctx.assert.ok(right(await box(ctx, 1), await box(ctx, 0)), 'the chat on the right');
+  await ctx.cmd('Digit0'); // ⌘0 from the empty half: the chat's goes, the column the chat's alone again
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'one half again' });
+  ctx.assert.deepEqual(await ctx.peix('state().strips[0]'), ['chat'], 'the chat alone');
   // ⌥⌘⇧T with one half: a tab, no split
   await shift('KeyT');
   await ctx.waitFor(`window.peix.state().strips[0].length === 2`, { what: 'a zsh tab beside the chat' });
