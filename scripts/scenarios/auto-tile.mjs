@@ -129,6 +129,18 @@ export default async function (ctx) {
     `document.querySelector('#termBody4').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`,
   );
   await ctx.waitFor(`window.peix.state().focusG === 3`, { what: 'the keys in the fourth tile' });
+  // its glyph is strokes, as on the tab strip, never a square filled solid (2026-11-26)
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  await ctx.waitFor(`document.querySelector('#hmenu').open`, { what: 'the header menu' });
+  await ctx.settle();
+  await ctx.shot('tidy-row');
+  ctx.assert.deepEqual(
+    await ctx.evaluate(
+      `(s => ({ fill: s.fill, stroke: s.stroke !== 'none' }))(getComputedStyle(document.querySelector('#tidyBtn .ic')))`,
+    ),
+    { fill: 'none', stroke: true },
+  );
+  await ctx.evaluate(`document.querySelector('#hmenu').close()`);
   await ctx.evaluate(`document.querySelector('#tidyBtn').click()`);
   await ctx.waitFor(`window.peix.state().tiles?.r === .5`, { what: 'the tiles tidied' });
   ctx.assert.deepEqual(

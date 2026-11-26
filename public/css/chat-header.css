@@ -350,6 +350,13 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 } /* Top priority and snooze (2026-11-24) */
+#hmenu .hmi .ic.st {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+} /* a stroked glyph (ICON's .st: tidy the tiles, 2026-11-26), drawn as on the tab strip, not filled solid */
 #hmenu .hmi .ic.tk {
   fill: none;
   stroke: currentColor;
