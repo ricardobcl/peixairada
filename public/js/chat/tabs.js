@@ -729,7 +729,10 @@ $('#groups').addEventListener('click', e => {
   if (e.target.closest('.gclose')) return closeHalf(g);
   const s = state.sessions.get(state.current);
   if (!s) return;
-  if (e.target.closest('.gtidy')) return hotTidy();
+  if (e.target.closest('.gtidy')) {
+    focusGroup(g);
+    return hotTidy();
+  } // the tile whose ⋯ it is: the keys' tile, next after claude's
   if (e.target.closest('.gturn')) {
     if (!isTiled(s)) return stackSplit(s, !stacked.has(s.id));
     focusGroup(g);
