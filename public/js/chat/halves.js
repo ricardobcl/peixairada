@@ -8,12 +8,9 @@ function applySplit() {
   const on = splitNow(),
     stack = stackNow(),
     tree = on ? trees.get(state.current) : null;
-  if (!on) focusG = 0;
-  if (tree) {
-    const gs = leavesOf(tree);
-    ensureGroups(Math.max(...gs) + 1);
-    if (!gs.includes(focusG)) focusG = gs[0];
-  }
+  const gs = tree ? leavesOf(tree) : on ? [0, 1] : [0];
+  if (tree) ensureGroups(Math.max(...gs) + 1);
+  if (!gs.includes(focusG)) focusG = gs[0]; // a group this chat has (2026-11-26): a tile of the chat left is none of two halves'
   if (zoomed.has(state.current) && (!on || zoomed.get(state.current) !== focusG)) zoomed.delete(state.current); // the keys left the half that filled the column
   const z = zoomed.get(state.current) ?? null;
   $('#main').classList.toggle('split', on);

@@ -329,6 +329,20 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.peix('state().tiles'), null, 'still two halves');
   ctx.assert.ok(right(await box(ctx, 0), await box(ctx, 1)), 'the chat on the left');
 
+  // the keys in a tile past the halves, then a chat of two halves (2026-11-26): the keys in one of its halves, not in
+  // the tile number the other chat left — no half of this one's is it
+  await ctx.openChat(chat.id);
+  await ctx.waitFor(`window.peix.state().tiles !== null`, { what: 'the tiled chat again' });
+  await go('ArrowUp', 3, '⌥⌘↑ to the tile across the top');
+  await ctx.openChat(other.id);
+  ctx.assert.ok([0, 1].includes(await focus(ctx)), `the keys in a half of its two: ${await focus(ctx)}`);
+  ctx.assert.equal(
+    await ctx.evaluate(`document.querySelectorAll('#groups > .grp.on:not([hidden])').length`),
+    1,
+    'one half shown with the keys',
+  );
+  ctx.assert.ok(await ctx.peix('state().tab'), 'a tab where the keys are');
+
   // the switch off: ⌘D and ⌥⌘⇧← are no keys of the board's (they go on, to a page or the browser), ⌥⌘↑↓ the list's
   await ctx.evaluate(`document.querySelector('#autoTile').click()`);
   ctx.assert.equal((await ctx.peix('prefs()')).autoTile, false, 'the setting is off');
