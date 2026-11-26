@@ -60,8 +60,8 @@ extension AppDelegate {
     if held == [.command, .option, .shift] {   // Top priority's place (2026-11-24), a tile's (2026-11-25): the page's SHIFTKEYS
       if e.keyCode == 126 { return ("ArrowUp", "shift") }
       if e.keyCode == 125 { return ("ArrowDown", "shift") }
-      if tileKeys, e.keyCode == 123 { return ("ArrowLeft", "shift") }
-      if tileKeys, e.keyCode == 124 { return ("ArrowRight", "shift") }
+      if tileArrows, e.keyCode == 123 { return ("ArrowLeft", "shift") }
+      if tileArrows, e.keyCode == 124 { return ("ArrowRight", "shift") }
       if e.keyCode == 17 { return ("KeyT", "shift") }   // ⌥⌘⇧T, a zsh on a tab where the keys are
     }
     if held == [.command, .option, .control], tileKeys {   // a tab out into a tile (2026-11-25): the page's CTRLALTKEYS

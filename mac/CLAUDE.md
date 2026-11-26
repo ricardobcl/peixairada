@@ -34,6 +34,10 @@ server/update.mjs, build.sh's `SOURCE`).
   in the `ide:` views alone takes it first only when the editor part is `.content.empty` (one group, no editor), and the
   tab of the view it came from goes, by its key. An editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time.
   → `tab-keys.mjs`.
+* **Auto-tiling's keys are the forwarder's only while the page says they are live** (2026-11-25; `tiles` → `tileKeys`,
+  `tileArrows`): ⌘D ⇧⌘D ⌃⌥⌘T with the setting on, ⌥⌘⇧←→ while the column is split too (2026-11-26, the page's
+  `tileKeysOn`) — else a pane page keeps them, VS Code's column select. → `shell-checks/tile-arrows.mjs` (the probe's
+  `hotkey`).
 * **A pane page's ⌘R is a key monitor, never a menu key equivalent** (2026-10-13, in `installHotkeyForwarder`): a
   menu's takes the key first — VS Code Web's ⌘R is its own, and with no page up ⌘R goes on to whatever has the keys;
   the View menu's *Reload Page* carries none, *Reload Board* is ⌥⌘R (`reloadBoard`). Pinch zooms a page

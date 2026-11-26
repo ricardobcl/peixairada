@@ -36,8 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, WKScri
   var paneTarget: String? { paneFocus ?? paneShownKeys.first }
   static let paneViewsMax = 8
   // Auto-tiling's keys (2026-11-25) — ⌘D, ⇧⌘D, ⌥⌘⇧←→, ⌃⌥⌘T — forwarded (Keys.swift) only while the page says the
-  // setting is on (`tiles`): off, VS Code Web keeps them.
+  // setting is on (`tiles`): off, VS Code Web keeps them. ⌥⌘⇧←→ only while they move a tile, the column split too
+  // (2026-11-26, `arrows`): one half, they are VS Code's column-select.
   static var tileKeys = false
+  static var tileArrows = false
   // A press or a key of the user's in a page (2026-11-06): what a page may hand to another app follows one (PaneDelegate's
   // `gestured`). A script's click() arrives as a link clicked in the main frame — WebKit cannot tell them apart.
   var gestureAt: [ObjectIdentifier: Date] = [:]

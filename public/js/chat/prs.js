@@ -23,7 +23,6 @@ $('#zoomPick').addEventListener('change', e => {
   applyZoom();
 });
 applyZoom();
-postTiles(); // the app's forwarder takes the tiles' keys only while they are on (2026-11-25)
 // Which full screen ⌃⌘F is in the app (2026-10-14): the fill, up to the notch, or macOS's own in a Space of its own —
 // the app keeps it too, for a launch that comes back full screen before this page has loaded.
 const fsPick = () => {

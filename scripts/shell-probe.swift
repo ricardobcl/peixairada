@@ -164,6 +164,14 @@ extension AppDelegate {
       }
       let b = statusItem.button
       reply(["title": b?.title ?? "", "tip": b?.toolTip ?? "", "dim": b?.appearsDisabled ?? false, "rows": rows], nil)
+    case "hotkey":   // a key pressed on a pane page, as the forwarder reads it (2026-11-26): what it hands the board, or null
+      let named: [String: NSEvent.ModifierFlags] = ["cmd": .command, "alt": .option, "shift": .shift, "ctrl": .control]
+      let flags = (o["mods"] as? [String] ?? []).reduce(NSEvent.ModifierFlags()) { $0.union(named[$1] ?? []) }
+      let chars = o["chars"] as? String ?? ""
+      guard let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: window.windowNumber,
+                                     context: nil, characters: chars, charactersIgnoringModifiers: chars, isARepeat: false,
+                                     keyCode: UInt16(o["code"] as? Int ?? 0)) else { return reply(nil, "no such key event") }
+      if let h = AppDelegate.hotkeyCode(e) { reply([h.code, h.mods], nil) } else { reply(nil, nil) }
     case "quit": exit(0)
     default: reply(nil, "no such thing to do: \(o["do"] ?? "?")")
     }

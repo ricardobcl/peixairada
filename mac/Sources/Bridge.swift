@@ -75,8 +75,9 @@ extension AppDelegate {
     case "key":   // the lock's *Read the key again*, a new key made on the board (2026-10-16)
       logLine("key: read again\(boardKey() == nil ? " — there is no key file" : "")")
       loadBoard(reload: true)
-    case "tiles":   // Settings › Terminal › Auto-tiling (2026-11-25): whether the forwarder takes its keys
+    case "tiles":   // Settings › Terminal › Auto-tiling (2026-11-25): whether the forwarder takes its keys, ⌥⌘⇧←→ while split (2026-11-26)
       AppDelegate.tileKeys = body["on"] as? Bool ?? false
+      AppDelegate.tileArrows = body["arrows"] as? Bool ?? false
     case "zoom":   // the settings' text size (2026-10-12)
       let z = CGFloat(min(2, max(0.5, body["value"] as? Double ?? 1)))
       if z != zoom { zoom = z; web.pageZoom = z; logLine("zoom: \(z)"); tellFill(); tellPane() }

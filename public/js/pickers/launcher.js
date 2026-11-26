@@ -627,8 +627,15 @@ const keyLive = (code, mods) =>
       : mods === 'shift' && (code === 'ArrowLeft' || code === 'ArrowRight')
         ? tileKeysOn()
         : true;
+// …and the app's forwarder knows which (`tiles`, Keys.swift): `on` the setting, `arrows` ⌥⌘⇧←→ while they move a
+// tile (2026-11-26: tileKeysOn — the column split too, else a pane page keeps them). Posted on a change of either,
+// from applySplit — every change of split or chat goes through it — and the switch.
 const postTiles = () => {
-  if (inApp) post({ type: 'tiles', on: !!prefs.autoTile });
+  const on = !!prefs.autoTile,
+    arrows = tileKeysOn();
+  if (!inApp || (postTiles.on === on && postTiles.arrows === arrows)) return;
+  Object.assign(postTiles, { on, arrows });
+  post({ type: 'tiles', on, arrows });
 };
 const SHIFTKEYS = {
   KeyT: hotTabHere,
