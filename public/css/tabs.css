@@ -434,6 +434,19 @@ body.tabdrag * {
 #tdrop[hidden] {
   display: none;
 }
+/* ⌥⌘⇧ held over the tiles (2026-11-26): a hand, a terminal's own cursor too; a tile lifted, dimmed where it was */
+body.tilegrab #groups > .grp,
+body.tilegrab #groups > .grp * {
+  cursor: grab !important;
+}
+body.tiledrag,
+body.tiledrag * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+#groups > .grp.lifted {
+  opacity: 0.55;
+}
 .grp.drop > .ptabs {
   background: color-mix(in srgb, var(--accent) 16%, var(--panel));
   box-shadow: inset 0 0 0 1px var(--accent);

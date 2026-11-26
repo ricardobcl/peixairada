@@ -725,9 +725,10 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   A tab that exists is `openTab()`, never a split. A split the board made (`autoSplit`) folds back on its
   own when the chat is down to one tab (`syncTerm`).
 * **Auto-tiling** (2026-11-25; `prefs.autoTile`, off): a zsh or vim fills an empty tile, else cuts the
-  keys' along its long side (`tileTerm`, `TILE_MIN`). Past two, a tree (`trees`; `tileLayout`, `ensureGroups`); gone (`foldTiles`, ⨯ `closeTile`): tabs and
-  keys to its sibling's nearest (`backOf`); ⌘1 ⌘2 by tree order, ⌥ turns it; ⌥⌘ arrows by place
-  (`hotTileGo`), ⌥⌘⇧ moves as i3 (`i3Move`), ⌘D ⇧⌘D cut a way (`hotSplitTile`); ⌃⌘←→ a strip's tabs, ⌥⌘⇧T one in, ⌃⌥⌘T or a drag to an edge out (`hotUntab`, `tabToSide`); ··· tidies (`hotTidy`). → `auto-tile.mjs`, `tile-keys.mjs`.
+  keys' along its long side (`tileTerm`, `TILE_MIN`). A tree (`trees`; `tileLayout`, `ensureGroups`); gone (`foldTiles`,
+  `closeTile`), its keys to `backOf`; ⌘1 ⌘2 by tree order; ⌥⌘ arrows by place (`hotTileGo`), ⌥⌘⇧ as i3 (`i3Move`), ⌘D
+  ⇧⌘D (`hotSplitTile`); ⌃⌘←→ a strip, ⌥⌘⇧T a tab in, ⌃⌥⌘T or a drag to an edge out (`hotUntab`, `tabToSide`), ⌥⌘⇧ and a
+  drag a tile (`tileDropTree`); ··· tidies (`hotTidy`). → `auto-tile.mjs`, `tile-keys.mjs`.
 * **A tab lives in exactly one half, and split, each strip lists only its own**: one transcript element, one xterm
   per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other right
   (`homeOf`) — written only for a tab **dragged across** (`moveTab`; a press under 5 px is a click) and forgotten

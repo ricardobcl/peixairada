@@ -199,6 +199,84 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await ctx.peix('state().strips[4]'), [first], 'the tile it left as it was');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#tdrop').hidden`), true, 'the zone gone');
 
+  // ⌥⌘⇧ and the mouse (2026-11-26): held, a hand over the tiles; a press anywhere on a tile — one with no strip too —
+  // lifts it whole: on another's middle the two trade places, on its outer quarter it goes to that side
+  const shape = () =>
+    ctx.peix('state().tiles').then(n =>
+      JSON.stringify(
+        (function s(x) {
+          return 'g' in x ? x.g : [x.d, s(x.a), s(x.b)];
+        })(n),
+      ),
+    );
+  const mods = 'metaKey: true, altKey: true, shiftKey: true, bubbles: true, cancelable: true, composed: true';
+  await ctx.evaluate(
+    `document.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', key: 'Shift', ${mods} }))`,
+  );
+  ctx.assert.equal(await ctx.evaluate(`document.body.classList.contains('tilegrab')`), true, '⌥⌘⇧ held: the hand');
+  const mid = g =>
+    ctx
+      .evaluate(
+        `(r => JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, l: r.left, t: r.top }))(document.querySelector('#groups > .grp[data-g="${g}"]').getBoundingClientRect())`,
+      )
+      .then(JSON.parse);
+  const tileDrag = async (g, at, look) => {
+    const a = await mid(g);
+    await ctx.evaluate(
+      `document.querySelector('#groups > .grp[data-g="${g}"] .gbody').dispatchEvent(new PointerEvent('pointerdown', { clientX: ${a.x}, clientY: ${a.y}, button: 0, ${mods} }))`,
+    );
+    for (const f of [0.3, 0.7, 1])
+      await ctx.evaluate(
+        `document.dispatchEvent(new PointerEvent('pointermove', { clientX: ${a.x + (at.x - a.x) * f}, clientY: ${a.y + (at.y - a.y) * f}, ${mods} }))`,
+      );
+    const seen = await ctx.evaluate(`(z => z.hidden ? null : z.dataset.side)(document.querySelector('#tdrop'))`);
+    await ctx.evaluate(
+      `document.dispatchEvent(new PointerEvent('pointerup', { clientX: ${at.x}, clientY: ${at.y}, ${mods} }))`,
+    );
+    ctx.assert.equal(seen, look, `in flight: ${look}`);
+  };
+  const was = await shape();
+  ctx.assert.equal(
+    was,
+    JSON.stringify(['col', ['row', 3, 4], ['row', ['col', 0, 5], ['col', 1, 2]]]),
+    `before: ${was}`,
+  );
+  ctx.assert.equal(
+    (await ctx.evaluate(`document.querySelector('#groups > .grp[data-g="5"]').classList.contains('lone')`)) ||
+      (await ctx.peix('state().strips[5]')).length === 1,
+    true,
+    'tile 5 has one tab',
+  );
+  await tileDrag(5, await mid(1), 'swap');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().tiles).includes('"a":{"g":0},"b":{"g":1}')`, {
+    what: '5 and 1 traded places',
+  });
+  ctx.assert.equal(
+    await shape(),
+    JSON.stringify(['col', ['row', 3, 4], ['row', ['col', 0, 1], ['col', 5, 2]]]),
+    'swapped',
+  );
+  ctx.assert.equal(await focus(ctx), 5, 'the keys with the tile moved');
+  const two = await mid(2);
+  await tileDrag(4, { x: two.l + two.w - 8, y: two.y }, 'right');
+  await ctx.waitFor(`!JSON.stringify(window.peix.state().tiles).includes('"a":{"g":3},"b":{"g":4}')`, {
+    what: '4 moved',
+  });
+  ctx.assert.equal(
+    await shape(),
+    JSON.stringify(['col', 3, ['row', ['col', 0, 1], ['col', 5, ['row', 2, 4]]]]),
+    '4 at the right of 2, 3 the whole top',
+  );
+  ctx.assert.ok(
+    (await Promise.all([1, 2, 3, 4, 5].map(g => ctx.peix(`term(${g}).ws`)))).every(w => w === 1),
+    'every tile still attached',
+  );
+  await ctx.evaluate(
+    `document.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft', key: 'Shift', bubbles: true }))`,
+  );
+  ctx.assert.equal(await ctx.evaluate(`document.body.classList.contains('tilegrab')`), false, 'let go: the hand gone');
+  await ctx.shot('tile-dragged');
+
   // ⇧⌘D from the other chat's one half: its first split one over the other, though the column is wide
   await ctx.openChat(other.id);
   // ⌥⌘⇧T with one half: a tab, no split

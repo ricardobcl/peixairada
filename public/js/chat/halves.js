@@ -523,6 +523,138 @@ function hotSplitTile(d) {
   focusBoard();
   startShell(s, true, d);
 }
+// A tile by the mouse (2026-11-26, i3's floating modifier): with ⌥⌘⇧ held, Auto-tiling on and the column split, the
+// pointer is a hand over the tiles (body.tilegrab) and a press anywhere on one lifts the whole tile — strip or none,
+// a terminal's screen too, never a selection there. Dropped on another tile's outer quarter that way, it is a tile on
+// that side of it (the room it left closing up); on its middle, the two trade places. The half it would take, or the
+// tile it would swap with, is shown while held (#tdrop). Only the tree changes: every tile keeps its terminal.
+const swapLeaves = (n, a, b) =>
+  'g' in n
+    ? n.g === a
+      ? { g: b }
+      : n.g === b
+        ? { g: a }
+        : n
+    : { ...n, a: swapLeaves(n.a, a, b), b: swapLeaves(n.b, a, b) };
+/** The tree with tile g dropped on tile t: at its `side`, a split of t with g there; none, the two swapped. */
+function tileDropTree(tree, g, t, side) {
+  if (!side) return swapLeaves(tree, g, t);
+  const rest = treeMap(tree, g, () => null),
+    d = side === 'left' || side === 'right' ? 'row' : 'col',
+    before = side === 'left' || side === 'top';
+  return treeMap(rest, t, leaf => (before ? { d, r: 0.5, a: { g }, b: leaf } : { d, r: 0.5, a: leaf, b: { g } }));
+}
+{
+  const grabbing = e => !!(e.metaKey && e.altKey && e.shiftKey && !e.ctrlKey) && tileKeysOn();
+  const grabSync = e => document.body.classList.toggle('tilegrab', grabbing(e));
+  for (const ev of ['keydown', 'keyup']) window.addEventListener(ev, grabSync, true);
+  window.addEventListener('blur', () => document.body.classList.remove('tilegrab'));
+  let lift = null;
+  const zoneEl = () =>
+    $('#tdrop') ||
+    document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tdrop', hidden: true }));
+  /** Where a tile held at (x, y) would go: the tile under it, and a side of it or none (a swap); null over its own. */
+  const dropAt = (x, y) => {
+    const grp = document.elementFromPoint(x, y)?.closest('#groups > .grp');
+    if (!grp || grp.hidden || +grp.dataset.g === lift.g) return null;
+    const t = +grp.dataset.g,
+      r = grp.getBoundingClientRect(),
+      fx = (x - r.left) / r.width,
+      fy = (y - r.top) / r.height;
+    const [side, near] = [
+      ['left', fx],
+      ['right', 1 - fx],
+      ['top', fy],
+      ['bottom', 1 - fy],
+    ].sort((a, b) => a[1] - b[1])[0];
+    const s = state.sessions.get(state.current),
+      edge = near <= 0.25 ? side : null,
+      next = tileDropTree(trees.get(s.id) || halvesTree(s), lift.g, t, edge);
+    if (!treeFits(next)) return null;
+    const box =
+      edge === 'left'
+        ? [r.left, r.top, r.width / 2, r.height]
+        : edge === 'right'
+          ? [r.left + r.width / 2, r.top, r.width / 2, r.height]
+          : edge === 'top'
+            ? [r.left, r.top, r.width, r.height / 2]
+            : edge === 'bottom'
+              ? [r.left, r.top + r.height / 2, r.width, r.height / 2]
+              : [r.left, r.top, r.width, r.height];
+    return { t, side: edge || 'swap', next, box };
+  };
+  const show = z => {
+    const el = zoneEl();
+    el.hidden = !z;
+    if (!z) return;
+    Object.assign(el.style, {
+      left: z.box[0] + 'px',
+      top: z.box[1] + 'px',
+      width: z.box[2] + 'px',
+      height: z.box[3] + 'px',
+    });
+    el.dataset.side = z.side;
+  };
+  const end = () => {
+    if (!lift) return;
+    if (GEL[lift.g]) $(GEL[lift.g].grp).classList.remove('lifted');
+    document.body.classList.remove('tiledrag');
+    show(null);
+    lift = null;
+  };
+  // capture: before a terminal's own mousedown, which would start a selection
+  $('#groups').addEventListener(
+    'pointerdown',
+    e => {
+      if (e.button !== 0 || !grabbing(e) || e.target.closest('.tdiv')) return;
+      const grp = e.target.closest('#groups > .grp');
+      if (!grp) return;
+      e.preventDefault();
+      e.stopPropagation();
+      lift = { g: +grp.dataset.g, x: e.clientX, y: e.clientY, moved: false, zone: null };
+      focusGroup(lift.g);
+    },
+    true,
+  );
+  $('#groups').addEventListener(
+    'mousedown',
+    e => {
+      if (!lift && !grabbing(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true,
+  );
+  window.addEventListener('pointermove', e => {
+    if (!lift) return grabSync(e);
+    if (!lift.moved) {
+      if (Math.hypot(e.clientX - lift.x, e.clientY - lift.y) < 5) return;
+      lift.moved = true;
+      $(GEL[lift.g].grp).classList.add('lifted');
+      document.body.classList.add('tiledrag');
+    }
+    lift.zone = dropAt(e.clientX, e.clientY);
+    show(lift.zone);
+  });
+  window.addEventListener('pointerup', () => {
+    if (!lift) return;
+    const { g, zone: z } = lift,
+      s = state.sessions.get(state.current);
+    end();
+    if (!z || !s) return;
+    haptic('generic');
+    trees.set(s.id, z.next);
+    zoomed.delete(s.id);
+    focusG = g;
+    applySplit();
+    syncTerm(s);
+    fitTerm();
+    focusBoard();
+    focusTerm();
+  });
+  window.addEventListener('pointercancel', end);
+  window.addEventListener('blur', end);
+}
 applySplit();
 {
   const bar = $('#gsplit');

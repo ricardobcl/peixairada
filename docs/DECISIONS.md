@@ -81,6 +81,14 @@ longer side but the chat's own side-by-side / stacked, the one ⌘2 / ⌥⌘2 an
 * **Named Auto-tiling** (2026-11-26: *"rebrand the settings toggle to Auto-tiling, saying its i3 inspired etc."*):
   the switch was *Tile new terminals*; its line now says it is i3's and its autotiling's, and names the keys, the
   drag and the tidy. `prefs.autoTile` as it was, so nobody's setting moves.
+* **⌥⌘⇧ and the mouse move a whole tile** (2026-11-26: *"cmd option shift should turn the mouse into a dragger & make me
+  be able to drag tiles without tabs around too"*), as i3's floating modifier does: held, with the setting on and the
+  column split, the pointer is a hand over the tiles (`body.tilegrab`); a press anywhere on a tile lifts it whole — no
+  strip needed, a terminal's screen too, its own mousedown (a selection) held off by a capture-phase handler. Onto
+  another tile's outer quarter it goes to that side (`tileDropTree`: out of the tree, then a split of that tile); onto
+  its middle the two trade places (`swapLeaves`) — the drop zones of a tab's drag, the same `#tdrop`. Under `TILE_MIN`
+  anywhere, no zone and no drop. In the app a web page in a tile is a native view, so a press on it is the page's: such
+  a tile is lifted by its strip.
 * **A tab dragged to a tile's edge** (2026-11-26: *"yes add the dragging too."*): the outer quarter of a tile's body
   that way — not its strip, which is the tile as ever — is a tile of its own on that side (`tabToSide`, `cutTile`,
   `tileTerm`'s cut made general), the half it would take shown while held there (`#tdrop`); the middle drops into
