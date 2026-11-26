@@ -725,7 +725,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   A tab that exists is `openTab()`, never a split. A split the board made (`autoSplit`) folds back on its
   own when the chat is down to one tab (`syncTerm`).
 * **Auto-tiling** (2026-11-25; `prefs.autoTile`, off): a zsh or vim fills an empty tile, else cuts the
-  keys' along its long side (`tileTerm`, `TILE_MIN`). A tree (`trees`; `tileLayout`, `ensureGroups`); gone (`foldTiles`,
+  keys' along its long side (`tileTerm`, `TILE_MIN` by `tileSizes`). A tree (`trees`; `tileLayout`, `ensureGroups`); gone (`foldTiles`,
   `closeTile`), its keys to `backOf`; ⌘1 ⌘2 by tree order; ⌥⌘ arrows by place (`hotTileGo`), ⌥⌘⇧ as i3 (`i3Move`), ⌘D
   ⇧⌘D (`hotSplitTile`); ⌃⌘←→ a strip, ⌥⌘⇧T a tab in, ⌃⌥⌘T or a drag to an edge out (`hotUntab`, `tabToSide`), ⌥⌘⇧ and a
   drag a tile (`tileDropTree`); ··· tidies (`hotTidy`). → `auto-tile.mjs`, `tile-keys.mjs`.

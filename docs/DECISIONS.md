@@ -2,8 +2,35 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-25. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-26. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-26 — Auto-tiling, after its review
+
+A review of the branch found three bugs and six smaller faults; the ask: *"fix them on the branch"*. A commit each,
+each with a step of a scenario (or the shell's check) that fails on the code before it.
+
+* **The keys in a half of the chat opened** (`applySplit`): the keys are always in a group the chat shows — its
+  tiles, its two halves, its one. A chat of two plain halves kept the group number the chat before left, and tile 3
+  is none of its halves: no half had the keys, ⌘W closed the split, ⌥⌘⇧T started a zsh no strip listed.
+* **A split made by hand keeps its empty half, moved or not** (`foldTiles`): down to two tiles, a tree is a split's two
+  halves, and only a split the board made (`autoSplit`) folds an empty one. ⌥⌘⇧← from ⌘2's empty half turned the halves
+  into a tree and folded it at once. Past two tiles, an emptied tile goes as before, a hand-made split's too.
+* **A tile's room is read off the tree** (`tileSizes`, `tilesFit`; `roomFor` and the old `treeFits` through it):
+  #groups' content box — split, it pads under the floating header —, the grid's gaps between tracks, a pixel of border
+  a side, and the strip a tile's tabs give it. The whole box and 5 px a tile read a 453 px tile as 474. The harness
+  holds the numbers to the tiles as laid out, to a pixel (`peix.tileSizes`).
+* **A zoomed tile is cut by its own shape** (`tallTile`): the zoomed box is the column's, so a tall, narrow tile was
+  cut side by side. The cut drops the zoom; its direction and room are the tile's own.
+* **Tidy puts Claude's half on the left**: two halves with the chat's tab dragged to the second take the tree's path,
+  two tiles, Claude's first — the halves trade places, no terminal attached again.
+* **A divider's drag ends on pointercancel and the window's blur**, as the tab and tile drags do: a release the page
+  never hears (⌘-Tab mid-drag) left every later move resizing the split.
+* **The arrows' memory** (`tileSeen`) is pruned with the snapshot, carried across a /clear and kept across a reload,
+  as the other per-chat maps are (`state().seen`).
+* **⌥⌘⇧←→ stay a pane page's on one half** (`tiles`' `arrows` → `tileArrows`): the app took them whenever the setting
+  was on, the page dropped them unless split, and VS Code Web's column select did nothing. → `shell-checks/tile-arrows.mjs`.
+* **`tileKeys` lives in `AppDelegate.swift`**, with the class's other stored properties (mac/CLAUDE.md).
 
 ## Decisions of 2026-11-25, latest — every new terminal a tile
 
