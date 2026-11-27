@@ -196,4 +196,12 @@ test("bound past loopback, only an address, a loopback name or this Mac's name i
   assert.ok(loop(req({ host: '192.168.1.5:7331' })), 'on loopback, an address is no Host');
   assert.ok(loop(req({ host: `${me}:7331` })), "…nor this Mac's name");
   assert.equal(loop(req({ host: 'localhost:7331' })), null);
+  // the server's own port, and http (2026-11-27)
+  assert.ok(loop(req({ host: '127.0.0.1:7332' })), "a Host with another port is not this server's");
+  assert.ok(loop(req({ host: '127.0.0.1' })), '…nor one with none: that is 80');
+  assert.ok(
+    loop(req({ host: '127.0.0.1:7331', origin: 'https://127.0.0.1:7331' })),
+    'an https Origin is no page of its',
+  );
+  assert.equal(foreignTo('127.0.0.1', 80)(req({ host: '127.0.0.1' })), null, 'on 80, a Host with no port is it');
 });

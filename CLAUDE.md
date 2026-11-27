@@ -112,13 +112,13 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **A module per concern** (2026-11-25): `server/env.mjs` imports none, first; no module reads another's binding at
   load; another's `let` is set by its `setX`; a route joins its group in `routes/` (`ROUTES` the order).
 * **Only the board's own page may ask** (2026-09-27): every route and the terminal upgrade refuse a request whose
-  Origin is not this server's or whose Host is not a loopback name (`foreign()`); no Origin passes (curl, the app, the
-  tests), a `null` one is nobody's. With no Origin (an `<img>`, a navigation) `Sec-Fetch-Site` must be `same-origin`
-  or `none` when sent — a tab's navigation to `/` aside (`Sec-Fetch-Dest` `document`). **`/` is served under
-  `pageCsp`** (2026-11-06): inline scripts by hash at serve time, connections and images as listed, `frame-ancestors
-  'none'`; a violation fails a scenario (`meta.csp: false` reads its own), a new remote host goes into it
-  (`page-load.test.mjs`). Bound past loopback, the Host must be an address, a loopback name or this Mac's
-  (`foreignTo`), and no Origin is only for this Mac. → `origin.test.mjs`.
+  Origin is not this server's (http, 2026-11-27) or whose Host is not a loopback name at its port (`foreign()`); no
+  Origin passes (curl, the app, the tests), a `null` one is nobody's. With no Origin (an `<img>`, a navigation)
+  `Sec-Fetch-Site` must be `same-origin` or `none` when sent — a tab's navigation to `/` aside (`Sec-Fetch-Dest`
+  `document`). **`/` is served under `pageCsp`** (2026-11-06): inline scripts by hash at serve time, connections and
+  images as listed, `frame-ancestors 'none'`; a violation fails a scenario (`meta.csp: false` reads its own), a new
+  remote host goes in it (`page-load.test.mjs`). Bound past loopback, the Host is an address, a loopback name or
+  this Mac's (`foreignTo`); no Origin only for this Mac. → `origin.test.mjs`.
 * **Every route but the page wants the board's key** (2026-10-16; `keyWant`, `KEY_OPEN`): `<state dir>/key`, 0600, as
   `x-peix-key` (`api()`) or `?key=` (the stream, a socket); the app injects it (`giveKey` → `PEIX_KEY`), a browser
   trades a ticket on a tab the server opens (`/api/key/open`, on osascript's stdin; `keyTicket` → `localStorage`, never a
@@ -168,12 +168,13 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (a cancel a 409); `AWAKE_ADMIN` `sudo` · `osascript` · `none` (tests). **The lid's setting is the system's**, never
   kept: `readPower` reads `pmset -g` (`POWER_POLL_MS`; `idleSleep`, `power`); the cup muted with nothing to hold off
   (`cupMoot`, `cupTip`). → `awake.test.mjs`, `keep-awake.mjs`.
-* **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
-  `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
-  is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
-  origin when a PR's diff or a worktree is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint (`planUsage`), Jira
-  once the setup names a site (`jiraAsk`; `GET /api/jira` says only where its token is), GitHub's REST API for the
-  chat (and GIF hosts), Instagram and `claude -p` for lunch, VS Code's update service, and Homebrew when Zed is picked and missing.
+* **Every CLI the server shells out to goes through `findBin()`** — `git` too; ssh-keygen is `/usr/bin`'s (2026-11-27)
+  — the app's server has a bare PATH; `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none
+  was found. The agent's PATH is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's
+  diff), `git` to a checkout's origin when a PR's diff or a worktree is asked (`GIT_TERMINAL_PROMPT=0`), the usage
+  endpoint (`planUsage`), Jira once the setup names a site (`jiraAsk`; `GET /api/jira` says only where its token is),
+  GitHub's REST API for the chat (and GIF hosts), Instagram and `claude -p` for lunch, VS Code's update service,
+  Homebrew when Zed is picked and missing.
 * **VS Code Web wants the board's token** (2026-10-16; `vsweb-token` in the state folder, 0600): the page gets it from
   `POST /api/vscode-web` and opens `?tkn=` (`vswebAt`), traded by serve-web for its cookie; one on the port the board
   did not start, serving without it, is refused, and no look carries the token unless its listener, asked just before,
@@ -648,13 +649,13 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   at its path, the repo there, on the chat's `gitBranch` — here, else origin's, else anew from the main ahead —; a
   branch out in another tree is that tree. Any other folder gone in a checkout starts in the nearest one left. → `worktrees.test.mjs`, `folders.test.mjs`, `resume-worktree.mjs`.
 * **The settings are one modal dialog** (`#settings`): ⌘, (`CMDKEYS.Comma`; in the app the menu's *Settings…* asks
-  `peixKey`), the header's ··· row (`#settingsBtn`) and the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
+  `peixKey`), the header's ··· row (`#settingsBtn`), the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
   rewrites the header). **A sidebar of panes and a search box** (2026-10-16; `settingsTab`, `prefs.settingsPane`;
   `settingsAt(pane, row)` opens on a row, lit): `#sq` has the keys on open, `settingsFind` hides what does not match
   (`.nomatch`) and marks it (`::highlight(sfind)`), Esc lets a search go first. **A setting is a `.srow.set`** (`.sl`
   and its control) in a `.sgrp` (`.sgh`, `.slist`, `.sgf`); a dependent `.sub`, `.off` with the reason, never hidden;
-  `data-kw` feeds search. → `settings-panes.mjs`. The class is `pop`: rows keep `.pop …` rules. Close it before a
-  hotkey (the scenarios do); `close` drops a setup row half typed.
+  `data-kw` feeds search. → `settings-panes.mjs`. The class is `pop`. Close it before a hotkey (the scenarios do);
+  `close` drops a setup row half typed.
 * **Every `pre` in the transcript is inside a `.codebox`** (`md()`): the bar (language, copy) is its first child; a
   block over six lines is always folded, `details.codefold > summary + .codebox`. A rule that reaches a `pre` goes
   through the box; the copy click is delegated on `#log`.
@@ -692,11 +693,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The trackpad bumps** (`haptic(kind)`): a splitter snapping (`SNAP_PX`), a tab dropped across, the timeline's thumb
   crossing a run; in a browser, `haptic:<kind>` in `motion()`.
 * **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply or a chat back
-  *Reply… · Done · In an hour* (Reply… with a drawer here), a question *In 15 minutes* (the banner again), the rest *In an
-  hour* — the chat snoozed by the page (`peixSnooze`, 2026-11-24). Reply… and Done go to the page
-  (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; for its alert's turn alone, `at`, and
-  not while it asks — refused, a banner, `unsent`; `window.peixDone`: `tickDone` where `canTick`); the alert says if a
-  drawer runs here (`drawer`); lunch's, `peixLunch`; *Mute this chat*, `peixMute`. → `notify-actions.mjs`.
+  *Reply… · Done · In an hour* (Reply… with a drawer here), a question *In 15 minutes* (the banner again), the rest *In
+  an hour*, the chat snoozed by the page (`peixSnooze`). Reply… and Done go to the page (`window.peixReply`: the chat's
+  drawer, else one opened for it, sending no size; for its alert's turn alone, `at`, not while it asks — refused, a
+  banner, `unsent`; `window.peixDone`: `tickDone` where `canTick`); the alert says if a drawer runs here (`drawer`);
+  lunch's, `peixLunch`; *Mute this chat*, `peixMute`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
   `pageZoom`, and the shell turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.

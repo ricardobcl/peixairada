@@ -18,7 +18,9 @@ import { HOST, PORT } from './env.mjs';
 // used: it has to be an address, a loopback name or this Mac's own name (2026-10-14: any name passed, so a name rebound
 // to the Mac's address was the board's own page again), the Origin must name that same host, and no Origin is only for
 // a client on this Mac (2026-10-14: under HOST 0.0.0.0 alone before) — the LAN reached every route before. A client on
-// the LAN that sends an Origin naming the Host is a browser there, and passes: nothing here tells it from a curl.
+// the LAN that sends an Origin naming the Host is a browser there, and passes: nothing here tells it from a curl. The
+// Host's port is the server's and an Origin's scheme http (2026-11-27, an outside audit's notes): neither could differ
+// through a browser today, and the gate holds by itself.
 /** Why a request to a server bound to `bind` on `port` is not the board's own page's asking, or null. Pure but for
  *  this Mac's name and addresses — exported for the tests, which ask it from the LAN. */
 export function foreignTo(bind, port) {
@@ -28,6 +30,7 @@ export function foreignTo(bind, port) {
     const hostPort = String(req.headers.host || '').toLowerCase(),
       host = hostPort.replace(/:\d+$/, '');
     if (host && !loopback.has(host) && !(open && (IP_HOST.test(host) || ownName(host)))) return `host ${host}`;
+    if (host && (/:(\d+)$/.exec(hostPort)?.[1] || '80') !== String(port)) return `host ${hostPort}`;
     const site = req.headers['sec-fetch-site'];
     const dest = req.headers['sec-fetch-dest']; // a navigation of a tab, not of another site's frame (2026-10-14)
     if (
@@ -50,8 +53,9 @@ export function foreignTo(bind, port) {
     } catch {
       return `origin ${origin}`;
     }
-    const p = o.port || (o.protocol === 'https:' ? '443' : '80');
-    if ((open ? o.host !== hostPort : !loopback.has(o.hostname)) || p !== String(port)) return `origin ${origin}`;
+    const p = o.port || '80';
+    if (o.protocol !== 'http:' || (open ? o.host !== hostPort : !loopback.has(o.hostname)) || p !== String(port))
+      return `origin ${origin}`;
     return null;
   };
 }

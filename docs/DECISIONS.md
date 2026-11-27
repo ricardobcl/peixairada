@@ -100,6 +100,10 @@ verdicts: *"fix everything"*. One commit each:
   U+2066–2069 and their kin, so a line typed for you to read and send could read otherwise than what it sent; a line
   or paragraph separator (U+2028, U+2029) went as is. The marks go now, the separators are line breaks, and a dropped
   file whose name has one is refused as a control character is. `typed-text.mjs`.
+* **The request gate by itself** (hardening notes): on loopback the Host's port was stripped and never compared, and
+  an Origin's scheme was not asked (`https://127.0.0.1:7331` passed). Neither can differ through a browser today — the
+  name must be loopback's, and one port serves one scheme —, but the gate should hold without that: the Host's port is
+  the server's (none is 80), and an Origin is http.
 
 ## Decisions of 2026-11-27 — make install, make update
 
