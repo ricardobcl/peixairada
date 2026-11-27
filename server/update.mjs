@@ -19,6 +19,7 @@ import { basename, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { CHANGELOG, notesBetween, verCmp } from '../lib/changelog.mjs';
 import { versionFrom } from '../lib/version.mjs';
 import { execFileP, PKG, ROOT, STATE_FILE } from './env.mjs';
 import { canRun, findBin } from './bins.mjs';
@@ -32,6 +33,7 @@ import {
   setAppBuild,
   setUpdateHeld,
   setUpdateLast,
+  updateChannel,
   updateHeld,
   updateLast,
 } from './state.mjs';
@@ -49,12 +51,20 @@ import { cleanEnv } from './terminals/terms.mjs';
 // leave it as far behind, and that is said and rebuilt alone. Before any of that the new page is compiled and the new
 // server started on a spare port (lib/testserver.mjs): one that does not come up is undone (`git reset --keep`) and its
 // commit held back until a newer one comes. Only the agent looks by itself; a server run by hand, or a test's, looks when
-// asked (`POST /api/update`). Knobs: UPDATE_DIR (the checkout), UPDATE_QUIET_MS, UPDATE_RESTART_BIN / UPDATE_BUILD_BIN /
-// NPM_BIN, what is run to restart, rebuild and install, and BOARD_APP, the installed app (the tests' stand-ins).
+// asked (`POST /api/update`). What it follows (2026-11-27, Settings › Updates' *Follow*): `releases`, the default — the
+// newest release past the one HEAD is on, a release being the signed commit that sets package.json's version, its notes in
+// CHANGELOG.md (lib/changelog.mjs; scripts/release.mjs cuts one) — or `main`, the upstream's tip, every commit. Knobs:
+// UPDATE_DIR (the checkout), UPDATE_QUIET_MS, UPDATE_CHANNEL (the default of a board that never picked), UPDATE_RESTART_BIN
+// / UPDATE_BUILD_BIN / NPM_BIN, what is run to restart, rebuild and install, and BOARD_APP, the installed app (the tests'
+// stand-ins).
 const UNDER_AGENT = process.env.XPC_SERVICE_NAME === 'net.peixairada.server' && process.ppid === 1; // launchd's own child, not a server started from a drawer (whose environment is the agent's)
 export const UPDATE_EVERY_MS = Number(process.env.UPDATE_EVERY_MS ?? (UNDER_AGENT ? 30 * 60_000 : 0));
 const UPDATE_QUIET_MS = Number(process.env.UPDATE_QUIET_MS ?? 2 * 60_000);
 const UPDATE_DIR = process.env.UPDATE_DIR || ROOT;
+export const CHANNELS = ['releases', 'main'];
+const CHANNEL_DEFAULT = CHANNELS.includes(process.env.UPDATE_CHANNEL) ? process.env.UPDATE_CHANNEL : 'releases';
+/** What this board follows: the one picked, else the default (2026-11-27). */
+export const channelNow = () => updateChannel || CHANNEL_DEFAULT;
 export const APP_DIR = process.env.BOARD_APP || '/Applications/peixAIrada.app'; // the installed app (BOARD_APP: the tests' stand-in)
 export const APP_LOOK_MS = Number(process.env.APP_LOOK_MS || 60_000); // how often the installed app, and the code this server runs (2026-11-25), are held against the checkout (lookApp)
 const restartBin = process.env.UPDATE_RESTART_BIN || (UNDER_AGENT ? join(UPDATE_DIR, 'scripts', 'launchd.sh') : '');
@@ -134,6 +144,8 @@ export const updateState = () => {
   const { remote, merge, ...u } = upd;
   return {
     on: autoUpdate,
+    channel: channelNow(),
+    running: u.checkout ? u.written : PKG.version, // the release this board's code is on: HEAD's package.json as written; else its own
     every: UPDATE_EVERY_MS,
     quiet: UPDATE_QUIET_MS,
     dir: tildePath(UPDATE_DIR),
@@ -210,6 +222,11 @@ export async function readCheckout() {
     commits: [],
     rewritten: false,
     fresh: 0,
+    written: null,
+    tip: null,
+    past: 0,
+    release: null,
+    notes: [],
   };
   // the board's version at that commit (2026-10-21, lib/version.mjs): counted once per HEAD
   if (co.head === upd.head && upd.version) co.version = upd.version;
@@ -227,13 +244,14 @@ export async function readCheckout() {
         git,
       )) || null;
   }
+  co.written = await writtenAt('HEAD');
   co.branch = await gitIn(['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => null);
   if (!co.branch) return co;
   co.remote = await gitIn(['config', `branch.${co.branch}.remote`]).catch(() => null);
   co.merge = await gitIn(['config', `branch.${co.branch}.merge`]).catch(() => null);
   co.upstream = await gitIn(['rev-parse', '--abbrev-ref', '@{u}']).catch(() => null);
   if (!co.upstream) return co;
-  co.up = await gitIn(['rev-parse', '@{u}']);
+  co.up = co.tip = await gitIn(['rev-parse', '@{u}']);
   [co.ahead, co.behind] = (await gitIn(['rev-list', '--left-right', '--count', 'HEAD...@{u}']))
     .split(/\s+/)
     .map(Number);
@@ -243,19 +261,42 @@ export async function readCheckout() {
   co.dirty = changed.length;
   co.changed = changed.slice(0, CHANGED_MAX);
   if (co.ahead && co.behind) co.rewritten = await rewrittenHere();
+  // what this board would take (2026-11-27): on `main` the tip; on `releases` the newest release past HEAD's, and the
+  // commits the tip has past it are `past` — none to take, behind is none
+  let to = '@{u}';
+  if (co.behind) {
+    const rel = await newestRelease(co);
+    co.release = rel?.version || null;
+    if (channelNow() === 'releases') {
+      const count = async range => Number(await gitIn(['rev-list', '--count', range]).catch(() => 0)) || 0;
+      if (rel) {
+        to = co.up = rel.sha;
+        co.past = await count(`${rel.sha}..@{u}`);
+        co.behind = await count(`HEAD..${rel.sha}`);
+      } else {
+        [co.past, co.behind, co.up, co.rewritten] = [co.behind, 0, co.head, false];
+      }
+    }
+  }
   if (changed.length && co.behind && (!co.ahead || co.rewritten)) {
-    const theirs = new Set(await names('HEAD', '@{u}'));
+    const theirs = new Set(await names('HEAD', to));
     co.clash = changed.filter(f => theirs.has(f));
   }
   if (co.rewritten)
     co.fresh =
       Number(
-        await gitIn(['rev-list', '--count', '--cherry-pick', '--right-only', 'HEAD...@{u}']).catch(() => co.behind),
+        await gitIn(['rev-list', '--count', '--cherry-pick', '--right-only', `HEAD...${to}`]).catch(() => co.behind),
       ) || 0;
   if (co.behind) {
     co.sign = await signedBy(co.up);
+    // the notes of every release it brings, newest first — from the changelog as that commit has it
+    co.notes = notesBetween(
+      await gitIn(['show', `${to}:${CHANGELOG}`]).catch(() => ''),
+      co.written,
+      await writtenAt(to),
+    );
     co.commits = (
-      await gitIn(['log', '-n', String(COMMITS_SAID), '--format=%h%x1f%an%x1f%s', 'HEAD..@{u}']).catch(() => '')
+      await gitIn(['log', '-n', String(COMMITS_SAID), '--format=%h%x1f%an%x1f%s', `HEAD..${to}`]).catch(() => '')
     )
       .split('\n')
       .filter(Boolean)
@@ -273,9 +314,9 @@ export async function readCheckout() {
 // the tip instead of a fast-forward, as signed as any update must be (signedBy), never over a change here the new
 // history changes too (`clash`). A commit of this checkout's own among them: diverged, as ever.
 const REWRITTEN = '.github/rewritten';
-async function rewrittenHere() {
+async function rewrittenHere(ref = '@{u}') {
   const list = new Set(
-    (await gitIn(['show', `@{u}:${REWRITTEN}`]).catch(() => ''))
+    (await gitIn(['show', `${ref}:${REWRITTEN}`]).catch(() => ''))
       .split('\n')
       .map(l => l.trim())
       .filter(l => /^[0-9a-f]{40}$/.test(l)),
@@ -283,6 +324,49 @@ async function rewrittenHere() {
   if (!list.size) return false;
   const mine = (await gitIn(['rev-list', '@{u}..HEAD']).catch(() => '')).split('\n').filter(Boolean);
   return mine.length > 0 && mine.every(c => list.has(c));
+}
+/** package.json's version as a commit has it written (`0.2.0`), or null. */
+async function writtenAt(ref) {
+  try {
+    const v = JSON.parse(await gitIn(['show', `${ref}:package.json`])).version;
+    return typeof v === 'string' ? v : null;
+  } catch {
+    return null;
+  }
+}
+// A release (2026-11-27) is the commit that sets package.json's version — newer than the one HEAD is on, and another
+// than its parent's: a commit that touches a line naming "version" and leaves the version be is none. Signed, as every
+// commit a board takes must be (signedBy). On a rewritten history only a release that has the rewrite in it, whose
+// REWRITTEN names every commit here, so that nothing here is lost moving onto it.
+const RELEASES_LOOKED = 60; // the commits that touched such a line, newest first, looked at for one
+async function newestRelease(co) {
+  const shas = (await gitIn(['log', '--format=%H', '-G"version"', 'HEAD..@{u}', '--', 'package.json']).catch(() => ''))
+    .split('\n')
+    .filter(Boolean)
+    .slice(0, RELEASES_LOOKED);
+  for (const sha of shas) {
+    const version = await writtenAt(sha);
+    if (!version || verCmp(version, co.written) <= 0 || version === (await writtenAt(`${sha}^`))) continue;
+    if (co.rewritten && !(await rewrittenHere(sha))) continue;
+    return { sha, version };
+  }
+  return null;
+}
+/** The notes of the releases after `since` up to the one on disk (2026-11-27; `GET /api/update/notes`): What's new reads
+ *  them once a board is on a release its page has not shown — whoever moved it there, the board, `make update` or a pull. */
+export function releaseNotes(since) {
+  const read = f => {
+    try {
+      return readFileSync(join(UPDATE_DIR, f), 'utf8');
+    } catch {
+      return '';
+    }
+  };
+  let running = null;
+  try {
+    running = JSON.parse(read('package.json')).version || null;
+  } catch {}
+  return { running, notes: running ? notesBetween(read(CHANGELOG), since, running) : [] };
 }
 // Only a commit the board's keys signed is taken (2026-11-06). An update runs what it pulls — npm, the pre-flight, a
 // restart, the app rebuilt and signed with the user's own identity — so push access to the upstream was code on every
@@ -529,7 +613,16 @@ async function applyUpdate() {
     throw new Error(`${to.slice(0, 7)} was not kept: ${e.message}${undo}`, { cause: e });
   }
   setUpdateHeld(null);
-  setUpdateLast({ at: new Date().toISOString(), from, to, count, parts, ...(rewritten && { rewritten: true }) });
+  const release = verCmp(upd.release, upd.written) > 0 ? upd.release : null; // the newest release it brought, if any (2026-11-27)
+  setUpdateLast({
+    at: new Date().toISOString(),
+    from,
+    to,
+    count,
+    parts,
+    ...(release && { release }),
+    ...(rewritten && { rewritten: true }),
+  });
   saveState();
   Object.assign(upd, await readCheckout(), { why: 'current' });
   upd.app = await readApp();

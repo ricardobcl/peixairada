@@ -115,6 +115,7 @@ export const meta = {
     UPDATE_QUIET_MS: '0',
     UPDATE_BUILD_BIN: build,
     BOARD_APP: app,
+    UPDATE_CHANNEL: 'main', // every commit: the stories here are a tip's (releases: release-notes.mjs)
   },
 };
 

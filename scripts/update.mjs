@@ -4,10 +4,12 @@
 // commits changed started again (the packages, the server, the app). Its steps are said as they come, then where it ended
 // — up to date, updated, or why not and what clears the way —, and it waits out the server's restart and the app's
 // rebuild. Nothing answering, it says so and pulls nothing: a pull by hand takes any tip, signed or not, and is yours to run.
-// PORT (7331) and STATE_FILE (the key beside it) as scripts/board.sh has them. Exit 0: up to date or updated.
+// On releases (2026-11-27, the board's default) what it takes is the newest release, and the notes of what it took are
+// printed after. PORT (7331) and STATE_FILE (the key beside it) as scripts/board.sh has them. Exit 0: up to date or updated.
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { relName } from '../lib/changelog.mjs';
 
 const PORT = process.env.PORT || '7331';
 const STATE = process.env.STATE_FILE || join(homedir(), 'Library', 'Application Support', 'peixAIrada', 'state.json');
@@ -39,10 +41,10 @@ const BY_HAND =
   'git pull --ff-only && npm ci && scripts/launchd.sh restart (and mac/build.sh install when mac/ changed)';
 
 /** The updater's state, or with a body its answer to *Update now*. `null`: nothing answers on the port. */
-async function ask(body) {
+async function ask(body, path = '/api/update') {
   let r;
   try {
-    r = await fetch(`http://127.0.0.1:${PORT}/api/update`, {
+    r = await fetch(`http://127.0.0.1:${PORT}${path}`, {
       method: body ? 'POST' : 'GET',
       headers: { 'x-peix-key': key(), ...(body && { 'content-type': 'application/json' }) },
       body: body && JSON.stringify(body),
@@ -77,7 +79,10 @@ if (st.checkout === false)
   stop(
     `the board on :${PORT} runs from no git checkout — the app's own server: quit and reopen peixAIrada, so the login agent takes the port, then make update again`,
   );
-console.log(`peixAIrada in ${st.dir}${st.upstream ? `, from ${st.upstream}` : ''}`);
+console.log(
+  `peixAIrada in ${st.dir}${st.upstream ? `, from ${st.upstream}` : ''}${st.channel === 'main' ? ', every commit' : ', its releases'}`,
+);
+const before = st.running; // the release it is on: the notes printed after are those past it
 
 // the steps as they come: the answer is the state once the pull, the packages and the pre-flight are done
 const asked = Date.now();
@@ -108,19 +113,25 @@ if (!st) stop(`the board went away while it updated — scripts/launchd.sh logs 
 const took = st.last && st.last.to === st.head && Date.parse(st.last.at) >= asked;
 if (st.failed) stop(`not updated: ${st.failed}`);
 if (st.error) stop(`could not look at ${st.upstream || 'the remote'}: ${st.error}`);
-if (took)
+// what came: the release's name, if one did, and after it its notes
+const news = st.channel === 'releases' && st.release ? `${relName(st.release)}` : many(st.behind, 'new commit');
+if (took) {
   console.log(
-    `updated ${sha(st.last.from)} → ${sha(st.last.to)}, ${many(st.last.count, 'commit')}${st.last.parts.length ? `: ${and(st.last.parts.map(p => PARTS[p]))}` : ', nothing to start again'}`,
+    `updated ${sha(st.last.from)} → ${sha(st.last.to)}${st.last.release ? `, to ${relName(st.last.release)}` : ''}, ${many(st.last.count, 'commit')}${st.last.parts.length ? `: ${and(st.last.parts.map(p => PARTS[p]))}` : ', nothing to start again'}`,
   );
-else {
+} else {
   const up = st.upstream || 'the remote';
   const why = {
-    current: st.ahead ? `${sha(st.head)} is ${many(st.ahead, 'commit')} ahead of ${up} — nothing to pull` : null,
+    current: st.ahead
+      ? `${sha(st.head)} is ${many(st.ahead, 'commit')} ahead of ${up} — nothing to pull`
+      : st.channel === 'releases' && st.past
+        ? `${st.running ? `on ${relName(st.running)}, the newest release` : 'no release yet'} — ${up} has ${many(st.past, 'commit')} past it, which Settings › Updates › Follow: Every commit takes`
+        : null,
     detached: 'the checkout is on no branch — nothing to follow',
     'no-upstream': `${st.branch} follows no remote branch — nothing to pull`,
     diverged: `this checkout and ${up} have each moved on, ${st.ahead} here and ${st.behind} there — not pulled: git pull --rebase in ${st.dir} puts the ones here on top`,
-    unsigned: `${many(st.behind, 'new commit')} on ${up}, not taken: ${sha(st.up)} ${st.sign?.why || 'is not signed'} — an update takes only a tip a key in .github/allowed_signers signed`,
-    changes: `${many(st.behind, 'new commit')} on ${up}, not pulled: ${and(st.clash || [])} changed here, and the new commits change ${them(st.clash)} too — commit or discard ${them(st.clash)}, then make update again`,
+    unsigned: `${news} on ${up}, not taken: ${sha(st.up)} ${st.sign?.why || 'is not signed'} — an update takes only a tip a key in .github/allowed_signers signed`,
+    changes: `${news} on ${up}, not pulled: ${and(st.clash || [])} changed here, and the new commits change ${them(st.clash)} too — commit or discard ${them(st.clash)}, then make update again`,
     held: `${sha(st.held?.to)} was not kept: ${st.held?.why || 'it did not start'}`,
   }[st.why];
   if (why === undefined) stop(`not updated (${st.why})`);
@@ -167,3 +178,10 @@ if (st.app?.behind && !st.building && !(rebuilt() && st.build.ok))
       ? `the app is behind mac/, not rebuilt over ${many(st.app.changes, 'change')} to it here`
       : 'the app is behind mac/: mac/build.sh install',
   );
+// the notes of the releases it took (2026-11-27), as CHANGELOG.md has them — asked of the server that is back
+if (took && st.last?.release) {
+  const notes =
+    (await ask(null, `/api/update/notes?since=${encodeURIComponent(before || '0.0.0')}`).catch(() => null))?.notes ||
+    [];
+  for (const n of notes) console.log(`\n## ${relName(n.version)}${n.title ? ` — ${n.title}` : ''}\n\n${n.md}`);
+}

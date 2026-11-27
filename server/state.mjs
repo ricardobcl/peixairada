@@ -112,13 +112,18 @@ export function setAwakeOn(v) {
 // The board's own code, kept up to date from its checkout (2026-10-12; see checkUpdate): the switch (off: the new commits
 // are said, not taken — 2026-10-13), the last update made (`updated`: {at, from, to, count, parts}), a commit held back
 // because it did not start here ({to, why, at}) and the app's last rebuild by the board (`appBuild`: {pid, at, source,
-// done, ok, why} — 2026-10-14, the update's own `build` before).
+// done, ok, why} — 2026-10-14, the update's own `build` before); and what it follows (2026-11-27, `updateChannel`):
+// `releases` or `main`, every commit — null, never picked, the server's default (UPDATE_CHANNEL, else releases).
 export let autoUpdate = false,
   updateLast = null,
   updateHeld = null,
-  appBuild = null;
+  appBuild = null,
+  updateChannel = null;
 export function setAutoUpdate(v) {
   autoUpdate = v;
+}
+export function setUpdateChannel(v) {
+  updateChannel = v;
 }
 export function setUpdateLast(v) {
   updateLast = v;
@@ -233,6 +238,7 @@ export function loadState() {
     updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
     updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
     appBuild = st.appBuild && typeof st.appBuild === 'object' ? st.appBuild : null;
+    updateChannel = ['releases', 'main'].includes(st.updateChannel) ? st.updateChannel : null;
     worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
     peacockMoved = typeof st.peacockMoved === 'string' ? st.peacockMoved : null;
     keyEnforced = st.keyEnforced === true;
@@ -295,6 +301,7 @@ export function saveState() {
         updated: updateLast,
         updateHeld,
         appBuild,
+        updateChannel,
         worktrees: worktreesMade,
         peacockMoved,
         keyEnforced,

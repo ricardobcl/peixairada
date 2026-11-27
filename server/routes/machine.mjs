@@ -1,22 +1,39 @@
 // Routes: the board's own code, the machine, keeping it awake, the plan's usage.
 import { awakeState, keepAwake, readPower, setLid } from '../awake.mjs';
 import { json, jsonBody, NEXT } from '../http.mjs';
-import { autoUpdate, saveState, setAutoUpdate } from '../state.mjs';
+import { autoUpdate, saveState, setAutoUpdate, setUpdateChannel } from '../state.mjs';
 import { machineStats } from '../stats.mjs';
-import { checkUpdate, sayUpdate, UPDATE_EVERY_MS, updateState } from '../update.mjs';
+import {
+  CHANNELS,
+  channelNow,
+  checkUpdate,
+  releaseNotes,
+  sayUpdate,
+  UPDATE_EVERY_MS,
+  updateState,
+} from '../update.mjs';
 import { planUsage } from '../usage.mjs';
 
 /** The board's own code, the machine's numbers, keeping it awake. */
 export async function machineRoutes(req, res, url, p) {
   // The board's own code (2026-10-12, checkUpdate): where it stands; the switch; look now — and, `apply`, update now
   if (req.method === 'GET' && p === '/api/update') return json(res, 200, updateState());
+  // the notes of the releases after `since`, up to the one on disk (2026-11-27): What's new's, once a board is on a newer one
+  if (req.method === 'GET' && p === '/api/update/notes')
+    return json(res, 200, releaseNotes(url.searchParams.get('since') || '0.0.0'));
   if (req.method === 'PUT' && p === '/api/update') {
-    const body = await jsonBody(req);
-    if (typeof body.on !== 'boolean') return json(res, 400, { error: 'expected {on: true|false}' });
-    setAutoUpdate(body.on);
+    // {on}: the switch; {channel}: what it follows (2026-11-27) — the checkout read again against it
+    const body = await jsonBody(req),
+      on = typeof body.on === 'boolean',
+      chan = CHANNELS.includes(body.channel);
+    if (!on && !chan) return json(res, 400, { error: `expected {on: true|false} or {channel: ${CHANNELS.join('|')}}` });
+    const moved = chan && body.channel !== channelNow();
+    if (on) setAutoUpdate(body.on);
+    if (chan) setUpdateChannel(body.channel);
     saveState();
+    if (moved) return json(res, 200, await checkUpdate());
     sayUpdate();
-    if (autoUpdate && UPDATE_EVERY_MS > 0) checkUpdate(); // on again: what came while it was off, once the board rests
+    if (on && autoUpdate && UPDATE_EVERY_MS > 0) checkUpdate(); // on again: what came while it was off, once the board rests
     return json(res, 200, updateState());
   }
   if (req.method === 'POST' && p === '/api/update') {

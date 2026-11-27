@@ -33,7 +33,11 @@ test(
     try {
       let r = await make();
       assert.equal(r.code, 0, r.out);
-      assert.match(r.out, /^peixAIrada in .*co, from origin\/main$/m, 'which checkout, and what it follows');
+      assert.match(
+        r.out,
+        /^peixAIrada in .*co, from origin\/main, every commit$/m,
+        'which checkout, and what it follows',
+      );
       assert.match(r.out, /^up to date · [0-9a-f]{7}/m);
 
       // a page: pulled, no switch needed (*Update now* is the switch), nothing restarted

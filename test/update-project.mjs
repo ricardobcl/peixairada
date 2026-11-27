@@ -4,7 +4,8 @@
 // them); the restart, the app's build and npm stand-ins that write down what they were asked; the installed app a folder
 // with an Info.plist, stamped as build.sh does. Every commit is signed by the project's own key, which its
 // .github/allowed_signers names (2026-11-06: the server takes only a signed tip); `push(…, { sign })` signs with another
-// key, or `false` not at all.
+// key, or `false` not at all. Its server follows every commit (UPDATE_CHANNEL main): the stories before releases (2026-11-27)
+// are a tip's; `release(version)` cuts one, for test/update-release.test.mjs.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -110,6 +111,7 @@ export function project() {
     UPDATE_BUILD_BIN: build,
     NPM_BIN: stand('npm'),
     BOARD_APP: app,
+    UPDATE_CHANNEL: 'main',
   };
   /** a commit on origin, as from someone else's machine; its sha */
   const push = (files, msg = 'a change', { sign = signer } = {}) => {
@@ -118,6 +120,20 @@ export function project() {
     gitSigned(sign, dev, 'commit', '-q', '-m', msg);
     git(dev, 'push', '-q');
     return git(dev, 'rev-parse', 'HEAD');
+  };
+  /** a release on origin (2026-11-27), as scripts/release.mjs cuts one: package.json's version set and its notes at the
+   *  top of CHANGELOG.md, in one commit; its sha */
+  const release = (version, notes = `### New\n\n- what ${version} brings\n`, opts) => {
+    const log = join(dev, 'CHANGELOG.md'),
+      older = existsSync(log) ? readFileSync(log, 'utf8').replace(/^# Changelog\n+/, '') : '';
+    return push(
+      {
+        'package.json': `{ "name": "tiny", "version": "${version}" }\n`,
+        'CHANGELOG.md': `# Changelog\n\n## ${version} — 27 November 2026\n\n${notes}\n${older}`,
+      },
+      `Release ${version}`,
+      opts,
+    );
   };
   const head = () => git(co, 'rev-parse', 'HEAD');
   const asked = () => (existsSync(marks) ? readFileSync(marks, 'utf8').trim().split('\n') : []);
@@ -136,6 +152,7 @@ export function project() {
     git,
     write,
     push,
+    release,
     commit,
     head,
     asked,
