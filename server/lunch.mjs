@@ -1,8 +1,8 @@
 // Lunch (2026-10-18): the reminder, and the menus of the places you go — each picture read by claude -p.
-import { mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { spawn } from 'node:child_process';
-import { ROOT, STATE_FILE } from './env.mjs';
+import { CLAUDE_DIR, ROOT, STATE_FILE } from './env.mjs';
 import { claudeBin } from './bins.mjs';
 import { json, jsonBody } from './http.mjs';
 import { nativeNotify } from './notify.mjs';
@@ -270,8 +270,10 @@ const whenSaid = (t, time = true) =>
 const READ_ASK = `Is it this restaurant's lunch menu — a menu of the day, an executive menu, a week's or a month's lunch menu? A dish's advert, an event, a promotion or opening hours are not.
 If it is: kind is "day" for one day's menu, "week" for several days, "month" for a month's dishes with no day to each. days lists each day it covers: its date as YYYY-MM-DD (the year is the post's) when one is written or follows from the post's own date, else null; the weekday as written (sun, mon, tue, wed, thu, fri, sat) or null; and that day's dishes exactly as written, one item per dish, starters, soups and desserts included, in the order shown. A "day" card with no date written has date null. price as written, or null.
 Whatever it is: closed is a closure it announces — {from, to} as YYYY-MM-DD — or null.`;
-// The Slack connector's tools that write — denied by name too, beside dontAsk (2026-11-06).
+// The Slack connector's tools that write — denied by name too, beside dontAsk (2026-11-06; its list comments 2026-11-27).
 const SLACK_WRITES = [
+  'slack_add_list_comment',
+  'slack_update_list_comment',
   'slack_send_message',
   'slack_send_message_draft',
   'slack_schedule_message',
@@ -290,8 +292,9 @@ const SLACK_WRITES = [
  *  channel —, so it may do nothing but read (2026-11-06): `--tools ''` drops only the built-in tools, and the Slack
  *  read comes up with the user's settings, every connector with them (Slack's send, Jira's edit…) and the user's
  *  own default mode (`auto` lets a classifier approve what it calls). So every reader is `--permission-mode dontAsk`
- *  — what no allow rule names is denied, never asked — and the Slack one denies that connector's writes by name. */
-export function readerArgs({ schema, tools = null, model = 'haiku' }) {
+ *  — what no allow rule names is denied, never asked — and the Slack one denies that connector's writes by name, and
+ *  whatever the user's own allow rules name besides (`deny`, readerDenies). */
+export function readerArgs({ schema, tools = null, model = 'haiku', deny = [] }) {
   return [
     '-p',
     '--no-session-persistence',
@@ -307,11 +310,60 @@ export function readerArgs({ schema, tools = null, model = 'haiku' }) {
     '--permission-mode',
     'dontAsk',
     ...(tools
-      ? ['--allowedTools', tools.join(','), '--disallowedTools', SLACK_WRITES.join(',')]
+      ? ['--allowedTools', tools.join(','), '--disallowedTools', [...new Set([...SLACK_WRITES, ...deny])].join(',')]
       : ['--strict-mcp-config', '--setting-sources', 'project']),
     '--tools',
     '',
   ];
+}
+// The user's allow rules come with the Slack reader (2026-11-27, the external audit's lead 4): dontAsk runs what a rule
+// allows, so `mcp__notion__create_page` in ~/.claude/settings.json was the reader's to call on a coworker's post's say
+// (proved in the real-CLI lab: a stand-in server's tool, allowed by the user, was called). `--setting-sources project`
+// would drop them, and maybe the claude.ai connectors the reader needs with them. So every server an allow rule names,
+// in every scope a reader reads, is denied by name — deny beats allow —, and a rule of Slack's that is not one of its
+// reads; a rule naming every server (`mcp__*`, `*`) cannot be undone that way, and no reader runs under it.
+const MANAGED_SETTINGS = '/Library/Application Support/ClaudeCode';
+const allowRules = file => {
+  try {
+    const a = JSON.parse(readFileSync(file, 'utf8'))?.permissions?.allow;
+    return Array.isArray(a) ? a.filter(r => typeof r === 'string') : [];
+  } catch {
+    return [];
+  } // none, or none to read
+};
+export function readerDenies({
+  configDir = process.env.CLAUDE_CONFIG_DIR || CLAUDE_DIR,
+  cwd = LUNCH_WORK,
+  managed = MANAGED_SETTINGS,
+} = {}) {
+  let dropIns = [];
+  try {
+    dropIns = readdirSync(join(managed, 'managed-settings.d'))
+      .filter(f => f.endsWith('.json'))
+      .map(f => join(managed, 'managed-settings.d', f));
+  } catch {}
+  const files = [
+    join(configDir, 'settings.json'),
+    join(configDir, 'settings.local.json'),
+    join(cwd, '.claude', 'settings.json'),
+    join(cwd, '.claude', 'settings.local.json'),
+    join(managed, 'managed-settings.json'),
+    ...dropIns,
+  ];
+  const deny = new Set();
+  for (const r of files.flatMap(allowRules)) {
+    const rule = r.trim(),
+      m = /^mcp__(.+?)(?:__(.*))?$/.exec(rule);
+    if (rule === '*' || m?.[1].includes('*'))
+      throw new Error(
+        `an allow rule of yours names MCP servers by a pattern (${rule}) — the Slack reader would have them all`,
+      );
+    if (!m) continue; // a built-in's: --tools '' has none
+    const [, server, tool] = m;
+    if (server !== 'claude_ai_Slack') deny.add(`mcp__${server}`);
+    else if (tool && !tool.includes('*') && !SLACK_READ.includes(rule)) deny.add(rule);
+  }
+  return [...deny];
 }
 /** One reader: a claude -p in LUNCH_WORK, the content (text, and pictures as base64) on stdin as one stream-json
  *  message, its structured answer back. `tools`: the connector's tools it may use (the Slack read), with the user's
@@ -326,7 +378,12 @@ function runReader({ content, schema, tools = null, timeout = 120_000 }) {
     } catch (e) {
       return reject(e);
     }
-    const args = readerArgs({ schema, tools, model: lunchCfg()?.model || 'haiku' });
+    let args;
+    try {
+      args = readerArgs({ schema, tools, model: lunchCfg()?.model || 'haiku', deny: tools ? readerDenies() : [] });
+    } catch (e) {
+      return reject(e);
+    }
     let child;
     try {
       child = spawn(bin, args, { cwd: LUNCH_WORK, env: drawerEnv(), stdio: ['pipe', 'pipe', 'pipe'] });

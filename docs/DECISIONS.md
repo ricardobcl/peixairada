@@ -24,6 +24,15 @@ verdicts: *"fix everything"*. One commit each:
   actions) and a note. A chat that starts asking takes back its delivered reply banners. The fake claude has the dialog
   (`/permission`). Ask Claude on a PR and an agent's Stop, typed unsent, go the same way; the overview's and Space's
   answers to a question are yours, and stay keys.
+* **The Slack lunch reader could call any MCP tool you had allowed** (lead 4, proved; not on this Mac, whose 154 allow
+  rules name no MCP tool). `--permission-mode dontAsk` runs what an allow rule allows, and the reader comes up with the
+  user's settings and connectors, as it must for Slack's own: in the lab a stand-in server's tool, allowed in the
+  user's settings, was called on a post's say. `--setting-sources project` dropped it, but it dropped the user's MCP
+  servers too, and the claude.ai connector the reader needs may go with them — untestable at no cost. So
+  `readerDenies` reads the allow rules of every scope a reader reads (the user's, its folder's, the managed ones) and
+  denies each server they name, by name — deny beats allow, and the denied tool is not even offered —, and a Slack
+  rule that is not one of the reader's reads; a rule naming servers by a pattern (`mcp__*`, `mcp__claude_ai_*`) cannot
+  be undone that way, so under one no reader runs, and the run says why. Slack's list comments joined its writes.
 
 ## Decisions of 2026-11-27 — make install, make update
 

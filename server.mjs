@@ -34,7 +34,7 @@ export { driftOf, headOf, noteHead, settleDrift } from './server/drift.mjs';
 export { folderBack, putBack } from './server/folders.mjs';
 export { noteTickets, ticketsIn } from './server/jira.mjs';
 export { handoffText } from './server/links.mjs';
-export { cleanLunch, closedOn, dayKey, dishesOn, lunchPhase, readerArgs } from './server/lunch.mjs';
+export { cleanLunch, closedOn, dayKey, dishesOn, lunchPhase, readerArgs, readerDenies } from './server/lunch.mjs';
 export { foreignTo } from './server/origin.mjs';
 export { prActs, prAlertChat, takeActs } from './server/prs/acts.mjs';
 export { ciEvent, logEvents, noteRounds, prEvents, roundsOf } from './server/prs/ledger.mjs';

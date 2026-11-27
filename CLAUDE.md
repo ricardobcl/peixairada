@@ -242,10 +242,10 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   reader's `<repo>-files`, `filesKeep`), fetched server-side (`picUrl`). No repo: invitations every
   `CHAT_INVITES_MS`, not at boot; `chatPlaces`. One GitHub hides is `missing`. → `chat.test.mjs`.
 * **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places not `settled`
-  (a month's dishes are not, 2026-10-20), the profile logged out (`lib/instagram.mjs`; **never logged in**,
-  2026-11-23), the Slack channel at `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's
-  `dishesOn`'s; **a reader is no chat** (`ownReader`) **and only reads** (2026-11-06; `readerArgs`: `dontAsk`, Slack's writes denied); alert kind `lunch`.
-  → `lunch.test.mjs`.
+  (a month's dishes are not), the profile logged out (`lib/instagram.mjs`), the Slack channel at `LUNCH_SLACKS`; **each
+  picture read once by `claude -p`** (`runReader`, `reads.json`), today's `dishesOn`'s; **a reader is no chat**
+  (`ownReader`) **and only reads** (2026-11-06; `readerArgs`: `dontAsk`, Slack's writes denied, and every server your
+  allow rules name, 2026-11-27, `readerDenies`); alert kind `lunch`. → `lunch.test.mjs`.
 
 ## The board
 

@@ -15,7 +15,7 @@ process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
 process.env.NOTIFY = 'off';
-const { cleanSetup, lunchPhase, dishesOn, closedOn, dayKey, readerArgs } = await import('../server.mjs');
+const { cleanSetup, lunchPhase, dishesOn, closedOn, dayKey, readerArgs, readerDenies } = await import('../server.mjs');
 
 const DAY = 86_400_000;
 const at = (h, m = 0, from = Date.now()) => new Date(from).setHours(h, m, 0, 0);
@@ -33,6 +33,54 @@ test("readerArgs: a reader may only read — dontAsk always, the Slack one denie
   assert.equal(val(slack, '--allowedTools'), 'mcp__claude_ai_Slack__slack_read_channel');
   assert.match(val(slack, '--disallowedTools'), /mcp__claude_ai_Slack__slack_send_message(,|$)/);
   assert.ok(!val(slack, '--disallowedTools').includes('read'), 'no read denied');
+});
+
+test("readerDenies: every MCP server the user's allow rules name is the Slack reader's to deny, and Slack's rules but its reads; a pattern over servers runs no reader (2026-11-27)", () => {
+  const root = tmpDir('peix-rules-'),
+    configDir = join(root, 'config'),
+    cwd = join(root, 'work'),
+    managed = join(root, 'managed');
+  const rules = (file, allow) => {
+    mkdirSync(join(file, '..'), { recursive: true });
+    writeFileSync(file, JSON.stringify({ permissions: { allow } }));
+  };
+  rules(join(configDir, 'settings.json'), [
+    'Bash(git status)',
+    'mcp__notion__create_page',
+    'mcp__claude_ai_Slack__slack_send_message',
+    'mcp__claude_ai_Slack__slack_read_channel',
+    'mcp__claude_ai_Slack__slack_read_user_profile',
+    'mcp__claude_ai_Slack',
+    'mcp__github',
+  ]);
+  rules(join(configDir, 'settings.local.json'), ['mcp__jira__editJiraIssue']);
+  rules(join(cwd, '.claude', 'settings.json'), ['mcp__gmail__send']);
+  rules(join(managed, 'managed-settings.d', 'org.json'), ['mcp__drive__upload']);
+  const deny = readerDenies({ configDir, cwd, managed });
+  assert.deepEqual(deny.sort(), [
+    'mcp__claude_ai_Slack__slack_read_user_profile',
+    'mcp__claude_ai_Slack__slack_send_message',
+    'mcp__drive',
+    'mcp__github',
+    'mcp__gmail',
+    'mcp__jira',
+    'mcp__notion',
+  ]);
+  const val = (a, flag) => a[a.indexOf(flag) + 1];
+  const no = val(
+    readerArgs({ schema: {}, tools: ['mcp__claude_ai_Slack__slack_read_channel'], deny }),
+    '--disallowedTools',
+  );
+  for (const d of [...deny, 'mcp__claude_ai_Slack__slack_add_list_comment']) assert.ok(no.split(',').includes(d), d);
+  assert.ok(!no.includes('slack_read_channel'), 'its own read stays');
+  assert.deepEqual(
+    readerDenies({ configDir: join(root, 'none'), cwd: join(root, 'none'), managed: join(root, 'none') }),
+    [],
+  );
+  for (const wild of ['mcp__*', 'mcp__claude_ai_*', '*']) {
+    rules(join(configDir, 'settings.local.json'), [wild]);
+    assert.throws(() => readerDenies({ configDir, cwd, managed }), /by a pattern/, wild);
+  }
 });
 
 test('cleanSetup: lunch shaped — a time, the days, places with an Instagram account, a Slack channel; null is none; no stories (2026-11-23)', () => {
