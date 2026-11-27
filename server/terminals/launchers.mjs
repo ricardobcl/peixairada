@@ -78,7 +78,7 @@ const TASKFILES = [
 ];
 const launcherCache = new Map(); // cwd → { mtime, launchers } — or { mtime, asking }, the run under way
 const untrustedSaid = new Set(); // the folders whose Taskfile was left unasked, logged once each
-export const TASK_NAME = /^[\w:.-]+$/;
+export const TASK_NAME = /^\w[\w:.-]*$/; // a word's character first (2026-11-27): `task -x` is an option
 export function taskfileOf(cwd) {
   for (const f of TASKFILES) {
     const p = join(cwd, f);

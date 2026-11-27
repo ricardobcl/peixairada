@@ -13,7 +13,7 @@ import { snippet } from '../transcript/text.mjs';
 // `agents/` as `<plugin>:<name>`, and four of its own. Never by running claude, which writes its config. Its fifth,
 // `claude`, is left out: as the chat itself it is the background job's prompt, not Claude as it starts. A folder's
 // settings may name one (`agent`) for every chat there; `--agent ''` turns that off (measured in a lab config).
-export const AGENT_NAME = /^[\w.-]{1,80}(?::[\w.-]{1,80})?$/;
+export const AGENT_NAME = /^\w[\w.-]{0,79}(?::[\w.-]{1,80})?$/; // a word's character first (2026-11-27): never one CLI parsing away from an option
 const AGENT_COLORS = new Set(['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink']);
 const AGENTS_OWN = [
   { name: 'Plan', description: 'Software architect: plans the change step by step, edits nothing' },

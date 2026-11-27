@@ -151,10 +151,10 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `state.json.bad-<ms>` and logged, never dropped and written over. STATE_FILE set never reads the legacy one.
   → `state.test.mjs`. **The state folder is this user's alone** (2026-11-06; `privateDir`: 0700, one not this
   user's refused — TERMS_DIR too, before a spawn and an adoption).
-* **Nothing secret rides argv** (2026-11-06; `ps` shows all): the ticket on osascript's stdin, board.sh's
-  key by `curl -K -`, Jira's by `security -i`. A chat id never starts with `-` (`spawnTerm`); osascript's words follow
-  `--`; a spawn's prompt no control character; the Jira token goes only to its own site (`jiraTokenSite`); the log
-  writes no `key=`, `tkn=`, `ticket=`.
+* **Nothing secret rides argv** (2026-11-06; `ps` shows all): the ticket on osascript's stdin, board.sh's key by
+  `curl -K -`, Jira's by `security -i`. No chat id, task or agent name starts with `-` (`spawnTerm`, `TASK_NAME`,
+  `AGENT_NAME`, 2026-11-27); osascript's words follow `--`; a spawn's prompt no control character; the Jira token goes
+  only to its own site (`jiraTokenSite`); the log writes no `key=`, `tkn=`, `ticket=`.
 * **One spawn per chat and kind at a time** (`spawnOnce`, `<chat>:claude` / `:shell`). **Nothing is signalled that
   is not the registry's process**: `endClaude(entry)` compares `procStart` with `ps -o lstart=` in UTC
   (`sameProcess`), again before a SIGKILL — a dead claude's file lingers and its pid can be anyone's; a file's pid is its
@@ -377,13 +377,14 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   the edge unless asking — `footRows`, `placeMini`), else its tail (`tailHtml`, `GET /api/tails?ids=`, every 2 s). A
   question's answers (`ask.labels`) come once the transcript has it; one clicked types its digit into the drawer, ⏎
   only onto its ring (`answerInDrawer`, `spEnter`). → `overview.mjs`.
-* **⌥⌘X is Space** (2026-11-18, X since 2026-11-24; `main.space`, `renderSpace`, `spNode`): the list's place, a node per chat, the chat
-  right; pods by each agent's type over every round (`agentAll`, `mateType`), folded to who works (`+N`); a chat
-  starred first (`favChats` → `fav`, `POST …/favorite`); ⌘F `#spq` with `is:` `pr:` `@` `#`; a node's PRs, menu
-  (`spMenu`, the card's `chatRows`), ✓ where `canTick`; the sky by transform and opacity; Settings › Space; filled, its bar under the notch's strip (`npad`). **A tick
-  never moves on there** (`prefs.space`; a delete leaves the chat). **A question from its node** (`spAskOf` off a hidden
-  mini, `#spaskp`, keys only while it has them): ⏎ only onto the number's ring (`spEnter`). **A node made anew is
-  phased** (`PHASED`); **nothing lies over the star** (its scenario presses with the mouse). → `space*.mjs`.
+* **⌥⌘X is Space** (2026-11-18, X since 2026-11-24; `main.space`, `renderSpace`, `spNode`): the list's place, a node a
+  chat, the chat right; pods by each agent's type over every round (`agentAll`, `mateType`), folded to who works
+  (`+N`); a starred chat first (`favChats` → `fav`, `POST …/favorite`); ⌘F `#spq` with `is:` `pr:` `@` `#`; a node's
+  PRs, menu (`spMenu`, the card's `chatRows`), ✓ where `canTick`; the sky by transform and opacity; Settings › Space;
+  filled, its bar under the notch's strip (`npad`). **A tick never moves on there** (`prefs.space`; a delete leaves the
+  chat). **A question from its node** (`spAskOf` off a hidden mini, `#spaskp`, keys only while it has them): ⏎ only
+  onto the number's ring (`spEnter`). **A node made anew is phased** (`PHASED`); **nothing lies over the star** (its
+  scenario presses with the mouse). → `space*.mjs`.
 * **The chat header is drawn only when it changed**: `renderHead` compares the header's, the menu's and the PR rows'
   markup with `drawn`, and runs `layoutNotch(); fitHeadPrs()` only for a new header; the handlers are bound on every
   call. Anything that edits the header in place resets `drawn.head` (`editTitle` does).
@@ -517,20 +518,20 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`).
   → `usage-bar.mjs`.
-* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd`
-  alone (no raw HTML; links https/mailto, to the browser; `chatPicsFill`), polls, reactions, the admin's
-  people (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`). **Yours is in the log at ⏎** (2026-10-27, `chatUi.out`):
-  faded till GitHub has it; one not sent says so there alone (`chatRetry`); **edited in the box** (`chatEditStart`).
-  **No chat code reaches a drawer, a claude or `md()`**. → `chat-*.mjs`.
+* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from `#sbChat`): messages by `chatMd` alone (no
+  raw HTML; links https/mailto, to the browser; `chatPicsFill`), polls, reactions, the admin's people
+  (`chatPeopleDraw`); Settings › Chat (`chatSetHtml`). **Yours is in the log at ⏎** (`chatUi.out`): faded till GitHub
+  has it; one not sent says so there (`chatRetry`); **edited in the box** (`chatEditStart`). **No chat code reaches a
+  drawer, a claude or `md()`**. → `chat-*.mjs`.
 * **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
   the fish out (`lunchOut`), ⌥⌘M's `#lunchd` and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()`, `.lab` the harness's): frames only while open,
   unpaused, uncalled; its own Web Audio (`zeRadio`), made by a press, closed with it or M. **What falls is the day's**
-  (`zeSeed`; the demo, `g.demo`, chance's and silent). **It hears the board**: a chat that starts asking stops it
+  (`zeSeed`; the demo, `g.demo`, chance's, silent). **It hears the board**: a chat that starts asking stops it
   (`zeHeard`), today's lunch falls, a score reaches the room only by a K.O. button (`zePost`). **A stage on the GPU**
-  (2026-11-01; `zg`): WebGL2 made and let go with the dialog **by hand** (`zgLetGo`), else the 2D canvas (`zeDraw`);
-  what moves on a batcher (`zgBatch`), **never a canvas handed to WebGL a frame**; blur by layer, never by screen
-  height. Calm under reduced motion (`zeCalm`); **no sound outlives it** (`zeHush`). → `ze-*.mjs`.
+  (2026-11-01; `zg`): WebGL2 made and let go with the dialog **by hand** (`zgLetGo`), else 2D (`zeDraw`); what moves
+  on a batcher (`zgBatch`), **never a canvas handed to WebGL a frame**; blur by layer. Calm under reduced motion
+  (`zeCalm`); **no sound outlives it** (`zeHush`). → `ze-*.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`:
   whatever the board decides) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by
   the app and every browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and
@@ -881,9 +882,9 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), which clears the screen *it*
   serializes and echoes it to every page on that drawer. A nudge follows. ⌃L is the shell's own.
 * **What the board types is text, never keys** (2026-11-06; `typable`, `forClaude`, `forShell`): all it composes goes
-  through them — line breaks kept (ESC CR for claude), a tab two spaces, every other control gone; a dropped name with
-  one is refused. **Never into a dialog** (2026-11-27; `typeIn` → the socket's `type`): the server types it, and ⏎, only
-  while the claude's registry file, read then, waits on nothing. Your own keys are `in`. → `typed-text.mjs`, `terminals.test`.
+  through them — line breaks kept (ESC CR for claude), a tab two spaces, every other control gone; a
+  dropped name with one is refused. **Never into a dialog** (2026-11-27; `typeIn` → the socket's `type`): typed, ⏎ too,
+  only while the claude's registry file, read then, waits on nothing; your keys are `in`. → `typed-text.mjs`, `terminals.test`.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is
   *⌥ is Meta* (`prefs.optMeta`, on). → Findings: *Shift+Enter*.
 * **The Mac's line-editing keys are iTerm's Natural Text Editing** (`MAC_EDIT` / `macEdit`): ⌘← ⌘→ ⌃A ⌃E, ⌘⌫ ⌃U,

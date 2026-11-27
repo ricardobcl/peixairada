@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture, yesterday } from '../scripts/fixture.mjs';
-import { agentFront } from '../server.mjs';
+import { AGENT_NAME, agentFront, TASK_NAME } from '../server.mjs';
 
 const md = (front, body = 'You do the thing.') => `---\n${front}\n---\n\n${body}\n`;
 /** A checkout with agents of its own and in a folder of it, one more above its git root, and a user's and a plugin's in
@@ -72,6 +72,13 @@ function world() {
   );
   return { top, claude, repo, web };
 }
+
+test("an agent's or a launcher's name starts with a word's character (2026-11-27): after --agent, or as task's own word, never an option", () => {
+  for (const ok of ['reviewer', 'my-plugin:code.review', '_x']) assert.ok(AGENT_NAME.test(ok), ok);
+  for (const no of ['-x', '--help', 'a b', ':x', 'x:']) assert.ok(!AGENT_NAME.test(no), no);
+  for (const ok of ['claude', 'build:web', 'a.b-c']) assert.ok(TASK_NAME.test(ok), ok);
+  for (const no of ['-x', '--yes', ':x', 'a b']) assert.ok(!TASK_NAME.test(no), no);
+});
 
 test("an agent file's frontmatter: plain, quoted and block values", () => {
   assert.deepEqual(agentFront(md('name: a\ndescription: "said: quoted"\nmodel: sonnet')), {

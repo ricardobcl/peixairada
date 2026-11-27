@@ -93,6 +93,9 @@ verdicts: *"fix everything"*. One commit each:
   `http://127.0.0.1:7331@elsewhere.example/` is elsewhere, so origins are compared parsed (`sameOrigin`). `esc()`
   escapes `'` too; no attribute is single-quoted today. `transcript-markup.mjs` has both links (the old parts failed
   on the SVG one).
+* **A task's or an agent's name could start with a dash** (a hardening note): `TASK_NAME` and `AGENT_NAME` took one,
+  and `task -x` is an option, as an agent's name after `--agent` is one CLI parser away from one. Both want a word's
+  character first now, as a chat id does.
 
 ## Decisions of 2026-11-27 — make install, make update
 

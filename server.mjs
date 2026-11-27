@@ -72,7 +72,8 @@ export {
   worktreesMade,
 } from './server/state.mjs';
 export { findTasks, pruneTasks, sweepTasks } from './server/tasks.mjs';
-export { agentFront, agentsFor } from './server/terminals/chat-agents.mjs';
+export { AGENT_NAME, agentFront, agentsFor } from './server/terminals/chat-agents.mjs';
+export { TASK_NAME } from './server/terminals/launchers.mjs';
 export { terms, termSummary } from './server/terminals/terms.mjs';
 export { dayOf, noteSpan } from './server/today.mjs';
 export { doingOf, fold, stopOf } from './server/transcript/fold.mjs';
