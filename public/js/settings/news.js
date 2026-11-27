@@ -2,7 +2,10 @@
 // Once per news (`NEWS.id` into prefs.newsSeen): a page per example, its picture that example at work, the last page's
 // button the thing itself. It waits for a quiet board — the welcome and the tour first, no dialog up, no chat asking
 // you, the window in sight —, and Later brings it back once, the next day (prefs.newsLater). ⌥⌘L and the keys' sheet
-// open it again whenever.
+// open it again whenever. A release's notes come the same way (2026-11-27, `relItem`): once the board's code is on a
+// release this page has not shown (`prefs.releaseSeen`; 0.1, the last before any, until then), a page a release since,
+// newest first, as CHANGELOG.md has them (GET /api/update/notes) — whatever moved it there, the board, make update or a
+// pull. A tour that names its release (`NEWS.release`) comes first, in the same dialog.
 const NEWS_STARS = [
   [40, 30],
   [120, 176],
@@ -51,17 +54,72 @@ const NEWS = {
     },
   ],
 };
-const news = { i: 0, hold: false, timer: 0, later: false };
+const news = { i: 0, hold: false, timer: 0, later: false, item: NEWS };
+const seenNews = id => (prefs.newsSeen || []).includes(id);
 function newsDone() {
-  return (prefs.newsSeen || []).includes(NEWS.id);
+  return seenNews(NEWS.id);
 }
+/** -1, 0, 1 as release `a` is older than, the same as, newer than `b` (lib/changelog.mjs' verCmp). */
+const relCmp = (a, b) => {
+  const p = v => (/^v?(\d+)\.(\d+)(?:\.(\d+))?$/.exec(String(v || '')) || []).slice(1).map(Number);
+  const x = p(a),
+    y = p(b);
+  for (let k = 0; k < 3; k++) if ((x[k] || 0) !== (y[k] || 0)) return (x[k] || 0) < (y[k] || 0) ? -1 : 1;
+  return 0;
+};
+/** What's new for a release's notes: a page a release, the tour of the newest first when it names it (`tour`). */
+function relItem(notes, running, withTour = true) {
+  const pages = notes.map(n => ({
+    title: `What’s new in ${relName(n.version)}`,
+    tag: `Release ${relName(n.version)}${n.title ? ` · ${n.title}` : ''}`,
+    md: n.md,
+  }));
+  const tour = withTour && NEWS.release && !newsDone() && relCmp(NEWS.release, notes[0]?.version) === 0;
+  return {
+    id: `release:${running}`,
+    running,
+    name: relName(running),
+    pages: tour ? [...NEWS.pages, ...pages] : pages,
+    go: tour ? NEWS.go : () => {},
+    goSay: tour ? NEWS.goSay : 'Done',
+    also: tour ? NEWS.id : null,
+  };
+}
+// the notes asked once per release the board is on, and nothing asked while the server has nothing newer to say
+const relNews = { for: null, item: null, asking: false, failedAt: 0 };
+function relPending() {
+  const run = state.update?.running,
+    seen = prefs.releaseSeen || '0.1.0';
+  if (!run || relCmp(run, seen) <= 0) return null;
+  if (relNews.for === run) return relNews.item;
+  if (relNews.asking || Date.now() - relNews.failedAt < 60_000) return null;
+  relNews.asking = true;
+  api('GET', `/api/update/notes?since=${encodeURIComponent(seen)}`)
+    .then(r => {
+      relNews.for = run;
+      relNews.item = r.notes?.length ? relItem(r.notes, run) : null;
+      if (relNews.item) return newsSoon();
+      prefs.releaseSeen = run; // a release with no notes: nothing to show, seen
+      savePrefs();
+    })
+    .catch(() => {
+      relNews.failedAt = Date.now();
+    })
+    .finally(() => {
+      relNews.asking = false;
+    });
+  return null;
+}
+/** What comes next by itself: a release's notes (with its tour), else the tour not seen yet. */
+const newsNext = () => relPending() || (newsDone() ? null : NEWS);
 /** self: opened by itself — the app not brought forward, the keys on the dialog, not on Next, so a ⏎ or a space meant
- *  for where they were presses nothing (2026-11-24, review). */
-function newsOpen(i = 0, self = false) {
+ *  for where they were presses nothing (2026-11-24, review). `item`: the tour (NEWS) or a release's notes (relItem). */
+function newsOpen(i = 0, self = false, item = NEWS) {
   const dlg = $('#news');
   if (!dlg.open) {
     for (const d of document.querySelectorAll('dialog[open]')) d.close();
     news.later = false;
+    news.item = item;
     dlg.showModal();
     repostPane();
     if (inApp && !self) post({ type: 'focus' });
@@ -72,25 +130,46 @@ function newsOpen(i = 0, self = false) {
     dlg.focus({ preventScroll: true });
   }
 }
+/** The newest releases' notes on demand (⌥⌘L › Release notes): every one the checkout has, newest first. */
+function relNotesOpen() {
+  api('GET', '/api/update/notes?since=0.0.0')
+    .then(r => {
+      if (!r.notes?.length) return note($('#sbar'), 'No release notes here yet — CHANGELOG.md has none', true);
+      newsOpen(0, false, relItem(r.notes.slice(0, 3), r.running, false));
+    })
+    .catch(err => note($('#sbar'), `Could not read the release notes: ${err.message}`, true));
+}
 function newsShow(i, keys = true) {
-  const n = NEWS.pages.length;
+  const it = news.item,
+    n = it.pages.length;
   news.i = Math.max(0, Math.min(n - 1, i));
-  const pg = NEWS.pages[news.i],
-    last = news.i === n - 1;
-  $('#newsPic').innerHTML = NEWS_STARS + pg.pic();
-  $('#newsTag').textContent = `New in ${NEWS.name} · ${news.i + 1} of ${n}`;
+  const pg = it.pages[news.i],
+    last = news.i === n - 1,
+    notes = pg.md != null;
+  $('#news').classList.toggle('notes', notes);
+  $('#newsPic').innerHTML = notes ? '' : NEWS_STARS + pg.pic();
+  $('#newsTag').textContent = notes
+    ? `${pg.tag}${n > 1 ? ` · ${news.i + 1} of ${n}` : ''}`
+    : `New in ${NEWS.name} · ${news.i + 1} of ${n}`;
   $('#newsTitle').textContent = pg.title;
-  $('#newsText').innerHTML = pg.text;
-  $('#newsDots').innerHTML = NEWS.pages
-    .map(
-      (p, k) =>
-        `<button type="button" class="${k === news.i ? 'on' : ''}" data-i="${k}" tabindex="-1" aria-label="${k + 1}: ${esc(p.title)}"></button>`,
-    )
-    .join('');
+  $('#newsText').innerHTML = notes ? '' : pg.text;
+  $('#newsText').hidden = notes;
+  setHtml($('#newsMd'), notes ? md(pg.md).html : '');
+  $('#newsMd').hidden = !notes;
+  $('#newsMd').scrollTop = 0;
+  $('#newsDots').innerHTML =
+    n > 1
+      ? it.pages
+          .map(
+            (p, k) =>
+              `<button type="button" class="${k === news.i ? 'on' : ''}" data-i="${k}" tabindex="-1" aria-label="${k + 1}: ${esc(p.title)}"></button>`,
+          )
+          .join('')
+      : '';
   $('#newsBack').hidden = !news.i;
   $('#newsLater').hidden = last;
-  $('#newsNext').textContent = last ? NEWS.goSay : 'Next';
-  $('#newsNext').title = last ? `${NEWS.goSay} · ⏎` : 'The next page · →';
+  $('#newsNext').textContent = last ? it.goSay : 'Next';
+  $('#newsNext').title = last ? `${it.goSay} · ⏎` : 'The next page · →';
   $('#newsSay').textContent = `Page ${news.i + 1} of ${n}: ${pg.title}`;
   const b = $('#newsBody');
   b.classList.remove('in');
@@ -100,11 +179,12 @@ function newsShow(i, keys = true) {
 }
 /** Shown once it is quiet; called on every board draw, so it only looks. */
 function newsSoon() {
-  if (news.timer || newsDone() || news.hold) return;
+  if (news.timer || news.hold || !newsNext()) return;
   news.timer = setTimeout(() => {
     news.timer = 0;
+    const item = newsNext();
     if (
-      newsDone() ||
+      !item ||
       news.hold ||
       document.hidden ||
       Date.now() < (prefs.newsLater || 0) ||
@@ -116,13 +196,13 @@ function newsSoon() {
     // looked at again in a moment, not on the next draw, which a board at rest may not have
     if (!document.hasFocus() || document.activeElement?.closest?.('input, textarea, select, [contenteditable], .xterm'))
       return newsSoon();
-    newsOpen(0, true);
+    newsOpen(0, true, item);
   }, 1500);
 }
 $('#newsNext').onclick = () => {
-  if (news.i < NEWS.pages.length - 1) return newsShow(news.i + 1);
+  if (news.i < news.item.pages.length - 1) return newsShow(news.i + 1);
   $('#news').close();
-  NEWS.go();
+  news.item.go();
 };
 $('#newsBack').onclick = () => newsShow(news.i - 1);
 $('#newsX').onclick = () => $('#news').close();
@@ -136,7 +216,7 @@ $('#newsDots').addEventListener('click', e => {
 });
 $('#news').addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.key === 'ArrowRight' && news.i < NEWS.pages.length - 1) {
+  if (e.key === 'ArrowRight' && news.i < news.item.pages.length - 1) {
     e.preventDefault();
     newsShow(news.i + 1);
   } else if (e.key === 'ArrowLeft' && news.i) {
@@ -144,14 +224,25 @@ $('#news').addEventListener('keydown', e => {
     newsShow(news.i - 1);
   }
 });
-// closed any way but Later — ×, esc, a key that closes dialogs, the last page's button — it is seen; Later once, then seen
+// closed any way but Later — ×, esc, a key that closes dialogs, the last page's button — it is seen; Later once, then seen.
+// A release's notes are seen by the release (prefs.releaseSeen), and the tour that came with them by its id.
 $('#news').addEventListener('close', () => {
+  const it = news.item;
   $('#newsPic').innerHTML = '';
-  if (newsDone()) return;
+  setHtml($('#newsMd'), '');
+  const done = it.running ? relCmp(it.running, prefs.releaseSeen || '0.1.0') <= 0 : seenNews(it.id);
+  if (done) return;
   if (news.later && !prefs.newsLater) {
     const d = new Date();
     d.setHours(24, 0, 0, 0);
     prefs.newsLater = d.getTime();
-  } else prefs.newsSeen = [...(prefs.newsSeen || []), NEWS.id];
+  } else {
+    if (it.running) {
+      prefs.releaseSeen = it.running;
+      relNews.item = null;
+    }
+    const ids = [it.running ? it.also : it.id].filter(Boolean);
+    if (ids.length) prefs.newsSeen = [...new Set([...(prefs.newsSeen || []), ...ids])];
+  }
   savePrefs();
 });

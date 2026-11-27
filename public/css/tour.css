@@ -630,6 +630,42 @@
   color: var(--ink);
   white-space: nowrap;
 }
+/* a release's notes (2026-11-27, relItem): no picture — the tag and × over the body's top —, the notes as a reply is drawn */
+#news.notes .nwpic {
+  display: none;
+}
+#news.notes .nwbody {
+  padding-top: 50px;
+}
+#news .nwmd {
+  margin-top: 8px;
+  max-height: min(52vh, 440px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+#news .nwmd[hidden] {
+  display: none;
+}
+#news .nwmd p {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+#news .nwmd h3 {
+  margin: 12px 0 4px;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#news .nwmd ul {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+}
+#news .nwmd li {
+  margin: 4px 0;
+}
 #news .nwfoot {
   display: flex;
   align-items: center;

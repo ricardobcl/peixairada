@@ -137,6 +137,7 @@ const prefs = {
   toured: false,
   newsSeen: [],
   newsLater: 0,
+  releaseSeen: '', // the newest release whose notes What's new showed (2026-11-27; none: 0.1, the last before any)
   settingsPane: 'general',
   zeBest: {},
   zeDay: null,

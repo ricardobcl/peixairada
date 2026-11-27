@@ -347,7 +347,9 @@ function showUpdate() {
  *  update that changed the page came after this one was loaded. */
 function takeUpdate(u) {
   if (!u) return;
+  const was = state.update?.running;
   state.update = u;
+  if (u.running !== was) newsSoon(); // on another release: its notes, once the board is quiet (2026-11-27)
   showUpdate();
   if (!reload.want && u.last?.parts?.includes('page') && Date.parse(u.last.at) > LOADED_AT) {
     reload.want = u.last.to;

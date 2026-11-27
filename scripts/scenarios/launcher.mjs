@@ -55,7 +55,7 @@ export default async function (ctx) {
   // ⌥⌘L: the menu
   await ctx.key('KeyL');
   await ctx.waitFor(
-    `document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow.menu').length === 14`,
+    `document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow.menu').length === 15`,
     { what: 'the launcher’s menu' },
   );
   const menu = await rows();
@@ -72,6 +72,7 @@ export default async function (ctx) {
       'Keys',
       'Tour',
       'What’s new',
+      'Release notes',
       'Home',
       'Overview',
       'Space',
@@ -135,7 +136,7 @@ export default async function (ctx) {
   await key('Enter');
   await ctx.waitFor(`window.peix.prefs().sounds === false`, { what: 'and off again' });
   await key('ArrowLeft');
-  await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow.menu').length === 14`, { what: 'back on the menu' });
+  await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow.menu').length === 15`, { what: 'back on the menu' });
 
   // # the PR by its number
   await ctx.fill('#pickq', '#57');

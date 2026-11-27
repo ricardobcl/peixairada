@@ -1,6 +1,7 @@
 // Releases on the page (2026-11-27): a board follows releases by default — Settings › Updates › Follow —, so a commit on
 // main is no news but a line in the settings; a release is said by its name, in the status bar (*0.2 is out · update*)
-// and the settings, its notes drawn there before it is taken; Every commit makes the commits past it the news again. The server's side is test/update-release.test.mjs; the
+// and the settings, its notes drawn there before it is taken; taken, What's new shows them once, by itself, on a quiet
+// board; Every commit makes the commits past it the news again. The server's side is test/update-release.test.mjs; the
 // checkout here is its throwaway one (test/update-project.mjs), the agent's restart a stand-in that writes it was asked.
 import { PAGE, project } from '../../test/update-project.mjs';
 
@@ -59,7 +60,7 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.shot('1-settings-release', await rect('#settings'));
 
-  // taken from the bar: the board moves to the release, no further
+  // taken from the bar: the board moves to the release, and What's new shows its notes once the board is quiet
   await ctx.evaluate(`document.querySelector('#settings').close()`);
   await ctx.evaluate(`window.__mark = 1; document.querySelector('#sbLeft .upg[data-take]').click()`);
   await ctx.waitFor(`window.peix.update()?.running === '0.2.0'`, { what: 'the board on 0.2' });
@@ -67,6 +68,31 @@ export default async function (ctx) {
   await ctx.server.restart(); // what launchd.sh restart does: the same port, a new server
   // the page the update changed reloads once the new server answers
   await ctx.waitFor(`!window.__mark && window.peix?.state().snapshots > 0`, { what: 'the new page', timeout: 25_000 });
+  await ctx.waitFor(
+    `document.querySelector('#news').open && document.querySelector('#news').classList.contains('notes')`,
+    {
+      what: "What's new, with the notes",
+      timeout: 20_000,
+    },
+  );
+  await ctx.settle();
+  out.news = await ctx.evaluate(
+    `({ tag: document.querySelector('#newsTag').textContent, title: document.querySelector('#newsTitle').textContent, md: document.querySelector('#newsMd').innerText, next: document.querySelector('#newsNext').textContent, pic: getComputedStyle(document.querySelector('#newsPic')).display })`,
+  );
+  ctx.assert.deepEqual(
+    [out.news.tag, out.news.title, out.news.next, out.news.pic],
+    ['Release 0.2 · 27 November 2026', 'What’s new in 0.2', 'Done', 'none'],
+  );
+  ctx.assert.match(out.news.md, /Space \(⌥⌘X\) shows every chat/);
+  await ctx.shot('2-whats-new', await rect('#news'));
+  await ctx.evaluate(`document.querySelector('#newsNext').click()`);
+  await ctx.waitFor(`!document.querySelector('#news').open && window.peix.prefs().releaseSeen === '0.2.0'`, {
+    what: 'closed, and 0.2 seen',
+  });
+  // the page the update changed has reloaded by now, after the new server came: nothing shown again
+  await ctx.sleep(2500);
+  await ctx.waitFor(`window.peix?.state().snapshots > 0`, { what: 'the page, drawn' });
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#news').open`), false, 'not again');
 
   // Every commit: the commits past the release are the news again
   const b = p.push({ 'public/index.html': PAGE + '<!-- b -->\n' }, 'b');
@@ -86,5 +112,20 @@ export default async function (ctx) {
   );
   ctx.assert.match(out.main.row.say, /^1 new commit on origin\/main — Update now takes them/);
   await ctx.shot('3-every-commit', await rect('#settings'));
+
+  // ⌥⌘L › Release notes: the newest again, whenever
+  await ctx.evaluate(`document.querySelector('#settings').close()`);
+  await ctx.key('KeyL');
+  await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher' });
+  await ctx.evaluate(
+    `[...document.querySelectorAll('#picklist .pkrow.menu')].find(r => r.querySelector('.n').textContent === 'Release notes').click()`,
+  );
+  await ctx.waitFor(
+    `document.querySelector('#news').open && document.querySelector('#news').classList.contains('notes')`,
+    {
+      what: 'the notes again',
+    },
+  );
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#newsTitle').textContent`), 'What’s new in 0.2');
   return out;
 }
