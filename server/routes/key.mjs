@@ -25,35 +25,47 @@ export async function keyRoutes(req, res, url, p) {
     res.writeHead(204, aliveProof(req));
     return res.end();
   } // up and booted: the app's probe, launchd.sh
+
   if (req.method === 'POST' && p === '/api/key/claim') {
     // a ticket for the key (see keyWant), once
-    const { ticket } = await jsonBody(req),
-      at = typeof ticket === 'string' ? tickets.get(ticket) : null;
+    const { ticket } = await jsonBody(req);
+    const at = typeof ticket === 'string' ? tickets.get(ticket) : null;
+
     tickets.delete(ticket);
-    if (!at || at < Date.now())
+
+    if (!at || at < Date.now()) {
       return json(res, 403, { error: 'that ticket was used or is old — open the board with its key again' });
+    }
+
     return json(res, 200, { key: boardKey });
   }
+
   if (req.method === 'POST' && p === '/api/key/open') {
     // a tab with a ticket, in this Mac's default browser: the key goes to its screen
     if (Date.now() - keyOpenAt < 10_000) return json(res, 429, { error: 'a tab with the key was opened a moment ago' });
     // the ticket on osascript's stdin, never an argument (2026-11-06): `ps` is setuid root on macOS and shows every
     // account's arguments, so `open <url>#ticket=…` let another account read the ticket and claim the key first
     const bin = findBin('osascript', 'a tab with the key cannot be opened');
+
     if (!bin) return json(res, 501, { error: 'no osascript on this Mac' });
     setKeyOpenAt(Date.now());
+
     const child = execFile(bin, ['-'], e => {
       if (e) console.error(`[peixairada] open a tab with the key: ${e.message}`);
     });
+
     child.stdin.on('error', () => {});
     child.stdin.end(`open location ${JSON.stringify(`${boardUrl()}#ticket=${newTicket()}`)}\n`);
     return json(res, 202, { opening: true });
   }
+
   if (req.method === 'GET' && p === '/api/key') return json(res, 200, keyState());
+
   if (req.method === 'PUT' && p === '/api/key') {
     requireKey('asked on the board');
     return json(res, 200, keyState());
   }
+
   if (req.method === 'POST' && p === '/api/key/new') {
     // a new key: every other page and drawer socket asks for it again
     setBoardKey(writeKey(KEY_FILE));
@@ -63,5 +75,6 @@ export async function keyRoutes(req, res, url, p) {
     console.log('[peixairada] a new key — every page asks for it again');
     return json(res, 200, { key: boardKey });
   }
+
   return NEXT;
 }

@@ -39,6 +39,7 @@ export const aboutInfo = () => ({
 export async function eventRoutes(req, res, url, p) {
   if (req.method === 'POST' && p === '/api/test-notify') {
     if (notificationsOn) nativeNotify('peixAIrada', 'test', 'Native notifications are working.');
+
     broadcast('alert', {
       kind: 'reply',
       sessionId: null,
@@ -48,8 +49,10 @@ export async function eventRoutes(req, res, url, p) {
       ts: new Date().toISOString(),
       quiet: !notificationsOn,
     });
+
     return json(res, 200, { ok: true });
   }
+
   if (req.method === 'GET' && p === '/events') {
     const snap = JSON.stringify({
       sessions: sortedSummaries(),
@@ -71,16 +74,20 @@ export async function eventRoutes(req, res, url, p) {
       key: keyState(),
       page: pageStamp(readPage()),
     });
+
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
     res.write(`event: snapshot\ndata: ${snap}\n\n`);
     res.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key')); // one come in with no key goes when it is required (requireKey)
     sseClients.add(res);
     const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
+
     req.on('close', () => {
       clearInterval(ping);
       sseClients.delete(res);
     });
+
     return;
   }
+
   return NEXT;
 }

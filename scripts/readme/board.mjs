@@ -20,13 +20,15 @@ import { agentFiles, makeFixture, prLinkLine, replyLines, taskNoteLine, toolLine
 
 export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const OUT = join(ROOT, 'docs', 'shots');
-export const W = 1440,
-  H = 900;
+export const W = 1440;
+export const H = 900;
 
 // The fixture is built as the module loads — before the runner starts the server — so the server boots on it whole.
 const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-shots-'));
-const claudeDir = join(root, 'claude'),
-  work = join(root, 'work');
+
+const claudeDir = join(root, 'claude');
+const work = join(root, 'work');
+
 const COLORS = {
   storefront: '#3b7ddd',
   'billing-api': '#2e9e6a',
@@ -34,11 +36,13 @@ const COLORS = {
   'mobile-app': '#e5892a',
   'docs-site': null,
 };
+
 for (const name of Object.keys(COLORS)) mkdirSync(join(work, name), { recursive: true });
 const configFile = join(root, 'config.json'); // the setup: the projects' colours
+
 writeFileSync(
   configFile,
-  JSON.stringify(
+  `${JSON.stringify(
     {
       projects: Object.fromEntries(
         Object.entries(COLORS)
@@ -48,8 +52,9 @@ writeFileSync(
     },
     null,
     2,
-  ) + '\n',
+  )}\n`,
 );
+
 for (const name of ['admin-portal', 'analytics', 'design-system']) mkdirSync(join(work, name), { recursive: true }); // folders with no chat yet: ⌥⌘N lists them
 export const cwd = name => join(work, name);
 
@@ -82,19 +87,20 @@ const CARD = (bg, ink, edge, sunken, badge) => `.product-card {
   padding: 2px 6px;
 }
 `;
+
 export const SF = cwd('storefront');
+
 const SOURCES = {
-  'package.json':
-    JSON.stringify(
-      {
-        name: 'storefront',
-        private: true,
-        type: 'module',
-        scripts: { dev: 'vite', build: 'vite build', test: 'vitest run' },
-      },
-      null,
-      2,
-    ) + '\n',
+  'package.json': `${JSON.stringify(
+    {
+      name: 'storefront',
+      private: true,
+      type: 'module',
+      scripts: { dev: 'vite', build: 'vite build', test: 'vitest run' },
+    },
+    null,
+    2,
+  )}\n`,
   'README.md': '# storefront\n\nThe shop front: the product grid, search and checkout.\n',
   'src/main.tsx':
     "import { createRoot } from 'react-dom/client';\nimport { App } from './App';\nimport './theme/tokens.css';\n\ncreateRoot(document.getElementById('root')!).render(<App />);\n",
@@ -116,18 +122,22 @@ const SOURCES = {
   'src/theme/tokens.css':
     ':root {\n  --surface: #ffffff;\n  --surface-sunken: #f2f2f2;\n  --text: #111111;\n  --border-subtle: #e5e5e5;\n  --accent-muted: #fde68a;\n}\n\n@media (prefers-color-scheme: dark) {\n  :root {\n    --surface: #1c1c1e;\n    --surface-sunken: #141416;\n    --text: #f2f2f2;\n    --border-subtle: #2c2c2e;\n    --accent-muted: #5b4a12;\n  }\n}\n',
 };
+
 for (const [f, text] of Object.entries(SOURCES)) {
   mkdirSync(dirname(join(SF, f)), { recursive: true });
   writeFileSync(join(SF, f), text);
 }
+
 const git = (...a) =>
   spawnSync('git', ['-c', 'user.name=Ada', '-c', 'user.email=ada@example.com', '-c', 'commit.gpgsign=false', ...a], {
     cwd: SF,
     stdio: 'ignore',
   });
+
 git('init', '-q', '-b', 'main');
 git('add', '-A');
 git('commit', '-qm', 'The product grid');
+
 writeFileSync(
   join(SF, 'src/components/ProductGrid/ProductCard.css'),
   CARD('var(--surface)', 'var(--text)', 'var(--border-subtle)', 'var(--surface-sunken)', 'var(--accent-muted)'),
@@ -135,29 +145,33 @@ writeFileSync(
 
 // The PRs, as GitHub would answer for them: who wrote, reviewed and pushed, their CI, and so whose move it is — and
 // when each was last updated, and infra's two a stack (2026-11-01: a card's matrix numbers the PR updated last and joins a stack).
-const now = Date.now(),
-  DAY = 24 * 60;
+const now = Date.now();
+const DAY = 24 * 60;
+
 export const ago = min => new Date(now - min * 60_000);
+
 const iso = min =>
   ago(min)
     .toISOString()
     .replace(/\.\d+Z$/, 'Z');
+
 // a face as GitHub gives one (avatarUrl), drawn here so nothing is fetched
 const face = (login, fill) => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="${fill}"/><text x="24" y="32" font-family="-apple-system, Helvetica, sans-serif" font-size="22" font-weight="600" text-anchor="middle" fill="#fff">${login[0].toUpperCase()}</text></svg>`,
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="${fill}"/><text x="24" y="32" font-family="-apple-system, Helvetica, sans-serif" font-size="22" font-weight="600" text-anchor="middle" fill="#fff">${login[0].toUpperCase()}</text></svg>`,
+  )}`,
 });
-const me = face('me', '#c96442'),
-  mara = face('mara', '#d14d72'),
-  joel = face('joel', '#2e9e6a'),
-  priya = face('priya', '#8a5cf6'),
-  kenji = face('kenji', '#e5892a');
+
+const me = face('me', '#c96442');
+const mara = face('mara', '#d14d72');
+const joel = face('joel', '#2e9e6a');
+const priya = face('priya', '#8a5cf6');
+const kenji = face('kenji', '#e5892a');
+
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
+
 const pr = o => ({
   isDraft: false,
   headRefOid: 'A',
@@ -168,6 +182,7 @@ const pr = o => ({
   asks: { nodes: [] },
   ...o,
 });
+
 export const prsFile = join(root, 'prs.json');
 export const PRS = {
   // the open chat's: CI passed, a review asked of priya, mara's comment answered — theirs to move
@@ -267,6 +282,7 @@ writeFileSync(prsFile, JSON.stringify(PRS));
 
 const sleeps = Array.from({ length: 5 }, () => spawn('sleep', ['900'], { stdio: 'ignore' }));
 const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
+
 export const FABLE = 'claude-fable-5-1';
 export const userLine = (id, where, text, at) => ({
   isSidechain: false,
@@ -300,6 +316,7 @@ const gridReply = `The cards hard-code their colours instead of reading the them
 \`\`\`
 
 All 14 grid tests pass. Want me to open a PR?`;
+
 const CARD_FILE = `${SF}/src/components/ProductGrid/ProductCard.css`;
 
 export const { chats } = makeFixture(claudeDir, [
@@ -521,6 +538,7 @@ export const { chats } = makeFixture(claudeDir, [
 ]);
 export const chat = t => chats.find(c => c.title === t);
 const agents = chat('Review the staging VPC plan');
+
 agentFiles({
   dir: claudeDir,
   lead: agents,
@@ -550,23 +568,28 @@ agentFiles({
 });
 
 // Claude Code in the drawer, for the open chat resumed there: the screen the fake draws (it wraps it to its width).
-const O = '\x1b[38;2;215;119;87m',
-  B = '\x1b[1m',
-  D = '\x1b[2m',
-  R = '\x1b[0m',
-  OK = '\x1b[38;2;78;186;101m',
-  U = '\x1b[38;5;247m',
-  C = '\x1b[38;2;177;185;249m';
-const MINUS = '\x1b[48;2;92;30;36m',
-  PLUS = '\x1b[48;2;24;72;40m';
+const O = '\x1b[38;2;215;119;87m';
+const B = '\x1b[1m';
+const D = '\x1b[2m';
+const R = '\x1b[0m';
+const OK = '\x1b[38;2;78;186;101m';
+const U = '\x1b[38;5;247m';
+const C = '\x1b[38;2;177;185;249m';
+
+const MINUS = '\x1b[48;2;92;30;36m';
+const PLUS = '\x1b[48;2;24;72;40m';
+
 const tool = (name, arg, ...result) => [
   `${OK}⏺${R} ${B}${name}${R}(${arg})`,
   ...result.map((r, i) => (i ? `     ${r}` : `  ${D}⎿${R}  ${r}`)),
   '',
 ];
+
 const diff = (n, sign, text) =>
   `      ${D}${String(n).padStart(2)}${R} ${sign === '-' ? MINUS : sign === '+' ? PLUS : ''}${sign || ' '} ${text}${R}`;
+
 const screenFile = join(root, 'screen.json');
+
 writeFileSync(
   screenFile,
   JSON.stringify({
@@ -632,9 +655,11 @@ const freePort = () =>
   new Promise(res => {
     const s = net.createServer().listen(0, '127.0.0.1', () => {
       const p = s.address().port;
+
       s.close(() => res(p));
     });
   });
+
 // Behind a connection token, as the board wants it (2026-10-16): the board's own is this one, written into the test
 // server's state folder by kit() before anything asks it for VS Code Web (vswebWhyNot refuses a serve-web that wants none).
 export const VS = {
@@ -645,7 +670,9 @@ export const VS = {
   token: randomBytes(32).toString('hex'),
 };
 const vsTokenFile = join(root, 'vsweb-token');
+
 writeFileSync(vsTokenFile, VS.token, { mode: 0o600 });
+
 const vsUp = async () => {
   try {
     return (
@@ -660,17 +687,22 @@ const vsUp = async () => {
     return false;
   }
 };
+
 const endVs = () => {
   if (VS.child) {
     try {
       process.kill(-VS.child.pid, 'SIGTERM');
     } catch {}
+
     VS.child = null;
   }
+
   VS.server?.close();
   VS.server = null;
 };
+
 process.on('exit', endVs);
+
 const vsArgs = [
   'serve-web',
   '--host',
@@ -684,16 +716,22 @@ const vsArgs = [
   '--server-data-dir',
   join(root, 'vscode'),
 ];
+
 VS.child = spawn(process.env.CODE_BIN || 'code', vsArgs, { stdio: 'ignore', detached: true });
+
 VS.child.on('error', () => {
   VS.child = null;
 });
-for (const t0 = Date.now(); VS.child && Date.now() - t0 < 90_000 && !(await vsUp());)
+
+for (const t0 = Date.now(); VS.child && Date.now() - t0 < 90_000 && !(await vsUp());) {
   await new Promise(r => setTimeout(r, 500));
+}
+
 if (!(await vsUp())) {
   console.error('readme-shots: no VS Code Web (the `code` CLI, CODE_BIN) — the chat shot goes without it');
   endVs();
 }
+
 // Its settings, in the store VS Code Web keeps a user's files in (IndexedDB `vscode-web-db`, the path the key), written
 // by a page of the same origin before the workbench loads: a dark theme, no welcome, no trust prompt, no AI panel.
 const VS_SETTINGS = {
@@ -709,6 +747,7 @@ const VS_SETTINGS = {
   'workbench.layoutControl.enabled': false,
   'git.openRepositoryInParentFolders': 'never',
 };
+
 const seedPage = to => `<!doctype html><script>
   const r = indexedDB.open('vscode-web-db', 3);
   r.onupgradeneeded = () => { for (const s of ['vscode-userdata-store', 'vscode-logs-store', 'vscode-filehandles-store']) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
@@ -716,6 +755,7 @@ const seedPage = to => `<!doctype html><script>
     tx.objectStore('vscode-userdata-store').put(new TextEncoder().encode(${JSON.stringify(JSON.stringify(VS_SETTINGS, null, 2))}), '/User/settings.json');
     tx.oncomplete = () => { db.close(); location.replace(${JSON.stringify(to)}); }; };
 </script>`;
+
 // serve-web says SAMEORIGIN and frame-ancestors 'self'; the proxy drops both, and passes upgrades (its sockets) through.
 if (VS.child) {
   VS.server = http.createServer((req, res) => {
@@ -723,41 +763,50 @@ if (VS.child) {
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end(seedPage(new URL(req.url, 'http://x').searchParams.get('to') || '/'));
     }
+
     const up = http.request(
       { host: '127.0.0.1', port: VS.port, method: req.method, path: req.url, headers: req.headers },
       r => {
         const h = { ...r.headers };
+
         delete h['x-frame-options'];
         delete h['content-security-policy'];
         res.writeHead(r.statusCode, h);
         r.pipe(res);
       },
     );
+
     up.on('error', () => {
       try {
         res.writeHead(502);
         res.end();
       } catch {}
     });
+
     req.pipe(up);
   });
+
   VS.server.on('upgrade', (req, sock, head) => {
     const up = net.connect(VS.port, '127.0.0.1', () => {
       const hs = [];
+
       for (let i = 0; i < req.rawHeaders.length; i += 2) hs.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
       up.write(`${req.method} ${req.url} HTTP/1.1\r\n${hs.join('\r\n')}\r\n\r\n`);
       if (head?.length) up.write(head);
       up.pipe(sock);
       sock.pipe(up);
     });
+
     up.on('error', () => sock.destroy());
     sock.on('error', () => up.destroy());
   });
+
   await new Promise(r => VS.server.listen(VS.proxy, '127.0.0.1', r));
 }
 
 // A zsh tab's prompt: the made-up user's at the made-up host, never this Mac's name (zsh's own default is `%m%# `).
 const zdot = join(root, 'zdot');
+
 mkdirSync(zdot);
 writeFileSync(join(zdot, '.zshrc'), "PROMPT='%F{green}ada@studio%f %F{blue}%1~%f %# '\n");
 
@@ -785,6 +834,7 @@ export const meta = {
 // What /api/usage and /api/stats would answer — the page's fetch answers them before the server is asked — and the
 // snapshot's word on who and where (the home's user@host, the About box): made up, as the rest is.
 const inMin = m => new Date(now + m * 60_000).toISOString();
+
 const USAGE = {
   fetchedAt: new Date(now).toISOString(),
   windows: [
@@ -792,7 +842,9 @@ const USAGE = {
     { key: 'limits:weekly_scoped:Fable', label: 'week · Fable', percent: 71, resetsAt: inMin(3 * DAY + 200) },
   ],
 };
+
 const STATS = { cpu: 23, mem: { used: 21.4 * 2 ** 30, total: 36 * 2 ** 30 } };
+
 const ABOUT = {
   user: 'ada',
   host: 'studio',
@@ -800,6 +852,7 @@ const ABOUT = {
   stateFile: '~/Library/Application Support/peixAIrada/state.json',
   configFile: '~/.config/peixairada/config.json',
 };
+
 // Only the board's own frame: the scripts run in every frame, VS Code's too.
 export const PAGE = `(() => { if (window.top !== window) return;
   const f = window.fetch, answer = o => Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } }));
@@ -828,10 +881,13 @@ export const PAGE = `(() => { if (window.top !== window) return;
 /** The made-up board's own processes and files gone: VS Code Web, the sleeps standing in for live claudes, the fixture. */
 export function endBoard() {
   endVs();
-  for (const s of sleeps)
+
+  for (const s of sleeps) {
     try {
       s.kill();
     } catch {}
+  }
+
   rmSync(root, { recursive: true, force: true });
 }
 
@@ -840,31 +896,41 @@ export function endBoard() {
  *  the server VS Code Web's token. */
 export function kit(ctx) {
   if (ctx.server?.dir) writeFileSync(join(ctx.server.dir, 'vsweb-token'), VS.token, { mode: 0o600 }); // the board's VS Code Web token is ours
+
   const theme = dark =>
     ctx.send('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
     });
+
   const scale = (s, w = W, h = H) =>
     ctx.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: s, mobile: false });
+
   const rect = sel =>
     ctx.evaluate(
       `(r => ({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect())`,
     );
+
   const grid = chat('Dark mode for the product grid');
+
   const board = async (prefs = {}, open = grid.id) => {
     await ctx.evaluate(
       `(p => { const k = 'peixairada-prefs'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), ...p })); })(${JSON.stringify(prefs)})`,
     );
+
     await ctx.reload();
+
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length >= ${chats.length - 2}`, {
       what: 'the cards',
       timeout: 15000,
     });
+
     if (open) await ctx.openChat(open);
+
     await ctx.waitFor(
       `${JSON.stringify(chats.map(c => c.id))}.filter(id => window.peix.session(id)?.prs?.some(p => p.state)).length >= 5`,
       { what: 'the PR states from the fake gh', timeout: 30000 },
     );
   };
+
   return { theme, scale, rect, grid, board };
 }

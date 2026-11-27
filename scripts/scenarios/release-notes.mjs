@@ -14,18 +14,23 @@ export const meta = {
 
 export default async function (ctx) {
   const out = {};
+
   const row = () =>
     ctx.evaluate(
       `({ word: document.querySelector('#updWord').textContent, say: document.querySelector('#updSay').textContent, notes: document.querySelector('#updNotes').hidden ? null : document.querySelector('#updNotes').innerText, follow: [...document.querySelectorAll('#updFollow [aria-checked="true"]')].map(b => b.dataset.ch) })`,
     );
+
   const seg = () => ctx.evaluate(`document.querySelector('#sbLeft .upg')?.textContent ?? null`);
+
   const look = async what => {
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
+
     await ctx.waitFor(
       `!window.peix.update()?.busy && window.peix.update()?.checkedAt > ${JSON.stringify(new Date().toISOString())}`,
       { what },
     );
   };
+
   const rect = sel =>
     ctx.evaluate(
       `(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('${sel}').getBoundingClientRect())`,
@@ -35,7 +40,7 @@ export default async function (ctx) {
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
   await ctx.evaluate(`document.querySelector('#stSystem').click()`);
-  p.push({ 'public/index.html': PAGE + '<!-- a -->\n' }, 'a');
+  p.push({ 'public/index.html': `${PAGE}<!-- a -->\n` }, 'a');
   await look('a look with a commit and no release');
   out.commit = { row: await row(), seg: await seg() };
   ctx.assert.deepEqual(out.commit.row.follow, ['releases'], 'releases by default');
@@ -49,6 +54,7 @@ export default async function (ctx) {
     '0.2.0',
     '### New\n\n- **Space** (⌥⌘X) shows every chat as a node, its agents round it.\n- **Pinned** keeps the chats you pin above the lanes.\n\n### Fixed\n\n- Links in a drawer open when clicked.\n',
   );
+
   await look('a look with a release');
   out.release = { row: await row(), seg: await seg() };
   ctx.assert.equal(out.release.row.word, '0.2 is out');
@@ -68,6 +74,7 @@ export default async function (ctx) {
   await ctx.server.restart(); // what launchd.sh restart does: the same port, a new server
   // the page the update changed reloads once the new server answers
   await ctx.waitFor(`!window.__mark && window.peix?.state().snapshots > 0`, { what: 'the new page', timeout: 25_000 });
+
   await ctx.waitFor(
     `document.querySelector('#news').open && document.querySelector('#news').classList.contains('notes')`,
     {
@@ -75,41 +82,52 @@ export default async function (ctx) {
       timeout: 20_000,
     },
   );
+
   await ctx.settle();
+
   out.news = await ctx.evaluate(
     `({ tag: document.querySelector('#newsTag').textContent, title: document.querySelector('#newsTitle').textContent, md: document.querySelector('#newsMd').innerText, next: document.querySelector('#newsNext').textContent, pic: getComputedStyle(document.querySelector('#newsPic')).display })`,
   );
+
   ctx.assert.deepEqual(
     [out.news.tag, out.news.title, out.news.next, out.news.pic],
     ['Release 0.2 · 27 November 2026', 'What’s new in 0.2', 'Done', 'none'],
   );
+
   ctx.assert.match(out.news.md, /Space \(⌥⌘X\) shows every chat/);
   await ctx.shot('2-whats-new', await rect('#news'));
   await ctx.evaluate(`document.querySelector('#newsNext').click()`);
+
   await ctx.waitFor(`!document.querySelector('#news').open && window.peix.prefs().releaseSeen === '0.2.0'`, {
     what: 'closed, and 0.2 seen',
   });
+
   // the page the update changed has reloaded by now, after the new server came: nothing shown again
   await ctx.sleep(2500);
   await ctx.waitFor(`window.peix?.state().snapshots > 0`, { what: 'the page, drawn' });
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#news').open`), false, 'not again');
 
   // Every commit: the commits past the release are the news again
-  const b = p.push({ 'public/index.html': PAGE + '<!-- b -->\n' }, 'b');
+  const b = p.push({ 'public/index.html': `${PAGE}<!-- b -->\n` }, 'b');
+
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
   await ctx.evaluate(`document.querySelector('#stSystem').click()`);
   await look('a look on releases, a commit past it');
   ctx.assert.match((await row()).say, /^on 0\.2, the newest release · 1 commit on origin\/main since/);
   await ctx.evaluate(`document.querySelector('#updFollow [data-ch="main"]').click()`);
+
   await ctx.waitFor(`window.peix.update()?.channel === 'main' && !window.peix.update()?.busy`, {
     what: 'Every commit',
   });
+
   out.main = { row: await row(), seg: await seg(), up: await ctx.evaluate(`window.peix.update().up`) };
+
   ctx.assert.deepEqual(
     [out.main.row.follow, out.main.row.word, out.main.seg, out.main.up],
     [['main'], '1 new commit', '1 new commit · update', b],
   );
+
   ctx.assert.match(out.main.row.say, /^1 new commit on origin\/main — Update now takes them/);
   await ctx.shot('3-every-commit', await rect('#settings'));
 
@@ -117,15 +135,18 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#settings').close()`);
   await ctx.key('KeyL');
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher' });
+
   await ctx.evaluate(
     `[...document.querySelectorAll('#picklist .pkrow.menu')].find(r => r.querySelector('.n').textContent === 'Release notes').click()`,
   );
+
   await ctx.waitFor(
     `document.querySelector('#news').open && document.querySelector('#news').classList.contains('notes')`,
     {
       what: 'the notes again',
     },
   );
+
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#newsTitle').textContent`), 'What’s new in 0.2');
   return out;
 }

@@ -28,17 +28,22 @@ import { terms } from './terminals/terms.mjs';
 export const KEY_FILE = join(dirname(STATE_FILE), 'key');
 const KEY_MODE = process.env.KEY_MODE || '';
 const LOOPBACK_BIND = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(HOST);
+
 export const KEY_OPEN = /^\/(index\.html|vendor\/[\w.-]+|api\/alive|api\/key\/(claim|open))?$/;
-export let boardKey = '',
-  keylessSaid = false,
-  keyOpenAt = 0;
+export let boardKey = '';
+export let keylessSaid = false;
+export let keyOpenAt = 0;
+
 export function setBoardKey(v) {
   boardKey = v;
 } // for the modules that write it: an import is read-only
+
 export function setKeyOpenAt(v) {
   keyOpenAt = v;
 }
+
 export const tickets = new Map(); // ticket → when it expires
+
 /** `dir`, made if need be and kept this user's alone (2026-11-06): the state folder holds the key, the tokens, every
  *  drawer's socket and screen, the lunch's logged-in Chrome — made 0755 before, readable by every account on the Mac
  *  but for ~/Library's own mode, and a TERMS_DIR set to a shorter folder outside it (/tmp) by whoever made it first.
@@ -49,33 +54,44 @@ export function privateDir(dir) {
   } catch (e) {
     if (e.code !== 'EEXIST') throw e;
   }
+
   const st = statSync(dir);
-  if (!st.isDirectory() || st.uid !== process.getuid())
+
+  if (!st.isDirectory() || st.uid !== process.getuid()) {
     throw new Error(`${dir} is not a folder of this user's — not used`);
+  }
+
   if (st.mode & 0o077) chmodSync(dir, 0o700);
   return dir;
 }
+
 /** A key of 64 hex digits kept in `file`: the file's, else a new one written there, this user's alone. */
 export function keyFile(file) {
   try {
     const t = readFileSync(file, 'utf8').trim();
+
     if (/^[0-9a-f]{64}$/.test(t)) {
       if (statSync(file).mode & 0o077) chmodSync(file, 0o600);
       return t;
     }
   } catch {}
+
   return writeKey(file);
 }
+
 export function writeKey(file) {
-  const t = randomBytes(32).toString('hex'),
-    tmp = `${file}.${process.pid}`;
+  const t = randomBytes(32).toString('hex');
+  const tmp = `${file}.${process.pid}`;
+
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(tmp, t, { mode: 0o600 });
   renameSync(tmp, file);
   return t;
 }
+
 export const keyRequired = () => KEY_MODE !== 'lax' || !LOOPBACK_BIND || keyEnforced;
 export const keyState = () => ({ required: keyRequired(), mode: KEY_MODE || null, file: KEY_FILE });
+
 export function requireKey(why) {
   if (keyEnforced) return;
   setKeyEnforced(true);
@@ -86,35 +102,47 @@ export function requireKey(why) {
   for (const t of terms.values()) for (const ws of t.clients) if (!ws.keyed) ws.close(4401, 'the board wants its key');
   console.log(`[peixairada] the board's key is required from now on — ${why}`);
 }
+
 const keyMatches = k => {
-  const a = Buffer.from(String(k)),
-    b = Buffer.from(boardKey);
+  const a = Buffer.from(String(k));
+  const b = Buffer.from(boardKey);
+
   return !!boardKey && a.length === b.length && timingSafeEqual(a, b);
 };
+
 /** Why `req` is not answered for want of the key — `missing` or `wrong` —, else null. */
 export function keyWant(req, url) {
   const k = req.headers['x-peix-key'] || url.searchParams.get('key');
+
   if (k) {
     if (!keyMatches(k)) return 'wrong';
     if (req.headers['x-peix-app'] === '1') requireKey("the app's page came with it");
     return null;
   }
+
   if (keyRequired()) return 'missing';
+
   if (!keylessSaid) {
     keylessSaid = true;
+
     console.log(
       `[peixairada] answered ${req.method} ${url.pathname} with no key — not required until the app's page brings it, or Settings › Board says so`,
     );
   }
+
   return null;
 }
+
 export function newTicket() {
   const now = Date.now();
+
   for (const [t, at] of tickets) if (at < now) tickets.delete(t);
   const t = randomBytes(18).toString('base64url');
+
   tickets.set(t, now + 60_000);
   return t;
 }
+
 // The app proves the server before it trusts it (2026-11-06): it adopted whatever answered on the port, sent it the key
 // on every probe and gave its page the key and the bridge — so another account, or a container publishing the port,
 // that held 7331 while this server was down (a login, a restart, a crash) had the key. Now the app's probe sends a nonce
@@ -122,12 +150,15 @@ export function newTicket() {
 // write; the app checks it before anything else (`ServerController.probe` in ServerController.swift). Open as /api/alive is: an
 // HMAC tells nothing of its key.
 const ALIVE_NONCE = /^[0-9a-f]{32,128}$/;
+
 export const aliveProof = req => {
   const n = String(req.headers['x-peix-nonce'] || '');
+
   return boardKey && ALIVE_NONCE.test(n)
     ? { 'x-peix-proof': createHmac('sha256', boardKey).update(`peix-alive:${n}`).digest('hex') }
     : {};
 };
+
 /** The address this Mac's browser reaches the board at. */
 export const boardUrl = () =>
   `http://${LOOPBACK_BIND || HOST === '0.0.0.0' || HOST === '::' ? '127.0.0.1' : HOST.includes(':') && !HOST.startsWith('[') ? `[${HOST}]` : HOST}:${PORT}/`;

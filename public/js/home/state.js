@@ -6,7 +6,9 @@
 // the day is asked of the server (GET /api/today) on showing, every minute and when a turn lands, the rest is drawn
 // from what the page holds.
 const home = { day: null, asking: false, timer: 0, soon: 0 };
+
 const dur = ms => {
   const m = Math.round((ms || 0) / 60_000);
+
   return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 };

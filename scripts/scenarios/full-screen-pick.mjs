@@ -7,11 +7,13 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
+
   const openLook = async () => {
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
     await ctx.settle();
   };
+
   const row = () =>
     ctx
       .evaluate(
@@ -21,6 +23,7 @@ export default async function (ctx) {
   })())`,
       )
       .then(JSON.parse);
+
   const said = () =>
     ctx.evaluate(`JSON.stringify((window.__posts || []).filter(m => m.type === 'fullscreen'))`).then(JSON.parse);
 
@@ -34,6 +37,7 @@ export default async function (ctx) {
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };`,
   });
+
   await ctx.reload();
   ctx.assert.deepEqual(await said(), [{ type: 'fullscreen', space: false }], 'the fill, said on load');
   await openLook();
@@ -47,6 +51,7 @@ export default async function (ctx) {
     ctx.evaluate(
       `(s => { s.value = '${v}'; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#fsPick'))`,
     );
+
   await choose('space');
   ctx.assert.deepEqual((await said()).at(-1), { type: 'fullscreen', space: true }, 'its own Space, said at once');
   ctx.assert.deepEqual((await row()).checked, ['space']);

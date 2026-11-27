@@ -7,18 +7,22 @@
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 export default async function (ctx) {
-  const out = {},
-    [, two] = ctx.fixture.chats;
+  const out = {};
+  const [, two] = ctx.fixture.chats;
+
   await ctx.openChat(two.id);
   await ctx.key('KeyC'); // ⌥⌘C: Claude on it, in a drawer here
   await ctx.waitPrompt();
+
   const prompts = () =>
     ctx
       .evaluate(
         `fetch('/api/sessions/${two.id}/messages', { headers: { 'x-peix-key': window.PEIX_KEY } }).then(r => r.json()).then(d => JSON.stringify((d.entries || []).filter(e => e.role === 'user' && e.kind === 'text').map(e => e.text)))`,
       )
       .then(JSON.parse);
+
   const before = (await prompts()).length;
+
   ctx.assert.equal(
     await ctx.evaluate(
       `window.peixReply(${JSON.stringify(two.id)}, 'first\\rsecond\\x15third\\x1b[Z end \\u202Eevil\\u2028fourth')`,
@@ -26,10 +30,12 @@ export default async function (ctx) {
     true,
     'the reply went',
   );
+
   await ctx.waitFor(
     `fetch('/api/sessions/${two.id}/messages', { headers: { 'x-peix-key': window.PEIX_KEY } }).then(r => r.json()).then(d => (d.entries || []).filter(e => e.role === 'user' && e.kind === 'text').length > ${before})`,
     { what: 'the reply, a prompt of the chat' },
   );
+
   await ctx.sleep(1500); // a CR typed raw would have sent a second prompt by now
   out.prompts = (await prompts()).slice(before);
   ctx.assert.equal(out.prompts.length, 1, 'one prompt: the CR inside it was a line break, not a send');
@@ -41,15 +47,19 @@ export default async function (ctx) {
   ctx.assert.equal(out.dropBad, false, 'a dropped name with a CR in it is not typed');
   out.said = await ctx.evaluate(`[...document.querySelectorAll('.note')].map(n => n.textContent).join(' | ')`);
   ctx.assert.match(out.said, /control character/, 'and the board says why');
+
   ctx.assert.equal(
     await ctx.evaluate(`window.peixDrop(['/tmp/evil\\u202Etxt.exe'])`),
     false,
     'nor one with a bidi mark',
   );
+
   out.dropOk = await ctx.evaluate(`window.peixDrop(['/tmp/plain name.txt'])`);
   ctx.assert.equal(out.dropOk, true, 'a plain name is typed');
+
   await ctx.waitFor(`(window.peix.screen() || []).join(' ').includes('@/tmp/plain\\\\ name.txt')`, {
     what: 'the @-mention on the prompt line',
   });
+
   return out;
 }

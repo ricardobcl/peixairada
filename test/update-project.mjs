@@ -20,22 +20,27 @@ export const PAGE = readPage(); // put together: the tiny project's page is one 
 /** origin.git, a clone the server updates (`co`) and one that commits and pushes (`dev`); the stand-ins write to `marks`;
  *  the installed app (`app`) built from the first commit's mac/, until a build stamps it again. */
 export function project() {
-  const root = tmpDir('peix-upd-'),
-    origin = join(root, 'origin.git'),
-    co = join(root, 'co'),
-    dev = join(root, 'dev'),
-    marks = join(root, 'marks'),
-    app = join(root, 'peixAIrada.app');
+  const root = tmpDir('peix-upd-');
+  const origin = join(root, 'origin.git');
+  const co = join(root, 'co');
+  const dev = join(root, 'dev');
+  const marks = join(root, 'marks');
+  const app = join(root, 'peixAIrada.app');
+
   const keygen = name => {
     const f = join(root, name);
+
     execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', name, '-f', f]);
     return f;
   };
+
   const signer = keygen('signer');
+
   const signs = key =>
     key
       ? ['-c', 'gpg.format=ssh', '-c', `user.signingkey=${key}`, '-c', 'commit.gpgsign=true']
       : ['-c', 'commit.gpgsign=false'];
+
   const gitSigned = (key, cwd, ...args) =>
     execFileSync('git', [...signs(key), '-c', 'core.hooksPath=/dev/null', '-C', cwd, ...args], {
       encoding: 'utf8',
@@ -47,22 +52,27 @@ export function project() {
         GIT_COMMITTER_EMAIL: 'test@example.com',
       },
     }).trim();
+
   const git = (cwd, ...args) => gitSigned(signer, cwd, ...args);
+
   const signers = (...keys) =>
-    keys
+    `${keys
       .map(
         k =>
           `test@example.com namespaces="git" ${readFileSync(`${k}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}`,
       )
-      .join('\n') + '\n';
+      .join('\n')}\n`;
+
   const write = (dir, files) => {
     for (const [f, body] of Object.entries(files)) {
       mkdirSync(dirname(join(dir, f)), { recursive: true });
       writeFileSync(join(dir, f), body);
     }
   };
+
   mkdirSync(dev);
   git(dev, 'init', '-q', '-b', 'main');
+
   write(dev, {
     'server.mjs': TINY,
     'package.json': '{ "name": "tiny" }\n',
@@ -70,41 +80,52 @@ export function project() {
     'public/index.html': PAGE,
     '.github/allowed_signers': signers(signer),
   });
+
   for (const f of [
     'lib/testserver.mjs',
     'lib/page.mjs',
     'scripts/check-page.mjs',
     'mac/Sources/main.swift',
     'mac/Sources/Keys.swift',
-  ])
+  ]) {
     cpSync(join(ROOT, f), join(dev, f));
+  }
+
   git(dev, 'add', '-A');
   git(dev, 'commit', '-q', '-m', 'the first');
   git(root, 'init', '-q', '--bare', '-b', 'main', origin);
   git(dev, 'remote', 'add', 'origin', origin);
   git(dev, 'push', '-q', '-u', 'origin', 'main');
   git(root, 'clone', '-q', origin, co);
-  const plist = join(app, 'Contents', 'Info.plist'),
-    stamp = tree => {
-      mkdirSync(dirname(plist), { recursive: true });
-      writeFileSync(
-        plist,
-        `<plist version="1.0"><dict>\n  <key>PeixSource</key><string>${tree}</string>\n</dict></plist>\n`,
-      );
-    };
+
+  const plist = join(app, 'Contents', 'Info.plist');
+
+  const stamp = tree => {
+    mkdirSync(dirname(plist), { recursive: true });
+
+    writeFileSync(
+      plist,
+      `<plist version="1.0"><dict>\n  <key>PeixSource</key><string>${tree}</string>\n</dict></plist>\n`,
+    );
+  };
+
   stamp(git(co, 'rev-parse', 'HEAD:mac'));
+
   const stand = (name, then = '') => {
     const f = join(root, name);
+
     writeFileSync(f, `#!/bin/sh\necho "${name} $*" >> "${marks}"\n${then}`);
     chmodSync(f, 0o755);
     return f;
   };
+
   // the app's build as build.sh ends: stamped with the checkout's mac/ and `installed →`, or a compiler's complaint; slow
   // when asked to (a file says so)
   const build = stand(
     'build',
     `[ -f "${root}/build-slow" ] && sleep 2\n[ -f "${root}/build-fails" ] && { echo "swiftc: error: no such module 'Cocoa'"; exit 1; }\nprintf '<plist><dict><key>PeixSource</key><string>%s</string></dict></plist>\\n' "$(git -C "${co}" rev-parse HEAD:mac)" > "${plist}"\necho "installed → /Applications/peixAIrada.app"\n`,
   );
+
   const env = {
     UPDATE_DIR: co,
     UPDATE_RESTART_BIN: stand('restart'),
@@ -113,6 +134,7 @@ export function project() {
     BOARD_APP: app,
     UPDATE_CHANNEL: 'main',
   };
+
   /** a commit on origin, as from someone else's machine; its sha */
   const push = (files, msg = 'a change', { sign = signer } = {}) => {
     write(dev, files);
@@ -121,11 +143,13 @@ export function project() {
     git(dev, 'push', '-q');
     return git(dev, 'rev-parse', 'HEAD');
   };
+
   /** a release on origin (2026-11-27), as scripts/release.mjs cuts one: package.json's version set and its notes at the
    *  top of CHANGELOG.md, in one commit; its sha */
   const release = (version, notes = `### New\n\n- what ${version} brings\n`, opts) => {
-    const log = join(dev, 'CHANGELOG.md'),
-      older = existsSync(log) ? readFileSync(log, 'utf8').replace(/^# Changelog\n+/, '') : '';
+    const log = join(dev, 'CHANGELOG.md');
+    const older = existsSync(log) ? readFileSync(log, 'utf8').replace(/^# Changelog\n+/, '') : '';
+
     return push(
       {
         'package.json': `{ "name": "tiny", "version": "${version}" }\n`,
@@ -135,8 +159,10 @@ export function project() {
       opts,
     );
   };
+
   const head = () => git(co, 'rev-parse', 'HEAD');
   const asked = () => (existsSync(marks) ? readFileSync(marks, 'utf8').trim().split('\n') : []);
+
   /** a commit made here, in the checkout the server runs from — never pushed, so no pull ever brings it */
   const commit = (files, msg = 'a change of mine') => {
     write(co, files);
@@ -144,7 +170,9 @@ export function project() {
     git(co, 'commit', '-q', '-m', msg);
     return git(co, 'rev-parse', 'HEAD');
   };
+
   const builds = () => asked().filter(l => l.startsWith('build ')).length;
+
   return {
     root,
     co,

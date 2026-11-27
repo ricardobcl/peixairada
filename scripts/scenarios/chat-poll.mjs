@@ -27,17 +27,21 @@ export const meta = {
 
 export default async function (ctx) {
   const out = {};
+
   try {
     const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
     const click = sel => ctx.evaluate(`${q(sel)}.click()`);
+
     const enter = (sel, meta = false) =>
       ctx.evaluate(
         `${q(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', metaKey: ${meta}, bubbles: true, cancelable: true }))`,
       );
+
     const esc = () =>
       ctx.evaluate(
         `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))`,
       );
+
     const form = () =>
       ctx
         .evaluate(
@@ -45,6 +49,7 @@ export default async function (ctx) {
       answers: [...document.querySelectorAll('#rmform [data-pf="a"]')].map(i => i.value), focus: document.activeElement.dataset.pf ?? document.activeElement.id })`,
         )
         .then(JSON.parse);
+
     const poll = () =>
       ctx
         .evaluate(
@@ -53,10 +58,12 @@ export default async function (ctx) {
       foot: p.querySelector('.rmpf').textContent })))`,
         )
         .then(JSON.parse);
+
     const rect = sel =>
       ctx.evaluate(
         `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`,
       );
+
     const reactions = () =>
       gh
         .repo('acme-chat/room')
@@ -76,6 +83,7 @@ export default async function (ctx) {
         },
       }),
     });
+
     await waitFor(async () => (await ctx.server.api('api/chat')).body.ready, { what: 'the chat read' });
     await ctx.waitFor(`!!${q('#sbChat')}`, { what: 'the chat in the bar' });
     await click('#sbChat');
@@ -84,23 +92,28 @@ export default async function (ctx) {
     // the form, in the box's place; Esc lets it go before the panel
     await click('#rmPollBtn');
     out.opened = await form();
+
     ctx.assert.deepEqual(
       [out.opened.shown, out.opened.box, out.opened.answers.length, out.opened.focus],
       [true, false, 2, 'q'],
       'two answers to start, the question with the keys',
     );
+
     await ctx.fill('#rmform [data-pf="q"]', 'Coffee?');
     await ctx.fill('#rmform [data-pf="a"][data-i="0"]', 'Now');
     await ctx.fill('#rmform [data-pf="a"][data-i="1"]', 'Later');
     await enter('#rmform [data-pf="a"][data-i="1"]');
     out.typed = await form();
+
     ctx.assert.deepEqual(
       [out.typed.q, out.typed.answers, out.typed.focus],
       ['Coffee?', ['Now', 'Later', ''], 'a'],
       '⏎ past the last answer: a new one, what was typed kept',
     );
+
     await esc();
     out.gone = await form();
+
     ctx.assert.deepEqual(
       [out.gone.shown, out.gone.box, await ctx.evaluate(`${q('#room')}.open`)],
       [false, true, true],
@@ -111,29 +124,36 @@ export default async function (ctx) {
     await click('#rmPollBtn');
     await click('#rmform [data-pf="lunch"]');
     out.lunch = await form();
+
     ctx.assert.deepEqual(
       [out.lunch.q, out.lunch.answers],
       ['Lunch at 12:30?', ['Ramen Break', 'Casa do Professor', 'Not today']],
     );
+
     await ctx.settle();
     await ctx.shot('1-form', await rect('#room'));
     await click('#rmform [data-pf="post"]');
     await ctx.waitFor(`!!${q('#rmlog .rmpoll')} && ${q('#rmform')}.hidden`, { what: 'the poll, posted' });
     out.body = gh.repo('acme-chat/room').issues[0].comments.at(-1).body;
+
     ctx.assert.match(
       out.body,
       /^\[\/\/\]: # \(peixAIrada poll\)\n📊 \*\*Lunch at 12:30\?\*\*\n\n👍 Ramen Break\n🎉 Casa do Professor\n👎 Not today\n/,
       'GitHub reads it as words, a reaction to each answer',
     );
+
     // a board from before polls: chatMd's markdown, raw HTML escaped — words only, the mark hidden
     out.before = await ctx.evaluate(`(() => { const t = document.createElement('template');
       t.innerHTML = new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => t.text.replace(/</g, '&lt;') } }).parse(${JSON.stringify(out.body)}); return t.content.textContent.trim(); })()`);
+
     ctx.assert.match(
       out.before,
       /^📊 Lunch at 12:30\?\s+👍 Ramen Break🎉 Casa do Professor👎 Not today\s+A poll: vote with the reaction beside your answer — one each\.$/,
       'a board without polls: the words, no mark, no tag',
     );
+
     out.posted = (await poll())[0];
+
     ctx.assert.deepEqual(
       out.posted.opts.map(o => [o.label, o.n, o.mine]),
       [
@@ -142,21 +162,27 @@ export default async function (ctx) {
         ['Not today', 0, false],
       ],
     );
+
     ctx.assert.match(out.posted.foot, /Nobody has answered yet · one answer each/);
 
     // a vote; another answer moves it; the same again takes it back — each a reaction of yours on GitHub
     await click('#rmlog .rmopt[data-r="+1"]');
     await waitFor(() => reactions().join() === 'me:+1', { what: 'your vote, a reaction' });
+
     await ctx.waitFor(`${q('#rmlog .rmopt[data-r="+1"]')}.getAttribute('aria-pressed') === 'true'`, {
       what: 'your vote drawn',
     });
+
     await click('#rmlog .rmopt[data-r="-1"]');
     await waitFor(() => reactions().join() === 'me:-1', { what: 'your vote moved on GitHub' });
     gh.react(gh.repo('acme-chat/room').issues[0].comments.at(-1).id, 'ana', '+1');
+
     await ctx.waitFor(`/ana/.test(${q('#rmlog .rmopt[data-r="+1"] .rmvs')}?.textContent || '')`, {
       what: "ana's vote, given on GitHub",
     });
+
     out.voted = (await poll())[0];
+
     ctx.assert.deepEqual(
       out.voted.opts.map(o => [o.n, o.mine, o.who]),
       [
@@ -165,11 +191,13 @@ export default async function (ctx) {
         [1, true, 'you'],
       ],
     );
+
     ctx.assert.match(out.voted.foot, /^2 answered/);
     await ctx.settle();
     await ctx.shot('2-voted', await rect('#room'));
     await click('#rmlog .rmopt[data-r="-1"]');
     await waitFor(() => reactions().join() === 'ana:+1', { what: 'yours taken back' });
+
     await ctx.waitFor(
       `${q('#rmlog .rmopt[data-r="-1"]')}.getAttribute('aria-pressed') === 'false' && ${q('#rmlog .rmopt[data-r="-1"] b')}.textContent === '0'`,
       { what: 'drawn taken back' },
@@ -178,16 +206,20 @@ export default async function (ctx) {
     // lunch's dialog asks the chat: the panel, the form filled
     await click('#rmClose');
     await ctx.key('KeyM');
+
     await ctx.waitFor(`${q('#lunchd')}?.open && !!${q('#lunchd [data-lunch="poll"]')}`, {
       what: 'the chalkboard, with Ask the chat',
     });
+
     await click('#lunchd [data-lunch="poll"]');
     await ctx.waitFor(`${q('#room')}.open && !${q('#rmform')}.hidden`, { what: 'the panel, its form filled' });
     out.fromLunch = await form();
+
     ctx.assert.deepEqual(
       [out.fromLunch.q, out.fromLunch.answers.length, out.fromLunch.focus, await ctx.evaluate(`${q('#lunchd')}.open`)],
       ['Lunch at 12:30?', 3, 'post', false],
     );
+
     await esc();
     await esc();
     ctx.assert.equal(await ctx.evaluate(`${q('#room')}.open`), false, 'Esc: the form, then the panel');

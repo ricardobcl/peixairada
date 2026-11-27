@@ -7,6 +7,7 @@ export const meta = { server: true };
 
 export default async function (ctx) {
   const { assert } = ctx;
+
   const body = `
     const mb = async () => Math.round((await footprint()).now), z = window.peix.ze(), st = z.stage, out = { closed: [], opened: [], muted: await muted() };
     await sleep(1500); out.board = await mb();
@@ -19,6 +20,7 @@ export default async function (ctx) {
       if (st.gl || st.off || document.querySelector('#zeGL')) throw new Error('the stage is still here, or off');
     }
     return JSON.stringify(out);`;
+
   const r = spawnSync('node', ['scripts/webkit.mjs', body], {
     encoding: 'utf8',
     timeout: 60000,
@@ -31,19 +33,25 @@ export default async function (ctx) {
       TIMEOUT: '55',
     },
   });
+
   if (/the page is hidden/.test(r.stderr + r.stdout)) {
     ctx.log('the screen is locked: WebKit runs no frames, nothing checked');
     return { skipped: 'the screen is locked' };
   }
+
   const line = r.stdout.split('\n').find(l => l.startsWith('"{'));
+
   assert.ok(line, `an answer from WebKit: ${(r.stderr + r.stdout).slice(-600)}`);
   const out = JSON.parse(JSON.parse(line));
+
   assert.equal(out.muted, true, 'the harness makes no sound');
+
   for (const [i, o] of out.opened.entries()) {
     assert.ok(o.gl && !o.off, `the stage at opening ${i + 1}: ${JSON.stringify(o)}`);
     assert.ok(o.baked, `every sky baked ahead at opening ${i + 1}`);
     assert.equal(o.err, 0, `no GL error at opening ${i + 1}`);
   }
+
   assert.equal(out.err, 0, 'no GL error in a round');
   assert.ok(out.closed[2] < out.board + 150, `closed, the board's memory again: ${JSON.stringify(out)}`);
   return out;

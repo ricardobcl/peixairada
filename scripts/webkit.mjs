@@ -28,23 +28,32 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // The cache in the nearest node_modules up the folders, as Node finds it (2026-10-14): a worktree inside the repo has
 // none of its own, and one made here for the cache was the one check.sh then compared the vendored xterm against.
 let nm = root;
+
 while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname(nm);
-const src = join(root, 'scripts/webkit.swift'),
-  bin = join(nm, 'node_modules/.cache/peixairada/webkit');
-const args = process.argv.slice(2),
-  opt = name => {
-    const i = args.indexOf(name);
-    return i === -1 ? '' : (args.splice(i, 2)[1] ?? '');
-  };
-const hash = opt('--hash'),
-  shot = opt('--shot'),
-  then = opt('--then'),
-  body = args.join(' ');
+
+const src = join(root, 'scripts/webkit.swift');
+const bin = join(nm, 'node_modules/.cache/peixairada/webkit');
+
+const args = process.argv.slice(2);
+
+const opt = name => {
+  const i = args.indexOf(name);
+
+  return i === -1 ? '' : (args.splice(i, 2)[1] ?? '');
+};
+
+const hash = opt('--hash');
+const shot = opt('--shot');
+const then = opt('--then');
+const body = args.join(' ');
+
 if (!body) {
   console.error('usage: npm run webkit -- [--hash <session-id>] [--shot file.png] [--then "<body>"] "<body>"');
   process.exit(2);
 }
+
 const [w, h] = (process.env.SIZE || '1600x900').split('x');
+
 try {
   JSON.parse(process.env.PREFS || '{}');
 } catch {
@@ -59,12 +68,15 @@ const mtime = f => {
     return 0;
   }
 };
+
 if (mtime(bin) < mtime(src)) {
   mkdirSync(dirname(bin), { recursive: true });
   console.error('› compiling scripts/webkit.swift');
   const c = spawnSync('swiftc', ['-O', '-swift-version', '5', '-o', bin, src], { stdio: 'inherit' });
+
   if (c.status !== 0) process.exit(c.status ?? 1);
 }
+
 const r = spawnSync(bin, [process.env.URL || 'http://127.0.0.1:7331/', body, shot, then], {
   stdio: 'inherit',
   env: {
@@ -78,4 +90,5 @@ const r = spawnSync(bin, [process.env.URL || 'http://127.0.0.1:7331/', body, sho
     ...(process.env.TIMEOUT && { WK_TIMEOUT: process.env.TIMEOUT }),
   },
 });
+
 process.exit(r.status ?? 1);

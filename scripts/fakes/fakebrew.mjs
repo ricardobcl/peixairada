@@ -6,28 +6,37 @@
 // LSREGISTER_BIN too: it logs its arguments and does nothing else.
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-const args = process.argv.slice(2),
-  env = process.env;
-if (env.FAKE_BREW_LOG) appendFileSync(env.FAKE_BREW_LOG, args.join(' ') + '\n');
+
+const args = process.argv.slice(2);
+const env = process.env;
+
+if (env.FAKE_BREW_LOG) appendFileSync(env.FAKE_BREW_LOG, `${args.join(' ')}\n`);
 if (args[0] !== 'install') process.exit(0);
-const sleep = ms => new Promise(r => setTimeout(r, ms)),
-  gap = Number(env.FAKE_BREW_MS || 0);
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const gap = Number(env.FAKE_BREW_MS || 0);
+
 const dir = (env.APP_DIRS || '').split(':').filter(Boolean)[0];
+
 for (const l of ['==> Downloading https://zed.dev/fake/Zed-aarch64.dmg', '==> Installing Cask zed']) {
   console.log(l);
   await sleep(gap);
 }
+
 if (env.FAKE_BREW_FAIL || !dir) {
   console.error("Error: Download failed on Cask 'zed' with message: the fake was told to fail");
   process.exit(1);
 }
+
 console.log(`==> Moving App 'Zed.app' to '${join(dir, 'Zed.app')}'`);
 await sleep(gap);
 mkdirSync(join(dir, 'Zed.app', 'Contents'), { recursive: true });
+
 writeFileSync(
   join(dir, 'Zed.app', 'Contents', 'Info.plist'),
   '<plist><dict><key>CFBundleIdentifier</key><string>dev.zed.Zed</string></dict></plist>\n',
 );
+
 console.log("==> Linking Binary 'cli' to '/opt/homebrew/bin/zed'");
 await sleep(gap); // as brew's: the app is there a while before brew has ended (2026-11-04)
 console.log('🍺  zed was successfully installed!');

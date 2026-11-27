@@ -15,39 +15,49 @@ export const meta = {
 
 const vp = (ctx, width, height = 1000) =>
   ctx.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 0, mobile: false });
+
 /** The pointer's own drag, a move a frame: a bar held by the hand, which ctx.drag's eight moves at once are not. */
 async function holdBar(ctx, sel, dx, dy, steps = 20) {
   const a = await ctx.evaluate(
     `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect())`,
   );
+
   const mouse = (type, x, y, buttons) =>
     ctx.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y });
   await mouse('mousePressed', a.x, a.y, 1);
+
   for (let i = 1; i <= steps; i++) {
     await mouse('mouseMoved', Math.round(a.x + (dx * i) / steps), Math.round(a.y + (dy * i) / steps), 1);
     await ctx.sleep(16);
   }
+
   await mouse('mouseReleased', a.x + dx, a.y + dy, 0);
 }
 
 export default async function (ctx) {
-  const { assert } = ctx,
-    chat = ctx.fixture.chats[1],
-    out = {},
-    fails = [];
+  const { assert } = ctx;
+  const chat = ctx.fixture.chats[1];
+  const out = {};
+  const fails = [];
+
   const check = (ok, msg) => {
     if (!ok) fails.push(msg);
   }; // all of them run, whichever fails: the table is the point
+
   await ctx.openChat(chat.id);
   await ctx.key('KeyC');
   await ctx.waitPrompt();
+
   for (let i = 0; i < 4; i++) {
     await ctx.type(`line ${i} that runs on long enough to wrap in half the column ${'and on '.repeat(16)}`);
     await ctx.sleep(300);
   }
+
   await ctx.sleep(800);
   await ctx.settle();
+
   const quiet = g =>
     ctx.waitFor(`(g => !g.hold && !g.refits)(window.peix.grid(${g}))`, { timeout: 3000, what: 'the drawer settled' });
 
@@ -57,16 +67,20 @@ export default async function (ctx) {
     await ctx.watchFrames(g);
     await ctx.sleep(120);
     const at = await ctx.evaluate('window.__frames ? performance.now() : 0');
+
     await act();
     await ctx.sleep(200);
     await quiet(g);
     await ctx.sleep(350);
     const end = await ctx.evaluate('performance.now()');
-    const { frames, sends } = await ctx.frames(),
-      t0 = end - (frames.at(-1)?.t ?? 0); // the watch's clock, near enough for the time taken
-    const { stale, torn, blank } = frameTrouble(frames),
-      said = looks(frames),
-      last = said.at(-1);
+
+    const { frames, sends } = await ctx.frames();
+    const t0 = end - (frames.at(-1)?.t ?? 0); // the watch's clock, near enough for the time taken
+
+    const { stale, torn, blank } = frameTrouble(frames);
+    const said = looks(frames);
+    const last = said.at(-1);
+
     out[label] = {
       frames: frames.length,
       stale: stale.length,
@@ -80,35 +94,44 @@ export default async function (ctx) {
         .join(' | '),
       sends: sends.map(x => `${Math.round(x.t + t0 - at)}ms ${x.cols}x${x.rows}`).join(' '),
     };
+
     ctx.log(label, JSON.stringify(out[label]));
-    if (process.env.REPAINT_DEBUG)
+
+    if (process.env.REPAINT_DEBUG) {
       for (let i = 1; i < said.length; i++) {
-        const p = said[i - 1].text || [],
-          q = said[i].text || [];
+        const p = said[i - 1].text || [];
+        const q = said[i].text || [];
+
         ctx.log(
           '  look',
           i,
           q
-            .map((r, y) => (r === p[y] ? null : y + ': ' + JSON.stringify(p[y]) + ' → ' + JSON.stringify(r)))
+            .map((r, y) => (r === p[y] ? null : `${y}: ${JSON.stringify(p[y])} → ${JSON.stringify(r)}`))
             .filter(Boolean)
             .slice(0, 4)
             .join(' ‖ '),
         );
       }
+    }
+
     check(
       !stale.length && !torn.length && !blank.length,
       `${label}: every frame whole, and drawn for its grid: ${JSON.stringify({ stale: stale.slice(0, 1), torn: torn.slice(0, 1), blank: blank.slice(0, 1) })}`,
     );
+
     check(sends.length <= pty, `${label}: at most ${pty} resize(s) of the PTY: ${JSON.stringify(sends)}`);
     const d = await ctx.peix(`term(${g})`);
+
     check(
       d.cols === d.propose.cols && d.rows === d.propose.rows,
       `${label}: the grid (${d.cols}x${d.rows}) is what the body holds (${d.propose.cols}x${d.propose.rows})`,
     );
+
     check(
       (await ctx.screen(g)).some(r => r.includes(`<<${d.cols}x${d.rows}>>`)),
       `${label}: the screen is drawn for that grid`,
     );
+
     if (ms) check(out[label].tookMs <= ms, `${label}: over in ${ms} ms, took ${out[label].tookMs}`);
   };
 
@@ -123,17 +146,21 @@ export default async function (ctx) {
   await change('list hidden ⌥⌘B', () => ctx.key('KeyB'));
   await change('list shown ⌥⌘B', () => ctx.key('KeyB'));
   await change('list’s splitter, dragged', () => holdBar(ctx, '#splitter', 160, 0), { ms: 0, pty: 3 });
+
   await change('chat’s size ⌘+', () =>
     ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { key: '=', metaKey: true, bubbles: true, cancelable: true }))`,
     ),
   );
+
   await change('chat’s size back ⌘0', () =>
     ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { key: '0', metaKey: true, bubbles: true, cancelable: true }))`,
     ),
   );
+
   await change('window a step', () => vp(ctx, 1500), { ms: 800 });
+
   await change(
     'window dragged',
     async () => {
@@ -144,6 +171,7 @@ export default async function (ctx) {
     },
     { ms: 0, pty: 3 },
   );
+
   await change(
     'a zsh ⌥⌘T',
     async () => {
@@ -152,6 +180,7 @@ export default async function (ctx) {
     },
     { pty: 4, ms: 0 },
   );
+
   await ctx.sleep(600);
 
   // a zsh at its prompt: xterm's to reflow, live under the drag, the PTY told once it stops. Both halves' resizes count here.
@@ -159,8 +188,10 @@ export default async function (ctx) {
   await ctx.sleep(120);
   await holdBar(ctx, '#gsplit', 160, 0);
   await ctx.sleep(500);
-  const z = await ctx.frames(),
-    widths = new Set(z.frames.map(f => f.cols));
+
+  const z = await ctx.frames();
+  const widths = new Set(z.frames.map(f => f.cols));
+
   out['zsh, dragged'] = { widths: widths.size, pty: z.sends.length };
   ctx.log('zsh, dragged', JSON.stringify(out['zsh, dragged']));
   check(widths.size >= 5, `the zsh reflowed under the drag: ${[...widths]}`);

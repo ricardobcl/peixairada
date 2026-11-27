@@ -16,19 +16,21 @@ import { fileURLToPath } from 'node:url';
 import { tmpDir } from '../../lib/testserver.mjs';
 import { makeFixture } from '../fixture.mjs';
 
-const dir = tmpDir('peix-mx-'),
-  file = join(dir, 'prs.json');
+const dir = tmpDir('peix-mx-');
+const file = join(dir, 'prs.json');
+
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+
 const face = login => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#2e9e6a"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`,
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#2e9e6a"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`,
+  )}`,
 });
+
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
+
 const pr = o => ({
   isDraft: false,
   isCrossRepository: false,
@@ -38,7 +40,9 @@ const pr = o => ({
   comments: { nodes: [] },
   ...o,
 });
+
 const MANY = Array.from({ length: 30 }, (_, i) => 41 + i); // #41…#70, #70 updated last
+
 writeFileSync(
   file,
   JSON.stringify({
@@ -143,9 +147,10 @@ export const meta = {
 const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
 
 export default async function (ctx) {
-  const out = {},
-    cwd = join(dir, 'mx-repo'),
-    now = Date.now();
+  const out = {};
+  const cwd = join(dir, 'mx-repo');
+  const now = Date.now();
+
   const {
     chats: [stack, lone, upd, many],
   } = makeFixture(ctx.fixture.dir, [
@@ -172,12 +177,15 @@ export default async function (ctx) {
       at: new Date(now - 240_000),
     },
   ]);
+
   const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
+
   await ctx.waitFor(
     `${card(stack.id)}?.querySelector('.tmx .mxn.you') && ${card(stack.id)}.querySelectorAll('.mxs[data-state="open"]').length === 2 && ${card(lone.id)}?.querySelector('.mxs[data-state="open"]')` +
       ` && ${card(upd.id)}?.querySelector('.mxs[data-state="closed"]') && ${card(many.id)}?.querySelectorAll('.mxs[data-state="open"]').length > 20`,
     { timeout: 30_000, what: 'the PR states and branches from the fake gh' },
   );
+
   await ctx.evaluate(`window.open = url => { (window.__opened ||= []).push(url); return null; }`);
   await ctx.settle();
 
@@ -201,62 +209,79 @@ export default async function (ctx) {
   })(${card(id)}))`,
       )
       .then(JSON.parse);
+
   const accent = await ctx.evaluate(
     `(e => { e.style.color = 'var(--mxyou)'; document.querySelector('#slist .tmx').append(e); const c = getComputedStyle(e).color; e.remove(); return c; })(document.createElement('i'))`,
   ); // the accent towards the ink (--mxyou)
+
   const ink = await ctx.evaluate(`getComputedStyle(document.body).color`);
+
   ctx.assert.notEqual(accent, ink, 'the move’s colour is not the ink');
 
   out.stack = await look(stack.id);
+
   ctx.assert.deepEqual(
     out.stack.squares,
     ['#11:open', '#12:open*', '#13:draft', '#5:merged'],
     'a square a PR, by repo and number, the stack base first, #12 the numbered one',
   );
+
   ctx.assert.deepEqual(
     out.stack.stacks,
     ['3/2', '1/0'],
     'the stack of three joined by two lines, the merged PR on its own apart',
   );
+
   ctx.assert.deepEqual(
     [out.stack.num, out.stack.you, out.stack.ink],
     ['#12', true, accent],
     'the number follows your move, in the accent — not #5, which GitHub updated last',
   );
+
   ctx.assert.deepEqual(
     [out.stack.round, out.stack.tips],
     [[], 0],
     'nothing round any square, the numbered one either; no tooltip of the system’s',
   );
+
   ctx.assert.ok(
     /rgba\(0, 0, 0, 0\)|transparent/.test(out.stack.draft.bg) && /inset/.test(out.stack.draft.shadow),
     `a draft hollow: ${JSON.stringify(out.stack.draft)}`,
   );
+
   ctx.assert.equal(out.stack.size, 9, '9 px squares');
   out.lone = await look(lone.id);
+
   ctx.assert.deepEqual(
     [out.lone.num, out.lone.you, out.lone.ink, out.lone.squares],
     ['#21', false, ink, ['#21:open*']],
     'a lone PR: its number in ink',
   );
+
   out.upd = await look(upd.id);
+
   ctx.assert.deepEqual(
     [out.upd.num, out.upd.squares],
     ['#32', ['#31:merged', '#32:closed*', '#33:open']],
     'no move: the one GitHub updated last, whatever order the chat named them in',
   );
+
   ctx.assert.equal(
     await ctx.evaluate(`window.peix.session(${JSON.stringify(upd.id)}).prs.find(p => p.number === 32).updated`),
     JSON.parse(readFileSync(file, 'utf8'))['acme/app#32'].updatedAt,
     'GitHub’s updatedAt on the chat’s PR',
   );
+
   out.many = await look(many.id);
+
   ctx.assert.deepEqual(
     [out.many.size, out.many.squares.length, out.many.num],
     [9, 30, '#70'],
     'thirty the same size; the number the newest',
   );
+
   ctx.assert.ok(out.many.box.sw > out.many.box.w, `thirty run past the row's room: ${JSON.stringify(out.many.box)}`);
+
   ctx.assert.ok(
     out.many.leadIn &&
       out.many.box.x > 0 &&
@@ -265,6 +290,7 @@ export default async function (ctx) {
       /gradient/.test(out.many.box.mask),
     `the numbered square, the last, scrolled into sight; the start faded: ${JSON.stringify(out.many.box)}`,
   );
+
   ctx.assert.ok(out.many.repo.sw <= out.many.repo.w + 1, `the project's name whole: ${JSON.stringify(out.many.repo)}`);
   await ctx.shot('matrix');
 
@@ -272,17 +298,22 @@ export default async function (ctx) {
   const mc = await ctx.evaluate(
     `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card(many.id)}.querySelector('.mxg').getBoundingClientRect())`,
   );
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: mc.x, y: mc.y });
   await ctx.sleep(100);
   const under = await look(many.id); // the pointer brings the ✓, which takes its room from the squares' (2026-11-03)
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: mc.x, y: mc.y, deltaX: 0, deltaY: -120 });
+
   await ctx.waitFor(`${card(many.id)}.querySelector('.mxg').scrollLeft < ${under.box.x}`, {
     what: 'the squares scrolled back by the wheel',
   });
+
   await ctx.sleep(100);
   out.wheeled = await look(many.id);
   ctx.assert.equal(out.wheeled.nx, under.nx, 'the number stays put');
   ctx.assert.ok(out.wheeled.box.ofr, `more past the end now, faded: ${JSON.stringify(out.wheeled.box)}`);
+
   ctx.assert.equal(
     await ctx.evaluate(`document.scrollingElement.scrollTop + document.querySelector('#slist').scrollTop`),
     0,
@@ -291,8 +322,10 @@ export default async function (ctx) {
 
   // a square: its card under the pointer — on a spring, the square lifted —, from square to square, the number's
   const sq = n => `${card(stack.id)}.querySelector('.mxs[data-url$="/pull/${n}"]')`;
+
   const centre = el =>
     ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${el}.getBoundingClientRect())`);
+
   const tipSays = () =>
     ctx
       .evaluate(
@@ -300,15 +333,20 @@ export default async function (ctx) {
     ck: t.querySelector('.mtck')?.textContent || '', stack: t.querySelector('.mtk')?.textContent || '', move: t.querySelector('.mtm')?.textContent || '', clear: (r => (m => r.bottom <= m.top || r.top >= m.bottom)(${card(stack.id)}.querySelector('.tmx').getBoundingClientRect()))(t.getBoundingClientRect()) }))(document.querySelector('#mxtip')))`,
       )
       .then(JSON.parse);
+
   const at12 = await centre(sq(12));
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at12.x, y: at12.y });
   await ctx.waitFor(`document.querySelector('#mxtip.on')`, { what: '#12’s card' });
+
   out.spring = await ctx.evaluate(
     `document.querySelector('#mxtip').getAnimations().filter(a => a.transitionProperty === 'transform').map(a => a.effect.getComputedTiming().easing.slice(0, 7))`,
   );
+
   ctx.assert.deepEqual(out.spring, ['linear('], 'it comes on the spring');
   await ctx.settle();
   out.card12 = await tipSays();
+
   ctx.assert.deepEqual(
     out.card12,
     {
@@ -322,6 +360,7 @@ export default async function (ctx) {
     },
     'its repo and state, number and title, CI, place in the stack, whose move — over the square or, at the list’s top, under it',
   );
+
   ctx.assert.deepEqual(
     await ctx.evaluate(
       `[${sq(12)}.classList.contains('hot'), getComputedStyle(${sq(12)}).scale, !!document.querySelector('#rpop.on')]`,
@@ -329,41 +368,55 @@ export default async function (ctx) {
     [true, '1.3', false],
     'its square lifted; nothing else up',
   );
+
   const at5 = await centre(sq(5));
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at5.x, y: at5.y });
+
   await ctx.waitFor(`document.querySelector('#mxtip.on .mtt')?.textContent.startsWith('#5')`, {
     what: 'on to #5’s card',
   });
+
   await ctx.settle();
   out.card5 = await tipSays();
+
   ctx.assert.deepEqual(
     [out.card5.repo, out.card5.state, out.card5.title, out.card5.stack],
     ['acme/docs', 'Merged', '#5Document the retries', ''],
     'a merged one on its own says so',
   );
+
   const atN = await centre(`${card(stack.id)}.querySelector('.mxn')`);
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: atN.x, y: atN.y });
+
   await ctx.waitFor(`document.querySelector('#mxtip.on .mtt')?.textContent.startsWith('#12')`, {
     what: 'the number’s card',
   });
+
   ctx.assert.deepEqual(
     await ctx.evaluate(`[${sq(12)}.classList.contains('hot'), ${sq(5)}.classList.contains('hot')]`),
     [true, false],
     'the number lifts the square it names',
   );
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+
   await ctx.waitFor(`!document.querySelector('#mxtip.on') && !${sq(12)}.classList.contains('hot')`, {
     what: 'the card gone with the pointer',
   });
 
   // its click and its right-click menu
   await ctx.evaluate(`${sq(11)}.click()`);
+
   await ctx.waitFor(`(window.__opened || []).includes(${JSON.stringify(pull('app', 11))})`, {
     what: 'the square’s PR opened',
   });
+
   const at11 = await ctx.evaluate(
     `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${sq(11)}.getBoundingClientRect())`,
   );
+
   await ctx.send('Input.dispatchMouseEvent', {
     type: 'mousePressed',
     x: at11.x,
@@ -371,6 +424,7 @@ export default async function (ctx) {
     button: 'right',
     clickCount: 1,
   });
+
   await ctx.send('Input.dispatchMouseEvent', {
     type: 'mouseReleased',
     x: at11.x,
@@ -378,27 +432,33 @@ export default async function (ctx) {
     button: 'right',
     clickCount: 1,
   });
+
   await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the square’s menu' });
   out.menu = await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].map(b => b.textContent)`);
+
   ctx.assert.ok(
     out.menu[0] === 'Open the PR' && out.menu.some(t => t.startsWith('Take it off')),
     `the chip's menu: ${out.menu}`,
   );
+
   await ctx.evaluate(`document.querySelector('#ctxm').close()`);
 
   // the pointer at rest on the card: every PR, the matrix's order, with its title; the stack's rows together — after a
   // while, not at once
   const atT = await centre(`${card(stack.id)}.querySelector('.title')`);
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: atT.x, y: atT.y });
   await ctx.sleep(250);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#rpop.on')`), false, 'not at once');
   await ctx.waitFor(`document.querySelector('#rpop.on .rpr.mx')`, { what: 'every PR with the pointer at rest' });
+
   out.pop = await ctx
     .evaluate(
       `JSON.stringify({ rows: [...document.querySelectorAll('#rpop .rpr.mx')].map(r => r.querySelector('.pchip').textContent + ' ' + r.querySelector('.h').textContent + ' · ' + r.querySelector('.st').textContent + (r.dataset.k === 'you' ? ' · your move' : '')),
     stack: document.querySelectorAll('#rpop .rstk > .rpr').length, head: document.querySelector('#rpop .rph').textContent, ck: document.querySelector('#rpop .rpr.mx .s').textContent })`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.pop.rows,
     [
@@ -409,13 +469,16 @@ export default async function (ctx) {
     ],
     'every PR, numbered and titled, in the matrix’s order',
   );
+
   ctx.assert.deepEqual([out.pop.stack, out.pop.head], [3, 'this chat’s PRs · 4'], 'the stack’s three together');
   ctx.assert.ok(out.pop.ck.includes('checks passed'), `a PR's CI: ${out.pop.ck}`);
   await ctx.shot('popover');
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at11.x, y: at11.y });
+
   await ctx.waitFor(`!document.querySelector('#rpop.on') && document.querySelector('#mxtip.on')`, {
     what: 'a square’s card in its place',
   });
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
 
   // with no PRs on cards, the matrix hidden

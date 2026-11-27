@@ -10,10 +10,12 @@ const HOT = `(() => { const real = window.fetch, soon = h => new Date(Date.now()
 export default async function (ctx) {
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: HOT });
   await ctx.reload();
+
   await ctx.waitFor(
     `/!96%/.test(document.querySelector('#sbRight').textContent) && /!93%/.test(document.querySelector('#sbRight').textContent)`,
     { what: 'the meters past 90 % with their !' },
   );
+
   const read = () =>
     ctx
       .evaluate(
@@ -26,24 +28,31 @@ export default async function (ctx) {
   })())`,
       )
       .then(JSON.parse);
+
   const out = await read();
+
   ctx.assert.deepEqual(out.reds, [], `nothing on the bar is red while nothing asks: ${JSON.stringify(out.reds)}`);
+
   ctx.assert.ok(
     out.hot.some(([l, u, t]) => l === 'CPU' && u === 'var(--ink)' && t === '!96%'),
     `CPU past 90 %: the ink and a !: ${JSON.stringify(out.hot)}`,
   );
+
   ctx.assert.ok(
     out.hot.some(([l, u, t]) => l === 'RAM' && u === 'var(--ink)' && t === '!95%'),
     'RAM likewise',
   );
+
   ctx.assert.ok(
     out.hot.some(([, u, t]) => u === 'var(--ink)' && t === '!93%'),
     'and the plan usage',
   );
+
   ctx.assert.ok(
     out.hot.some(([, u, t]) => u === 'var(--spend)' && t === '42%'),
     'a meter under 90 % keeps its colour and no !',
   );
+
   await ctx.evaluate(`document.querySelector('#sbLid').classList.remove('off')`);
   ctx.assert.equal((await read()).lidRed, false, "the lid's switch, on, is not red");
   return out;

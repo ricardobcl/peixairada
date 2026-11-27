@@ -91,8 +91,9 @@ export { usageWindows } from './server/usage.mjs';
 export { cronNext, nextWake, pruneWakes } from './server/wakes.mjs';
 export { ensureWorktree, linkModules, sweepWorktrees, switchGuard } from './server/worktrees.mjs';
 
-if (isMain)
+if (isMain) {
   main().catch(e => {
     console.error('[peixairada] boot failed:', e);
     process.exit(1);
   });
+}

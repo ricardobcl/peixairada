@@ -6,30 +6,39 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async ctx => {
   const { createServer } = await import('node:http');
-  const out = {},
-    port = ctx.server.port,
-    key = ctx.server.key,
-    seen = [];
+
+  const out = {};
+  const port = ctx.server.port;
+  const key = ctx.server.key;
+  const seen = [];
+
   await ctx.waitFor(`peix.state().snapshots > 0`, 10_000);
   const snapshots = await ctx.evaluate(`peix.state().snapshots`);
   const proc = ctx.server.proc;
+
   proc.kill('SIGTERM');
   for (let i = 0; i < 50 && proc.exitCode === null; i++) await ctx.sleep(100);
   const note = req => seen.push({ url: req.url, key: req.headers['x-peix-key'] || '' });
+
   const squat = createServer((req, res) => {
     note(req);
+
     if (req.url.startsWith('/api/alive')) {
       res.writeHead(204, { 'x-peix-proof': '0'.repeat(64) }); // a proof, of nothing
       return res.end();
     }
+
     res.writeHead(503);
     res.end();
   });
+
   squat.on('upgrade', (req, socket) => {
     note(req);
     socket.destroy();
   });
+
   await new Promise((res, rej) => squat.once('error', rej).listen(port, '127.0.0.1', res));
+
   try {
     await ctx.waitFor(`document.querySelector('#lock').open`, 15_000);
     out.lock = await ctx.evaluate(`document.querySelector('#lockWhy').textContent`);
@@ -40,18 +49,24 @@ export default async ctx => {
     squat.close();
     squat.closeAllConnections?.();
   }
+
   out.asked = [...new Set(seen.map(r => r.url.replace(/\?.*/, '')))].sort();
+
   ctx.assert.ok(
     seen.some(r => r.url.startsWith('/api/alive')),
     'the page asked what answers to prove itself',
   );
+
   const leaked = seen.filter(r => r.key || r.url.includes(key));
+
   ctx.assert.deepEqual(leaked, [], 'nothing it was sent carried the key');
   await ctx.server.restart(); // the board back on its port
   await ctx.waitFor(`peix.state().snapshots > ${snapshots} && !document.querySelector('#lock').open`, 20_000);
+
   out.back = await ctx.evaluate(
     `({ conn: !document.querySelector('#sbLeft .seg.conn').classList.contains('off'), cards: document.querySelectorAll('#slist > .card').length })`,
   );
+
   ctx.assert.deepEqual(out.back, { conn: true, cards: 2 }, 'proven, the board again');
   return out;
 };

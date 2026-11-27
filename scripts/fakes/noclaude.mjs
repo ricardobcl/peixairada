@@ -6,4 +6,5 @@
 console.error(
   `noclaude: this test server runs no claude (asked: claude ${process.argv.slice(2).join(' ')}) — ask for the fake (fake: true) or name CLAUDE_BIN`,
 );
+
 process.exit(2);

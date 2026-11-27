@@ -2,24 +2,31 @@
 // the column split, as the page says (`tiles`, its `arrows`). One half, the page would drop them, so they stay the
 // page's own: VS Code Web's column select. ⌘D goes with the setting alone.
 export const meta = {};
+
 export default async function (ctx) {
   const [, chat] = ctx.fixture.chats;
+
   await ctx.board({ autoTile: true });
   await ctx.openChat(chat.id);
-  const key = (code, chars, mods) => ctx.ask('hotkey', { code, chars, mods }),
-    left = () => key(123, '', ['cmd', 'alt', 'shift']),
-    right = () => key(124, '', ['cmd', 'alt', 'shift']),
-    cmdD = () => key(2, 'd', ['cmd']);
+
+  const key = (code, chars, mods) => ctx.ask('hotkey', { code, chars, mods });
+  const left = () => key(123, '', ['cmd', 'alt', 'shift']);
+  const right = () => key(124, '', ['cmd', 'alt', 'shift']);
+  const cmdD = () => key(2, 'd', ['cmd']);
+
   // what the page posts reaches the shell a moment on: asked until it says so, or 10 s
   const said = async (fn, want, what) => {
     const t0 = Date.now();
     let got = await fn();
+
     while (JSON.stringify(got) !== JSON.stringify(want) && Date.now() - t0 < 10_000) {
       await new Promise(r => setTimeout(r, 100));
       got = await fn();
     }
+
     ctx.assert.deepEqual(got, want, what);
   };
+
   await said(cmdD, ['KeyD', 'cmd'], 'Auto-tiling on: ⌘D forwarded');
   await said(left, null, 'one half: ⌥⌘⇧← left to the page');
   ctx.assert.equal(await right(), null, '…and ⌥⌘⇧→');

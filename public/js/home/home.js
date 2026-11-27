@@ -3,7 +3,8 @@ function showHome() {
   if (!$('#log .home')) $('#log').innerHTML = '<div class="home" id="home"></div>';
   drawHome();
   loadDay();
-  if (!home.timer)
+
+  if (!home.timer) {
     home.timer = setInterval(() => {
       if (!state.current && $('#home')) loadDay();
       else {
@@ -11,51 +12,68 @@ function showHome() {
         home.timer = 0;
       }
     }, 60_000);
+  }
 }
+
 async function loadDay() {
   if (home.asking) return;
   home.asking = true;
+
   try {
     home.day = await api('GET', `/api/today?since=${new Date().setHours(0, 0, 0, 0)}`);
   } catch {
   } finally {
     home.asking = false;
   }
+
   drawHome();
 }
+
 const homeSoon = (fetch = false) => {
   if (state.current || !$('#home')) return;
   if (fetch) loadDay();
-  if (!home.soon)
+
+  if (!home.soon) {
     home.soon = setTimeout(() => {
       home.soon = 0;
       drawHome();
     }, 300);
+  }
 };
+
 function hotHome() {
   if (state.current) leaveChat();
   else showHome();
   focusBoard();
 }
+
 function drawHome() {
   const el = $('#home');
+
   if (!el || state.current) return;
-  const a = state.about || {},
-    all = [...state.sessions.values()].filter(visible),
-    alive = all.filter(s => s.alive),
-    d = home.day;
-  const prs = allPrs(),
-    open = prs.filter(p => p.state === 'open' || p.state === 'draft');
-  const tasks = alive.reduce((n, s) => n + (s.tasks?.length || 0), 0),
-    agents = alive.reduce((n, s) => n + (s.agents || 0), 0),
-    drawers = all.filter(termLive).length;
+
+  const a = state.about || {};
+  const all = [...state.sessions.values()].filter(visible);
+  const alive = all.filter(s => s.alive);
+  const d = home.day;
+
+  const prs = allPrs();
+  const open = prs.filter(p => p.state === 'open' || p.state === 'draft');
+
+  const tasks = alive.reduce((n, s) => n + (s.tasks?.length || 0), 0);
+  const agents = alive.reduce((n, s) => n + (s.agents || 0), 0);
+  const drawers = all.filter(termLive).length;
+
   const win = usage.data?.windows || [];
-  const kv = (k, v) => `<div><b>${k}</b><span>${v}</span></div>`,
-    sep = '<s>·</s>';
+
+  const kv = (k, v) => `<div><b>${k}</b><span>${v}</span></div>`;
+  const sep = '<s>·</s>';
+
   // a count in red or amber only when there is one (2026-10-12): "0 asking you" in red read as an alarm
   const hot = (tag, n, html) => (n ? `<${tag}>${html}</${tag}>` : html);
   // …and a count that has something behind it is a way there (2026-10-12): the chat asking you, the overview, the PRs
   const go = (k, n, html) => (n ? `<button class="hgo" data-go="${k}" title="${HOME_GO[k]}">${html}</button>` : html);
+
   const facts = [
     kv(
       'Board',
@@ -95,19 +113,25 @@ function drawHome() {
     ),
     kv('Theme', esc(skinLabel(wornKey()) + (prefs.skinFollow ? ' · following macOS' : ''))),
   ].filter(Boolean);
+
   // the day: from the hour of its first span, half an hour before it (2026-10-12; from 8:00 before, which left an
   // evening's work a sliver at the right of a fourteen-hour axis), to the hour after now
-  const now = Date.now(),
-    mid = new Date().setHours(0, 0, 0, 0),
-    rows = (d?.chats || []).slice(0, 12);
+  const now = Date.now();
+  const mid = new Date().setHours(0, 0, 0, 0);
+  const rows = (d?.chats || []).slice(0, 12);
+
   const first = Math.min(now, ...rows.flatMap(c => c.spans.map(x => Date.parse(x.from))).filter(x => x > 0));
-  const t0 = Math.max(mid, new Date(first - 1800_000).setMinutes(0, 0, 0)),
-    t1 = new Date(now + 3600_000).setMinutes(0, 0, 0),
-    span = t1 - t0 || 1;
+
+  const t0 = Math.max(mid, new Date(first - 1800_000).setMinutes(0, 0, 0));
+  const t1 = new Date(now + 3600_000).setMinutes(0, 0, 0);
+  const span = t1 - t0 || 1;
+
   const at = t => `${(((Math.max(t0, Math.min(t1, t)) - t0) / span) * 100).toFixed(2)}%`;
   const hours = [];
+
   for (let h = t0; h <= t1; h += 3600_000) hours.push(h);
   const step = Math.ceil(hours.length / 12);
+
   const day = !d
     ? '<div class="hnone">reading the day…</div>'
     : !rows.length
@@ -124,11 +148,15 @@ function drawHome() {
           .join('')}
       </div>
       <div class="hsum"><span><b>${d.totals.questions} question${d.totals.questions === 1 ? '' : 's'}</b> today${d.totals.median != null ? `, answered in <b>${dur(d.totals.median)}</b> on the median` : ''}</span>${d.totals.longest ? `<span>the longest wait: <em>${dur(d.totals.longest.ms)}</em> — ${esc(state.sessions.get(d.totals.longest.id)?.project || 'a chat')} at ${new Date(d.totals.longest.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${d.totals.longest.open ? ', and still waiting' : ''}</span>` : ''}<span class="r">⌥⌘0 here from anywhere · a row opens its chat</span></div>`;
+
   // the sea's canvas outlives every draw: the facts and the day are drawn into boxes of their own (2026-10-12)
-  if (!el.querySelector('.hsea'))
+  if (!el.querySelector('.hsea')) {
     el.innerHTML =
       '<div class="hff"><canvas class="hsea" role="img" aria-label="An ASCII sunset at sea, the board\'s fish leaping in it" title="Click, and the fish leaps"></canvas><div class="hkv"></div></div><div class="hlunch"></div><div class="hday"></div>';
+  }
+
   seaMount(el.querySelector('.hsea'));
+
   // each line drawn only when it changed, and now the day's --now, never a place in its markup (2026-10-14): the CPU
   // every 3 s, the clock every draw, redrew the links and the rows under a press, which then clicked nothing
   setKids(el.querySelector('.hkv'), [
@@ -138,28 +166,37 @@ function drawHome() {
     `<div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div>`,
     `<div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys <s>·</s> <button class="hgo" data-go="tour" title="The board’s main parts, one at a time — a couple of minutes">the tour</button></div>`,
   ]);
+
   setHtml(
     el.querySelector('.hday'),
     `<h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}`,
   );
+
   el.querySelector('.hgrid')?.style.setProperty('--now', at(now));
   setHtml(el.querySelector('.hlunch'), lunchHomeHtml());
 }
+
 const HOME_GO = {
   ask: 'Open the chat asking you',
   ov: 'The overview — every live chat · ⌥⌘A',
   prs: 'The PRs at your move',
 };
+
 $('#log').addEventListener('click', e => {
   const r = e.target.closest('#home .hrow');
+
   if (r) return openSession(r.dataset.id, { locate: true });
+
   if (e.target.closest('#home .hsea')) {
     if (!sea.leap && sea.s && !REDUCED.matches) seaLeap(performance.now());
     return;
   }
+
   const g = e.target.closest('#home .hgo')?.dataset.go;
+
   if (g === 'ask') {
     const s = [...state.sessions.values()].filter(x => visible(x) && asking(x)).sort(byWord)[0];
+
     if (s) openSession(s.id, { locate: true });
   } else if (g === 'ov') ovOpen();
   else if (g === 'prs') pickOpen('prs');

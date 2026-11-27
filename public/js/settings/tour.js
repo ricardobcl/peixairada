@@ -7,16 +7,20 @@
 // there shows the card in the middle, or is left out when the step is about it alone (`need`). Look, don't touch: the
 // board under the veil is inert, and nothing is opened, folded or moved for the tour but a card brought into view.
 const tour = { steps: [], i: 0, els: [], drawn: '', timer: 0, done: false };
+
 /** An element with a box on screen, else null. */
 const onScreen = el => {
   const r = el?.getBoundingClientRect();
+
   return r && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth
     ? el
     : null;
 };
+
 /** The card the tour points at: one that is doing something, else the open chat's, else the top one. */
 const tourCard = () => {
   const cs = [...document.querySelectorAll('#slist > .card')];
+
   return (
     cs.find(c => c.matches('.asking, .working, .watching')) ||
     cs.find(c => c.classList.contains('active')) ||
@@ -24,6 +28,7 @@ const tourCard = () => {
     null
   );
 };
+
 /** A step's keys as rows: what you press, what it does. */
 const tourKeys = rows =>
   `<div class="tkeys">${rows
@@ -35,6 +40,7 @@ const tourKeys = rows =>
           .join(' ')}</span><span>${d}</span>`,
     )
     .join('')}</div>`;
+
 const TOUR = [
   {
     id: 'hello',
@@ -170,23 +176,29 @@ const TOUR = [
       '<kbd>⌘,</kbd> has the settings — the themes, card sizes and where your repos live. The tour is there too, in <kbd>⌥⌘L</kbd> and on home, whenever you want it again.',
   },
 ];
+
 /** A step's part as it stands: its elements on screen — one, or a few drawn round as one (the chat and its resume bar). */
 const tourAt = t => {
   try {
     return [t.at?.()].flat().filter(el => {
       const r = el?.getBoundingClientRect();
+
       return r && r.width > 0 && r.height > 0;
     });
   } catch {
     return [];
   }
 };
+
 const tourVal = v => (typeof v === 'function' ? v() : v);
+
 function tourStart() {
   for (const d of document.querySelectorAll('dialog[open]')) if (d.id !== 'tour') d.close();
   document.querySelectorAll('.note').forEach(n => n.remove()); // a word left from before — the last tour's, say
   const dlg = $('#tour');
+
   if (inApp) post({ type: 'focus' }); // from the pane's keys, the board needs the keyboard back
+
   if (!dlg.open) {
     tour.steps = TOUR.filter(t => !t.need || tourAt(t).length);
     tour.done = false;
@@ -197,30 +209,42 @@ function tourStart() {
     tour.timer = setInterval(tourPlace, 400);
     addEventListener('resize', tourPlace); // the board goes on under it: a card moved, a chat opened elsewhere
   }
+
   tourShow(0);
   $('#tour .tcard').getBoundingClientRect();
   dlg.classList.remove('still'); // the first place taken before the glide is on
 }
+
 function tourShow(i) {
   const n = tour.steps.length;
+
   tour.i = Math.max(0, Math.min(n - 1, i));
-  const t = tour.steps[tour.i],
-    last = tour.i === n - 1;
+
+  const t = tour.steps[tour.i];
+  const last = tour.i === n - 1;
+
   tour.els = tourAt(t);
-  const el = tour.els[0],
-    list = el?.closest('#slist'); // a card out of the list's sight comes into it — the one thing moved for the tour
+
+  const el = tour.els[0];
+  const list = el?.closest('#slist'); // a card out of the list's sight comes into it — the one thing moved for the tour
+
   if (list && el !== list) {
-    const r = el.getBoundingClientRect(),
-      b = list.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const b = list.getBoundingClientRect();
+
     if (r.top < b.top || r.bottom > b.bottom) el.scrollIntoView({ block: 'nearest' });
   }
+
   $('#tour .tcard').classList.toggle('mid', !!t.mid);
   const logo = $('#tourLogo');
+
   logo.hidden = !t.logo;
   if (t.logo && !logo.firstChild) logo.innerHTML = FISH_LOGO();
+
   $('#tour .tdots').innerHTML = tour.steps
     .map((_, k) => `<i class="${k === tour.i ? 'on' : k < tour.i ? 'past' : ''}"></i>`)
     .join('');
+
   $('#tourNum').textContent = `${tour.i + 1} of ${n}`;
   $('#tourTitle').textContent = tourVal(t.title);
   $('#tourText').innerHTML = tourVal(t.text);
@@ -231,6 +255,7 @@ function tourShow(i) {
   $('#tourNext').textContent = !tour.i ? 'Show me round' : last ? 'Done' : 'Next';
   $('#tourSay').textContent = `Step ${tour.i + 1} of ${n}: ${$('#tourTitle').textContent}`;
   const tin = $('#tour .tin');
+
   tin.classList.remove('in');
   void tin.offsetWidth;
   tin.classList.add('in');
@@ -238,24 +263,30 @@ function tourShow(i) {
   tourPlace();
   $('#tourNext').focus({ preventScroll: true });
 }
+
 /** The hole round the step's part and the card beside it, on whichever side has the room — the step's own first —,
  *  else inside the part at its foot; a step with none, the card centred. Reads first, then writes, and only what moved. */
 function tourPlace() {
   const dlg = $('#tour');
+
   if (!dlg.open) return;
   const t = tour.steps[tour.i];
+
   if (!t) return;
   if (t.at) tour.els = tourAt(t); // the board goes on under it: the part found again, wherever it is now
-  const card = $('#tour .tcard'),
-    W = innerWidth,
-    H = innerHeight,
-    M = 12,
-    G = 14,
-    P = 6,
-    top = (state.notch?.top || 0) + M;
-  const cw = card.offsetWidth,
-    ch = card.offsetHeight,
-    rs = tour.els.map(el => el.getBoundingClientRect());
+
+  const card = $('#tour .tcard');
+  const W = innerWidth;
+  const H = innerHeight;
+  const M = 12;
+  const G = 14;
+  const P = 6;
+  const top = (state.notch?.top || 0) + M;
+
+  const cw = card.offsetWidth;
+  const ch = card.offsetHeight;
+  const rs = tour.els.map(el => el.getBoundingClientRect());
+
   const r = rs.length
     ? {
         left: Math.min(...rs.map(x => x.left)),
@@ -264,22 +295,28 @@ function tourPlace() {
         bottom: Math.max(...rs.map(x => x.bottom)),
       }
     : null;
-  let h = null,
-    x = (W - cw) / 2,
-    y = (H - ch) / 2;
+
+  let h = null;
+  let x = (W - cw) / 2;
+  let y = (H - ch) / 2;
+
   if (r && r.right > 0 && r.left < W && r.bottom > 0 && r.top < H) {
     // off the window (a card scrolled away since), none
-    const l = Math.max(2, r.left - P),
-      tp = Math.max(2, r.top - P),
-      rt = Math.min(W - 2, r.right + P),
-      b = Math.min(H - 2, r.bottom + P);
+    const l = Math.max(2, r.left - P);
+    const tp = Math.max(2, r.top - P);
+    const rt = Math.min(W - 2, r.right + P);
+    const b = Math.min(H - 2, r.bottom + P);
+
     h = { x: l, y: tp, w: rt - l, h: b - tp };
     const room = { right: W - rt - G - M, left: l - G - M, below: H - b - G - M, above: tp - G - top };
+
     const side = [tourVal(t.side), 'right', 'left', 'below', 'above'].find(
       s => s && room[s] >= (s === 'right' || s === 'left' ? cw : ch),
     );
-    const cx = (l + rt - cw) / 2,
-      cy = (tp + b - ch) / 2;
+
+    const cx = (l + rt - cw) / 2;
+    const cy = (tp + b - ch) / 2;
+
     [x, y] =
       side === 'right'
         ? [rt + G, cy]
@@ -291,30 +328,39 @@ function tourPlace() {
               ? [cx, tp - G - ch]
               : [cx, b - ch - 24];
   }
+
   x = Math.round(Math.max(M, Math.min(W - cw - M, x)));
   y = Math.round(Math.max(top, Math.min(H - ch - M, y)));
+
   const hh = h
     ? { x: Math.round(h.x), y: Math.round(h.y), w: Math.round(h.w), h: Math.round(h.h) }
     : { x: Math.round(W / 2), y: Math.round(H / 2), w: 0, h: 0 };
+
   const key = `${hh.x},${hh.y},${hh.w},${hh.h},${x},${y}`;
+
   if (key === tour.drawn) return;
   tour.drawn = key;
   const hole = $('#tour .thole');
+
   hole.classList.toggle('none', !h);
   hole.style.translate = `${hh.x}px ${hh.y}px`;
   hole.style.width = `${hh.w}px`;
   hole.style.height = `${hh.h}px`;
   card.style.translate = `${x}px ${y}px`;
 }
+
 $('#tourNext').onclick = () => {
   if (tour.i < tour.steps.length - 1) return tourShow(tour.i + 1);
   tour.done = true;
   $('#tour').close();
 };
+
 $('#tourBack').onclick = () => tourShow(tour.i - 1);
 $('#tourSkip').onclick = () => $('#tour').close();
+
 $('#tour').addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+
   if (e.key === 'ArrowRight' && tour.i < tour.steps.length - 1) {
     e.preventDefault();
     tourShow(tour.i + 1);
@@ -323,6 +369,7 @@ $('#tour').addEventListener('keydown', e => {
     tourShow(tour.i - 1);
   }
 });
+
 // Left before the end — Skip, esc, a key that closes dialogs —, it says where it waits.
 $('#tour').addEventListener('close', () => {
   clearInterval(tour.timer);
@@ -332,11 +379,14 @@ $('#tour').addEventListener('close', () => {
   savePrefs();
   $('#tourPic').innerHTML = '';
   news.hold = false; // its pictures borrow the board's own classes (.ymove): none left behind
-  if (!tour.done)
+
+  if (!tour.done) {
     note(
       onScreen($('#home .hgo[data-go="tour"]')) || $('#shead'),
       'The tour waits in Settings (⌘,), ⌥⌘L and home, whenever you want it',
     );
+  }
 });
+
 for (const b of ['#tourBtn', '#ksTour']) $(b).onclick = tourStart;
 $('#ksNews').onclick = () => newsOpen(0);

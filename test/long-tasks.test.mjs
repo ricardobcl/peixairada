@@ -8,8 +8,10 @@ import { chmodSync, writeFileSync } from 'node:fs';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-long-');
-const said = join(tmp, 'lsof-says'),
-  lsof = join(tmp, 'lsof');
+
+const said = join(tmp, 'lsof-says');
+const lsof = join(tmp, 'lsof');
+
 writeFileSync(
   lsof,
   `#!/bin/sh
@@ -20,8 +22,10 @@ case "$(cat '${said}')" in
 esac
 `,
 );
+
 chmodSync(lsof, 0o755);
 const says = word => writeFileSync(said, word);
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
@@ -33,6 +37,7 @@ const { summary, pruneTasks, findTasks, sweepTasks, indexFile, sessions } = srv;
 
 const HOUR = 3600_000;
 const at = ago => new Date(Date.now() - ago).toISOString();
+
 const started = (id, ago, out) => [
   {
     type: 'assistant',
@@ -69,23 +74,31 @@ const started = (id, ago, out) => [
     cwd: '/tmp/repo',
   },
 ];
+
 const write = (name, lines) => {
   const f = join(tmp, `${name}.jsonl`);
-  writeFileSync(f, lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+
+  writeFileSync(f, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
   return f;
 };
+
 const output = name => {
   const f = join(tmp, `${name}.output`);
+
   writeFileSync(f, '');
   return f;
 };
+
 const read = (file, status = 'idle') => {
   const s = indexFile(file);
+
   s.alive = true;
   s.live = { pid: process.pid, startedAt: Date.now() - 8 * HOUR, status };
   return s;
 };
+
 const ids = s => summary(s).tasks.map(t => t.id);
+
 const leave = s => {
   clearTimeout(s.pushTimer);
   sessions.delete(s.id);
@@ -93,6 +106,7 @@ const leave = s => {
 
 test('a command the machine says runs outlives the cap; the cap counts from its last word', async () => {
   const s0 = read(write('old', started('oldrun', 7 * HOUR, output('oldrun'))));
+
   assert.deepEqual(ids(s0), [], 'an old line read anew: not shown before the machine has had its look');
   assert.equal(pruneTasks(s0), false, 'and not let go either');
 
@@ -108,6 +122,7 @@ test('a command the machine says runs outlives the cap; the cap counts from its 
   assert.equal(pruneTasks(s0), false);
 
   const s1 = indexFile(s0.file, { full: true });
+
   assert.deepEqual(ids(s1), ['oldrun'], "read again whole, it keeps the machine's word: no flicker out of the lane");
 
   s1.tasks.get('oldrun').heldAt = Date.now() - 7 * HOUR; // what the machine last said, too long ago (no file left to ask about)
@@ -119,12 +134,14 @@ test('a command the machine says runs outlives the cap; the cap counts from its 
 test('a command nobody holds goes, in silence when it was never shown; one with no file left goes after its look', async () => {
   says('nobody');
   const quiet = read(write('quiet', started('quietrun', 7 * HOUR, output('quietrun'))));
+
   await sweepTasks();
   assert.equal(quiet.tasks.size, 0, 'let go');
   assert.equal(quiet.pushTimer, null, 'never shown: nothing changed on the card');
   leave(quiet);
 
   const young = read(write('young', started('youngrun', 10 * 60_000, output('youngrun'))));
+
   assert.deepEqual(ids(young), ['youngrun'], 'under the cap and unasked: shown, as ever');
   await sweepTasks();
   assert.deepEqual(ids(young), [], 'let go');
@@ -132,6 +149,7 @@ test('a command nobody holds goes, in silence when it was never shown; one with 
   leave(young);
 
   const gone = read(write('gone', started('gonerun', 7 * HOUR, join(tmp, 'no-such.output'))));
+
   assert.equal(pruneTasks(gone), false, 'not looked at yet');
   await sweepTasks();
   assert.equal(pruneTasks(gone), true, 'looked at, nothing there to ask: the cap has it');
@@ -145,6 +163,7 @@ test('the registry says shell and the tail names no task: the chat is read whole
     content: 'x'.repeat(500),
     timestamp: at(30_000 - i),
   }));
+
   const end = {
     type: 'assistant',
     message: {
@@ -157,7 +176,9 @@ test('the registry says shell and the tail names no task: the chat is read whole
     timestamp: at(20_000),
     cwd: '/tmp/repo',
   };
+
   const s0 = read(write('far', [...started('farrun', 60_000, output('farrun')), ...padding, end]));
+
   assert.equal(s0.loaded, false, "the boot's tail");
   assert.deepEqual(ids(s0), [], 'which does not reach the start');
 
@@ -167,8 +188,10 @@ test('the registry says shell and the tail names no task: the chat is read whole
   s0.live.status = 'shell';
   findTasks();
   const s1 = sessions.get(s0.id);
+
   assert.equal(s1.loaded, true);
   assert.equal(s1.alive, true);
+
   assert.deepEqual(
     summary(s1).tasks.map(t => [t.id, t.what]),
     [['farrun', 'the watch loop']],

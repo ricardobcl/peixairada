@@ -30,20 +30,25 @@ export const meta = {
 };
 
 export default async function (ctx) {
-  const out = {},
-    now = Date.now(),
-    root = tmpDir('peix-spm-'),
-    dir = n => {
-      const d = join(root, n);
-      mkdirSync(d, { recursive: true });
-      return d;
-    };
+  const out = {};
+  const now = Date.now();
+  const root = tmpDir('peix-spm-');
+
+  const dir = n => {
+    const d = join(root, n);
+
+    mkdirSync(d, { recursive: true });
+    return d;
+  };
+
   const ago = m => new Date(now - m * 60_000);
+
   await ctx.server.api('api/config', {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jira: { site: jira.url, email: 'me@acme.test' } }),
   });
+
   const {
     chats: [pay, grid, ledger, old, on],
   } = makeFixture(ctx.fixture.dir, [
@@ -77,6 +82,7 @@ export default async function (ctx) {
     },
     { cwd: join(root, 'infra'), title: 'VPC plan, carried on', prompt: 'carry on', reply: 'Carrying on.', at: ago(30) },
   ]);
+
   agentFiles({
     dir: ctx.fixture.dir,
     lead: ledger,
@@ -91,36 +97,45 @@ export default async function (ctx) {
       },
     ],
   });
+
   appendFileSync(
     old.file,
-    JSON.stringify({
+    `${JSON.stringify({
       type: 'continued-in',
       timestamp: ago(59).toISOString(),
       sessionId: old.id,
       continuedInSessionId: on.id,
-    }) + '\n',
+    })}\n`,
   ); // /bg: a `continued` tie
+
   const node = id => `document.querySelector('#spgrid .spt[data-id="${id}"]')`;
+
   const at = sel =>
     ctx.evaluate(
       `(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`,
     );
+
   const mouse = async (sel, button = 'none') => {
     const r = await at(sel);
+
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+
     if (button !== 'none') {
       await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x, y: r.y, button, clickCount: 1 });
       await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x, y: r.y, button, clickCount: 1 });
     }
   };
+
   const menu = () =>
     ctx.evaluate(
       `[...document.querySelectorAll('#ctxm button')].map(b => (b.querySelector('.ct') || b).firstChild.textContent + (b.disabled ? ' (off)' : ''))`,
     );
+
   await ctx.waitFor(
     `${JSON.stringify([pay, grid, ledger, on].map(c => c.id))}.every(id => document.querySelector('#spgrid .spt[data-id="' + id + '"]'))`,
     { what: 'the nodes' },
   );
+
   await ctx.waitFor(`peix.session('${old.id}')?.done && (peix.session('${old.id}')?.links || []).length === 1`, {
     what: 'the went-on tie, and the chat it left done',
   });
@@ -131,25 +146,33 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'its menu' });
   out.menu = await menu();
   ctx.assert.equal(out.menu[0], 'Resume here', 'an ended chat: Resume first');
-  for (const row of ['Open', 'Star', 'Done', 'Mute', 'Delete from the board', 'Copy its link'])
+
+  for (const row of ['Open', 'Star', 'Done', 'Mute', 'Delete from the board', 'Copy its link']) {
     ctx.assert.ok(out.menu.includes(row), `${row} in ${JSON.stringify(out.menu)}`);
+  }
+
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#mxtip.on')`), false, 'no card over the menu');
   await ctx.shot('space-menu');
+
   await ctx.evaluate(
     `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith('Star')).click()`,
   );
+
   await ctx.waitFor(`peix.session('${pay.id}')?.fav === true`, { what: 'starred from its menu' });
   await mouse(`#spgrid .spt[data-id="${old.id}"] .spbt`, 'right');
+
   await ctx.waitFor(
     `document.querySelector('#ctxm').open && [...document.querySelectorAll('#ctxm button')].some(b => b.textContent.startsWith('Back on the board'))`,
     { what: 'a done node: back on the board' },
   );
+
   await ctx.send('Input.dispatchKeyEvent', {
     type: 'rawKeyDown',
     key: 'Escape',
     code: 'Escape',
     windowsVirtualKeyCode: 27,
   });
+
   await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
 
   // 2 · at a glance: the tickets' pill, the chat's card on its title, the quiet ones faded with their age
@@ -157,24 +180,30 @@ export default async function (ctx) {
     what: 'its ticket’s pill',
     timeout: 15000,
   });
+
   ctx.assert.equal(await ctx.evaluate(`${node(pay.id)}.querySelector('.sptk').dataset.cat`), 'doing');
   await mouse(`#spgrid .spt[data-id="${grid.id}"] .spbox`);
   await mouse(`#spgrid .spt[data-id="${pay.id}"] .spbt`);
+
   await ctx.waitFor(`document.querySelector('#mxtip.on')?.textContent.includes('ACME-12')`, {
     what: 'its chat’s card',
   });
+
   out.card = await ctx.evaluate(
     `({ head: document.querySelector('#mxtip .spcs').textContent, title: document.querySelector('#mxtip .mtt').textContent, rows: [...document.querySelectorAll('#mxtip .spcc dt')].map(d => d.textContent) })`,
   );
+
   ctx.assert.match(out.card.head, /^Ready · \d+m\s*storefront/, 'its state and age, its folder');
   ctx.assert.equal(out.card.title, 'Retry declined card payments');
   ctx.assert.deepEqual(out.card.rows, ['You', 'Claude', 'Ticket'], 'your last word, Claude’s, its ticket');
   await ctx.settle();
   await ctx.shot('space-chat-card');
   await mouse('#space .sphd h1');
+
   out.fade = await ctx.evaluate(
     `[${[pay, grid, ledger].map(c => `'${c.id}'`).join(',')}].map(id => { const n = document.querySelector('#spgrid .spt[data-id="' + id + '"]'); return [n.style.getPropertyValue('--fade') || '1', n.querySelector('.spag')?.textContent || '', getComputedStyle(n).opacity]; })`,
   );
+
   ctx.assert.deepEqual(
     out.fade.map(f => f.slice(0, 2)),
     [
@@ -187,9 +216,11 @@ export default async function (ctx) {
 
   // 3 · constellations: one line for the tie, named, lit with the node under the pointer
   await ctx.waitFor(`document.querySelectorAll('#splinks g').length === 1`, { what: 'the line' });
+
   out.link = await ctx.evaluate(
     `(g => [[g.dataset.a, g.dataset.b].sort().join('|'), g.querySelector('text').textContent, +g.querySelector('line').getAttribute('x1') !== +g.querySelector('line').getAttribute('x2') || +g.querySelector('line').getAttribute('y1') !== +g.querySelector('line').getAttribute('y2')])(document.querySelector('#splinks g'))`,
   );
+
   ctx.assert.deepEqual(out.link, [[old.id, on.id].sort().join('|'), 'went on', true], 'from node to node, named');
   await mouse(`#spgrid .spt[data-id="${on.id}"] .spbox`);
   await ctx.waitFor(`document.querySelector('#splinks g.lit')`, { what: 'lit under the pointer' });
@@ -200,27 +231,33 @@ export default async function (ctx) {
     what: 'its past agent in its pod',
     timeout: 15000,
   });
+
   out.past = await ctx.evaluate(`getComputedStyle(${node(ledger.id)}.querySelector('.spa.past')).filter`);
   ctx.assert.match(out.past, /saturate/);
 
   //   · by project: a head over each run, its nodes after it
   await ctx.evaluate(`document.querySelector('#spar [data-arr="project"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#spgrid .sphead').length >= 3`, { what: 'the heads' });
+
   out.runs = await ctx.evaluate(
     `(() => { const runs = []; for (const el of document.querySelector('#spgrid').children) { if (el.classList.contains('sphead')) runs.push([el.firstChild.nextSibling.textContent, +el.querySelector('b').textContent, []]); else runs.at(-1)[2].push(peix.session(el.dataset.id).project); } return runs; })()`,
   );
+
   for (const [name, n, projs] of out.runs) {
     ctx.assert.equal(projs.length, n, `${name}: its count`);
+
     ctx.assert.ok(
       projs.every(p => p === name),
       `${name}: only its own`,
     );
   }
+
   ctx.assert.deepEqual(
     out.runs.slice(0, 2).map(r => r[0]),
     ['storefront', 'infra'],
     'the project with the newest word first',
   );
+
   ctx.assert.equal(await ctx.evaluate(`peix.prefs().spArrange`), 'project');
   await ctx.settle();
   await ctx.shot('space-by-project');

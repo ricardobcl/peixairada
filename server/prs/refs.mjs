@@ -26,30 +26,39 @@ const NOT_PROSE = /```[\s\S]*?(?:```|$)|`[^`\n]*`|\[[^\]\n]*\]\([^)\s]*\)|https?
 const NOT_REPO = /^(?:prs?|pulls?|issues?)$/i; // `PR#12` is the chat's own #12
 const NAME_BEFORE = /([A-Za-z0-9][\w.-]*)[*_]*[ \t]+(?:PRs?[ \t]+)?$/i; // `widgets #12`, `**widgets** PR #12`
 const LIST_GAP = /^(?:[ \t*_,/&]|\band\b|\bor\b)*$/; // `#12, #14 and #15`, `#12/#14` — on one line
+
 const COUNTED =
   /\b(?:note|steps?|options?|points?|items?|phases?|parts?|rounds?|rules?|findings?|questions?|cases?|stages?|tiers?|levels?|tasks?|priority)[*_]*[ \t]+$/i;
+
 const REF_AGE_MS = 90 * 24 * 60 * 60_000;
+
 export const noPr = new Set(); // where GitHub had no PR: not taken up again from a short reference until a restart
 const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 /** The org a repo named alone is under, from a chat in `cwd`: the root's the folder is in, else the one root's with an org. */
 function orgFor(cwd) {
   const roots = boardConfig().roots.filter(r => r.org);
+
   return (
-    (roots.find(r => cwd && (cwd === r.dir || cwd.startsWith(r.dir + '/'))) || (roots.length === 1 ? roots[0] : null))
+    (roots.find(r => cwd && (cwd === r.dir || cwd.startsWith(`${r.dir}/`))) || (roots.length === 1 ? roots[0] : null))
       ?.org || null
   );
 }
+
 /** A checkout under a root by its name, any case: `{name, org}`, the name as the folder spells it. */
 const rootNames = new WeakMap(); // foldersIn's list (kept while the root's mtime is) -> its checkouts by lower-case name
+
 function checkoutNamed(name) {
   for (const r of boardConfig().roots) {
     const list = foldersIn(r.dir);
     let by = rootNames.get(list);
+
     if (!by) rootNames.set(list, (by = new Map(list.filter(f => f.git).map(f => [f.name.toLowerCase(), f.name]))));
     const hit = by.get(name.toLowerCase());
+
     if (hit) return { name: hit, org: r.org };
   }
+
   return null;
 }
 
@@ -59,38 +68,51 @@ export function refsIn(s, text) {
   const prose = text.replace(NOT_PROSE, c =>
     c[0] !== '`' || c[1] === '`' ? '\n'.repeat(c.length) : ` ${c.slice(1, -1).replace(/#/g, ' ')} `,
   );
-  const cwd = s.live?.cwd || s.cwd,
-    own = ghRepoOf(cwd),
-    out = [];
+
+  const cwd = s.live?.cwd || s.cwd;
+  const own = ghRepoOf(cwd);
+  const out = [];
+
   const repoOf = (owner, name) => {
     if (owner) return { owner, name };
     if (!name || (own && sameName(own.name, name))) return own;
-    const c = checkoutNamed(name),
-      org = c?.org || orgFor(cwd) || own?.owner;
+
+    const c = checkoutNamed(name);
+    const org = c?.org || orgFor(cwd) || own?.owner;
+
     return org ? { owner: org, name: c?.name || name } : null;
   };
+
   let prev = null; // the reference before, and where it ended
+
   for (const m of prose.matchAll(REF_RE)) {
-    let [, owner, name] = m,
-      kind = 'repo';
+    let [, owner, name] = m;
+    let kind = 'repo';
+
     if (!owner && name && NOT_REPO.test(name)) name = undefined;
+
     if (!name) {
       const w = NAME_BEFORE.exec(prose.slice(Math.max(0, m.index - 80), m.index))?.[1];
+
       if (w && ((own && sameName(own.name, w)) || checkoutNamed(w))) name = w;
       else if (prev && LIST_GAP.test(prose.slice(prev.end, m.index))) ({ owner, name, kind } = prev);
       else kind = COUNTED.test(prose.slice(Math.max(0, m.index - 24), m.index)) ? 'counted' : 'bare';
     }
+
     prev = { owner, name, kind, end: m.index + m[0].length };
     if (kind === 'counted') continue;
     const r = repoOf(owner, name);
-    if (r)
+
+    if (r) {
       out.push({
         at: m.index,
         url: `https://github.com/${r.owner}/${r.name}/pull/${m[3]}`,
         key: prKey(r.owner, r.name, m[3]),
         ref: kind,
       });
+    }
   }
+
   return out;
 }
 
@@ -99,16 +121,20 @@ export function refsIn(s, text) {
 function pastRef(p) {
   if (!p.ref || p.state === 'open' || p.state === 'draft') return false;
   const made = Date.parse(prStatus.get(p.url)?.created);
+
   return !!made && made < (Date.parse(p.firstAt) || Date.now()) - REF_AGE_MS;
 }
+
 /** Whether the chat shows a PR: one said in full always; a short reference once GitHub has found a PR there. */
 export const shownPr = p => !p.ref || (!!p.state && (p.ref === 'repo' || !pastRef(p)));
 
 /** GitHub has no PR there: every chat that had it only from a short reference lets it go, and none takes it up again. */
 export function forgetRef(url) {
   noPr.add(url);
+
   for (const s of sessions.values()) {
     const at = s.prs.findIndex(p => p.url === url && p.ref);
+
     if (at >= 0) {
       s.prs.splice(at, 1);
       schedulePush(s);
@@ -126,5 +152,6 @@ export function forgetRef(url) {
 export function prTitle(s) {
   const first = k =>
     s.prs.reduce((a, p) => (p[k] != null && shownPr(p) && !pastRef(p) && !(a?.[k] < p[k]) ? p : a), null);
+
   return (first('linked') || first('named'))?.title ?? null;
 }

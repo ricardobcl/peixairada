@@ -11,15 +11,19 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAAYCAIAAAAH5iiXAAAAKElEQVR4nGO4Y2M0IIhh1OJRi0ctHrV41OJRi0ctHrV41OJRi4ePxQAWWdW9D91O3QAAAABJRU5ErkJggg==',
   'base64',
 );
+
 const gh = await startFakeGitHub({
   users: ['me', 'ana'],
   orgs: { 'acme-chat': ['me'] },
   repos: { 'acme-chat/room': { perms: { ana: 'pull' }, rooms: [{ title: 'Chat', comments: [] }] } },
 });
+
 const shot = gh.asset('acme-chat/room', PNG);
 const hers = gh.say('acme-chat/room', 1, 'ana', 'shipped :tada: — see `:tada:` and :octocat:');
+
 gh.react(hers, 'ana', 'heart');
 const mine = gh.say('acme-chat/room', 1, 'me', `teh fix\n\n![shot](${shot})`);
+
 gh.say('acme-chat/room', 1, 'me', 'later');
 
 export const meta = {
@@ -30,27 +34,34 @@ export const meta = {
 
 export default async function (ctx) {
   const out = {};
+
   try {
     const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
     const msg = id => `${q(`#rmlog .rmmsg[data-id="${id}"]`)}`;
+
     const rect = sel =>
       ctx.evaluate(
         `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`,
       );
+
     const key = (k, sel = '#rmbox', more = '') =>
       ctx.evaluate(
         `${q(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true${more} }))`,
       );
+
     const type = text =>
       ctx.evaluate(
         `(b => { b.focus(); b.setRangeText(${JSON.stringify(text)}, b.selectionStart, b.selectionEnd, 'end'); b.dispatchEvent(new InputEvent('input', { bubbles: true })); })(${q('#rmbox')})`,
       );
+
     const box = () => ctx.evaluate(`${q('#rmbox')}.value`);
+
     await ctx.server.api('api/config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }),
     });
+
     await ctx.waitFor(`!!${q('#sbChat')} && !/still being read/.test(${q('#sbChat')}.title)`, { what: 'the chat' });
     await ctx.evaluate(`${q('#sbChat')}.click()`);
     await ctx.waitFor(`document.querySelectorAll('#rmlog .rmmsg').length === 3`, { what: 'the messages' });
@@ -62,20 +73,25 @@ export default async function (ctx) {
 
     // her reaction, a chip with who; mine added by a click on it, then a rocket from the React row, the heart taken back
     await ctx.waitFor(`!!${msg(hers)}.querySelector('.rmrc[data-r="heart"]')`, { what: 'her reaction' });
+
     const chips = () =>
       ctx
         .evaluate(
           `JSON.stringify([...${msg(hers)}.querySelectorAll('.rmrc:not(.add)')].map(c => [c.dataset.r, c.textContent, c.classList.contains('mine'), c.title]))`,
         )
         .then(JSON.parse);
+
     ctx.assert.deepEqual(await chips(), [['heart', '❤️1', false, 'ana']]);
     await ctx.evaluate(`${msg(hers)}.querySelector('.rmrc[data-r="heart"]').click()`);
+
     await ctx.waitFor(`${msg(hers)}.querySelector('.rmrc[data-r="heart"]')?.textContent === '❤️2'`, {
       what: 'mine, at once',
     });
+
     await waitFor(() => gh.repo('acme-chat/room').issues[0].comments.find(c => c.id === hers).reactions.length === 2, {
       what: 'mine on GitHub',
     });
+
     await ctx.evaluate(`${msg(hers)}.querySelector('.rmacts [data-rm="rxpick"]').click()`);
     await ctx.waitFor(`!${q('#rmrxp')}.hidden`, { what: 'the React row' });
     await ctx.settle();
@@ -83,6 +99,7 @@ export default async function (ctx) {
     await ctx.evaluate(`${q('#rmrxp [data-rx="rocket"]')}.click()`);
     await ctx.waitFor(`!!${msg(hers)}.querySelector('.rmrc[data-r="rocket"]')`, { what: 'the rocket' });
     await ctx.evaluate(`${msg(hers)}.querySelector('.rmrc[data-r="heart"]').click()`);
+
     await waitFor(
       () =>
         gh
@@ -93,10 +110,13 @@ export default async function (ctx) {
           .join() === 'ana:heart,me:rocket',
       { what: 'the heart taken back on GitHub' },
     );
+
     await ctx.waitFor(`${msg(hers)}.querySelector('.rmrc[data-r="heart"]')?.textContent === '❤️1'`, {
       what: 'the heart back to hers',
     });
+
     out.chips = await chips();
+
     ctx.assert.deepEqual(out.chips, [
       ['heart', '❤️1', false, 'ana'],
       ['rocket', '🚀1', true, 'you'],
@@ -107,20 +127,26 @@ export default async function (ctx) {
     await ctx.evaluate(`${q('#rmbox')}.focus()`);
     await key('ArrowUp');
     await ctx.waitFor(`!${q('#rmediting')}.hidden && ${q('#rmbox')}.value === 'later'`, { what: '↑ editing my last' });
+
     await ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))`,
     );
+
     await ctx.waitFor(`${q('#rmediting')}.hidden && ${q('#rmbox')}.value === '' && ${q('#room')}.open`, {
       what: 'esc: the edit let go, the panel still up',
     });
+
     await ctx.evaluate(`${msg(mine)}.querySelector('[data-rm="editmsg"]').click()`);
+
     await ctx.waitFor(`${q('#rmbox')}.value === 'teh fix' && ${msg(mine)}.classList.contains('editing')`, {
       what: 'my message in the box',
     });
+
     await ctx.settle();
     await ctx.shot('2-editing', await rect('#room'));
     await ctx.fill('#rmbox', 'the fix');
     await key('Enter');
+
     await waitFor(
       () =>
         gh.repo('acme-chat/room').issues[0].comments.find(c => c.id === mine).body === `the fix\n\n![shot](${shot})`,
@@ -128,20 +154,24 @@ export default async function (ctx) {
         what: 'the edit on GitHub, its picture kept',
       },
     );
+
     await ctx.waitFor(
       `${q('#rmediting')}.hidden && ${q('#rmbox')}.value === '' && !!${msg(mine)}.querySelector('.edited') && !!${msg(mine)}.querySelector('.rmpic')`,
       {
         what: 'edited, said',
       },
     );
+
     ctx.assert.match(await ctx.evaluate(`${msg(mine)}.querySelector('.rmbody').textContent`), /the fix/);
 
     // the picker: searched, a pick into the box where the caret is
     await type('lunch ');
     await ctx.evaluate(`${q('#rmEmoBtn')}.click()`);
+
     await ctx.waitFor(`!${q('#rmemo')}.hidden && document.querySelectorAll('#rmemog .rmeb').length > 3`, {
       what: 'the picker',
     });
+
     await ctx.settle();
     await ctx.shot('3-picker', await rect('#room'));
     await ctx.fill('#rmemoq', 'ram');
@@ -152,9 +182,11 @@ export default async function (ctx) {
 
     // the box's suggestions: ":sm" offers, ↓ and ⇥ take the second; ":fish:" closed by its colon is its emoji
     await type(' :sm');
+
     await ctx.waitFor(`!${q('#rmsug')}.hidden && document.querySelectorAll('#rmsug .rmsi').length >= 2`, {
       what: 'the suggestions',
     });
+
     out.sug = await ctx.evaluate(`[...document.querySelectorAll('#rmsug .rmsi')].map(i => i.dataset.emo).join(' ')`);
     ctx.assert.equal(out.sug, 'smile smiley sweat_smile');
     await ctx.settle();
@@ -166,9 +198,11 @@ export default async function (ctx) {
     await type('at :fish:');
     ctx.assert.equal(await box(), 'lunch 🍜 😃 at 🐟');
     await key('Enter');
+
     await waitFor(() => gh.repo('acme-chat/room').issues[0].comments.at(-1).body === 'lunch 🍜 😃 at 🐟', {
       what: 'sent',
     });
+
     out.recent = await ctx.evaluate('peix.prefs().emojiRecent.join(" ")');
     ctx.assert.equal(out.recent, 'fish smiley ramen', "the picker's first row: what you used, newest first");
     return out;

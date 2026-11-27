@@ -31,17 +31,21 @@ const cards = ctx =>
 }))`);
 
 export default async function (ctx) {
-  const out = {},
-    cwd = join(tmpdir(), 'peix-signals', 'signals-repo');
+  const out = {};
+  const cwd = join(tmpdir(), 'peix-signals', 'signals-repo');
+
   const sleeps = Array.from({ length: 7 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
   // The output file of that last chat's command, and something holding it open exactly as the harness's own
   // spawn does — this is what the server asks about, and killing it is that command ending.
   const outFile = join(tmpDir('peix-task-'), 'bldx1y2z3.output');
+
   writeFileSync(outFile, '');
   const holder = spawn('/bin/sh', ['-c', `exec sleep 120 >> ${JSON.stringify(outFile)}`], { stdio: 'ignore' });
   const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
-  const now = Date.now(),
-    at = ms => new Date(now - ms);
+
+  const now = Date.now();
+  const at = ms => new Date(now - ms);
+
   const mon = 'mon7yk1x2';
 
   const { chats } = makeFixture(ctx.fixture.dir, [
@@ -194,23 +198,29 @@ export default async function (ctx) {
         }),
     },
   ]);
+
   const chat = t => chats.find(c => c.title === t);
   // Three sub-agent transcripts for the agents chat, each mid-turn: <slug>/<id>/subagents/agent-*.jsonl
   const agents = chat('Three agents out');
   const agentDir = join(dirname(agents.file), agents.id, 'subagents');
+
   mkdirSync(agentDir, { recursive: true });
-  for (const n of [1, 2, 3])
+
+  for (const n of [1, 2, 3]) {
     writeFileSync(
       join(agentDir, `agent-${n}.jsonl`),
-      JSON.stringify({ isSidechain: true, type: 'user', message: { role: 'user', content: 'go' } }) + '\n',
+      `${JSON.stringify({ isSidechain: true, type: 'user', message: { role: 'user', content: 'go' } })}\n`,
     );
+  }
 
   try {
     await ctx.server.restart();
     await ctx.reload();
+
     await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 7`, {
       what: 'the seven chats',
     });
+
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, {
       what: 'the three sub-agents counted',
       timeout: 20000,
@@ -220,21 +230,27 @@ export default async function (ctx) {
     out.server = await ctx.peix(
       `sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).map(s => ({ title: s.title, status: s.status, agents: s.agents, tasks: (s.tasks || []).map(t => t.kind + ':' + t.what + ':' + t.events), ask: s.ask && (s.ask.tool + '/' + s.ask.options + (s.ask.waitingFor ? '/' + s.ask.waitingFor : '')) }))`,
     );
+
     const by = t => out.server.find(x => x.title === t);
+
     ctx.assert.equal(by('Normal work').status, 'working', 'a tool call with no answer is work in progress');
+
     ctx.assert.deepEqual(
       by('Watching CI').tasks,
       ['monitor:CI checks on PR #382:1'],
       'the monitor is running, and its one event was counted',
     );
+
     ctx.assert.equal(by('Watching CI').status, 'idle', '…while the chat itself is ready: the turn ended');
     ctx.assert.equal(by('Three agents out').agents, 3);
     ctx.assert.equal(by('Waiting on you').ask, 'AskUserQuestion/3', 'the question, and the three answers it offers');
+
     ctx.assert.equal(
       by('Blocked on a prompt').status,
       'needs-input',
       'a process waiting on a prompt is asking, though its transcript reads as work',
     );
+
     ctx.assert.equal(
       by('Blocked on a prompt').ask,
       'null/0/permission prompt',
@@ -252,36 +268,44 @@ export default async function (ctx) {
         'Blocked on a prompt',
       ].includes(c.title),
     );
+
     await ctx.shot('card-signals');
     // Both themes: the ring colours have to read on the light one too (--watch and --needs are a pair per theme).
     await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`);
     await ctx.shot('card-signals-light');
     await ctx.evaluate(`delete document.documentElement.dataset.theme`);
     const card = t => out.cards.find(c => c.title === t);
+
     ctx.assert.deepEqual(card('Normal work').cls, ['working'], 'plain work: the clauding ring, nothing else');
     ctx.assert.equal(card('Normal work').lights, '', '…one light (the default)');
+
     // no edge on a ring but the open card's (2026-10-11, afternoon): its light runs on nothing, a glow round it
     ctx.assert.deepEqual(
       [card('Normal work').active, card('Normal work').track, card('Normal work').ring],
       [false, 'transparent', false],
       'a clauding card that is not open: no track, no line round it',
     );
+
     ctx.assert.equal(card('Blocked on a prompt').ring, true, 'a question keeps its red line');
+
     ctx.assert.deepEqual(
       card('Watching CI').cls,
       ['idle', 'watching'],
       'a ready card that is still watching something',
     );
+
     ctx.assert.deepEqual(
       card('Watching CI').chips,
       ['monitor · CI checks on PR #382'],
       '…and says what is running, not merely that something is',
     );
+
     ctx.assert.equal(card('Three agents out').lights, '3', 'one light per sub-agent');
     ctx.assert.deepEqual(card('Three agents out').chips, ['3 agents']);
     ctx.assert.deepEqual(card('Waiting on you').cls, ['asking', 'needs-input'], 'the question stops the card');
     ctx.assert.deepEqual(card('Blocked on a prompt').cls, ['asking', 'needs-input'], 'and so does a permission prompt');
     ctx.assert.match(card('Blocked on a prompt').state, /^asking you — permission prompt$/, '…saying what it waits on');
+
     // …and it is pings leaving its red border, not a light running round the edge (2026-10-09, sonar; the border
     // blinking from 2026-09-22)
     const ask = await ctx
@@ -290,29 +314,36 @@ export default async function (ctx) {
       overflow: getComputedStyle(c).overflow }))([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Waiting on you')))`,
       )
       .then(JSON.parse);
+
     ctx.assert.deepEqual(ask.pings, ['sonar', 'sonar'], `two pings leave the card: ${JSON.stringify(ask)}`);
     ctx.assert.equal(ask.overflow, 'visible', 'and the card lets them out');
+
     ctx.assert.match(
       card('Waiting on you').state,
       /asking you: Which database should the service use\?3 answers/,
       'the question is on the card, with how many answers it offers',
     );
+
     ctx.assert.notEqual(
       card('Waiting on you').lit,
       card('Normal work').lit,
       'and it is lit in another colour than work',
     );
+
     ctx.assert.deepEqual(
       card('Both at once').cls,
       ['watching', 'working'],
       'a chat can be both — clauding with a monitor of its own',
     );
+
     ctx.assert.equal(card('Both at once').lit, card('Normal work').lit, '…and the work ring wins');
+
     ctx.assert.equal(
       card('Both at once').spins,
       '4s',
       "…at the work pace: every rule sets every variable, or the monitor's 6s leaks into it",
     );
+
     ctx.assert.deepEqual(
       card('Both at once').chips,
       ['monitor · the deploy run'],
@@ -338,11 +369,13 @@ export default async function (ctx) {
     })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')))`,
         )
         .then(JSON.parse);
+
     out.ring = [await ring()];
     const work = chat('Normal work');
+
     appendFileSync(
       work.file,
-      JSON.stringify({
+      `${JSON.stringify({
         isSidechain: false,
         userType: 'external',
         entrypoint: 'cli',
@@ -355,28 +388,35 @@ export default async function (ctx) {
         uuid: randomUUID(),
         timestamp: new Date().toISOString(),
         message: { role: 'user', content: [{ type: 'text', text: 'and the tests after' }] },
-      }) + '\n',
+      })}\n`,
     );
+
     await ctx.waitFor(
       `(c => !!c && !c.__seen)([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work'))`,
       { what: 'the card rebuilt on the update' },
     );
+
     out.ring.push(await ring());
+
     ctx.assert.deepEqual(
       out.ring.map(r => r.start),
       [0, 0],
       'the ring is at start time 0 on the document clock, before the update and on the new card after it',
     );
+
     ctx.assert.deepEqual(
       out.ring[1].props,
       ['transform'],
       'and it is a transform animation, the kind the compositor runs',
     );
-    for (const r of out.ring)
+
+    for (const r of out.ring) {
       ctx.assert.ok(
         Math.min(Math.abs(r.angle - r.expect), 360 - Math.abs(r.angle - r.expect)) <= 3,
         `the light is where the clock says: ${r.angle}° for ${r.expect}°`,
       );
+    }
+
     // every clauding card's ring in step, at 0 (a phase of each card's own was a switch until 2026-10-14)
     const starts = () =>
       ctx
@@ -384,17 +424,21 @@ export default async function (ctx) {
           `JSON.stringify(Object.fromEntries([...document.querySelectorAll('#slist .card.working')].map(c => [c.querySelector('.title').textContent, c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring')?.startTime])))`,
         )
         .then(JSON.parse);
+
     out.starts = await starts();
+
     ctx.assert.ok(
       Object.keys(out.starts).length >= 3 && Object.values(out.starts).every(t => t === 0),
       `every ring in step: ${JSON.stringify(out.starts)}`,
     );
+
     // Another tool call changes nothing on the card, so the card keeps its node (2026-09-27: the list is reconciled, not
     // rebuilt) — the update lands, the server's word moves, and every ring stays where it was
     const was = await ctx.peix(`session(${JSON.stringify(work.id)}).lastActivity`);
+
     appendFileSync(
       work.file,
-      toolLines({
+      `${toolLines({
         id: work.id,
         cwd,
         name: 'Bash',
@@ -402,17 +446,20 @@ export default async function (ctx) {
         at: new Date(),
       })
         .map(l => JSON.stringify(l))
-        .join('\n') + '\n',
+        .join('\n')}\n`,
     );
+
     await ctx.waitFor(`window.peix.session(${JSON.stringify(work.id)}).lastActivity !== ${JSON.stringify(was)}`, {
       what: 'the update on the chat',
     });
+
     ctx.assert.ok(
       await ctx.evaluate(
         `[...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work').__seen > 0`,
       ),
       'a card whose markup did not change keeps its node',
     );
+
     ctx.assert.deepEqual(await starts(), out.starts, '…and each ring where it was');
 
     // ---- while Claude works, a choice (2026-11-25, round XXVI): the ring, an arc beside the project or a still edge,
@@ -421,6 +468,7 @@ export default async function (ctx) {
       ctx.evaluate(
         `(s => { s.value = ${JSON.stringify(v)}; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#claudingLook'))`,
       );
+
     const looks = () =>
       ctx
         .evaluate(
@@ -433,40 +481,53 @@ export default async function (ctx) {
     })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === t))])))`,
         )
         .then(JSON.parse);
+
     out.looks = { ring: await looks() };
+
     ctx.assert.deepEqual(
       [out.looks.ring['Normal work'].ring, out.looks.ring['Normal work'].arc, out.looks.ring['Normal work'].halo],
       ['ring', 'hidden', true],
       `the ring by default, its halo, the arc in the markup unseen: ${JSON.stringify(out.looks.ring)}`,
     );
+
     ctx.assert.equal(out.looks.ring['Watching CI'].arc, 'none', 'a card not at work carries no arc');
     await pickLook('arc');
     await ctx.waitFor(`document.querySelector('#sessions').dataset.clauding === 'arc'`, { what: 'the arc picked' });
     await ctx.sleep(120);
     out.looks.arc = await looks();
-    for (const t of ['Normal work', 'Both at once'])
+
+    for (const t of ['Normal work', 'Both at once']) {
       ctx.assert.deepEqual(
         [out.looks.arc[t].ring, out.looks.arc[t].arc, out.looks.arc[t].halo],
         ['hidden', 'ring', false],
         `${t}: an arc beside the project turns, nothing round the card, no halo: ${JSON.stringify(out.looks.arc)}`,
       );
+    }
+
     ctx.assert.equal(out.looks.arc['Normal work'].arcStart, 0, '…on the document clock, with every other ring');
+
     ctx.assert.deepEqual(
       [out.looks.arc['Watching CI'].ring, out.looks.arc['Watching CI'].spins],
       ['ring', '6s'],
       'a monitor keeps its light, at its 6 s',
     );
+
     await pickLook('still');
+
     await ctx.waitFor(`document.querySelector('#sessions').dataset.clauding === 'still'`, {
       what: 'the still edge picked',
     });
+
     out.looks.still = await looks();
+
     ctx.assert.deepEqual(
       [out.looks.still['Normal work'].ring, out.looks.still['Normal work'].arc, out.looks.still['Normal work'].halo],
       ['none', 'hidden', false],
       `a still edge: nothing turns, no halo: ${JSON.stringify(out.looks.still)}`,
     );
+
     ctx.assert.equal(out.looks.still['Watching CI'].ring, 'ring', '…and the monitor still has its light');
+
     ctx.assert.equal(
       await ctx.evaluate(
         `getComputedStyle([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work').querySelector(':scope > .rg'), '::before').backgroundImage`,
@@ -474,7 +535,9 @@ export default async function (ctx) {
       'none',
       '…the edge a colour, not a gradient',
     );
+
     await ctx.reload();
+
     ctx.assert.equal(
       await ctx.evaluate(
         `document.querySelector('#sessions').dataset.clauding + ' ' + document.querySelector('#claudingLook').value`,
@@ -482,6 +545,7 @@ export default async function (ctx) {
       'still still',
       'kept across a reload',
     );
+
     await pickLook('ring');
     await ctx.waitFor(`document.querySelector('#sessions').dataset.clauding === 'ring'`, { what: 'the ring back' });
 
@@ -489,6 +553,7 @@ export default async function (ctx) {
     out.order = await ctx.evaluate(
       `[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('lane') ? 'lane:' + e.querySelector('.ln').textContent + ' ' + e.querySelector('b').textContent : e.classList.contains('gsep') ? 'line' : e.querySelector('.title')?.textContent)`,
     );
+
     ctx.assert.deepEqual(
       out.order.slice(0, 11),
       [
@@ -506,18 +571,23 @@ export default async function (ctx) {
       ],
       "the questions first, then the clauding chats by your last touch — work beating a watch —, then the ready one still watching something (2026-10-31), then the ready ones — each group under its lane's head and count (2026-10-09; one divider before), today's cards unlabelled at the top of Ready (2026-10-14)",
     );
+
     // the status bar's count of them opens them, one after another (2026-10-12)
     const titleOf = () => ctx.evaluate(`window.peix.session(window.peix.state().current)?.title || null`);
+
     await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`);
     await ctx.waitFor(`!!window.peix.state().current`, { what: 'a chat open from the count' });
     const firstAsk = await titleOf();
+
     await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`);
     await ctx.sleep(300);
+
     ctx.assert.deepEqual(
       [firstAsk, await titleOf()].sort(),
       ['Blocked on a prompt', 'Waiting on you'],
       'the two asking chats, one click each',
     );
+
     // the clauding lane's head is a half-filled ring, still (2026-10-31, L1 — Linear's states; Claude's mark in pixels
     // and a shimmer on its name before, since 2026-09-27 as the divider between the clauding and the ready cards)
     out.divider = await ctx
@@ -525,24 +595,30 @@ export default async function (ctx) {
         `JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), glyph: /conic-gradient/.test(getComputedStyle(d.querySelector(':scope > i')).backgroundImage), anims: d.getAnimations({ subtree: true }).length }))(document.querySelector('#slist .gsep.lane.working')))`,
       )
       .then(JSON.parse);
+
     ctx.assert.deepEqual(
       out.divider,
       { svg: false, glyph: true, anims: 0 },
       "the clauding lane's mark is a half-filled ring, still",
     );
+
     await ctx.key('KeyK'); // the chat picker goes by the same rank
+
     await ctx.waitFor(
       `document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`,
       { what: 'the chat picker' },
     );
+
     out.picker = await ctx.evaluate(
       `[...document.querySelectorAll('#picklist .pkrow')].slice(0, 3).map(r => r.querySelector('.n').textContent.replace('current', '') + ' / ' + r.querySelector('.st').textContent)`,
     );
+
     ctx.assert.deepEqual(
       out.picker.slice(0, 2),
       ['Blocked on a prompt / asking', 'Waiting on you / asking'],
       '⌥⌘K opens on them too',
     );
+
     await ctx.evaluate(`document.querySelector('#pick').close()`);
 
     // ---- the open chat's header carries the same chip, where there is room for it ----
@@ -557,7 +633,9 @@ export default async function (ctx) {
       (await ctx.peix(`sessions().find(s => s.title === 'A real background job').tasks.length`)) === 1,
       'it is running while something holds the file',
     );
+
     holder.kill();
+
     await ctx.waitFor(`window.peix.sessions().find(s => s.title === 'A real background job').tasks.length === 0`, {
       what: 'the command let go once its output file was closed',
       timeout: 20000,
@@ -567,7 +645,9 @@ export default async function (ctx) {
     out.swim = await ctx.evaluate(
       `({ rest: document.querySelector('#sbSwim').classList.contains('rest'), n: window.peix.motion().filter(m => m.kind === 'swim').map(m => m.dy).pop(), rate: window.peix.state().swim.rate })`,
     );
+
     ctx.assert.equal(out.swim.rest, false, 'swimming');
+
     ctx.assert.ok(
       out.swim.n >= 6 && out.swim.rate > 2.3,
       `at the pace of every one at work: ${JSON.stringify(out.swim)}`,
@@ -575,30 +655,36 @@ export default async function (ctx) {
 
     // ---- what a turn is doing, on its card (2026-10-11): the tool it called last, flipped to the next ----
     const nwLive = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')?.querySelector('.state.live')?.textContent`;
+
     out.doing = await ctx.evaluate(nwLive);
     ctx.assert.match(out.doing || '', /^Bash/, `the tool at work: ${out.doing}`);
     const nwc = chat('Normal work');
+
     appendFileSync(
       nwc.file,
-      toolLines({ id: nwc.id, cwd, name: 'Grep', input: { pattern: 'parseArgs', path: 'src' }, at: new Date() })
+      `${toolLines({ id: nwc.id, cwd, name: 'Grep', input: { pattern: 'parseArgs', path: 'src' }, at: new Date() })
         .map(l => JSON.stringify(l))
-        .join('\n') + '\n',
+        .join('\n')}\n`,
     );
+
     await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'flap' && m.id === '${nwc.id}')`, {
       what: 'the line flipping to the next tool',
     });
+
     await ctx.settle();
     out.doing2 = await ctx.evaluate(nwLive);
     ctx.assert.match(out.doing2 || '', /^Grep/, `the next: ${out.doing2}`);
 
     // ---- a monitor's event, on its card (2026-10-11): the live line says the newest, and a new one rolls in with a blip ----
-    const b = chat('Watching CI'),
-      live = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Watching CI')?.querySelector('.state.live')?.textContent`;
+    const b = chat('Watching CI');
+    const live = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Watching CI')?.querySelector('.state.live')?.textContent`;
+
     out.live = await ctx.evaluate(live);
     ctx.assert.equal(out.live, 'Build: pass', 'the newest event on the card');
+
     appendFileSync(
       b.file,
-      JSON.stringify(
+      `${JSON.stringify(
         taskNoteLine({
           id: b.id,
           cwd,
@@ -606,19 +692,22 @@ export default async function (ctx) {
           summary: 'Monitor event: "CI checks on PR #382"',
           event: 'Tests: 212 passed',
         }),
-      ) + '\n',
+      )}\n`,
     );
+
     await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'blip' && m.id === '${b.id}')`, {
       what: 'the light blipping for the event',
     });
+
     await ctx.settle();
     ctx.assert.equal(await ctx.evaluate(live), 'Tests: 212 passed', 'rolled in');
 
     // ---- the end of a monitor takes the chip away ----
     writeFileSync(b.file, '', { flag: 'a' });
+
     appendFileSync(
       b.file,
-      JSON.stringify(
+      `${JSON.stringify(
         taskNoteLine({
           id: b.id,
           cwd,
@@ -626,11 +715,13 @@ export default async function (ctx) {
           summary: 'Monitor "CI checks on PR #382" completed',
           status: 'completed',
         }),
-      ) + '\n',
+      )}\n`,
     );
+
     await ctx.waitFor(`(window.peix.sessions().find(s => s.title === 'Watching CI')?.tasks || []).length === 0`, {
       what: 'the monitor gone when it reported its end',
     });
+
     out.afterEnd = (await cards(ctx)).find(c => c.title === 'Watching CI');
     ctx.assert.deepEqual(out.afterEnd.cls, ['idle'], 'the ring goes with it');
     ctx.assert.deepEqual(out.afterEnd.chips, [], '…and so does the chip');
@@ -641,30 +732,38 @@ export default async function (ctx) {
     await ctx.evaluate(
       `window.__alerts = []; new EventSource('/events?key=' + window.PEIX_KEY).addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)))`,
     );
+
     await ctx.sleep(300);
-    const nw = chat('Normal work'),
-      regFile = join(ctx.fixture.dir, 'sessions', `${nw.pid}.json`);
+
+    const nw = chat('Normal work');
+    const regFile = join(ctx.fixture.dir, 'sessions', `${nw.pid}.json`);
+
     const reg = JSON.parse(readFileSync(regFile, 'utf8'));
+
     writeFileSync(
       regFile,
       JSON.stringify({ ...reg, status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: Date.now() }),
     );
+
     await ctx.waitFor(
       `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')?.classList.contains('asking')`,
       { what: 'the card blinking on the registry alone', timeout: 5000 },
     );
+
     await ctx.waitFor(`window.__alerts.some(a => a.title === 'Normal work' && a.kind === 'needs-input')`, {
       what: 'the alert, as the prompt went up',
       timeout: 3000,
     });
+
     out.alert = await ctx.evaluate(`window.__alerts.find(a => a.title === 'Normal work').snippet`);
     ctx.assert.equal(out.alert, 'Waiting on you: permission prompt');
     await ctx.shot('card-signals-prompt');
     // …answered: the registry says busy again, and the lines that asked and answered land together, as they do
     writeFileSync(regFile, JSON.stringify({ ...reg, status: 'busy', statusUpdatedAt: Date.now() }));
+
     appendFileSync(
       nw.file,
-      toolLines({
+      `${toolLines({
         id: nw.id,
         cwd,
         name: 'AskUserQuestion',
@@ -672,17 +771,20 @@ export default async function (ctx) {
         input: { questions: [{ question: 'Which one?', options: [{ label: 'this' }, { label: 'that' }] }] },
       })
         .map(l => JSON.stringify(l))
-        .join('\n') + '\n',
+        .join('\n')}\n`,
     );
+
     await ctx.waitFor(
       `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')?.classList.contains('working')`,
       { what: 'the card back at work', timeout: 5000 },
     );
+
     // the question heard (2026-10-11): the card played the sonar backwards as it went back to work
     out.heard = await ctx.evaluate(`window.peix.motion().filter(m => m.kind === 'heard').map(m => m.id)`);
     ctx.assert.ok(out.heard.includes(nw.id), 'the answered card hears it');
     await ctx.sleep(1200); // past the alert's debounce
     out.alertsAfter = await ctx.evaluate(`window.__alerts.filter(a => a.title === 'Normal work').map(a => a.kind)`);
+
     ctx.assert.deepEqual(
       out.alertsAfter,
       ['needs-input'],
@@ -697,6 +799,7 @@ export default async function (ctx) {
       lights: c.style.getPropertyValue('--lights') || '1' }))([...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === ${JSON.stringify(t)})))`,
         )
         .then(JSON.parse);
+
     out.ring = await look('Normal work');
     ctx.assert.equal(out.ring.anim, 'ring', `the ring round the row: ${JSON.stringify(out.ring)}`);
     ctx.assert.equal((await look('Three agents out')).lights, '3', 'a light per agent');

@@ -11,8 +11,10 @@ import { ROOT } from './env.mjs';
 // /Applications every start tripped App Management ("prevented from modifying apps on your Mac").
 try {
   const h = join(ROOT, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper');
+
   if (existsSync(h) && (statSync(h).mode & 0o111) !== 0o111) chmodSync(h, 0o755);
 } catch {}
+
 export const nodePty = await import('node-pty')
   .then(m => m.default ?? m)
   .catch(e => {

@@ -17,6 +17,7 @@ const SWITCHES = [
   ['skyOn', 'Space’s night sky'],
   ['agCardOn', 'Space’s agent card'],
 ];
+
 const toggleRows = () => [
   {
     kind: 'toggle',
@@ -36,10 +37,10 @@ const toggleRows = () => [
   },
   ...SWITCHES.map(([el, name]) => ({
     kind: 'toggle',
-    id: 'tg:' + el,
+    id: `tg:${el}`,
     name,
-    on: () => $('#' + el).checked,
-    flip: () => $('#' + el).click(),
+    on: () => $(`#${el}`).checked,
+    flip: () => $(`#${el}`).click(),
   })),
   {
     kind: 'toggle',
@@ -50,10 +51,12 @@ const toggleRows = () => [
     flip: () => setLook(prefs.skinFollow ? (sysDark() ? 'dark' : 'light') : 'auto'),
   },
 ];
+
 /** What ⏎ does with the dialog: `stay` re-fills it (another picker), else it closes first and the action runs. */
 const actionRows = () => {
-  const s = state.sessions.get(state.current),
-    of = s ? ` — ${s.title}` : '';
+  const s = state.sessions.get(state.current);
+  const of = s ? ` — ${s.title}` : '';
+
   return [
     fishing.until
       ? { name: 'Come back from fishing', fn: backFromFishing }
@@ -200,10 +203,12 @@ const actionRows = () => {
               ]
             : []),
         ]),
-  ].map(a => ({ kind: 'action', id: 'ac:' + a.name, ...a }));
+  ].map(a => ({ kind: 'action', id: `ac:${a.name}`, ...a }));
 };
+
 const LAUNCH_MENU = () => {
   const yours = allPrs().filter(pr => pr.turn?.you).length;
+
   return [
     { name: 'Chats', hint: '⌥⌘K', icon: ICON.ask, go: () => pickOpen('chat', { back: 'launch' }) },
     { name: 'Projects', hint: '⌥⌘P', icon: ICON.folder, go: () => pickOpen('project', { back: 'launch' }) },
@@ -225,53 +230,66 @@ const LAUNCH_MENU = () => {
     { name: 'Overview', hint: '⌥⌘A', icon: '▦', go: ovOpen, leaf: true },
     { name: 'Space', hint: '⌥⌘X', icon: '◎', go: spToggle, leaf: true },
     { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
-  ].map(m => ({ kind: 'menu', id: 'mn:' + m.name, ...m }));
+  ].map(m => ({ kind: 'menu', id: `mn:${m.name}`, ...m }));
 };
+
 /** Every chat's PRs, one row each — the most recent chat to mention it is where it opens. */
 function allPrs() {
   const seen = new Map();
-  for (const s of [...state.sessions.values()].filter(visible).sort(byWord))
+
+  for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) {
     for (const pr of s.prs || []) if (!seen.has(pr.url)) seen.set(pr.url, { ...pr, chatId: s.id, chat: s.title });
+  }
+
   return [...seen.values()];
 }
+
 function allTickets() {
   const seen = new Map();
-  for (const s of [...state.sessions.values()].filter(visible).sort(byWord))
+
+  for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) {
     for (const t of s.tickets || []) if (!seen.has(t.key)) seen.set(t.key, { ...t, chatId: s.id, chat: s.title });
+  }
+
   return [...seen.values()];
 }
+
 /** A new tab's address, typed into (⌘T on a page): an address as given, a bare host over https (localhost and the loopback over http), and
  *  anything else a search — a browser's address bar. */
 function typedPage(raw) {
   const url = /^[a-z][\w+.-]*:\/\//i.test(raw)
     ? raw
     : /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?([/?#]\S*)?$/i.test(raw)
-      ? 'http://' + raw
+      ? `http://${raw}`
       : /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]\S*)?$/.test(raw)
-        ? 'https://' + raw
+        ? `https://${raw}`
         : null;
+
   return url
     ? { kind: 'url', id: 'url:typed', url, name: `Open ${bareUrl(url)}` }
     : {
         kind: 'url',
         id: 'url:typed',
-        url: 'https://www.google.com/search?q=' + encodeURIComponent(raw),
+        url: `https://www.google.com/search?q=${encodeURIComponent(raw)}`,
         name: `Search the web for “${raw}”`,
       };
 }
+
 /** The open chat's own pages that are not on a tab of it: its PRs, its tickets, its repository on GitHub. */
 function chatPages(s) {
   if (!s) return [];
-  const open = u => !!pageTab(s, u),
-    repo = s.cwd && state.repos[s.cwd]; // on a tab: a tab still at it
+
+  const open = u => !!pageTab(s, u);
+  const repo = s.cwd && state.repos[s.cwd]; // on a tab: a tab still at it
+
   return [
-    ...(s.prs || []).filter(pr => !open(pr.url)).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr })),
-    ...(s.tickets || []).filter(t => t.url && !open(t.url)).map(t => ({ kind: 'ticket', id: 'tk:' + t.key, t })),
+    ...(s.prs || []).filter(pr => !open(pr.url)).map(pr => ({ kind: 'pr', id: `pr:${pr.url}`, pr })),
+    ...(s.tickets || []).filter(t => t.url && !open(t.url)).map(t => ({ kind: 'ticket', id: `tk:${t.key}`, t })),
     ...(repo && !open(repo)
       ? [
           {
             kind: 'url',
-            id: 'url:' + repo,
+            id: `url:${repo}`,
             url: repo,
             name: `${bareUrl(repo).replace(/^github\.com\//, '')} on GitHub`,
           },
@@ -279,6 +297,7 @@ function chatPages(s) {
       : []),
   ];
 }
+
 const LAUNCH_SECTIONS = {
   chat: 'Chats',
   project: 'Projects',
@@ -288,64 +307,82 @@ const LAUNCH_SECTIONS = {
   toggle: 'Switches',
   menu: '',
 };
+
 /** The launcher's rows for a query (none: the menu): each section's best matches, best first, at most six — all of
  *  them under a prefix. */
 function launchRows(raw) {
-  const pre = /^[>#@!]/.exec(raw)?.[0] || '',
-    q = raw.slice(pre.length).trim().toLowerCase();
+  const pre = /^[>#@!]/.exec(raw)?.[0] || '';
+  const q = raw.slice(pre.length).trim().toLowerCase();
+
   if (!raw.trim()) return LAUNCH_MENU();
+
   const best = (items, fields) => {
     const hits = [];
+
     items.forEach((x, i) => {
       const m = q ? fuzzy(fields(x), q) : { score: 0 };
+
       if (m) hits.push([m.score, i, x]);
     });
+
     return hits
       .sort((a, b) => b[0] - a[0] || a[1] - b[1])
       .map(h => h[2])
       .slice(0, pre ? 400 : 6);
   };
+
   const want = k =>
     !pre || { '>': ['action', 'toggle'], '#': ['pr'], '@': ['project'], '!': ['ticket'] }[pre].includes(k);
+
   const chats = !want('chat')
     ? []
     : best(
         [...state.sessions.values()].filter(visible).sort((a, b) => RANK[rankOf(a)] - RANK[rankOf(b)] || byWord(a, b)),
         chatFields,
       ).map(s => ({ kind: 'chat', id: s.id, s }));
+
   const projects = !want('project')
     ? []
-    : best(projectList(), p => [p.name]).map(p => ({ kind: 'project', id: 'pj:' + p.key, p }));
+    : best(projectList(), p => [p.name]).map(p => ({ kind: 'project', id: `pj:${p.key}`, p }));
+
   const prs = !want('pr')
     ? []
     : best(allPrs(), pr => [pr.label, pr.title || '', pr.chat || '']).map(pr => ({
         kind: 'pr',
-        id: 'pr:' + pr.url,
+        id: `pr:${pr.url}`,
         pr,
       }));
+
   const tickets = !want('ticket')
     ? []
     : best(allTickets(), t => [t.key, t.summary || '', t.chat || '']).map(t => ({
         kind: 'ticket',
-        id: 'tk:' + t.key,
+        id: `tk:${t.key}`,
         t,
       }));
+
   const agents = !want('action') || !q ? [] : best(agentActs(), a => [agentShort(a.agent.name), a.agent.name]); // by an agent's name (2026-11-06)
   const actions = !want('action') ? [] : best(actionRows(), a => [a.name, a.sub || '']);
   const toggles = !want('toggle') ? [] : best(toggleRows(), t => [t.name]);
+
   return [...chats, ...projects, ...prs, ...tickets, ...agents, ...actions, ...toggles];
 }
+
 const swHtml = on => `<span class="lsw${on ? ' on' : ''}"><i></i></span>`;
+
 /** One launcher row; a section's first carries its head — the launcher's, not a new tab's list of pages. */
 function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
   const head =
     heads && LAUNCH_SECTIONS[x.kind] && pick.list[i - 1]?.kind !== x.kind
       ? `<div class="pkhd">${LAUNCH_SECTIONS[x.kind]}</div>`
       : '';
+
   const r = (cls, g, n, num, t, style = '') =>
     `${head}<div class="pkrow lx ${cls}${sel(i)}" data-i="${i}"${style}><span class="g">${g}</span><span class="n">${n}</span><span class="num">${num}</span><span class="t">${t}</span></div>`;
+
   if (x.kind === 'chat') {
     const s = x.s;
+
     return r(
       'chat',
       '<span class="sq"></span>',
@@ -355,7 +392,8 @@ function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
       ` style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"`,
     );
   }
-  if (x.kind === 'project')
+
+  if (x.kind === 'project') {
     return r(
       'project',
       '<span class="sq"></span>',
@@ -364,8 +402,11 @@ function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
       '',
       ` style="${repoStyle(projColor(x.p))}"`,
     );
+  }
+
   if (x.kind === 'pr') {
     const pr = x.pr;
+
     return r(
       'pr',
       `<span class="lpr" data-state="${esc(pr.state || '')}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`,
@@ -375,8 +416,10 @@ function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
       ` title="${esc(pr.url)}"`,
     );
   }
+
   if (x.kind === 'ticket') {
     const t = x.t;
+
     return r(
       'ticket',
       `<span class="ltk" data-cat="${esc(t.cat)}">${esc(t.key)}</span>`,
@@ -386,7 +429,8 @@ function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
       ` title="${esc(t.url)}"`,
     );
   }
-  if (x.kind === 'action')
+
+  if (x.kind === 'action') {
     return r(
       'action',
       '<span class="ac">&gt;</span>',
@@ -394,39 +438,57 @@ function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
       x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '',
       '',
     );
-  if (x.kind === 'toggle')
+  }
+
+  if (x.kind === 'toggle') {
     return r('toggle', '<span class="ac">⏻</span>', mark(x.name), x.hint ? esc(x.hint) : '', swHtml(x.on()));
-  if (x.kind === 'url')
-    return r('url', ICON.globe, x.id === 'url:typed' ? esc(x.name) : mark(x.name), '', '', ` title="${esc(x.url)}"`); // a new tab's: a page
+  }
+
+  if (x.kind === 'url') {
+    return r('url', ICON.globe, x.id === 'url:typed' ? esc(x.name) : mark(x.name), '', '', ` title="${esc(x.url)}"`);
+  } // a new tab's: a page
+
   return r('menu', x.icon || '', mark(x.name), x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', x.leaf ? '' : '›'); // a menu row
 }
+
 function launchChoose(x) {
   const dlg = $('#pick');
+
   if (!x) return dlg.close();
-  if (x.kind === 'toggle')
+
+  if (x.kind === 'toggle') {
     return void Promise.resolve(x.flip()).finally(() => {
       if (dlg.open) pickRender(true);
     });
+  }
+
   if (x.kind === 'menu') {
     if (x.leaf) dlg.close();
     return x.go();
   }
+
   if (x.kind === 'action' && x.stay) return x.fn();
   dlg.close();
   if (x.kind === 'chat') return openSession(x.id, { locate: true });
   if (x.kind === 'project') return selectProject(x.p.key);
+
   // the page once its chat is in, and only if that chat is still the one open (2026-10-14): a late answer opened it
   // over whichever chat was open by then
-  if (x.kind === 'pr')
+  if (x.kind === 'pr') {
     return openSession(x.pr.chatId, { locate: true }).then(() => {
       if (state.current === x.pr.chatId) showPr(x.pr.url);
     });
-  if (x.kind === 'ticket')
+  }
+
+  if (x.kind === 'ticket') {
     return openSession(x.t.chatId, { locate: true }).then(() => {
       if (state.current === x.t.chatId) openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) });
     });
+  }
+
   if (x.kind === 'action') return x.fn();
 }
+
 // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
 // settings' Keys pane is its source, so the list is kept in one place; the box narrows it.
 // Every key in one table (2026-10-12; typed by hand into the Keys pane before, beside HOTKEYS and Keys.swift's
@@ -488,6 +550,7 @@ const KEYS = [
   ['⌘F · ⌘G', 'In a page', 'find on the page in the pane', '⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches · esc closes the bar · in the app', []],
   ['pinch', 'In a page', 'zoom a page in the pane, as in Safari', 'its address sits in the strip, a click copies it', []],
 ];
+
 const keysHtml = (rows, row) =>
   [...new Set(rows.map(k => k[1]))]
     .map(
@@ -498,28 +561,37 @@ const keysHtml = (rows, row) =>
           .join('')}`,
     )
     .join('');
+
 // what the setup says of a key (⌥⌘O's project, ⌥⌘N's folders), by the row's id — renderSetup writes it
 const keyNotes = {};
+
 function keysOpen() {
   const dlg = $('#keysheet');
+
   if (dlg.open) return;
   if (inApp) post({ type: 'focus' });
+
   $('#ksbody').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => {
-    const n = keyNotes[id] || {},
-      tip = n.title || more;
+    const n = keyNotes[id] || {};
+    const tip = n.title || more;
+
     return `<div class="kr"><kbd>${k}</kbd><span>${n.html || d}${tip ? `<i>${esc(tip)}</i>` : ''}</span></div>`;
   }).replace(/<span class="kh">/g, '<span class="kh ksh">');
+
   $('#ksq').value = '';
   ksFilter();
   dlg.showModal();
   repostPane();
   $('#ksq').focus();
 }
+
 function ksFilter() {
   const words = $('#ksq').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   let n = 0; // every word somewhere in the row: a sheet this long matches anything fuzzily
-  let head = null,
-    any = false; // a group's head stands while any of its rows does (2026-10-12)
+
+  let head = null;
+  let any = false; // a group's head stands while any of its rows does (2026-10-12)
+
   for (const r of $('#ksbody').children) {
     if (r.classList.contains('ksh')) {
       if (head) head.hidden = !any;
@@ -527,25 +599,32 @@ function ksFilter() {
       any = false;
       continue;
     }
-    const t = r.textContent.toLowerCase(),
-      on = words.every(w => t.includes(w));
+
+    const t = r.textContent.toLowerCase();
+    const on = words.every(w => t.includes(w));
+
     r.hidden = !on;
     n += on;
     any ||= on;
   }
+
   if (head) head.hidden = !any;
   $('#ksnone').hidden = !!n;
 }
+
 $('#ksq').addEventListener('input', ksFilter);
+
 $('#keysheet').addEventListener('click', e => {
   if (e.target === e.currentTarget) e.currentTarget.close();
 });
+
 document.addEventListener('keydown', e => {
   if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('dialog[open]')) return;
   if (e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) return;
   e.preventDefault();
   keysOpen();
 });
+
 // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
 // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
 // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
@@ -595,6 +674,7 @@ const HOTKEYS = {
   Digit1: () => hotGroup(0, true),
   Digit2: () => hotGroup(1, true),
 };
+
 // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
 // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
 // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -610,6 +690,7 @@ const CMDKEYS = {
   KeyD: () => hotSplitTile('row'),
   Comma: settingsToggle,
 };
+
 // ⇧⌘ (2026-11-25): ⇧⌘D, ⌘D's other way — one over the other.
 const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 // ⌥⌘⇧ (2026-11-24, round XXX's R3): the open chat's card a place up or down in Top priority — ⌥⌘↑↓ walk the cards.
@@ -619,6 +700,7 @@ const CMDSHIFTKEYS = { KeyD: () => hotSplitTile('col') };
 const CTRLKEYS = { ArrowLeft: () => hotStripTab(-1), ArrowRight: () => hotStripTab(1) };
 // ⌃⌥⌘ (2026-11-25): ⌃⌥⌘T, the tab in front out into a tile of its own — with Auto-tiling on.
 const CTRLALTKEYS = { KeyT: hotUntab };
+
 // The tiles' own keys are no keys while they have nothing to do (2026-11-25): ⌘D ⇧⌘D with the setting off, ⌥⌘⇧←→ but
 // tiled — the key goes on, to a page or the browser, and the app forwards none of them (`tiles`, Keys.swift's tileKeys).
 const keyLive = (code, mods) =>
@@ -629,16 +711,19 @@ const keyLive = (code, mods) =>
       : mods === 'shift' && (code === 'ArrowLeft' || code === 'ArrowRight')
         ? tileKeysOn()
         : true;
+
 // …and the app's forwarder knows which (`tiles`, Keys.swift): `on` the setting, `arrows` ⌥⌘⇧←→ while they move a
 // tile (2026-11-26: tileKeysOn — the column split too, else a pane page keeps them). Posted on a change of either,
 // from applySplit — every change of split or chat goes through it — and the switch.
 const postTiles = () => {
-  const on = !!prefs.autoTile,
-    arrows = tileKeysOn();
+  const on = !!prefs.autoTile;
+  const arrows = tileKeysOn();
+
   if (!inApp || (postTiles.on === on && postTiles.arrows === arrows)) return;
   Object.assign(postTiles, { on, arrows });
   post({ type: 'tiles', on, arrows });
 };
+
 const SHIFTKEYS = {
   KeyT: hotTabHere,
   ArrowUp: () => (tileKeysOn() ? hotTileMove('ArrowUp') : hotPrioMove(-1)),
@@ -646,6 +731,7 @@ const SHIFTKEYS = {
   ArrowLeft: () => (tileKeysOn() ? hotTileMove('ArrowLeft') : false),
   ArrowRight: () => (tileKeysOn() ? hotTileMove('ArrowRight') : false),
 };
+
 // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
 // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see Menus.swift).
 // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
@@ -657,40 +743,51 @@ const KEYMAPS = {
   ctrlcmd: CTRLKEYS,
   ctrlalt: CTRLALTKEYS,
 }; // by peixKey's mods
+
 const runHotkey = (code, mods = 'altcmd') => {
   if (code === 'Escape') return hotEscape();
   const fn = KEYMAPS[mods]?.[code];
+
   if (!fn || !keyLive(code, mods)) return false;
+
   if ($('#hmenu').open) {
     $('#hmenu').close();
     if (fn === hotClose) return true;
   } // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
+
   if ($('#room').open) {
     $('#room').close();
     if (fn === hotClose) return true;
   } // …nor is the chat's panel (2026-10-17): a key is back to work
+
   if (code === 'KeyP' && mods === 'altcmd' && $('#pick').open && pick.mode === 'project') {
     projectAgain();
     return true;
   }
+
   if (fn === hotGhKey && $('#pick').open && pick.mode === 'pr' && pick.ctx.sid) {
     prPickAgain();
     return true;
   } // the PRs' picker from one of them: ⌥⌘G again is the column's
+
   if (
     fn !== hotClose &&
     !(fn === settingsToggle && $('#settings').open) &&
     !(fn === lunchToggle && $('#lunchd').open) &&
     !(fn === zeToggle && $('#zeGame').open) &&
     document.querySelector('dialog[open]')
-  )
+  ) {
     return false;
+  }
+
   return fn() !== false;
 };
+
 document.addEventListener(
   'keydown',
   e => {
     if (!e.metaKey || (e.ctrlKey && e.shiftKey)) return;
+
     const mods = e.ctrlKey
       ? e.altKey
         ? 'ctrlalt'
@@ -702,6 +799,7 @@ document.addEventListener(
         : e.altKey
           ? 'altcmd'
           : 'cmd';
+
     if (!KEYMAPS[mods][e.code] || !keyLive(e.code, mods)) return;
     e.stopPropagation();
     if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault(); // a key held down is one press — the arrows walk on
@@ -712,18 +810,22 @@ document.addEventListener(
   },
   true,
 );
+
 window.peixKey = runHotkey;
+
 // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px) — the board
 // cannot see a native view over it, and window.peix reports it so the harness can.
 window.peixPane = (visible, left) => {
   state.paneVisible = !!visible;
   state.paneLeft = Number(left) || 0;
 };
+
 // …and whether the window fills the screen (⌃⌘F in the app) and, on a screen with a camera housing, where that is —
 // the strip's height and the x range the housing covers, in this page's px — or null on a screen without one (layoutNotch).
 window.peixFill = (on, notch) => {
-  const was = state.fill,
-    heard = state.fillHeard;
+  const was = state.fill;
+  const heard = state.fillHeard;
+
   state.fillHeard = true;
   state.fill = !!on;
   state.notch = on && notch && notch.top > 0 ? notch : null;
@@ -733,34 +835,41 @@ window.peixFill = (on, notch) => {
   if (on && !was && heard) fillHint();
   else if (!on) $('#fillHint')?.remove();
 };
+
 // ⌃⌘F's word on the way in (2026-10-13): the fill gone on while this page heard it off — ⌃⌘F, the green button, the
 // fish's menu — never on a load or a launch that finds it on (the first word a page hears), and the first FILL_HINTS
 // times in all (prefs.fillHints). Under the head row, centred on the housing; a status, so a reader says it too.
-const FILL_HINTS = 3,
-  FILL_HINT_MS = 3200;
+const FILL_HINTS = 3;
+const FILL_HINT_MS = 3200;
+
 function fillHint() {
   if ((prefs.fillHints || 0) >= FILL_HINTS) return;
   prefs.fillHints = (prefs.fillHints || 0) + 1;
   savePrefs();
   $('#fillHint')?.remove();
-  const n = state.notch,
-    head = $('#shead').getBoundingClientRect(),
-    el = document.createElement('div');
+
+  const n = state.notch;
+  const head = $('#shead').getBoundingClientRect();
+  const el = document.createElement('div');
+
   el.id = 'fillHint';
   el.setAttribute('role', 'status');
   el.innerHTML = `<b>Full screen</b>${n ? ', up to the notch' : ''} · <kbd>⌃⌘F</kbd> leaves it, or the green light after a hold at the top edge`; // beside a housing too (2026-11-01)
   el.style.left = `${n ? (n.left + n.right) / 2 : innerWidth / 2}px`;
   el.style.top = `${Math.round(Math.max(head.bottom, n?.top || 0) + 10)}px`;
   document.body.append(el);
+
   setTimeout(() => {
     el.classList.add('out');
     setTimeout(() => el.remove(), 300);
   }, FILL_HINT_MS);
 }
+
 // The timeline's word (2026-10-17): a chat with PRs opened while its timeline was never seen says it is there, under
 // the head row — once a page load, TV_HINTS times in all, never again once the tab has shown (prefs.tvSeen).
-const TV_HINTS = 3,
-  TV_HINT_MS = 6000;
+const TV_HINTS = 3;
+const TV_HINT_MS = 6000;
+
 function tvHint(s) {
   if (
     prefs.tvSeen ||
@@ -768,89 +877,117 @@ function tvHint(s) {
     tvHint.done ||
     !(s.prs || []).length ||
     timelineOpen.has(s.id)
-  )
+  ) {
     return;
+  }
+
   tvHint.done = true;
+
   setTimeout(() => {
     if (state.current !== s.id || prefs.tvSeen || document.querySelector('dialog[open]')) {
       tvHint.done = false;
       return;
     }
+
     prefs.tvHints = (prefs.tvHints || 0) + 1;
     savePrefs();
-    const head = $('#shead').getBoundingClientRect(),
-      el = document.createElement('div');
+
+    const head = $('#shead').getBoundingClientRect();
+    const el = document.createElement('div');
+
     el.id = 'tvHint';
     el.setAttribute('role', 'status');
     el.innerHTML = `<b>New</b> · <kbd>⌥⌘J</kbd> shows this chat and its PRs in one order — or click a <b>your move</b>`;
     el.style.left = `${Math.round(head.left + head.width / 2)}px`;
     el.style.top = `${Math.round(head.bottom + 10)}px`;
     document.body.append(el);
+
     setTimeout(() => {
       el.classList.add('out');
       setTimeout(() => el.remove(), 300);
     }, TV_HINT_MS);
   }, 800);
 }
+
 const noChat = () => note($('#shead'), 'Open a chat first');
+
 // A chat's own key pressed again from the tab it brings up, the keys in it (2026-10-13): that half fills the column,
 // the other kept behind it, and again the two come back — a ⌘0 that undoes itself (toggleZoom). ⌥⌘C on a claude that
 // runs here, ⌥⌘T on a zsh, ⌥⌘G on a page at the chat's PR (its repo with none: a page followed elsewhere is not what ⌥⌘G
 // brings up), ⌥⌘E on the editor, ⌥⌘D on the changes; with one half, what it always did.
 function zoomAgain(on) {
   const s = state.sessions.get(state.current);
+
   return !!(s && on(tabOf(s), s) && toggleZoom(s));
 }
+
 function hotClaudeKey() {
   return zoomAgain((k, s) => k === 'chat' && termLive(s)) || hotClaude();
 }
+
 function hotShellKey() {
   return zoomAgain((k, s) => isShellTab(k) && !isVimTab(s, k)) || hotShell();
 }
+
 const ghPages = s =>
   s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : []; // what ⌥⌘G opens
+
 // With several PRs (2026-10-16), ⌥⌘G again from one of them is their picker, the next one selected — ⏎ goes there, and
 // ⌥⌘G once more (prPickAgain) fills the column: the other PRs were a mouse's two clicks away while it zoomed at once.
 const atPrOf = (s, k) => (isPageTab(k) ? (s.prs || []).find(pr => atPage(paneUrl(k), pr.url)) || null : null);
+
 function hotGhKey() {
-  const s = state.sessions.get(state.current),
-    at = s && s.prs?.length > 1 && atPrOf(s, tabOf(s));
-  if (at)
+  const s = state.sessions.get(state.current);
+  const at = s && s.prs?.length > 1 && atPrOf(s, tabOf(s));
+
+  if (at) {
     return pickOpen('pr', {
       at: at.url,
       sid: s.id,
       zoom: isSplit(s) ? (zoomed.get(s.id) === focusG ? 'back' : 'fill') : null,
     });
+  }
+
   return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh();
 }
+
 /** ⌥⌘G with its picker up, opened from a PR's page: the picker goes, and that page's half fills the column — or gives it back. */
 function prPickAgain() {
   const s = state.sessions.get(pick.ctx.sid);
+
   $('#pick').close();
   if (s && s.id === state.current) toggleZoom(s);
 }
+
 function hotVsCodeKey() {
   return zoomAgain((k, s) => /^ide:/.test(k || '') || isVimTab(s, k)) || hotVsCode();
 }
+
 function hotDiffKey() {
   return zoomAgain(k => k === 'changes') || hotDiff();
 }
+
 /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
 function hotReload() {
   location.reload();
 }
+
 const focusBoard = () => {
   if (inApp) post({ type: 'focus' });
 }; // the key may have come from the pane: the board needs the keyboard back
+
 function hotClaude() {
   const s = state.sessions.get(state.current);
+
   if (!s) return noChat();
   const tb = $('#termBtn');
+
   if (!tb) return;
   if (tb.disabled) return note(seen(tb), tb.title, true); // live somewhere it cannot be attached from — the tooltip says where
   focusBoard();
   termAction(s);
 }
+
 // ⌥⌘O (2026-09-20):
 // ⌥⌘N with its project answered and the environment brought forward — oracle's environments first, then that
 // environment's open chats with ＋ new chat among them (2026-09-21). The folder is the project the cog names for ⌥⌘O
@@ -859,17 +996,22 @@ function hotClaude() {
 // the way in.
 function hotOracle() {
   const name = state.config.quick;
-  if (!name)
+
+  if (!name) {
     return note(
       $('#shead'),
       'No project for ⌥⌘O yet — Settings › Projects names one (⌘,) · ⌥⌘N starts a chat anywhere',
     );
+  }
+
   const p = projectList().find(x => x.name === name && x.cwds.length);
+
   if (!p) return note($('#shead'), `No ${name} folder on the board — ⌥⌘N starts a chat anywhere`);
   focusBoard();
   if (p.cwds.length === 1) newChatIn(p.cwds[0], 'chats');
   else pickOpen('folder', { cwds: p.cwds, then: 'chats' }); // one folder: straight to the environments
 }
+
 // Esc with a page's tab on (2026-09-20): the chat tab, and the pane
 // goes. Reaches here from the shell (peixKey('Escape'), pressed on a page in the pane, which the shell swallows) and
 // from the page's own Esc with the pane up, outside a terminal or a box (2026-10-14) — a dialog (the settings are one)
@@ -880,36 +1022,46 @@ function hotEscape() {
     cdEnd(false);
     return true;
   } // a card in the hand goes back first (2026-11-02)
+
   const dlg = document.querySelector('dialog[open]');
+
   if (dlg) {
     dlg.close();
     return true;
   }
+
   const s = state.sessions.get(state.current);
+
   if (s && isBlankTab(tabOf(s))) {
     blankEscape(s, tabOf(s));
     return true;
   } // the keys on the board but not in its box, which has its own esc
+
   if (!s || !isPaneTab(tabOf(s))) return false;
   showChat(s);
   syncTerm(s);
   focusBoard();
   return true;
 }
+
 function hotVsCode() {
   const b = $('#webBtn');
+
   if (b) b.click();
   else noChat();
 }
+
 // ⌥⌘V (2026-10-14): the folder in the external editor — VS Code, or Zed when that is picked (2026-10-21; VS Code
 // whatever the pick before) —, its own window, outside the board; ⌥⌘E is the board's own, on a tab. The open chat's
 // folder, else the project in view when that is a folder.
 function hotEditorApp() {
   const dir = state.sessions.get(state.current)?.cwd || (prefs.project?.startsWith('/') ? prefs.project : null);
+
   if (!dir) return note($('#shead'), 'Open a chat first — or pick a project that is a folder');
   if (zedMissing()) return zedNote($('#shead'));
   openExternal(fileUrl(dir));
 }
+
 // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
 // chat, or one the list does not show, the top or the bottom; the ends stop.
 // ⌥⌘F (2026-09-25): the chat list's magnifier, from anywhere, and it
@@ -919,13 +1071,17 @@ function hotFind() {
   focusBoard();
   qShow(true);
 }
+
 function hotMove(dir) {
   const cards = [...document.querySelectorAll('#slist > .card')];
+
   if (!cards.length) return note($('#shead'), 'No chats in this list');
   const i = cards.findIndex(c => c.dataset.id === state.current);
   const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
+
   if (next.dataset.id !== state.current) openSession(next.dataset.id);
 }
+
 // ✓ and ↩ — the card's, and the chats step's ✓. Ticking the open chat moves on (2026-09-30): to the card below it in
 // the list as shown, the one that slides into its place, else the one above; done cards are skipped, and a chat
 // ticked while another is open moves nothing. The move is made at the click, not on the answer: an empty chat's
@@ -939,33 +1095,42 @@ const TICK_MS = 230;
 // within ARM_MS ticks. Every way to tick comes through here: the card's ✓, the chats step's, the menus', the
 // notification's Done. It ends nothing itself.
 const ARM_MS = 5000;
+
 function tickGate(id, anchor) {
-  const s = state.sessions.get(id),
-    ends = s && watchEnds(s);
+  const s = state.sessions.get(id);
+  const ends = s && watchEnds(s);
+
   if (!ends) return true;
+
   if (armedOn(id)) {
     tickArmed.delete(id);
     return true;
   }
+
   tickArmed.set(id, performance.now() + ARM_MS);
   noteMotion(id, 'arm');
-  if (!anchor?.closest?.('#slist .card'))
+
+  if (!anchor?.closest?.('#slist .card')) {
     note(
       anchor?.isConnected
         ? anchor
         : document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`) || $('#shead'),
       `Done ends its watch — ${ends}. Tick it again to end it`,
     );
+  }
+
   const redraw = () => {
     renderBoard();
     if ($('#pick').open) pickRender(true);
   };
+
   setTimeout(() => {
     if (tickArmed.has(id) && !armedOn(id)) {
       tickArmed.delete(id);
       redraw();
     }
   }, ARM_MS + 30);
+
   redraw();
   return false;
 }

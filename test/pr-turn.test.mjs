@@ -6,10 +6,12 @@ import { join } from 'node:path';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
 process.env.NOTIFY = 'off';
+
 const {
   prTurn,
   prPeople,
@@ -33,6 +35,7 @@ const {
 
 const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', ''); // GitHub writes no milliseconds
 const user = login => ({ login, __typename: 'User' });
+
 /** A PR as PR_FIELDS brings it back: `me` reviewed `author`'s PR at 10:00 on commit A. */
 function pr(o = {}) {
   return {
@@ -51,6 +54,7 @@ function pr(o = {}) {
     ...o,
   };
 }
+
 const commit = (h, login) => ({
   __typename: 'PullRequestCommit',
   commit: { committedDate: t(h), author: { user: login ? { login } : null } },
@@ -66,12 +70,15 @@ test("someone else's PR you reviewed: theirs to move until they push, reply, or 
     said: t(10),
     key: 'them',
   });
+
   const pushed = prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } }), 'me');
+
   assert.equal(pushed.you, true);
   assert.equal(pushed.why, 'pushed since your review');
   assert.equal(pushed.at, t(11));
   // the commit your review was on is what counts, not the clock: committed before your review, pushed after it
   assert.equal(prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(9, 'ana')] } }), 'me').you, true);
+
   const replied = prTurn(
     pr({
       reviews: { nodes: [...pr().reviews.nodes, { author: user('ana'), state: 'COMMENTED', submittedAt: t(12) }] },
@@ -79,7 +86,9 @@ test("someone else's PR you reviewed: theirs to move until they push, reply, or 
     }),
     'me',
   );
+
   assert.deepEqual([replied.you, replied.why, replied.at], [true, '2 comments from ana, rui', t(13)]);
+
   const again = prTurn(
     pr({
       reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] },
@@ -87,6 +96,7 @@ test("someone else's PR you reviewed: theirs to move until they push, reply, or 
     }),
     'me',
   );
+
   assert.deepEqual([again.you, again.why, again.at], [true, 'your review asked for again', t(14)]);
 });
 
@@ -105,8 +115,10 @@ test('nobody is waiting on you: bots, your own pushes, a push after you approved
     ).you,
     false,
   );
+
   assert.equal(prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(11, 'me')] } }), 'me').you, false);
   const approved = { reviews: { nodes: [{ author: user('me'), state: 'APPROVED', submittedAt: t(10) }] } };
+
   assert.equal(prTurn(pr({ ...approved, headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } }), 'me').you, false);
   assert.equal(prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(9) }] } }), 'me').you, false);
 });
@@ -127,6 +139,7 @@ test('your own PR: yours to move once someone reviews, comments or pushes after 
       pushes: { nodes: [commit(9, 'me')] },
       ...o,
     });
+
   assert.deepEqual(prTurn(mine(), 'me'), {
     you: false,
     mine: true,
@@ -136,6 +149,7 @@ test('your own PR: yours to move once someone reviews, comments or pushes after 
     said: t(9),
     key: 'them',
   });
+
   const reviewed = prTurn(
     mine({
       reviews: {
@@ -147,7 +161,9 @@ test('your own PR: yours to move once someone reviews, comments or pushes after 
     }),
     'me',
   );
+
   assert.deepEqual([reviewed.you, reviewed.mine, reviewed.why], [true, true, 'approved by ana · changes asked by rui']);
+
   // you pushed the fixes after: theirs again
   assert.equal(
     prTurn(
@@ -159,21 +175,27 @@ test('your own PR: yours to move once someone reviews, comments or pushes after 
     ).you,
     false,
   );
+
   // a commit GitHub cannot tie to anyone is the author's own
   assert.equal(prTurn(mine({ pushes: { nodes: [commit(13, null)] } }), 'me').you, false);
   const pushed = prTurn(mine({ pushes: { nodes: [commit(9, 'me'), commit(13, 'rui')] } }), 'me');
+
   assert.deepEqual([pushed.you, pushed.why], [true, 'rui pushed']);
 });
 
 test('a move un-ticks the chats that mention the PR, weighed by when the board learnt of it', () => {
-  const url = 'https://github.com/acme/r/pull/7',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/7';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('tick', '/x/tick.jsonl');
+
   s.lastActivity = new Date(at(10)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
-  const them = prTurn(pr(), 'me'),
-    comment = h => prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(h) }] } }), 'me');
+
+  const them = prTurn(pr(), 'me');
+  const comment = h => prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(h) }] } }), 'me');
+
   const tick = (h, m) => {
     doneMarks[s.id] = new Date(at(h, m)).toISOString();
   };
@@ -187,6 +209,7 @@ test('a move un-ticks the chats that mention the PR, weighed by when the board l
   assert.equal(isDone(s), true, 'ticked again after seeing it');
   setPrInfo(url, 'open', 'PR', comment(12), at(14));
   assert.equal(isDone(s), true, 'the same move is not news twice');
+
   // a move is news from when the board saw it, whatever GitHub's clock says of it
   setPrInfo(
     url,
@@ -202,6 +225,7 @@ test('a move un-ticks the chats that mention the PR, weighed by when the board l
     ),
     at(15),
   );
+
   assert.equal(isDone(s), false, 'a push the board saw at 15 un-ticks a 13:30 tick, though committed at 9');
   assert.equal(s.prs[0].turn.why, 'pushed since your review · 1 comment from ana');
   tick(16);
@@ -211,18 +235,22 @@ test('a move un-ticks the chats that mention the PR, weighed by when the board l
 });
 
 test('done for good: a move un-ticks nothing, ranks nothing and asks nothing — while that tick stands', () => {
-  const url = 'https://github.com/acme/r/pull/10',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
-  const s = newSession('good', '/x/good.jsonl'),
-    other = newSession('other', '/x/other.jsonl');
+  const url = 'https://github.com/acme/r/pull/10';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
+  const s = newSession('good', '/x/good.jsonl');
+  const other = newSession('other', '/x/other.jsonl');
+
   for (const c of [s, other]) {
     c.lastActivity = new Date(at(10)).toISOString();
     notePr(c, url, c.lastActivity, 'user');
     sessions.set(c.id, c);
   }
+
   setPrInfo(url, 'open', 'PR', prTurn(pr(), 'me'), at(11));
   doneMarks[s.id] = forGoodMarks[s.id] = new Date(at(11, 30)).toISOString();
   ctxIs(true);
+
   setPrInfo(
     url,
     'open',
@@ -230,6 +258,7 @@ test('done for good: a move un-ticks nothing, ranks nothing and asks nothing —
     prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(9, 'ana'), commit(12, 'ana')] } }), 'me'),
     at(13),
   );
+
   assert.equal(s.prs[0].turn.you, true, 'the PR is at your move all the same');
   ctxIs(true, 'the push leaves it done');
   assert.deepEqual(duePrs([s], at(14)), [], 'and its PRs are asked about for no one');
@@ -239,49 +268,61 @@ test('done for good: a move un-ticks nothing, ranks nothing and asks nothing —
   doneMarks[s.id] = forGoodMarks[s.id];
   s.lastActivity = new Date(at(15)).toISOString();
   assert.deepEqual([isDone(s), summary(s).forGood], [false, false], 'a word in the chat ends it, as it ends the tick');
+
   function ctxIs(done, why) {
     assert.deepEqual([isDone(s), summary(s).forGood, summary(s).done], [done, done, done], why);
   }
 });
 
 test('a PR taken off a chat stays off — its lines, a re-read, a move on it — until a word of yours names it again', () => {
-  const a = 'https://github.com/acme/r/pull/20',
-    b = 'https://github.com/acme/r/pull/21',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const a = 'https://github.com/acme/r/pull/20';
+  const b = 'https://github.com/acme/r/pull/21';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('unlink', '/x/unlink.jsonl');
+
   sessions.set(s.id, s);
   notePr(s, a, t(9), 'user');
   notePr(s, b, t(9), 'claude');
   assert.equal(unlinkPr(s, b), true);
   assert.equal(unlinkPr(s, b), false, 'one not on the chat is nothing to take off');
+
   assert.deepEqual(
     s.prs.map(p => p.url),
     [a],
   );
+
   assert.ok(unlinked[s.id][b], "kept in the state file's map");
   unlinked[s.id][b] = t(12); // taken off at noon
   notePr(s, b, t(13), 'claude');
   notePr(s, b, t(13), null);
+
   assert.deepEqual(
     s.prs.map(p => p.url),
     [a],
     'Claude naming it again, or a pr-link line, does not bring it back',
   );
+
   const r = newSession('unlink', '/x/unlink.jsonl'); // the chat read again from its first line
+
   for (const [h, by, url] of [
     [9, 'user', a],
     [9, 'claude', b],
     [11, 'user', b],
     [13, 'claude', b],
-  ])
+  ]) {
     notePr(r, url, t(h), by);
+  }
+
   assert.deepEqual(
     r.prs.map(p => p.url),
     [a],
     '…nor your words before you took it off, read again',
   );
+
   s.lastActivity = t(13);
   doneMarks[s.id] = t(14);
+
   setPrInfo(
     b,
     'open',
@@ -289,41 +330,51 @@ test('a PR taken off a chat stays off — its lines, a re-read, a move on it —
     prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(15) }] } }), 'me'),
     at(15),
   );
+
   assert.equal(isDone(s), true, 'a move on it un-ticks the chat no more');
   assert.deepEqual(duePrs([s], at(16)), [a], 'and it is not asked about for the chat — the other is, at its pace');
   notePr(s, b, t(16), 'user');
+
   assert.deepEqual(
     s.prs.map(p => p.url),
     [b, a],
     'a word of yours after brings it back',
   );
+
   notePr(s, b, t(17), 'claude');
   assert.equal(s.prs[0].count, 2, "…and Claude's count again from there");
 });
 
 test('a round let go: not your move until the next one comes, which is news — and an answer of yours ends it', () => {
-  const url = 'https://github.com/acme/r/pull/30',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/30';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('waive', '/x/waive.jsonl');
+
   s.lastActivity = new Date(at(9)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
-  const hers = h => ({ author: user('ana'), createdAt: t(h) }),
-    said = (...hs) =>
-      prTurn(
-        pr({ comments: { nodes: hs.map(h => (h === 'me' ? { author: user('me'), createdAt: t(14) } : hers(h))) } }),
-        'me',
-      );
+
+  const hers = h => ({ author: user('ana'), createdAt: t(h) });
+
+  const said = (...hs) =>
+    prTurn(
+      pr({ comments: { nodes: hs.map(h => (h === 'me' ? { author: user('me'), createdAt: t(14) } : hers(h))) } }),
+      'me',
+    );
+
   setPrInfo(url, 'open', 'PR', prTurn(pr(), 'me'), at(10));
   assert.equal(waiveTurn(url), false, 'nothing at your move to let go');
   setPrInfo(url, 'open', 'PR', said(11), at(11));
   doneMarks[s.id] = new Date(at(11, 30)).toISOString();
   assert.equal(waiveTurn(url), true);
+
   assert.deepEqual(
     (({ you, waived, why }) => ({ you, waived, why }))(s.prs[0].turn),
     { you: false, waived: true, why: '1 comment from ana' },
     'the reason kept, at your move no more',
   );
+
   assert.equal(prStatus.get(url).turn.waived, true, "the PR's record too, for a chat that names it next");
   assert.equal(waiveTurn(url), false, 'let go once');
   setPrInfo(url, 'open', 'PR', said(11), at(12));
@@ -331,52 +382,65 @@ test('a round let go: not your move until the next one comes, which is news — 
   assert.equal(isDone(s), true, 'and the tick holds');
   // the next move: news, at the board's time — the chat un-ticked and the alert said (released)
   setPrInfo(url, 'open', 'PR', said(11, 13), at(13));
+
   assert.deepEqual(
     [s.prs[0].turn.you, s.prs[0].turn.waived, s.prs[0].turn.movedAt],
     [true, undefined, new Date(at(13)).toISOString()],
   );
+
   assert.equal(isDone(s), false, 'the next move brings the chat back');
   const other = 'https://github.com/acme/r/pull/31';
+
   prStatus.set(other, { turn: moveTurn(other, said(11), at(11)).turn });
   assert.equal(waiveTurn(other), true);
+
   assert.deepEqual(
     (({ moved, released }) => ({ moved, released }))(moveTurn(other, said(11, 13), at(13))),
     { moved: true, released: true },
     'a move after a round let go is said, whoever had it before',
   );
+
   // let go, answered, then hers again is a move as ever, from them
   prStatus.set(other, { turn: moveTurn(other, said(11, 13), at(13)).turn });
   assert.equal(waiveTurn(other), true);
+
   assert.equal(
     moveTurn(other, said(11, 13, 'me'), at(14)).turn.waived,
     undefined,
     'answered: not let go, not at your move',
   );
+
   assert.deepEqual((({ moved, from }) => ({ moved, from }))(moveTurn(other, said(11, 13, 'me', 15), at(15))), {
     moved: true,
     from: 'them',
   });
+
   assert.equal(prTurns[other].waived, undefined, 'the move ends the mark');
 });
 
 test('a look that misses the reason is no answer: the reason back is no move, and a round let go stays let go (2026-10-14)', () => {
-  const url = 'https://github.com/acme/r/pull/79',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/79';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('missed', '/x/missed.jsonl');
+
   s.lastActivity = new Date(at(9)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
   // your own PR, force-pushed by ana a moment after your commits (a stack restacked under it); a look whose timeline
   // GitHub answered as it stood before the push, or one without the comments, reads it as not at your move
   const force = (h, by = 'ana') => ({ __typename: 'HeadRefForcePushedEvent', createdAt: t(h), actor: user(by) });
+
   const look = (pushes, comments = { nodes: [] }, head = 'B') =>
     prTurn(
       pr({ author: user('me'), viewerLatestReview: null, reviews: { nodes: [] }, headRefOid: head, pushes, comments }),
       'me',
       prTurns[url]?.said,
     );
-  const full = { nodes: [commit(11, 'me'), force(12)] },
-    turn = () => (({ you, waived, movedAt }) => ({ you, waived, movedAt }))(s.prs[0].turn);
+
+  const full = { nodes: [commit(11, 'me'), force(12)] };
+  const turn = () => (({ you, waived, movedAt }) => ({ you, waived, movedAt }))(s.prs[0].turn);
+
   setPrInfo(url, 'open', 'PR', look(full), at(13));
   assert.deepEqual(turn(), { you: true, waived: undefined, movedAt: new Date(at(12)).toISOString() });
   doneMarks[s.id] = new Date(at(13, 30)).toISOString();
@@ -384,52 +448,66 @@ test('a look that misses the reason is no answer: the reason back is no move, an
   assert.equal(s.prs[0].turn.you, false, 'the push missing: not at your move, that look');
   assert.deepEqual(moveTurn(url, look(full), at(15)).moved, false, 'the push back is no move');
   setPrInfo(url, 'open', 'PR', look(full), at(15));
+
   assert.deepEqual(
     [isDone(s), turn()],
     [true, { you: true, waived: undefined, movedAt: new Date(at(12)).toISOString() }],
     'the tick holds, the move keeps its time',
   );
+
   assert.equal(waiveTurn(url), true);
+
   for (const [missing, h] of [
     [look(null), 16],
     [look(full), 17],
     [look({ nodes: [] }), 18],
     [look(full), 19],
-  ])
+  ]) {
     setPrInfo(url, 'open', 'PR', missing, at(h));
+  }
+
   assert.deepEqual(
     turn(),
     { you: false, waived: true, movedAt: new Date(at(12)).toISOString() },
     'let go through every look that missed it',
   );
+
   // a word of rui's: news; a look without the comments, then with them, is the same word
   const word = { nodes: [{ author: user('rui'), createdAt: t(20) }] };
+
   setPrInfo(url, 'open', 'PR', look(full, word), at(20, 5));
+
   assert.deepEqual(
     [isDone(s), turn()],
     [false, { you: true, waived: undefined, movedAt: new Date(at(20, 5)).toISOString() }],
     'news ends the round',
   );
+
   doneMarks[s.id] = new Date(at(20, 30)).toISOString();
   setPrInfo(url, 'open', 'PR', look(full, null), at(21));
   setPrInfo(url, 'open', 'PR', look(full, word), at(22));
+
   assert.deepEqual(
     [isDone(s), s.prs[0].turn.movedAt],
     [true, new Date(at(20, 5)).toISOString()],
     'the word missing and back: no move',
   );
+
   setPrInfo(url, 'open', 'PR', look({ nodes: [commit(11, 'me'), force(12), force(23)] }, word, 'C'), at(23));
   assert.deepEqual([isDone(s), s.prs[0].turn.movedAt], [false, new Date(at(23)).toISOString()], 'a new head is news');
 });
 
 test("a PR the board has never looked at moves at GitHub's time for it, and one it cannot see keeps its record", () => {
-  const url = 'https://github.com/acme/r/pull/8',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/8';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('first', '/x/first.jsonl');
+
   s.lastActivity = new Date(at(10)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
   const reply = prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(12) }] } }), 'me');
+
   doneMarks[s.id] = new Date(at(13)).toISOString();
   setPrInfo(url, 'open', 'PR', reply, at(20));
   assert.equal(s.prs[0].turn.movedAt, new Date(at(12)).toISOString());
@@ -444,45 +522,58 @@ test("a PR the board has never looked at moves at GitHub's time for it, and one 
 
 test('a word of yours answers everything before it, and an answer is no move', () => {
   const pushed = { headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } };
+
   const asked = {
     reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] },
     asks: { nodes: [{ createdAt: t(11), requestedReviewer: { login: 'me' } }] },
   };
+
   const mine = h => ({ comments: { nodes: [{ author: user('me'), createdAt: t(h) }] } });
+
   assert.equal(prTurn(pr({ ...pushed, ...asked }), 'me').you, true);
+
   assert.equal(
     prTurn(pr({ ...pushed, ...asked, ...mine(12) }), 'me').you,
     false,
     'a comment after the push and the request',
   );
+
   assert.equal(
     prTurn(pr({ ...pushed, ...mine(10) }), 'me').you,
     true,
     'a comment with the review, before the push, answers nothing',
   );
+
   const later = prTurn(
     pr({ headRefOid: 'C', pushes: { nodes: [commit(11, 'ana'), commit(13, 'ana')] }, ...mine(12) }),
     'me',
   );
+
   assert.deepEqual(
     [later.you, later.why],
     [true, 'pushed since your review'],
     'a push after the comment is news again',
   );
 
-  const url = 'https://github.com/acme/r/pull/9',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/9';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('answer', '/x/answer.jsonl');
+
   s.lastActivity = new Date(at(9)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
+
   // asked again at a time the timeline no longer shows, and a comment from ana
-  const still = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] } },
-    hers = { author: user('ana'), createdAt: t(11) };
+  const still = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] } };
+  const hers = { author: user('ana'), createdAt: t(11) };
+
   setPrInfo(url, 'open', 'PR', prTurn(pr(), 'me'), at(10));
   setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, comments: { nodes: [hers] } }), 'me'), at(12));
   const moved = s.prs[0].turn.movedAt;
+
   assert.equal(moved, new Date(at(12)).toISOString());
+
   // you answer her: the request stands (its time unknown), the comment is answered — one reason fewer is no move
   setPrInfo(
     url,
@@ -491,6 +582,7 @@ test('a word of yours answers everything before it, and an answer is no move', (
     prTurn(pr({ ...still, comments: { nodes: [hers, { author: user('me'), createdAt: t(13) }] } }), 'me'),
     at(14),
   );
+
   assert.deepEqual(
     [s.prs[0].turn.you, s.prs[0].turn.why, s.prs[0].turn.movedAt],
     [true, 'your review asked for again', moved],
@@ -499,6 +591,7 @@ test('a word of yours answers everything before it, and an answer is no move', (
 
 test('the faces on a PR: who else had a hand in it, each once, the newest first — you and the bots left out', () => {
   const face = login => ({ ...user(login), avatarUrl: `https://avatars.example/${login}` });
+
   const people = prPeople(
     pr({
       author: face('ana'),
@@ -526,6 +619,7 @@ test('the faces on a PR: who else had a hand in it, each once, the newest first 
     }),
     'me',
   );
+
   assert.deepEqual(
     people.map(p => [p.login, p.at, p.did.join(', ')]),
     [
@@ -535,20 +629,25 @@ test('the faces on a PR: who else had a hand in it, each once, the newest first 
     ],
     "a pending review is not had yet; an unlinked commit is nobody's",
   );
+
   assert.equal(people[1].avatar, 'https://avatars.example/ana');
   assert.deepEqual(prPeople(null, 'me'), []);
 });
 
 test('a PR the board could not see keeps the faces it had — and its state and title', () => {
   const url = 'https://github.com/acme/faces/pull/7';
+
   setPrInfo(url, 'open', 'Faces', null, Date.parse(t(10)), [
     { login: 'ana', avatar: null, at: t(9), did: ['opened it'] },
   ]);
+
   setPrInfo(url, null, null, undefined, Date.parse(t(11)), undefined, true);
+
   assert.deepEqual(
     prStatus.get(url).people.map(p => p.login),
     ['ana'],
   );
+
   assert.deepEqual(
     [prStatus.get(url).state, prStatus.get(url).title, prStatus.get(url).missing],
     ['open', 'Faces', true],
@@ -562,7 +661,9 @@ test("on someone else's PR a comment of yours is no review: their pushes after i
     reviews: { nodes: [] },
     comments: { nodes: [{ author: user('me'), createdAt: t(10) }] },
   };
+
   assert.equal(prTurn(pr({ ...commented, headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } }), 'me').you, false);
+
   assert.equal(
     prTurn(
       pr({
@@ -585,11 +686,14 @@ test("a force-push by a bot is nobody's move", () => {
       pushes: { nodes: [commit(9, 'me')] },
       ...o,
     });
+
   const force = actor => ({ __typename: 'HeadRefForcePushedEvent', createdAt: t(12), actor });
+
   assert.equal(
     prTurn(mine({ pushes: { nodes: [commit(9, 'me'), force({ login: 'renovate', __typename: 'Bot' })] } }), 'me').you,
     false,
   );
+
   assert.equal(
     prTurn(mine({ pushes: { nodes: [commit(9, 'me'), force(user('ana'))] } }), 'me').why,
     'ana pushed',
@@ -599,6 +703,7 @@ test("a force-push by a bot is nobody's move", () => {
 
 test('one PR whatever the case of its owner and repo', () => {
   const s = newSession('cased', '/x/cased.jsonl');
+
   notePr(s, 'https://github.com/Acme/Widgets/pull/12', t(9), 'user');
   notePr(s, 'https://github.com/acme/widgets/pull/12', t(10), 'claude');
   assert.equal(s.prs.length, 1);
@@ -610,37 +715,47 @@ test('one PR whatever the case of its owner and repo', () => {
 
 test("prChecks: the head commit's rollup as the header says it (2026-10-09)", () => {
   const at = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: state ? { state } : null } }] } });
+
   assert.deepEqual(
     ['SUCCESS', 'FAILURE', 'ERROR', 'PENDING', 'EXPECTED', null].map(s => prChecks(at(s))),
     ['pass', 'fail', 'fail', 'pending', 'pending', null],
   );
+
   assert.equal(prChecks({}), null, 'a PR asked without the field');
   assert.equal(prChecks(null), null);
 });
 
 test('a request for your review whose event falls out of the timeline asked for is the same request, no move (2026-10-14)', () => {
-  const url = 'https://github.com/acme/r/pull/77',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/77';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('asks', '/x/asks.jsonl');
+
   s.lastActivity = new Date(at(9)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
-  const still = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] } },
-    ask = (h, login = 'me') => ({ createdAt: t(h), requestedReviewer: { login } });
+
+  const still = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] } };
+  const ask = (h, login = 'me') => ({ createdAt: t(h), requestedReviewer: { login } });
+
   setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: [ask(14)] } }), 'me'), at(15));
   doneMarks[s.id] = new Date(at(16)).toISOString();
   assert.equal(isDone(s), true);
   const others = Array.from({ length: 10 }, (_, i) => ask(17, `r${i}`));
+
   setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: others } }), 'me'), at(18));
+
   assert.deepEqual(
     [isDone(s), s.prs[0].turn.you, s.prs[0].turn.movedAt],
     [true, true, new Date(at(14)).toISOString()],
     'ten requests to others: still the 14:00 one, the tick holds',
   );
+
   assert.equal(waiveTurn(url), true);
   setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: others } }), 'me'), at(19));
   assert.equal(s.prs[0].turn.waived, true, 'a round let go stays let go');
   setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: [...others.slice(1), ask(20)] } }), 'me'), at(20));
+
   assert.deepEqual(
     [isDone(s), s.prs[0].turn.waived, s.prs[0].turn.movedAt],
     [false, undefined, new Date(at(20)).toISOString()],
@@ -649,19 +764,24 @@ test('a request for your review whose event falls out of the timeline asked for 
 });
 
 test('a comment of yours out of the window asked for is still your last word — the PR at its busiest stays yours to answer (2026-10-14)', () => {
-  const url = 'https://github.com/acme/r/pull/78',
-    at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const url = 'https://github.com/acme/r/pull/78';
+  const at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+
   const s = newSession('busy', '/x/busy.jsonl');
+
   s.lastActivity = new Date(at(9)).toISOString();
   notePr(s, url, s.lastActivity, 'user');
   sessions.set(s.id, s);
-  const noReview = { viewerLatestReview: null, reviews: { nodes: [] } },
-    mine = { author: user('me'), createdAt: t(10) };
+
+  const noReview = { viewerLatestReview: null, reviews: { nodes: [] } };
+  const mine = { author: user('me'), createdAt: t(10) };
+
   const theirs = n =>
     Array.from({ length: n }, (_, i) => ({
       author: user('rui'),
       createdAt: new Date(at(11, i)).toISOString().replace('.000', ''),
     }));
+
   const poll = (comments, h) =>
     setPrInfo(
       url,
@@ -670,22 +790,27 @@ test('a comment of yours out of the window asked for is still your last word —
       prTurn(pr({ ...noReview, comments: { nodes: comments } }), 'me', prTurns[url]?.said),
       at(h),
     ); // as drainPrQueue asks
+
   poll([mine], 10);
   assert.equal(s.prs[0].turn.you, false, 'your comment, nothing after it');
   poll([mine, ...theirs(19)], 12);
   assert.deepEqual([s.prs[0].turn.you, s.prs[0].turn.why], [true, '19 comments from rui']);
   const moved = s.prs[0].turn.movedAt;
+
   doneMarks[s.id] = new Date(at(12, 30)).toISOString();
   poll(theirs(20), 13);
+
   assert.deepEqual(
     [s.prs[0].turn?.you, s.prs[0].turn?.why],
     [true, '20 comments from rui'],
     'twenty after it: yours out of the window, the turn kept',
   );
+
   assert.equal(isDone(s), false, 'and the twentieth is news');
   assert.ok(s.prs[0].turn.movedAt > moved);
   assert.equal(s.prs[0].turn.said, undefined, "your last word stays the server's");
   assert.equal(prTurns[url].said, t(10), "kept in the PR's record, so a restart keeps it");
+
   assert.equal(
     prTurn(pr({ ...noReview, comments: { nodes: theirs(20) } }), 'me'),
     null,

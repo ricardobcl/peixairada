@@ -24,17 +24,22 @@ const heads = ctx =>
 })()`);
 
 export default async function (ctx) {
-  const out = {},
-    now = Date.now(),
-    cwd = realpathSync(tmpDir('peix-heads-'));
+  const out = {};
+  const now = Date.now();
+  const cwd = realpathSync(tmpDir('peix-heads-'));
+
   const sleeps = Array.from({ length: 5 }, () => spawn('sleep', ['300'], { stdio: 'ignore' }));
   const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
-  const ago = m => new Date(now - m * 60_000),
-    days = d => {
-      const t = new Date();
-      t.setDate(t.getDate() - d);
-      return t;
-    };
+
+  const ago = m => new Date(now - m * 60_000);
+
+  const days = d => {
+    const t = new Date();
+
+    t.setDate(t.getDate() - d);
+    return t;
+  };
+
   const monitor = (id, task, at) =>
     toolLines({
       id,
@@ -44,12 +49,14 @@ export default async function (ctx) {
       result: `Monitor started (task ${task}, expires in 60m).`,
       at,
     });
+
   try {
     await ctx.server.api('api/config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ projects: { [basename(cwd)]: { color: '#3b82f6' } } }),
     });
+
     const ready = [
       'Product grid follows the dark theme',
       'Node 22 across every service',
@@ -62,6 +69,7 @@ export default async function (ctx) {
       'Split the ledger job',
       'Bump the SDK',
     ];
+
     const { chats } = makeFixture(ctx.fixture.dir, [
       {
         cwd,
@@ -135,10 +143,12 @@ export default async function (ctx) {
         at: days(8 + k),
       })),
     ]);
+
     await ctx.waitFor(
       `window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === ${chats.length} && document.querySelector('#slist > .gsep.lane.watching')`,
       { what: 'the board' },
     );
+
     await ctx.server.post(`api/sessions/${chats.find(c => c.title === 'A wiki page').id}/done`, { done: true });
     await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.done')`, { what: 'a done lane' });
     await ctx.openChat(chats[1].id);
@@ -154,23 +164,29 @@ export default async function (ctx) {
       idle: 'dotted ring',
       done: 'solid filled',
     };
+
     const check = async (layout, caps) => {
       const h = await heads(ctx);
+
       ctx.assert.deepEqual(
         h.map(x => x.lane),
         ['asking', 'working', 'watching', 'ready', 'idle', 'done'],
         `${layout}: the six lanes, Watching after Clauding`,
       );
+
       for (const x of h) {
         ctx.assert.equal(x.glyph, want[x.lane], `${layout}: ${x.lane}'s glyph`);
+
         ctx.assert.deepEqual(
           [x.ink, x.bare, x.pos, x.caps, x.moving, x.pix],
           [true, true, 'sticky', caps, 0, false],
           `${layout}: ${x.lane} — ink, a bare count, sticky, ${caps}, still: ${JSON.stringify(x)}`,
         );
       }
+
       return h;
     };
+
     out.heads = await check('sidebar', 'none');
 
     // ---- scrolled: Ready's head stuck at the top, its cards passing under it ----
@@ -178,6 +194,7 @@ export default async function (ctx) {
       await ctx.evaluate(
         `(l => { l.scrollTop = 0; const h = l.querySelector(':scope > .gsep.lane.ready'); l.scrollTop = h.offsetTop + 260; })(document.querySelector('#slist'))`,
       );
+
       await ctx.sleep(250);
       return ctx.evaluate(`(() => {
         const l = document.querySelector('#slist'), lr = l.getBoundingClientRect(), h = l.querySelector(':scope > .gsep.lane.ready'), hr = h.getBoundingClientRect();
@@ -190,56 +207,72 @@ export default async function (ctx) {
           up: up.classList.contains('on') ? +up.querySelector('b').textContent : 0, under, fog: getComputedStyle(up).marginTop, stick: stick + 'px', pad: getComputedStyle(l).scrollPaddingTop };
       })()`);
     };
+
     out.stuck = await stuck();
+
     ctx.assert.deepEqual(
       [out.stuck.lane, out.stuck.flush, out.stuck.onTop, out.stuck.cardBelow],
       ['ready', 0, true, true],
       `Ready's head stuck at the top, over a card scrolling under it: ${JSON.stringify(out.stuck)}`,
     );
+
     ctx.assert.deepEqual(
       out.stuck.covered,
       ['asking', 'working', 'watching'],
       'the heads stuck under it hidden: a head of glass would show them',
     );
+
     ctx.assert.equal(
       out.stuck.up,
       out.stuck.under,
       'the top end counts every card whose middle is above the list or under the stuck head',
     );
+
     ctx.assert.deepEqual(
       [out.stuck.fog, out.stuck.pad],
       [out.stuck.stick, out.stuck.stick],
       'its fog starts under the head, and a card scrolled to stops under it',
     );
+
     await ctx.settle();
+
     const crop = () =>
       ctx.evaluate(
         `(r => ({ x: r.left, y: r.top, width: r.width, height: Math.min(r.height, 760), scale: 2 }))(document.querySelector('#sessions').getBoundingClientRect())`,
       );
+
     await ctx.shot('dark-stuck', await crop());
+
     // the day lines scroll as before, under it
     out.days = await ctx.evaluate(
       `[...document.querySelectorAll('#slist > .gsep.day')].map(d => d.textContent + ':' + getComputedStyle(d).position)`,
     );
+
     ctx.assert.ok(out.days.length >= 1 && out.days.every(d => d.endsWith(':static')), `the day lines: ${out.days}`);
+
     // the timeline's runs know the new lane
     await ctx.evaluate(
       `document.querySelector('#sessions').classList.add('tlshow'); window.dispatchEvent(new Event('resize'))`,
     );
+
     await ctx.sleep(200);
     out.runs = (await ctx.peix(`state().timeline.runs`)).map(r => r.g);
+
     ctx.assert.ok(
       out.runs.includes('watching') && out.runs.indexOf('watching') < out.runs.indexOf('ready'),
       `the timeline's runs: ${out.runs}`,
     );
+
     await ctx.evaluate(`document.querySelector('#sessions').classList.remove('tlshow')`);
     // the stuck head clicked folds its lane, and stays in sight
     await ctx.evaluate(`document.querySelector('#slist > .gsep.lane.ready').click()`);
     await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.ready.shut')`, { what: 'Ready folded' });
     await ctx.settle();
+
     out.folded = await ctx.evaluate(
       `(l => { const r = l.querySelector(':scope > .gsep.lane.ready').getBoundingClientRect(), lr = l.getBoundingClientRect(); return { inSight: r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1 }; })(document.querySelector('#slist'))`,
     );
+
     ctx.assert.equal(out.folded.inSight, true, 'the folded head in sight');
     await ctx.evaluate(`document.querySelector('#slist > .gsep.lane.ready').click()`);
     await ctx.waitFor(`!document.querySelector('#slist > .gsep.lane.ready.shut')`, { what: 'Ready open again' });
@@ -249,24 +282,31 @@ export default async function (ctx) {
     await stuck();
     await ctx.settle();
     await ctx.shot('light-stuck', await crop());
+
     // at the notch, the list padded under its strip: the head sticks below the strip, its ground over it, the top end
     // under the head
     await ctx.evaluate(
       `document.documentElement.dataset.theme = 'dark'; window.peixFill(true, { top: 32, left: 100, right: 285 })`,
     );
+
     await ctx.waitFor(`document.querySelector('#sessions.npad')`, { what: 'the list padded for the strip' });
+
     await ctx.evaluate(
       `(l => { l.scrollTop = 0; l.scrollTop = l.querySelector(':scope > .gsep.lane.ready').offsetTop + 260; })(document.querySelector('#slist'))`,
     );
+
     await ctx.sleep(300);
+
     out.notch =
       await ctx.evaluate(`(() => { const l = document.querySelector('#slist'), lr = l.getBoundingClientRect(), h = l.querySelector(':scope > .gsep.lane.ready'), hr = h.getBoundingClientRect();
       return { pad: parseFloat(getComputedStyle(l).paddingTop), at: Math.round(hr.top - lr.top), stuck: h.classList.contains('stuck'), cover: parseFloat(getComputedStyle(h, '::before').height), up: Math.round(document.querySelector('#sup').getBoundingClientRect().top - hr.bottom) }; })()`);
+
     ctx.assert.deepEqual(
       [out.notch.at, out.notch.stuck, out.notch.cover, out.notch.up],
       [out.notch.pad, true, out.notch.pad, 0],
       `at the notch: ${JSON.stringify(out.notch)}`,
     );
+
     await ctx.settle();
     await ctx.shot('notch', await crop());
     await ctx.evaluate(`window.peixFill(false, null)`);
@@ -274,27 +314,33 @@ export default async function (ctx) {
     // reduced motion: still nothing moving in a head (and nothing to hold)
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await ctx.waitFor(`matchMedia('(prefers-reduced-motion: reduce)').matches`, { what: 'reduced motion' });
+
     ctx.assert.ok(
       (await heads(ctx)).every(h => h.moving === 0),
       'reduced: the heads as they are',
     );
+
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] });
 
     // ---- every head a band of the list's own ground, stuck or not, nothing blurred through it ----
     await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`);
     out.sideStuck = await stuck();
+
     ctx.assert.deepEqual(
       [out.sideStuck.lane, out.sideStuck.flush, out.sideStuck.onTop, out.sideStuck.up === out.sideStuck.under],
       ['ready', 0, true, true],
       `the sidebar's stuck head: ${JSON.stringify(out.sideStuck)}`,
     );
+
     out.bands = await ctx.evaluate(
       `(side => [...document.querySelectorAll('#slist > .gsep.lane[data-lane]')].map(h => h.dataset.lane + ':' + (getComputedStyle(h).backdropFilter === 'none' && getComputedStyle(h).backgroundColor === side)))(getComputedStyle(document.querySelector('#sessions')).backgroundColor)`,
     );
+
     ctx.assert.ok(
       out.bands.every(x => x.endsWith(':true')),
       `each head on the list's ground: ${out.bands}`,
     );
+
     await ctx.settle();
     await ctx.shot('dark', await crop());
     await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`);
@@ -303,20 +349,23 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`);
     await ctx.sleep(200);
     await ctx.settle();
+
     ctx.assert.deepEqual(
       await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane.covered')].length`),
       0,
       'at the top, none hidden',
     );
+
     await ctx.shot('light-top', await crop());
     await ctx.evaluate(`document.documentElement.dataset.theme = 'dark'`);
     await ctx.settle();
     await ctx.shot('dark-top', await crop());
     return out;
   } finally {
-    for (const p of sleeps)
+    for (const p of sleeps) {
       try {
         p.kill();
       } catch {}
+    }
   }
 }

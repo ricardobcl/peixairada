@@ -35,11 +35,14 @@ import { nextWake } from './wakes.mjs';
 
 export const projectList = () =>
   Object.values(projects).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+
 // name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
 // can name a folder before its first chat runs there.
 export function projectInput(body, prev = {}) {
   const name = typeof body.name === 'string' ? cut(body.name.trim().replace(/\s+/g, ' '), 80) : prev.name;
+
   if (!name) return { error: 'a project needs a name' };
+
   // `~/…` is a folder under the home, as the editor's own placeholder writes it (2026-10-03: dropped in silence before)
   const list =
     body.cwds === undefined
@@ -47,17 +50,22 @@ export function projectInput(body, prev = {}) {
       : Array.isArray(body.cwds)
         ? body.cwds.filter(c => typeof c === 'string' && c.trim()).map(expandHome)
         : false;
-  if (list === false || list?.some(c => !c.startsWith('/')))
+
+  if (list === false || list?.some(c => !c.startsWith('/'))) {
     return {
       error: `cwds must be a list of absolute paths${list ? ` — not ${list.find(c => !c.startsWith('/'))}` : ''}`,
     };
+  }
+
   const cwds = list ? [...new Set(list.map(c => c.replace(/\/+$/, '') || '/'))] : prev.cwds;
+
   return { name, cwds };
 }
 
 // Every session object a number of its own: a re-read replaces the object and counts its entries afresh, so the page
 // knows the numbers it holds are another reading's (the `entries` events and /messages carry it, with `upto`).
 let sessionGen = 0;
+
 export function newSession(id, file) {
   return {
     id,
@@ -145,21 +153,26 @@ export function newSession(id, file) {
 // claude from before the field) — and then the transcript's word stands. "dialog open" is left out: it is mostly a
 // slash command's dialog you opened yourself (/model, /config), at that terminal already (2026-09-23).
 const NOT_ASKING = new Set(['dialog open']);
+
 export function waitingOn(s) {
   if (!s.alive) return undefined;
   const procs = [s.live, ...s.rivals].filter(p => p?.status);
+
   if (!procs.length) return undefined;
   const w = procs.find(p => p.status === 'waiting' && !NOT_ASKING.has(p.waitingFor));
+
   return w ? w.waitingFor || 'a prompt' : null;
 }
 
 export function statusOf(s) {
   if (!s.alive) return s.status === 'unknown' ? 'unknown' : 'stale';
   const waiting = waitingOn(s);
+
   if (waiting || (waiting === undefined && s.status === 'needs-input')) return 'needs-input'; // a question beats the agents' work
   if (s.agentsRunning) return 'working';
   if (s.status === 'unknown' && !s.lastActivity) return 'idle'; // live and empty — a new chat, or a cleared one (whose file holds only the /clear)
   if (s.status === 'needs-input') return s.live?.status === 'busy' ? 'working' : 'idle'; // the registry has it answered already
+
   // A turn the transcript never closes (2026-09-29): Claude Code writes the typed /compact as a plain prompt line and,
   // compacted, no assistant line — no end_turn. A process that went idle after your last word is not clauding, whatever
   // the last line reads. Only after: a prompt lands in the transcript a beat before the registry says busy, and the
@@ -168,8 +181,10 @@ export function statusOf(s) {
     s.status === 'working' &&
     s.live?.status === 'idle' &&
     s.live.statusAt >= Date.parse(s.lastUserAt || s.statusSince)
-  )
+  ) {
     return 'idle';
+  }
+
   return s.status;
 }
 // A VS Code chat can be taken over like a CLI one (2026-09-20 — refused from 2026-09-19 on a misread of the
@@ -189,22 +204,30 @@ export function statusOf(s) {
 // (`headNow`, the drift's), else the branch Claude Code last wrote, else the one the board made it on.
 export const WT_IN = /\/\.claude\/worktrees\/([^/]+)(?:\/.*)?$/;
 export const projectDir = cwd => (cwd ? cwd.replace(WT_IN, '') : cwd);
+
 function worktreeOf(s, cwd) {
   const m = WT_IN.exec(cwd || '');
+
   if (!m) return null;
   let made = null;
+
   try {
-    made = worktreesMade[realpathSync(cwd.slice(0, m.index) + `/.claude/worktrees/${m[1]}`)];
+    made = worktreesMade[realpathSync(`${cwd.slice(0, m.index)}/.claude/worktrees/${m[1]}`)];
   } catch {}
+
   const now = s.alive && s.headNow !== 'HEAD' ? s.headNow : null;
+
   return { name: m[1], branch: now || s.gitBranch || made?.branch || null };
 }
+
 export function summary(s, ti = null) {
   // `ti`: termIndex(), when the whole board is summarized at once
-  const prT = prTitle(s),
-    status = statusOf(s),
-    mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s), shells: shellsOf(s) };
+  const prT = prTitle(s);
+  const status = statusOf(s);
+  const mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s), shells: shellsOf(s) };
+
   const cwd = s.live?.cwd || s.cwd;
+
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
     id: s.id,
@@ -309,14 +332,18 @@ export function summary(s, ti = null) {
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later, or a PR come round to you (its
  *  turn's movedAt; not on a chat done for good) — the board's own order (`byWord` in index.html). Over summaries. */
 const wordAt = s => {
-  const u = String(s.lastUserAt || ''),
-    r = String(s.lastReplyAt || ''),
-    m = s.forGood ? '' : s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
+  const u = String(s.lastUserAt || '');
+  const r = String(s.lastReplyAt || '');
+  const m = s.forGood ? '' : s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
+
   const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); // an empty chat: its start (the page's copy agrees)
   const k = String(s.wokeAt || ''); // a snooze that ended by itself is a word too: back at the top of its lane (2026-11-24, round XXX)
+
   return [m, k].reduce((a, b) => (b > a ? b : a), w);
 };
+
 export function sortedSummaries() {
   const ti = termIndex();
+
   return [...sessions.values()].map(s => summary(s, ti)).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
 }

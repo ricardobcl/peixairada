@@ -20,41 +20,56 @@ import { alive, sleep, startTestServer, tmpDir, waitFor } from '../lib/testserve
 import { chatLines, defaultFixture, slugOf } from '../scripts/fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
+
 /** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. `p.opened`
  *  is the socket open — a send before it throws — and `p.text()` what has come so far. */
 function attach(srv, id, { until = null, timeout = 8000 } = {}) {
   const ws = new WebSocket(srv.ws(`api/terminals/${id}/ws`));
+
   ws.binaryType = 'arraybuffer';
   ws.send2 = m => ws.send(JSON.stringify(m));
-  let first = null,
-    all = '',
-    exit = null;
+
+  let first = null;
+  let all = '';
+  let exit = null;
+
   const opened = new Promise(res => ws.addEventListener('open', res, { once: true }));
+
   const p = new Promise(res => {
     const finish = () => {
       clearTimeout(t);
+
       try {
         ws.close();
       } catch {}
+
       res({ first, all, exit });
     };
+
     const t = setTimeout(finish, timeout);
+
     ws.onmessage = e => {
       if (typeof e.data === 'string') {
         const m = JSON.parse(e.data);
+
         if (m.t === 'exit') exit = m.code;
         return;
       }
+
       const s = Buffer.from(e.data).toString('utf8');
+
       if (first === null) first = s;
       all += s;
       if (until && all.includes(until)) finish();
     };
+
     ws.onerror = () => {};
+
     ws.onclose = () => {
       if (first !== null) finish();
     };
   });
+
   Object.assign(p, { ws, opened, text: () => all });
   return p;
 }
@@ -66,56 +81,71 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const chat = fx.chats[1];
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+
     try {
       const list = await srv.api('api/sessions');
+
       assert.ok(
         list.body.sessions.some(s => s.id === chat.id),
         'the fixture chat is on the board',
       );
+
       // resume it in a drawer
       const r = await srv.api(`api/sessions/${chat.id}/terminal`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ cols: 100, rows: 30 }),
       });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       const t = r.body.terminal;
+
       assert.ok(t.pid > 0 && t.holderPid > 0 && t.holderPid !== t.pid, 'the PTY and the holder have their own pids');
       assert.ok(alive(t.holderPid) && alive(t.pid));
+
       assert.deepEqual(
         readdirSync(join(srv.dir, 'terms'))
           .filter(f => f.startsWith(t.id))
           .sort(),
         [`${t.id}.json`, `${t.id}.log`, `${t.id}.sock`],
       );
+
       // the fake registers → the chat is alive, with the drawer's process as its own
       await waitFor(
         async () => {
           const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
           return s.alive && s.live?.pid === t.pid && s.terminal?.id === t.id;
         },
         { what: 'the resumed chat alive with the drawer as its process' },
       );
+
       // a page attaches: the first frame is the whole screen (the fake's prompt and status), not a byte replay — once the
       // fake has drawn, which it does right after it registers
       const a1 = await waitFor(
         async () => {
           const a = await attach(srv, t.id, { until: 'fake mode on', timeout: 1500 });
+
           return a.first?.includes('fake mode on') && a;
         },
         { what: 'a snapshot of the drawn screen' },
       );
+
       assert.ok(
         a1.first.includes('❯') && a1.first.includes('fake mode on'),
         'the snapshot carries the prompt and the status bar',
       );
+
       assert.ok(a1.first.includes('\x1b[?2004h'), 'the snapshot carries the modes the program set');
       const snapLog = srv.logText().match(/screen snapshot (\d+) chars, (\d+)×(\d+)/);
+
       assert.ok(
         snapLog && Number(snapLog[2]) === 100 && Number(snapLog[3]) === 30,
         'the server logged the snapshot at the PTY size',
       );
+
       const sum1 = (await srv.terminals()).find(x => x.id === t.id);
+
       assert.equal(sum1.cols, 100);
       assert.equal(sum1.connected, true);
       assert.ok(sum1.lastSnapshotChars > 100);
@@ -123,33 +153,44 @@ test(
       await srv.restart();
       assert.ok(alive(t.holderPid) && alive(t.pid), 'the holder and its claude outlive the server');
       const adopted = (await srv.terminals()).find(x => x.id === t.id);
+
       assert.ok(adopted, 'the new server lists the drawer');
       assert.equal(adopted.pid, t.pid);
       assert.equal(adopted.sessionId, chat.id);
       assert.equal(adopted.exited, null);
       assert.match(srv.logText(), /adopted — pid \d+, holder \d+, chat/);
       const a2 = await attach(srv, t.id, { until: 'fake mode on' });
+
       assert.ok(a2.first.includes('❯'), 'a page attaching after the restart gets the screen');
       const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
       assert.equal(s2.terminal?.id, t.id, 'the chat still points at its drawer');
       // type through the new server and see the fake answer
       const p = attach(srv, t.id, { until: 'You said: ping', timeout: 8000 });
+
       await p.opened;
       p.ws.send2({ t: 'in', d: 'ping\r' });
       const a3 = await p;
+
       assert.ok(a3.all.includes('You said: ping'), 'input reaches the PTY through the adopted holder');
       // end it: the fake exits, the registry entry goes, the holder lingers with the exit code then is let go
       const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });
+
       assert.equal(d.status, 200);
+
       await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, {
         what: 'the terminal reporting its exit',
       });
+
       assert.ok(!alive(t.pid), 'the fake is gone');
       const d2 = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' }); // an exited one is let go at once
+
       assert.equal(d2.status, 200);
+
       await waitFor(async () => !(await srv.terminals()).some(x => x.id === t.id), {
         what: 'the exited drawer forgotten',
       });
+
       await waitFor(() => !existsSync(join(srv.dir, 'terms', `${t.id}.sock`)), {
         what: 'the holder removing its socket',
       });
@@ -162,19 +203,24 @@ test(
 test('a new chat in a folder is tied to its session by pid when the fake registers', { timeout: 30_000 }, async () => {
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+
   try {
     const r = await srv.api('api/terminals', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ cwd: process.cwd(), cols: 90, rows: 24 }),
     });
+
     assert.equal(r.status, 201, JSON.stringify(r.body));
     assert.equal(r.body.terminal.sessionId, null);
+
     const linked = await waitFor(
       async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null,
       { what: 'the terminal learning its session id from the registry' },
     );
+
     const meta = srv.holders().find(h => h.id === r.body.terminal.id);
+
     assert.equal(meta.sessionId, linked, 'and told its holder, so an adoption after a restart knows it too');
   } finally {
     await srv.stop();
@@ -186,25 +232,34 @@ test(
   { timeout: 40_000 },
   async () => {
     const srv = await startTestServer({ fake: true });
+
     try {
       const r = await srv.post('api/terminals', { cwd: tmpDir('peix-type-'), cols: 90, rows: 24 });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       const id = r.body.terminal.id;
+
       await waitFor(async () => (await srv.terminals()).find(x => x.id === id)?.sessionId || null, {
         what: 'the chat registered',
       });
+
       const p = attach(srv, id, { timeout: 30_000 });
+
       await p.opened;
       const answers = new Map();
+
       p.ws.addEventListener('message', e => {
         if (typeof e.data !== 'string') return;
         const m = JSON.parse(e.data);
+
         if (m.t === 'typed') answers.set(m.n, m.why);
       });
+
       const type = async (n, d, send) => {
         p.ws.send2({ t: 'type', d, send, n });
         return waitFor(() => (answers.has(n) ? { why: answers.get(n) } : null), { what: `the answer to ${n}` });
       };
+
       p.ws.send2({ t: 'in', d: '/permission\r' }); // your own keys: the dialog comes up
       await waitFor(() => p.text().includes('Do you want to proceed?'), { what: 'the dialog' });
       assert.match((await type(1, 'thanks', true)).why, /asking you/, 'a reply with its ⏎ refused');
@@ -229,33 +284,44 @@ test(
   async () => {
     const srv = await startTestServer({ fake: true });
     const scratch = join(realpathSync(srv.dir), 'no folder');
+
     try {
       assert.equal(existsSync(scratch), false, 'nothing made before a chat asks for it');
       const r = await srv.post('api/terminals', { cwd: scratch, cols: 90, rows: 24 });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       assert.ok(existsSync(scratch), 'made for it');
+
       const id = await waitFor(
         async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null,
         { what: 'the chat registered' },
       );
+
       const s = await waitFor(
         async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id && x.alive),
         { what: 'its card' },
       );
+
       assert.deepEqual([s.cwd, s.project], [scratch, 'no folder'], 'claude runs there, and the project reads so');
       const ws = new WebSocket(srv.ws(`api/terminals/${r.body.terminal.id}/ws`)); // a word: with none there is nothing to resume, and Claude Code says so
+
       await new Promise(res => ws.addEventListener('open', res, { once: true }));
       ws.send(JSON.stringify({ t: 'in', d: 'a word\r' }));
+
       await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.file, {
         what: 'its transcript',
       });
+
       ws.close();
       await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+
       await waitFor(async () => !(await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.alive, {
         what: 'its claude ended',
       });
+
       rmSync(scratch, { recursive: true, force: true });
       const again = await srv.post(`api/sessions/${id}/terminal`, { cols: 90, rows: 24 });
+
       assert.equal(again.status, 201, JSON.stringify(again.body));
       assert.ok(existsSync(scratch), 'made again for the resume');
     } finally {
@@ -269,87 +335,117 @@ test(
   { timeout: 40_000 },
   async () => {
     const cwd = tmpDir('peix-tf-');
+
     writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n'); // the fake task never reads it; the server looks for it
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: cwd });
-    const ran = join(tmpDir('peix-task-'), 'runs'),
-      runs = () => (existsSync(ran) ? readFileSync(ran, 'utf8').trim().split('\n') : []);
+
+    const ran = join(tmpDir('peix-task-'), 'runs');
+    const runs = () => (existsSync(ran) ? readFileSync(ran, 'utf8').trim().split('\n') : []);
+
     const srv = await startTestServer({
       claudeDir: fx.dir,
       fake: true,
       env: { TASK_BIN: join(ROOT, 'scripts', 'fakes', 'faketask.mjs'), FAKE_TASK_LOG: ran },
     });
+
     const post = body => srv.post('api/terminals', body);
+
     try {
       const none = await srv.api(`api/launchers?cwd=${encodeURIComponent(process.cwd())}`);
+
       assert.deepEqual(none.body.launchers, [], 'a folder without a Taskfile has no launchers');
       // its Taskfile is the folder's code: not run before Claude Code trusts the folder (2026-10-16)
       const shut = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
+
       assert.deepEqual(
         [shut.body.launchers, shut.body.untrusted],
         [[], true],
         'a folder Claude Code has not trusted has none, and says why',
       );
+
       const refused = await post({ cwd, task: 'production-workload' });
+
       assert.equal(refused.status, 400);
       assert.match(refused.body.error, /Claude Code has not trusted the folder/);
       assert.deepEqual(runs(), [], 'and task was never run there');
       assert.match(srv.logText(), /its Taskfile is not asked for launchers — Claude Code has not trusted the folder/);
+
       writeFileSync(
         join(fx.dir, '.claude.json'),
         JSON.stringify({ projects: { [realpathSync(dirname(cwd))]: { hasTrustDialogAccepted: true } } }),
       ); // the folder above it, as Claude Code takes it
+
       // a repository under a trusted folder is not trusted by it (2026-11-06): the walk stops at the folder holding .git
       const repo = join(cwd, 'cloned');
+
       mkdirSync(join(repo, '.git'), { recursive: true });
       writeFileSync(join(repo, 'Taskfile.yml'), 'version: "3"\n');
+
       assert.equal(
         (await srv.api(`api/launchers?cwd=${encodeURIComponent(repo)}`)).body.untrusted,
         true,
         'a clone in a trusted folder: its Taskfile not asked',
       );
+
       const l = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
+
       assert.equal(l.body.untrusted, false);
       assert.deepEqual(runs(), ['--list --json'], 'trusted, task is asked');
+
       assert.deepEqual(
         l.body.launchers,
         [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }],
         'only the task whose description mentions Claude',
       );
+
       assert.equal((await srv.api('api/launchers?cwd=relative')).status, 400);
       const bad = await post({ cwd, task: 'setup' });
+
       assert.equal(bad.status, 400);
       assert.match(bad.body.error, /no launcher named setup/);
       const r = await post({ cwd, task: 'production-workload', cols: 90, rows: 24 });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       const t = r.body.terminal;
+
       assert.equal(t.task, 'production-workload');
       assert.equal(t.sessionId, null);
       assert.match(srv.logText(), /terminal t\d+-\w+: task production-workload in/);
+
       const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null, {
         what: "the terminal learning its session id although claude is not the PTY's process",
       });
+
       const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === linked);
+
       assert.ok(s.alive, 'the chat is alive');
       assert.notEqual(s.live.pid, t.pid, 'with a claude below task, not task itself');
       assert.equal(s.terminal?.id, t.id, 'and the drawer is its');
       const meta = srv.holders().find(h => h.id === t.id);
+
       assert.equal(meta.task, 'production-workload');
       assert.equal(meta.claudePid, s.live.pid, "the holder was told claude's pid, for an adoption after a restart");
       const a = await attach(srv, t.id, { until: 'fake mode on' });
+
       assert.ok(a.all.includes('❯'), "a page attaching sees claude's prompt through task");
       // /clear there: the same claude under a new id — and claude is not the PTY's process, task is (2026-10-03: the
       // drawer stayed on the old chat, and the new one read as live in another terminal)
       const p = attach(srv, t.id, { timeout: 3000 });
+
       await p.opened;
       p.ws.send2({ t: 'in', d: '/clear\r' });
+
       const moved = await waitFor(
         async () => {
           const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId;
+
           return id !== linked && id;
         },
         { what: 'the drawer following /clear to the new chat' },
       );
+
       const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === moved);
+
       assert.equal(s2.terminal?.id, t.id, 'the new chat has the drawer');
       assert.equal(s2.live.pid, s.live.pid, 'the same claude');
     } finally {
@@ -365,47 +461,63 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const chat = fx.chats[1];
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+
     try {
       const r = await srv.api(`api/sessions/${chat.id}/shell`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ cols: 100, rows: 30 }),
       });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       const t = r.body.terminal;
+
       assert.equal(t.shell, true);
       assert.equal(t.sessionId, chat.id);
       assert.equal(t.resume, false);
       const again = await srv.api(`api/sessions/${chat.id}/shell`, { method: 'POST' });
+
       assert.equal(again.status, 200);
       assert.equal(again.body.terminal.id, t.id, "the chat's zsh, answered with again");
       // ⌘T (2026-10-13): `fresh` starts another beside it, every time
       const more = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, fresh: true });
+
       assert.equal(more.status, 201, JSON.stringify(more.body));
       assert.notEqual(more.body.terminal.id, t.id, 'a second zsh');
       const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
       assert.equal(s.shell?.id, t.id, 'the chat carries its first zsh');
       assert.equal(s.terminal, null, 'and it is not its claude drawer');
+
       assert.deepEqual(
         s.shells.map(x => x.id),
         [t.id, more.body.terminal.id],
         'and every zsh, oldest first',
       );
+
       assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
       const a = attach(srv, t.id, { until: 'peix-shell-22', timeout: 20_000 });
+
       await a.opened;
+
       await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), {
         what: "the shell's prompt",
       });
+
       a.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
       const out = await a;
+
       assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);
       const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });
+
       assert.equal(d.status, 200);
+
       await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, {
         what: 'the zsh ending',
       });
+
       const after = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
       assert.equal(after.shells.find(x => x.id === more.body.terminal.id)?.exited, null, 'the other zsh lives on');
     } finally {
       await srv.stop();
@@ -418,23 +530,32 @@ test(
   { timeout: 40_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const chat = fx.chats[1],
-      other = realpathSync(tmpDir('peix-wt-'));
+
+    const chat = fx.chats[1];
+    const other = realpathSync(tmpDir('peix-wt-'));
+
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { FAKE_VIM_DIRTY: '' } });
+
     try {
       const zsh = (await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 })).body.terminal;
       const r = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       const v = r.body.terminal;
+
       assert.deepEqual([v.shell, v.editor, v.resume, v.cwd], [true, 'vim', false, chat.cwd]);
-      const a = attach(srv, v.id, { until: 'fake vim', timeout: 10_000 }),
-        out = await a;
+
+      const a = attach(srv, v.id, { until: 'fake vim', timeout: 10_000 });
+      const out = await a;
+
       assert.match(
         out.all,
         new RegExp(`fake vim — ${realpathSync(chat.cwd).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} — \\.`),
         "vim ran in the chat's folder, on it",
       );
+
       const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
       assert.deepEqual(
         s.shells.map(x => [x.id, x.editor]),
         [
@@ -443,31 +564,40 @@ test(
         ],
         "its tab among the zsh's",
       );
+
       assert.equal(s.shell.id, zsh.id, "and never the chat's zsh");
       const again = await srv.post(`api/sessions/${chat.id}/shell`, {});
+
       assert.equal(again.body.terminal.id, zsh.id, 'the zsh asked for again is the zsh');
       const there = await srv.post(`api/sessions/${chat.id}/shell`, { vim: true, dir: other });
+
       assert.equal(there.status, 201, JSON.stringify(there.body));
       assert.equal(there.body.terminal.cwd, other, 'another folder: a worktree of its PR');
       assert.equal((await srv.post(`api/sessions/${chat.id}/shell`, { vim: true, dir: 'relative/x' })).status, 400);
       // closed: asked to quit, and it does
       assert.equal((await srv.api(`api/terminals/${v.id}`, { method: 'DELETE' })).status, 200);
+
       await waitFor(async () => (await srv.terminals()).find(x => x.id === v.id)?.exited === 0, {
         what: 'vim quitting on :qa',
       });
+
       assert.ok(srv.logText().includes(`terminal ${v.id}: vim in `), 'the log names it');
     } finally {
       await srv.stop();
     }
+
     // with unsaved work it says so and stays
     const dirty = await startTestServer({ claudeDir: fx.dir, fake: true, env: { FAKE_VIM_DIRTY: '1' } });
+
     try {
       const v = (await dirty.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true })).body.terminal;
       const a = attach(dirty, v.id, { until: 'E162', timeout: 10_000 });
+
       await a.opened;
       await waitFor(() => a.text().includes('fake vim'), { what: 'vim up' });
       await dirty.api(`api/terminals/${v.id}`, { method: 'DELETE' });
       const out = await a;
+
       assert.ok(out.all.includes('E162: No write since last change'), 'vim said why');
       await sleep(500);
       assert.equal((await dirty.terminals()).find(x => x.id === v.id)?.exited, null, 'and lives on, the work in it');
@@ -483,10 +613,13 @@ test(
   async () => {
     const { spawn } = await import('node:child_process');
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const chat = fx.chats[1],
-      other = fx.chats[0];
+
+    const chat = fx.chats[1];
+    const other = fx.chats[0];
+
     // a "claude" whose registry file says it started in 2001, waiting on you: its pid is some other process now
     const stranger = spawn('sleep', ['60'], { stdio: 'ignore' });
+
     writeFileSync(
       join(fx.dir, 'sessions', `${stranger.pid}.json`),
       JSON.stringify({
@@ -502,21 +635,28 @@ test(
         statusUpdatedAt: Date.now(),
       }),
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+
     try {
       const ask = () => srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
       const [a, b] = await Promise.all([ask(), ask()]);
+
       assert.equal(a.body.terminal.id, b.body.terminal.id, "the second ask got the first one's drawer");
+
       assert.equal(
         (await srv.terminals()).filter(t => t.sessionId === chat.id && t.exited === null).length,
         1,
         'one holder',
       );
+
       // liveness by pid and start (2026-10-14): the pid answers, but it is not the process that wrote the file
       const s = (await srv.api('api/sessions')).body.sessions.find(x => x.id === other.id);
+
       assert.equal(s.alive, false, 'a pid handed on is no claude');
       assert.notEqual(s.status, 'needs-input', 'and nothing asks you');
       const take = await srv.post(`api/sessions/${other.id}/takeover`, { cols: 90, rows: 24 });
+
       assert.equal(take.status, 409);
       assert.match(take.body.error, /not live anywhere/);
       assert.ok(alive(stranger.pid), 'and the process that has its pid now was left alone');
@@ -535,30 +675,41 @@ test(
     const chat = fx.chats[1];
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
     const chatOf = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
     try {
       const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30 });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       const t = r.body.terminal;
+
       await waitFor(async () => (await chatOf(chat.id))?.alive, { what: 'the resumed chat alive' });
       const z = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
+
       assert.equal(z.status, 201, JSON.stringify(z.body));
       const p = attach(srv, t.id, { timeout: 3000 });
+
       await p.opened;
       p.ws.send2({ t: 'in', d: '/clear\r' });
+
       const moved = await waitFor(
         async () => {
           const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId;
+
           return id !== chat.id && id;
         },
         { what: 'the drawer following /clear' },
       );
+
       const zt = (await srv.terminals()).find(x => x.id === z.body.terminal.id);
+
       assert.equal(zt.sessionId, moved, "the zsh is the new chat's, as the drawer is");
+
       assert.equal(
         srv.holders().find(h => h.id === zt.id)?.sessionId,
         moved,
         'and its holder was told, for an adoption after a restart',
       );
+
       await waitFor(
         async () =>
           (await chatOf(moved))?.shells?.some(x => x.id === zt.id) && !(await chatOf(chat.id))?.shells?.length,
@@ -583,8 +734,11 @@ test(
     ]
       .map(f => readFileSync(join(ROOT, f), 'utf8'))
       .join('\n');
+
     const reads = new Set([...src.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(m => m[1]));
+
     for (const m of src.matchAll(/findBin\('([a-z]+)'/g)) reads.add(`${m[1].toUpperCase()}_BIN`);
+
     const KEEP = new Set([
       'CLAUDE_DIR',
       'PATH',
@@ -594,37 +748,49 @@ test(
       'XPC_SERVICE_NAME',
       'JIRA_API_TOKEN',
     ]);
+
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TERM_LINGER_MS: '300000' } });
+
     try {
       const z = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
+
       assert.equal(z.status, 201, JSON.stringify(z.body));
       const a = attach(srv, z.body.terminal.id, { until: ':peix-end-42', timeout: 20_000 });
+
       await a.opened;
+
       await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), {
         what: "the shell's prompt",
       });
+
       a.ws.send2({
         t: 'in',
         d: "printf 'peix-env-%s:' $((40+2)); env | cut -d= -f1 | tr '\\n' ' '; printf ':peix-end-%s\\n' $((40+2))\r",
       });
-      const out = await a,
-        hit = out.all.match(/peix-env-42:([^:]*):peix-end-42/);
+
+      const out = await a;
+      const hit = out.all.match(/peix-env-42:([^:]*):peix-end-42/);
+
       assert.ok(hit, `the zsh listed its environment: ${JSON.stringify(out.all.slice(-300))}`);
       const names = hit[1].split(/\s+/).filter(Boolean);
+
       assert.ok(
         names.includes('CLAUDE_DIR') && names.includes('PEIXAIRADA_DRAWER') && names.includes('ZDOTDIR'),
         `what a drawer needs is there: ${names}`,
       );
+
       assert.ok(
         reads.has('PORT') && !names.includes('PORT'),
         "no PORT: a dev server run there does not take the board's",
       );
+
       assert.deepEqual(
         names.filter(n => reads.has(n) && !KEEP.has(n)),
         [],
         'nothing else the server reads either',
       );
+
       assert.ok(!names.includes('TERM_LINGER_MS'), "nor the holder's own knob");
     } finally {
       await srv.stop();
@@ -640,17 +806,21 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const deep = join(tmpDir('peix-'), 'd'.repeat(100));
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TERMS_DIR: deep } });
+
     try {
       const r = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
+
       assert.equal(r.status, 500);
       assert.match(r.body.error, /too deep for a socket: .* is \d+ bytes, macOS takes 103/);
       assert.equal(existsSync(deep), false, 'no holder was started: not even its folder made');
     } finally {
       await srv.stop();
     }
+
     // the holder on its own, given such a folder (an older server's): it says so in its meta and starts no PTY
     mkdirSync(deep, { recursive: true });
     const id = 'tlong';
+
     writeFileSync(
       join(deep, `${id}.json`),
       JSON.stringify({
@@ -664,9 +834,11 @@ test(
         rows: 24,
       }),
     );
+
     const h = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), deep, id], { stdio: 'ignore' });
     const code = await new Promise(res => h.on('exit', res));
     const meta = JSON.parse(readFileSync(join(deep, `${id}.json`), 'utf8'));
+
     assert.equal(code, 1);
     assert.match(meta.error, /socket path is too long/);
     assert.equal(meta.pid, null, 'no PTY spawned');
@@ -680,12 +852,15 @@ test(
     const { spawn } = await import('node:child_process');
     const { connect } = await import('node:net');
     const { Terminal } = await import('@xterm/headless').then(m => m.default ?? m);
-    const dir = tmpDir('peix-h-'),
-      id = 'tmodes',
-      zdot = join(dir, 'zdot');
+
+    const dir = tmpDir('peix-h-');
+    const id = 'tmodes';
+    const zdot = join(dir, 'zdot');
+
     mkdirSync(zdot);
     // what a fullscreen TUI sends: the alternate screen, mouse tracking in SGR, the cursor hidden, a region, the cursor in it
     const tui = "printf '\\033[?1049h\\033[?1000h\\033[?1006h\\033[?25l\\033[3;20r\\033[5;7Hhello'; exec sleep 30";
+
     writeFileSync(
       join(dir, `${id}.json`),
       JSON.stringify({
@@ -699,62 +874,81 @@ test(
         rows: 24,
       }),
     );
+
     const h = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), dir, id], {
       stdio: 'ignore',
       env: { ...process.env, ZDOTDIR: zdot },
     });
+
     let sock;
+
     try {
       sock = await waitFor(
         () =>
           new Promise(res => {
             const s = connect(join(dir, `${id}.sock`));
+
             s.once('connect', () => res(s));
             s.once('error', () => res(null));
           }),
         { what: "the holder's socket" },
       );
+
       sock.setEncoding('utf8');
-      let buf = '',
-        snap = null;
+
+      let buf = '';
+      let snap = null;
+
       sock.on('data', c => {
         buf += c;
         let i;
+
         while ((i = buf.indexOf('\n')) >= 0) {
           const m = JSON.parse(buf.slice(0, i));
+
           buf = buf.slice(i + 1);
           if (m.t === 'snap') snap = m;
         }
       });
+
       await waitFor(
         async () => {
           snap = null;
-          sock.write(JSON.stringify({ t: 'snap' }) + '\n');
+          sock.write(`${JSON.stringify({ t: 'snap' })}\n`);
           await waitFor(() => snap, { what: 'a snapshot' });
           return snap.d.includes('hello');
         },
         { what: 'a snapshot of the TUI drawn' },
       );
+
       // the page: a fresh xterm written the snapshot, as attachTerm does after reset()
       const page = new Terminal({ cols: 80, rows: 24, scrollback: 5000, allowProposedApi: true });
+
       await new Promise(r => page.write(snap.d, r));
-      const core = page._core,
-        b = page.buffer.active;
+
+      const core = page._core;
+      const b = page.buffer.active;
+
       assert.equal(page.modes.mouseTrackingMode, 'vt200', 'mouse tracking, which the addon did carry');
+
       assert.equal(
         core.coreMouseService.activeEncoding,
         'SGR',
         "and its SGR encoding — not X10's, which the page never sends",
       );
+
       assert.equal(core.coreService.isCursorHidden, true, 'the cursor stays hidden');
       assert.deepEqual([core.buffer.scrollTop, core.buffer.scrollBottom], [2, 19], "the scroll region is the TUI's");
+
       assert.deepEqual(
         [b.type, b.cursorY, b.cursorX],
         ['alternate', 4, 11],
         'and the cursor where the TUI left it, not homed by the region',
       );
+
       let sent = '';
       const d = core.coreService.onData(s => (sent += s));
+
       core.coreMouseService.triggerMouseEvent({
         col: 9,
         row: 4,
@@ -766,6 +960,7 @@ test(
         alt: false,
         shift: false,
       });
+
       d.dispose();
       assert.equal(sent, '\x1b[<64;10;5M', 'a wheel step reaches the TUI as it asked for it');
     } finally {
@@ -784,10 +979,12 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const chat = fx.chats[1];
     const other = spawn('sleep', ['60'], { stdio: 'ignore' }); // stands in for a claude live in iTerm
+
     const procStart = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(other.pid)], {
       encoding: 'utf8',
       env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' },
     }).trim(); // as Claude Code writes it
+
     writeFileSync(
       join(fx.dir, 'sessions', `${other.pid}.json`),
       JSON.stringify({
@@ -802,17 +999,22 @@ test(
         statusUpdatedAt: Date.now(),
       }),
     );
+
     const srv = await startTestServer({
       claudeDir: fx.dir,
       fake: true,
       env: { LANG: 'en_GB.UTF-8', LC_ALL: '', LC_TIME: 'en_GB.UTF-8' },
     }); // where ps writes "Wed 14 Oct" for "Wed Oct 14"
+
     try {
       await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id)?.alive, {
         what: 'the chat live elsewhere',
       });
+
       const take = await srv.post(`api/sessions/${chat.id}/takeover`, { cols: 90, rows: 24 });
+
       assert.ok(take.status < 300, `take over: ${take.status} ${JSON.stringify(take.body)}`);
+
       await waitFor(() => !alive(other.pid) || other.exitCode !== null || other.signalCode, {
         what: 'the other claude ended',
       });
@@ -820,6 +1022,7 @@ test(
       try {
         other.kill();
       } catch {}
+
       await srv.stop();
     }
   },
@@ -830,29 +1033,37 @@ test(
   { timeout: 40_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const chat = fx.chats[1],
-      dir = tmpDir('peix-wrap-'),
-      wrapper = join(dir, 'claude'),
-      fake = fileURLToPath(new URL('../scripts/fakes/fakeclaude.mjs', import.meta.url));
+
+    const chat = fx.chats[1];
+    const dir = tmpDir('peix-wrap-');
+    const wrapper = join(dir, 'claude');
+    const fake = fileURLToPath(new URL('../scripts/fakes/fakeclaude.mjs', import.meta.url));
+
     writeFileSync(wrapper, `#!/bin/sh\n'${fake}' "$@"\nexit $?\n`);
     chmodSync(wrapper, 0o755);
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { CLAUDE_BIN: wrapper } });
     const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 }),
-        tid = r.body.terminal.id;
+      const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
+      const tid = r.body.terminal.id;
+
       const s = await waitFor(
         async () => {
           const c = await on(chat.id);
+
           return c?.alive && c;
         },
         { what: 'the claude below the wrapper up' },
       );
+
       assert.notEqual(s.live.pid, r.body.terminal.pid, "the PTY's process is the wrapper");
       const ws = new WebSocket(srv.ws(`api/terminals/${tid}/ws`));
+
       await new Promise(res => ws.addEventListener('open', res, { once: true }));
       await new Promise(res => setTimeout(res, 1600)); // past a registry poll: tied by then
       ws.send(JSON.stringify({ t: 'in', d: '/clear\r' }));
+
       const moved = await waitFor(
         async () =>
           (await srv.api('api/sessions')).body.sessions.find(
@@ -860,13 +1071,17 @@ test(
           ),
         { what: 'the drawer on the chat its claude moved to' },
       );
+
       assert.equal(moved.live.pid, s.live.pid, 'the same claude');
       const left = await on(chat.id);
+
       assert.equal(left.alive, false);
+
       assert.ok(
         !left.terminal || left.terminal.id !== tid,
         'and the chat it left holds no drawer: its Resume is there',
       );
+
       ws.close();
     } finally {
       await srv.stop();
@@ -880,15 +1095,19 @@ test(
   async () => {
     const { spawn, execFileSync } = await import('node:child_process');
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const chat = fx.chats[1],
-      spareId = '00000000-0000-4000-8000-000000000abc';
+
+    const chat = fx.chats[1];
+    const spareId = '00000000-0000-4000-8000-000000000abc';
+
     const start = pid =>
       execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], {
         encoding: 'utf8',
         env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' },
       }).trim();
-    const worker = spawn('sleep', ['60'], { stdio: 'ignore' }),
-      spare = spawn('sleep', ['60'], { stdio: 'ignore' });
+
+    const worker = spawn('sleep', ['60'], { stdio: 'ignore' });
+    const spare = spawn('sleep', ['60'], { stdio: 'ignore' });
+
     const entry = (p, more) =>
       JSON.stringify({
         pid: p.pid,
@@ -901,28 +1120,35 @@ test(
         statusUpdatedAt: Date.now(),
         ...more,
       });
+
     writeFileSync(
       join(fx.dir, 'sessions', `${worker.pid}.json`),
       entry(worker, { sessionId: chat.id, jobId: 'abcd1234' }),
     );
+
     writeFileSync(
       join(fx.dir, 'sessions', `${spare.pid}.json`),
       entry(spare, { sessionId: spareId, jobId: 'beef0000', spare: true }),
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
     const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
     try {
       await waitFor(async () => (await on(chat.id))?.alive, { what: 'the chat live in the background' });
       assert.equal((await on(spareId)) ?? null, null, "a spare is the daemon's, waiting for a chat");
       const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
+
       assert.equal(r.status, 201, JSON.stringify(r.body));
       assert.match(srv.logText(), /claude attach abcd1234/, 'attached, where a chat live elsewhere is refused');
       const s = await on(chat.id);
+
       assert.deepEqual(
         [s.live.pid, s.live.kind, s.live.jobId, s.rivals],
         [worker.pid, 'bg', 'abcd1234', []],
         'the worker is its claude, and no rival',
       );
+
       assert.equal(s.terminal.exited, null, 'in a drawer');
       await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
       await waitFor(async () => (await on(chat.id)).terminal?.exited != null, { what: 'the drawer closed' });
@@ -931,10 +1157,12 @@ test(
       await waitFor(() => worker.exitCode !== null || worker.signalCode, { what: 'Done stopped it by its job' });
       await waitFor(async () => !(await on(chat.id)).alive, { what: 'the chat with no claude' });
     } finally {
-      for (const p of [worker, spare])
+      for (const p of [worker, spare]) {
         try {
           p.kill();
         } catch {}
+      }
+
       await srv.stop();
     }
   },
@@ -948,12 +1176,15 @@ test(
   { timeout: 40_000 },
   async () => {
     const dir = tmpDir();
+
     mkdirSync(join(dir, 'terms'));
     const mute = createServer(() => {}).listen(join(dir, 'terms', 't1-mute.sock')); // accepts, never says hello
+
     writeFileSync(
       join(dir, 'terms', 't1-mute.json'),
       JSON.stringify({ id: 't1-mute', cwd: '/tmp', bin: '/bin/true', args: [] }),
     );
+
     const log = () => {
       try {
         return readFileSync(join(dir, 'server.log'), 'utf8');
@@ -961,23 +1192,30 @@ test(
         return '';
       }
     };
+
     const up = startTestServer({ dir, keep: true }).then(
       srv => ({ srv }),
       err => ({ err }),
     );
+
     try {
       const port = Number(
         (await waitFor(() => /listening on http:\/\/127\.0\.0\.1:(\d+)/.exec(log()), { what: 'the port taken' }))[1],
       );
+
       const c = connect(port, '127.0.0.1', () => {
         c.write(
           `GET /api/terminals/t1-mute/ws HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n`,
         );
+
         setTimeout(() => c.resetAndDestroy(), 300); // while the boot still waits for the mute holder's hello
       });
+
       c.on('error', () => {});
       const { srv, err } = await up;
+
       assert.equal(err, undefined, `the server came up: ${err?.message.split('\n')[0]}`);
+
       try {
         await sleep(300);
         assert.equal(srv.proc.exitCode, null, 'still running');
@@ -997,21 +1235,28 @@ test(
   { timeout: 30_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const id = '--dangerously-skip-permissions',
-      dir = join(fx.dir, 'projects', slugOf(process.cwd()));
+
+    const id = '--dangerously-skip-permissions';
+    const dir = join(fx.dir, 'projects', slugOf(process.cwd()));
+
     mkdirSync(dir, { recursive: true });
+
     writeFileSync(
       join(dir, `${id}.jsonl`),
-      chatLines({ id, cwd: process.cwd(), prompt: 'hi', reply: 'hello' })
+      `${chatLines({ id, cwd: process.cwd(), prompt: 'hi', reply: 'hello' })
         .map(l => JSON.stringify(l))
-        .join('\n') + '\n',
+        .join('\n')}\n`,
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+
     try {
       await waitFor(async () => (await srv.api('api/sessions')).body.sessions.some(s => s.id === id), {
         what: 'the crafted chat on the board',
       });
+
       const r = await srv.post(`api/sessions/${id}/terminal`, { cols: 90, rows: 24 });
+
       assert.deepEqual([r.status, r.body.error], [400, 'not a chat id']);
       assert.deepEqual(await srv.terminals(), [], 'nothing spawned');
     } finally {

@@ -3,51 +3,66 @@
 // The first ask is a file that is not there, so a shell that still opens them (a check run with --src on the old code)
 // fails on it having asked the system for nothing that would show.
 export const meta = {};
+
 export default async function (ctx) {
   await ctx.board();
   const gone = `file:///private/var/empty/peix-${Date.now()}-nothing`;
   const count = re => (ctx.appLog().match(new RegExp(re.source, 'g')) || []).length;
+
   const heard = async (re, n = 1) => {
     const t = Date.now();
+
     while (count(re) < n && Date.now() - t < 5000) await new Promise(r => setTimeout(r, 100));
     return count(re) >= n;
   };
+
   // the board's own word: a page script posting `external` with a file URL
   await ctx.js(
-    `window.webkit.messageHandlers.hub.postMessage({ type: 'external', url: ${JSON.stringify(gone + '.app')} }); return true`,
+    `window.webkit.messageHandlers.hub.postMessage({ type: 'external', url: ${JSON.stringify(`${gone}.app`)} }); return true`,
   );
+
   ctx.assert.ok(await heard(/open: file: refused/), 'external: a file URL is refused');
   // a scheme of the system's settings, by the board's word, then a link to it clicked on the board (a link to a file
   // WebKit stops itself: a web page may not load one)
   const prefs = 'x-apple.systempreferences:com.apple.peix-nothing';
+
   await ctx.js(
     `window.webkit.messageHandlers.hub.postMessage({ type: 'external', url: ${JSON.stringify(prefs)} }); return true`,
   );
+
   ctx.assert.ok(await heard(/open: x-apple\.systempreferences: refused/), 'a scheme not on the list is refused');
   await ctx.link(prefs);
   ctx.assert.ok(await heard(/open: x-apple\.systempreferences: refused/, 2), 'a link on the board to it is refused');
+
   // the board's own asks are its page's (2026-11-27): an editor at a file, never an extension's handler, no GitHub Desktop
-  for (const url of ['vscode-insiders://peix.nothing/run?x=1', 'x-github-client://openRepo/https://example.com/peix'])
+  for (const url of ['vscode-insiders://peix.nothing/run?x=1', 'x-github-client://openRepo/https://example.com/peix']) {
     await ctx.js(
       `window.webkit.messageHandlers.hub.postMessage({ type: 'external', url: ${JSON.stringify(url)} }); return true`,
     );
+  }
+
   ctx.assert.ok(
     await heard(/open: vscode-insiders: but at a file refused — from the board/),
     "an editor's link not to a file",
   );
+
   ctx.assert.ok(
     await heard(/open: x-github-client: but at a file refused — from the board/),
     'GitHub Desktop, from the board',
   );
+
   // a pane named with a key that is no web page is not loaded
   await ctx.js(
     `window.webkit.messageHandlers.hub.postMessage({ type: 'pane', id: null, keys: ['gh:${gone}'], panes: [{ key: 'gh:${gone}', left: 10, top: 10, width: 100, height: 100 }], focus: null }); return true`,
   );
+
   ctx.assert.ok(await heard(/pane: file: not loaded/), 'a pane key that is a file is not loaded');
+
   ctx.assert.equal(
     Object.keys((await ctx.win()).panes).some(k => k.includes('peix-')),
     false,
     'no view made for it',
   );
+
   return { refused: count(/open: .* refused/) };
 }

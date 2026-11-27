@@ -10,30 +10,40 @@ export const meta = { server: true, newHeadless: true }; // not under chrome-hea
 
 export default async function (ctx) {
   const out = {};
+
   await ctx.waitFor(`window.peix.state().snapshots > 0`, { what: 'the board' });
+
   const press = async (code, key, vk) => {
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key, windowsVirtualKeyCode: vk });
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key, windowsVirtualKeyCode: vk });
   };
+
   const down = (code, key, vk) =>
     ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', code, key, windowsVirtualKeyCode: vk });
+
   const up = (code, key, vk) =>
     ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key, windowsVirtualKeyCode: vk });
+
   const g = body => ctx.evaluate(`(() => { const g = window.peix.ze().g; ${body} })()`);
+
   const push = (it, at = null) =>
     g(
       `g.items.push({ vx: 0, vy: 0, g: 0, rot: 0, spin: 0, pts: 15, say: 'test', ...${JSON.stringify(it)}${at ? `, x: g.x + g.f * ${at[0]}, y: g.y + ${at[1]}` : ''} })`,
     );
+
   const eat = async (it, n = 1) => {
     // onto his head, one by one, each met before the next
     for (let i = 0; i < n; i++) {
       const before = await g(`return g.items.length`);
+
       await g(`g.hurt = 0`);
       await push(it, [0, -150]);
       await ctx.waitFor(`window.peix.ze().g.items.length <= ${before}`, { what: `${it.kind} ${i + 1} met` });
     }
   };
+
   const trophies = () => ctx.evaluate(`Object.keys(window.peix.prefs().zeTrophies?.won || {}).sort()`);
+
   const canvas = () =>
     ctx.evaluate(
       `(r => ({ x: r.x, y: r.y, width: r.width, height: r.height }))(document.querySelector('#zeCanvas').getBoundingClientRect())`,
@@ -49,9 +59,11 @@ export default async function (ctx) {
   ctx.assert.ok(out.demo.items > 0, 'food falls behind the title');
   ctx.assert.equal(await ctx.evaluate(`window.peix.ze().music`), null, 'the demo makes no sound');
   ctx.assert.deepEqual(await trophies(), [], 'nor wins a trophy');
-  const card = await g(`return g.card`),
-    box = await canvas();
-  for (const type of ['mousePressed', 'mouseReleased'])
+
+  const card = await g(`return g.card`);
+  const box = await canvas();
+
+  for (const type of ['mousePressed', 'mouseReleased']) {
     await ctx.send('Input.dispatchMouseEvent', {
       type,
       x: box.x + box.width / 2,
@@ -60,9 +72,12 @@ export default async function (ctx) {
       buttons: type === 'mousePressed' ? 1 : 0,
       clickCount: 1,
     });
+  }
+
   ctx.assert.equal(await g(`return g.card`), card + 1, 'a click on the rules turns them');
   ctx.assert.equal(await g(`return g.phase`), 'title', '…and starts nothing');
   const before = await ctx.evaluate(`({ diff: window.peix.prefs().zeDiff, sound: window.peix.prefs().zeSound })`);
+
   for (const [code, key, vk] of [
     ['KeyM', 'm', 77],
     ['KeyO', 'o', 79],
@@ -70,16 +85,21 @@ export default async function (ctx) {
     ['KeyS', 's', 83],
     ['KeyA', 'a', 65],
     ['KeyD', 'd', 68],
-  ])
+  ]) {
     await press(code, key, vk);
+  }
+
   ctx.assert.equal(await ctx.evaluate(`window.peix.ze().mossad`), true, 'MOSSAD typed');
+
   ctx.assert.deepEqual(
     await ctx.evaluate(`({ diff: window.peix.prefs().zeDiff, sound: window.peix.prefs().zeSound })`),
     before,
     "the title's own keys as they were",
   );
+
   await ctx.sleep(300);
   await ctx.shot('1-title', await canvas());
+
   for (const want of ['coop', 'versus', null]) {
     await press('KeyG', 'g', 71);
     ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().zeTwo`), want, `G: ${want}`);
@@ -87,18 +107,23 @@ export default async function (ctx) {
 
   // ---- a round: his body in pixels, sunglasses on; the walkie-talkie
   await press('Space', ' ', 32);
+
   await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().music?.ac.state === 'running'`, {
     what: 'a round',
   });
+
   await g(`g.spawn = 1e9; g.items.length = 0;`);
   await ctx.sleep(200);
+
   ctx.assert.ok(
     await ctx.evaluate(`[...window.peix.ze().sprites.keys()].some(k => /^6\\|stand\\|.*\\|1$/.test(k))`),
     'him in pixels, at his bulk, his sunglasses on',
   );
+
   await ctx.waitFor(`window.peix.ze().music.hp.frequency.value > 300 && !!window.peix.ze().music.crush.curve`, {
     what: 'the band through a walkie-talkie',
   });
+
   for (const [code, key, vk] of [
     ['KeyM', 'm', 77],
     ['KeyO', 'o', 79],
@@ -106,8 +131,10 @@ export default async function (ctx) {
     ['KeyS', 's', 83],
     ['KeyA', 'a', 65],
     ['KeyD', 'd', 68],
-  ])
+  ]) {
     await press(code, key, vk);
+  }
+
   ctx.assert.equal(await ctx.evaluate(`window.peix.ze().mossad`), true, "MOSSAD is the title's word alone");
   await press('KeyM', 'm', 77); // its M, in a round, was the sound's: back on
   await ctx.waitFor(`window.peix.ze().music?.ac.state === 'running'`, { what: 'the sound on again' });
@@ -135,15 +162,19 @@ export default async function (ctx) {
   ctx.assert.ok(await g(`return g.trail.length > 1`), 'afterimages at speed');
   await up('ArrowRight', 'ArrowRight', 39);
   await g(`g.ride.t = .05`);
+
   await ctx.waitFor(`!window.peix.ze().g.ride && window.peix.ze().music.mode === 'walk'`, {
     what: 'the Focus gone, the band as it was',
   });
+
   await eat({ kind: 'veg', e: '🥬' }, 3);
   await ctx.waitFor(`window.peix.ze().g.ride?.kind === 'aclass'`, { what: 'the A-Class' });
   await ctx.sleep(600);
+
   out.aclass = await ctx.evaluate(
     `({ mode: window.peix.ze().music.mode, lp: Math.round(window.peix.ze().music.lp.frequency.value), smoke: window.peix.ze().g.smoke.length })`,
   );
+
   ctx.assert.equal(out.aclass.mode, 'aclass');
   ctx.assert.ok(out.aclass.lp < 1500, `behind glass: ${out.aclass.lp} Hz`);
   ctx.assert.ok(out.aclass.smoke > 0, 'black smoke');
@@ -159,17 +190,22 @@ export default async function (ctx) {
 
   // ---- fish: five, nothing else; the board's fish, let go
   let s0 = await g(`g.streak = 2; return g.score`);
+
   await eat({ kind: 'fish', e: '🐟', say: 'sardinha', pts: 5 });
+
   ctx.assert.deepEqual(
     await g(`return [g.score, g.mass, g.streak]`),
     [s0 + 5, 6, 2],
     'a fish: five, no bulk, the streak kept',
   );
+
   s0 = await g(`return g.score`);
   await push({ kind: 'peixe', e: '', pts: 100 }, [0, -150]);
+
   await ctx.waitFor(`window.peix.ze().g.items.some(i => i.kind === 'peixe' && i.out)`, {
     what: "the board's fish let go",
   });
+
   ctx.assert.equal(await g(`return g.score`), s0 + 100);
   ctx.assert.ok((await trophies()).includes('peixe'));
 
@@ -187,19 +223,23 @@ export default async function (ctx) {
   // ---- the power-ups
   await g(`g.mass = 4; g.items.length = 0;`);
   await eat({ kind: 'power', p: 'francesinha', e: '', pts: 25 });
+
   ctx.assert.deepEqual(
     await g(`return [g.power?.kind, g.mass, g.gape]`),
     ['francesinha', 12, true],
     'the francesinha: full bulk, a wide mouth',
   );
+
   await g(`g.power = null`);
   await eat({ kind: 'power', p: 'bifana', e: '', pts: 25 });
   await push({ kind: 'meat', e: '🥩', say: 'posta' });
   await g(`Object.assign(g.items.at(-1), { x: g.x + 220, y: g.y - 300, vy: 40, g: 40 })`);
+
   await ctx.waitFor(`window.peix.ze().g.items.at(-1)?.vx < -50`, {
     timeout: 3000,
     what: 'the bifana: meat curving to him',
   }); // by frames, not the clock
+
   await g(`g.power = null; g.items.length = 0;`);
   await eat({ kind: 'power', p: 'vinho', e: '', pts: 25 });
   ctx.assert.equal(await g(`return g.power?.kind`), 'vinho');
@@ -207,48 +247,61 @@ export default async function (ctx) {
 
   // ---- a kick that lands: the trackpad's bump; the nunchaku's sweep
   const m0 = await ctx.evaluate(`window.peix.motion().length`);
+
   await push({ kind: 'veg', e: '🥕', say: 'BLEH!' }, [50, -70]);
   await g(`g.cool = 0`);
   await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.items.every(i => i.out)`, { what: 'the carrot kicked' });
+
   ctx.assert.ok(
     (await ctx.evaluate(`window.peix.motion().slice(${m0}).map(m => m.kind)`)).includes('haptic:alignment'),
     'a bump on the kick',
   );
+
   await g(
     `g.items.length = 0; g.nun = 8; for (const [x, y] of [[120, 300], [520, 420], [620, 200]]) g.items.push({ kind: 'veg', e: '🥦', say: 'BLEH!', x, y, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`,
   );
+
   await g(`g.cool = 0`);
   await down('Space', ' ', 32);
+
   await ctx.waitFor(`(z => z.g.holdAt != null && z.g.t - z.g.holdAt > .32)(window.peix.ze())`, {
     what: "the hold, by the game's clock",
   });
+
   await up('Space', ' ', 32);
+
   ctx.assert.deepEqual(
     await g(`return [g.items.filter(i => i.out).length, g.nun, g.banner?.s]`),
     [3, 0, 'NUNCHAKU!'],
     'every green swept',
   );
+
   await g(`g.items.length = 0`);
 
   // ---- controls that forgive: a jump just before he lands fires as he lands, a jump just off the awning still works, a kick in its cooldown comes when it is over
   await g(
     `g.items.length = 0; g.spawn = 1e9; g.x = 300; g.vx = 0; g.y = 842 - 40; g.vy = 500; g.gy = 842; g.coyote = 0; g.jumps = 1;`,
   );
+
   await press('ArrowUp', 'ArrowUp', 38);
+
   await ctx.waitFor(`window.peix.ze().g.vy < -300`, {
     timeout: 3000,
     what: 'the jump pressed in the air, fired on landing',
   });
+
   await ctx.waitFor(`window.peix.ze().g.y === 842`, { what: 'down again' });
   await g(`g.kick = 0; g.cool = .05;`);
   await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.kick > 0`, { timeout: 3000, what: 'the kick pressed in its cooldown' });
   await ctx.waitFor(`window.peix.ze().g.cool === 0`, { what: 'the kick over' });
+
   ctx.assert.equal(
     await g(`g.y = 700; g.vy = 40; g.gy = 842; g.coyote = .1; g.jumps = 0; window.__j = 0; return g.coyote > 0`),
     true,
   );
+
   await press('ArrowUp', 'ArrowUp', 38);
   await ctx.waitFor(`window.peix.ze().g.vy < -300`, { timeout: 3000, what: 'the jump just off an edge' });
   await ctx.waitFor(`window.peix.ze().g.y === 842`, { what: 'down again' });
@@ -258,16 +311,20 @@ export default async function (ctx) {
     await g(
       `g.items.length = 0; g.spawn = 1e9; g.hurt = 0; g.nun = 0; g.x = 300; g.vx = 0; const w = (9 + g.mass * 1.6 + 6) * (.84 + g.mass * .03); g.items.push({ kind: 'veg', e: '🥕', say: 'x', x: g.x + w + ${dx}, y: g.y - 120, vx: 0, vy: 260, g: 0, rot: 0, spin: 0 }); window.__s = g.score;`,
     );
+
     await ctx.waitFor(`window.peix.ze().g.items.length === 0`, { what: 'the green landed' });
     return g(`return { d: g.score - window.__s, nun: g.nun, mass: g.mass }`);
   };
+
   {
     const m0 = await g(`return g.mass`);
+
     out.shave = await shave(24);
     ctx.assert.equal(out.shave.d, 5, 'RASPÃO pays');
     ctx.assert.ok(out.shave.nun > 0 && out.shave.nun < 1, 'a little nunchaku');
     ctx.assert.equal(out.shave.mass, m0, 'and he is untouched');
     const far = await shave(90);
+
     ctx.assert.equal(far.d, 0, 'too far to count');
   }
 
@@ -288,9 +345,11 @@ export default async function (ctx) {
   await press('ArrowUp', 'ArrowUp', 38);
   ctx.assert.equal(await g(`return g.jumps`), 2, 'full bulk: a second jump in the air');
   await ctx.waitFor(`window.peix.ze().g.y === 842`, { what: 'landed' });
+
   await g(
     `g.mass = 6; g.x = 150; g.items.length = 0; g.items.push({ kind: 'veg', e: '🥦', say: 'BLEH!', x: 330, y: 760, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`,
   );
+
   await press('ArrowRight', 'ArrowRight', 39);
   await down('ArrowRight', 'ArrowRight', 39);
   await ctx.sleep(400);
@@ -304,15 +363,19 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.ze().g.avo?.rise === 1`, { what: 'the avó at her window' });
   await ctx.shot('3-avo', await canvas());
   s0 = await g(`return g.score`);
+
   for (let i = 0; i < 3; i++) {
     await g(
       `g.items = g.items.filter(it => it.out); g.avo.next = 99; g.hurt = 0; g.cool = 0; g.items.push({ kind: 'veg', e: '🥬', say: 'COME A SOPA!', from: 'avo', x: g.x + g.f * 50, y: g.y - 70, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`,
     );
+
     await press('Space', ' ', 32);
+
     await ctx.waitFor(`window.peix.ze().g.avo?.hp === ${2 - i} || ${i === 2} && window.peix.ze().g.avo?.won`, {
       what: `her couve ${i + 1} back at her`,
     });
   }
+
   ctx.assert.equal(await g(`return g.banner?.s`), 'A AVÓ DESISTE!');
   ctx.assert.ok(await g(`return g.score - ${s0} >= 300`), 'three hundred for it');
   ctx.assert.equal(await g(`return g.ride`), null, 'no car came while she was out');
@@ -343,6 +406,7 @@ export default async function (ctx) {
   await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.score === 0`, { what: 'another round' });
   const a = await g(`return [g.rnd(), g.rnd()]`);
+
   await g(`g.mass = 1; g.items.length = 0; g.spawn = 1e9;`);
   await push({ kind: 'veg', e: '🍆', say: 'BLEH!' }, [0, -100]);
   await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O. again' });
@@ -362,20 +426,26 @@ export default async function (ctx) {
   await press('KeyG', 'g', 71);
   await press('KeyG', 'g', 71);
   await press('Space', ' ', 32);
+
   await ctx.waitFor(`window.peix.ze().g.phase === 'play' && window.peix.ze().g.galo?.mode === 'versus'`, {
     what: 'a round with the galo',
   });
+
   await g(`g.spawn = 1e9; g.items.length = 0;`);
   const x0 = await g(`return [g.x, g.galo.x]`);
+
   await down('KeyD', 'd', 68);
   await ctx.sleep(300);
   await up('KeyD', 'd', 68);
   const x1 = await g(`return [g.x, g.galo.x]`);
+
   ctx.assert.equal(x1[0], x0[0], "D is the galo's, not his");
   ctx.assert.ok(x1[1] > x0[1] + 40, 'the galo ran right');
+
   await g(
     `g.items.push({ kind: 'meat', e: '🥩', pts: 15, say: 'posta', x: g.galo.x + 20, y: 812, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`,
   );
+
   await ctx.waitFor(`window.peix.ze().g.galo.score === 15`, { what: 'his meat stolen' });
   ctx.assert.ok(await g(`return g.words.some(w => w.s === 'ROUBADO!')`));
   await ctx.shot('6-galo', await canvas());
@@ -383,8 +453,10 @@ export default async function (ctx) {
 
   out.trophies = await trophies();
   await press('Escape', 'Escape', 27);
+
   await ctx.waitFor(`!document.querySelector('#zeGame').open && !window.peix.ze().music`, {
     what: 'closed, its sound with it',
   });
+
   return out;
 }

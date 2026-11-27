@@ -16,15 +16,15 @@ import { tmpDir } from '../../lib/testserver.mjs';
 // acme/repo-a#12 by ana: I asked for changes an hour ago, she commented since — my move. #13 nobody here touched.
 const gh = join(tmpDir('peix-gh-'), 'prs.json');
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+
 const user = login => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>',
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>',
+  )}`,
 });
+
 writeFileSync(
   gh,
   JSON.stringify({
@@ -44,12 +44,14 @@ writeFileSync(
     'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', author: user('ana') },
   }),
 );
+
 export const meta = {
   server: true,
   fixture: 'auto',
   env: { ORG_DIR: '', ORG: '', FAKEGH_PRS: gh, FAKEGH_VIEWER: 'me' },
   prefs: { toured: false },
 };
+
 const STEPS = [
   'hello',
   'list',
@@ -70,6 +72,7 @@ const STEPS = [
 export default async function (ctx) {
   const out = {};
   const tour = () => ctx.evaluate('window.peix.tour()');
+
   // the card, the hole and the part as drawn, once the glide has landed
   const geom = () =>
     ctx
@@ -85,81 +88,104 @@ export default async function (ctx) {
   })())`,
       )
       .then(JSON.parse);
+
   const arrow = async key => {
     const k = { ArrowRight: 39, ArrowLeft: 37, Escape: 27 }[key];
+
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: k });
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: k });
   };
+
   const overlap = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+
   /** Every step from here to the last: on screen, beside its part (or inside it, at its foot, with no room round it). */
   async function walk(label) {
     const seen = [];
+
     for (;;) {
       await ctx.settle();
       const g = await geom();
+
       seen.push(g);
       await ctx.shot(`${label}-${g.step}`);
+
       ctx.assert.ok(
         g.card.l >= 0 && g.card.t >= 0 && g.card.r <= g.W && g.card.b <= g.H,
         `${label} ${g.step}: the card on screen ${JSON.stringify(g.card)}`,
       );
+
       ctx.assert.equal(g.focus, 'tourNext', `${label} ${g.step}: the keys on Next`);
+
       if (g.part) {
         ctx.assert.ok(!g.shut, `${label} ${g.step}: the hole open round its part`);
-        const P = 6,
-          inV = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+        const P = 6;
+        const inV = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
         for (const [k, want] of [
           ['l', inV(g.part.l - P, 2, g.W)],
           ['t', inV(g.part.t - P, 2, g.H)],
           ['r', inV(g.part.r + P, 0, g.W - 2)],
           ['b', inV(g.part.b + P, 0, g.H - 2)],
-        ])
+        ]) {
           ctx.assert.ok(
             Math.abs(g.hole[k] - want) <= 1,
             `${label} ${g.step}: the hole's ${k} ${g.hole[k]} round the part (${want})`,
           );
+        }
+
         const inside = g.card.l >= g.hole.l && g.card.r <= g.hole.r && g.card.t >= g.hole.t && g.card.b <= g.hole.b;
+
         ctx.assert.ok(
           !overlap(g.card, g.hole) || inside,
           `${label} ${g.step}: the card clear of its part, or inside it — card ${JSON.stringify(g.card)} hole ${JSON.stringify(g.hole)}`,
         );
       } else {
         ctx.assert.ok(g.shut, `${label} ${g.step}: no part, the hole shut`);
+
         ctx.assert.ok(
           Math.abs((g.card.l + g.card.r) / 2 - g.W / 2) <= 1 && Math.abs((g.card.t + g.card.b) / 2 - g.H / 2) <= 1,
           `${label} ${g.step}: no part, the card centred ${JSON.stringify(g.card)}`,
         );
       }
+
       if (g.next === 'Done') break;
       await arrow('ArrowRight');
+
       await ctx.waitFor(`window.peix.tour().step !== ${JSON.stringify(g.step)}`, {
         what: `${label}: the step after ${g.step}`,
       });
     }
+
     return seen;
   }
 
   // ---- once, on its own, when the first run's question is answered ----
   await ctx.waitFor(`document.querySelector('#welcome').open`, { what: 'the first run’s question' });
+
   await ctx.waitFor(`!!document.querySelector('#slist > .card .prmove')`, {
     what: 'the PR at my move, on its card',
     timeout: 20_000,
   });
+
   ctx.assert.equal((await tour()).open, false, 'not over the question');
   await ctx.evaluate(`document.querySelector('#wskip').click()`);
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour, once the question was answered' });
   await ctx.settle();
   out.hello = await geom();
   await ctx.shot('hello');
+
   ctx.assert.ok(
     await ctx.evaluate(`document.querySelector('#tour').matches(':modal') && !document.querySelector('#welcome').open`),
     'modal, and the question gone',
   );
+
   ctx.assert.deepEqual(
     [out.hello.step, out.hello.next, out.hello.back, out.hello.skip, out.hello.num],
     ['hello', 'Show me round', false, true, `1 of ${STEPS.length}`],
     'the hello: Show me round or Skip, nothing before it',
   );
+
   ctx.assert.deepEqual((await tour()).steps, STEPS, 'its steps with no chat open');
   await ctx.key('KeyN');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), false, '⌥⌘N swallowed under it');
@@ -167,43 +193,54 @@ export default async function (ctx) {
   // ---- → to the end, ← back ----
   out.first = await walk('first');
   const by = id => out.first.find(g => g.step === id);
+
   ctx.assert.ok(
     by('list').part && by('list').part.l <= 20 && by('list').card.l >= by('list').hole.r,
     'the list, at the window’s left, the card to its right',
   );
+
   ctx.assert.ok(by('card').part && by('card').card.l >= by('card').hole.r, 'a card, the card to its right');
+
   ctx.assert.ok(
     by('find').part && by('find').card.b <= by('find').hole.t,
     'the search in the status bar, the card above it',
   );
+
   ctx.assert.ok(
     by('chat').part && by('chat').card.r <= by('chat').hole.l,
     'the home column, the card over the list beside it',
   );
+
   ctx.assert.ok(
     by('bar').part && by('bar').part.w >= by('bar').W - 40 && by('bar').card.b <= by('bar').hole.t,
     'the status bar, the card above it',
   );
+
   ctx.assert.ok(
     by('new').shut && by('new').pic.includes('＋ new chat on a new branch'),
     'a new chat: no part, a picker drawn small',
   );
+
   ctx.assert.ok(
     by('open').shut && (by('open').pic.match(/<kbd>⌥⌘[CTGED]<\/kbd>/g) || []).length === 5,
     'no chat open: the keys to its terminal, GitHub, editor and diff, as rows',
   );
+
   ctx.assert.ok(
     by('split').shut && (by('split').pic.match(/<figure>/g) || []).length === 2,
     'no chat open: the two splits drawn',
   );
+
   ctx.assert.ok(
     by('prs').parts[0]?.endsWith(' .tmx') && by('prs').card.l >= by('prs').hole.r && by('prs').pic.includes('tchip'),
     `a card's PR matrix, the card to its right ${JSON.stringify(by('prs').parts)}`,
   );
+
   ctx.assert.ok(
     by('move').parts[0]?.endsWith(' .state.prmove') && by('move').pic.includes('ymove'),
     `the your-move line on its card ${JSON.stringify(by('move').parts)}`,
   );
+
   ctx.assert.deepEqual([out.first.at(-1).step, out.first.at(-1).skip], ['bye', false], 'the last: Done, no Skip');
   await arrow('ArrowRight');
   await ctx.sleep(200);
@@ -224,37 +261,47 @@ export default async function (ctx) {
   // ---- again whenever asked: the launcher, the settings, home, the ? sheet, About ----
   const again = async (label, how) => {
     await how();
+
     await ctx.waitFor(`window.peix.tour().open && window.peix.tour().step === 'hello'`, {
       what: `the tour from ${label}`,
     });
+
     ctx.assert.equal(
       await ctx.evaluate(`[...document.querySelectorAll('dialog[open]')].map(d => d.id).join()`),
       'tour',
       `${label}: the tour alone up`,
     );
+
     await ctx.evaluate(`document.querySelector('#tourSkip').click()`);
     await ctx.waitFor(`!window.peix.tour().open`, { what: `${label}: Skip` });
   };
+
   await again('the launcher', async () => {
     await ctx.key('KeyL');
     await ctx.waitFor(`document.querySelector('#pick').open`, { what: '⌥⌘L' });
+
     await ctx.evaluate(
       `[...document.querySelectorAll('#picklist .pkrow.menu')].find(r => r.querySelector('.n').textContent === 'Tour').click()`,
     );
   });
+
   await again('the settings', async () => {
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: '⌘,' });
     await ctx.evaluate(`document.querySelector('#tourBtn').click()`);
   });
+
   await again('home', () => ctx.evaluate(`document.querySelector('#home .hgo[data-go="tour"]').click()`));
+
   await again('the ? sheet', async () => {
     await ctx.evaluate(
       `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`,
     );
+
     await ctx.waitFor(`document.querySelector('#keysheet').open`, { what: '?' });
     await ctx.evaluate(`document.querySelector('#ksTour').click()`);
   });
+
   await again('About', async () => {
     await ctx.evaluate(`document.querySelector('#sbar .conn').click()`);
     await ctx.waitFor(`document.querySelector('#about').open`, { what: 'About' });
@@ -270,34 +317,44 @@ export default async function (ctx) {
   ctx.assert.deepEqual((await tour()).steps, STEPS, 'its steps with a chat open');
   out.chat = await walk('chat');
   const on = id => out.chat.find(g => g.step === id);
+
   ctx.assert.equal(on('chat').title, 'The chat, live');
   ctx.assert.deepEqual(on('chat').parts, ['#groups', '#resume'], 'its body and its resume bar, drawn round as one');
+
   ctx.assert.ok(
     on('open').parts[0] === '#moreBtn' && on('open').card.t >= on('open').hole.b,
     'its keys: ···, the card under it',
   );
+
   ctx.assert.ok(on('split').parts[0] === '#groups', 'the split: the column');
+
   ctx.assert.ok(
     on('prs').parts[0] === '#prToggle' && on('prs').card.t >= on('prs').hole.b,
     'its PRs: the header’s git mark, the card under it',
   );
+
   ctx.assert.ok(
     on('move').parts[0]?.includes('hmove') && on('move').card.t >= on('move').hole.b,
     `its move: the header’s tag, the card under it ${JSON.stringify(on('move').parts)}`,
   );
+
   ctx.assert.ok(
     on('timeline').parts[0] === '#moreBtn' && on('timeline').pic.includes('⌥⌘J'),
     `its timeline, closed: ···, with a picture ${JSON.stringify(on('timeline').parts)}`,
   );
+
   for (let i = 0; i < 4; i++) {
     await arrow('ArrowLeft');
     await ctx.sleep(50);
   }
+
   await ctx.waitFor(`window.peix.tour().step === 'move'`, { what: 'back to the move' });
+
   for (let i = 0; i < 4; i++) {
     await arrow('ArrowRight');
     await ctx.sleep(50);
   }
+
   await ctx.waitFor(`window.peix.tour().step === 'bye'`, { what: 'on to the end' });
   await ctx.evaluate(`document.querySelector('#tourNext').click()`);
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'Done' });
@@ -315,15 +372,18 @@ export default async function (ctx) {
   await ctx.settle();
   out.split = await geom();
   await ctx.shot('split-split');
+
   const halves = await ctx
     .evaluate(
       `JSON.stringify(['#grp', '#grpB'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; }))`,
     )
     .then(JSON.parse);
+
   ctx.assert.ok(
     out.split.part && out.split.part.l <= halves[0][0] && out.split.part.r >= halves[1][1],
     `split: both halves in the hole ${JSON.stringify({ part: out.split.part, halves })}`,
   );
+
   await ctx.evaluate(`document.querySelector('#tourNext').click()`);
   await arrow('Escape');
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'esc' });
@@ -337,20 +397,24 @@ export default async function (ctx) {
       { name: 'prefers-reduced-motion', value: 'reduce' },
     ],
   });
+
   await ctx.sleep(300);
   await ctx.evaluate(`document.querySelector('#tourBtn').click()`);
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour, dark' });
   await arrow('ArrowRight');
   await arrow('ArrowRight');
   await ctx.waitFor(`window.peix.tour().step === 'card'`, { what: 'the card step, dark' });
+
   out.reduced = await ctx.evaluate(
     `getComputedStyle(document.querySelector('#tour .thole')).transitionProperty + ' | ' + getComputedStyle(document.querySelector('#tour .tcard')).transitionProperty + ' | ' + getComputedStyle(document.querySelector('#tour .tin')).animationName`,
   );
+
   ctx.assert.equal(
     out.reduced,
     'outline-color | outline-color | none',
     'reduced motion: the ring fades, nothing glides',
   );
+
   await ctx.settle();
   await ctx.shot('card-dark');
   await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });

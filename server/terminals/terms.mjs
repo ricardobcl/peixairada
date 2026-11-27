@@ -34,38 +34,50 @@ export const termsAvailable = () => !!nodePty && existsSync(HOLDER);
  *  same rule as termIndex, for one chat. An editor's tab (`editor`, 2026-10-21) is a shell's kind, and never its zsh. */
 function drawerOf(s, shell) {
   let hit = null;
-  for (const t of terms.values())
+
+  for (const t of terms.values()) {
     if (
       t.sessionId === s.id &&
       !!t.shell === shell &&
       !t.editor &&
       (!hit || (hit.exited !== null && t.exited === null))
-    )
+    ) {
       hit = t;
+    }
+  }
+
   return hit;
 }
-export const termOf = s => drawerOf(s, false),
-  shellOf = s => drawerOf(s, true);
+
+export const termOf = s => drawerOf(s, false);
+export const shellOf = s => drawerOf(s, true);
 /** Every zsh of the chat (2026-10-13: ⌘T opens another) and its editors' (vim), the exited ones still lingering too,
  *  oldest first — each its tab. */
 const byStart = (a, b) => String(a.startedAt).localeCompare(String(b.startedAt));
+
 export const shellsOf = s => [...terms.values()].filter(t => t.sessionId === s.id && t.shell).sort(byStart);
 export const NO_TERMS = Object.freeze({ term: null, shell: null, shells: [] });
+
 /** Every chat's drawer and zsh in one pass, by the same rule — for the summaries of the whole board, which asked
  *  termOf and shellOf per chat, each a walk over every terminal (322 chats × 75 terminals × 2 per snapshot, 2026-09-27). */
 export function termIndex() {
   const m = new Map();
+
   for (const t of terms.values()) {
     if (!t.sessionId) continue;
     let e = m.get(t.sessionId);
+
     if (!e) m.set(t.sessionId, (e = { term: null, shell: null, shells: [] }));
     const k = t.shell ? 'shell' : 'term';
+
     if (!t.editor && (!e[k] || (e[k].exited !== null && t.exited === null))) e[k] = t;
     if (t.shell) e.shells.push(t);
   }
+
   for (const e of m.values()) e.shells.sort(byStart);
   return m;
 }
+
 export function termSummary(t) {
   return t
     ? {
@@ -95,8 +107,10 @@ export function termSummary(t) {
 // and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI.
 export const cleanEnv = () =>
   Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)));
+
 export function termEnv() {
   const env = cleanEnv();
+
   // PEIXAIRADA_DRAWER tells a script that its shell is a drawer (launchd.sh and build.sh check it).
   return {
     ...env,
@@ -106,6 +120,7 @@ export function termEnv() {
     PEIXAIRADA_DRAWER: '1',
   };
 }
+
 // …and minus the board's own configuration, for what you work in — a drawer, a zsh tab, VS Code Web's terminals (2026-10-14):
 // PORT is the agent's 7331 or the app's, and a `rails s`, `next dev` or `process.env.PORT || 3000` run there took the
 // board's port; HOST, NOTIFY, STATE_FILE, the clocks and the <NAME>_BIN overrides are this server's alone. Every name it
@@ -186,6 +201,7 @@ const BOARD_ENV = new Set([
     'cc',
   ].map(n => `${n.toUpperCase()}_BIN`),
 ]); // findBin's
+
 export const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
@@ -195,6 +211,7 @@ export const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filt
 // 5 s. Whatever Claude was mid-way through is lost, and the page says so before the click. The caller
 // re-reads the registry afterwards; this only ends the process.
 const TAKEOVER_WAIT_MS = 10_000;
+
 /** Whether `pid` is still the process the registry entry was written by: the entry's procStart is the process's start
  *  as `ps` gives it in UTC and the C locale (procStarts). A dead claude's file lingers until claude's housekeeping, and
  *  its pid can be handed to any other process of yours meanwhile — Done and Take over signalled it, an editor say
@@ -204,27 +221,35 @@ function sameProcess({ pid, procStart }) {
   if (!procStart) return true;
   return procStarts([pid]).get(Number(pid)) === squash(procStart);
 }
+
 /** A background session's job (2026-11-04): what `claude attach` and `claude stop` take, as the registry names it. */
 export const jobOf = l => (l?.kind === 'bg' && /^[0-9a-f]{8}$/.test(l.jobId || '') ? l.jobId : null);
+
 export function endClaude(entry) {
   const { pid } = entry;
+
   return new Promise(resolve => {
     // a pid as a registry file could hold it (2026-11-27, an outside audit's note): -1 signals every process of yours, 0
     // this server's group — never one that is not a process's own
     if (!Number.isInteger(pid) || pid <= 1) return resolve({ code: 400, error: `${pid} is no process's id` });
-    if (!sameProcess(entry))
+
+    if (!sameProcess(entry)) {
       return resolve({ code: 409, error: `pid ${pid} is no longer that claude — its registry file outlived it` });
+    }
+
     // A background session is the daemon's (2026-11-04): one SIGTERMed reads *crashed*, and the daemon may start it again
     // (measured: 11 s later, one run in two). Its own stop keeps the conversation, and the wait below still holds.
-    const job = jobOf(entry),
-      bin = job && claudeBin();
-    if (bin)
+    const job = jobOf(entry);
+    const bin = job && claudeBin();
+
+    if (bin) {
       execFile(bin, ['stop', job], { env: drawerEnv(), timeout: 15_000 }, err => {
         if (err) console.error(`[peixairada] claude stop ${job}: ${err.message}`);
       });
+    }
     // gone between the look and the signal (2026-11-06) — a drawer's claude ends with its holder, which the delete ends
     // first — is ended: what was asked
-    else
+    else {
       try {
         process.kill(pid, 'SIGTERM');
       } catch (e) {
@@ -232,20 +257,27 @@ export function endClaude(entry) {
           e.code === 'ESRCH' ? { ok: true } : { code: 500, error: `could not signal pid ${pid}: ${e.message}` },
         );
       }
+    }
+
     const t0 = Date.now();
     let hard = false;
+
     const tick = () => {
       if (!pidAlive(pid)) return resolve({ ok: true });
       if (Date.now() - t0 > TAKEOVER_WAIT_MS) return resolve({ code: 504, error: `pid ${pid} is still running` });
+
       if (!hard && Date.now() - t0 > 5000) {
         hard = true;
         if (!sameProcess(entry)) return resolve({ ok: true }); // it ended, and the pid is another's now: not that one
+
         try {
           process.kill(pid, 'SIGKILL');
         } catch {}
       }
+
       setTimeout(tick, 200);
     };
+
     setTimeout(tick, 200);
   });
 }

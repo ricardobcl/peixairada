@@ -776,6 +776,7 @@ const SKINS = {
     ],
   },
 };
+
 // the board's own, as a tile in the picker draws them (the tokens themselves are :root's; the crust its frame)
 const OWN_SKINS = {
   dark: {
@@ -811,6 +812,7 @@ const OWN_SKINS = {
     proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'],
   },
 };
+
 // A theme is a family of two halves (2026-11-01, round XVII's A1; two slots, a dark theme and a light one picked apart,
 // before — Auto paired strangers): the appearance (Auto · Dark · Light) picks the half, the family the same day and
 // night (prefs.theme). The halves a palette lacked are its own published variant (Tokyo Night Day, Gruvbox Light, Rosé
@@ -831,10 +833,13 @@ const FAMILIES = {
   softened: { name: 'Softened', dark: 'own-dark', light: 'softened' },
   flashbang: { name: 'Flashbang', dark: 'own-dark', light: 'flashbang' },
 };
+
 /** A half's family — the first that has it, so the board's own is the board's own family's. */
 const famOf = k =>
   k ? Object.keys(FAMILIES).find(f => FAMILIES[f].dark === k || FAMILIES[f].light === k) || null : null;
+
 const halfOf = (f, dark) => (FAMILIES[f] || FAMILIES.own)[dark ? 'dark' : 'light'];
+
 const ANSI = [
   'black',
   'red',
@@ -853,6 +858,7 @@ const ANSI = [
   'brightCyan',
   'brightWhite',
 ];
+
 // Inks fitted (2026-11-01, round XV): a theme's small-text colours hold 4.5:1 on the grounds they are set on — each
 // moved in OKLCH lightness, its hue and chroma kept (chroma cut only where sRGB ends), away from its grounds until it
 // holds INK_MIN, a margin for grounds composited. The board's own are fitted in the CSS (the same rule, run once); a
@@ -860,6 +866,7 @@ const ANSI = [
 // Code's blue — the board's of its appearance, before their fit. A ground is a colour, or the ink itself at a tint
 // over one (a chip's wash, the asking red's). → test/inks.test.mjs
 const INK_MIN = 4.6;
+
 const INK_BASE = {
   light: {
     'pr-open': '#1a6c3b',
@@ -882,80 +889,103 @@ const INK_BASE = {
     vscode: '#4aa5f0',
   },
 };
+
 const rgbOf = h => {
   const n = parseInt(h.slice(1), 16);
+
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
+
 const hexOf = c =>
-  '#' +
-  c
+  `#${c
     .map(v =>
       Math.round(Math.min(255, Math.max(0, v)))
         .toString(16)
         .padStart(2, '0'),
     )
-    .join('');
+    .join('')}`;
+
 const linOf = v => ((v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
 const gamOf = v => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055);
 const lumOf = c => 0.2126 * linOf(c[0]) + 0.7152 * linOf(c[1]) + 0.0722 * linOf(c[2]);
+
 const contrastOf = (a, b) => {
-  const x = lumOf(a),
-    y = lumOf(b);
+  const x = lumOf(a);
+  const y = lumOf(b);
+
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
+
 const mixOf = (a, b, t) => a.map((v, i) => v * t + b[i] * (1 - t));
+
 const oklchOf = c => {
-  const [r, g, b] = c.map(linOf),
-    l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
-    m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b),
-    s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
-    B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  const [r, g, b] = c.map(linOf);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+
   return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, Math.hypot(A, B), Math.atan2(B, A)];
 };
+
 const fromOklch = (L, C, h) => {
   for (let c = C; ; c -= 0.002) {
-    const a = Math.max(0, c) * Math.cos(h),
-      b = Math.max(0, c) * Math.sin(h);
-    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3,
-      m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3,
-      s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+    const a = Math.max(0, c) * Math.cos(h);
+    const b = Math.max(0, c) * Math.sin(h);
+
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+
     const v = [
       4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
       -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
       -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
     ];
+
     if (c <= 0 || v.every(x => x >= -1e-4 && x <= 1.0001)) return v.map(x => gamOf(Math.min(1, Math.max(0, x))));
   }
 };
+
 const worstOn = (c, grounds) =>
   Math.min(...grounds.map(g => contrastOf(c, Array.isArray(g) ? g : mixOf(c, g.over, g.tint))));
+
 function fitInk(h, grounds, dark) {
   let c = rgbOf(h);
+
   if (worstOn(c, grounds) >= INK_MIN) return h;
   const [L0, C, hue] = oklchOf(c);
+
   for (let L = L0, i = 0; i < 160 && worstOn(c, grounds) < INK_MIN; i++) {
     L = Math.min(1, Math.max(0, L + (dark ? 0.004 : -0.004)));
     c = rgbOf(hexOf(fromOklch(L, C, hue)));
   }
+
   return hexOf(c);
 }
+
 /** A theme's inks, each fitted to where it is set as small text: the chat, the header, the sidebar's grey and the status
  *  bar (flat); muted on a bubble and a tool row too; the accent on the chat and the header; inline code on its tint;
  *  a PR's or a ticket's state on its chip's wash, the asking red on its own; syntax on the code block. */
 function themeInks(t) {
-  const g = h => rgbOf(h),
-    m = (a, b, p) => mixOf(g(a), g(b), p),
-    ink = g(t.ink);
-  const bg = g(t.bg),
-    panel = g(t.panel),
-    raise = g(t.raise),
-    side = g(t.crust),
-    bar = g(t.crust);
-  const tool = t.tok?.['--tool-bg'] ? g(t.tok['--tool-bg']) : m(t.raise, t.panel, 0.6),
-    flat = [bg, panel, side, bar],
-    chips = [bg, panel, side];
+  const g = h => rgbOf(h);
+  const m = (a, b, p) => mixOf(g(a), g(b), p);
+  const ink = g(t.ink);
+
+  const bg = g(t.bg);
+  const panel = g(t.panel);
+  const raise = g(t.raise);
+  const side = g(t.crust);
+  const bar = g(t.crust);
+
+  const tool = t.tok?.['--tool-bg'] ? g(t.tok['--tool-bg']) : m(t.raise, t.panel, 0.6);
+  const flat = [bg, panel, side, bar];
+  const chips = [bg, panel, side];
+
   const [com, key, str, num, fn, cls, vr, meta] = t.hl;
+
   const base = {
     muted: t.muted,
     accent: t.accent,
@@ -975,6 +1005,7 @@ function themeInks(t) {
     'hl-var': vr,
     'hl-meta': meta,
   };
+
   const on = k =>
     k === 'muted'
       ? [...flat, raise, tool]
@@ -989,12 +1020,15 @@ function themeInks(t) {
               : k === 'needs'
                 ? [...flat, ...chips.map(over => ({ tint: 0.09, over }))]
                 : flat;
+
   return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, fitInk(v, on(k), t.dark)]));
 }
+
 // Each theme a block of tokens under its own data-skin, set only beside its own appearance's data-theme (applySkin).
 // Three classes deep, so it wins over :root and the dark block's two.
 const skinTokens = t => {
   const f = themeInks(t);
+
   return `--bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${f.muted}; --line: ${t.line}; --accent: ${f.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
     --user-bg: ${t.raise}; --tool-bg: color-mix(in srgb, ${t.raise} 60%, ${t.panel}); --code-bg: ${t.code}; --code-line: ${t.line}; --inline-bg: color-mix(in srgb, ${t.ink} 8%, transparent);
     --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: rgba(${rgbOf(t.accent).join(', ')}, .3);   /* as xterm reads a colour: it parses no color-mix(), and drew no selection (2026-11-24) */
@@ -1007,15 +1041,17 @@ const skinTokens = t => {
       .map(([n, v]) => `${n}: ${v};`)
       .join(' ')}`; // a theme's own where the rule above would guess (Softened's)
 };
+
 // A light half under Settings › Appearance › Dark frame (2026-11-01, round XVII's D1): the frame its family's dark half
 // — the window's ground that half's own, and what sits on it, the list and the status bar, in its tokens (the CSS's
 // Ink block sets the grounds that read them). A family whose dark half is the board's own (Softened) has the CSS's.
 // A card on a dark frame (2026-11-03, round XXII): their ground is the frame's a step towards the ink, the CSS's --step, so what
 // is fitted to the frame alone is fitted again there. A light frame's step lies between two grounds already held.
 const raisedInks = (t, side) => {
-  const f = themeInks(t),
-    step = mixOf(rgbOf(t.ink), side, 0.06),
-    wash = (k, p) => [step, { tint: p, over: step }];
+  const f = themeInks(t);
+  const step = mixOf(rgbOf(t.ink), side, 0.06);
+  const wash = (k, p) => [step, { tint: p, over: step }];
+
   return Object.entries(f)
     .filter(([k]) => ['muted', 'needs', 'watch', 'idle', 'you', 'working-ink'].includes(k) || /^(pr|tk)-/.test(k))
     .map(([k, v]) => [
@@ -1027,20 +1063,22 @@ const raisedInks = (t, side) => {
     .map(([k, v]) => `--${k}: ${v};`)
     .join(' ');
 };
+
 const skinCss = (k, t) => {
-  const at = `:root:root[data-skin="${k}"]`,
-    d = !t.dark && SKINS[halfOf(famOf(k), true)];
-  return (
-    `${at} { ${skinTokens(t)} }` +
-    (t.dark
+  const at = `:root:root[data-skin="${k}"]`;
+  const d = !t.dark && SKINS[halfOf(famOf(k), true)];
+
+  return `${at} { ${skinTokens(t)} }${
+    t.dark
       ? `\n${at} #sessions { ${raisedInks(t, rgbOf(t.crust))} }`
       : d
         ? `\n${at}[data-frame="dark"] { --frame: ${d.bg}; }
   ${at}[data-frame="dark"] :is(#sessions, #sbar) { color-scheme: dark; ${skinTokens(d)} --side: var(--bg); --bar: var(--bg); }
   ${at}[data-frame="dark"] #sessions { ${raisedInks(d, rgbOf(d.bg))} }`
-        : `\n${at}[data-frame="dark"] { --frame: #1e1e1c; }`)
-  );
+        : `\n${at}[data-frame="dark"] { --frame: #1e1e1c; }`
+  }`;
 };
+
 document.head.append(
   Object.assign(document.createElement('style'), {
     id: 'skins',
@@ -1049,18 +1087,23 @@ document.head.append(
       .join('\n'),
   }),
 );
+
 const sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches; // macOS's, which the board follows only when asked
+
 // A new look spreads from where it was asked for (2026-10-11, Telegram's theme switch): the change made inside a view
 // transition, the new page revealed in a circle growing from that point over the old one. No point — a key — or no
 // view transitions, or reduced motion: the change at once.
 const centreOf = el => {
   const r = el?.getBoundingClientRect();
+
   return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
 };
+
 function revealFrom(pt, change) {
   if (!pt || !document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return change();
   const r = Math.hypot(Math.max(pt.x, innerWidth - pt.x), Math.max(pt.y, innerHeight - pt.y));
   const vt = document.startViewTransition(change);
+
   vt.ready
     .then(() => {
       document.documentElement.animate(
@@ -1072,29 +1115,36 @@ function revealFrom(pt, change) {
           id: 'reveal-look',
         },
       );
+
       noteMotion(null, 'look');
     })
     .catch(() => {});
 }
+
 const isSkin = k => !!SKINS[k] || k === 'own-dark' || k === 'own-light';
 const skinDarkOf = k => (SKINS[k] ? SKINS[k].dark : k === 'own-dark');
+
 // A board from before the families (2026-11-01): the family of what it wore — following macOS, of the slot it showed,
 // else of the other (a slot left empty was the board's own) —, the board's own for a theme gone (Osaka Jade,
 // Ristretto); picked rather than followed, the appearance of the theme it wore. Frame › Ink became the dark frame,
 // Stage went.
 if (['skin', 'skinDark', 'skinLight', 'frame', 'headMark'].some(k => k in prefs)) {
   if (['skin', 'skinDark', 'skinLight'].some(k => k in prefs)) {
-    const d = sysDark(),
-      worn = prefs.skinFollow
-        ? [d ? prefs.skinDark : prefs.skinLight, d ? prefs.skinLight : prefs.skinDark]
-        : [prefs.skin];
+    const d = sysDark();
+
+    const worn = prefs.skinFollow
+      ? [d ? prefs.skinDark : prefs.skinLight, d ? prefs.skinLight : prefs.skinDark]
+      : [prefs.skin];
+
     prefs.theme = worn.map(famOf).find(Boolean) || 'own';
     if (!prefs.skinFollow && isSkin(prefs.skin)) prefs.look = skinDarkOf(prefs.skin) ? 'dark' : 'light';
   }
+
   if ('frame' in prefs) prefs.darkFrame = prefs.frame === 'ink';
   for (const k of ['skin', 'skinDark', 'skinLight', 'frame', 'headMark']) delete prefs[k]; // headMark: Capsule · Line until 2026-11-01
   savePrefs(); // once: the head's script reads these
 }
+
 if (!FAMILIES[prefs.theme]) prefs.theme = 'own';
 if (!prefs.skinFollow && prefs.look !== 'dark' && prefs.look !== 'light') prefs.look = sysDark() ? 'dark' : 'light'; // picked, as macOS was
 /** The appearance worn: macOS's while following it, else the one picked (prefs.look). */
@@ -1109,37 +1159,50 @@ const lookMode = () => (prefs.skinFollow ? 'auto' : prefs.look === 'dark' ? 'dar
 const skinLabel = k => SKINS[k]?.name || `peixAIrada ${skinDarkOf(k) ? 'dark' : 'light'}`;
 /** A half as a swatch draws it: its palette, the board's own's from OWN_SKINS. */
 const swatchOf = k => SKINS[k] || OWN_SKINS[k === 'own-dark' ? 'dark' : 'light'];
+
 // A project's colour under a theme: the nearest of the theme's own hues, by the hue's angle; a grey, a black, a white
 // and a colour the theme has no match for stay as set — as every colour does under a theme of the board's own (asSet).
 const hueOf = hex => {
   const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+
   if (!m) return null;
-  const n = parseInt(m[1], 16),
-    [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => v / 255),
-    mx = Math.max(r, g, b),
-    mn = Math.min(r, g, b),
-    d = mx - mn;
+
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => v / 255);
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  const d = mx - mn;
+
   if (!d || d / (1 - Math.abs(mx + mn - 1)) < 0.15) return null;
   const x = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+
   return (x * 60 + 360) % 360;
 };
+
 function skinColor(c) {
-  const k = skinOn(),
-    h = hueOf(c);
+  const k = skinOn();
+  const h = hueOf(c);
+
   if (!k || h === null || SKINS[k].asSet) return c;
-  let best = c,
-    bd = 1e9;
+
+  let best = c;
+  let bd = 1e9;
+
   for (const p of SKINS[k].proj) {
     const q = hueOf(p);
+
     if (q === null) continue;
     const d = Math.min(Math.abs(h - q), 360 - Math.abs(h - q));
+
     if (d < bd) {
       bd = d;
       best = p;
     }
   }
+
   return best;
 }
+
 // The frame (2026-11-01, round XV; every theme's, round XVII): the chat laid in a frame of its own appearance's shades
 // (T3) — or, in light, Settings › Appearance › Dark frame (prefs.darkFrame; Frame › Ink, T5, until round XVII's D1,
 // and Stage, T6, a paper frame round a dark chat, gone) a graphite one, the theme's dark half's. <html data-frame> is
@@ -1148,74 +1211,97 @@ function skinColor(c) {
 /** The theme and its appearance on the root, and its name in the settings. The terminals and the board's colours
  *  follow (reskin). The app's window wears the appearance picked — its pages, its find bar, its ground — or macOS's
  *  while the board follows it, so the board's own media query still says macOS's then. */
-let lookPosted, barPosted;
+let lookPosted;
+let barPosted;
+
 function applySkin() {
-  const k = wornKey(),
-    root = document.documentElement,
-    look = skinDarkOf(k) ? 'dark' : 'light';
+  const k = wornKey();
+  const root = document.documentElement;
+  const look = skinDarkOf(k) ? 'dark' : 'light';
+
   root.dataset.theme = look;
   if (SKINS[k]) root.dataset.skin = k;
   else delete root.dataset.skin;
   root.dataset.frame = look === 'light' && prefs.darkFrame ? 'dark' : look;
   const want = prefs.skinFollow ? null : prefs.look === 'dark';
+
   if (want !== lookPosted) {
     lookPosted = want;
     window.webkit?.messageHandlers?.hub?.postMessage({ type: 'appearance', dark: want });
   } // post is declared further down
+
   // a theme that asks for it (2026-11-16, Flashbang) paints the window's title bar its frame; none, macOS's own
   const bar = SKINS[k]?.titlebar && root.dataset.frame === 'light' ? SKINS[k].crust : null;
+
   if (bar !== barPosted) {
     barPosted = bar;
     window.webkit?.messageHandlers?.hub?.postMessage({ type: 'titlebar', color: bar });
   }
+
   showLook();
 }
+
 /** Settings › Appearance (2026-10-16; a switch, *follow macOS*, off by default before): Auto — the half of macOS's
  *  appearance — Dark or Light, whatever macOS shows; under it the themes, a swatch a family, each its two halves
  *  (2026-11-01, round XVII; a row of tiles an appearance before), and the dark frame, off in dark. ⌥⌘Y is the grid,
  *  the board wearing each as you move. */
 function showLook() {
-  const mode = lookMode(),
-    f = prefs.theme;
-  for (const b of document.querySelectorAll('#lookPick [data-look]'))
+  const mode = lookMode();
+  const f = prefs.theme;
+
+  for (const b of document.querySelectorAll('#lookPick [data-look]')) {
     b.setAttribute('aria-checked', String(b.dataset.look === mode));
+  }
+
   $('#lookSay').textContent = {
     auto: `Follows macOS, ${sysDark() ? 'dark' : 'light'} now`,
     dark: 'Dark, whatever macOS shows',
     light: 'Light, whatever macOS shows',
   }[mode];
-  const box = $('#themePick'),
-    html = Object.entries(FAMILIES)
-      .map(([k, fam]) => {
-        const d = swatchOf(fam.dark),
-          l = swatchOf(fam.light);
-        return `<button type="button" role="radio" data-fam="${k}" aria-checked="${k === f}" title="${skinLabel(fam.dark)} · ${skinLabel(fam.light)}" style="--db:${d.bg};--da:${d.accent};--lb:${l.bg};--la:${l.accent}"><i></i><span>${fam.name}</span></button>`;
-      })
-      .join(''); // the table's own names: nothing to escape
+
+  const box = $('#themePick');
+
+  const html = Object.entries(FAMILIES)
+    .map(([k, fam]) => {
+      const d = swatchOf(fam.dark);
+      const l = swatchOf(fam.light);
+
+      return `<button type="button" role="radio" data-fam="${k}" aria-checked="${k === f}" title="${skinLabel(fam.dark)} · ${skinLabel(fam.light)}" style="--db:${d.bg};--da:${d.accent};--lb:${l.bg};--la:${l.accent}"><i></i><span>${fam.name}</span></button>`;
+    })
+    .join(''); // the table's own names: nothing to escape
+
   if (box._drawn !== html) box.innerHTML = box._drawn = html; // setHtml's way — it is declared further down, and this runs at load
+
   $('#themeSay').textContent =
     mode === 'auto'
       ? `${skinLabel(halfOf(f, true))} while macOS is dark, ${skinLabel(halfOf(f, false))} while it is light`
       : skinLabel(halfOf(f, mode === 'dark'));
+
   // the dark frame: in light — off, with why, in dark
-  const r = $('#frameRow'),
-    say = r.querySelector('small'),
-    off = darkNow();
+  const r = $('#frameRow');
+  const say = r.querySelector('small');
+  const off = darkNow();
+
   r.classList.toggle('off', off);
   $('#darkFrame').disabled = off;
   $('#darkFrame').checked = !!prefs.darkFrame;
   say.textContent = off ? say.dataset.off : say.dataset.d;
 }
+
 applySkin();
+
 const reskin = () => {
   applySkin();
   for (const tm of [...terms, ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme();
   redrawColors();
 };
+
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
+
 // Auto: macOS's appearance picks the half; Dark or Light: that half, worn whatever macOS does next.
 function setLook(mode, from = null) {
   if (mode === lookMode()) return;
+
   revealFrom(from, () => {
     prefs.skinFollow = mode === 'auto';
     if (mode !== 'auto') prefs.look = mode;
@@ -1223,75 +1309,99 @@ function setLook(mode, from = null) {
     reskin();
   });
 }
+
 /** A family worn, spreading from where it was picked (a swatch, a tile; none from a key). */
 function setTheme(f, from = null) {
   if (!FAMILIES[f] || f === prefs.theme) return;
+
   revealFrom(from, () => {
     prefs.theme = f;
     savePrefs();
     reskin();
   });
 }
+
 $('#lookPick').addEventListener('click', e => {
   const b = e.target.closest('[data-look]');
+
   if (b) setLook(b.dataset.look, centreOf(b));
 });
+
 $('#themePick').addEventListener('click', e => {
   const b = e.target.closest('[data-fam]');
+
   if (b) setTheme(b.dataset.fam, centreOf(b));
 });
+
 $('#darkFrame').addEventListener('change', e => {
   const on = e.target.checked;
+
   revealFrom(centreOf(e.target), () => {
     prefs.darkFrame = on;
     savePrefs();
     applySkin();
   });
 });
+
 $('#themeBtn').addEventListener('click', () => {
   settingsOpen(false);
   themesOpen();
 });
+
 // ⌥⌘Y: the grid, a tile a family. The arrows move and the board behind follows, in its half of the appearance worn;
 // ⏎ or a click wears it; Esc, or a click on the backdrop, puts back what was worn.
 const themePick = { list: [], sel: 0, kept: false };
+
 const miniSkin = (f, fam, i) => {
-  const dark = darkNow(),
-    t = swatchOf(halfOf(f, dark)),
-    p = t.proj,
-    card = (c, w1, w2, ask) =>
-      `<i class="mc${ask ? ' ask' : ''}" style="--c:${c}"><u style="width:${w1}%"></u><u style="width:${w2}%"></u></i>`;
+  const dark = darkNow();
+  const t = swatchOf(halfOf(f, dark));
+  const p = t.proj;
+
+  const card = (c, w1, w2, ask) =>
+    `<i class="mc${ask ? ' ask' : ''}" style="--c:${c}"><u style="width:${w1}%"></u><u style="width:${w2}%"></u></i>`;
+
   const half =
     skinLabel(halfOf(f, dark))
       .replace(fam.name, '')
       .trim()
       .replace(/^(Dark|Light)$/, w => w.toLowerCase()) || (dark ? 'dark' : 'light'); // Day, Latte, light… — the board's own, its appearance
+
   return `<button class="tt${i === themePick.sel ? ' sel' : ''}" data-i="${i}" style="--tbg:${t.bg};--tpn:${t.panel};--tcr:${t.crust};--tink:${t.ink};--tmu:${t.muted};--tnd:${t.needs};--thd:${p[0]}">
       <span class="tshot"><span class="ml">${card(t.needs, 70, 45, 1)}${card(p[1], 80, 55)}${card(p[0], 60, 70)}${card(p[2], 75, 40)}</span>
         <span class="mr"><span class="mh"><b></b></span><span class="mt"><u style="width:82%"></u><u style="width:64%"></u><u class="code" style="width:90%"></u><u style="width:48%"></u><s></s></span></span>
         <span class="sw">${[t.needs, t.working, t.idle, t.watch, t.accent, ...p.slice(0, 3)].map(c => `<i style="background:${c}"></i>`).join('')}</span></span>
       <span class="nm">${esc(fam.name)}${f === prefs.theme ? '<em>worn</em>' : ''}<small>${esc(half)}</small></span></button>`;
 };
+
 function themesRender() {
   const q = $('#themeq').value.trim().toLowerCase();
+
   themePick.list = Object.entries(FAMILIES).filter(
     ([, fam]) => !q || fuzzy([fam.name, skinLabel(fam.dark), skinLabel(fam.light)], q),
   );
+
   themePick.sel = Math.max(0, Math.min(themePick.sel, themePick.list.length - 1));
+
   $('#themegrid').innerHTML =
     themePick.list.map(([f, fam], i) => miniSkin(f, fam, i)).join('') || '<div class="none">no theme matches</div>';
+
   const [f, fam] = themePick.list[themePick.sel] || [];
+
   if (!fam) return;
   skinPreview = halfOf(f, darkNow());
   $('#themenote').textContent = `${fam.name} — ⏎ wears it`;
+
   $('#themehow').textContent = prefs.skinFollow
     ? 'following macOS: its dark half while macOS is dark, its light half while it is light'
     : `its ${darkNow() ? 'dark' : 'light'} half, whatever macOS shows · Settings › Appearance › Auto follows macOS`;
+
   $('#themegrid .tt.sel')?.scrollIntoView({ block: 'nearest' });
   reskin();
 }
+
 function themesOpen() {
   const dlg = $('#themes');
+
   if (dlg.open) return;
   if (inApp) post({ type: 'focus' });
   themePick.kept = false;
@@ -1302,36 +1412,45 @@ function themesOpen() {
   themesRender();
   $('#themeq').focus();
 }
+
 // `from`: where the pick was made — a tile clicked — for the theme to spread from there in a circle (revealFrom); ⏎
 // keeps what the arrows were already showing, so nothing is revealed.
 function themeKeep(i = themePick.sel, from = null) {
   const [f] = themePick.list[i] || [];
+
   if (!f) return;
   prefs.theme = f;
   savePrefs();
   themePick.kept = true;
+
   revealFrom(i === themePick.sel ? null : from, () => {
     skinPreview = undefined;
     $('#themes').close();
     reskin();
   }); // the close event comes a task later
 }
+
 $('#themes').addEventListener('close', () => {
   skinPreview = undefined;
   reskin();
 });
+
 $('#themes').addEventListener('click', e => {
   if (e.target === e.currentTarget) return e.currentTarget.close();
   const b = e.target.closest('.tt');
+
   if (b) themeKeep(+b.dataset.i, centreOf(b));
 });
+
 $('#themeq').addEventListener('input', () => {
   themePick.sel = 0;
   themesRender();
 });
+
 $('#themeq').addEventListener('keydown', e => {
   const cols = Math.max(1, Math.round($('#themegrid').clientWidth / ($('#themegrid .tt')?.offsetWidth || 1)));
   const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+
   if (step) {
     e.preventDefault();
     themePick.sel = Math.max(0, Math.min(themePick.list.length - 1, themePick.sel + step));
@@ -1341,6 +1460,7 @@ $('#themeq').addEventListener('keydown', e => {
     themeKeep();
   }
 });
+
 // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
 // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
 // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
@@ -1355,30 +1475,38 @@ document.addEventListener(
   'keydown',
   e => {
     if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return;
+
     if (renderBoard.held) {
       cdEnd(false);
       e.preventDefault();
       e.stopPropagation();
       return;
     } // a card in the hand goes back first (2026-11-02)
+
     let took = false;
     const dlg = document.querySelector('dialog[open]');
+
     if (dlg?.id === 'settings' && e.target === $('#sq') && $('#sq').value) {
       $('#sq').value = '';
       settingsFind();
       took = true;
     } // a search let go first
-    else if (dlg?.id === 'room' && chatEscape())
-      took = true; // the chat's panel: a question, the people first
-    else if (dlg?.id === 'zeGame' && zeCallEnd(false))
-      took = true; // Zé's game: a chat's call let go, the game goes on
-    else if (dlg?.id === 'pick' && agentEscape())
-      took = true; // ⌥⌘N's agent list shut, the chats back (2026-11-06)
+    else if (dlg?.id === 'room' && chatEscape()) {
+      took = true;
+    } // the chat's panel: a question, the people first
+    else if (dlg?.id === 'zeGame' && zeCallEnd(false)) {
+      took = true;
+    } // Zé's game: a chat's call let go, the game goes on
+    else if (dlg?.id === 'pick' && agentEscape()) {
+      took = true;
+    } // ⌥⌘N's agent list shut, the chats back (2026-11-06)
     else if (dlg) {
       dlg.close();
       took = true;
-    } else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody'))
+    } else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) {
       took = hotEscape();
+    }
+
     if (!took) return;
     e.preventDefault();
     e.stopPropagation();

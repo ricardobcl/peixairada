@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-watch-');
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
@@ -14,14 +15,17 @@ process.env.NOTIFY = 'off';
 const { fold, newSession, summary, cronNext, pruneWakes } = await import('../server.mjs');
 
 // judged against the real clock, as tasks are: the lines date from a few minutes ago
-const t0 = Date.now() - 5 * 60_000,
-  at = i => new Date(t0 + i * 1000).toISOString();
+const t0 = Date.now() - 5 * 60_000;
+const at = i => new Date(t0 + i * 1000).toISOString();
+
 const live = id => {
   const s = newSession(id, `/x/${id}.jsonl`);
+
   s.alive = true;
   s.live = { pid: 1, startedAt: t0 - 3600_000 };
   return s;
 };
+
 const user = (text, i, extra = {}) => ({
   type: 'user',
   message: { role: 'user', content: [{ type: 'text', text }] },
@@ -29,14 +33,17 @@ const user = (text, i, extra = {}) => ({
   cwd: '/tmp/repo',
   ...extra,
 });
+
 const said = (blocks, stop, i, extra = {}) => ({
   type: 'assistant',
-  message: { role: 'assistant', model: 'claude-opus-5', id: 'm' + i, content: blocks, stop_reason: stop },
+  message: { role: 'assistant', model: 'claude-opus-5', id: `m${i}`, content: blocks, stop_reason: stop },
   timestamp: at(i),
   cwd: '/tmp/repo',
   ...extra,
 });
+
 const call = (id, name, input, i) => said([{ type: 'tool_use', id, name, input }], 'tool_use', i);
+
 const result = (id, content, i, toolUseResult) => ({
   type: 'user',
   message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content }] },
@@ -44,6 +51,7 @@ const result = (id, content, i, toolUseResult) => ({
   cwd: '/tmp/repo',
   ...(toolUseResult && { toolUseResult }),
 });
+
 const note = (task, i, status) =>
   user(
     `<task-notification>\n<task-id>${task}</task-id>\n${status ? `<status>${status}</status>\n` : ''}<summary>Monitor event</summary>\n<event>Build: pass</event>\n</task-notification>`,
@@ -53,6 +61,7 @@ const note = (task, i, status) =>
 
 test("a turn the chat's own monitor woke is woken; your word, its end and the reply are not", () => {
   const s = live('w1');
+
   fold(s, user('watch the CI', 0));
   fold(s, call('tm', 'Monitor', { description: 'CI on #382', timeout_ms: 1800_000 }, 1));
   fold(s, result('tm', 'Monitor started (task mon1abc, expires in 30m).', 2));
@@ -61,6 +70,7 @@ test("a turn the chat's own monitor woke is woken; your word, its end and the re
   assert.equal(fold(s, note('mon1abc', 10)), true, 'the notice between turns is news');
   fold(s, call('tb', 'Bash', { command: 'gh pr checks' }, 11));
   let sum = summary(s);
+
   assert.equal(sum.status, 'working');
   assert.equal(sum.woken, true, "the turn it woke is the monitor's");
   assert.equal(sum.tasks.length, 1);
@@ -84,6 +94,7 @@ test("a turn the chat's own monitor woke is woken; your word, its end and the re
   fold(s, note('mon1abc', 40, 'completed'));
   fold(s, call('te', 'Bash', { command: 'ls' }, 41));
   sum = summary(s);
+
   assert.deepEqual(
     [sum.woken, sum.tasks.length],
     [true, 0],
@@ -92,9 +103,11 @@ test("a turn the chat's own monitor woke is woken; your word, its end and the re
 });
 
 test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its grace runs out', () => {
-  const s = live('w2'),
-    when = Date.now() + 20 * 60_000;
+  const s = live('w2');
+  const when = Date.now() + 20 * 60_000;
+
   fold(s, user('/loop check the deploy', 0));
+
   fold(
     s,
     call(
@@ -104,20 +117,24 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
       1,
     ),
   );
+
   fold(s, result('sw', 'Scheduled.', 2, { scheduledFor: when, clampedDelaySeconds: 1200, wasClamped: false }));
   fold(s, said([{ type: 'text', text: 'back in twenty' }], 'end_turn', 3));
+
   assert.deepEqual(summary(s).wake, {
     at: new Date(when).toISOString(),
     kind: 'loop',
     recurring: false,
     what: 'the canary needs twenty minutes',
   });
+
   // set again: one wake-up a chat, the newer
   fold(s, call('sx', 'ScheduleWakeup', { delaySeconds: 600, prompt: 'p', reason: 'sooner' }, 4));
   fold(s, result('sx', 'Scheduled.', 5, { scheduledFor: when - 600_000, clampedDelaySeconds: 600, wasClamped: false }));
   assert.equal(summary(s).wake.what, 'sooner');
   // stopped
   fold(s, call('sy', 'ScheduleWakeup', { stop: true }, 6));
+
   fold(
     s,
     result('sy', 'Stopped.', 7, {
@@ -128,6 +145,7 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
       cancelledWakeups: 1,
     }),
   );
+
   assert.equal(summary(s).wake, null, 'stopped');
   // a result with no toolUseResult: the call's own delay, from its time
   fold(s, call('sz', 'ScheduleWakeup', { delaySeconds: 1800, prompt: 'p', reason: 'later' }, 8));
@@ -137,12 +155,15 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
   s.alive = false;
   assert.equal(summary(s).wake, null);
   s.alive = true;
+
   // fired: the scheduled turn's meta line spends it
-  const s2 = live('w2b'),
-    soon = Date.now() - 30_000;
+  const s2 = live('w2b');
+  const soon = Date.now() - 30_000;
+
   fold(s2, call('sw', 'ScheduleWakeup', { delaySeconds: 60, prompt: 'p', reason: 'r' }, 0));
   fold(s2, result('sw', 'Scheduled.', 1, { scheduledFor: soon }));
   assert.ok(summary(s2).wake, 'due, within its grace');
+
   assert.equal(
     fold(s2, {
       type: 'user',
@@ -155,9 +176,11 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
     true,
     'the fire is news',
   );
+
   assert.equal(summary(s2).wake, null, 'spent');
   // past its grace, the poll lets it go
   const s3 = live('w2c');
+
   fold(s3, call('sw', 'ScheduleWakeup', { delaySeconds: 60, prompt: 'p', reason: 'r' }, 0));
   fold(s3, result('sw', 'Scheduled.', 1, { scheduledFor: Date.now() - 60_000 }));
   assert.equal(pruneWakes(s3, Date.now() + 10 * 60_000), true);
@@ -165,9 +188,11 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
 });
 
 test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete", () => {
-  const s = live('w3'),
-    next = Date.now() + 4 * 60_000;
+  const s = live('w3');
+  const next = Date.now() + 4 * 60_000;
+
   fold(s, call('cc', 'CronCreate', { cron: '*/5 * * * *', prompt: '/babysit-prs', recurring: true }, 0));
+
   fold(
     s,
     result(
@@ -177,12 +202,14 @@ test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete",
       { id: '7f3a2b', humanSchedule: 'every 5 minutes', recurring: true, nextFireAt: next },
     ),
   );
+
   assert.deepEqual(summary(s).wake, {
     at: new Date(next).toISOString(),
     kind: 'cron',
     recurring: true,
     what: '/babysit-prs',
   });
+
   fold(s, {
     type: 'user',
     turnOrigin: 'scheduled',
@@ -190,6 +217,7 @@ test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete",
     message: { role: 'user', content: [{ type: 'text', text: '/babysit-prs' }] },
     timestamp: new Date(next).toISOString(),
   });
+
   assert.equal(Date.parse(summary(s).wake.at), cronNext('*/5 * * * *', next), 'fired: the next match');
   fold(s, call('cd', 'CronDelete', { id: '7f3a2b' }, 2));
   fold(s, result('cd', 'Cancelled job 7f3a2b.', 3));
@@ -203,10 +231,13 @@ test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete",
 
 test('cronNext reads the five fields in local time', () => {
   const base = new Date(2026, 9, 31, 10, 7, 30).getTime(); // Saturday 31-10-2026 10:07:30
+
   const t = ms => {
     const d = new Date(ms);
+
     return `${d.getDate()}/${d.getMonth() + 1} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
+
   assert.equal(t(cronNext('*/5 * * * *', base)), '31/10 10:10');
   assert.equal(t(cronNext('30 14 * * *', base)), '31/10 14:30');
   assert.equal(t(cronNext('0 9 * * 1-5', base)), '2/11 9:00', 'the weekdays: Monday next');
@@ -219,7 +250,9 @@ test('cronNext reads the five fields in local time', () => {
 
 test('a turn that stopped short says why; your next word clears it', () => {
   const s = live('w4');
+
   fold(s, user('migrate the ledger', 0));
+
   fold(
     s,
     said(
@@ -239,15 +272,20 @@ test('a turn that stopped short says why; your next word clears it', () => {
       },
     ),
   );
-  let sum = summary(s);
+
+  const sum = summary(s);
+
   assert.equal(sum.status, 'idle');
+
   assert.deepEqual(
     { ...sum.stopped, at: null },
     { why: 'api', text: 'Connection lost mid-response.', kind: 'server_error', at: null },
   );
+
   assert.equal(s.model, null, 'a synthetic line is no model');
   fold(s, user('go on', 2));
   assert.equal(summary(s).stopped, null, 'your word: working, and the stop behind it');
+
   fold(
     s,
     said(
@@ -262,6 +300,7 @@ test('a turn that stopped short says why; your next word clears it', () => {
       { isApiErrorMessage: true },
     ),
   );
+
   assert.equal(summary(s).stopped.text, '529 · Overloaded');
   fold(s, user('again', 4));
   fold(s, said([{ type: 'text', text: 'half a rep' }], 'max_tokens', 5));

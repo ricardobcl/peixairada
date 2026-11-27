@@ -10,30 +10,38 @@ import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { chatLines, defaultFixture, replyLines, slugOf } from '../scripts/fixture.mjs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 /** The `alert` events of the stream, as they come — handed back once the stream's snapshot is in, so an empty list
  *  means a quiet stream, never one that did not connect (2026-10-03). */
 async function alerts(url, key) {
   const res = await fetch(`${url}events?key=${key}`);
+
   assert.ok(res.ok, `the event stream: ${res.status}`);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   const got = [];
   const { promise: snapshot, resolve } = Promise.withResolvers();
+
   (async () => {
     let buf = '';
+
     for (;;) {
       const { value, done } = await reader.read();
+
       if (done) break;
       buf += dec.decode(value, { stream: true });
       let i;
+
       while ((i = buf.indexOf('\n\n')) >= 0) {
         const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+
         buf = buf.slice(i + 2);
         if (m?.[1] === 'snapshot') resolve();
         if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
       }
     }
   })().catch(() => {});
+
   await snapshot;
   return { got, stop: () => reader.cancel().catch(() => {}) };
 }
@@ -45,11 +53,14 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'));
     const srv = await startTestServer({ claudeDir: fx.dir, env: { TAIL_BYTES: '64' } });
     const chat = fx.chats[1];
+
     try {
       const before = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
       assert.equal(before.loaded, false, 'the boot read only the tail');
       const a = await alerts(srv.url, srv.key);
       const r = await srv.api(`api/sessions/${chat.id}/messages`);
+
       assert.equal(r.status, 200);
       assert.equal(r.body.session.loaded, true);
       assert.equal(r.body.entries.length, 2, 'the whole transcript now');
@@ -68,8 +79,10 @@ test(
   { timeout: 30_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'));
-    const id = randomUUID(),
-      cwd = fx.chats[1].cwd;
+
+    const id = randomUUID();
+    const cwd = fx.chats[1].cwd;
+
     writeFileSync(
       join(fx.dir, 'sessions', `${process.pid}.json`),
       JSON.stringify({
@@ -83,22 +96,28 @@ test(
         status: 'idle',
       }),
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const placeholder = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
       assert.ok(placeholder?.alive && !placeholder.file, 'a live chat with no transcript yet');
       const a = await alerts(srv.url, srv.key);
       const lines = chatLines({ id, cwd, prompt: 'first words', reply: 'first answer', at: new Date() });
+
       writeFileSync(
         join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`),
-        lines.map(l => JSON.stringify(l)).join('\n') + '\n',
+        `${lines.map(l => JSON.stringify(l)).join('\n')}\n`,
       );
+
       await waitFor(() => a.got.length, { timeout: 8000, what: 'the alert' }).catch(() => {}); // the assertion below says what came
       a.stop();
       assert.equal(a.got.length, 1, 'one alert');
       assert.equal(a.got[0].kind, 'reply');
       assert.equal(a.got[0].snippet, 'first answer');
       const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
       assert.ok(s.file && s.alive, 'the chat has its transcript and is still the live one');
     } finally {
       await srv.stop();
@@ -109,19 +128,25 @@ test(
 test('an append read while a character was half written decodes whole', { timeout: 30_000 }, async () => {
   const fx = defaultFixture(tmpDir('peix-fx-'));
   const srv = await startTestServer({ claudeDir: fx.dir });
-  const chat = fx.chats[1],
-    file = join(fx.dir, 'projects', slugOf(chat.cwd), `${chat.id}.jsonl`);
+
+  const chat = fx.chats[1];
+  const file = join(fx.dir, 'projects', slugOf(chat.cwd), `${chat.id}.jsonl`);
+
   try {
     await srv.api(`api/sessions/${chat.id}/messages`); // open: entries are kept from here on
+
     const line = Buffer.from(
-      replyLines({ id: chat.id, cwd: chat.cwd, text: 'não, ação' })
+      `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'não, ação' })
         .map(l => JSON.stringify(l))
-        .join('\n') + '\n',
+        .join('\n')}\n`,
     );
+
     const cutAt = line.indexOf(Buffer.from('ã')) + 1; // between the two bytes of ã
+
     appendFileSync(file, line.subarray(0, cutAt));
     await sleep(400); // the board reads the first half on its own
     appendFileSync(file, line.subarray(cutAt));
+
     const last = await waitFor(
       async () =>
         (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries
@@ -130,6 +155,7 @@ test('an append read while a character was half written decodes whole', { timeou
         (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries.findLast(e => e.role === 'assistant').text,
       { what: 'the reply read' },
     );
+
     assert.equal(last, 'não, ação');
   } finally {
     await srv.stop();
@@ -141,8 +167,10 @@ test(
   { timeout: 30_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'));
-    const id = randomUUID(),
-      cwd = fx.chats[1].cwd;
+
+    const id = randomUUID();
+    const cwd = fx.chats[1].cwd;
+
     writeFileSync(
       join(fx.dir, 'sessions', `${process.pid}.json`),
       JSON.stringify({
@@ -156,13 +184,17 @@ test(
         status: 'busy',
       }),
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const a = await alerts(srv.url, srv.key);
+
       // read in one go, as the first lines of a chat the registry announced: the move is judged at the read's end, the
       // reply queued while it was read — one window
-      const t = s => new Date(Date.now() - 30_000 + s * 1000).toISOString(),
-        base = (s, gitBranch) => ({ cwd, sessionId: id, entrypoint: 'cli', gitBranch, timestamp: t(s) });
+      const t = s => new Date(Date.now() - 30_000 + s * 1000).toISOString();
+      const base = (s, gitBranch) => ({ cwd, sessionId: id, entrypoint: 'cli', gitBranch, timestamp: t(s) });
+
       const lines = [
         { ...base(0, 'feat/a'), type: 'user', uuid: randomUUID(), message: { role: 'user', content: 'round the tax' } },
         {
@@ -191,13 +223,16 @@ test(
           },
         },
       ];
+
       writeFileSync(
         join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`),
-        lines.map(l => JSON.stringify(l)).join('\n') + '\n',
+        `${lines.map(l => JSON.stringify(l)).join('\n')}\n`,
       );
+
       await waitFor(() => a.got.length >= 2, { timeout: 8000, what: 'two alerts' }).catch(() => {}); // the assertion below says what came
       await sleep(600);
       a.stop();
+
       assert.deepEqual(
         a.got.map(x => x.kind).sort(),
         ['drift', 'reply'],

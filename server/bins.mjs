@@ -38,12 +38,14 @@ const BIN_FALLBACKS = {
     '/Applications/Cursor.app/Contents/Resources/app/bin/code',
   ],
 };
+
 export const binCache = new Map();
 
 /** `<NAME>_BIN` in the environment (CLAUDE_BIN, GH_BIN) overrides the search. A file that can be run, not just a path
  *  that exists (a directory, a file without the bit: a spawn of it is an 'error' event); and none found is asked again
  *  a minute later rather than never — a gh installed while the board runs is found (2026-10-03). */
 const BIN_RETRY_MS = 60_000;
+
 export const canRun = f => {
   try {
     accessSync(f, fsc.X_OK);
@@ -52,10 +54,13 @@ export const canRun = f => {
     return false;
   }
 };
+
 export function findBin(name, missingNote) {
   const hit = binCache.get(name);
+
   if (hit && (hit.path || Date.now() - hit.at < BIN_RETRY_MS)) return hit.path;
   const env = process.env[`${name.toUpperCase()}_BIN`];
+
   const path =
     [
       ...(env ? [env] : []),
@@ -65,6 +70,7 @@ export function findBin(name, missingNote) {
         .map(d => join(d, name)),
       ...(BIN_FALLBACKS[name] || []),
     ].find(canRun) || null;
+
   if (!path && !hit) console.error(`[peixairada] ${name} not found — ${missingNote}`);
   binCache.set(name, { path, at: Date.now() });
   return path;
@@ -74,9 +80,11 @@ export function findBin(name, missingNote) {
 export function claudeBin() {
   return findBin('claude', 'replies to stale chats are disabled');
 }
+
 export function ghBin() {
   return findBin('gh', 'PR status colours are disabled');
 }
+
 export function codeBin() {
   return findBin('code', 'VS Code Web is disabled');
 }

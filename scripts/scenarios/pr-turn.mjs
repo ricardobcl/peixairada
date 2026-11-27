@@ -14,23 +14,25 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = tmpDir('peix-gh-'),
-  file = join(dir, 'prs.json');
+const dir = tmpDir('peix-gh-');
+const file = join(dir, 'prs.json');
+
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+
 // a face as GitHub gives one (avatarUrl), drawn here so nothing is fetched
 const user = login => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`,
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`,
+  )}`,
 });
+
 const commit = (at, login) => ({
   __typename: 'PullRequestCommit',
   commit: { committedDate: at, author: { user: { login } } },
 });
+
 /** acme/repo-a#12 by ana, reviewed by me an hour ago on commit A; `o` moves it. #13 nobody here has touched. */
 function write(o = {}) {
   const base = {
@@ -46,6 +48,7 @@ function write(o = {}) {
     pushes: { nodes: [commit(ago(120), 'ana')] },
     asks: { nodes: [] },
   };
+
   writeFileSync(
     file,
     JSON.stringify({
@@ -54,6 +57,7 @@ function write(o = {}) {
     }),
   );
 }
+
 write();
 
 export const meta = {
@@ -70,10 +74,12 @@ export const meta = {
 
 export default async function (ctx) {
   const out = {};
+
   try {
     const [two] = ctx.fixture.chats;
     const card = `document.querySelector('#slist > .card[data-id="${two.id}"]')`;
     const chip = n => `${card}?.querySelector('.mxs[data-url$="/pull/${n}"]')`;
+
     const look = () =>
       ctx
         .evaluate(
@@ -83,12 +89,14 @@ export default async function (ctx) {
       rank: [...document.querySelectorAll('#slist > .card')].findIndex(c => c.dataset.id === '${two.id}') })`,
         )
         .then(JSON.parse);
+
     const tick = done => ctx.server.post(`api/sessions/${two.id}/done`, { done });
 
     await ctx.waitFor(`${chip(12)}?.dataset.turn === 'them'`, {
       timeout: 10_000,
       what: 'the reviewed PR waiting on its author',
     });
+
     out.waiting = await look();
     ctx.assert.equal(out.waiting.turn13, '', 'a PR nobody here touched has no turn');
     ctx.assert.match(out.waiting.tip12, /waiting on ana/, 'the turn says whom it waits on');
@@ -96,12 +104,14 @@ export default async function (ctx) {
     ctx.assert.equal(out.waiting.last, 'tmx', 'the matrix ends the top row');
     ctx.assert.equal(out.waiting.move, null, '…and no line on the card');
     ctx.assert.equal(out.waiting.rank, 1, "the fixture's other chat, a second newer, ranks above it");
+
     // who else is in its PRs (2026-09-29): ana wrote both and pushed to #12; you are not among them
     out.faces = await ctx
       .evaluate(
         `JSON.stringify(window.peix.session('${two.id}').prs.map(p => [p.number, (p.people || []).map(x => [x.login, x.did.join(', ')])]).sort((a, b) => a[0] - b[0]))`,
       )
       .then(JSON.parse);
+
     ctx.assert.deepEqual(
       out.faces,
       [
@@ -119,8 +129,10 @@ export default async function (ctx) {
           constructor(title, o) { window.__banners.push({ title, body: o?.body || '' }); } close() {} };
         window.__es = new EventSource('/events?key=' + window.PEIX_KEY); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)));
       })()`);
+
       await ctx.waitFor(`window.__es.readyState === 1`, { what: 'the second listener' });
     };
+
     await listen();
 
     await tick(true);
@@ -130,13 +142,16 @@ export default async function (ctx) {
 
     // ana pushes: the head is no longer the commit my review was on
     write({ headRefOid: 'B', pushes: { nodes: [commit(ago(120), 'ana'), commit(ago(1), 'ana')] } });
+
     await ctx.waitFor(`window.peix.session('${two.id}').done === false`, {
       timeout: 10_000,
       what: 'the push to un-tick the chat',
     });
+
     await ctx.waitFor(`${chip(12)}?.dataset.turn === 'you' && window.__alerts.length > 0`, {
       what: 'the move and the alert',
     });
+
     await ctx.settle();
     out.moved = await look();
     out.alerts = await ctx.evaluate(`JSON.stringify(window.__alerts)`).then(JSON.parse);
@@ -145,18 +160,22 @@ export default async function (ctx) {
     ctx.assert.match(out.moved.tip12, /pushed since your review/);
     ctx.assert.equal(out.moved.bg12, out.waiting.bg12, 'the square as it was: the line says which');
     ctx.assert.equal(out.alerts.length, 1, 'one alert');
+
     ctx.assert.deepEqual(
       [out.alerts[0].kind, out.alerts[0].heading, out.alerts[0].snippet, out.alerts[0].sessionId],
       ['pr', 'Your move · repo-a#12', 'pushed since your review', two.id],
     );
+
     ctx.assert.equal(out.banners[0]?.title, 'Your move · repo-a#12', "the banner wears the server's heading");
     ctx.assert.equal(out.moved.badge, '1', 'and the card counts it unread');
     ctx.assert.equal(out.moved.move, '#12 · pushed since your review', 'the card says whose move and why…');
+
     ctx.assert.equal(
       await ctx.evaluate(`${card}.querySelector('.state.prmove .ymove').textContent`),
       'your move',
       '…after the tag',
     );
+
     // the status bar's segments say nothing of it (2026-11-25)
     ctx.assert.doesNotMatch(
       await ctx.evaluate(
@@ -165,43 +184,55 @@ export default async function (ctx) {
       /your move|#12/i,
       'not on the status bar',
     );
+
     // …and how long ago the move came, under the pointer only, keeping its room (2026-10-14): GitHub's time of the push
     await ctx.settle();
+
     const age = () =>
       ctx
         .evaluate(
           `JSON.stringify((m => ({ at: m.querySelector('[data-at]').dataset.at, text: m.textContent, opacity: getComputedStyle(m).opacity, w: Math.round(m.getBoundingClientRect().width) }))(${card}.querySelector('.state.prmove .mt')))`,
         )
         .then(JSON.parse);
+
     out.age = {
       rest: await age(),
       turn: await ctx.evaluate(
         `(t => t.at || t.movedAt)(window.peix.session('${two.id}').prs.find(p => p.turn?.you).turn)`,
       ),
     };
+
     ctx.assert.equal(out.age.rest.at, out.age.turn, "the move's own time");
     ctx.assert.match(out.age.rest.text, /^\d+[smhd] ago$/, `said as an age: ${out.age.rest.text}`);
     ctx.assert.deepEqual([out.age.rest.opacity, out.age.rest.w > 0], ['0', true], 'unseen at rest, its room kept');
+
     const at = await ctx.evaluate(
       `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(${card}.getBoundingClientRect())`,
     );
+
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+
     await ctx.waitFor(`getComputedStyle(${card}.querySelector('.state.prmove .mt')).opacity === '0.8'`, {
       what: "the move's age under the pointer",
     });
+
     await ctx.shot(
       'move-age',
       await ctx.evaluate(
         `(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(${card}.getBoundingClientRect())`,
       ),
     );
+
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+
     // …which slid in as it came (2026-10-11): the card was there before, its tag was not
     ctx.assert.ok(
       await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'move' && m.id === '${two.id}')`),
       'the tag slides in',
     );
+
     ctx.assert.equal(out.moved.rank, 0, "the move is the chat's newest word: it tops the list");
+
     // nothing above it but its lane's head (2026-10-09) — today wears no label (2026-10-14), though the other chat is
     // yesterday's and has one
     ctx.assert.equal(
@@ -211,10 +242,13 @@ export default async function (ctx) {
       'first',
       "nothing above it but its lane's head",
     );
+
     out.compact =
       await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
       const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
+
     ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
+
     // …and on compact's same height (2026-09-29): the
     // line stays, and a card with no move holds an empty one, so the two cards are one height
     out.even = await ctx
@@ -226,32 +260,40 @@ export default async function (ctx) {
       l.dataset.cards = was; l.toggleAttribute('data-even', false); return r; })())`,
       )
       .then(JSON.parse);
+
     ctx.assert.equal(out.even.shown, true, 'same height keeps the your-move line');
     ctx.assert.equal(out.even.slot, 'hidden', 'a card without one holds its place, unseen');
     ctx.assert.equal(out.even.heights[0], out.even.heights[1], `one height: ${out.even.heights}`);
     // the funnel has no Your move (2026-11-25; its filter from 2026-10-12): its rows, a chat at your move or not
     await ctx.evaluate(`document.querySelector('#fBtn').click()`);
     await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: "the funnel's menu" });
+
     out.funnel = await ctx
       .evaluate(`JSON.stringify([...document.querySelectorAll('#ctxm button')].map(b => b.textContent))`)
       .then(JSON.parse);
+
     ctx.assert.ok(
       !out.funnel.some(t => /move/i.test(t)) &&
         !/move/i.test(await ctx.evaluate(`document.querySelector('#fBtn').title`)),
       `no Your move in the funnel: ${JSON.stringify(out.funnel)}`,
     );
+
     await ctx.evaluate(
       `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith('Every chat')).click()`,
     );
+
     await ctx.waitFor(
       `document.querySelectorAll('#slist > .card').length === 2 && !document.querySelector('#fBtn.on')`,
       { what: 'every chat again' },
     );
+
     await ctx.settle();
+
     const list = () =>
       ctx.evaluate(
         `(r => ({ x: r.left, y: r.top, width: r.width, height: 330 }))(document.querySelector('#slist').getBoundingClientRect())`,
       );
+
     await ctx.shot('1-card', await list());
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
     await ctx.settle();
@@ -261,10 +303,13 @@ export default async function (ctx) {
     // the chat: the header and its PR row saying why
     await ctx.openChat(two.id);
     await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+
     await ctx.waitFor(`document.querySelector('#prlist .prrow[data-turn="you"] .why')`, {
       what: 'the PR row saying why',
     });
+
     await ctx.settle();
+
     out.head = await ctx
       .evaluate(
         `JSON.stringify({ chip: document.querySelector('#shead > .tmx .mxs[data-turn="you"] .vh')?.textContent.match(/^#\\d+/)?.[0], num: document.querySelector('#shead > .tmx .mxn.you')?.firstChild.textContent,
@@ -272,25 +317,31 @@ export default async function (ctx) {
       why: document.querySelector('#prlist .prrow[data-turn="you"] .why').textContent })`,
       )
       .then(JSON.parse);
+
     ctx.assert.deepEqual([out.head.chip, out.head.num], ['#12', '#12'], 'its square, and the number follows the move');
     ctx.assert.equal(out.head.move, 'repo-a#12 · pushed since your review', 'the header says whose move and why…');
     ctx.assert.equal(out.head.moveNext, 'tmx', '…just before the matrix');
     ctx.assert.equal(out.head.why, 'your move · pushed since your review');
+
     await ctx.shot(
       '2-header',
       await ctx.evaluate(
         `(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`,
       ),
     );
+
     // a narrow column (2026-10-11, afternoon — ··· went to a second line beside the housing): the reason gives way
     // — the line ellipsized, the tag whole —, narrower the line goes, and the row never wraps: ··· on the title's line
     const listW = await ctx.evaluate(`document.querySelector('#sessions').style.width`);
+
     for (const chatW of [640, 520, 430]) {
       await ctx.evaluate(
         `Object.assign(document.querySelector('#sessions').style, { width: (innerWidth - ${chatW}) + 'px', maxWidth: 'none' })`,
       );
+
       await ctx.sleep(300);
       await ctx.settle();
+
       const row = await ctx
         .evaluate(
           `JSON.stringify((() => { const h = document.querySelector('#shead h2').getBoundingClientRect(), m = document.querySelector('#moreBtn').getBoundingClientRect(), q = document.querySelector('#shead .hmove .q');
@@ -298,25 +349,31 @@ export default async function (ctx) {
           tag: Math.round(document.querySelector('#shead .hmove .ymove').getBoundingClientRect().width), head: Math.round(document.querySelector('#shead').getBoundingClientRect().height) }; })())`,
         )
         .then(JSON.parse);
+
       (out.narrow ||= []).push(row);
       ctx.assert.ok(row.dy <= 3, `··· on the title's row in a ${row.chat} px column: ${JSON.stringify(row)}`);
       ctx.assert.ok(row.tag >= 60 || row.tag === 0, `the tag whole, or the line put away: ${JSON.stringify(row)}`);
     }
+
     ctx.assert.deepEqual(
       [out.narrow[0].tag >= 60, out.narrow[0].clipped],
       [true, true],
       `first the reason gives way, the tag whole: ${JSON.stringify(out.narrow)}`,
     );
+
     ctx.assert.equal(out.narrow.at(-1).tag, 0, 'narrower, the line goes');
+
     await ctx.shot(
       '2-header-narrow',
       await ctx.evaluate(
         `(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`,
       ),
     );
+
     await ctx.evaluate(
       `Object.assign(document.querySelector('#sessions').style, { width: ${JSON.stringify(listW)}, maxWidth: '' })`,
     );
+
     await ctx.sleep(300);
 
     // ticked again, having seen it: it holds — and through a restart, where the board has to remember when it learnt
@@ -324,15 +381,18 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.session('${two.id}').done === true`, { what: 'ticked again' });
     await ctx.sleep(2500);
     const again = await look();
+
     ctx.assert.equal(again.done, true, 'the move already seen does not un-tick it again');
     ctx.assert.equal(again.move, null, 'ticked, the card has no line');
     ctx.assert.equal(again.turn12, 'you');
     await ctx.server.restart();
     await ctx.reload();
+
     await ctx.waitFor(
       `window.peix.session('${two.id}')?.prs?.find(p => p.url.endsWith('/pull/12'))?.turn?.you === true`,
       { timeout: 10_000, what: 'the PR asked about after the restart' },
     );
+
     await ctx.sleep(1500);
     ctx.assert.equal((await look()).done, true, 'after a restart the tick still holds');
 
@@ -340,17 +400,21 @@ export default async function (ctx) {
     const moved = await ctx.evaluate(
       `window.peix.session('${two.id}').prs.find(p => p.url.endsWith('/pull/12')).turn.movedAt`,
     );
+
     await listen();
     await tick(false);
+
     write({
       headRefOid: 'B',
       pushes: { nodes: [commit(ago(120), 'ana'), commit(ago(1), 'ana')] },
       comments: { nodes: [{ author: user('me'), createdAt: ago(0) }] },
     });
+
     await ctx.waitFor(`${chip(12)}?.dataset.turn === 'them'`, {
       timeout: 10_000,
       what: 'the PR handed back by a comment',
     });
+
     await ctx.sleep(1500);
     out.back = await look();
     ctx.assert.match(out.back.tip12, /waiting on ana/);
@@ -362,25 +426,31 @@ export default async function (ctx) {
     // done for good (2026-10-11): ··· — the chat's PRs are forgotten while that tick stands: ana pushes
     // again and nothing comes of it, nor is the PR asked about for it; ↩ counts them again, and the push is a move
     await ctx.settle();
+
     ctx.assert.match(
       await ctx.evaluate(`${card}.querySelector('.act[data-act="done"]').title`),
       /⌥-click: delete from the board/,
       'the ✓ says what ⌥ does',
     );
+
     ctx.assert.equal(
       await ctx.evaluate(`document.querySelector('#hmenu #forGoodBtn')?.textContent`),
       'done for good',
       'and ··· has done for good as a row',
     );
+
     // ⌥ held over it, the ✓ is delete's ✕ (2026-11-04), in red; let go, the ✓ again — chat-delete.mjs clicks it. Done for good is ···'s
     const on = await ctx.evaluate(
       `(r => ({ x: r.left + r.width / 2, y: r.bottom - 3 }))(${card}.getBoundingClientRect())`,
     );
+
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: on.x, y: on.y });
     await ctx.sleep(100); // the ✓ has no room until the pointer is on its card (2026-11-03)
+
     const tk = await ctx.evaluate(
       `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card}.querySelector('.act[data-act="done"]').getBoundingClientRect())`,
     );
+
     const shows = () =>
       ctx
         .evaluate(
@@ -388,52 +458,65 @@ export default async function (ctx) {
       x: getComputedStyle(b.querySelector('.fx')).display, color: getComputedStyle(b).color, red: getComputedStyle(document.documentElement).getPropertyValue('--needs').trim() }))(${card}.querySelector('.act[data-act="done"]')))`,
         )
         .then(JSON.parse);
+
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: tk.x, y: tk.y, modifiers: 1 });
     await ctx.settle();
     out.altHover = await shows();
+
     ctx.assert.deepEqual(
       [out.altHover.alt, out.altHover.tick, out.altHover.x],
       [true, 'none', 'block'],
       `⌥ over the ✓ shows the ✕: ${JSON.stringify(out.altHover)}`,
     );
+
     await ctx.shot('3-alt-hover', await list());
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: tk.x, y: tk.y + 1, modifiers: 0 });
     out.plainHover = await shows();
+
     ctx.assert.deepEqual(
       [out.plainHover.alt, out.plainHover.tick, out.plainHover.x],
       [false, 'block', 'none'],
       'let go, the ✓',
     );
+
     await ctx.evaluate(`document.querySelector('#forGoodBtn').click()`);
+
     await ctx.waitFor(
       `window.peix.session('${two.id}').forGood === true && window.peix.session('${two.id}').done === true`,
       { what: 'the chat done for good' },
     );
+
     await ctx.settle();
+
     out.forGood = await ctx
       .evaluate(
         `JSON.stringify({ cls: ${card}.className, undo: ${card}.querySelector('.act[data-act="reopen"]').title, filter: getComputedStyle(${card}.querySelector('.tmx')).filter })`,
       )
       .then(JSON.parse);
+
     ctx.assert.match(out.forGood.cls, /\bdone forgood\b/);
     ctx.assert.match(out.forGood.undo, /^Done for good/, '↩ says it');
     ctx.assert.equal(out.forGood.filter, 'grayscale(1)', 'its PRs in grey');
     await ctx.shot('4-for-good', await list());
+
     write({
       headRefOid: 'C',
       pushes: { nodes: [commit(ago(120), 'ana'), commit(ago(0), 'ana')] },
       comments: { nodes: [{ author: user('me'), createdAt: ago(1) }] },
     });
+
     await ctx.sleep(3000); // the watch is half a second: asked for anyone, it would have seen the push by now
     out.forgotten = await look();
     ctx.assert.equal(out.forgotten.done, true, 'the push brings nothing back');
     ctx.assert.equal(out.forgotten.turn12, 'them', 'nor is the PR asked about');
     ctx.assert.equal(await ctx.evaluate(`window.__alerts.length`), 0, 'no alert');
     await ctx.evaluate(`${card}.querySelector('.act[data-act="reopen"]').click()`);
+
     await ctx.waitFor(`window.peix.session('${two.id}').done === false && ${chip(12)}?.dataset.turn === 'you'`, {
       timeout: 10_000,
       what: 'unticked, the PR asked about again and at your move',
     });
+
     await ctx.settle();
     out.unforgot = await look();
     ctx.assert.equal(out.unforgot.move, '#12 · pushed since your review', 'the card says the move');

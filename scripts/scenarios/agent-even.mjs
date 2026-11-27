@@ -9,18 +9,19 @@ import { fileURLToPath } from 'node:url';
 import { agentFiles, makeFixture } from '../fixture.mjs';
 import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = tmpDir('peix-gh-'),
-  file = join(dir, 'prs.json');
+const dir = tmpDir('peix-gh-');
+const file = join(dir, 'prs.json');
+
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+
 const user = login => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>',
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>',
+  )}`,
 });
+
 writeFileSync(
   file,
   JSON.stringify({
@@ -58,39 +59,47 @@ export const meta = {
 const MIN = 60_000;
 
 export default async function (ctx) {
-  const now = Date.now(),
-    root = realpathSync(tmpDir('peix-agl-')),
-    sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
+  const now = Date.now();
+  const root = realpathSync(tmpDir('peix-agl-'));
+  const sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
+
   const live = i => ({ pid: sleeps[i].pid, startedAt: now - 60 * MIN });
   const card = id => `#slist > .card[data-id="${id}"]`;
+
   const rows = id =>
     ctx.evaluate(
       `[...document.querySelectorAll('${card(id)} .agl .agr')].map(r => ({ k: r.dataset.k, st: r.dataset.st, a: r.querySelector('.aga').textContent, t: r.querySelector('.agt').textContent, n: r.querySelector('.agn').textContent }))`,
     );
+
   const chip = id =>
     ctx.evaluate(
       `(c => !c || c.hidden ? '' : c.textContent.trim())(document.querySelector('${card(id)} .chip.agents'))`,
     );
+
   const height = id => ctx.evaluate(`document.querySelector('${card(id)}').getBoundingClientRect().height`);
+
   const shown = (id, sel) =>
     ctx.evaluate(
       `(e => !!e && getComputedStyle(e).display !== 'none' && e.getClientRects().length > 0)(document.querySelector('${card(id)} ${sel}'))`,
     );
+
   const report = (f, text) =>
     appendFileSync(
       f,
-      JSON.stringify({
+      `${JSON.stringify({
         isSidechain: true,
         type: 'assistant',
         timestamp: new Date().toISOString(),
         message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' },
-      }) + '\n',
+      })}\n`,
     );
+
   const finish = (f, meta) =>
     writeFileSync(
       f.replace(/\.jsonl$/, '.meta.json'),
       JSON.stringify({ agentType: 'general-purpose', finished: true, ...meta }),
     );
+
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
       {
@@ -126,10 +135,13 @@ export default async function (ctx) {
         live: live(3),
       },
     ]);
+
     const [one, three, moved, none] = chats;
+
     await ctx.waitFor(`!!document.querySelector('${card(none.id)}')`, { what: 'the plain card' });
     await ctx.settle();
     const base = await height(none.id);
+
     agentFiles({
       dir: ctx.fixture.dir,
       lead: one,
@@ -144,6 +156,7 @@ export default async function (ctx) {
         },
       ],
     });
+
     const many = agentFiles({
       dir: ctx.fixture.dir,
       lead: three,
@@ -171,6 +184,7 @@ export default async function (ctx) {
         },
       ],
     });
+
     agentFiles({
       dir: ctx.fixture.dir,
       lead: moved,
@@ -185,18 +199,22 @@ export default async function (ctx) {
         },
       ],
     });
+
     await ctx.waitFor(
       `document.querySelectorAll('${card(one.id)} .agl .agr[data-ag]').length === 1 && document.querySelectorAll('${card(three.id)} .agl .agr[data-ag]').length === 3`,
       { what: 'their rows', timeout: 20000 },
     );
+
     await ctx.waitFor(
       `!!document.querySelector('${card(moved.id)} .state.prmove') && document.querySelectorAll('${card(moved.id)} .agl .agr[data-ag]').length === 1`,
       { what: 'the PR at your move, and its agent', timeout: 20000 },
     );
+
     await ctx.settle();
 
     // open, as on any compact card: asked and doing on a line each, the age; the chip with its caret
     const [line] = await rows(one.id);
+
     ctx.assert.deepEqual(
       [line.k, line.st, line.a, line.n],
       [
@@ -207,28 +225,36 @@ export default async function (ctx) {
       ],
       'its name, what it was asked, what it does',
     );
+
     ctx.assert.match(line.t, /at work, 2m/);
     ctx.assert.equal(await chip(one.id), '1 agent');
+
     ctx.assert.equal(
       await ctx.evaluate(`document.querySelector('${card(one.id)} .chip.agents').getAttribute('aria-expanded')`),
       'true',
     );
+
     ctx.assert.deepEqual(
       (await rows(three.id)).map(r => r.k),
       ['sec', 'cost', 'blast'],
       'a row each',
     );
+
     ctx.assert.equal(await chip(three.id), '3 agents');
+
     ctx.assert.equal(
       await ctx.evaluate(`getComputedStyle(document.querySelector('${card(one.id)} .state.moveslot')).display`),
       'none',
       'in the place the card holds, no gap under them',
     );
+
     const grown = { one: await height(one.id), three: await height(three.id) };
+
     ctx.assert.ok(
       grown.one > base && grown.three > grown.one,
       `it grows with them: ${base}, ${grown.one}, ${grown.three}`,
     );
+
     ctx.assert.equal(await height(none.id), base, 'the plain card as it was');
     await ctx.shot('agent-even-dark');
 
@@ -238,10 +264,12 @@ export default async function (ctx) {
 
     // the way in, as anywhere
     await ctx.evaluate(`document.querySelector('${card(one.id)} .agr').click()`);
+
     await ctx.waitFor(
       `!document.querySelector('#agv').hidden && document.querySelector('#agv .agvh b')?.textContent === 'code-review'`,
       { what: 'its tab, from its row' },
     );
+
     ctx.assert.equal(await ctx.evaluate(`window.peix.state().current`), one.id, 'on its chat');
     await ctx.evaluate(`document.querySelector('#agv .agvx').click()`);
     await ctx.waitFor(`document.querySelector('#agv').hidden`, { what: 'its tab closed' });
@@ -250,17 +278,21 @@ export default async function (ctx) {
     // the chip folds: one height again, its live line saying who stepped last, in the same place
     await ctx.evaluate(`document.querySelector('${card(three.id)} .chip.agents').click()`);
     await ctx.settle();
+
     ctx.assert.equal(
       await ctx.evaluate(`document.querySelector('${card(three.id)} .agl').hidden`),
       true,
       'the chip folds them',
     );
+
     ctx.assert.equal(await height(three.id), base, 'folded: one height');
+
     ctx.assert.match(
       await ctx.evaluate(`document.querySelector('${card(three.id)} .state.live.agwho').textContent`),
       /^(Review the plan for security|Price the NAT gateways|Map the blast radius)/,
       'who stepped last',
     );
+
     ctx.assert.equal(await shown(three.id, '.state.live.agwho'), true);
     await ctx.shot('agent-even-folded');
     // with a move: its line stays, the who-line gives way
@@ -283,20 +315,24 @@ export default async function (ctx) {
       report(many.files[id], t);
       finish(many.files[id], { description: id, toolUseId: `toolu_${id}` });
     }
+
     await ctx.waitFor(
       `!!document.querySelector('${card(three.id)} [data-k="_sum"]') && document.querySelectorAll('${card(three.id)} .agl .agr').length === 1`,
       { what: 'the summary', timeout: 8000 },
     );
+
     ctx.assert.match((await rows(three.id))[0].a, /^3 agents · \d+m$/);
     await ctx.settle();
     ctx.assert.equal(await height(three.id), base, 'a summary fits the place held, to the fraction');
     await ctx.evaluate(`document.querySelector('${card(three.id)} [data-k="_sum"]').click()`);
     await ctx.settle();
+
     ctx.assert.deepEqual(
       (await rows(three.id)).map(r => r.k),
       ['_sum', 'sec_d', 'cost_d', 'blast_d'],
       'its list, in place',
     );
+
     await ctx.evaluate(`document.querySelector('${card(three.id)} [data-k="_sum"]').click()`);
     await ctx.settle();
     ctx.assert.equal(await height(three.id), base, 'and back');
@@ -308,10 +344,12 @@ export default async function (ctx) {
     // seen: nothing left of it
     await ctx.openChat(three.id);
     await ctx.openChat(none.id);
+
     await ctx.waitFor(`document.querySelector('${card(three.id)} .agl').hidden`, {
       what: 'seen: gone once left',
       timeout: 4000,
     });
+
     await ctx.settle();
     ctx.assert.equal(await height(three.id), base);
 
@@ -319,16 +357,21 @@ export default async function (ctx) {
     await ctx.evaluate(
       `(() => { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k)); p.cardParts = ['prs', 'rounds', 'tickets', 'faces']; p.cardPartsSeen = 1; localStorage.setItem(k, JSON.stringify(p)); })()`,
     );
+
     await ctx.reload();
+
     await ctx.waitFor(`!!document.querySelector('${card(one.id)} .chip.agents:not([hidden])')`, {
       what: 'the card back',
     });
+
     await ctx.settle();
+
     ctx.assert.equal(
       await ctx.evaluate(`getComputedStyle(document.querySelector('${card(one.id)} .agl')).display`),
       'none',
       'no rows',
     );
+
     ctx.assert.equal(await height(one.id), base, 'one height');
     return { base, grown };
   } finally {

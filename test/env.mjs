@@ -9,6 +9,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 
 if (process.env.PEIX_TEST_PID !== String(process.pid)) {
   const dir = tmpDir('peix-test-');
+
   Object.assign(process.env, {
     PEIX_TEST_PID: String(process.pid),
     STATE_FILE: join(dir, 'state.json'),

@@ -15,8 +15,10 @@ const BAR = `document.querySelector('#resume')`;
 
 export default async function (ctx) {
   const out = {};
-  const repo = join(dirname(ctx.fixture.chats[0].cwd), 'widgets'),
-    tree = join(repo, '.claude', 'worktrees', 'lunch');
+
+  const repo = join(dirname(ctx.fixture.chats[0].cwd), 'widgets');
+  const tree = join(repo, '.claude', 'worktrees', 'lunch');
+
   const env = {
     ...process.env,
     GIT_AUTHOR_NAME: 't',
@@ -26,22 +28,27 @@ export default async function (ctx) {
     GIT_CONFIG_GLOBAL: '/dev/null',
     GIT_CONFIG_NOSYSTEM: '1',
   };
+
   const git = (cwd, ...a) =>
     execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
       .toString()
       .trim();
+
   execFileSync('git', ['init', '-q', '-b', 'main', repo], { env });
   writeFileSync(join(repo, 'a.js'), 'a\n');
   git(repo, 'add', '.');
   git(repo, 'commit', '-qm', 'base');
   git(repo, 'worktree', 'add', '-q', '-b', 'lunch', tree);
   git(repo, 'worktree', 'remove', tree);
-  const id = randomUUID(),
-    proj = join(ctx.fixture.dir, 'projects', slugOf(tree));
+
+  const id = randomUUID();
+  const proj = join(ctx.fixture.dir, 'projects', slugOf(tree));
+
   mkdirSync(proj, { recursive: true });
+
   writeFileSync(
     join(proj, `${id}.jsonl`),
-    chatLines({
+    `${chatLines({
       id,
       cwd: tree,
       branch: 'lunch',
@@ -51,8 +58,9 @@ export default async function (ctx) {
       at: new Date(Date.now() - 600_000),
     })
       .map(l => JSON.stringify(l))
-      .join('\n') + '\n',
+      .join('\n')}\n`,
   );
+
   await ctx.waitFor(`window.peix.session(${sid(id)})?.back?.tree === ${sid(tree)}`, {
     what: 'the new chat on the board, its worktree gone',
   });
@@ -60,9 +68,11 @@ export default async function (ctx) {
   // ---- the bar: what Resume will do ----
   await ctx.openChat(id);
   await ctx.waitFor(`!${BAR}.hidden`, { what: 'the resume bar' });
+
   out.bar = await ctx.evaluate(
     `({ title: ${BAR}.querySelector('.t b').textContent, said: ${BAR}.querySelector('.t span')?.textContent, go: document.querySelector('#resumeGo')?.textContent, tip: document.querySelector('#resumeGo')?.title })`,
   );
+
   ctx.assert.match(out.bar.title, /Claude isn’t running/, 'not "Could not resume this chat"');
   ctx.assert.equal(out.bar.said, `Its worktree, ${tree}, is gone — resuming makes it again, on lunch.`);
   ctx.assert.match(out.bar.go, /^Resume⌥⌘C$/);
@@ -71,10 +81,12 @@ export default async function (ctx) {
 
   // ---- Resume: the tree again, the chat in it, the header says so ----
   await ctx.evaluate(`document.querySelector('#resumeGo').click()`);
+
   await ctx.waitFor(`(s => s?.alive && s.live?.cwd === ${sid(tree)})(window.peix.session(${sid(id)}))`, {
     what: 'the chat running in its tree again',
     timeout: 15_000,
   });
+
   await ctx.waitFor(`${BAR}.hidden`, { what: 'the bar gone under the drawer' });
   out.note = await ctx.evaluate(`document.querySelector('.note')?.textContent || null`);
   ctx.assert.equal(out.note, `Its worktree is back: ${tree} on lunch`);

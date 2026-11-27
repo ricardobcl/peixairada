@@ -12,11 +12,13 @@ import { makeFixture, toolLines, taskNoteLine } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact' } };
 
 export default async function (ctx) {
-  const out = {},
-    cwd = join(tmpdir(), 'peix-rules', 'rules-repo'),
-    now = Date.now();
+  const out = {};
+  const cwd = join(tmpdir(), 'peix-rules', 'rules-repo');
+  const now = Date.now();
+
   const sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
   const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
+
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
       {
@@ -71,26 +73,33 @@ export default async function (ctx) {
         ],
       },
     ]);
+
     await ctx.waitFor(
       `document.querySelector('#slist > .card.working') && document.querySelector('#slist > .card.asking')`,
       { what: 'a clauding card and an asking one', timeout: 15000 },
     );
+
     await ctx.openChat(chats[0].id); // its presence line shimmers
     await ctx.waitFor(`document.querySelector('#log > .presence')`, { what: "the clauding chat's presence line" });
     await ctx.settle();
+
     out.running = await ctx.evaluate(
       `[...new Set(document.getAnimations().filter(a => a.playState === 'running').map(a => a.animationName || a.id || 'transition'))].sort()`,
     );
+
     ctx.assert.ok(
       ['ring', 'sonar', 'wag', 'swim'].every(n => out.running.includes(n)),
       `the lights on: ${JSON.stringify(out.running)}`,
     );
+
     out.broken = await ctx.evaluate(ANIM_RULES);
+
     ctx.assert.deepEqual(
       out.broken,
       [],
       `nothing that keeps WebKit's frames on the main thread: ${JSON.stringify(out.broken)}`,
     );
+
     return out;
   } finally {
     for (const s of sleeps) s.kill();

@@ -11,14 +11,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url))); // the checkout (or the app's Resources): server/ is one in
 export const isMain =
   !!process.argv[1] && new URL('../server.mjs', import.meta.url).href === pathToFileURL(process.argv[1]).href;
+
 // Every line the server logs says when (2026-10-21): the agent's log is appended to for weeks, and a line without its
 // time could not be placed — UTC, as the app's log writes it, to the millisecond. Run as the program only: a test that
 // imports the module keeps its own console.
-if (isMain)
+if (isMain) {
   for (const k of ['log', 'info', 'warn', 'error']) {
     const say = console[k].bind(console);
+
     console[k] = (...a) => say(`${new Date().toISOString()} ${format(...a)}`);
   }
+}
+
 export const execFileP = promisify(execFile);
 export const CLAUDE_DIR = process.env.CLAUDE_DIR || join(homedir(), '.claude');
 export const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
@@ -40,14 +44,17 @@ export const TAIL_BYTES = Number(process.env.TAIL_BYTES || 512 * 1024);
 export const HEAD_BYTES = Number(process.env.HEAD_BYTES || 64 * 1024); // where a chat tailed at boot is read for its PRs too (headPrs)
 export const MAX_ENTRIES = Number(process.env.MAX_ENTRIES || 800);
 export const REGISTRY_POLL_MS = Number(process.env.REGISTRY_POLL_MS || 10_000); // pids die silently; so do background commands (sweepTasks)
+
 // Where the done ticks live. macOS keeps app data in Application Support (same place the
 // logs already go); elsewhere follow the XDG state dir. STATE_FILE overrides both — tests use it.
 function defaultStateFile() {
   if (process.platform === 'darwin') {
     return join(homedir(), 'Library', 'Application Support', 'peixAIrada', 'state.json');
   }
+
   return join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'peixairada', 'state.json');
 }
+
 export const STATE_FILE = process.env.STATE_FILE || defaultStateFile();
 export const LEGACY_STATE_FILE = join(homedir(), '.peixairada', 'state.json');
 // A chat with no folder (2026-10-14, ⌥⌘N's first row) runs in one of the board's own, beside the state file: Claude Code
@@ -87,12 +94,15 @@ export const CONFIG_FILE =
  *  Judged by the nearest folder of it there is, real, against CLAUDE_DIR's device and inode. */
 export function inClaudeDir(p) {
   let top;
+
   try {
     top = statSync(CLAUDE_DIR);
   } catch {
     return false;
   }
+
   let q = resolve(p);
+
   for (;;) {
     try {
       q = realpathSync(q);
@@ -102,11 +112,14 @@ export function inClaudeDir(p) {
       q = dirname(q);
     }
   }
+
   for (; ; q = dirname(q)) {
     try {
       const st = statSync(q);
+
       if (st.dev === top.dev && st.ino === top.ino) return true;
     } catch {}
+
     if (dirname(q) === q) return false;
   }
 }

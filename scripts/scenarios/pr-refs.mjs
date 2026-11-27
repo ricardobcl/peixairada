@@ -10,15 +10,18 @@ import { fileURLToPath } from 'node:url';
 import { tmpDir } from '../../lib/testserver.mjs';
 import { makeFixture, replyLines } from '../fixture.mjs';
 
-const dir = tmpDir('peix-refs-'),
-  code = join(dir, 'code'),
-  file = join(dir, 'prs.json');
+const dir = tmpDir('peix-refs-');
+const code = join(dir, 'code');
+const file = join(dir, 'prs.json');
+
 for (const name of ['app', 'lib']) {
   mkdirSync(join(code, name, '.git'), { recursive: true });
   writeFileSync(join(code, name, '.git', 'config'), `[remote "origin"]\n\turl = git@github.com:acme/${name}.git\n`);
 }
-const recent = new Date(Date.now() - 5 * 86_400_000).toISOString(),
-  ancient = '2015-03-01T00:00:00Z';
+
+const recent = new Date(Date.now() - 5 * 86_400_000).toISOString();
+const ancient = '2015-03-01T00:00:00Z';
+
 writeFileSync(
   file,
   JSON.stringify({
@@ -47,9 +50,10 @@ export const meta = {
 const pull = (repo, n) => `https://github.com/${repo}/pull/${n}`;
 
 export default async function (ctx) {
-  const out = {},
-    cwd = join(code, 'app'),
-    now = Date.now();
+  const out = {};
+  const cwd = join(code, 'app');
+  const now = Date.now();
+
   const {
     chats: [c],
   } = makeFixture(ctx.fixture.dir, [
@@ -61,13 +65,16 @@ export default async function (ctx) {
         'Almost. It needs lib#7, lib #8 and #9, and other/thing#3. Also #404. Point #5 is a nit; `#13` is in code.',
     },
   ]);
+
   const card = `document.querySelector('#slist > .card[data-id="${c.id}"]')`;
+
   const chips = () =>
     ctx
       .evaluate(
         `JSON.stringify([...(${card}?.querySelectorAll('.tmx .mxs') || [])].map(e => [e.dataset.url, e.dataset.state, e.textContent]))`,
       )
       .then(JSON.parse);
+
   const want = [
     [pull('acme/app', 12), 'open'],
     [pull('acme/lib', 7), 'open'],
@@ -75,22 +82,27 @@ export default async function (ctx) {
     [pull('acme/lib', 9), 'closed'],
     [pull('other/thing', 3), 'draft'],
   ];
+
   const sorted = list => list.map(([u, st]) => `${u} ${st}`).sort();
 
   await ctx.waitFor(`${card}?.querySelectorAll('.tmx .mxs').length === ${want.length}`, {
     timeout: 20_000,
     what: 'the short references GitHub found, on the card',
   });
+
   await ctx.sleep(1500); // and nothing more after: #404, #5 and #13 have been asked about (or never were) by now
   out.card = await chips();
+
   ctx.assert.deepEqual(
     sorted(out.card),
     sorted(want),
     `exactly the PRs meant, each in its state: ${JSON.stringify(out.card)}`,
   );
+
   out.title = await ctx.evaluate(`${card}.querySelector('.title').textContent`);
   ctx.assert.equal(out.title, 'The twelfth', 'titled by the open PR said first');
   await ctx.settle();
+
   await ctx.shot(
     'card',
     await ctx
@@ -101,19 +113,23 @@ export default async function (ctx) {
   );
 
   await ctx.openChat(c.id);
+
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === ${want.length}`, {
     what: "the header's rows",
   });
+
   out.rows = await ctx
     .evaluate(
       `JSON.stringify([...document.querySelectorAll('#prlist .prrow')].map(e => [e.querySelector('.num').textContent, e.dataset.state, e.querySelector('.t').textContent]))`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.rows.map(r => r[0]).sort(),
     ['app#12', 'lib#7', 'lib#8', 'lib#9', 'thing#3'],
     `the rows' labels: ${JSON.stringify(out.rows)}`,
   );
+
   ctx.assert.ok(
     out.rows.every(r => r[1] && r[2] && !/on its way/.test(r[2])),
     'each with its state and title',
@@ -121,21 +137,25 @@ export default async function (ctx) {
 
   appendFileSync(
     c.file,
-    replyLines({ id: c.id, cwd, text: 'And #20 landed meanwhile.', at: new Date() })
+    `${replyLines({ id: c.id, cwd, text: 'And #20 landed meanwhile.', at: new Date() })
       .map(l => JSON.stringify(l))
-      .join('\n') + '\n',
+      .join('\n')}\n`,
   );
+
   await ctx.waitFor(`!!${card}?.querySelector('.tmx .mxs[data-url="${pull('acme/app', 20)}"][data-state="open"]')`, {
     timeout: 15_000,
     what: '#20, said live, on the card',
   });
+
   out.live = await chips();
   ctx.assert.equal(out.live.length, want.length + 1, 'one more');
+
   ctx.assert.equal(
     await ctx.evaluate(`window.peix.session('${c.id}').prs[0].url`),
     pull('acme/app', 20),
     "and first in the chat's order: the most recently said",
   );
+
   await ctx.settle();
   await ctx.shot('header', { x: 380, y: 0, width: 1300, height: 140 });
   return out;

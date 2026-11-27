@@ -28,21 +28,27 @@ const CLAUDE_JSON =
   (resolve(CLAUDE_DIR) === join(homedir(), '.claude')
     ? join(homedir(), '.claude.json')
     : join(CLAUDE_DIR, '.claude.json'));
+
 let trustRead = { mtime: null, dirs: new Set() };
+
 export function claudeTrusts(cwd) {
   let mtime;
+
   try {
     mtime = statSync(CLAUDE_JSON).mtimeMs;
   } catch {
     return false;
   }
+
   if (trustRead.mtime !== mtime) {
     let projects;
+
     try {
       projects = JSON.parse(readFileSync(CLAUDE_JSON, 'utf8')).projects || {};
     } catch {
       return false;
     } // caught mid-write: asked again next time
+
     trustRead = {
       mtime,
       dirs: new Set(
@@ -52,22 +58,29 @@ export function claudeTrusts(cwd) {
       ),
     };
   }
+
   let real = cwd;
+
   try {
     real = realpathSync(cwd);
   } catch {}
+
   // up to the repository's own folder and no further (2026-11-06), as Claude Code walks it: a trusted folder of repos (an
   // org's root) trusts none of them, nor a fresh clone in it whose Taskfile would run before claude ever asked
-  for (let d of new Set([resolve(cwd), real]))
+  for (let d of new Set([resolve(cwd), real])) {
     for (;;) {
       if (trustRead.dirs.has(d)) return true;
       if (existsSync(join(d, '.git'))) break;
       const up = dirname(d);
+
       if (up === d) break;
       d = up;
     }
+  }
+
   return false;
 }
+
 const TASKFILES = [
   'Taskfile.yml',
   'Taskfile.yaml',
@@ -76,46 +89,63 @@ const TASKFILES = [
   'Taskfile.dist.yml',
   'Taskfile.dist.yaml',
 ];
+
 const launcherCache = new Map(); // cwd → { mtime, launchers } — or { mtime, asking }, the run under way
 const untrustedSaid = new Set(); // the folders whose Taskfile was left unasked, logged once each
+
 export const TASK_NAME = /^\w[\w:.-]*$/; // a word's character first (2026-11-27): `task -x` is an option
+
 export function taskfileOf(cwd) {
   for (const f of TASKFILES) {
     const p = join(cwd, f);
+
     if (existsSync(p)) return p;
   }
+
   return null;
 }
+
 /** Only an answer is kept (2026-10-03): a `task` that failed — a timeout, a broken include, a shim's hiccup — was
  *  cached as "no launchers" until the Taskfile itself changed, and a new chat there quietly started a bare claude.
  *  Asks at the same time share one run. */
 export function launchersFor(cwd) {
   const file = cwd && taskfileOf(cwd);
+
   if (!file) return Promise.resolve([]);
+
   if (!claudeTrusts(cwd)) {
     if (!untrustedSaid.has(cwd)) {
       untrustedSaid.add(cwd);
+
       console.log(
         `[peixairada] ${cwd}: its Taskfile is not asked for launchers — Claude Code has not trusted the folder`,
       );
     }
+
     return Promise.resolve([]);
   }
+
   let mtime;
+
   try {
     mtime = statSync(file).mtimeMs;
   } catch {
     return Promise.resolve([]);
   }
+
   const hit = launcherCache.get(cwd);
+
   if (hit?.mtime === mtime) return hit.asking || Promise.resolve(hit.launchers);
   const bin = findBin('task', 'Taskfile launchers are disabled');
+
   if (!bin) return Promise.resolve([]);
+
   const asking = execFileP(bin, ['--list', '--json'], { cwd, env: termEnv(), timeout: 15_000, maxBuffer: 4e6 }).then(
     ({ stdout }) => {
       const launchers = (JSON.parse(stdout).tasks || [])
         .filter(t => /\bclaude\b/i.test(t.desc || ''))
         .map(t => ({ name: t.name, desc: t.desc || '' }));
+
       launcherCache.set(cwd, { mtime, launchers });
       return launchers;
     },
@@ -125,6 +155,7 @@ export function launchersFor(cwd) {
       return [];
     },
   );
+
   launcherCache.set(cwd, { mtime, asking });
   return asking;
 }

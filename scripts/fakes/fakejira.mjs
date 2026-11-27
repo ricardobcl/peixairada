@@ -15,10 +15,12 @@ export async function startFakeJira({
   me = { accountId: 'acc-me', displayName: 'Me Myself' },
   delays = {},
 } = {}) {
-  const calls = {},
-    bulk = [];
+  const calls = {};
+  const bulk = [];
+
   const auth = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
   const keys = projects || [...new Set(Object.keys(issues).map(k => k.split('-')[0]))];
+
   const issue = (key, i) => ({
     key,
     id: String(Math.abs([...key].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))),
@@ -35,28 +37,41 @@ export async function startFakeJira({
         : null,
     },
   });
+
   const server = createServer((req, res) => {
     const path = new URL(req.url, 'http://x').pathname;
+
     calls[path] = (calls[path] || 0) + 1;
+
     const send = (code, body) => {
       res.writeHead(code, { 'content-type': 'application/json' });
       res.end(JSON.stringify(body));
     };
-    if (req.headers.authorization !== auth)
+
+    if (req.headers.authorization !== auth) {
       return send(401, { errorMessages: ['Client must be authenticated to access this resource.'] });
+    }
+
     let raw = '';
+
     req.on('data', c => {
       raw += c;
     });
+
     req.on('end', () =>
       (delays[path] ? f => setTimeout(f, delays[path]) : f => f())(() => {
         if (req.method === 'GET' && path === '/rest/api/3/myself') return send(200, me);
-        if (req.method === 'GET' && path === '/rest/api/3/project/search')
+
+        if (req.method === 'GET' && path === '/rest/api/3/project/search') {
           return send(200, { isLast: true, values: keys.map(key => ({ key, name: key })) });
+        }
+
         if (req.method === 'POST' && path === '/rest/api/3/issue/bulkfetch') {
           const want = (JSON.parse(raw || '{}').issueIdsOrKeys || []).map(String);
+
           bulk.push(want);
           const found = want.filter(k => issues[k]);
+
           return send(200, {
             issues: found.map(k => issue(k, issues[k])),
             issueErrors: want
@@ -67,10 +82,12 @@ export async function startFakeJira({
               })),
           });
         }
+
         send(404, { errorMessages: [`no such call: ${req.method} ${path}`] });
       }),
     );
   });
+
   await new Promise(res => server.listen(0, '127.0.0.1', res));
   return {
     url: `http://127.0.0.1:${server.address().port}`,

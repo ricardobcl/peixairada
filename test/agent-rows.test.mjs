@@ -10,11 +10,13 @@ import { agentFiles, agentNoteLine, makeFixture, toolLines } from '../scripts/fi
 
 const standIn = () => spawn('sleep', ['120'], { stdio: 'ignore' });
 const MIN = 60_000;
+
 const setup = (agents, notices = []) => {
-  const p = standIn(),
-    dir = tmpDir('peix-fx-'),
-    started = Date.now() - 60 * MIN,
-    now = new Date();
+  const p = standIn();
+  const dir = tmpDir('peix-fx-');
+  const started = Date.now() - 60 * MIN;
+  const now = new Date();
+
   const fx = makeFixture(dir, [
     {
       cwd: '/tmp/acme/infra',
@@ -29,10 +31,13 @@ const setup = (agents, notices = []) => {
         ),
     },
   ]);
-  const chat = fx.chats[0],
-    made = agentFiles({ dir, lead: chat, agents, at: now });
+
+  const chat = fx.chats[0];
+  const made = agentFiles({ dir, lead: chat, agents, at: now });
+
   return { p, fx, chat, ...made };
 };
+
 const rowsOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id)?.agentRows;
 
 test(
@@ -113,23 +118,30 @@ test(
         { tool: 'toolu_prev', asked: 'Compare with last month', said: 'is waiting on its own background work' },
       ],
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const rows = await waitFor(
         async () => {
           const r = await rowsOf(srv, chat.id);
+
           return r?.length >= 7 && r;
         },
         { what: 'the rows' },
       );
+
       const by = id => rows.find(r => r.id === id);
+
       assert.deepEqual(
         rows.map(r => r.id),
         ['oldfail', 'sec', 'cost', 'logs', 'hand', 'prev', 'noted'],
         'by start, the old round gone but its failure',
       );
+
       assert.equal(by('oldfail').old, true, 'said to be from a round before');
       assert.equal(by('oldfail').st, 'fail');
+
       assert.deepEqual(
         [by('sec').st, by('sec').asked, by('sec').last, by('sec').end, by('sec').branch],
         [
@@ -141,28 +153,35 @@ test(
         ],
         'at work: what it calls, in words',
       );
+
       assert.equal(by('sec').kind, null, 'general-purpose says nothing');
       assert.equal(by('cost').kind, 'code-reviewer');
+
       assert.deepEqual(
         [by('cost').st, by('cost').last],
         ['done', { kind: 'report', text: 'Three gateways where one would do' }],
         "done: its report's first line, a sentence",
       );
+
       assert.ok(by('cost').end, 'an end time');
+
       assert.deepEqual(
         [by('logs').st, by('logs').why],
         ['fail', 'Agent terminated early due to an API error'],
         'its notice says why',
       );
+
       assert.equal(by('hand').st, 'stop');
       assert.equal(by('prev').st, 'wait', 'its turn over, its background work on');
       assert.equal(by('prev').end, null, 'not ended');
       assert.equal(by('noted').asked, 'A prompt as its only words', 'no description: its first prompt');
+
       assert.equal(
         (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id).agents,
         1,
         'only the one at work counts; a finished one with no end of its own does not',
       );
+
       assert.ok(
         (await srv.api(`api/sessions/${chat.id}/messages`)).body.session.agentRows?.length === 7,
         'kept over a re-read',
@@ -181,12 +200,15 @@ test(
     const { p, fx, chat, files } = setup([
       { id: 'one', asked: 'First', ago: 5 * MIN, tool: 'toolu_one', steps: ['Look around'] },
     ]);
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       await waitFor(async () => (await rowsOf(srv, chat.id))?.[0]?.st === 'run', { what: 'at work' });
+
       appendFileSync(
         chat.file,
-        JSON.stringify(
+        `${JSON.stringify(
           agentNoteLine({
             id: chat.id,
             cwd: chat.cwd,
@@ -195,26 +217,31 @@ test(
             status: 'failed',
             said: 'failed: Agent terminated early due to an API error',
           }),
-        ) + '\n',
+        )}\n`,
       );
+
       writeFileSync(
         files.one.replace(/\.jsonl$/, '.meta.json'),
         JSON.stringify({ agentType: 'general-purpose', description: 'First', toolUseId: 'toolu_one', finished: true }),
       );
+
       const r = await waitFor(
         async () => {
           const x = (await rowsOf(srv, chat.id))?.[0];
+
           return x?.st === 'fail' && x;
         },
         { what: 'failed by its notice' },
       );
+
       assert.equal(r.why, 'Agent terminated early due to an API error');
       assert.doesNotMatch(srv.logText(), /could not be folded/, 'a notice is a line like any other'); // 2026-11-04: agentsSoon, out of reach inside main()
       // words again: written after its meta, it is at work
       await new Promise(res => setTimeout(res, 1700));
+
       appendFileSync(
         files.one,
-        JSON.stringify({
+        `${JSON.stringify({
           isSidechain: true,
           type: 'assistant',
           timestamp: new Date().toISOString(),
@@ -223,15 +250,18 @@ test(
             content: [{ type: 'tool_use', id: 'toolu_z', name: 'Bash', input: { description: 'Try again' } }],
             stop_reason: 'tool_use',
           },
-        }) + '\n',
+        })}\n`,
       );
+
       const back = await waitFor(
         async () => {
           const x = (await rowsOf(srv, chat.id))?.[0];
+
           return x?.st === 'run' && x;
         },
         { what: 'resumed' },
       );
+
       assert.deepEqual(back.last, { kind: 'tool', name: 'Bash', text: 'Try again' });
     } finally {
       await srv.stop();
@@ -243,13 +273,15 @@ test(
 test('a row holds its words AGENT_WORDS_MS, whatever its agent does meanwhile', { timeout: 30_000 }, async () => {
   const { p, fx, chat, files } = setup([{ id: 'one', asked: 'First', ago: 5 * MIN, steps: ['Look around'] }]);
   const srv = await startTestServer({ claudeDir: fx.dir, env: { AGENT_WORDS_MS: '60000' } });
+
   try {
     await waitFor(async () => (await rowsOf(srv, chat.id))?.[0]?.last?.text === 'Look around', {
       what: 'its first words',
     });
+
     appendFileSync(
       files.one,
-      JSON.stringify({
+      `${JSON.stringify({
         isSidechain: true,
         type: 'assistant',
         timestamp: new Date().toISOString(),
@@ -258,8 +290,9 @@ test('a row holds its words AGENT_WORDS_MS, whatever its agent does meanwhile', 
           content: [{ type: 'tool_use', id: 'toolu_z', name: 'Bash', input: { description: 'Something new' } }],
           stop_reason: 'tool_use',
         },
-      }) + '\n',
+      })}\n`,
     );
+
     await new Promise(res => setTimeout(res, 1800)); // the watcher's and the poll's chance to take it
     assert.equal((await rowsOf(srv, chat.id))[0].last.text, 'Look around', 'held');
   } finally {
@@ -282,27 +315,34 @@ test(
         report: '## Found two\n\nDetails.',
       },
     ]);
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       await waitFor(async () => (await rowsOf(srv, chat.id))?.length, { what: 'the row' });
       const a = (await srv.api(`api/sessions/${chat.id}/agents/one`)).body;
+
       assert.deepEqual(
         [a.prompt, a.tools, a.tokens],
         ['Look at the plan closely.', 3, 1030],
         'totals: its calls, the context at its last call',
       );
+
       assert.equal(a.entries, undefined, 'no transcript unless asked');
       const b = (await srv.api(`api/sessions/${chat.id}/agents/one?after=0`)).body;
+
       assert.deepEqual(
         b.entries.map(e => e.kind),
         ['text', 'tool_use', 'tool_result', 'tool_use', 'tool_result', 'text'],
         'its report, and nothing of the call that handed it back',
       );
+
       assert.equal(b.entries[5].text, '## Found two\n\nDetails.', 'its report is words');
       assert.equal(b.upto, b.entries.length);
+
       appendFileSync(
         files.one,
-        JSON.stringify({
+        `${JSON.stringify({
           isSidechain: true,
           type: 'assistant',
           timestamp: new Date().toISOString(),
@@ -311,15 +351,19 @@ test(
             content: [{ type: 'text', text: 'And one more thing.' }],
             stop_reason: 'end_turn',
           },
-        }) + '\n',
+        })}\n`,
       );
+
       const c = (await srv.api(`api/sessions/${chat.id}/agents/one?after=${b.upto}`)).body;
+
       assert.deepEqual(
         c.entries.map(e => e.text),
         ['And one more thing.'],
         'only what came',
       );
+
       assert.equal((await srv.api(`api/sessions/${chat.id}/agents/nope`)).status, 404);
+
       assert.equal(
         (await srv.api(`api/sessions/${chat.id}/agents/..%2Fx`)).status,
         404,
@@ -334,17 +378,21 @@ test(
 
 /** The `alert` events of a server's stream, from its snapshot on (as drift.test reads them). */
 async function alerts(url, key) {
-  const seen = [],
-    ac = new AbortController();
+  const seen = [];
+  const ac = new AbortController();
+
   await new Promise((resolve, reject) => {
     fetch(`${url}events`, { signal: ac.signal, headers: { 'x-peix-key': key } })
       .then(async res => {
         let buf = '';
+
         for await (const chunk of res.body) {
           buf += Buffer.from(chunk).toString();
           let i;
+
           while ((i = buf.indexOf('\n\n')) >= 0) {
             const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+
             buf = buf.slice(i + 2);
             if (m?.[1] === 'snapshot') resolve();
             if (m?.[1] === 'alert') seen.push(JSON.parse(m[2]));
@@ -355,6 +403,7 @@ async function alerts(url, key) {
         if (!ac.signal.aborted) reject(e);
       });
   });
+
   return { seen, stop: () => ac.abort() };
 }
 
@@ -362,8 +411,9 @@ test(
   'a result that names an agent says which, on its entry: an Agent call\u2019s, a forked Skill\u2019s; nothing else does',
   { timeout: 30_000 },
   async () => {
-    const dir = tmpDir('peix-fx-'),
-      cwd = '/tmp/acme/infra';
+    const dir = tmpDir('peix-fx-');
+    const cwd = '/tmp/acme/infra';
+
     const fx = makeFixture(dir, [
       {
         cwd,
@@ -407,10 +457,13 @@ test(
         ],
       },
     ]);
+
     const srv = await startTestServer({ claudeDir: dir });
+
     try {
       const { entries } = (await srv.api(`api/sessions/${fx.chats[0].id}/messages`)).body;
       const results = entries.filter(e => e.kind === 'tool_result');
+
       assert.deepEqual(
         results.map(e => e.agent ?? null),
         [
@@ -420,11 +473,13 @@ test(
           null,
         ],
       );
+
       assert.equal(
         entries.find(e => e.kind === 'tool_use' && e.name === 'Agent').who,
         'looker',
         'the name the call gave it',
       );
+
       assert.equal(entries.filter(e => e.kind === 'tool_use' && e.who).length, 1, 'no name, no word');
     } finally {
       await srv.stop();
@@ -451,40 +506,51 @@ test(
         },
       ],
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir });
     let a;
+
     try {
       await waitFor(async () => (await rowsOf(srv, chat.id))?.length, { what: 'the rows' });
       a = await alerts(srv.url, srv.key);
+
       const note = n =>
-        appendFileSync(chat.file, JSON.stringify(agentNoteLine({ id: chat.id, cwd: chat.cwd, ...n })) + '\n');
+        appendFileSync(chat.file, `${JSON.stringify(agentNoteLine({ id: chat.id, cwd: chat.cwd, ...n }))}\n`);
+
       note({ tool: 'toolu_a', asked: 'Price the gateways' });
       await new Promise(res => setTimeout(res, 900));
+
       assert.deepEqual(
         a.seen.filter(x => x.kind === 'agent-failed'),
         [],
         'one that finished: no word',
       );
+
       note({
         tool: 'toolu_b',
         asked: 'Check flow logs',
         status: 'failed',
         said: 'failed: Agent terminated early due to an API error',
       });
+
       await waitFor(() => a.seen.some(x => x.kind === 'agent-failed'), { what: 'the alert' });
       const f = a.seen.find(x => x.kind === 'agent-failed');
+
       assert.deepEqual(
         [f.sessionId, f.heading, f.snippet],
         [chat.id, 'An agent failed · infra', 'Check flow logs: Agent terminated early due to an API error'],
       );
+
       note({
         tool: 'toolu_b',
         asked: 'Check flow logs',
         status: 'failed',
         said: 'failed: Agent terminated early due to an API error',
       }); // a notice again
+
       await srv.api(`api/sessions/${chat.id}/messages`); // and a re-read of the chat
       await new Promise(res => setTimeout(res, 900));
+
       assert.equal(
         a.seen.filter(x => x.kind === 'agent-failed').length,
         1,
@@ -506,20 +572,26 @@ test(
       { id: 'sec', asked: 'Look for open ingress', kind: 'security', ago: 5 * MIN, steps: ['Grep the modules'] },
       { id: 'look', asked: 'Find the modules', kind: 'Explore', ago: 4 * MIN, steps: ['List them'] },
     ]);
+
     mkdirSync(join(fx.dir, 'agents'), { recursive: true });
+
     writeFileSync(
       join(fx.dir, 'agents', 'security.md'),
       '---\nname: security\ndescription: Reviews for security\ncolor: red\n---\nLook.\n',
     );
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const rows = await waitFor(
         async () => {
           const r = await rowsOf(srv, chat.id);
+
           return r?.length === 2 && r;
         },
         { what: 'the rows' },
       );
+
       assert.deepEqual(rows.map(r => [r.id, r.type, r.color]).sort(), [
         ['look', 'Explore', null],
         ['sec', 'security', 'red'],
@@ -548,20 +620,25 @@ test(
       },
       { id: 'expl', asked: 'Explore it', kind: 'explorer', ago: 10 * MIN, steps: ['Grep the client'] },
     ]);
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const sum = await waitFor(
         async () => {
           const x = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
           return x?.agentAll?.length === 2 && x;
         },
         { what: 'both rounds' },
       );
+
       assert.deepEqual(
         sum.agentRows.map(r => r.id),
         ['expl'],
         'a card: the last round',
       );
+
       assert.deepEqual(
         sum.agentAll.map(r => [r.id, r.type]),
         [
@@ -581,9 +658,10 @@ test(
   'a resume starts its rows over, but the agents of the claudes before stay in agentAll, past; a chat with no claude keeps them',
   { timeout: 30_000 },
   async () => {
-    const p = standIn(),
-      dir = tmpDir('peix-fx-'),
-      now = new Date();
+    const p = standIn();
+    const dir = tmpDir('peix-fx-');
+    const now = new Date();
+
     const fx = makeFixture(dir, [
       {
         cwd: '/tmp/acme/infra',
@@ -601,7 +679,9 @@ test(
         at: new Date(Date.now() - 60 * MIN),
       },
     ]);
+
     const [live, ended] = fx.chats;
+
     agentFiles({
       dir,
       lead: live,
@@ -620,6 +700,7 @@ test(
         { id: 'after', asked: 'After the resume', ago: 10 * MIN, quiet: 9 * MIN, report: 'Done.', finished: true },
       ],
     });
+
     agentFiles({
       dir,
       lead: ended,
@@ -636,21 +717,27 @@ test(
         },
       ],
     });
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const of = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
       const s = await waitFor(
         async () => {
           const x = await of(live.id);
+
           return x?.agentAll?.length === 3 && x;
         },
         { what: 'every agent, the earlier ones too' },
       );
+
       assert.deepEqual(
         s.agentRows.map(r => r.id),
         ['after'],
         'the rows: this claude’s alone',
       );
+
       assert.deepEqual(
         s.agentAll.map(r => [r.id, !!r.past]),
         [
@@ -660,18 +747,23 @@ test(
         ],
         'all of them, oldest first, the earlier ones past',
       );
+
       assert.ok(
         s.agentAll.filter(r => r.past).every(r => r.st === 'done' || r.st === 'fail'),
         'a past agent is never at work',
       );
+
       assert.equal(s.agents, 0);
+
       const e = await waitFor(
         async () => {
           const x = await of(ended.id);
+
           return x?.agentAll?.length === 1 && x;
         },
         { what: 'the ended chat’s' },
       );
+
       assert.deepEqual(
         [e.agentRows, e.agentAll[0].id, e.agentAll[0].past, e.agentAll[0].kind],
         [null, 'gone', true, 'code-reviewer'],

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
@@ -23,6 +24,7 @@ test("a Max plan: the rolling windows and a model's own week", () => {
     limits: [{ kind: 'weekly_scoped', percent: 8, resets_at: at, scope: { model: { display_name: 'Fable' } } }],
     nimbus_quill: { utilization: 0, resets_at: null },
   });
+
   assert.deepEqual(
     windows.map(w => [w.key, w.percent]),
     [
@@ -30,10 +32,12 @@ test("a Max plan: the rolling windows and a model's own week", () => {
       ['limits:weekly_scoped:Fable', 8],
     ],
   );
+
   assert.ok(
     windows.every(w => !('limit' in w)),
     'no money on a plan of windows',
   );
+
   assert.deepEqual(other, ['nimbus_quill']);
 });
 
@@ -44,10 +48,12 @@ test('the five-hour window is gone: a field or a row still naming it is no windo
       seven_day: { utilization: 22, resets_at: at },
       limits: [{ kind: 'session', percent: utilization, resets_at: at, label: 'Session' }],
     });
+
     assert.deepEqual(
       windows.map(w => w.key),
       ['seven_day'],
     );
+
     assert.deepEqual(other, []);
   }
 });
@@ -67,6 +73,7 @@ test('a monthly spend cap: one window, its dollars from extra_usage, in whole un
       },
     ],
   });
+
   assert.deepEqual(windows, [
     {
       key: 'spend:monthly',
@@ -89,6 +96,7 @@ test('several caps: the dollars go with the active one only', () => {
       { kind: 'spend', group: 'monthly', percent: 30, resets_at: '2026-11-01T00:00:00.000Z', is_active: false },
     ],
   });
+
   assert.deepEqual(
     windows.map(w => [w.key, w.label, w.limit ?? null]),
     [
@@ -103,10 +111,12 @@ test('extra usage on a plan of windows, with no spend row: a window of its own',
     seven_day: { utilization: 100, resets_at: at },
     extra_usage: { is_enabled: true, monthly_limit: 10000, used_credits: 2500, utilization: null, currency: 'EUR' },
   });
+
   assert.deepEqual(
     windows.map(w => w.key),
     ['seven_day', 'extra_usage'],
   );
+
   assert.deepEqual(windows[1], {
     key: 'extra_usage',
     label: 'extra usage · this month',
@@ -124,6 +134,7 @@ test('extra usage switched off, or with no limit, is no window', () => {
     usageWindows({ extra_usage: { is_enabled: false, monthly_limit: 5000, used_credits: 0, utilization: 0 } }).windows,
     [],
   );
+
   assert.deepEqual(
     usageWindows({ extra_usage: { is_enabled: true, monthly_limit: null, used_credits: 300, utilization: null } })
       .windows,
@@ -142,6 +153,7 @@ test('a grant counted in dollars keeps its label and amounts', () => {
       remaining_dollars: 30,
     },
   });
+
   assert.deepEqual(windows, [
     { key: 'wattle_ember', label: 'Team credit', percent: 40, resetsAt: null, used: 20, limit: 50, currency: 'USD' },
   ]);

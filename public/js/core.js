@@ -1,4 +1,5 @@
 const $ = s => document.querySelector(s);
+
 // A script animation is let go of once it is done (2026-10-15). WebKit keeps every animation `animate()` made after it
 // ends on the document timeline, which walks the finished ones on every frame (removeReplacedAnimations, the
 // timeline's tick), and keeps any animation with a timeline alive, cancelled or not, its element with it, out of the
@@ -6,34 +7,44 @@ const $ = s => document.querySelector(s);
 // again. So each is cancelled once done and taken off its timeline: one that fills nothing, one cancelled by its own
 // code, one that fills forwards once its element has left the page (a bubble, a folding card, a line that fell away:
 // each removed at its end) or a later one replaced it; seconds after, so its own handlers ran.
-const animate0 = Element.prototype.animate,
-  ended = new Set();
+const animate0 = Element.prototype.animate;
+const ended = new Set();
+
 let endTimer = 0;
+
 function letGoEnded() {
   endTimer = 0;
+
   for (const a of ended) {
     const fills =
       /forwards|both/.test(a.effect?.getTiming().fill) && a.effect.target?.isConnected && a.replaceState !== 'removed';
+
     if (a.playState === 'idle' || (a.playState === 'finished' && !fills)) {
       ended.delete(a);
       a.cancel();
       a.timeline = null;
     } else if (a.playState !== 'finished') ended.delete(a); // played again
   }
+
   if (ended.size) endTimer = setTimeout(letGoEnded, 5000); // one holding its last frame in the page: looked at again
 }
+
 const endSoon = a => {
   ended.add(a);
   endTimer ||= setTimeout(letGoEnded, 2000);
 };
+
 Element.prototype.animate = function (...args) {
   const a = animate0.apply(this, args);
+
   a.finished.then(
     () => endSoon(a),
     () => endSoon(a),
   );
+
   return a;
 };
+
 const state = {
   voiceOver: false,
   sessions: new Map(),
@@ -69,6 +80,7 @@ const state = {
   lunch: { on: false, set: false, places: [] },
   priority: [],
 };
+
 const prefs = {
   space: false,
   spaceAt: 0.52,
@@ -157,28 +169,35 @@ const prefs = {
   zzLane: 0,
   focusSince: 0,
 };
+
 try {
   Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'));
 } catch {}
+
 // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
 // once; one that chose medium keeps it.
 if (!prefs.cardsMoved) {
   if (prefs.cards === 'large') prefs.cards = 'compact';
   prefs.cardsMoved = true;
 }
+
 // Pages but GitHub's open in the browser by default (2026-10-21, later; the board's own that morning) — and once on a
 // board saved before, whichever it said; what is picked after stays.
 if (!prefs.linksMoved) {
   prefs.pagesOut = true;
   prefs.linksMoved = true;
 }
+
 // Idle folds to begin with (2026-10-12) — and once on a board saved with Done alone folded, the default it had; one
 // that opened Done (the harness opens every lane) keeps what it chose.
 if (!prefs.lanesIdle) {
-  if (Array.isArray(prefs.lanesShut) && prefs.lanesShut.includes('done') && !prefs.lanesShut.includes('idle'))
+  if (Array.isArray(prefs.lanesShut) && prefs.lanesShut.includes('done') && !prefs.lanesShut.includes('idle')) {
     prefs.lanesShut.push('idle');
+  }
+
   prefs.lanesIdle = true;
 }
+
 // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
 for (const k of [
   'groupByRepo',
@@ -190,8 +209,10 @@ for (const k of [
   'repoCollapsed',
   'tight',
   'showTools',
-])
+]) {
   delete prefs[k];
+}
+
 delete prefs.projectsCompact; // the projects column's strip or full width — there is no column since 2026-09-24
 // the switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them;
 // and the code's fold, the settings' and each chat's, since long code is always folded, and how a date is written,
@@ -202,12 +223,15 @@ for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy', 'dates']
 // saved before is dropped, or a state switched off then would be hidden with nothing left to bring it back
 delete prefs.filter;
 delete prefs.filters;
+
 // the list folded to a rail (sessionsCompact) became the list hidden (2026-10-25): a folded one is hidden
 if ('sessionsCompact' in prefs) {
   prefs.listHidden = !!prefs.sessionsCompact;
   delete prefs.sessionsCompact;
 }
+
 delete prefs.peopleFold; // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
+
 // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
 for (const k of [
   'simpleColors',
@@ -224,37 +248,48 @@ for (const k of [
   'statusBar',
   'layout',
   'sidebarStyle',
-])
-  delete prefs[k]; // layout: Tiles · Sidebar, sidebarStyle: Ring · Glass, until 2026-11-01
+]) {
+  delete prefs[k];
+} // layout: Tiles · Sidebar, sidebarStyle: Ring · Glass, until 2026-11-01
+
 if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
 prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied'); // lanes for a morning (2026-10-12), filters since
 if (!['replied', 'prio'].includes(prefs.listFilter)) prefs.listFilter = null; // 'move' till 2026-11-25
+
 // the Snoozed lane folded to begin with (2026-11-24, round XXX's W1), as Idle and Done are, on a board that had prefs before it
 if (!prefs.zzLane) {
   if (!prefs.lanesShut.includes('snoozed')) prefs.lanesShut.push('snoozed');
   prefs.zzLane = 1;
 }
+
 // Top priority became Pinned, on by default (2026-11-25): on once on a board that had prefs before
 if (!prefs.pinned) {
   prefs.prio = true;
   prefs.pinned = 1;
 }
+
 // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
 // over; the empty default every saved prefs held does not, or nobody would see the new one
 if ('sbStats' in prefs) {
   if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats;
   delete prefs.sbStats;
 }
+
 // a card's parts chosen before it had agents to show (2026-11-02), before every part was one (2026-11-03: shown, as they
 // were), and before the snooze's mark and the pin were on by default (2026-11-25: on, once)
 if (Array.isArray(prefs.cardParts)) {
   if (!prefs.cardPartsSeen) prefs.cardParts.push('agents');
-  if (prefs.cardPartsSeen < 2)
+
+  if (prefs.cardPartsSeen < 2) {
     prefs.cardParts.push('tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live');
+  }
+
   if (prefs.cardPartsSeen < 3 && !prefs.cardParts.includes('nap')) prefs.cardParts.push('nap');
   if (prefs.cardPartsSeen < 4 && !prefs.cardParts.includes('pin')) prefs.cardParts.push('pin');
 }
+
 prefs.cardPartsSeen = 4;
+
 const savePrefs = () => {
   try {
     localStorage.setItem('peixairada-prefs', JSON.stringify(prefs));

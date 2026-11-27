@@ -16,10 +16,11 @@ test(
   'GET /api/named: the chats whose transcript names the PR, the middle the boot did not read too',
   { timeout: 40_000 },
   async () => {
-    const dir = tmpDir('peix-fx-'),
-      cwd = join(dir, 'named-repo'),
-      at = new Date(Date.now() - 3600_000),
-      filler = 'filler '.repeat(2000);
+    const dir = tmpDir('peix-fx-');
+    const cwd = join(dir, 'named-repo');
+    const at = new Date(Date.now() - 3600_000);
+    const filler = 'filler '.repeat(2000);
+
     const [mid, plain, chip] = makeFixture(dir, [
       {
         cwd,
@@ -37,30 +38,39 @@ test(
       { cwd, title: 'In words alone', prompt: 'go', reply: 'see acme/widgets#650', at },
       { cwd, title: 'Its chip', prompt: 'go', reply: 'Opened https://github.com/acme/widgets/pull/651 for it.', at },
     ]).chats;
+
     const srv = await startTestServer({ claudeDir: dir, env: ENV });
+
     const named = async link => {
       const r = await srv.api(`api/named?pr=${encodeURIComponent(link)}`);
+
       assert.equal(r.status, 200, JSON.stringify(r.body));
       return r.body.ids;
     };
+
     try {
       const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
       await waitFor(async () => !!(await chat(chip.id)) && !!(await chat(plain.id)), { what: 'the fixture indexed' });
+
       assert.deepEqual(
         (await chat(mid.id)).prs.map(p => p.label),
         [],
         'the boot did not read it: no chip',
       );
+
       assert.deepEqual(
         await named(LINK),
         [mid.id],
         "its files page, another case: found; no link in the other chat's words",
       );
+
       assert.deepEqual(
         await named('https://github.com/acme/widgets/pull/651'),
         [chip.id],
         "a chip's too, in the part the boot read",
       );
+
       assert.deepEqual(await named('https://github.com/acme/widgets/pull/65'), [], 'another number is no match');
       assert.deepEqual(await named('https://github.com/acme/gadgets/pull/650'), [], 'nor another repo');
       assert.deepEqual(await named('https://github.com/other/widgets/pull/650'), [], 'nor another org');
@@ -68,6 +78,7 @@ test(
       assert.equal((await srv.post(`api/sessions/${mid.id}/done`, {})).status, 200);
       await waitFor(async () => (await chat(mid.id)).done, { what: 'ticked' });
       assert.deepEqual(await named(LINK), [mid.id], 'a done chat as any other');
+
       assert.deepEqual(
         (await chat(mid.id)).prs.map(p => p.label),
         [],
@@ -78,8 +89,10 @@ test(
         'nonsense',
         'https://github.com/acme/widgets/issues/650',
         'https://github.com/acme/widgets/pull/99999999999',
-      ])
+      ]) {
         assert.equal((await srv.api(`api/named?pr=${encodeURIComponent(q)}`)).status, 400, q);
+      }
+
       assert.equal((await srv.api('api/named')).status, 400, 'none asked');
     } finally {
       await srv.stop();
@@ -88,10 +101,11 @@ test(
 );
 
 test("GET /api/named: a link cut by the read's chunk", { timeout: 40_000 }, async () => {
-  const CHUNK = 1 << 20,
-    dir = tmpDir('peix-fx-'),
-    cwd = join(dir, 'chunk-repo'),
-    at = new Date(Date.now() - 3600_000);
+  const CHUNK = 1 << 20;
+  const dir = tmpDir('peix-fx-');
+  const cwd = join(dir, 'chunk-repo');
+  const at = new Date(Date.now() - 3600_000);
+
   const [org, num, end, last] = makeFixture(
     dir,
     ['The org cut', 'The number cut', "Its end at the chunk's", 'A digit past the end'].map(title => ({
@@ -102,25 +116,31 @@ test("GET /api/named: a link cut by the read's chunk", { timeout: 40_000 }, asyn
       at,
     })),
   ).chats;
+
   /** A line in the file putting `text`'s first `cut` bytes before the chunk's end and the rest after it. */
   const across = (c, text, cut) => {
     const head = '{"type":"file-history-snapshot","note":"';
+
     appendFileSync(c.file, `${head}${'x'.repeat(CHUNK - statSync(c.file).size - head.length - cut)}${text}"}\n`);
   };
+
   across(org, LINK, 'https://github.com/ac'.length);
   across(num, LINK, 'https://github.com/acme/widgets/pu'.length);
   across(end, LINK, LINK.length); // …/pull/650 to the very end of the chunk, what follows it past it
   across(last, `${LINK}7`, LINK.length); // …and a 7 past it
   const srv = await startTestServer({ claudeDir: dir, env: ENV });
+
   try {
     await waitFor(async () => (await srv.api('api/sessions')).body.sessions.length >= 4, {
       what: 'the fixture indexed',
     });
+
     assert.deepEqual(
       (await srv.api(`api/named?pr=${encodeURIComponent(LINK)}`)).body.ids.sort(),
       [org.id, num.id, end.id].sort(),
       'the cut links found, and 6507 is not 650',
     );
+
     assert.deepEqual(
       (await srv.api(`api/named?pr=${encodeURIComponent(`${LINK}7`)}`)).body.ids,
       [last.id],

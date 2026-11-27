@@ -11,6 +11,7 @@ import { makeFixture, replyLines } from '../scripts/fixture.mjs';
 import { startFakeJira } from '../scripts/fakes/fakejira.mjs';
 
 const tmp = tmpDir('peix-test-');
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
@@ -21,6 +22,7 @@ test('ticketsIn: keys in prose and in inline code, links with their URL; not in 
   const said = ticketsIn(
     'Fix ACME-12 and `OPS-7`, see https://acme.atlassian.net/browse/ACME-40 — not x-ACME-1, ACME-2b, nor\n```\nACME-99\n```\nbut feature/OPS-8 yes.',
   );
+
   assert.deepEqual(
     said.map(t => [t.key, t.url]),
     [
@@ -30,11 +32,13 @@ test('ticketsIn: keys in prose and in inline code, links with their URL; not in 
       ['OPS-8', null],
     ],
   );
+
   assert.deepEqual(
     ticketsIn('UTF-8, SHA-256 and GPT-4 look like keys').map(t => t.key),
     ['UTF-8', 'SHA-256', 'GPT-4'],
     "they look like keys — the site's projects say which are",
   );
+
   assert.deepEqual(
     ticketsIn('acme-12 is lower case, ACME-012 starts at 0').map(t => t.key),
     [],
@@ -46,10 +50,12 @@ test('cleanSetup: a site as its origin and a login; http only on loopback; both 
     cleanSetup({ jira: { site: 'acme.atlassian.net/jira/your-work', email: ' me@acme.com ' } }, true).setup.jira,
     { site: 'https://acme.atlassian.net', email: 'me@acme.com' },
   );
+
   assert.deepEqual(cleanSetup({ jira: { site: 'http://127.0.0.1:9999', email: 'me@x.y' } }, true).setup.jira, {
     site: 'http://127.0.0.1:9999',
     email: 'me@x.y',
   });
+
   assert.match(cleanSetup({ jira: { site: 'http://acme.example', email: 'me@x.y' } }, true).error, /not a Jira site/);
   assert.match(cleanSetup({ jira: { site: 'acme.atlassian.net', email: 'me' } }, true).error, /not an email/);
   assert.equal(cleanSetup({ jira: { site: '', email: '' } }, true).setup.jira, null);
@@ -71,6 +77,7 @@ test('end to end: what Jira knows wears its status, what it does not is never sh
       'ACME-31': { summary: "The branch's own", status: 'To Do', cat: 'new' },
     },
   });
+
   const fx = makeFixture(tmpDir('peix-fx-'), [
     {
       cwd: process.cwd(),
@@ -78,28 +85,37 @@ test('end to end: what Jira knows wears its status, what it does not is never sh
       reply: 'On https://x.atlassian.net/browse/ACME-12 now.',
     },
   ]);
+
   const branched = makeFixture(fx.dir, [{ cwd: process.cwd(), prompt: 'carry on', reply: 'ok' }]).chats[0];
+
   // that chat's branch names its ticket
-  const f = branched.file,
-    lines = readFileSync(f, 'utf8')
-      .trim()
-      .split('\n')
-      .map(l => JSON.parse(l));
+  const f = branched.file;
+
+  const lines = readFileSync(f, 'utf8')
+    .trim()
+    .split('\n')
+    .map(l => JSON.parse(l));
+
   for (const l of lines) if (l.gitBranch) l.gitBranch = 'feature/acme-31-the-branch';
-  (await import('node:fs')).writeFileSync(f, lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+  (await import('node:fs')).writeFileSync(f, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
   const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: jira.token, PR_TTL_MS: '0' } });
+
   try {
     const chat = id => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === id));
+
     assert.deepEqual((await chat(fx.chats[0].id)).tickets, [], 'no site, no tickets');
     assert.equal(jira.bulk.length, 0, 'and nothing asked');
+
     const put = await srv.api('api/config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jira: { site: jira.url, email: jira.email } }),
     });
+
     assert.equal(put.status, 200, JSON.stringify(put.body));
     await waitFor(async () => (await chat(fx.chats[0].id)).tickets.length === 2, { what: "the chat's two tickets" });
     const t = (await chat(fx.chats[0].id)).tickets;
+
     assert.deepEqual(
       t.map(x => [x.key, x.cat, x.status, x.summary]),
       [
@@ -107,20 +123,25 @@ test('end to end: what Jira knows wears its status, what it does not is never sh
         ['OPS-7', 'done', 'Done', 'Rotate the keys'],
       ],
     );
+
     assert.equal(t[0].url, `${jira.url}/browse/ACME-12`, "the site's own link");
     assert.deepEqual([t[0].assignee.name, t[0].assignee.me, t[1].assignee.me], ['Me Myself', true, false]);
     await waitFor(async () => (await chat(branched.id)).tickets[0]?.key === 'ACME-31', { what: "the branch's ticket" });
     assert.equal((await chat(branched.id)).tickets[0].branch, true);
     const asked = jira.bulk.flat();
+
     assert.ok(!asked.includes('UTF-8'), `a key whose project the site has not got is never asked: ${asked}`);
     assert.ok(asked.includes('ACME-404'));
     const info = (await srv.api('api/jira')).body;
+
     assert.deepEqual([info.site, info.token, info.me, info.error], [jira.url, 'env', 'Me Myself', null]);
+
     assert.equal(
       JSON.parse(readFileSync(join(srv.dir, 'config.json'), 'utf8')).jira.email,
       jira.email,
       'the site and login in the setup file…',
     );
+
     assert.ok(!readFileSync(join(srv.dir, 'config.json'), 'utf8').includes(jira.token), '…and never the token');
   } finally {
     await srv.stop();
@@ -134,16 +155,21 @@ test(
   async () => {
     const jira = await startFakeJira({ issues: { 'ACME-1': { summary: 'one' } } });
     const srv = await startTestServer();
+
     try {
       const put = (path, body, method = 'PUT') =>
         srv.api(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
       assert.equal((await put('api/jira/token', { token: 'abc' })).status, 400, 'too short to be a token');
+
       assert.match(
         (await put('api/jira/token', { token: 'a-real-looking-token' })).body.error,
         /site and your email first/,
       );
+
       await put('api/config', { jira: { site: jira.url, email: jira.email } });
       let info = (await srv.api('api/jira')).body;
+
       assert.deepEqual([info.token, info.me], [null, null]);
       assert.match(info.error, /no API token/);
       info = (await put('api/jira/token', { token: 'wrong-token-1234' })).body;
@@ -154,27 +180,33 @@ test(
       assert.equal(readFileSync(join(srv.dir, 'jira-token'), 'utf8'), jira.token);
       // another site in the setup (2026-11-06): the token kept is the first site's, and goes nowhere else
       const auth = [];
+
       const other = createServer((req, res) => {
         auth.push(req.headers.authorization || null);
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end('{}');
       });
+
       await new Promise(r => other.listen(0, '127.0.0.1', r));
+
       try {
         await put('api/config', { jira: { site: `http://127.0.0.1:${other.address().port}`, email: jira.email } });
         info = (await srv.api('api/jira')).body;
         assert.deepEqual([info.token, info.me], [null, null]);
         assert.match(info.error, /the token kept is for http:\/\/127\.0\.0\.1:\d+ — paste one for/);
+
         assert.ok(
           auth.every(a => a === null),
           `no token went to the other site: ${JSON.stringify(auth)}`,
         );
+
         await put('api/config', { jira: { site: jira.url, email: jira.email } });
         info = (await srv.api('api/jira')).body;
         assert.deepEqual([info.token, info.me, info.error], ['file', 'Me Myself', null], 'back on its own site');
       } finally {
         other.close();
       }
+
       info = (await srv.api('api/jira/token', { method: 'DELETE' })).body;
       assert.equal(info.token, null);
       assert.ok(!existsSync(join(srv.dir, 'jira-token')));
@@ -197,31 +229,43 @@ test(
       issues: { 'ACME-12': { summary: 'Fees' } },
       delays: { '/rest/api/3/project/search': 4000 },
     });
-    const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: process.cwd(), prompt: 'hello', reply: 'hi' }]),
-      c = fx.chats[0];
+
+    const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: process.cwd(), prompt: 'hello', reply: 'hi' }]);
+    const c = fx.chats[0];
+
     const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: jira.token } });
+
     try {
       const chat = () => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === c.id));
+
       assert.equal((await putJson(srv, 'api/config', { jira: { site: jira.url, email: jira.email } })).status, 200);
       await waitFor(() => jira.calls['/rest/api/3/project/search'] === 1, { what: 'the projects asked for' });
+
       appendFileSync(
         c.file,
-        replyLines({ id: c.id, cwd: c.cwd, text: 'UTF-8 is no ticket, ACME-12 is.' })
+        `${replyLines({ id: c.id, cwd: c.cwd, text: 'UTF-8 is no ticket, ACME-12 is.' })
           .map(l => JSON.stringify(l))
-          .join('\n') + '\n',
+          .join('\n')}\n`,
       );
+
       await waitFor(async () => (await chat()).tickets[0]?.key === 'ACME-12', {
         timeout: 30_000,
         what: 'ACME-12, once the projects are known',
       });
+
       assert.deepEqual(jira.bulk.flat(), ['ACME-12'], 'UTF-8 never asked: said while the projects were on their way');
-      const conf = join(srv.dir, 'config.json'),
-        was = JSON.parse(readFileSync(conf, 'utf8'));
+
+      const conf = join(srv.dir, 'config.json');
+      const was = JSON.parse(readFileSync(conf, 'utf8'));
+
       writeFileSync(conf, JSON.stringify({ ...was, projects: { widgets: { abbr: 'WG' } } }, null, 2));
+
       await waitFor(async () => (await srv.api('api/config')).body.projects?.widgets?.abbr === 'WG', {
         what: 'the hand edit read',
       });
+
       await sleep(600);
+
       assert.deepEqual(
         [jira.calls['/rest/api/3/project/search'], jira.bulk.length, (await chat()).tickets.length],
         [1, 1, 1],
@@ -243,22 +287,28 @@ test(
       issues: {},
       delays: { '/rest/api/3/issue/bulkfetch': 1500 },
     });
+
     const now = await startFakeJira({
       projects: ['ACME'],
       issues: { 'ACME-12': { summary: 'From the new site' } },
       delays: { '/rest/api/3/project/search': 4000 },
     });
+
     const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: process.cwd(), prompt: 'Pick up ACME-12.', reply: 'ok' }]);
     const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: old.token } });
+
     try {
       const chat = () => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === fx.chats[0].id));
+
       await putJson(srv, 'api/config', { jira: { site: old.url, email: old.email } });
       await waitFor(() => old.calls['/rest/api/3/issue/bulkfetch'] === 1, { what: 'ACME-12 asked of the old site' });
       await putJson(srv, 'api/config', { jira: { site: now.url, email: now.email } }); // while its answer — no such issue — is on its way
+
       await waitFor(async () => (await chat()).tickets[0]?.summary === 'From the new site', {
         timeout: 30_000,
         what: "the new site's ACME-12",
       });
+
       assert.deepEqual(now.bulk.flat(), ['ACME-12'], 'the old site\'s "no such issue" kept it from nobody');
     } finally {
       await srv.stop();

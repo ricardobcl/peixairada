@@ -26,10 +26,12 @@ const ends = ctx =>
 })()`,
     )
     .then(JSON.parse);
+
 const settle = async ctx => {
   await ctx.settle();
   await ctx.sleep(250);
 }; // the list's moves (a fold shifts the cards under the pills), then a frame for the pills and the smooth scroll's end
+
 const scrollTo = async (ctx, where) => {
   await ctx.evaluate(`(l => { l.scrollTop = ${where}; })(document.querySelector('#slist'))`);
   await settle(ctx);
@@ -40,9 +42,12 @@ export default async function (ctx) {
   const cwd = join(tmpdir(), 'peix-ends', 'ends-repo');
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
   const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000, ...extra });
+
   const long =
     'This is a reply long enough to fill the three lines a large card gives it, so that the list runs well past the bottom of the window and has cards out of sight both ways once it is scrolled.';
+
   const now = Date.now();
+
   makeFixture(ctx.fixture.dir, [
     // asking and clauding sort to the top of the list, so they are out of sight above once it is scrolled down
     {
@@ -77,27 +82,34 @@ export default async function (ctx) {
       at: new Date(now - (i + 3) * 3600_000),
     })),
   ]);
+
   try {
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 26`, {
       what: "the twenty-four chats and the fixture's two",
     });
+
     await ctx.key('KeyP');
+
     await ctx.evaluate(
       `(() => { const q = document.querySelector('#pickq'); q.value = 'ends-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`,
     );
+
     await ctx.waitFor(
       `document.querySelectorAll('#slist > .card').length === 24 && document.querySelector('#slist > .card.asking') && document.querySelector('#slist > .card.working')`,
       { what: 'the list narrowed to the twenty-four, one asking and one clauding' },
     );
+
     await settle(ctx);
 
     // at the top: nothing above, the rest below
     out.top = await ends(ctx);
     ctx.assert.equal(out.top.up.on, false, 'nothing is out of sight above the top');
+
     ctx.assert.ok(
       out.top.down.on && out.top.down.n === out.top.want[1] && out.top.down.n > 3,
       `the bottom counts what is below (${out.top.down.n} of ${out.top.want[1]})`,
     );
+
     ctx.assert.match(out.top.down.text, /^↓ \d+ more$/, 'an arrow, the number, the word');
     ctx.assert.equal(out.top.down.dot, null, 'no dot: every card below is only ready');
     await ctx.shot('top');
@@ -107,31 +119,39 @@ export default async function (ctx) {
     out.mid = await ends(ctx);
     ctx.assert.ok(out.mid.up.on && out.mid.down.on, 'both ends count in the middle');
     ctx.assert.deepEqual([out.mid.up.n, out.mid.down.n], out.mid.want, "the counts are the cards' own");
+
     ctx.assert.equal(
       out.mid.up.dot,
       'ask',
       'a card asking you is out of sight above: the red dot, over the clauding one',
     );
+
     ctx.assert.match(
       await ctx.evaluate(`document.querySelector('#sup button').title`),
       /asking you/,
       'and the tooltip says so',
     );
+
     await ctx.shot('middle');
 
     // a click on the bottom pill: a screenful down
     await ctx.evaluate(`document.querySelector('#sdown button').click()`);
+
     await ctx.waitFor(`document.querySelector('#slist').scrollTop > ${out.mid.scroll + 300}`, {
       what: 'the list a screenful further down',
     });
+
     for (
       let last = -1, now;
       (now = await ctx.evaluate(`document.querySelector('#slist').scrollTop`)) !== last;
       last = now
-    )
-      await ctx.sleep(150); // the smooth scroll to its end
+    ) {
+      await ctx.sleep(150);
+    } // the smooth scroll to its end
+
     await settle(ctx);
     out.clicked = await ends(ctx);
+
     ctx.assert.deepEqual(
       [out.clicked.up.n, out.clicked.down.n],
       out.clicked.want,
@@ -147,15 +167,18 @@ export default async function (ctx) {
     // compact cards (Settings › Chat list): shorter cards under the same scroll position, and the counts follow without a scroll
     await scrollTo(ctx, 700);
     const before = await ends(ctx);
+
     await ctx.evaluate(`document.querySelector('#cardsSize [data-v="2"]').click()`);
     await settle(ctx);
     out.compact = await ends(ctx);
     ctx.assert.deepEqual([out.compact.up.n, out.compact.down.n], out.compact.want, 'compact cards, counted again');
+
     ctx.assert.notDeepEqual(
       [out.compact.up.n, out.compact.down.n],
       [before.up.n, before.down.n],
       'and the counts moved with them',
     );
+
     await ctx.evaluate(`document.querySelector('#cardsSize [data-v="0"]').click()`);
 
     return out;

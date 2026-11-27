@@ -2,11 +2,13 @@
 // The same round on a lit set. What the game draws is cut in three: the set, painted and baked once a sky; the actors, its
 // own 2D drawing code on an object shaped like a 2D context (zgBatch); the UI, the top canvas, never post-processed.
 // WebGL2, made when the dialog opens and let go when it closes; none, or a context lost, and the game is its 2D canvas.
-const ZE_WATER = 762,
-  ZE_BANK = 826,
-  ZE_TERRACE = 832,
-  ZE_HORIZ = 748;
+const ZE_WATER = 762;
+const ZE_BANK = 826;
+const ZE_TERRACE = 832;
+const ZE_HORIZ = 748;
+
 const zg = (ze.stage = { gl: null, off: false, P: null, scenes: new Map(), sky: -1, was: null, T: 0, frames: 0 });
+
 const ZG_HEAD = `#version 300 es
 precision highp float;
 vec2 cuv(vec2 p){return p/vec2(720.,900.);}
@@ -14,9 +16,11 @@ vec2 fuv(vec2 p){return vec2(p.x/720.,1.-p.y/900.);}
 vec3 lin(vec3 c){return pow(max(c,vec3(0.)),vec3(2.2));}
 in vec2 vP; out vec4 o;
 `;
+
 const ZG_VS = `#version 300 es
 uniform vec4 uRect; out vec2 vP;
 void main(){vec2 q=vec2(float(gl_VertexID&1),float((gl_VertexID>>1)&1));vP=uRect.xy+q*uRect.zw;vec2 c=vP/vec2(720.,900.);gl_Position=vec4(c.x*2.-1.,1.-c.y*2.,0.,1.);}`;
+
 const ZG_FS = {
   layer: `uniform sampler2D uT;uniform float uA;uniform vec2 uShift;
 void main(){o=texture(uT,fuv(vP-uShift))*uA;}`,
@@ -113,34 +117,43 @@ c=pow(max(c,vec3(0.)),vec3(1./2.2));
 float d=fract(sin(dot(gl_FragCoord.xy,vec2(12.98,78.23))+uT)*43758.5)-.5;c+=d/255.;
 o=vec4(c,1.);}`,
 };
+
 const ZG_PT_VS = `#version 300 es
 layout(location=0)in vec2 aP;layout(location=1)in vec4 aC;layout(location=2)in vec2 aS;uniform float uK;out vec4 vC;out float vSoft;
 void main(){vec2 c=aP/vec2(720.,900.);gl_Position=vec4(c.x*2.-1.,1.-c.y*2.,0.,1.);gl_PointSize=aS.x*uK;vC=aC;vSoft=aS.y;}`;
+
 const ZG_PT_FS = `#version 300 es
 precision highp float;in vec4 vC;in float vSoft;out vec4 o;
 void main(){vec2 d=gl_PointCoord*2.-1.;float r=dot(d,d);float a=vSoft<.5?1.:smoothstep(1.,.0,r);o=vec4(vC.rgb*a*vC.a,vSoft>0.?0.:a*vC.a);}`;
+
 function zgCompile(gl, vs, fs) {
   const mk = (t, s) => {
     const h = gl.createShader(t);
+
     gl.shaderSource(h, s);
     gl.compileShader(h);
     if (!gl.getShaderParameter(h, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(h));
     return h;
   };
+
   const p = gl.createProgram();
+
   gl.attachShader(p, mk(gl.VERTEX_SHADER, vs));
   gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   return { p, u: new Map() };
 }
+
 /** The stage up or not. Made on the first frame of an opening; what cannot be made is the 2D canvas until the dialog is opened again. */
 function zgOn() {
   if (zg.off) return false;
   if (zg.gl) return true;
   const cv = document.createElement('canvas');
+
   cv.id = 'zeGL';
   cv.setAttribute('aria-hidden', 'true');
+
   const gl = cv.getContext('webgl2', {
     alpha: false,
     antialias: false,
@@ -148,10 +161,12 @@ function zgOn() {
     stencil: false,
     preserveDrawingBuffer: false,
   });
+
   if (!gl) {
     zg.off = true;
     return false;
   }
+
   try {
     zg.hdr = !!gl.getExtension('EXT_color_buffer_float') || !!gl.getExtension('EXT_color_buffer_half_float');
     zg.fmt = zg.hdr ? [gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT] : [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE];
@@ -183,21 +198,26 @@ function zgOn() {
     zg.off = true;
     return false;
   }
+
   cv.addEventListener('webglcontextlost', e => {
     e.preventDefault();
     if (zg.gl !== gl) return;
     zgFree();
     zg.off = true;
     const c = $('#zeCanvas');
+
     c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0);
     if ($('#zeGame').open && !ze.raf) zeDraw();
   });
+
   $('#zeStack').prepend(cv);
   return true;
 }
+
 /** What the context makes, kept to delete by hand: WebKit's lost context holds on to its textures until a collection, 200 MB an opening. */
 function zgKeep(gl) {
   const made = (zg.made = []);
+
   for (const [mk, del] of [
     ['createTexture', 'deleteTexture'],
     ['createFramebuffer', 'deleteFramebuffer'],
@@ -207,41 +227,52 @@ function zgKeep(gl) {
     ['createSampler', 'deleteSampler'],
   ]) {
     const f = gl[mk].bind(gl);
+
     gl[mk] = () => {
       const o = f();
+
       made.push(del, o);
       return o;
     };
   }
 }
+
 /** A canvas done with, its pixels let go now: WebKit keeps a dropped one's until a collection, and a page with little script rarely has one. */
 const zgLetGo = (...cs) => {
   for (const c of cs) if (c) c.width = c.height = 0;
 };
+
 /** All of it let go with the dialog: the context, so its memory with it — the next opening starts clean. */
 function zgFree() {
   const gl = zg.gl;
+
   zg.off = false;
+
   if (gl) {
-    const cv = gl.canvas,
-      m = zg.made;
+    const cv = gl.canvas;
+    const m = zg.made;
+
     gl.useProgram(null);
     gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
     for (let u = 0; u < 8; u++) {
       gl.activeTexture(gl.TEXTURE0 + u);
       gl.bindTexture(gl.TEXTURE_2D, null);
       gl.bindSampler(u, null);
     }
+
     for (let i = 0; i < m.length; i += 2) gl[m[i]](m[i + 1]);
     cv.width = cv.height = 1;
     gl.getExtension('WEBGL_lose_context')?.loseContext();
     cv.remove();
   }
+
   zg.ax?.free();
   if (zg.cars) zgLetGo(...zg.cars.values());
   zgLetGo(zg.town?.c, zg.town?.e, zg.bridge?.c, zg.bridge?.e);
+
   Object.assign(zg, {
     gl: null,
     P: null,
@@ -265,12 +296,15 @@ function zgFree() {
     splash: null,
     frames: 0,
   });
+
   zg.scenes.clear();
   $('#zeCanvas').getContext('2d').setTransform(1, 0, 0, 1, 0, 0);
   $('#zeCanvas').getContext('2d').clearRect(0, 0, 1e4, 1e4);
 }
+
 function zgTex(gl, filt = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
   const t = gl.createTexture();
+
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -278,76 +312,99 @@ function zgTex(gl, filt = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
   return t;
 }
+
 function zgFbo(gl, w, h, fmt = zg.fmt, mips = false) {
   const t = zgTex(gl, mips ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+
   if (mips) gl.texStorage2D(gl.TEXTURE_2D, Math.floor(Math.log2(Math.max(w, h))) + 1, fmt[0], w, h);
   else gl.texImage2D(gl.TEXTURE_2D, 0, fmt[0], w, h, 0, fmt[1], fmt[2], null);
   const f = gl.createFramebuffer();
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, f);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
   return { t, f, w, h };
 }
+
 const zgDrop = (gl, b) => {
   if (b) {
     gl.deleteTexture(b.t);
     gl.deleteFramebuffer(b.f);
   }
 };
+
 const zgUp = (gl, cv) => {
   const t = zgTex(gl);
+
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, cv);
   return t;
 };
+
 /** Tiling noise in three channels. */
 function zgNoise(gl) {
-  const N = 256,
-    d = new Uint8Array(N * N * 4),
-    r = (x, y, s, c) => {
-      const f = v => Math.abs(Math.sin(v * 127.1 + c * 11.3) * 43758.5453) % 1;
-      return f((((x % s) + s) % s) + (((y % s) + s) % s) * 57.3 + s);
-    };
+  const N = 256;
+  const d = new Uint8Array(N * N * 4);
+
+  const r = (x, y, s, c) => {
+    const f = v => Math.abs(Math.sin(v * 127.1 + c * 11.3) * 43758.5453) % 1;
+
+    return f((((x % s) + s) % s) + (((y % s) + s) % s) * 57.3 + s);
+  };
+
   const n = (x, y, s, c) => {
-    const ix = Math.floor(x),
-      iy = Math.floor(y),
-      fx = x - ix,
-      fy = y - iy,
-      u = fx * fx * (3 - 2 * fx),
-      v = fy * fy * (3 - 2 * fy);
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const fx = x - ix;
+    const fy = y - iy;
+    const u = fx * fx * (3 - 2 * fx);
+    const v = fy * fy * (3 - 2 * fy);
+
     return (
       (r(ix, iy, s, c) * (1 - u) + r(ix + 1, iy, s, c) * u) * (1 - v) +
       (r(ix, iy + 1, s, c) * (1 - u) + r(ix + 1, iy + 1, s, c) * u) * v
     );
   };
-  for (let y = 0; y < N; y++)
-    for (let x = 0; x < N; x++)
+
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
       for (let c = 0; c < 3; c++) {
-        let a = 0,
-          w = 0.5,
-          s = 8;
+        let a = 0;
+        let w = 0.5;
+        let s = 8;
+
         for (let o = 0; o < 5; o++) {
           a += n((x / N) * s, (y / N) * s, s, c) * w;
           w *= 0.5;
           s *= 2;
         }
+
         d[(y * N + x) * 4 + c] = Math.min(255, a * 255 * 1.05);
       }
+    }
+  }
+
   const t = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
+
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, d);
   gl.generateMipmap(gl.TEXTURE_2D);
   return t;
 }
+
 /** The azulejo, one tile: the game's own rosette and diamond, mipmapped for the floor's distance. */
 function zgTile(gl) {
   const c = document.createElement('canvas');
+
   c.width = c.height = 128;
-  const x = c.getContext('2d'),
-    s = 128 / 29;
+
+  const x = c.getContext('2d');
+  const s = 128 / 29;
+
   x.scale(s, s);
   x.fillStyle = '#ece6f4';
   x.fillRect(0, 0, 29, 29);
   x.fillStyle = '#2b4fa8';
+
   for (const [a, b] of [
     [0, 0],
     [29, 0],
@@ -358,6 +415,7 @@ function zgTile(gl) {
     x.arc(a, b, 8, 0, Math.PI * 2);
     x.fill();
   }
+
   x.beginPath();
   x.moveTo(14.5, 8);
   x.lineTo(21, 14.5);
@@ -368,30 +426,38 @@ function zgTile(gl) {
   x.fillRect(0, 0, 29, 0.5);
   x.fillRect(0, 0, 0.5, 29);
   const t = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
+
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c);
   gl.generateMipmap(gl.TEXTURE_2D);
   zgLetGo(c);
   return t;
 }
+
 function zgUse(P, rect, vals = {}, texs = {}) {
   const gl = zg.gl;
+
   gl.useProgram(P.p);
+
   const U = n => {
     if (!P.u.has(n)) P.u.set(n, gl.getUniformLocation(P.p, n));
     return P.u.get(n);
   };
+
   gl.uniform4f(U('uRect'), rect[0], rect[1], rect[2], rect[3]);
   let i = 0;
+
   for (const n in texs) {
     gl.activeTexture(gl.TEXTURE0 + i);
     gl.bindTexture(gl.TEXTURE_2D, texs[n]);
     gl.uniform1i(U(n), i);
     i++;
   }
+
   for (const n in vals) {
-    const v = vals[n],
-      u = U(n);
+    const v = vals[n];
+    const u = U(n);
+
     if (u == null) continue;
     if (typeof v === 'number') gl.uniform1f(u, v);
     else if (v.int !== undefined) gl.uniform1i(u, v.int);
@@ -402,11 +468,15 @@ function zgUse(P, rect, vals = {}, texs = {}) {
     else if (v.length === 3) gl.uniform3f(u, v[0], v[1], v[2]);
     else if (v.length === 4) gl.uniform4f(u, v[0], v[1], v[2], v[3]);
   }
+
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
+
 const ZG_FULL = [0, 0, ZE_W, ZE_H];
+
 function zgBind(b) {
   const gl = zg.gl;
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, b ? b.f : null);
   gl.viewport(0, 0, b ? b.w : gl.canvas.width, b ? b.h : gl.canvas.height);
 }

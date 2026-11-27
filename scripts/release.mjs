@@ -20,6 +20,7 @@ import { CHANGELOG, changelogSections, relName, verParts } from '../lib/changelo
 
 const DIR = process.cwd();
 const git = (...args) => execFileSync('git', ['-C', DIR, ...args], { encoding: 'utf8' }).trim();
+
 const tryGit = (...args) => {
   try {
     return git(...args);
@@ -27,11 +28,14 @@ const tryGit = (...args) => {
     return '';
   }
 };
+
 const die = line => {
   console.error(line);
   process.exit(1);
 };
+
 const many = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
 const writtenAt = ref => {
   try {
     return JSON.parse(git('show', `${ref}:package.json`)).version || null;
@@ -39,6 +43,7 @@ const writtenAt = ref => {
     return null;
   }
 };
+
 const MONTHS = [
   'January',
   'February',
@@ -53,7 +58,9 @@ const MONTHS = [
   'November',
   'December',
 ];
+
 const longDate = (d = new Date()) => `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+
 const HEAD_CHANGELOG = `# Changelog
 
 What each release of peixAIrada brought, newest first. A board on *Releases* (Settings › Updates › Follow, the default)
@@ -63,7 +70,9 @@ takes the newest one and shows its notes; *Every commit* follows main.
 /** The commit that set the version HEAD is on, and when — the last release. */
 function lastRelease() {
   const version = writtenAt('HEAD');
+
   if (!version) die('package.json has no version here');
+
   const sha = git(
     'log',
     '-1',
@@ -74,64 +83,83 @@ function lastRelease() {
     '--',
     'package.json',
   );
+
   return { version, sha, date: sha ? git('show', '-s', '--format=%cs', sha) : null };
 }
+
 /** The next release: the next minor (2026-11-27, V1: a fix that cannot wait is a minor too). */
 function nextVersion(version) {
   const p = verParts(version);
+
   if (!p) die(`package.json's version, ${version}, is no x.y.z`);
   return `${p[0]}.${p[1] + 1}.0`;
 }
+
 /** The parts of the board a commit's files are (server/update.mjs' updateParts), or `notes` for none of them. */
 function partsOf(files) {
   const has = new Set();
+
   for (const f of files) {
     if (/^package(-lock)?\.json$/.test(f)) has.add('deps');
     else if (f === 'server.mjs' || /^(server|lib)\//.test(f)) has.add('server');
     else if (f.startsWith('public/')) has.add('page');
     else if (f.startsWith('mac/') && !f.endsWith('.md')) has.add('app');
   }
+
   return has.size ? [...has].join('+') : 'notes';
 }
+
 /** DECISIONS.md's entries dated on or after `since` (YYYY-MM-DD): the date and the rest of the heading. */
 function decisionsSince(since) {
   let text = '';
+
   try {
     text = readFileSync(join(DIR, 'docs', 'DECISIONS.md'), 'utf8');
   } catch {}
+
   return [...text.matchAll(/^## Decisions of (\d{4}-\d{2}-\d{2})([^\n]*)$/gm)]
     .filter(m => !since || m[1] >= since)
     .map(m => ({ date: m[1], title: m[2].replace(/^[,\s]*(?:—\s*)?/, '').trim() }));
 }
 
 function draft(sinceArg) {
-  const last = lastRelease(),
-    next = nextVersion(last.version);
+  const last = lastRelease();
+  const next = nextVersion(last.version);
+
   const dated = /^\d{4}-\d{2}-\d{2}$/.test(sinceArg || '');
   const from = sinceArg && !dated ? tryGit('rev-parse', '--verify', `${sinceArg}^{commit}`) : last.sha;
+
   if (sinceArg && !dated && !from) die(`--since ${sinceArg}: no such commit or date`);
   const sinceDate = dated ? sinceArg : from ? git('show', '-s', '--format=%cs', from) : null;
   const range = dated ? ['--since', `${sinceArg}T00:00`, 'HEAD'] : from ? [`${from}..HEAD`] : ['HEAD'];
+
   const log = tryGit('log', '--format=%x1e%h%x1f%cs%x1f%s', '--name-only', ...range)
     .split('\x1e')
     .filter(Boolean)
     .map(b => {
       const [head, ...files] = b.trim().split('\n');
       const [h, d, s] = head.split('\x1f');
+
       return { h, d, s, part: partsOf(files.filter(Boolean)) };
     });
+
   const facing = log.filter(c => c.part !== 'notes').length;
+
   console.log(
     `peixAIrada: the last release ${relName(last.version)} (${last.sha.slice(0, 7)}, ${last.date}); the next ${relName(next)}`,
   );
+
   console.log(
     `${many(log.length, 'commit')} since ${sinceDate || 'the start'} — ${facing} touch the page, the server or the app`,
   );
+
   const dec = decisionsSince(sinceDate);
+
   console.log(`\nDECISIONS.md, ${dec.length} ${dec.length === 1 ? 'entry' : 'entries'} since ${sinceDate}:`);
   for (const e of dec) console.log(`  ${e.date}  ${e.title}`);
   console.log('\nThe commits, newest first:');
   for (const c of log) console.log(`  ${c.d} ${c.h} [${c.part}] ${c.s}`);
+
   console.log(`\nThe notes: markdown, ### New / ### Changed / ### Security / ### Fixed; then
   node scripts/release.mjs cut <notes.md>`);
 }
@@ -139,35 +167,50 @@ function draft(sinceArg) {
 function cut(file, date) {
   if (!file || !existsSync(file)) die('cut <notes.md>: the notes, as a markdown file');
   const notes = readFileSync(file, 'utf8').trim();
+
   if (!notes) die(`${file} is empty`);
   if (/^## /m.test(notes)) die(`${file}: no "## " heading in the notes — the release's own heading is written for you`);
   const touched = tryGit('status', '--porcelain', '--', 'package.json', 'package-lock.json', CHANGELOG);
-  if (touched)
+
+  if (touched) {
     die(`not cut: ${touched.split('\n').length} of package.json, package-lock.json, ${CHANGELOG} changed here`);
-  if (tryGit('diff', '--cached', '--name-only'))
+  }
+
+  if (tryGit('diff', '--cached', '--name-only')) {
     die('not cut: something is staged — the release commit holds the release alone');
+  }
+
   const branch = tryGit('symbolic-ref', '--quiet', '--short', 'HEAD');
+
   if (branch !== 'main') console.warn(`(on ${branch || 'no branch'}, not main: boards follow origin's main)`);
-  const last = lastRelease(),
-    next = nextVersion(last.version),
-    name = relName(next),
-    tag = `v${next}`;
+
+  const last = lastRelease();
+  const next = nextVersion(last.version);
+  const name = relName(next);
+  const tag = `v${next}`;
+
   if (tryGit('rev-parse', '--verify', '--quiet', `refs/tags/${tag}`)) die(`not cut: the tag ${tag} is here already`);
+
   // the notes at the top: under the file's own head, before the newest release
-  const path = join(DIR, CHANGELOG),
-    was = existsSync(path) ? readFileSync(path, 'utf8') : HEAD_CHANGELOG,
-    section = `## ${name} — ${date || longDate()}\n\n${notes}\n\n`,
-    at = was.search(/^## /m);
+  const path = join(DIR, CHANGELOG);
+  const was = existsSync(path) ? readFileSync(path, 'utf8') : HEAD_CHANGELOG;
+  const section = `## ${name} — ${date || longDate()}\n\n${notes}\n\n`;
+  const at = was.search(/^## /m);
+
   writeFileSync(path, at < 0 ? `${was.trimEnd()}\n\n${section}` : was.slice(0, at) + section + was.slice(at));
   if (changelogSections(readFileSync(path, 'utf8'))[0]?.version !== name) die(`${CHANGELOG} did not read back`);
+
   for (const f of ['package.json', 'package-lock.json']) {
     const p = join(DIR, f);
+
     if (!existsSync(p)) continue;
     const j = JSON.parse(readFileSync(p, 'utf8'));
+
     j.version = next;
     if (j.packages?.['']) j.packages[''].version = next;
     writeFileSync(p, `${JSON.stringify(j, null, 2)}\n`);
   }
+
   git(
     'add',
     '--',
@@ -175,20 +218,25 @@ function cut(file, date) {
     CHANGELOG,
     ...(existsSync(join(DIR, 'package-lock.json')) ? ['package-lock.json'] : []),
   );
+
   git('commit', '-q', '-m', `Release ${name}`, '-m', `Its notes are ${CHANGELOG}'s, at the top.`);
   git('tag', '-s', tag, '-m', `peixAIrada ${name}`);
+
   console.log(`cut ${name}: ${git('rev-parse', '--short', 'HEAD')} Release ${name}, tagged ${tag}
   node scripts/release.mjs publish     pushes main and ${tag}, and makes the GitHub release`);
 }
 
 function publish() {
-  const version = writtenAt('HEAD'),
-    tag = `v${version}`,
-    name = relName(version);
+  const version = writtenAt('HEAD');
+  const tag = `v${version}`;
+  const name = relName(version);
+
   const at = tryGit('rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`);
+
   if (!at) die(`not published: no tag ${tag} here — node scripts/release.mjs cut first`);
   if (tryGit('symbolic-ref', '--quiet', '--short', 'HEAD') !== 'main') die('not published: not on main');
   if (writtenAt(`${at}^`) === version) die(`not published: ${tag} is not on the commit that set ${version}`);
+
   // a board takes only a release a key it trusts signed (server/update.mjs' signedBy): checked as they will
   try {
     execFileSync(
@@ -199,13 +247,17 @@ function publish() {
   } catch {
     die(`not published: ${at.slice(0, 7)} is not signed by a key in .github/allowed_signers — no board would take it`);
   }
+
   const notes = changelogSections(git('show', `${at}:${CHANGELOG}`)).find(s => s.version === name);
+
   if (!notes) die(`not published: ${CHANGELOG} has no ${name} at ${tag}`);
   git('push', '-q', 'origin', 'main');
   git('push', '-q', 'origin', `refs/tags/${tag}`);
   const tmp = mkdtempSync(join(tmpdir(), 'peixairada-release-'));
+
   try {
     writeFileSync(join(tmp, 'notes.md'), `${notes.md}\n`);
+
     execFileSync(
       process.env.GH_BIN || 'gh',
       [
@@ -223,19 +275,23 @@ function publish() {
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+
   console.log(`published ${name}: main and ${tag} on origin, the GitHub release made`);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
+
 const opt = k => {
   const i = rest.indexOf(k);
+
   return i >= 0 ? rest[i + 1] : null;
 };
+
 if (!cmd || cmd === '--since') draft(cmd ? rest[0] : null);
-else if (cmd === 'cut')
+else if (cmd === 'cut') {
   cut(
     rest.find(a => !a.startsWith('--') && a !== opt('--date')),
     opt('--date'),
   );
-else if (cmd === 'publish') publish();
+} else if (cmd === 'publish') publish();
 else die('node scripts/release.mjs [--since <date | ref>] | cut <notes.md> [--date <d>] | publish');

@@ -31,7 +31,9 @@ const pats = args.filter(a => !a.startsWith('--'));
 const all = readdirSync(DIR)
   .filter(f => f.endsWith('.mjs'))
   .sort();
+
 const names = all.filter(f => !pats.length || pats.some(p => f.includes(p)));
+
 if (!names.length) {
   console.error(`no scenario matches ${pats.join(' ')} — have: ${all.map(f => f.replace('.mjs', '')).join(', ')}`);
   process.exit(2);
@@ -40,20 +42,26 @@ if (!names.length) {
 const run = file =>
   new Promise(resolve => {
     const t0 = Date.now();
+
     // past its own bail and cleanup, a scenario is ended (SIGTERM, which it cleans up on) rather than hang the suite
     const p = spawn(process.execPath, [join(ROOT, 'scripts', 'scenario.mjs'), join(DIR, file)], {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 180_000,
     });
+
     let out = '';
+
     p.stdout.on('data', d => {
       out += d;
     });
+
     p.stderr.on('data', d => {
       out += d;
     });
+
     p.on('close', code => resolve({ code, out, ms: Date.now() - t0 }));
   });
+
 /** The one line worth showing from a failed run — the assertion or the wait that gave up. */
 const why = out =>
   (out.split('\n').find(l => /FAILED:/.test(l)) || out.split('\n').filter(Boolean).pop() || '')
@@ -66,35 +74,46 @@ const why = out =>
  *  cleanup ends them all; one still there is the harness leaking, as three servers did from 2026-10-03 on. */
 const leftovers = out => {
   const marks = [...out.matchAll(/\(state (\/[^\s,)]+)|chrome profile (\/\S+)/g)].map(m => m[1] || m[2]);
+
   if (!marks.length) return [];
   let ps;
+
   try {
     ps = execFileSync('/bin/ps', ['-axww', '-o', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 });
   } catch {
     return [];
   }
+
   return ps
     .split('\n')
     .filter(l => marks.some(m => l.includes(m)))
     .map(l => l.trim().slice(0, 160));
 };
+
 const secs = ms => `${(ms / 1000).toFixed(1)}s`;
 const SKIP = 77; // scenario.mjs's exit for a scenario this Chrome cannot run
 const results = [];
+
 for (const file of names) {
   const name = file.replace('.mjs', '');
+
   process.stdout.write(`${name.padEnd(22)} … `);
   let r = await run(file);
   let flaky = null;
+
   if (r.code !== 0 && r.code !== SKIP && retry) {
     process.stdout.write(`failed — again … `);
     const again = await run(file);
+
     if (again.code === 0) flaky = why(r.out); // what it failed on the first time: a flake nobody can see is no use
     r = { ...again, first: r.out };
   }
+
   const state = r.code === SKIP ? 'SKIP' : r.code !== 0 ? 'FAIL' : flaky ? 'FLAKY' : 'ok';
+
   console.log(`${state} ${secs(r.ms)}${r.code !== 0 ? ` — ${why(r.out)}` : flaky ? ` — first run: ${flaky}` : ''}`);
-  if (state === 'FAIL')
+
+  if (state === 'FAIL') {
     console.log(
       r.out
         .split('\n')
@@ -105,8 +124,11 @@ for (const file of names) {
         .slice(-25)
         .join('\n'),
     );
+  }
+
   await new Promise(res => setTimeout(res, 500)); // a process on its way out is not a leak
   const leaks = [...(r.first ? leftovers(r.first) : []), ...leftovers(r.out)];
+
   for (const l of leaks) console.log(`  LEAK ${l}`);
   results.push({ name, state, ms: r.ms, flaky, leaks: leaks.length });
 }
@@ -116,13 +138,15 @@ const flaky = results.filter(r => r.state === 'FLAKY');
 const leaky = results.filter(r => r.leaks);
 const skipped = results.filter(r => r.state === 'SKIP');
 const total = results.reduce((n, r) => n + r.ms, 0);
+
 console.log(
-  `\n${results.length - skipped.length - bad.length}/${results.length - skipped.length} passed in ${secs(total)}` +
-    (skipped.length
+  `\n${results.length - skipped.length - bad.length}/${results.length - skipped.length} passed in ${secs(total)}${
+    skipped.length
       ? ` · skipped (need Chrome's newer headless mode, CHROME is chrome-headless-shell): ${skipped.map(r => r.name).join(', ')}`
-      : '') +
-    (flaky.length ? ` · flaky (passed on the second run): ${flaky.map(r => r.name).join(', ')}` : '') +
-    (bad.length ? ` · failed: ${bad.map(r => r.name).join(', ')}` : '') +
-    (leaky.length ? ` · left processes running: ${leaky.map(r => r.name).join(', ')}` : ''),
+      : ''
+  }${flaky.length ? ` · flaky (passed on the second run): ${flaky.map(r => r.name).join(', ')}` : ''}${
+    bad.length ? ` · failed: ${bad.map(r => r.name).join(', ')}` : ''
+  }${leaky.length ? ` · left processes running: ${leaky.map(r => r.name).join(', ')}` : ''}`,
 );
+
 process.exit(bad.length ? 1 : 0);

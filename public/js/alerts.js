@@ -11,23 +11,29 @@
 // started it, a context may start again without one (`ran`).
 const AUDIO_REST_MS = 1500;
 let audio = null;
+
 const audioRest = () => {
   clearTimeout(audioRest.t);
+
   audioRest.t = setTimeout(() => {
     if (audio?.state === 'running') audio.suspend().catch(() => {});
   }, AUDIO_REST_MS);
 };
+
 const audioUp = () => {
   if (!prefs.sounds) return null;
+
   try {
     if (!audio) {
       audio = new (window.AudioContext || window.webkitAudioContext)();
+
       audio.onstatechange = () => {
         if (audio.state === 'running') {
           audio.ran = true;
           audioRest();
         }
       };
+
       if (audio.state === 'running') {
         audio.ran = true;
         audioRest();
@@ -37,13 +43,17 @@ const audioUp = () => {
     audio = null;
     return null;
   }
+
   if (!audio.ran && audio.state === 'suspended') audio.resume().catch(() => {}); // not started yet: a press may start it
   return audio;
 };
+
 for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, audioUp, { capture: true, passive: true });
+
 function tone(f, t0, dur, type, vol) {
-  const o = audio.createOscillator(),
-    g = audio.createGain();
+  const o = audio.createOscillator();
+  const g = audio.createGain();
+
   o.type = type;
   o.frequency.value = f;
   g.gain.setValueAtTime(0.0001, t0);
@@ -53,17 +63,23 @@ function tone(f, t0, dur, type, vol) {
   o.start(t0);
   o.stop(t0 + dur + 0.02);
 }
+
 const CHIME_GAP_MS = 1200;
+
 function chime(kind) {
   if (!prefs.sounds || !audio?.ran) return;
+
   // one voice at a time (S6): a burst of landings is one tick; a question is always heard
-  const now = performance.now(),
-    asks = kind === 'needs-input' || kind === 'drift';
+  const now = performance.now();
+  const asks = kind === 'needs-input' || kind === 'drift';
+
   if (!asks && now - (chime.at || 0) < CHIME_GAP_MS) return;
   chime.at = now;
+
   const play = () => {
-    noteMotion(null, 'sound:' + kind);
+    noteMotion(null, `sound:${kind}`);
     const t = audio.currentTime + 0.02;
+
     if (kind === 'needs-input' || kind === 'drift' || kind === 'agent-failed') {
       tone(784, t, 0.15, 'triangle', 0.09);
       tone(1174.7, t + 0.14, 0.22, 'triangle', 0.09);
@@ -71,26 +87,36 @@ function chime(kind) {
       tone(1318.5, t, 0.18, 'sine', 0.08);
       tone(659.3, t, 0.26, 'sine', 0.05);
     }
+
     audioRest();
   };
+
   if (audio.state === 'running') play();
   else audio.resume().then(play, () => {});
 }
+
 $('#soundsOn').checked = !!prefs.sounds;
+
 $('#soundsOn').addEventListener('change', e => {
   prefs.sounds = e.target.checked;
   savePrefs();
   if (audioUp()) setTimeout(() => chime('reply'), 30);
 });
+
 function onAlert(a) {
   if (a.kind === 'chat') return chatAlert(a); // the chat's (2026-10-17): its own rules
   if (a.kind === 'lunch') return lunchAlert(a); // lunch's (2026-10-18)
+
   const viewing =
     a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
+
   const as = a.sessionId ? state.sessions.get(a.sessionId) : null;
-  if (fishing.until && (a.kind === 'reply' || a.kind === 'pr' || a.kind === 'back'))
-    a = { ...a, quiet: true, held: true }; // gone fishing (M4): it counts, and says nothing yet
+
+  if (fishing.until && (a.kind === 'reply' || a.kind === 'pr' || a.kind === 'back')) {
+    a = { ...a, quiet: true, held: true };
+  } // gone fishing (M4): it counts, and says nothing yet
   else if (prioFocus() && as && !inPrio(as) && a.kind !== 'needs-input') a = { ...a, quiet: true, held: true }; // in focus, the rest says nothing yet but its questions (2026-11-24, round XXX's F3)
+
   if (
     !viewing &&
     !a.held &&
@@ -99,20 +125,27 @@ function onAlert(a) {
     !(as && asleep(as)) &&
     document.visibilityState === 'visible' &&
     document.hasFocus()
-  )
-    chime(a.kind); // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
-  if (a.sessionId && !viewing && !(as && asleep(as)))
-    state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1); // a snoozed chat counted nowhere (W4)
+  ) {
+    chime(a.kind);
+  } // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
+
+  if (a.sessionId && !viewing && !(as && asleep(as))) {
+    state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
+  } // a snoozed chat counted nowhere (W4)
+
   if (viewing && a.kind === 'reply') markSeen(a.sessionId);
   renderBoard();
+
   // the badge that just came, or grew, pops in — a one-shot on the node the render made
   const badge =
     a.sessionId &&
     !viewing &&
     !REDUCED.matches &&
     document.querySelector(`#slist > .card[data-id="${a.sessionId}"] .badge`);
+
   if (badge) {
     noteMotion(a.sessionId, 'pop');
+
     badge.animate(
       [
         { transform: 'scale(.5)', opacity: 0 },
@@ -121,7 +154,8 @@ function onAlert(a) {
       { duration: 380, easing: SPRING, id: 'pop' },
     );
   }
-  if (inApp)
+
+  if (inApp) {
     post({
       type: 'alert',
       kind: a.kind,
@@ -135,13 +169,17 @@ function onAlert(a) {
       quiet: !!a.quiet,
       at: a.ts || '', // a reply from its banner is for this turn alone (peixReply)
       drawer: !!(a.sessionId && state.sessions.get(a.sessionId) && drawerOf(state.sessions.get(a.sessionId))),
-    }); // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
+    });
+  } // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
+
   if (a.quiet) return; // notifications off (the cog): the unread count above, nothing else
+
   if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
     const n = new Notification(
       a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude is asking you'} · ${a.project}`,
       { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' },
     );
+
     n.onclick = () => {
       window.focus();
       if (a.kind === 'pr' && a.url && a.sessionId) location.hash = tvSoloHash(a.sessionId, a.url);

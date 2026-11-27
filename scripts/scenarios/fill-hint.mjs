@@ -10,13 +10,16 @@ const NOTCH = { top: 32, left: 771.5, right: 956.5 };
 
 export default async function (ctx) {
   const out = {};
+
   await ctx.send('Emulation.setDeviceMetricsOverride', {
     width: 1728,
     height: 1117,
     deviceScaleFactor: 1,
     mobile: false,
   });
+
   const fill = (on, notch = NOTCH) => ctx.evaluate(`window.peixFill(${on}, ${on ? JSON.stringify(notch) : 'null'})`);
+
   const hint = () =>
     ctx
       .evaluate(
@@ -31,7 +34,9 @@ export default async function (ctx) {
   })())`,
       )
       .then(JSON.parse);
+
   const count = () => ctx.evaluate('window.peix.prefs().fillHints');
+
   const theme = dark =>
     ctx.send('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
@@ -54,19 +59,24 @@ export default async function (ctx) {
   await ctx.waitFor(`!!document.querySelector('#fillHint')`, { what: 'the hint' });
   await ctx.settle();
   out.dark = await hint();
+
   ctx.assert.match(
     out.dark.text,
     /Full screen, up to the notch · ⌃⌘F leaves it, or the green light after a hold at the top edge/,
   );
+
   ctx.assert.equal(out.dark.role, 'status', 'a reader says it');
+
   ctx.assert.ok(
     Math.abs(out.dark.mid - (NOTCH.left + NOTCH.right) / 2) <= 1,
     `centred on the housing (${out.dark.mid})`,
   );
+
   ctx.assert.ok(
     out.dark.top >= out.dark.headBottom + 8 && out.dark.top <= out.dark.headBottom + 12,
     `under the head row (${out.dark.top} against ${out.dark.headBottom})`,
   );
+
   ctx.assert.ok(out.dark.ratio >= 4.5, `its text reads (${out.dark.ratio}:1, dark)`);
   ctx.assert.equal(await count(), 1, 'counted');
   await ctx.shot('dark');
@@ -120,19 +130,24 @@ export default async function (ctx) {
   await ctx.evaluate(
     `(k => { const p = JSON.parse(localStorage.getItem(k) || '{}'); p.fillHints = 0; localStorage.setItem(k, JSON.stringify(p)); })('peixairada-prefs')`,
   );
+
   await ctx.reload();
+
   await ctx.send('Emulation.setEmulatedMedia', {
     features: [
       { name: 'prefers-reduced-motion', value: 'reduce' },
       { name: 'prefers-color-scheme', value: 'dark' },
     ],
   });
+
   await fill(false);
   await fill(true);
   await ctx.waitFor(`!!document.querySelector('#fillHint')`, { what: 'the hint, reduced motion' });
+
   out.reduced = await ctx.evaluate(
     `(el => { el.classList.add('out'); return getComputedStyle(el).translate; })(document.querySelector('#fillHint'))`,
   );
+
   ctx.assert.equal(out.reduced, '-50%', `it does not move under reduced motion (${out.reduced})`);
   return out;
 }

@@ -13,28 +13,38 @@ import { chatLines, defaultFixture, slugOf } from '../scripts/fixture.mjs';
 /** The stream's snapshot and every event after it, as `{ event, data }`. */
 async function stream(srv) {
   const res = await fetch(`${srv.url}events?key=${srv.key}`);
+
   assert.ok(res.ok, `the event stream: ${res.status}`);
-  const reader = res.body.getReader(),
-    dec = new TextDecoder(),
-    got = [];
+
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  const got = [];
+
   const { promise: snapshot, resolve } = Promise.withResolvers();
+
   (async () => {
     let buf = '';
+
     for (;;) {
       const { value, done } = await reader.read();
+
       if (done) break;
       buf += dec.decode(value, { stream: true });
       let i;
+
       while ((i = buf.indexOf('\n\n')) >= 0) {
         const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+
         buf = buf.slice(i + 2);
         if (!m) continue;
         const data = JSON.parse(m[2]);
+
         if (m[1] === 'snapshot') resolve(data);
         else got.push({ event: m[1], data });
       }
     }
   })().catch(() => {});
+
   return {
     snapshot: await snapshot,
     got,
@@ -42,42 +52,50 @@ async function stream(srv) {
     stop: () => reader.cancel().catch(() => {}),
   };
 }
+
 const put = (srv, body) =>
   srv.api('api/priority', {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+
 const listed = async srv => (await srv.api('api/sessions')).body.priority;
 
 test(
   'the order is the one given, of chats the board has, once each — said, in both snapshots and kept over a restart',
   { timeout: 40_000 },
   async () => {
-    const fx = defaultFixture(tmpDir('peix-fx-')),
-      [one, two] = fx.chats;
+    const fx = defaultFixture(tmpDir('peix-fx-'));
+    const [one, two] = fx.chats;
+
     const srv = await startTestServer({ claudeDir: fx.dir });
     let ev;
+
     try {
       ev = await stream(srv);
       assert.deepEqual(ev.snapshot.priority, [], 'none to begin with');
       const r = await put(srv, { ids: [two.id, 'no-such-chat', one.id, two.id, 5, '../x', null] });
+
       assert.deepEqual(
         r.body,
         { ok: true, priority: [two.id, one.id] },
         'in the order given; an unknown id, a repeat and a non-id dropped',
       );
+
       await waitFor(() => ev.said().length, { what: 'the priority event' });
       assert.deepEqual(ev.said(), [[two.id, one.id]]);
       assert.deepEqual(await listed(srv), [two.id, one.id], "GET /api/sessions's");
       assert.equal((await put(srv, { ids: two.id })).status, 400, 'not an array');
       assert.equal((await put(srv, {})).status, 400, 'no ids');
       assert.deepEqual(await listed(srv), [two.id, one.id], 'a refusal changes nothing');
+
       assert.deepEqual(
         JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).priority,
         [two.id, one.id],
         'in the state file',
       );
+
       ev.stop();
       await srv.restart();
       assert.deepEqual(await listed(srv), [two.id, one.id], 'after a restart');
@@ -92,14 +110,17 @@ test(
 );
 
 test('a chat deleted from the board leaves it, and is not let back in while deleted', { timeout: 30_000 }, async () => {
-  const fx = defaultFixture(tmpDir('peix-fx-')),
-    [one, two] = fx.chats;
+  const fx = defaultFixture(tmpDir('peix-fx-'));
+  const [one, two] = fx.chats;
+
   const srv = await startTestServer({ claudeDir: fx.dir });
   let ev;
+
   try {
     await put(srv, { ids: [one.id, two.id] });
     ev = await stream(srv);
     const r = await srv.post(`api/sessions/${one.id}/remove`, {});
+
     assert.deepEqual(r.body, { ok: true, removed: true });
     await waitFor(() => ev.said().length, { what: 'the priority event' });
     assert.deepEqual(ev.said().at(-1), [two.id]);
@@ -123,6 +144,7 @@ const clearLines = (id, cwd, at = new Date()) => {
     gitBranch: 'main',
     timestamp: at.toISOString(),
   };
+
   return [
     {
       ...base,
@@ -157,24 +179,31 @@ const clearLines = (id, cwd, at = new Date()) => {
 };
 
 test('a /clear in the same claude carries the slot to the chat it went on in', { timeout: 40_000 }, async () => {
-  const dir = tmpDir('peix-prio-'),
-    cwd = tmpDir('peix-cwd-'),
-    proj = join(dir, 'projects', slugOf(cwd));
+  const dir = tmpDir('peix-prio-');
+  const cwd = tmpDir('peix-cwd-');
+  const proj = join(dir, 'projects', slugOf(cwd));
+
   mkdirSync(proj, { recursive: true });
   mkdirSync(join(dir, 'sessions'), { recursive: true });
+
   const write = (id, lines) =>
-    writeFileSync(join(proj, `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+    writeFileSync(join(proj, `${id}.jsonl`), `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+
   const [a, other, c] = [randomUUID(), randomUUID(), randomUUID()];
+
   write(
     a,
     chatLines({ id: a, cwd, prompt: 'the first chat', reply: 'done with it', at: new Date(Date.now() - 600_000) }),
   );
+
   write(other, chatLines({ id: other, cwd, prompt: 'another chat', reply: 'sure' }));
   const sleeper = spawn('sleep', ['60'], { stdio: 'ignore' });
+
   const procStart = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(sleeper.pid)], {
     encoding: 'utf8',
     env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' },
   }).trim();
+
   const on = id =>
     writeFileSync(
       join(dir, 'sessions', `${sleeper.pid}.json`),
@@ -191,13 +220,16 @@ test('a /clear in the same claude carries the slot to the chat it went on in', {
         statusUpdatedAt: Date.now(),
       }),
     );
+
   on(a);
   const srv = await startTestServer({ claudeDir: dir });
   let ev;
+
   try {
     await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === a)?.alive, {
       what: 'the first chat alive',
     });
+
     await put(srv, { ids: [other, a] });
     ev = await stream(srv);
     write(c, clearLines(c, cwd));

@@ -17,13 +17,15 @@ test(
   'release.mjs: the draft, the cut, the publish — and an unsigned release kept back',
   { timeout: 60_000 },
   async () => {
-    const root = tmpDir('peix-rel-'),
-      repo = join(root, 'repo'),
-      origin = join(root, 'origin.git'),
-      key = join(root, 'signer'),
-      ghLog = join(root, 'gh.log'),
-      gh = join(root, 'gh');
+    const root = tmpDir('peix-rel-');
+    const repo = join(root, 'repo');
+    const origin = join(root, 'origin.git');
+    const key = join(root, 'signer');
+    const ghLog = join(root, 'gh.log');
+    const gh = join(root, 'gh');
+
     execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'test', '-f', key]);
+
     const env = {
       ...process.env,
       GIT_AUTHOR_NAME: 'test',
@@ -32,36 +34,44 @@ test(
       GIT_COMMITTER_EMAIL: 'test@example.com',
       GH_BIN: gh,
     };
+
     const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env }).trim();
+
     const run = (...args) =>
       new Promise(res =>
         execFile(process.execPath, [SCRIPT, ...args], { cwd: repo, env, timeout: 30_000 }, (e, out, err) =>
           res({ code: e ? e.code : 0, out: out + err }),
         ),
       );
+
     const write = files => {
       for (const [f, body] of Object.entries(files)) {
         mkdirSync(join(repo, f, '..'), { recursive: true });
         writeFileSync(join(repo, f), body);
       }
     };
+
     const commit = (files, msg) => {
       write(files);
       git(repo, 'add', '-A');
       git(repo, 'commit', '-q', '-m', msg);
     };
+
     writeFileSync(gh, `#!/bin/sh\necho "$@" >> "${ghLog}"\ncat "$(eval echo \\$$#)" >> "${ghLog}"\n`);
     chmodSync(gh, 0o755);
 
     mkdirSync(repo);
     git(repo, 'init', '-q', '-b', 'main');
+
     for (const [k, v] of [
       ['gpg.format', 'ssh'],
       ['user.signingkey', `${key}.pub`],
       ['commit.gpgsign', 'true'],
       ['core.hooksPath', '/dev/null'],
-    ])
+    ]) {
       git(repo, 'config', k, v);
+    }
+
     commit(
       {
         'package.json': '{\n  "name": "tiny",\n  "version": "0.1.0"\n}\n',
@@ -73,6 +83,7 @@ test(
       },
       'the first',
     );
+
     git(root, 'init', '-q', '--bare', '-b', 'main', origin);
     git(repo, 'remote', 'add', 'origin', origin);
     git(repo, 'push', '-q', '-u', 'origin', 'main');
@@ -81,6 +92,7 @@ test(
 
     // the draft's inputs
     let r = await run('--since', '2026-01-01');
+
     assert.equal(r.code, 0, r.out);
     assert.match(r.out, /^peixAIrada: the last release 0\.1 \([0-9a-f]{7}, \d{4}-\d{2}-\d{2}\); the next 0\.2$/m);
     assert.match(r.out, /^3 commits since 2026-01-01 — 2 touch the page, the server or the app$/m);
@@ -90,32 +102,41 @@ test(
 
     // the cut: the notes at the top of a new CHANGELOG.md, the version in both files, one commit, a signed tag
     const notes = join(root, 'notes.md');
+
     writeFileSync(notes, '### New\n\n- **Space** shows every chat as a node.\n');
     write({ 'scratch.txt': 'not mine to commit\n' });
     r = await run('cut', notes, '--date', '27 November 2026');
     assert.equal(r.code, 0, r.out);
     assert.match(r.out, /^cut 0\.2: [0-9a-f]{7} Release 0\.2, tagged v0\.2\.0$/m);
     assert.equal(git(repo, 'log', '-1', '--format=%s'), 'Release 0.2');
+
     assert.deepEqual(
       git(repo, 'show', '--name-only', '--format=', 'HEAD').split('\n').sort(),
       ['CHANGELOG.md', 'package-lock.json', 'package.json'],
       'the release alone',
     );
-    const pkg = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')),
-      lock = JSON.parse(readFileSync(join(repo, 'package-lock.json'), 'utf8'));
+
+    const pkg = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8'));
+    const lock = JSON.parse(readFileSync(join(repo, 'package-lock.json'), 'utf8'));
+
     assert.deepEqual([pkg.version, lock.version, lock.packages[''].version], ['0.2.0', '0.2.0', '0.2.0']);
     const log = readFileSync(join(repo, 'CHANGELOG.md'), 'utf8');
+
     assert.match(log, /^# Changelog\n/);
+
     assert.deepEqual(changelogSections(log), [
       { version: '0.2', title: '27 November 2026', md: '### New\n\n- **Space** shows every chat as a node.' },
     ]);
+
     assert.equal(git(repo, 'rev-parse', 'v0.2.0^{commit}'), git(repo, 'rev-parse', 'HEAD'));
+
     // signed by the repo's key: verify-tag throws on anything else
     execFileSync(
       'git',
       ['-C', repo, '-c', `gpg.ssh.allowedSignersFile=${join(repo, '.github/allowed_signers')}`, 'verify-tag', 'v0.2.0'],
       { env, stdio: 'ignore' },
     );
+
     write({ 'package.json': '{ "name": "tiny", "version": "0.2.0", "private": true }\n' });
     r = await run('cut', notes);
     assert.equal(r.code, 1, r.out);
@@ -128,6 +149,7 @@ test(
     assert.equal(git(origin, 'rev-parse', 'main'), git(repo, 'rev-parse', 'HEAD'));
     assert.equal(git(origin, 'rev-parse', 'v0.2.0^{commit}'), git(repo, 'rev-parse', 'HEAD'));
     const asked = readFileSync(ghLog, 'utf8');
+
     assert.match(asked, /^release create v0\.2\.0 --verify-tag --title peixAIrada 0\.2 --notes-file \S+notes\.md\n/);
     assert.match(asked, /\n### New\n\n- \*\*Space\*\* shows every chat as a node\.\n$/);
 

@@ -136,40 +136,54 @@ const ZE_RIGS = [
     sunX: 296,
   },
 ];
+
 const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+
 const zgCanvas = S => {
   const c = document.createElement('canvas');
+
   c.width = Math.round(ZE_W * S);
   c.height = Math.round(ZE_H * S);
   const x = c.getContext('2d');
+
   x.scale(S, S);
   return [c, x];
 };
+
 /** The sky, as zeScene paints it, down to the water — its sun risen to stand on the town, and what burns in a canvas of its own. */
 function zgPaintSky(P) {
-  const [c, x] = zgCanvas(1),
-    [e, y] = zgCanvas(1),
-    bot = ZE_WATER + 16;
+  const [c, x] = zgCanvas(1);
+  const [e, y] = zgCanvas(1);
+  const bot = ZE_WATER + 16;
+
   const sky = x.createLinearGradient(0, 0, 0, bot);
+
   P.stops.forEach((col, i) => sky.addColorStop([0, 0.32, 0.7, 1][i], col));
   x.fillStyle = sky;
   x.fillRect(0, 0, ZE_W, ZE_H);
+
   if (P.glow) {
     const r = x.createRadialGradient(360, ZE_WATER, 20, 360, ZE_WATER, 460);
-    r.addColorStop(0, P.glow + '99');
-    r.addColorStop(1, P.glow + '00');
+
+    r.addColorStop(0, `${P.glow}99`);
+    r.addColorStop(1, `${P.glow}00`);
     x.fillStyle = r;
     x.fillRect(0, 0, ZE_W, ZE_H);
   }
+
   let seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
   for (let i = 0; i < P.stars; i++) {
     const sy = rnd() ** 1.6 * 420;
+
     x.globalAlpha = 0.25 + 0.75 * (1 - sy / 420) * rnd();
     x.fillStyle = '#fff6e0';
     x.fillRect(rnd() * ZE_W, sy, rnd() < 0.15 ? 2 : 1.2, rnd() < 0.15 ? 2 : 1.2);
   }
+
   x.globalAlpha = 1;
+
   if (P.moon === 'crescent' || P.moon === 'faint') {
     x.globalAlpha = P.moon === 'faint' ? 0.45 : 1;
     x.fillStyle = '#fff3c4';
@@ -182,8 +196,10 @@ function zgPaintSky(P) {
     x.arc(130, 124, 24, 0, Math.PI * 2);
     x.fill();
   }
+
   if (P.moon === 'full') {
     const r = x.createRadialGradient(590, 150, 10, 590, 150, 90);
+
     r.addColorStop(0, 'rgba(220, 230, 255, .35)');
     r.addColorStop(1, 'rgba(220, 230, 255, 0)');
     x.fillStyle = r;
@@ -193,6 +209,7 @@ function zgPaintSky(P) {
     x.arc(590, 150, 24, 0, Math.PI * 2);
     x.fill();
     x.fillStyle = '#c9d2ee';
+
     for (const [mx, my, mr] of [
       [583, 145, 5],
       [597, 158, 3.5],
@@ -203,10 +220,12 @@ function zgPaintSky(P) {
       x.fill();
     }
   }
+
   if (P.sun) {
-    const S = P.sun,
-      sy0 = S.y > 860 ? S.y : S.y - 74,
-      sun = x.createLinearGradient(0, sy0 - S.r, 0, sy0 + S.r);
+    const S = P.sun;
+    const sy0 = S.y > 860 ? S.y : S.y - 74;
+    const sun = x.createLinearGradient(0, sy0 - S.r, 0, sy0 + S.r);
+
     sun.addColorStop(0, S.a);
     sun.addColorStop(1, S.b);
     x.save();
@@ -215,10 +234,12 @@ function zgPaintSky(P) {
     x.clip();
     x.fillStyle = sun;
     x.fillRect(S.x - S.r, sy0 - S.r, S.r * 2, S.r * 2);
+
     if (S.bands) {
       x.fillStyle = sky;
       for (let i = 0; i < 6; i++) x.fillRect(S.x - S.r, sy0 - 60 + i * 18, S.r * 2, 2 + i * 2);
     }
+
     x.restore();
     y.drawImage(c, 0, 0);
     y.globalCompositeOperation = 'destination-in';
@@ -228,30 +249,37 @@ function zgPaintSky(P) {
     y.fill();
     y.globalCompositeOperation = 'source-over';
   }
+
   return [c, e];
 }
+
 /** The town: rows of houses on the far bank, and zeTown's landmarks in stone. Its lit windows in a canvas of their own. */
 function zgPaintTown() {
-  const S = 1.5,
-    [c, x] = zgCanvas(S),
-    [e, y] = zgCanvas(S),
-    r = zgRng(11),
-    B = ZE_WATER;
+  const S = 1.5;
+  const [c, x] = zgCanvas(S);
+  const [e, y] = zgCanvas(S);
+  const r = zgRng(11);
+  const B = ZE_WATER;
+
   const R = (col, a, b, w, h) => {
     x.fillStyle = col;
     x.fillRect(a, b, w, h);
   };
+
   const lit = (a, b, w, h, col = '#ffd27a') => {
     y.fillStyle = col;
     y.fillRect(a, b, w, h);
   };
-  const WALL = ['#e6dcca', '#d9ccb5', '#cdc2b2', '#e8d7b6', '#cbc4c0', '#dfc9ae', '#c9bba4'],
-    ROOF = ['#a8553a', '#97492f', '#b4623e', '#8e4530'];
+
+  const WALL = ['#e6dcca', '#d9ccb5', '#cdc2b2', '#e8d7b6', '#cbc4c0', '#dfc9ae', '#c9bba4'];
+  const ROOF = ['#a8553a', '#97492f', '#b4623e', '#8e4530'];
+
   const house = (hx, w, h) => {
-    const top = B - h,
-      wall = WALL[(r() * WALL.length) | 0],
-      roof = ROOF[(r() * ROOF.length) | 0],
-      rh = 5 + r() * 7;
+    const top = B - h;
+    const wall = WALL[(r() * WALL.length) | 0];
+    const roof = ROOF[(r() * ROOF.length) | 0];
+    const rh = 5 + r() * 7;
+
     R(wall, hx, top, w, h);
     R('rgba(40, 25, 40, .28)', hx + w - Math.max(3, w * 0.3), top, Math.max(3, w * 0.3), h);
     x.fillStyle = roof;
@@ -262,29 +290,38 @@ function zgPaintTown() {
     x.lineTo(hx + w + 2, top + 1);
     x.fill();
     R('rgba(30, 15, 30, .3)', hx + w * 0.55, top - rh, w * 0.45 + 2, rh + 1);
-    for (let wy = top + 4; wy < B - 6; wy += 9)
+
+    for (let wy = top + 4; wy < B - 6; wy += 9) {
       for (let wx = hx + 3; wx < hx + w - 4; wx += 7) {
         if (r() < 0.12) continue;
         const on = r() < 0.3;
+
         R(on ? '#5a4632' : '#2a2a38', wx, wy, 3, 5);
         if (on) lit(wx, wy, 3, 5);
       }
+    }
+
     if (r() < 0.4) R('#6f4a3a', hx + w * 0.7, top - rh - 5, 3, 7);
   };
+
   for (let hx = -14; hx < 740;) {
     const w = 18 + r() * 24;
+
     house(hx, w, 34 + r() * 44);
     hx += w - 2;
   }
-  const G1 = '#9d9182',
-    G2 = '#7e7366',
-    G3 = '#b5a998',
-    OFF = 30,
-    T = (a, b, w, h, col = G1) => R(col, a, b - OFF, w, h);
+
+  const G1 = '#9d9182';
+  const G2 = '#7e7366';
+  const G3 = '#b5a998';
+  const OFF = 30;
+  const T = (a, b, w, h, col = G1) => R(col, a, b - OFF, w, h);
+
   T(206, 642, 36, 150);
   T(232, 642, 10, 150, G2);
   T(202, 636, 44, 7, G3);
   for (let i = 0; i < 4; i++) T(202 + i * 12.3, 626, 7, 11, G3); // the Torre da Porta Nova
+
   for (const [a, b] of [
     [220, 662],
     [229, 704],
@@ -293,6 +330,7 @@ function zgPaintTown() {
     T(a, b, 4, 8, '#3a3440');
     lit(a, b - OFF, 4, 8);
   }
+
   T(262, 712, 58, 80, G3);
   T(306, 712, 14, 80, G1);
   x.fillStyle = '#94553d';
@@ -320,6 +358,7 @@ function zgPaintTown() {
   T(330, 676, 6, 10, '#2c2832'); // …and its tower
   x.fillStyle = G2;
   x.beginPath();
+
   for (const [a, b] of [
     [352, 792],
     [352, 718],
@@ -333,8 +372,10 @@ function zgPaintTown() {
     [398, 720],
     [410, 720],
     [410, 792],
-  ])
+  ]) {
     x.lineTo(a, b - OFF);
+  }
+
   x.fill(); // the Paço dos Condes
   T(364, 674, 7, 36, G2);
   T(362, 670, 11, 5);
@@ -359,27 +400,33 @@ function zgPaintTown() {
   x.fill();
   T(444, 654, 2, 12, G2);
   T(441, 658, 8, 2, G2);
+
   for (const a of [432, 456]) {
     T(a, 732, 4, 10, '#3a3440');
     lit(a, 732 - OFF, 4, 10);
   }
+
   for (let hx = -8; hx < 740;) {
     const w = 14 + r() * 18;
+
     if (hx < 196 || hx > 470) house(hx, w, 12 + r() * 20);
     hx += w + (r() < 0.25 ? 6 : -1);
   } // a low row on the water
+
   x.fillStyle = 'rgba(20, 12, 24, .55)';
   x.fillRect(-2, B - 3, 724, 3);
   return { c, e };
 }
+
 /** The medieval bridge: six arches in stone, their cutwaters, three lamps. */
 function zgPaintBridge() {
-  const S = 1.5,
-    [c, x] = zgCanvas(S),
-    [e, y] = zgCanvas(S),
-    B = ZE_WATER,
-    stone = '#ab9e8b',
-    dark = '#6e6355';
+  const S = 1.5;
+  const [c, x] = zgCanvas(S);
+  const [e, y] = zgCanvas(S);
+  const B = ZE_WATER;
+  const stone = '#ab9e8b';
+  const dark = '#6e6355';
+
   x.fillStyle = stone;
   x.fillRect(-4, B - 26, 296, 26);
   x.fillStyle = '#c1b5a2';
@@ -387,8 +434,10 @@ function zgPaintBridge() {
   x.fillStyle = dark;
   x.fillRect(-4, B - 25, 296, 1.5);
   x.globalCompositeOperation = 'destination-out';
+
   for (let i = 0; i < 6; i++) {
     const a = -6 + i * 50;
+
     x.beginPath();
     x.moveTo(a + 6, B + 1);
     x.lineTo(a + 6, B - 10);
@@ -397,19 +446,25 @@ function zgPaintBridge() {
     x.lineTo(a + 44, B + 1);
     x.fill();
   }
+
   x.globalCompositeOperation = 'source-over';
+
   for (let i = 0; i < 7; i++) {
     const a = -6 + i * 50;
+
     x.fillStyle = '#c1b5a2';
     x.fillRect(a - 2, B - 7, 8, 7);
     x.fillStyle = dark;
     x.fillRect(a + 3, B - 7, 3, 7);
   }
+
   const r = zgRng(5);
+
   for (let i = 0; i < 90; i++) {
     x.fillStyle = r() < 0.5 ? 'rgba(60, 50, 40, .22)' : 'rgba(240, 230, 210, .14)';
     x.fillRect(-4 + r() * 296, B - 25 + r() * 18, 5, 1.5);
   }
+
   for (const a of [40, 142, 244]) {
     x.fillStyle = '#20242e';
     x.fillRect(a, B - 45, 2, 16);
@@ -417,105 +472,134 @@ function zgPaintBridge() {
     y.fillStyle = '#ffd98a';
     y.fillRect(a - 1.5, B - 49.5, 5, 4);
   }
+
   return { c, e };
 }
+
 function zgPaintHills(P) {
-  const [c, x] = zgCanvas(1),
-    r = zgRng(3),
-    B = ZE_WATER;
+  const [c, x] = zgCanvas(1);
+  const r = zgRng(3);
+  const B = ZE_WATER;
+
   const hill = (col, base, amp, step, ph, clump) => {
     const top = i => base - amp * (Math.sin(i / step + ph) * 0.6 + Math.sin(i / (step * 0.37) + ph * 2) * 0.4);
+
     x.fillStyle = col;
     x.beginPath();
     x.moveTo(-2, B + 2);
     for (let i = -2; i <= ZE_W + 2; i += 6) x.lineTo(i, top(i));
     x.lineTo(ZE_W + 2, B + 2);
     x.fill();
+
     for (let i = 0; i < clump; i++) {
-      const a = r() * ZE_W,
-        b = top(a) + 2 + r() * 40,
-        s = 2 + r() * 5;
+      const a = r() * ZE_W;
+      const b = top(a) + 2 + r() * 40;
+      const s = 2 + r() * 5;
+
       x.fillStyle = r() < 0.5 ? 'rgba(0, 0, 0, .16)' : 'rgba(255, 255, 255, .06)';
       x.beginPath();
       x.arc(a, b, s, 0, 7);
       x.fill();
     }
   };
+
   hill(P.hills[0], 712, 34, 90, 1, 240);
   hill(P.hills[1], 742, 22, 60, 4, 200);
   return c;
 }
+
 const ZE_LAMPS = [
   { x: 252, y: 722 },
   { x: 406, y: 722 },
 ];
+
 // the festa's lights: wires from the left to lamp to lamp to Trota's sign, a bulb every 15 px, Minho's colours
 const ZE_WIRES = [
   [[-4, 690], [252, 716], 34],
   [[252, 716], [406, 716], 26],
   [[406, 716], [490, 672], 18],
 ];
+
 const zgWire = ([a, b, s], t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t + Math.sin(t * Math.PI) * s];
+
 const ZE_FESTA = (() => {
-  const o = [],
-    C = [
-      [1, 0.22, 0.18],
-      [1, 0.72, 0.2],
-      [0.3, 0.85, 0.35],
-      [1, 0.9, 0.7],
-      [0.35, 0.55, 1],
-    ];
+  const o = [];
+
+  const C = [
+    [1, 0.22, 0.18],
+    [1, 0.72, 0.2],
+    [0.3, 0.85, 0.35],
+    [1, 0.9, 0.7],
+    [0.35, 0.55, 1],
+  ];
+
   let n = 0;
+
   for (const w of ZE_WIRES) {
-    const L = Math.hypot(w[1][0] - w[0][0], w[1][1] - w[0][1]),
-      m = Math.round(L / 15);
+    const L = Math.hypot(w[1][0] - w[0][0], w[1][1] - w[0][1]);
+    const m = Math.round(L / 15);
+
     for (let i = 1; i < m; i++) {
       const [x, y] = zgWire(w, i / m);
+
       o.push({ x, y, c: C[n++ % C.length], ph: n * 1.7 });
     }
   }
+
   return o;
 })();
+
 /** The terrace he runs on: its iron rail and granite kerb, two lamps, Trota's with its side and roof, the galo on granite; what shines by itself apart. */
 function zgPaintSet(k) {
-  const [c, x] = zgCanvas(k),
-    [e, y] = zgCanvas(k),
-    { x: RX, w: RW, top: RT } = ZE_REST,
-    AY = RT + 18,
-    F = ZE_FLOOR,
-    iron = '#161a24',
-    end = RX - 30;
+  const [c, x] = zgCanvas(k);
+  const [e, y] = zgCanvas(k);
+  const { x: RX, w: RW, top: RT } = ZE_REST;
+  const AY = RT + 18;
+  const F = ZE_FLOOR;
+  const iron = '#161a24';
+  const end = RX - 30;
+
   for (let i = 8; i < end; i += 30) {
     x.fillStyle = iron;
     x.fillRect(i, 804, 3, 22);
     x.fillRect(i - 1, 802, 5, 3);
   }
+
   x.fillStyle = iron;
   x.fillRect(0, 803, end, 2.5);
   x.fillRect(0, 815, end, 1.5);
+
   for (let i = 0; i < end; i += 6) {
     x.fillStyle = 'rgba(22, 26, 36, .65)';
     x.fillRect(i + 1, 805, 1.2, 19);
   }
+
   x.fillStyle = '#8c8a88';
   x.fillRect(0, 824, end + 2, 8);
   x.fillStyle = '#b4b1ac';
   x.fillRect(0, 824, end + 2, 2);
   const r = zgRng(9);
+
   for (let i = 0; i < end; i += 26 + r() * 10) {
     x.fillStyle = 'rgba(30, 25, 30, .4)';
     x.fillRect(i, 826, 1.2, 6);
   }
+
   x.strokeStyle = 'rgba(14, 14, 22, .85)';
   x.lineWidth = 1;
+
   for (const w of ZE_WIRES) {
     x.beginPath();
+
     for (let i = 0; i <= 24; i++) {
       const [a, b] = zgWire(w, i / 24);
+
       x.lineTo(a, b);
     }
+
     x.stroke();
   }
+
   for (const L of ZE_LAMPS) {
     x.fillStyle = iron;
     x.fillRect(L.x - 2, L.y + 2, 4, 830 - L.y);
@@ -535,6 +619,7 @@ function zgPaintSet(k) {
     y.fillStyle = '#fff0b8';
     y.fillRect(L.x - 6, L.y - 12, 12, 13);
   }
+
   x.fillStyle = '#6f5442';
   x.beginPath();
   x.moveTo(RX - 5, RT - 7);
@@ -548,6 +633,7 @@ function zgPaintSet(k) {
   x.fillRect(RX - 24, AY + 26, 12, 30);
   y.fillStyle = '#e8b45a';
   y.fillRect(RX - 24, AY + 26, 12, 30);
+
   const roof = (col, a, b) => {
     x.fillStyle = col;
     x.beginPath();
@@ -557,18 +643,21 @@ function zgPaintSet(k) {
     x.lineTo(RX - 5 + a + 2, RT - 8 - b - 3);
     x.fill();
   };
+
   for (let i = 0; i < 5; i++) roof(i % 2 ? '#a14e30' : '#b65c38', i * 2, i * 3);
   zeRestaurant(x);
   x.fillStyle = 'rgba(24, 10, 28, .32)';
   x.fillRect(RX, AY + 16, RW, 9); // the awning's shade on the wall
   zeGaloArt(x, 110, F, 1.35);
+
   {
-    const px = 110 - 36 * 1.35,
-      pw = 72 * 1.35,
-      ph = 22 * 1.35,
-      tx = 110 - 30 * 1.35,
-      tw = 60 * 1.35,
-      th = 6 * 1.35; // his plinth in granite, its side showing
+    const px = 110 - 36 * 1.35;
+    const pw = 72 * 1.35;
+    const ph = 22 * 1.35;
+    const tx = 110 - 30 * 1.35;
+    const tw = 60 * 1.35;
+    const th = 6 * 1.35; // his plinth in granite, its side showing
+
     x.fillStyle = '#6a6562';
     x.beginPath();
     x.moveTo(px + pw, F - ph);
@@ -589,22 +678,27 @@ function zgPaintSet(k) {
     x.fillRect(tx, F - ph - th, tw, th);
     x.fillStyle = '#bcb7af';
     x.fillRect(tx, F - ph - th, tw, 1.8);
+
     for (let i = 0; i < 9; i++) {
       x.fillStyle = 'rgba(40, 30, 40, .16)';
       x.fillRect(px + 4 + i * 11, F - ph + 7 + (i % 3) * 6, 7, 1.2);
     }
   }
+
   for (const wx of [RX + 12, RX + RW - 72]) {
     y.fillStyle = '#ffdb70';
     y.fillRect(wx + 2, AY + 31, 26, 42);
     y.fillRect(wx + 31, AY + 31, 27, 42);
   }
+
   for (const lx of [RX + 28, RX + RW - 36]) {
     y.fillStyle = '#fff0a0';
     y.fillRect(lx, RT + 5, 8, 8);
   }
-  const DX = RX + RW / 2 - 18,
-    DY = AY + 22;
+
+  const DX = RX + RW / 2 - 18;
+  const DY = AY + 22;
+
   y.fillStyle = '#ffd868';
   y.fillRect(DX + 5, DY + 6, 8, 16);
   y.fillRect(DX + 23, DY + 6, 8, 16);
@@ -614,30 +708,39 @@ function zgPaintSet(k) {
 /** A sky's set, baked: each layer lit by that sky. */
 function zgScene(i) {
   if (zg.scenes.has(i)) return zg.scenes.get(i);
-  const gl = zg.gl,
-    P = ZE_SKIES[i],
-    R = ZE_RIGS[i];
+
+  const gl = zg.gl;
+  const P = ZE_SKIES[i];
+  const R = ZE_RIGS[i];
+
   zg.town ||= zgPaintTown();
   zg.bridge ||= zgPaintBridge();
+
   const sun = P.sun
     ? [R.sunX, P.sun.y > 860 ? ZE_WATER : P.sun.y - 74]
     : P.moon === 'full'
       ? [590, 150]
       : [R.sunX, 600];
+
   const rimD = (() => {
-    const a = sun[0] - 360,
-      b = sun[1] - 720,
-      l = Math.hypot(a, b) || 1;
+    const a = sun[0] - 360;
+    const b = sun[1] - 720;
+    const l = Math.hypot(a, b) || 1;
+
     return [a / l, b / l];
   })();
+
   gl.disable(gl.BLEND);
+
   const bake = (alb, em, { amb = [1, 1, 1], rim = 0, s = 1, emB = 1, blur = 0, haze = 0 }) => {
-    const ta = zgUp(gl, alb),
-      te = em ? zgUp(gl, em) : null,
-      A = zgFbo(gl, Math.round(ZE_W * s), Math.round(ZE_H * s));
+    const ta = zgUp(gl, alb);
+    const te = em ? zgUp(gl, em) : null;
+    const A = zgFbo(gl, Math.round(ZE_W * s), Math.round(ZE_H * s));
+
     zgBind(A);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
     zgUse(
       zg.P.bake,
       ZG_FULL,
@@ -652,22 +755,27 @@ function zgScene(i) {
       },
       em ? { uA: ta, uE: te } : { uA: ta },
     );
+
     gl.deleteTexture(ta);
     if (te) gl.deleteTexture(te);
     if (!blur) return A;
     const B = zgFbo(gl, A.w, A.h);
+
     zgBind(B);
     zgUse(zg.P.disc, ZG_FULL, { uR: blur, uB: 1.4 }, { uT: A.t });
     zgDrop(gl, A);
     return B; // out of focus by its distance: what shines opens into a disc
   };
-  const S = { i, R, sun },
-    [sc, se] = zgPaintSky(P.sun ? { ...P, sun: { ...P.sun, x: R.sunX } } : P),
-    hc = zgPaintHills(P);
+
+  const S = { i, R, sun };
+  const [sc, se] = zgPaintSky(P.sun ? { ...P, sun: { ...P.sun, x: R.sunX } } : P);
+  const hc = zgPaintHills(P);
+
   S.sky = bake(sc, se, { s: 0.75, emB: 1.5, blur: 0.9 });
   S.hills = bake(hc, null, { s: 0.5, blur: 3.2, haze: R.hz[0] * 0.55 });
   zgLetGo(sc, se, hc);
   S.town = bake(zg.town.c, zg.town.e, { amb: R.tAmb, rim: R.rim * 0.9, emB: R.win * 2.6, blur: 2.4, haze: R.hz[1] });
+
   S.bridge = bake(zg.bridge.c, zg.bridge.e, {
     amb: R.tAmb.map(v => v * 1.1),
     rim: R.rim,
@@ -675,6 +783,7 @@ function zgScene(i) {
     blur: 1.1,
     haze: R.hz[2],
   });
+
   // the picture the river sees
   S.comp = zgFbo(gl, 360, 450, zg.fmt, true);
   zgBind(S.comp);
@@ -682,10 +791,14 @@ function zgScene(i) {
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  for (const L of [S.sky, S.hills, S.town, S.bridge])
+
+  for (const L of [S.sky, S.hills, S.town, S.bridge]) {
     zgUse(zg.P.layer, ZG_FULL, { uA: 1, uShift: [0, 0] }, { uT: L.t });
+  }
+
   gl.bindTexture(gl.TEXTURE_2D, S.comp.t);
   gl.generateMipmap(gl.TEXTURE_2D);
+
   if (R.rays > 0) {
     gl.disable(gl.BLEND);
     S.rays = zgFbo(gl, 180, 225);
@@ -693,49 +806,63 @@ function zgScene(i) {
     zgUse(zg.P.rays, ZG_FULL, { uC: sun, uThr: P.sun ? 0.55 : 0.25 }, { uT: S.comp.t });
     gl.enable(gl.BLEND);
   } // the light through the town, baked from it
+
   zg.scenes.set(i, S);
   return S;
 }
+
 /** Every sky baked ahead, one a frame, so a level-up never waits for its own. */
 function zgBakeAhead() {
-  for (let i = 0; i < ZE_SKIES.length; i++)
+  for (let i = 0; i < ZE_SKIES.length; i++) {
     if (!zg.scenes.has(i)) {
       zgScene(i);
       return;
     }
+  }
+
   zg.baked = true;
   zgLetGo(zg.town?.c, zg.town?.e, zg.bridge?.c, zg.bridge?.e);
   zg.town = zg.bridge = null;
 }
+
 function zgSet(k) {
   if (zg.set?.k === k) return zg.set;
-  const gl = zg.gl,
-    { c, e } = zgPaintSet(k);
+
+  const gl = zg.gl;
+  const { c, e } = zgPaintSet(k);
+
   if (zg.set) {
     gl.deleteTexture(zg.set.a);
     gl.deleteTexture(zg.set.e);
     zgDrop(gl, zg.set.h);
   }
-  const a = zgUp(gl, c),
-    h = zgFbo(gl, gl.canvas.width >> 2, gl.canvas.height >> 2, [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
+
+  const a = zgUp(gl, c);
+  const h = zgFbo(gl, gl.canvas.width >> 2, gl.canvas.height >> 2, [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
+
   gl.disable(gl.BLEND);
   zgBind(h);
   zgUse(zg.P.alpha, ZG_FULL, {}, { uT: a });
   gl.enable(gl.BLEND);
   const ta = zgUp(gl, e);
+
   zgLetGo(c, e);
   return (zg.set = { k, a, e: ta, h });
 }
+
 function zgSize(w, h) {
-  const gl = zg.gl,
-    cv = gl.canvas;
+  const gl = zg.gl;
+  const cv = gl.canvas;
+
   if (cv.width !== w || cv.height !== h) {
     cv.width = w;
     cv.height = h;
   }
+
   if (zg.fS?.w === w && zg.fS.h === h) return;
   for (const b of [zg.fS, zg.fA, zg.fC]) zgDrop(gl, b);
   const b8 = [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE];
+
   zg.fA = zgFbo(gl, w, h, b8);
   zg.fC = zgFbo(gl, w, h, b8);
   zg.fS = zgFbo(gl, w, h);

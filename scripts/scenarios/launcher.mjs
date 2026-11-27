@@ -9,8 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
 import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = tmpDir('peix-launch-'),
-  prs = join(dir, 'prs.json');
+const dir = tmpDir('peix-launch-');
+const prs = join(dir, 'prs.json');
+
 writeFileSync(prs, JSON.stringify({ 'acme/widgets#57': { state: 'OPEN', title: 'Teach the widget to launch' } }));
 
 export const meta = {
@@ -20,8 +21,9 @@ export const meta = {
 };
 
 export default async function (ctx) {
-  const now = Date.now(),
-    out = {};
+  const now = Date.now();
+  const out = {};
+
   const { chats } = makeFixture(ctx.fixture.dir, [
     {
       cwd: join(dir, 'widgets'),
@@ -38,15 +40,19 @@ export default async function (ctx) {
       at: new Date(now - 120_000),
     },
   ]);
+
   const [widgets, gadgets] = chats;
+
   const key = k =>
     ctx.evaluate(
       `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true }))`,
     );
+
   const rows = () =>
     ctx.evaluate(
       `[...document.querySelectorAll('#picklist .pkrow')].map(r => ({ kind: [...r.classList].find(c => ['menu', 'chat', 'project', 'pr', 'ticket', 'action', 'toggle'].includes(c)), text: r.querySelector('.n').textContent, sel: r.classList.contains('sel') }))`,
     );
+
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${widgets.id}"] .mxs[data-state="open"]')`, {
     what: 'the PR answered',
     timeout: 20000,
@@ -54,11 +60,14 @@ export default async function (ctx) {
 
   // ⌥⌘L: the menu
   await ctx.key('KeyL');
+
   await ctx.waitFor(
     `document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow.menu').length === 15`,
     { what: 'the launcher’s menu' },
   );
+
   const menu = await rows();
+
   ctx.assert.deepEqual(
     menu.map(r => r.text),
     [
@@ -79,16 +88,20 @@ export default async function (ctx) {
       'About peixAIrada',
     ],
   );
+
   await ctx.settle();
   await ctx.shot('menu');
 
   // a query finds a chat in its section; ⏎ opens it
   await ctx.fill('#pickq', 'polish');
+
   await ctx.waitFor(`document.querySelector('#picklist .pkhd')?.textContent === 'Chats'`, {
     what: 'the chats section',
   });
+
   ctx.assert.equal((await rows())[0].text, 'Polish the gadgets');
   await key('Enter');
+
   await ctx.waitFor(`!document.querySelector('#pick').open && window.peix.state().current === '${gadgets.id}'`, {
     what: 'the chat opened',
   });
@@ -97,13 +110,16 @@ export default async function (ctx) {
   await ctx.key('KeyL');
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher again' });
   await ctx.fill('#pickq', '>hide chat list');
+
   await ctx.waitFor(`document.querySelector('#picklist .pkrow.sel')?.textContent.includes('Hide the chat list')`, {
     what: 'the hide action first',
   });
+
   ctx.assert.ok(
     (await rows()).every(r => r.kind === 'action' || r.kind === 'toggle'),
     '> leaves only actions and switches',
   );
+
   await key('Enter');
   await ctx.waitFor(`document.querySelector('#main').classList.contains('lhide')`, { what: 'the list hidden' });
   await ctx.key('KeyB');
@@ -114,23 +130,29 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher once more' });
   for (let i = 0; i < 4; i++) await key('ArrowDown');
   await key('ArrowRight');
+
   await ctx.waitFor(
     `[...document.querySelectorAll('#picklist .pkrow.toggle')].some(r => r.textContent.includes('Sounds'))`,
     { what: 'the switches' },
   );
+
   const sounds = (await rows()).findIndex(r => r.text === 'Sounds');
+
   for (let i = 0; i < sounds; i++) await key('ArrowDown');
   ctx.assert.equal((await ctx.peix('prefs()')).sounds, false);
   await key('Enter');
+
   await ctx.waitFor(
     `window.peix.prefs().sounds === true && document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel .lsw.on')`,
     { what: 'the sounds on, the menu up' },
   );
+
   // Auto-tiling is one of them (2026-11-26), the setting's own checkbox flipped
   ctx.assert.ok(
     (await rows()).some(r => r.kind === 'toggle' && r.text.startsWith('Auto-tiling')),
     'Auto-tiling among the switches',
   );
+
   await ctx.settle();
   await ctx.shot('toggle');
   await key('Enter');
@@ -147,19 +169,24 @@ export default async function (ctx) {
 
   // ?: the sheet of every key, narrowed by its box
   await ctx.waitFor(`!document.querySelector('dialog[open]')`, { what: 'nothing up' });
+
   await ctx.evaluate(
     `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`,
   );
+
   await ctx.waitFor(
     `document.querySelector('#keysheet').open && document.querySelectorAll('#ksbody .kr').length > 20`,
     { what: 'the keys sheet' },
   );
+
   await ctx.settle();
   await ctx.shot('keys');
   await ctx.fill('#ksq', 'theme');
+
   out.keys = await ctx.evaluate(
     `[...document.querySelectorAll('#ksbody .kr:not([hidden]) kbd')].map(k => k.textContent)`,
   );
+
   ctx.assert.ok(out.keys.includes('⌥⌘Y') && out.keys.length < 6, `the box narrows the sheet: ${out.keys}`);
   return out;
 }

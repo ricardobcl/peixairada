@@ -18,6 +18,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#sbSwim canvas.bed')`), null, 'off by default');
   await ctx.evaluate(`document.querySelector('#laneBed').click()`);
   await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'bed:draw')`, { what: 'the seabed drawn' });
+
   // read the canvas: columns by time, nine o'clock at its left
   const look = await ctx
     .evaluate(
@@ -29,31 +30,41 @@ export default async function (ctx) {
   })())`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     [look.floorAt0, look.floorAt200],
     [true, false],
     'the floor where a chat worked, none where none did',
   );
+
   ctx.assert.deepEqual([look.redAt35, look.redAt5], [true, false], 'red along the top where one waited');
+
   ctx.assert.ok(
     look.two > look.one,
     `two chats at work stand taller than one, its own overlapping spans counted once: ${look.one} and ${look.two}`,
   );
+
   ctx.assert.equal(look.anims, 0, 'it does not move');
   // once a minute at most, however often the bar draws
   const asks = await ctx.evaluate(`window.__todayAsks`);
+
   await ctx.evaluate(
     `(async () => { for (let i = 0; i < 5; i++) { document.querySelector('#laneBed').dispatchEvent(new Event('noop')); window.dispatchEvent(new Event('resize')); await new Promise(r => setTimeout(r, 40)); } })()`,
   );
+
   ctx.assert.equal(await ctx.evaluate(`window.__todayAsks`), asks, 'the day not asked again');
+
   // the hover says the hour
   const r = await ctx.evaluate(
     `(r => ({ x: r.left + r.width * (10.5 / 96), y: r.top + r.height / 2 }))(document.querySelector('#sbSwim').getBoundingClientRect())`,
   );
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+
   await ctx.waitFor(`/^09:\\d\\d: \\d at work/.test(document.querySelector('#sbSwim').title)`, {
     what: 'the hour in the tooltip',
   });
+
   await ctx.evaluate(`document.querySelector('#laneBed').click()`);
   await ctx.waitFor(`!document.querySelector('#sbSwim canvas.bed')`, { what: 'the canvas gone' });
   return look;

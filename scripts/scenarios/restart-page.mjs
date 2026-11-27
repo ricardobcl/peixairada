@@ -7,11 +7,15 @@ export default async function (ctx) {
   const out = {};
   const stamp = () => ctx.evaluate(`document.querySelector('meta[name="peix-page"]').content`);
   const snaps = () => ctx.evaluate(`window.peix.state().snapshots`);
+
   const seg = () =>
     ctx.evaluate(`(b => b && { cls: b.className, text: b.textContent })(document.querySelector('#sbLeft .upg'))`);
+
   const restart = async () => {
     const n = await snaps();
+
     await ctx.server.restart();
+
     await ctx.waitFor(`!window.__mark || window.peix.state().snapshots > ${n}`, {
       timeout: 20_000,
       what: 'the stream back from the new server',
@@ -32,17 +36,22 @@ export default async function (ctx) {
   await ctx.evaluate(
     `document.querySelector('meta[name="peix-page"]').content = 'stale0000000'; dispatchEvent(new KeyboardEvent('keydown'))`,
   ); // a key just pressed: the reload waits
+
   await restart();
+
   await ctx.waitFor(`/\\bpage\\b/.test(document.querySelector('#sbLeft .upg')?.className || '')`, {
     what: 'the status bar saying a page waits',
   });
+
   out.waiting = await seg();
   ctx.assert.equal(out.waiting.text, 'updated · reload the page');
   ctx.assert.equal(await ctx.evaluate(`window.__mark`), 1, 'not at once while a key was just pressed');
+
   await ctx.waitFor(`!window.__mark && window.peix?.state().snapshots > 0`, {
     timeout: 25_000,
     what: 'the page reloaded once left be',
   });
+
   out.after = await stamp();
   ctx.assert.equal(out.after, out.stamp, 'the page on disk, stamped');
   ctx.assert.equal(await seg(), null, 'reloaded: nothing said');

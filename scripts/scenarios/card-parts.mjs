@@ -12,6 +12,7 @@ import { tmpDir } from '../../lib/testserver.mjs';
 
 const file = join(tmpDir('peix-parts-'), 'prs.json');
 const face = login => ({ login, avatarUrl: `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>` });
+
 writeFileSync(
   file,
   JSON.stringify({
@@ -33,10 +34,11 @@ export const meta = {
 };
 
 export default async function (ctx) {
-  const [two] = ctx.fixture.chats,
-    out = {},
-    a = ctx.assert,
-    card = `#slist > .card[data-id="${two.id}"]`;
+  const [two] = ctx.fixture.chats;
+  const out = {};
+  const a = ctx.assert;
+  const card = `#slist > .card[data-id="${two.id}"]`;
+
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelector('${card} .top .tmx .mxs')`, { timeout: 15_000, what: "the card's PRs" });
   await ctx.settle();
@@ -45,6 +47,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#cardLab .card').length === 1`, { what: 'the card in the pane' });
   await ctx.settle();
+
   const look = () =>
     ctx
       .evaluate(
@@ -54,24 +57,29 @@ export default async function (ctx) {
     node: c === window.__card }))(document.querySelector('${card}')))`,
       )
       .then(JSON.parse);
+
   const flip = async k => {
     await ctx.evaluate(`document.querySelector('#cardLab [data-part="${k}"]').click()`);
     await ctx.settle();
   };
+
   await ctx.evaluate(`window.__card = document.querySelector('${card}')`);
 
   // by default all but the age and the ✓ at rest (the pin and the snooze's mark on, 2026-11-25);
   // the card in the pane has every part, and its rules are a copy that goes with the pane
   out.on = await look();
   a.deepEqual(out.on, { hide: 'age tick', prs: true, node: true }, 'everything shown by default');
+
   const parts = await ctx.evaluate(
     `[...new Set([...document.querySelectorAll('#cardLab [data-part]')].map(e => e.dataset.part))].sort().join(' ')`,
   );
+
   a.equal(
     parts,
     'age agents branch fable live move nap pin prs rounds tab tick tickets unread watch where',
     'every part on it',
   );
+
   a.deepEqual(
     await ctx
       .evaluate(
@@ -81,6 +89,7 @@ export default async function (ctx) {
     ['700', true, 'false', 0],
     "the board's rules reach it; the age faint; nothing of it in the list",
   );
+
   await ctx.shot(
     '1-pane',
     await ctx.evaluate(
@@ -91,11 +100,13 @@ export default async function (ctx) {
   // each click hides its part, the card's node kept
   await flip('prs');
   out.bare = await look();
+
   a.deepEqual(
     [out.bare.hide, out.bare.prs, out.bare.node],
     ['prs age tick', false, true],
     'the PRs gone, no card redrawn',
   );
+
   a.deepEqual(
     await ctx
       .evaluate(
@@ -105,6 +116,7 @@ export default async function (ctx) {
     [true, 'false', true],
     'faint on the card in the pane, to be clicked back',
   );
+
   a.match(
     await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`),
     /Hidden: PRs\./,
@@ -124,11 +136,13 @@ export default async function (ctx) {
     move: ['', 'div', 'state prmove'],
     live: ['', 'div', 'state live wake'],
   };
+
   for (const [k, [where, tag, cls]] of Object.entries(standIns)) {
     const shown = () =>
       ctx.evaluate(
         `(c => { const t = document.createElement('${tag}'); t.className = '${cls}'; t.textContent = 'x'; ${where ? `c.querySelector('${where}')` : 'c'}.append(t); const v = getComputedStyle(t).display; t.remove(); return v; })(document.querySelector('${card}'))`,
       );
+
     a.notEqual(await shown(), 'none', `${k}: shown`);
     await flip(k);
     a.equal(await shown(), 'none', `${k}: left out`);
@@ -144,24 +158,31 @@ export default async function (ctx) {
     m.replaceWith(slot); c.classList.remove('rowmove'); return v; })(document.querySelector('${card}')))`,
       )
       .then(JSON.parse);
+
   await ctx.evaluate(
     `document.querySelector('#cardsSize [data-v="2"]').click(); if (!document.querySelector('#cardsEven').checked) document.querySelector('#cardsEven').click()`,
   );
+
   await ctx.settle();
   await flip('move');
+
   a.deepEqual(
     await moved(),
     { same: true, display: 'flex', seen: 'hidden', words: 0 },
     'same height: its row kept, empty',
   );
+
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="3"]').click()`);
   await ctx.settle();
+
   a.deepEqual(
     await moved(),
     { same: true, display: 'none', seen: 'visible', words: 1 },
     'one line: the word has the row',
   );
+
   await flip('move');
+
   a.deepEqual(
     await moved(),
     { same: true, display: 'flex', seen: 'visible', words: 0 },
@@ -170,53 +191,65 @@ export default async function (ctx) {
 
   // the age and the ✓ at rest, in one line's rows and in compact's; pointer away from the list
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+
   const rest = () =>
     ctx
       .evaluate(
         `JSON.stringify((c => [getComputedStyle(c.querySelector('.trow .time')).display, c.querySelector('.trow .time').getBoundingClientRect().width > 0, c.querySelector('.top .act').getBoundingClientRect().width])(document.querySelector('${card}')))`,
       )
       .then(JSON.parse);
+
   const off = await rest();
+
   a.deepEqual([off[0], off[1], off[2]], ['none', false, 0], 'both only under the pointer by default');
   await flip('age');
   await flip('tick');
   const kept = await rest();
+
   a.deepEqual([kept[0], kept[1], kept[2] > 0], ['block', true, true], 'both at rest');
 
   // the keyboard: a part takes the keys and a press flips it
   await ctx.evaluate(
     `(e => { e.focus(); e.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })); })(document.querySelector('#cardLab [data-part="fable"]'))`,
   );
+
   await ctx.settle();
+
   a.match(
     await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`),
     /\bfable\b/,
     'space on a part leaves it out',
   );
+
   a.equal(await ctx.evaluate(`document.activeElement?.dataset.part`), 'fable', 'the keys stay on it');
   await flip('fable');
 
   // the copy of the rules goes with the pane
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="general"]').click()`);
   await ctx.settle();
+
   a.equal(
     await ctx.evaluate(`!document.querySelector('#clabCss') && !document.querySelector('#cardLab .card')`),
     true,
     'gone on another pane',
   );
+
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
   await ctx.settle();
+
   a.equal(
     await ctx.evaluate(`!!document.querySelector('#clabCss') && !!document.querySelector('#cardLab .card')`),
     true,
     'back on this one',
   );
+
   await ctx.evaluate(`document.querySelector('#settings').close()`);
   await ctx.settle();
   a.equal(await ctx.evaluate(`!document.querySelector('#clabCss')`), true, 'gone with the dialog');
 
   // a pref: the same after a reload
   const hidden = await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
+
   a.equal(hidden, 'prs', 'the age and the ✓ kept, the PRs left out');
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
@@ -226,8 +259,10 @@ export default async function (ctx) {
   await ctx.evaluate(
     `(p => { p.cardParts = ['prs', 'agents']; p.cardPartsSeen = 1; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`,
   );
+
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
+
   a.equal(
     await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`),
     'rounds tickets age tick',
@@ -239,10 +274,12 @@ export default async function (ctx) {
     await ctx.evaluate(
       `(p => { p.cardParts = ${JSON.stringify(parts)}; p.cardPartsSeen = ${n}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`,
     );
+
     await ctx.reload();
     await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
     return ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
   };
+
   a.equal(
     await seen(
       ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'],
@@ -251,6 +288,7 @@ export default async function (ctx) {
     'age tick',
     "the snooze's mark and the pin on, once",
   );
+
   a.equal(
     await seen(
       ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'],
@@ -259,5 +297,6 @@ export default async function (ctx) {
     'age tick pin nap',
     'taken off since, they stay off',
   );
+
   return out;
 }

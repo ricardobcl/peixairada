@@ -20,11 +20,14 @@ export const pageStamp = html => createHash('sha1').update(html).digest('hex').s
 // properties in style="" everywhere — and the app's own scripts (the key, the bridge's calls) are the shell's, outside it.
 const PAGE_SCRIPTS = /<script>([\s\S]*?)<\/script>/g;
 const SAFE_HOST = /^[\w.-]+(:\d+)?$|^\[[0-9a-f:.]+\](:\d+)?$/i;
+
 export function pageCsp(html, host) {
   const hashes = [...html.matchAll(PAGE_SCRIPTS)].map(
     m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`,
   );
+
   const ws = SAFE_HOST.test(host || '') ? ` ws://${host}` : ''; // 'self' covers ws: in CSP 3; an older WebKit wants it named
+
   return [
     `default-src 'self'`,
     `script-src 'self' ${hashes.join(' ')}`,
@@ -46,33 +49,42 @@ export function pageCsp(html, host) {
 export async function pageRoute(req, res, url, p) {
   if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
     const html = readPage();
+
     const body = html.replace(
       '<meta name="peix-page" content="">',
       `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`,
     );
+
     res.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-store',
       'content-security-policy': pageCsp(body, req.headers.host),
       'x-frame-options': 'DENY',
     }); // nobody's frame (foreignTo)
+
     return res.end(body);
   }
+
   return NEXT;
 }
 
 /** The vendored libraries, from public/vendor/. */
 export async function vendorRoute(req, res, url, p) {
   let m;
+
   if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
     const f = join(ROOT, 'public', 'vendor', m[1]);
+
     if (!existsSync(f)) return json(res, 404, { error: 'not found' });
     const body = readFileSync(f);
+
     res.writeHead(200, {
       'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8',
       'cache-control': 'public, max-age=86400',
     });
+
     return res.end(body);
   }
+
   return NEXT;
 }

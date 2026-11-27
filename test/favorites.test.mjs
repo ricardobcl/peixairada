@@ -12,16 +12,21 @@ test(
   { timeout: 30_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const chat = fx.chats[0],
-      was = readFileSync(chat.file, 'utf8');
+
+    const chat = fx.chats[0];
+    const was = readFileSync(chat.file, 'utf8');
+
     const srv = await startTestServer({ claudeDir: fx.dir });
     const favOf = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id)?.fav;
+
     try {
       assert.equal(await favOf(), false, 'none starred at first');
       const r = await srv.post(`api/sessions/${chat.id}/favorite`, { on: true });
+
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.fav, true);
       assert.equal(await favOf(), true, 'the summary says so');
+
       await waitFor(
         () => {
           try {
@@ -32,11 +37,13 @@ test(
         },
         { what: 'kept in the state file' },
       );
+
       assert.equal(
         (await srv.post(`api/sessions/${chat.id}/favorite`, { on: 'yes' })).status,
         400,
         'on must be a boolean',
       );
+
       assert.equal((await srv.post('api/sessions/nobody/favorite', { on: true })).status, 404, 'an unknown chat');
       assert.equal((await srv.post(`api/sessions/${chat.id}/favorite`, { on: false })).body.fav, false);
       assert.equal(await favOf(), false, 'unstarred');

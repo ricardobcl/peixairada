@@ -21,12 +21,15 @@ export function cleanPrompt(text) {
 
 /** At most `n` UTF-16 units, never half an emoji: a cut between a surrogate pair left a lone one, a U+FFFD on the page. */
 export const cut = (t, n) => (t.length > n ? t.slice(0, n).replace(/[\uD800-\uDBFF]$/, '') : t);
+
 export function snippet(text, n = 240) {
   const t = String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
-  return t.length > n ? cut(t, n - 1) + '…' : t;
+
+  return t.length > n ? `${cut(t, n - 1)}…` : t;
 }
+
 /** Markdown as a sentence (2026-10-12): a card, a picker and an alert show the start of a prompt or a reply, and the
  *  syntax was drawn as it stood — `[a link](https://…)`, `## a heading`, `- an item`, a PR's whole URL over three lines.
  *  A link is its words, a heading or a quote loses its marker, an item starts with ·, a table's cells are put in a row,
@@ -34,6 +37,7 @@ export function snippet(text, n = 240) {
  *  scheme and its long segments. Inline code keeps its backticks: the page draws them as code. */
 const GH_URL_RE = /https?:\/\/(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)[^\s)\]>]*/g;
 const ITEM_RE = /^\s*(?:[-*+]|\d{1,3}[.)])\s+/;
+
 export function plain(text) {
   return String(text || '')
     .replace(/^\s*(?:```|~~~).*$/gm, '')
@@ -42,7 +46,9 @@ export function plain(text) {
       if (/^[\s:|-]*$/.test(l) && l.includes('--')) return ''; // a table's rule, or a --- one — two tests, linear: as one regex a long run of dashes and a letter after took seconds (2026-10-14)
       l = l.replace(/^\s*(?:>\s?)+/, '').replace(/^\s{0,3}#{1,6}\s+/, '');
       const item = ITEM_RE.test(l);
+
       if (item) l = l.replace(ITEM_RE, '');
+
       l = l.replace(/^\s*\|(.*)\|\s*$/, (_, row) =>
         row
           .split('|')
@@ -50,6 +56,7 @@ export function plain(text) {
           .filter(Boolean)
           .join(' · '),
       );
+
       return (item ? '· ' : '') + l;
     })
     .join('\n')
@@ -62,10 +69,11 @@ export function plain(text) {
       rest
         .replace(/\/$/, '')
         .split('/')
-        .map(seg => (seg.length > 24 ? seg.slice(0, 12) + '…' : seg))
+        .map(seg => (seg.length > 24 ? `${seg.slice(0, 12)}…` : seg))
         .join('/'),
     );
 }
+
 export const plainSnippet = (text, n) => snippet(plain(String(text || '').slice(0, Math.max(2000, n * 8))), n); // the start is all a snippet shows: a long reply is not walked whole
 
 export function summarizeToolInput(name, input = {}) {
@@ -82,7 +90,7 @@ export function summarizeToolInput(name, input = {}) {
         return input.notebook_path || input.file_path || ''; // a notebook's path has a name of its own (2026-10-14)
       case 'Grep':
       case 'Glob':
-        return `${input.pattern || ''}${input.path ? '  in ' + input.path : ''}`;
+        return `${input.pattern || ''}${input.path ? `  in ${input.path}` : ''}`;
       case 'Agent':
         return input.description || snippet(input.prompt, 100);
       case 'Monitor':
@@ -107,6 +115,7 @@ export function summarizeToolInput(name, input = {}) {
 
 export function resultText(block) {
   const c = block.content;
+
   return typeof c === 'string'
     ? c
     : Array.isArray(c)
@@ -116,6 +125,7 @@ export function resultText(block) {
           .join('\n')
       : '';
 }
+
 export function toolResultSnippet(block) {
   return snippet(resultText(block), 200);
 }

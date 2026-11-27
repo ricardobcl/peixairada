@@ -12,24 +12,26 @@ import { tmpDir } from '../../lib/testserver.mjs';
 import { fileURLToPath } from 'node:url';
 import { makeFixture, replyLines } from '../fixture.mjs';
 
-const dir = tmpDir('peix-people-'),
-  file = join(dir, 'prs.json');
+const dir = tmpDir('peix-people-');
+const file = join(dir, 'prs.json');
+
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+
 const face = (login, fill) => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`,
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`,
+  )}`,
 });
+
 const [ana, rui, eva, me] = [
   face('ana', '#2f9e5b'),
   face('rui', '#8250df'),
   face('eva', '#d9a82a'),
   face('me', '#888'),
 ];
+
 writeFileSync(
   file,
   JSON.stringify({
@@ -76,9 +78,10 @@ export const meta = {
 };
 
 export default async function (ctx) {
-  const out = {},
-    cwd = join(tmpdir(), 'peix-people', 'people-repo'),
-    now = Date.now();
+  const out = {};
+  const cwd = join(tmpdir(), 'peix-people', 'people-repo');
+  const now = Date.now();
+
   const { chats } = makeFixture(ctx.fixture.dir, [
     {
       cwd,
@@ -96,13 +99,16 @@ export default async function (ctx) {
     },
     { cwd, title: 'On none', prompt: 'no PR here', reply: 'none', at: new Date(now - 180_000) },
   ]);
+
   // the cards by the fixture's names (a chat on a PR is titled by it once GitHub answers)
   const names = Object.fromEntries(chats.map((c, i) => [c.id, ['On one', 'On two', 'On none'][i]]));
+
   const titles = () =>
     ctx
       .evaluate(`JSON.stringify([...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id))`)
       .then(JSON.parse)
       .then(ids => ids.map(id => names[id]).filter(Boolean));
+
   const row = () =>
     ctx
       .evaluate(
@@ -110,6 +116,7 @@ export default async function (ctx) {
     faces: [...document.querySelectorAll('#people button[data-login]')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: +(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0) })`,
       )
       .then(JSON.parse); // the Ready lane's count (the chip's until 2026-10-11, later)
+
   const click = async login => {
     await ctx.evaluate(`document.querySelector('#people button[data-login="${login}"]').click()`);
     await ctx.sleep(100);
@@ -120,14 +127,18 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, {
     what: "the three chats and the fixture's two",
   });
+
   await ctx.key('KeyP');
+
   await ctx.evaluate(
     `(() => { const q = document.querySelector('#pickq'); q.value = 'people-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`,
   );
+
   await ctx.waitFor(
     `document.querySelectorAll('#slist > .card').length === 3 && document.querySelectorAll('#people button[data-login]').length === 3`,
     { what: "the folder's chats, and the faces from their PRs", timeout: 10_000 },
   );
+
   await ctx.settle();
 
   // GitHub's mark heads them and folds them (2026-10-11, later; off by default, and a count beside the mark, from
@@ -139,34 +150,43 @@ export default async function (ctx) {
     shown: [...p.querySelectorAll('button[data-login]')].filter(b => b.getClientRects().length).map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')) }))(document.querySelector('#people')))`,
       )
       .then(JSON.parse);
+
   const mark = async () => {
     await ctx.evaluate(`document.querySelector('#people .pgh').click()`);
     await ctx.sleep(50);
     await ctx.settle();
   };
+
   out.folded = await fold();
+
   ctx.assert.deepEqual(
     out.folded,
     { folded: true, github: true, expanded: 'false', shown: [] },
     `folded to begin with: ${JSON.stringify(out.folded)}`,
   );
+
   await ctx.shot('folded', { x: 0, y: 880, width: 1700, height: 120 });
   await mark();
   out.unfolded = await fold();
+
   ctx.assert.deepEqual(
     out.unfolded,
     { folded: false, github: true, expanded: 'true', shown: ['eva', 'rui', 'ana'] },
     `the mark unfolds them: ${JSON.stringify(out.unfolded)}`,
   );
+
   ctx.assert.equal(await ctx.peix('prefs().peopleCompact'), false, 'and it is a pref');
 
   out.all = { ...(await row()), titles: await titles() };
+
   ctx.assert.deepEqual(
     out.all.faces,
     ['eva', 'rui', 'ana'],
     "everyone in the view's PRs, you left out, the newest first",
   );
+
   ctx.assert.equal(out.all.hidden, false);
+
   ctx.assert.equal(
     await ctx.evaluate(
       `document.querySelector('#people img').complete && document.querySelector('#people img').naturalWidth > 0`,
@@ -174,120 +194,149 @@ export default async function (ctx) {
     true,
     'their faces',
   );
+
   await ctx.shot('all', { x: 0, y: 880, width: 1700, height: 120 });
 
   await click('rui');
   await ctx.waitFor(`window.peix.state().person === 'rui'`, { what: 'rui chosen' });
   out.rui = { ...(await row()), titles: await titles() };
+
   ctx.assert.deepEqual(
     out.rui,
     { hidden: false, on: true, faces: ['eva', 'rui*', 'ana'], ready: 2, titles: ['On one', 'On two'] },
     'rui is in both PRs: those two chats, counted',
   );
+
   await ctx.shot('rui', { x: 0, y: 880, width: 1700, height: 120 });
 
   // folded while narrowed: the face the list is narrowed to stays in sight, the list still narrowed; unfolded again
   await mark();
   out.narrowFolded = { ...(await fold()), titles: await titles() };
+
   ctx.assert.deepEqual(
     [out.narrowFolded.folded, out.narrowFolded.shown, out.narrowFolded.titles],
     [true, ['rui*'], ['On one', 'On two']],
     `folded, rui's face kept: ${JSON.stringify(out.narrowFolded)}`,
   );
+
   await ctx.shot('folded-rui', { x: 0, y: 880, width: 1700, height: 120 });
   await mark();
   ctx.assert.deepEqual((await fold()).shown, ['eva', 'rui*', 'ana'], 'the mark again: every face');
 
   await click('ana');
   out.ana = { ...(await row()), titles: await titles() };
+
   ctx.assert.deepEqual(
     [out.ana.faces, out.ana.titles, out.ana.ready],
     [['eva', 'rui', 'ana*'], ['On one'], 1],
     'another face moves the filter',
   );
+
   // the funnel counts what the list would show (2026-10-14): the face narrowing it, and a query, as the list does. What it
   // counts is a new reply on two, not ana's chat (her PR is one's); a PR at your move was it till 2026-11-25.
   const two = chats[1];
+
   appendFileSync(
     two.file,
-    replyLines({ id: two.id, cwd: two.cwd, text: 'Done, have a look.', at: new Date() })
+    `${replyLines({ id: two.id, cwd: two.cwd, text: 'Done, have a look.', at: new Date() })
       .map(l => JSON.stringify(l))
-      .join('\n') + '\n',
+      .join('\n')}\n`,
   );
+
   await ctx.waitFor(`window.peix.session('${two.id}')?.lastReplyAt > new Date(Date.now() - 15000).toISOString()`, {
     what: 'the new reply on two',
   });
+
   const funnel = async () => {
     await ctx.evaluate(`document.querySelector('#fBtn').click()`);
     await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: "the funnel's menu" });
+
     const m = await ctx.evaluate(
       `[...document.querySelectorAll('#ctxm button')].map(b => b.textContent).filter(t => /^New replies\\d+$/.test(t))`,
     );
+
     await ctx.evaluate(`document.querySelector('#ctxm').close()`);
     await ctx.sleep(200);
     return m;
   };
+
   out.funnelAna = await funnel();
+
   ctx.assert.deepEqual(
     out.funnelAna,
     ['New replies0'],
     `with ana's face, the funnel counts ana's chats alone: ${JSON.stringify(out.funnelAna)}`,
   );
+
   ctx.assert.equal((await ctx.peix('prefs()')).person, 'ana', 'and it is a pref');
 
   await click('ana');
   out.back = { ...(await row()), titles: await titles() };
+
   ctx.assert.deepEqual(
     [out.back.on, out.back.titles.length, out.back.ready],
     [false, 3, 3],
     'the same face again: every chat',
   );
+
   ctx.assert.deepEqual(await funnel(), ['New replies1'], "every chat: On two's new reply");
   await ctx.fill('#q', 'zzqqxx');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 0`, { what: 'a query matching nothing' });
   out.funnelQuery = await funnel();
+
   ctx.assert.deepEqual(
     out.funnelQuery,
     ['New replies0'],
     `…and none under a query that leaves no chat: ${JSON.stringify(out.funnelQuery)}`,
   );
+
   await ctx.fill('#q', '');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 3`, { what: 'every chat again' });
 
   // in the status bar (2026-10-09; under the list's cards with the bar off, until it was always there, 2026-10-14) — since
   // 2026-10-11, later, after the left's segments and before the fish's lane, which takes the bar's free room
   await ctx.settle();
+
   out.docked = await ctx
     .evaluate(
       `JSON.stringify((p => { const r = p.getBoundingClientRect(), f = document.querySelector('#sbSwim').getBoundingClientRect(), l = document.querySelector('#sbLeft').getBoundingClientRect(); return { inBar: p.parentElement.id, placed: r.left >= l.right - 1 && r.right <= f.left + 1 && f.width > 200, faces: p.querySelectorAll('button[data-login]').length }; })(document.querySelector('#people')))`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     [out.docked.inBar, out.docked.placed, out.docked.faces],
     ['sbPeople', true, 3],
     `before the fish's wide lane: ${JSON.stringify(out.docked)}`,
   );
+
   await click('ana');
   ctx.assert.deepEqual(await titles(), ['On one'], 'a face there narrows the list as ever');
   await click('ana');
   await ctx.shot('docked', { x: 0, y: 880, width: 1700, height: 120 });
+
   // folded there, the faces' room is the fish's: the lane grows by it, the mark alone before it — and the mark stays put
-  const lane = () => ctx.evaluate(`Math.round(document.querySelector('#sbSwim').getBoundingClientRect().width)`),
-    at = () => ctx.evaluate(`Math.round(document.querySelector('#people .pgh').getBoundingClientRect().left)`);
-  const wide = await lane(),
-    was = await at();
+  const lane = () => ctx.evaluate(`Math.round(document.querySelector('#sbSwim').getBoundingClientRect().width)`);
+  const at = () => ctx.evaluate(`Math.round(document.querySelector('#people .pgh').getBoundingClientRect().left)`);
+
+  const wide = await lane();
+  const was = await at();
+
   await mark();
+
   out.barFolded = {
     ...(await fold()),
     lane: [wide, await lane()],
     mark: [was, await at()],
     people: await ctx.evaluate(`Math.round(document.querySelector('#sbPeople').getBoundingClientRect().width)`),
   };
+
   ctx.assert.deepEqual([out.barFolded.folded, out.barFolded.shown], [true, []], 'folded in the bar: no face');
+
   ctx.assert.ok(
     out.barFolded.lane[1] >= out.barFolded.lane[0] + 3 * 18 && out.barFolded.people < 50,
     `the fish takes the faces' room: ${JSON.stringify(out.barFolded)}`,
   );
+
   ctx.assert.equal(out.barFolded.mark[1], out.barFolded.mark[0], "GitHub's mark where it was");
   await ctx.shot('docked-folded', { x: 0, y: 880, width: 1700, height: 120 });
   return out;

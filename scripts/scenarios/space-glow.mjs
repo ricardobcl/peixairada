@@ -14,15 +14,20 @@ export const meta = {
 
 export default async function (ctx) {
   const ps = [0, 1].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
+
   try {
-    const root = tmpDir('peix-spg-'),
-      d = n => {
-        const p = join(root, n);
-        mkdirSync(p, { recursive: true });
-        return p;
-      },
-      now = Date.now(),
-      ago = m => new Date(now - m * 60_000);
+    const root = tmpDir('peix-spg-');
+
+    const d = n => {
+      const p = join(root, n);
+
+      mkdirSync(p, { recursive: true });
+      return p;
+    };
+
+    const now = Date.now();
+    const ago = m => new Date(now - m * 60_000);
+
     const {
       chats: [work, ask, ready],
     } = makeFixture(ctx.fixture.dir, [
@@ -46,15 +51,19 @@ export default async function (ctx) {
       },
       { cwd: d('docs'), title: 'Write the retry docs', prompt: 'docs', reply: 'Written.', at: ago(30) },
     ]);
+
     const node = id => `document.querySelector('#spgrid .spt[data-id="${id}"]')`;
+
     await ctx.waitFor(
       `${node(work.id)}?.querySelector('.spbox[data-st="work"]') && ${node(ask.id)}?.querySelector('.spbox[data-st="ask"]') && ${node(ready.id)}`,
       { what: 'the three nodes', timeout: 20000 },
     );
+
     const out =
       await ctx.evaluate(`[${[work, ask, ready].map(c => `'${c.id}'`).join(',')}].map(id => { const n = document.querySelector('#spgrid .spt[data-id="' + id + '"]'), rg = n.querySelector('.sprg'), hl = n.querySelector('.sphl');
       return [!!rg, !!hl, rg ? getComputedStyle(rg, '::before').animationName : '', hl ? getComputedStyle(hl, '::before').animationName : ''];
     })`);
+
     ctx.assert.deepEqual(
       out,
       [
@@ -64,9 +73,11 @@ export default async function (ctx) {
       ],
       'the working node lit and turning; the asking and the ready ones not',
     );
+
     out.phased = await ctx.evaluate(
       `(() => { const as = document.getAnimations().filter(a => a.animationName === 'ring' && a.effect?.target?.closest?.('#space')); return as.length >= 2 && new Set(as.map(a => Math.round(Number(a.currentTime) % 2400 / 50))).size === 1; })()`,
     );
+
     ctx.assert.equal(out.phased, true, 'arc and bloom in step');
     await ctx.settle();
     await ctx.shot('space-glow-dark');

@@ -10,6 +10,7 @@ import { tmpDir } from '../../lib/testserver.mjs';
 
 const link = (url, words) => `\x1b]8;;${url}\x07${words}\x1b]8;;\x07`;
 const screen = join(tmpDir(), 'screen.json');
+
 writeFileSync(
   screen,
   JSON.stringify({
@@ -33,25 +34,32 @@ export const meta = {
 export default async function (ctx) {
   const [chat] = ctx.fixture.chats;
   const out = {};
+
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__posts = []; window.__confirms = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };
       window.confirm = m => (window.__confirms.push(String(m)), false);`,
   });
+
   await ctx.reload();
   await ctx.openChat(chat.id);
   await ctx.evaluate(`document.querySelector('#termBtn').click()`);
   await ctx.waitFor(`window.peix.screen().some(r => r.includes('twelve'))`, { what: 'the links on the screen' });
+
   // the drawer at its size, and still: the attach's fit and nudge each draw every row again, which drops the link under
   // the pointer — a click then is on nothing
   for (let last = '', same = 0, t = Date.now(); same < 3; await ctx.sleep(200)) {
     const g = await ctx.evaluate(`JSON.stringify(window.peix.grid())`);
+
     same = g === last ? same + 1 : 0;
     last = g;
     if (Date.now() - t > 15_000) throw new Error(`the drawer never still: ${g}`);
   }
+
   await ctx.settle();
+
   const outs = () =>
     ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'external').map(m => m.url))`).then(JSON.parse);
+
   // a press and a release on a link's words, the pointer moved there first, as a hand does
   const click = async words => {
     const at = await ctx
@@ -64,15 +72,19 @@ export default async function (ctx) {
     })()`,
       )
       .then(JSON.parse);
+
     // xterm drops the link under the pointer when its row is drawn again (the attach's repaint): moved onto it until
     // the pointer says it is on one
     for (let i = 0; ; i++) {
-      for (const dx of [-30, 0])
+      for (const dx of [-30, 0]) {
         await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x + dx, y: at.y });
+      }
+
       await ctx.sleep(100);
       if (await ctx.evaluate(`!!document.querySelector('#termBody .xterm-screen.xterm-cursor-pointer')`)) break;
       if (i === 50) throw new Error(`the pointer never on the link ${words}`);
     }
+
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mousePressed',
       x: at.x,
@@ -80,6 +92,7 @@ export default async function (ctx) {
       button: 'left',
       clickCount: 1,
     });
+
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
       x: at.x,
@@ -87,6 +100,7 @@ export default async function (ctx) {
       button: 'left',
       clickCount: 1,
     });
+
     await ctx.sleep(150);
   };
 
@@ -95,9 +109,11 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.docs, ['https://example.com/docs'], "a page off the board's sites goes to the browser");
 
   await click('twelve');
+
   await ctx.waitFor(`window.peix.state().tab === 'gh:https://github.com/acme/repo-a/pull/12'`, {
     what: 'the PR on its tab',
   });
+
   ctx.assert.deepEqual(await outs(), out.docs, 'the PR stayed in the board');
   out.confirms = await ctx.evaluate(`JSON.stringify(window.__confirms)`).then(JSON.parse);
   ctx.assert.deepEqual(out.confirms, [], 'nothing asked first');

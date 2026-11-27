@@ -36,25 +36,33 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from './fixture.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..'),
-  NAME = 'peix-shell';
-const argv = process.argv.slice(2),
-  opt = name => {
-    const i = argv.indexOf(name);
-    return i < 0 ? null : argv.splice(i, 2)[1];
-  },
-  flag = name => {
-    const i = argv.indexOf(name);
-    if (i < 0) return false;
-    argv.splice(i, 1);
-    return true;
-  };
-const shots = opt('--shots') || join(tmpdir(), 'peixairada-shots'),
-  srcAsked = opt('--src'),
-  space = flag('--space'),
-  named = argv.filter(a => !a.startsWith('--'));
-const DRIVE = join(ROOT, 'scripts/shell-probe.swift'),
-  SRC = srcAsked ? resolve(srcAsked) : join(ROOT, 'mac/Sources');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const NAME = 'peix-shell';
+
+const argv = process.argv.slice(2);
+
+const opt = name => {
+  const i = argv.indexOf(name);
+
+  return i < 0 ? null : argv.splice(i, 2)[1];
+};
+
+const flag = name => {
+  const i = argv.indexOf(name);
+
+  if (i < 0) return false;
+  argv.splice(i, 1);
+  return true;
+};
+
+const shots = opt('--shots') || join(tmpdir(), 'peixairada-shots');
+const srcAsked = opt('--src');
+const space = flag('--space');
+const named = argv.filter(a => !a.startsWith('--'));
+
+const DRIVE = join(ROOT, 'scripts/shell-probe.swift');
+const SRC = srcAsked ? resolve(srcAsked) : join(ROOT, 'mac/Sources');
+
 // the app's files (2026-11-25: main.swift alone before), in C's order: the one scripts/check.sh hashes them in
 const SOURCES = existsSync(join(SRC, 'main.swift'))
   ? readdirSync(SRC)
@@ -62,37 +70,47 @@ const SOURCES = existsSync(join(SRC, 'main.swift'))
       .sort()
       .map(f => join(SRC, f))
   : [];
+
 if (!SOURCES.length) {
   console.error(
     "--src wants a folder of the app's sources, main.swift among them: swiftc takes top-level code from no other file",
   );
+
   process.exit(2);
 }
+
 if (process.platform !== 'darwin') {
   console.error("the shell is a Mac's");
   process.exit(2);
 }
+
 mkdirSync(shots, { recursive: true });
 let nm = ROOT;
+
 while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname(nm);
 const CACHE = join(nm, 'node_modules/.cache/peixairada');
+
 const sourceHash = () => {
   const h = createHash('sha256');
+
   for (const f of [...SOURCES, DRIVE]) h.update(readFileSync(f));
   return h.digest('hex');
 };
 
 /** Compiled once per what it is compiled from, whichever worktree asks: flags as build.sh's but -O, which only takes longer. */
 function compile() {
-  const hash = sourceHash(),
-    dir = join(CACHE, 'shell', hash.slice(0, 16)),
-    bin = join(dir, NAME);
+  const hash = sourceHash();
+  const dir = join(CACHE, 'shell', hash.slice(0, 16));
+  const bin = join(dir, NAME);
+
   if (existsSync(bin)) return bin;
   const min = /^MIN_OS=(.*)$/m.exec(readFileSync(join(ROOT, 'mac/build.sh'), 'utf8'))?.[1] || '13.0';
   const arch = spawnSync('uname', ['-m'], { encoding: 'utf8' }).stdout.trim();
+
   mkdirSync(dir, { recursive: true });
   console.error(`› compiling ${SRC === join(ROOT, 'mac/Sources') ? 'mac/Sources' : SRC} with the probe`);
   const made = join(dir, `${NAME}.${process.pid}`);
+
   const c = spawnSync(
     'swiftc',
     [
@@ -110,18 +128,25 @@ function compile() {
     ],
     { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' },
   );
+
   if (c.status !== 0) {
     console.error(c.stderr);
     process.exit(c.status ?? 1);
   }
+
   renameSync(made, bin);
-  for (const old of readdirSync(join(CACHE, 'shell')))
+
+  for (const old of readdirSync(join(CACHE, 'shell'))) {
     if (old !== hash.slice(0, 16)) {
       const p = join(CACHE, 'shell', old);
+
       if (Date.now() - statSync(p).mtimeMs > 86_400_000) rmSync(p, { recursive: true, force: true });
     }
+  }
+
   return bin;
 }
+
 /** Its defaults are the one thing the fake home does not move: the process's name's, in the real ~/Library/Preferences. */
 const wipeDefaults = () => {
   spawnSync('defaults', ['delete', NAME], { stdio: 'ignore' });
@@ -132,15 +157,19 @@ const wipeDefaults = () => {
 function pagesServer() {
   const srv = createServer((req, res) => {
     const hex = /^\/solid\/([0-9a-f]{6})/.exec(req.url)?.[1];
+
     if (!hex) {
       res.writeHead(404);
       return res.end();
     }
+
     res.writeHead(200, { 'content-type': 'text/html' });
+
     res.end(
       `<!doctype html><title>${hex}</title><style>html, body { height: 100%; margin: 0; background: #${hex}; }</style>`,
     );
   });
+
   return new Promise(ok => srv.listen(0, '127.0.0.1', () => ok(srv)));
 }
 
@@ -148,15 +177,19 @@ function pagesServer() {
  *  proof, and keeps what it was asked and with which key. */
 function strangerServer() {
   const asked = [];
+
   const srv = createServer((req, res) => {
     asked.push({ url: req.url, key: req.headers['x-peix-key'] || null, nonce: req.headers['x-peix-nonce'] || null });
+
     if (req.url.startsWith('/api/alive')) {
       res.writeHead(204);
       return res.end();
     }
+
     res.writeHead(200, { 'content-type': req.url.startsWith('/api/') ? 'application/json' : 'text/html' });
     res.end(req.url.startsWith('/api/') ? '{}' : '<!doctype html><title>not the board</title>a stranger');
   });
+
   return new Promise(ok => srv.listen(0, '127.0.0.1', () => ok(Object.assign(srv, { asked }))));
 }
 
@@ -171,50 +204,65 @@ function startShell(bin, { port, home, space: inSpace }) {
     },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
-  let seq = 0,
-    err = '',
-    ready,
-    failed;
-  const waiting = new Map(),
-    up = new Promise((res, rej) => {
-      ready = res;
-      failed = rej;
-    });
+
+  let seq = 0;
+  let err = '';
+  let ready;
+  let failed;
+
+  const waiting = new Map();
+
+  const up = new Promise((res, rej) => {
+    ready = res;
+    failed = rej;
+  });
+
   child.stderr.on('data', d => {
     err = (err + d).slice(-4000);
   });
+
   child.stdin.on('error', () => {});
+
   child.on('exit', (code, sig) => {
     const e = new Error(`the shell ended (${code ?? sig})${err ? `:\n${err}` : ''}`);
+
     failed(e);
     for (const w of waiting.values()) w.rej(e);
     waiting.clear();
   });
+
   createInterface({ input: child.stdout }).on('line', line => {
     let m;
+
     try {
       m = JSON.parse(line);
     } catch {
       return;
     }
+
     if (m.ready) return ready(m);
     const w = waiting.get(m.id);
+
     if (!w) return;
     waiting.delete(m.id);
     clearTimeout(w.t);
     if (m.ok) w.res(m.value);
     else w.rej(new Error(`${w.what}: ${m.error}`));
   });
+
   const ask = (what, o = {}, ms = 20_000) =>
     new Promise((res, rej) => {
-      const id = ++seq,
-        t = setTimeout(() => {
-          waiting.delete(id);
-          rej(new Error(`no answer from the shell in ${ms} ms to ${what}`));
-        }, ms);
+      const id = ++seq;
+
+      const t = setTimeout(() => {
+        waiting.delete(id);
+        rej(new Error(`no answer from the shell in ${ms} ms to ${what}`));
+      }, ms);
+
       waiting.set(id, { res, rej, t, what });
-      child.stdin.write(JSON.stringify({ id, do: what, ...o }) + '\n');
+      child.stdin.write(`${JSON.stringify({ id, do: what, ...o })}\n`);
     });
+
   return {
     up,
     ask,
@@ -223,6 +271,7 @@ function startShell(bin, { port, home, space: inSpace }) {
       try {
         child.stdin.end();
       } catch {}
+
       setTimeout(() => {
         if (child.exitCode === null) child.kill('SIGKILL');
       }, 1500).unref();
@@ -246,28 +295,39 @@ const PREFS = {
 };
 
 async function runCheck(file, bin) {
-  const name = basename(file, '.mjs'),
-    mod = await import(pathToFileURL(file).href),
-    meta = mod.meta || {};
-  const log = (...a) => console.error(`[${name}]`, ...a),
-    home = tmpDir('peix-home-'),
-    cleanups = [];
-  const repos = realpathSync(tmpDir('peix-repo-')),
-    cwdA = join(repos, 'repo-a');
+  const name = basename(file, '.mjs');
+  const mod = await import(pathToFileURL(file).href);
+  const meta = mod.meta || {};
+
+  const log = (...a) => console.error(`[${name}]`, ...a);
+  const home = tmpDir('peix-home-');
+  const cleanups = [];
+
+  const repos = realpathSync(tmpDir('peix-repo-'));
+  const cwdA = join(repos, 'repo-a');
+
   mkdirSync(cwdA);
   const fixture = defaultFixture(tmpDir('peix-fixture-'), { cwdA, cwdB: realpathSync(tmpdir()) });
   const server = await startTestServer({ claudeDir: fixture.dir, env: meta.env || {} });
+
   cleanups.push(() => server.stop());
   const pages = await pagesServer();
+
   cleanups.push(() => pages.close());
   const stranger = meta.stranger ? await strangerServer() : null;
+
   if (stranger) cleanups.push(() => stranger.close());
-  for (const d of ['Library/Application Support/peixAIrada', 'Library/Logs'])
+
+  for (const d of ['Library/Application Support/peixAIrada', 'Library/Logs']) {
     mkdirSync(join(home, d), { recursive: true });
+  }
+
   writeFileSync(join(home, 'Library/Application Support/peixAIrada/key'), server.key);
   wipeDefaults();
   const shell = startShell(bin, { port: stranger ? stranger.address().port : server.port, home, space: !!meta.space });
+
   cleanups.push(() => shell.stop());
+
   const appLog = () => {
     try {
       return readFileSync(join(home, 'Library/Logs/peixairada-app.log'), 'utf8');
@@ -275,9 +335,12 @@ async function runCheck(file, bin) {
       return '';
     }
   };
+
   try {
     const hello = await shell.up;
+
     if (hello.unseen) return { name, skipped: hello.unseen };
+
     const ctx = {
       name,
       log,
@@ -304,14 +367,17 @@ async function runCheck(file, bin) {
       /** The board up, from what a scenario's page starts from. */
       board: async (prefs = {}) => {
         await ctx.until(`!!window.peix && peix.state().snapshots > 0`, "the board in the shell's web view", 30_000);
+
         await ctx.js(
           `window.__before = true; localStorage.setItem('peixairada-prefs', ${JSON.stringify(JSON.stringify({ ...PREFS, ...prefs }))}); setTimeout(() => location.reload(), 0); return true`,
         );
+
         await ctx.until(
           `!window.__before && !!window.peix && peix.state().snapshots > 0`,
           'the board again, with its prefs',
           30_000,
         );
+
         ctx.assert.equal(
           await ctx.js(`return JSON.parse(localStorage.getItem('peixairada-prefs')).pagesOut`),
           false,
@@ -320,6 +386,7 @@ async function runCheck(file, bin) {
       },
       openChat: async id => {
         await ctx.js(`location.hash = ${JSON.stringify(id)}; return true`);
+
         await ctx.until(
           `peix.state().current === ${JSON.stringify(id)} && document.querySelector('#log')?.dataset.sid === ${JSON.stringify(id)}`,
           'the chat open',
@@ -334,8 +401,9 @@ async function runCheck(file, bin) {
       halfOf: url =>
         waitFor(
           async () => {
-            const h = await ctx.js(`return peix.state().halves`),
-              g = h.findIndex(k => (k || '').endsWith(url));
+            const h = await ctx.js(`return peix.state().halves`);
+            const g = h.findIndex(k => (k || '').endsWith(url));
+
             return g < 0 ? null : { g, key: h[g] };
           },
           { what: `a half showing ${url}`, every: 100 },
@@ -343,10 +411,13 @@ async function runCheck(file, bin) {
       /** ⌃⌘F, and the shell's word that it took. */
       full: async () => {
         const was = await ctx.win();
+
         await shell.ask('full');
+
         await waitFor(
           async () => {
             const w = await ctx.win();
+
             return w.fill !== was.fill || w.full !== was.full ? w : null;
           },
           { what: 'the full screen to change', timeout: 15_000, every: 100 },
@@ -358,6 +429,7 @@ async function runCheck(file, bin) {
         await ctx.js(
           `const p = document.querySelector('#zoomPick'); p.value = ${JSON.stringify(String(z))}; p.dispatchEvent(new Event('change')); return true`,
         );
+
         await waitFor(async () => (await ctx.win()).zoom === z, { what: `the zoom at ${z}`, every: 50 });
       },
       /** Nothing finite still moving and no draw to come, as a scenario's ctx.settle(), then a frame for it to reach the window. */
@@ -367,22 +439,27 @@ async function runCheck(file, bin) {
           'the page to settle',
           4000,
         );
+
         await ctx.js(`await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true`);
       },
       /** A picture of the window as WebKit and the window server drew it. */
       shot: async label => {
         const path = join(shots, `shell-${name}-${label}.png`);
+
         await shell.ask('shot', { path });
         return path;
       },
     };
-    const t0 = Date.now(),
-      result = await mod.default(ctx);
+
+    const t0 = Date.now();
+    const result = await mod.default(ctx);
+
     log(`passed in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     return { name, ok: true, result };
   } catch (e) {
     log(`FAILED: ${e.stack || e}`);
     const tail = appLog().split('\n').slice(-12).join('\n');
+
     if (tail.trim()) log(`the shell's log, its end:\n${tail}`);
     return { name, ok: false, error: e.message };
   } finally {
@@ -393,19 +470,25 @@ async function runCheck(file, bin) {
         log('cleanup:', e.message);
       }
     }
+
     wipeDefaults();
   }
 }
 
 const dir = join(ROOT, 'scripts/shell-checks');
+
 const all = readdirSync(dir)
-    .filter(f => f.endsWith('.mjs'))
-    .map(f => join(dir, f)),
-  metas = new Map();
+  .filter(f => f.endsWith('.mjs'))
+  .map(f => join(dir, f));
+
+const metas = new Map();
+
 for (const f of all) metas.set(f, (await import(pathToFileURL(f).href)).meta || {});
+
 const chosen = named.length
   ? all.filter(f => named.includes(basename(f, '.mjs')))
   : all.filter(f => !!metas.get(f).space === space);
+
 if (!chosen.length) {
   console.error(`no check named ${named.join(', ')} among ${all.map(f => basename(f, '.mjs')).join(', ')}`);
   process.exit(2);
@@ -413,16 +496,22 @@ if (!chosen.length) {
 
 const bin = compile();
 const results = [];
+
 for (const f of chosen) results.push(await runCheck(f, bin));
-const failed = results.filter(r => r.ok === false),
-  skipped = results.filter(r => r.skipped);
-for (const r of results)
+
+const failed = results.filter(r => r.ok === false);
+const skipped = results.filter(r => r.skipped);
+
+for (const r of results) {
   console.log(
     `${r.skipped ? 'NOT RUN' : r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.skipped ? ` — ${r.skipped}` : r.ok ? '' : ` — ${r.error.split('\n')[0]}`}`,
   );
+}
+
 // `npm run check` says when the app's sources have moved on from the last time this passed whole (scripts/check.sh)
 if (!failed.length && !skipped.length && !named.length && !space && !srcAsked) {
   mkdirSync(CACHE, { recursive: true });
   writeFileSync(join(CACHE, 'shell-passed'), sourceHash());
 }
+
 process.exit(failed.length ? 1 : skipped.length ? 3 : 0);

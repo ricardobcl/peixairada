@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = realpathSync(tmpDir('peix-wto-'));
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
@@ -25,12 +26,15 @@ const env = {
   GIT_COMMITTER_NAME: 't',
   GIT_COMMITTER_EMAIL: 't@t',
 };
+
 const git = (cwd, ...a) =>
   execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
     .toString()
     .trim();
-const origin = join(tmp, 'origin.git'),
-  seed = join(tmp, 'seed');
+
+const origin = join(tmp, 'origin.git');
+const seed = join(tmp, 'seed');
+
 execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
 execFileSync('git', ['init', '-q', '-b', 'main', seed]);
 writeFileSync(join(seed, 'README.md'), '# widgets\n');
@@ -39,11 +43,14 @@ git(seed, 'add', '.');
 git(seed, 'commit', '-q', '-m', 'base');
 git(seed, 'push', '-q', origin, 'main', 'main:refs/heads/feat/theirs');
 let n = 0;
+
 const clone = () => {
   const co = join(tmp, `co${++n}`);
+
   execFileSync('git', ['clone', '-q', '--no-local', origin, co], { stdio: 'pipe', env });
   return co;
 };
+
 /** origin over an SSH that does what `ssh` says: the way it is reached, nothing else about the clone changed. */
 const overSsh = (co, ssh) => {
   git(co, 'remote', 'set-url', 'origin', 'ssh://nobody@peix.invalid/widgets.git');
@@ -55,10 +62,13 @@ test(
   { timeout: 20_000 },
   async () => {
     const co = clone();
+
     overSsh(co, `sh -c 'sleep 6' --`);
-    const t0 = Date.now(),
-      r = await ensureWorktree({ cwd: co, branch: 'feat/hung', fresh: true, base: 'refs/heads/main' }),
-      took = Date.now() - t0;
+
+    const t0 = Date.now();
+    const r = await ensureWorktree({ cwd: co, branch: 'feat/hung', fresh: true, base: 'refs/heads/main' });
+    const took = Date.now() - t0;
+
     assert.equal(r.made, true, JSON.stringify(r));
     assert.deepEqual([r.unasked, r.from], [true, 'refs/heads/main']);
     assert.ok(took >= 900 && took < 4000, `took ${took} ms`);
@@ -72,8 +82,10 @@ test(
   { timeout: 20_000 },
   async () => {
     const co = clone();
+
     overSsh(co, 'false');
     const r = await ensureWorktree({ cwd: co, branch: 'feat/denied', fresh: true });
+
     assert.deepEqual([r.made, r.unasked, r.from], [true, true, 'refs/remotes/origin/main'], JSON.stringify(r));
     assert.throws(() => git(r.path, 'rev-parse', '--abbrev-ref', '@{u}'), /no upstream|fatal/, 'tracking nothing');
   },
@@ -84,15 +96,19 @@ test(
   { timeout: 20_000 },
   async () => {
     const co = clone();
+
     git(seed, 'push', '-q', origin, 'main:refs/heads/feat/late'); // since the clone: only origin knows it
     const late = await ensureWorktree({ cwd: co, branch: 'feat/late', fresh: true, base: 'refs/heads/main' });
+
     assert.equal(late.unasked, undefined, JSON.stringify(late));
     assert.equal(git(late.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/late');
     const anew = await ensureWorktree({ cwd: co, branch: 'feat/anew', fresh: true });
+
     assert.equal(anew.unasked, undefined, JSON.stringify(anew));
     assert.throws(() => git(anew.path, 'rev-parse', '--abbrev-ref', '@{u}'), /no upstream|fatal/, 'tracking nothing');
     // a name that only ends the same: not the branch asked for
     const near = await ensureWorktree({ cwd: co, branch: 'theirs', fresh: true });
+
     assert.throws(
       () => git(near.path, 'rev-parse', '--abbrev-ref', '@{u}'),
       /no upstream|fatal/,
@@ -103,14 +119,18 @@ test(
 
 test('no origin at all is nothing to say', { timeout: 20_000 }, async () => {
   const co = clone();
+
   git(co, 'remote', 'remove', 'origin');
   const r = await ensureWorktree({ cwd: co, branch: 'feat/alone', fresh: true });
+
   assert.deepEqual([r.made, r.unasked], [true, undefined], JSON.stringify(r));
 });
 
 test("a PR's or a named branch, not fresh, still has to come from origin", { timeout: 20_000 }, async () => {
   const co = clone();
+
   overSsh(co, 'false');
+
   assert.match(
     (await ensureWorktree({ cwd: co, branch: 'feat/nowhere' })).error,
     /no branch feat\/nowhere here, nor on origin/,

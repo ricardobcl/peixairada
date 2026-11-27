@@ -30,10 +30,12 @@ export const meta = {
   prefs: { ...board.prefs, cards: 'compact' },
 };
 
-const CW = 1200,
-  CH = 750; // the window the clips are taken in, CSS px, at 1×: the frames' own size
-const FPS = 15,
-  HOLD = 1600; // frames a second in the clip; the last one held before it loops
+const CW = 1200;
+const CH = 750; // the window the clips are taken in, CSS px, at 1×: the frames' own size
+
+const FPS = 15;
+const HOLD = 1600; // frames a second in the clip; the last one held before it loops
+
 const IMG2WEBP =
   process.env.IMG2WEBP ||
   ['/opt/homebrew/bin/img2webp', '/usr/local/bin/img2webp'].find(f => {
@@ -109,29 +111,40 @@ export default async function (ctx) {
       : ctx.evaluate(
           `(r => r && ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(t)})?.getBoundingClientRect())`,
         );
+
   const move = async (to, ms = 520) => {
     const b = await at(to);
+
     if (!b) throw new Error(`nothing at ${to}`);
-    const a = pointer,
-      t0 = Date.now();
+
+    const a = pointer;
+    const t0 = Date.now();
+
     for (let k = 0; k < 1;) {
       // by the clock: a step is two calls, slower while the screencast runs
       k = Math.min(1, (Date.now() - t0) / ms);
       const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2; // ease in and out
-      const x = Math.round(a.x + (b.x - a.x) * e),
-        y = Math.round(a.y + (b.y - a.y) * e);
+
+      const x = Math.round(a.x + (b.x - a.x) * e);
+      const y = Math.round(a.y + (b.y - a.y) * e);
+
       await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
       await ctx.evaluate(`window.__clip?.at(${x}, ${y})`);
     }
+
     pointer = b;
     return b;
   };
+
   const click = async (to, { alt = false, ms } = {}) => {
     if (to) await move(to, ms);
-    const { x, y } = pointer,
-      modifiers = alt ? 1 : 0;
+
+    const { x, y } = pointer;
+    const modifiers = alt ? 1 : 0;
+
     await ctx.evaluate(`window.__clip?.click(${x}, ${y})`);
     if (alt) await ctx.evaluate(`window.__clip?.keys(['⌥', 'click'])`);
+
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mousePressed',
       x,
@@ -141,7 +154,9 @@ export default async function (ctx) {
       clickCount: 1,
       modifiers,
     });
+
     await sleep(60);
+
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
       x,
@@ -152,34 +167,42 @@ export default async function (ctx) {
       modifiers,
     });
   };
+
   const hot = async code => {
     await ctx.evaluate(`window.__clip?.keys(['⌥', '⌘', ${JSON.stringify(KEY_GLYPH[code] || code)}])`);
     await ctx.key(code);
   };
+
   const press = async (key, code = key, kc = 0) => {
     await ctx.evaluate(
       `window.__clip?.keys([${JSON.stringify({ Enter: '⏎', Escape: 'esc', ArrowDown: '↓', ArrowUp: '↑', ArrowRight: '→', ArrowLeft: '←' }[key] || key)}])`,
     );
+
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: kc });
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: kc });
   };
+
   const typeText = async (text, every = 55) => {
     for (const ch of text) {
       await ctx.send('Input.insertText', { text: ch });
       await sleep(every);
     }
   };
+
   const raise = () => ctx.evaluate(`window.__clip?.raise()`);
-  const append = (c, lines) => appendFileSync(c.file, lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+  const append = (c, lines) => appendFileSync(c.file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
 
   // ---- the camera: Chrome's screencast — a frame each time the page is drawn anew —, then resampled to FPS ----
   const record = async (name, steps) => {
     const frames = [];
+
     const off = ctx.on('Page.screencastFrame', p => {
       frames.push({ t: p.metadata.timestamp * 1000, data: p.data });
       ctx.send('Page.screencastFrameAck', { sessionId: p.sessionId }).catch(() => {});
     });
+
     await ctx.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
+
     try {
       await steps();
       await sleep(400);
@@ -187,34 +210,46 @@ export default async function (ctx) {
       await ctx.send('Page.stopScreencast');
       off();
     }
+
     if (!frames.length) throw new Error(`no frames for ${name}`);
+
     // the picture on screen at each tick, a run of the same one a single frame held for the whole of it, the last HOLD
-    const kept = [],
-      step = 1000 / FPS,
-      end = frames.at(-1).t;
+    const kept = [];
+    const step = 1000 / FPS;
+    const end = frames.at(-1).t;
+
     for (let t = frames[0].t, j = 0; t <= end; t += step) {
       while (j + 1 < frames.length && frames[j + 1].t <= t) j++;
       if (kept.at(-1)?.data === frames[j].data) kept.at(-1).ms += step;
       else kept.push({ data: frames[j].data, ms: step });
     }
+
     kept.at(-1).ms = HOLD;
     const dir = join(work, name);
+
     mkdirSync(dir, { recursive: true });
     // near-lossless (2026-11-02): a lossy frame keeps the frame before's pixels wherever the new ones are within a few
     // levels of them, so a dialog closed over the flat dark chat stayed on as a ghost; near-lossless is about lossy's
     // size, every pixel within a level or two. -min_size and -m 6 took a minute or more a clip for a tenth less
     const args = ['-loop', '0'];
+
     kept.forEach((f, i) => {
       const file = join(dir, `${String(i).padStart(4, '0')}.png`);
+
       writeFileSync(file, Buffer.from(f.data, 'base64'));
       args.push('-d', String(Math.max(20, Math.round(f.ms))), '-near_lossless', '60', '-m', '4', file);
     });
+
     const out = join(OUT, `clip-${name}.webp`);
+
     writeFileSync(join(dir, 'args'), [...args, '-o', out].join('\n'));
     execFileSync(IMG2WEBP, [join(dir, 'args')], { stdio: 'ignore' });
-    const size = statSync(out).size,
-      seconds = kept.reduce((s, f) => s + f.ms, 0) / 1000;
+
+    const size = statSync(out).size;
+    const seconds = kept.reduce((s, f) => s + f.ms, 0) / 1000;
+
     made.push({ name, frames: kept.length, seconds: +seconds.toFixed(1), kb: Math.round(size / 1024) });
+
     ctx.log(
       `→ ${out} — ${kept.length} frames (of ${frames.length} drawn), ${seconds.toFixed(1)} s, ${Math.round(size / 1024)} KB`,
     );
@@ -233,35 +268,45 @@ export default async function (ctx) {
   };
 
   const card = t => `#slist > .card[data-id="${chat(t).id}"]`;
+
   const lines = c =>
     readFileSync(c.file, 'utf8')
       .trim()
       .split('\n')
       .map(l => JSON.parse(l));
+
   // the drawer typed into as a hand would, a key at a time, then ⏎
   const typeIn = async (text, g = 0, every = 45) => {
     const box = `document.querySelector('#termBody${g ? 'B' : ''} textarea')`;
+
     for (const ch of text) {
       await ctx.evaluate(
         `${box}.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(ch)}, inputType: 'insertText', bubbles: true }))`,
       );
+
       await sleep(every);
     }
+
     await sleep(250);
+
     await ctx.evaluate(
       `${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`,
     );
   };
+
   // VS Code Web's address as the app would show it for the made-up user's folder, not the fixture's temp path
   const vsAddress = () =>
     ctx.evaluate(
       `(k => k && window.peixPaneUrl(k, 'http://127.0.0.1:7332/?folder=' + encodeURIComponent('/Users/ada/work/storefront')))(window.peix.state().tabs.find(k => k.startsWith('ide:')))`,
     );
+
   const quickOpen = async file => {
     const f = await rect('#shotpane iframe:not([style*="display: none"])');
+
     await click({ x: Math.round(f.x + f.width * 0.62), y: Math.round(f.y + f.height * 0.55) }, { ms: 300 });
     await sleep(250);
     await ctx.evaluate(`window.__clip?.keys(['⌘', 'P'])`);
+
     await ctx.send('Input.dispatchKeyEvent', {
       type: 'keyDown',
       modifiers: 4,
@@ -269,6 +314,7 @@ export default async function (ctx) {
       code: 'KeyP',
       windowsVirtualKeyCode: 80,
     });
+
     await ctx.send('Input.dispatchKeyEvent', {
       type: 'keyUp',
       modifiers: 4,
@@ -276,15 +322,18 @@ export default async function (ctx) {
       code: 'KeyP',
       windowsVirtualKeyCode: 80,
     });
+
     await sleep(700);
     await typeText(file, 50);
     await sleep(900);
+
     await ctx.send('Input.dispatchKeyEvent', {
       type: 'keyDown',
       key: 'Enter',
       code: 'Enter',
       windowsVirtualKeyCode: 13,
     });
+
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
   };
 
@@ -292,6 +341,7 @@ export default async function (ctx) {
     // ⌥⌘A, every live chat at once by what it wants from you; the arrows walk it, ⏎ opens one
     overview: async () => {
       await start(chat('Dark mode for the product grid').id);
+
       await record('overview', async () => {
         await sleep(700);
         await hot('KeyA');
@@ -310,6 +360,7 @@ export default async function (ctx) {
     // ⌥⌘L: chats, projects, PRs and every action, found by a word
     launcher: async () => {
       await start(chat('Dark mode for the product grid').id);
+
       await record('launcher', async () => {
         await sleep(600);
         await hot('KeyL');
@@ -330,21 +381,27 @@ export default async function (ctx) {
         ctx.log('no VS Code Web (the `code` CLI): no vscode clip');
         return;
       }
+
       await start(chat('Dark mode for the product grid').id);
       await hot('KeyE');
+
       await ctx.waitFor(`!!document.querySelector('#shotpane iframe')`, {
         what: 'VS Code Web over its half',
         timeout: 20000,
       });
+
       await sleep(10000); // the workbench loads, finds the repo
       await quickOpen('ProductCard.css');
       await sleep(2500);
       await ctx.key('KeyW');
+
       await ctx.waitFor(`!window.peix.state().tabs.some(k => k.startsWith('ide:'))`, {
         what: 'the VS Code tab closed',
       });
+
       await ctx.settle().catch(() => {});
       await sleep(800);
+
       await record('vscode', async () => {
         await sleep(600);
         await hot('KeyE');
@@ -356,6 +413,7 @@ export default async function (ctx) {
         await quickOpen('SearchBox.tsx');
         await sleep(1500);
       });
+
       await hot('KeyE');
       await sleep(400);
       await ctx.key('KeyW');
@@ -365,6 +423,7 @@ export default async function (ctx) {
     // a chat's pane: its transcript, then whatever it needs beside it on tabs — its changes, a shell — the column split
     pane: async () => {
       await start(chat('Watch the release build').id);
+
       await record('pane', async () => {
         await sleep(500);
         await click(`${card('Dark mode for the product grid')} .title`);
@@ -373,16 +432,19 @@ export default async function (ctx) {
         await ctx.waitFor(`window.peix.state().tab === 'changes'`, { what: 'the changes', timeout: 15000 });
         await sleep(1600);
         await hot('KeyT');
+
         await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('shell:'))`, {
           what: 'the zsh tab',
           timeout: 15000,
         });
+
         await ctx
           .waitFor(
             `[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => r.textContent.includes('%'))`,
             { what: 'the zsh prompt', timeout: 15000 },
           )
           .catch(() => {});
+
         await sleep(300);
         await typeIn('git status --short', 1);
         await sleep(1500);
@@ -392,19 +454,23 @@ export default async function (ctx) {
     // Claude Code itself in the drawer: resumed on ⌥⌘C, typed into as in any terminal
     terminal: async () => {
       await start(chat('Dark mode for the product grid').id);
+
       await record('terminal', async () => {
         await sleep(600);
         await hot('KeyC');
+
         await ctx.waitFor(
           `window.peix.state().termSession === ${JSON.stringify(chat('Dark mode for the product grid').id)} && !window.peix.state().termExited`,
           { what: 'Claude in the drawer', timeout: 20000 },
         );
+
         await ctx
           .waitFor(`String(window.peix.screen(0)).includes('accept edits')`, {
             what: 'the drawer drawn',
             timeout: 15000,
           })
           .catch(() => {});
+
         await sleep(1200);
         await typeIn('give the search box the same tokens');
         await sleep(2800);
@@ -414,6 +480,7 @@ export default async function (ctx) {
     // a PR's state, CI and whose move it is, in the header; its round under it; a round let go
     'pr-status': async () => {
       await start(chat('Bump Node to 22').id);
+
       await record('pr-status', async () => {
         await sleep(600);
         await click('#prToggle');
@@ -421,12 +488,14 @@ export default async function (ctx) {
         // GitHub moves: #92's CI goes green, polled within seconds here
         PRS['acme/infra#92'].commits = { nodes: [{ commit: { statusCheckRollup: { state: 'SUCCESS' } } }] };
         writeFileSync(prsFile, JSON.stringify(PRS));
+
         await ctx
           .waitFor(
             `window.peix.session(${JSON.stringify(chat('Bump Node to 22').id)})?.prs?.find(p => p.url.endsWith('/92'))?.checks === 'pass'`,
             { what: '#92 green', timeout: 15000 },
           )
           .catch(e => ctx.log(e.message));
+
         await sleep(1500);
         await click('#shead .hmove', { alt: true });
         await sleep(2000);
@@ -436,9 +505,11 @@ export default async function (ctx) {
     // the board: a chat lands and moves to Ready, a question waits, a chat ticked done folds away
     board: async () => {
       await start(chat('Watch the release build').id);
+
       await record('board', async () => {
         await sleep(1600);
         const c = chat('Retry declined payments');
+
         append(
           c,
           replyLines({
@@ -449,6 +520,7 @@ export default async function (ctx) {
             model: FABLE,
           }),
         );
+
         await sleep(2000);
         await click(`${card('Flaky test in the refunds suite')} .act[data-act="done"]`);
         await sleep(1500);
@@ -460,12 +532,15 @@ export default async function (ctx) {
     // a PR named in a chat becomes its chip — on the card, in the header — with its state from GitHub, no setup
     prs: async () => {
       const c = chat('Queue for invoice webhooks');
+
       await start(chat('Dark mode for the product grid').id, { prsOpen: true });
       const ask = lines(c).find(l => l.message?.content?.[0]?.name === 'AskUserQuestion').message.content[0].id;
+
       await record('prs', async () => {
         await sleep(700);
         await click(`${card('Queue for invoice webhooks')} .title`);
         await sleep(900);
+
         append(c, [
           {
             ...lines(c).at(-1),
@@ -484,7 +559,9 @@ export default async function (ctx) {
             },
           },
         ]);
+
         await sleep(1200);
+
         append(
           c,
           toolLines({
@@ -496,8 +573,10 @@ export default async function (ctx) {
             at: new Date(),
           }),
         );
+
         append(c, [prLinkLine({ id: c.id, url: 'https://github.com/acme/billing-api/pull/57' })]);
         await sleep(1200);
+
         append(
           c,
           replyLines({
@@ -508,12 +587,14 @@ export default async function (ctx) {
             model: FABLE,
           }),
         );
+
         await ctx
           .waitFor(`window.peix.session(${JSON.stringify(c.id)})?.prs?.some(p => p.state)`, {
             what: '#57 answered',
             timeout: 15000,
           })
           .catch(() => ctx.log('#57 not answered'));
+
         await sleep(2400);
       });
     },
@@ -525,16 +606,20 @@ export default async function (ctx) {
     await theme(true);
     await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: PAGE });
     await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: KIT });
+
     ctx.on('Page.javascriptDialogOpening', () =>
       ctx.send('Page.handleJavaScriptDialog', { accept: true }).catch(() => {}),
     ); // a page's beforeunload
+
     await ctx.server.post(`/api/sessions/${chat('Rewrite the getting-started guide').id}/done`, { done: true });
     const want = ctx.args.length ? ctx.args : Object.keys(CLIPS);
+
     for (const name of want) {
       if (!CLIPS[name]) throw new Error(`no clip ${name} (${Object.keys(CLIPS).join(', ')})`);
       ctx.log(`clip ${name}`);
       await CLIPS[name]();
     }
+
     return { made, vscode: !!VS.child };
   } finally {
     if (process.env.CLIP_KEEP) ctx.log(`frames kept in ${work}`);

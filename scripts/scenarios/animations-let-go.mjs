@@ -8,6 +8,7 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
+
   await ctx.evaluate(`(() => {
     const el = id => { const e = document.createElement('i'); e.id = id; e.style.cssText = 'position:fixed;left:0;top:0;width:4px;height:4px'; document.body.append(e); return e; };
     const frames = [{ opacity: 1 }, { opacity: .5 }];
@@ -20,30 +21,37 @@ export default async function (ctx) {
     window.__a.stopped.cancel();
     window.__a.gone.onfinish = () => document.getElementById('lgGone').remove();
   })()`);
+
   await ctx.waitFor(`Object.values(window.__a).every(a => a.playState === 'finished' || a.playState === 'idle')`, {
     what: 'the four ended',
   });
+
   out.ended = await ctx
     .evaluate(`JSON.stringify(Object.fromEntries(Object.entries(window.__a).map(([k, a]) => [k, a.playState])))`)
     .then(JSON.parse);
+
   await ctx.waitFor(`['none', 'gone', 'stopped'].every(k => window.__a[k].timeline === null)`, {
     what: 'the three let go',
     timeout: 8000,
   });
+
   out.after = await ctx
     .evaluate(
       `JSON.stringify(Object.fromEntries(Object.entries(window.__a).map(([k, a]) => [k, [a.playState, a.timeline ? 'timeline' : null]])))`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.after,
     { none: ['idle', null], gone: ['idle', null], stopped: ['idle', null], kept: ['finished', 'timeline'] },
     'the one filling nothing, the one whose element left and the one cancelled are off the timeline; the one in the page holds',
   );
+
   ctx.assert.equal(
     await ctx.evaluate(`getComputedStyle(document.getElementById('lgKept')).opacity`),
     '0.5',
     'its last frame still shown',
   );
+
   return out;
 }

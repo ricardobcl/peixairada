@@ -24,15 +24,18 @@ import { HOST, PORT } from './env.mjs';
 /** Why a request to a server bound to `bind` on `port` is not the board's own page's asking, or null. Pure but for
  *  this Mac's name and addresses — exported for the tests, which ask it from the LAN. */
 export function foreignTo(bind, port) {
-  const loopback = new Set(['127.0.0.1', 'localhost', '[::1]', '::1', bind]),
-    open = !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(bind);
+  const loopback = new Set(['127.0.0.1', 'localhost', '[::1]', '::1', bind]);
+  const open = !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(bind);
+
   return req => {
-    const hostPort = String(req.headers.host || '').toLowerCase(),
-      host = hostPort.replace(/:\d+$/, '');
+    const hostPort = String(req.headers.host || '').toLowerCase();
+    const host = hostPort.replace(/:\d+$/, '');
+
     if (host && !loopback.has(host) && !(open && (IP_HOST.test(host) || ownName(host)))) return `host ${host}`;
     if (host && (/:(\d+)$/.exec(hostPort)?.[1] || '80') !== String(port)) return `host ${hostPort}`;
     const site = req.headers['sec-fetch-site'];
     const dest = req.headers['sec-fetch-dest']; // a navigation of a tab, not of another site's frame (2026-10-14)
+
     if (
       site &&
       site !== 'same-origin' &&
@@ -42,35 +45,51 @@ export function foreignTo(bind, port) {
         (!dest || dest === 'document') &&
         /^\/(index\.html)?(\?|#|$)/.test(req.url || '')
       )
-    )
+    ) {
       return `site ${site}`;
+    }
+
     const origin = req.headers.origin;
-    if (origin === undefined)
+
+    if (origin === undefined) {
       return open && !thisMac(req.socket?.remoteAddress) ? `no origin, from ${req.socket?.remoteAddress}` : null;
+    }
+
     let o;
+
     try {
       o = new URL(origin);
     } catch {
       return `origin ${origin}`;
     }
+
     const p = o.port || '80';
-    if (o.protocol !== 'http:' || (open ? o.host !== hostPort : !loopback.has(o.hostname)) || p !== String(port))
+
+    if (o.protocol !== 'http:' || (open ? o.host !== hostPort : !loopback.has(o.hostname)) || p !== String(port)) {
       return `origin ${origin}`;
+    }
+
     return null;
   };
 }
+
 const IP_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])$/; // an address cannot be rebound: a page from it is that machine's
+
 const ownName = h => {
   const me = hostname()
     .toLowerCase()
     .replace(/\.local$/, '');
+
   return h === me || h === `${me}.local`;
 };
+
 const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
 const thisMac = a =>
   !!a &&
   (LOCAL_ADDR.has(a) ||
     Object.values(networkInterfaces())
       .flat()
       .some(i => i.address === a.replace(/^::ffff:/, '')));
+
 export const foreign = foreignTo(HOST, PORT);

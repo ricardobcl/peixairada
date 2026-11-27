@@ -8,6 +8,7 @@ import { indexing, isRemoved, mutedChats, notificationsOn, snoozed } from './sta
 
 export function nativeNotify(title, subtitle, body) {
   if (NOTIFY !== 'native' || process.platform !== 'darwin') return;
+
   execFile(
     'osascript',
     [
@@ -45,16 +46,20 @@ export function queueNotify(s, kind) {
 
 function fireNotify(s) {
   const kinds = s.pendingNotify;
+
   s.pendingNotify = null;
   for (const kind of kinds || []) alertOf(s, kind);
 }
+
 function alertOf(s, kind) {
   if (kind === 'needs-input' && statusOf(s) !== 'needs-input') return; // answered within the debounce: nothing to say
   if (kind === 'drift') return driftNotify(s);
   if (kind === 'agent-failed') return agentFailNotify(s);
   const sum = summary(s);
+
   const asked =
     sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
+
   const evt = {
     kind,
     sessionId: s.id,
@@ -66,23 +71,30 @@ function alertOf(s, kind) {
     ts: new Date().toISOString(),
     ...hushOf(s),
   };
+
   broadcast('alert', evt);
-  if (!evt.quiet)
+
+  if (!evt.quiet) {
     nativeNotify(
       kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude is asking you · ${sum.project}`,
       sum.title,
       evt.snippet || '',
     );
+  }
 }
 
 /** The branch moved under a chat at work (2026-10-13): said with a heading of its own, as a PR's turn is. */
 function driftNotify(s) {
   const d = driftOf(s);
+
   if (!d) return; // gone, or said you know, within the debounce
-  const sum = summary(s),
-    heading = `Branch moved · ${sum.project}`,
-    n = (s.peers || []).length;
+
+  const sum = summary(s);
+  const heading = `Branch moved · ${sum.project}`;
+  const n = (s.peers || []).length;
+
   const snippet = `${d.to} now · was ${d.from}${n ? ` — ${n} other chat${n === 1 ? ' runs' : 's run'} in this checkout` : ''}`;
+
   const evt = {
     kind: 'drift',
     sessionId: s.id,
@@ -95,6 +107,7 @@ function driftNotify(s) {
     ts: new Date().toISOString(),
     ...hushOf(s),
   };
+
   broadcast('alert', evt);
   if (!evt.quiet) nativeNotify(heading, sum.title, snippet);
 }
@@ -102,11 +115,14 @@ function driftNotify(s) {
 /** An agent of a chat's failed (2026-11-02): said with a heading of its own, as a moved branch is. */
 function agentFailNotify(s) {
   const f = s.agentFail;
+
   if (!f) return;
   s.agentFail = null;
-  const sum = summary(s),
-    heading = `An agent failed · ${sum.project}`,
-    text = f.why ? `${f.what}: ${f.why}` : f.what;
+
+  const sum = summary(s);
+  const heading = `An agent failed · ${sum.project}`;
+  const text = f.why ? `${f.what}: ${f.why}` : f.what;
+
   const evt = {
     kind: 'agent-failed',
     sessionId: s.id,
@@ -119,6 +135,7 @@ function agentFailNotify(s) {
     ts: new Date().toISOString(),
     ...hushOf(s),
   };
+
   broadcast('alert', evt);
   if (!evt.quiet) nativeNotify(heading, sum.title, text);
 }

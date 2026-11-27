@@ -4,16 +4,19 @@ const esc = s =>
     /[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   ); // ' too (2026-11-27): no attribute is single-quoted today, and none can be one's undoing
+
 /** esc()'s text again, for markup whose tags are stripped and the rest escaped anew (a tooltip). */
 const unesc = s =>
   String(s ?? '').replace(
     /&(amp|lt|gt|quot|#39);/g,
     (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" })[e],
   );
+
 // Backticks in a title or a snippet are code (2026-10-12): the server keeps them when it turns a prompt or a reply into a
 // sentence (plain), and a title like Add `deleteUserForm` read its ticks aloud. Over escaped markup, a run with no tag
 // in it — a match marked inside one keeps its ticks.
 const ticks = html => html.replace(/`([^`<>\n]{1,80})`/g, '<code class="icode">$1</code>');
+
 // An MCP tool by its server and its name (2026-10-12): mcp__claude_ai_Slack__slack_search_users ran a folded run's
 // summary over two lines; it is Slack: search users — the server's prefix (claude_ai_, plugin_<pkg>_) and the tool's
 // repeat of the server dropped, underscores spaces. Anything else is its own name.
@@ -26,28 +29,37 @@ const pathTail = (text, cwd = '') =>
     .split(/(\s+)/)
     .map(w => {
       if (!/^[~/]/.test(w) || !w.includes('/', 1)) return w;
-      if (cwd && (w === cwd || w.startsWith(cwd + '/'))) w = w.slice(cwd.length + 1) || '.';
+      if (cwd && (w === cwd || w.startsWith(`${cwd}/`))) w = w.slice(cwd.length + 1) || '.';
       w = w.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
       const seg = w.split('/');
-      return w.length > 34 && seg.length > 3 ? '…/' + seg.slice(-2).join('/') : w;
+
+      return w.length > 34 && seg.length > 3 ? `…/${seg.slice(-2).join('/')}` : w;
     })
     .join('');
+
 const toolName = n => {
   const m = /^mcp__(.+?)__(.+)$/.exec(n || '');
+
   if (!m) return n || '';
-  const srv = m[1].replace(/^claude_ai_/, '').replace(/^plugin_[^_]+_/, ''),
-    lo = srv.toLowerCase().replace(/[-\s]/g, '_') + '_';
+
+  const srv = m[1].replace(/^claude_ai_/, '').replace(/^plugin_[^_]+_/, '');
+  const lo = `${srv.toLowerCase().replace(/[-\s]/g, '_')}_`;
+
   const tool = m[2].toLowerCase().startsWith(lo) ? m[2].slice(lo.length) : m[2];
+
   return `${srv.replace(/[_-]+/g, ' ')}: ${tool.replace(/_/g, ' ')}`;
 };
+
 const rel = ts => {
   if (!ts) return '';
   const d = (Date.now() - new Date(ts)) / 1000;
+
   if (d < 60) return `${Math.max(0, d | 0)}s`;
   if (d < 3600) return `${(d / 60) | 0}m`;
   if (d < 86400) return `${(d / 3600) | 0}h`;
   return `${(d / 86400) | 0}d`;
 };
+
 // A chat with a PR is titled by it, which is a title the user never wrote and Claude never chose —
 // hover says which PR it is and keeps Claude's own title reachable rather than losing it: the header's tooltip, and
 // on a card the rounds' popover's first line (2026-11-01, later; rpopHtml — the card's tooltip before).
@@ -55,8 +67,10 @@ function titleTip(s) {
   if (!s.prTitle || s.title !== s.prTitle) return '';
   const pr = s.prs?.find(p => p.title === s.prTitle);
   const own = s.aiTitle || s.lastPrompt;
-  return `${pr ? pr.label + ' — ' : ''}${s.prTitle}${own ? `\n\nChat: ${own}` : ''}`;
+
+  return `${pr ? `${pr.label} — ` : ''}${s.prTitle}${own ? `\n\nChat: ${own}` : ''}`;
 }
+
 const statusLabel = {
   working: 'clauding…',
   idle: 'ready',
@@ -64,6 +78,7 @@ const statusLabel = {
   stale: 'ready — Claude isn’t running; resume it to carry on',
   unknown: '',
 }; // one word per state (2026-10-12): *your move* is a PR's
+
 // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
 // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
 const ICON = {
@@ -163,7 +178,9 @@ const ICON = {
   people:
     '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.75 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.5-.25a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM1 14c0-2.4 2.1-4.2 4.75-4.2S10.5 11.6 10.5 14Zm10.5 0c0-1.4-.45-2.6-1.25-3.5.35-.1.7-.15 1.05-.15 2.1 0 3.7 1.4 3.7 3.4v.25Z"/></svg>',
 };
+
 $('#noChatMore').innerHTML = ICON.more;
+
 const entryLabel = s =>
   s.terminal && s.terminal.exited === null
     ? 'a drawer here'
@@ -176,6 +193,7 @@ const entryLabel = s =>
           : s.live?.entrypoint === 'cli'
             ? 'a terminal elsewhere'
             : 'elsewhere'; // the words, not the entrypoint's (2026-10-12; CLI, live, stale before)
+
 // Lives in VS Code (the server's rule: the registry while it runs, else the transcript's last line).
 // Such a chat wears a blue border and can be taken over like a CLI chat (2026-09-20) — the cost is the
 // tab in VS Code, which goes dead and does not follow; every button and hint that offers it says so.
@@ -190,54 +208,68 @@ const shName = () => state.about.shell || 'zsh'; // the shell a ⌥⌘T tab is �
 // chat, in its own black, in both themes; a project set to black is the same black, with the same inks.
 const BLACK = '#000000';
 const colorKey = cwd => folderName(projDir(cwd)); // the setup's name for a folder's colour
+
 const ownColor = cwds =>
   (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && projCfg(colorKey(c)).color).find(Boolean) || null;
+
 // What the board paints with. The setup and the header's square read ownColor: they are where a project's colour is
 // set, so they show it.
 const repoColor = cwds => skinColor(ownColor(cwds)); // a theme moves it to its own hue (2026-10-10)
 const projColor = p => (p.key === ALL ? BLACK : repoColor(p.cwds));
 const repoStyle = color => (color ? `--repo:${color}` : '');
+
 // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's rule (tinycolor's
 // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with a VS Code title bar Peacock
 // painted in it; WCAG luminance would put black on #007fff. The setup holds #rrggbb; anything else gets the page's ink.
 const brightness = color => {
   const m = /^#([0-9a-f]{3,8})$/i.exec(String(color).trim());
+
   if (!m) return null;
   const h = m[1].length < 6 ? [...m[1]].map(c => c + c).join('') : m[1];
   const ch = i => parseInt(h.slice(i, i + 2), 16);
+
   return (299 * ch(0) + 587 * ch(2) + 114 * ch(4)) / 1000;
 };
+
 const inkOn = color => {
   const b = brightness(color);
+
   return b === null ? 'var(--ink)' : b >= 128 ? '#1c1c1a' : '#ffffff';
 };
+
 // A colour too close to the board's black to be told from it (2026-10-01): the black beside it — the chat header's
 // right of the project (main.darkchat) — turns grey. (The dark theme's ground
 // behind a list of such cards did too, until the ink cards of 2026-10-09 made every card the panel.)
 const nearBlack = color => {
   const b = brightness(color);
+
   return b !== null && b < 40;
 };
+
 // A tile's border (2026-10-10): its project's colour, a black one the grey that reads on the ground
 const tileEdge = color => (!color ? 'var(--nocolor)' : nearBlack(color) ? 'var(--tile-grey)' : color);
+
 // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
 // on the header, --hveil and --hveil2 the veils its gradient ends in, across and down (away from the ink: black
 // under white ink, white under dark), .tinted while there is one (CSS cannot ask whether --repo is set).
 const tintChat = color => {
   const c = $('#chat');
+
   c.classList.toggle('tinted', !!color);
   $('#main').classList.toggle('darkchat', nearBlack(color));
   c.style.setProperty('--tile-edge', tileEdge(color));
   c.style.setProperty('--hbg', color || 'var(--nocolor)'); // the header's ground and the transcript's wash, eased
   if (color) {
-    const ink = inkOn(color),
-      veil = a => (ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + 0.08})`);
+    const ink = inkOn(color);
+    const veil = a => (ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + 0.08})`);
+
     c.style.setProperty('--repo', color);
     c.style.setProperty('--rink', ink);
     c.style.setProperty('--hveil', veil(0.26));
     c.style.setProperty('--hveil2', veil(0.16));
   } else for (const p of ['--repo', '--rink', '--hveil', '--hveil2']) c.style.removeProperty(p);
 };
+
 const folderName = cwd => (cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)');
 // What the cog's setup says of a project, by the name the board shows — so a worktree or a second checkout of it is
 // the same: a short name, a colour. Written into this file for one Mac until 2026-09-28 (PROJECT_ABBR, PROJECT_COLORS).
@@ -246,6 +278,7 @@ const projCfg = name => state.config.projects?.[name] || {};
 // pickers: ⌥⌘O's project wears a crystal ball (2026-09-20, for oracle, the investigations folder that runs claude
 // against the clusters; since 2026-09-28 whichever project the cog names for ⌥⌘O).
 const projIcon = name => (name && name === state.config.quick ? ICON.oracle : '');
+
 // A project's short name, on its square in Settings › Projects (2026-09-22; on a card in the folded chat list, and
 // its box beside the colour, until 2026-10-25 — a hand-set `abbr` in the setup still names the square). The rule is
 // the initial of each part of a hyphenated name, or the first two letters of a single word — which gives NS, AS, MS,
@@ -253,7 +286,9 @@ const projIcon = name => (name && name === state.config.quick ? ICON.oracle : ''
 function abbrRule(name) {
   const n = String(name || '');
   const parts = n.split(/[^A-Za-z0-9]+/).filter(Boolean);
+
   if (!parts.length) return '·';
   return (parts.length > 1 ? parts.map(x => x[0]).join('') : parts[0].slice(0, 2)).toUpperCase().slice(0, 4);
 }
+
 const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that

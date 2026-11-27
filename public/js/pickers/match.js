@@ -29,17 +29,23 @@
 // is what makes `res` find *res*olvers rather than a*r*r*es*t. Every place a word's first letter appears is tried
 // as a start and the best of them wins, which is how the run in *res*olvers is found at all. Null = not there.
 const WORD_EDGE = /[^a-z0-9]/;
+
 function fuzzScore(text, at) {
   let score = -at[0] / 8; // an earlier start beats a later one, gently
+
   for (let k = 0; k < at.length; k++) {
-    const c = at[k],
-      gap = k ? c - at[k - 1] - 1 : 0; // what the matcher had to skip to get here
+    const c = at[k];
+    const gap = k ? c - at[k - 1] - 1 : 0; // what the matcher had to skip to get here
+
     score += 1 + (k && !gap ? 10 : 0) - Math.min(5, gap / 3) + (!c || WORD_EDGE.test(text[c - 1]) ? 8 : 0);
   }
+
   return score;
 }
+
 function fuzzWord(text, word) {
   let best = null;
+
   for (
     let start = text.indexOf(word[0]);
     start >= 0 && start <= text.length - word.length;
@@ -47,40 +53,52 @@ function fuzzWord(text, word) {
   ) {
     const at = [start];
     let i = start;
+
     for (let k = 1; k < word.length; k++) {
       i = text.indexOf(word[k], i + 1);
       if (i < 0) break;
       at.push(i);
     }
+
     if (i < 0) break; // a later start's letters only land further on: what this one could not find, none can
     const score = fuzzScore(text, at);
+
     if (!best || score > best.score) best = { score, at };
   }
+
   return best;
 }
+
 // A web address in the box is found whole, never letter by letter (2026-10-28): pasted, it means that one page — as
 // itself, or as what the board calls it: GitHub's …/pull/693 (its /files, a comment's #anchor) as the chip's
 // `repo#693`, Jira's …/browse/KEY-123 as `KEY-123`. So a PR's URL finds the chat that has it, as its number does, and
 // …/pull/69 does not find #693.
 const URL_WORD = /^(?:https?:\/\/|(?:www\.)?github\.com\/)/;
+
 function urlForms(w) {
-  const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)\b/.exec(w),
-    jira = /^https?:\/\/[^/]+\/browse\/([a-z][a-z0-9_]*-\d+)\b/.exec(w);
+  const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)\b/.exec(w);
+  const jira = /^https?:\/\/[^/]+\/browse\/([a-z][a-z0-9_]*-\d+)\b/.exec(w);
+
   return gh ? [`${gh[1]}#${gh[2]}`, w] : jira ? [jira[1], w] : [w];
 }
+
 // A PR's link alone in ⌥⌘K's box (2026-11-03) is put to every transcript: the chips hold what the boot read of a long
 // chat, and on the real board 54 of 123 pr-link lines in done chats lay outside that. The chats it names join the rows
 // when the answer lands; ⏎ on no row till then waits for it.
 const PR_LINK = /^(?:https?:\/\/)?(?:www\.)?(github\.com\/[\w.-]+\/[\w.-]+\/pull\/[1-9]\d{0,9})(?!\d)\S*$/i;
+
 function namedAsk() {
   const link = pick.mode === 'chat' ? PR_LINK.exec($('#pickq').value.trim())?.[1] : null;
+
   if (!link) {
     pick.named = null;
     return;
   }
+
   if (pick.named?.link === link) return;
   const ask = (pick.named = { link, ids: null, err: null, go: false });
-  api('GET', `/api/named?pr=${encodeURIComponent('https://' + link)}`)
+
+  api('GET', `/api/named?pr=${encodeURIComponent(`https://${link}`)}`)
     .then(
       r => {
         ask.ids = r.ids;
@@ -96,16 +114,20 @@ function namedAsk() {
       if (ask.go && pick.list.length) pickChoose(pick.sel);
     });
 }
+
 /** The word as it stands, in no longer name (`acme-widgets#6`) or number (`widgets#650`) — scored as fuzzWord
  *  scores the same letters. */
 function wholeWord(text, word) {
   for (let i = text.indexOf(word); i >= 0; i = text.indexOf(word, i + 1)) {
     if (/[\w.-]/.test(text[i - 1] || '') || /[a-z0-9]/.test(text[i + word.length] || '')) continue;
     const at = Array.from({ length: word.length }, (_, k) => i + k);
+
     return { score: fuzzScore(text, at), at };
   }
+
   return null;
 }
+
 /** One word of the query hunted in one field: a web address whole, its best form; any other fuzzily. */
 function wordIn(text, w) {
   if (!URL_WORD.test(w)) return fuzzWord(text, w);
@@ -113,6 +135,7 @@ function wordIn(text, w) {
     .map(f => wholeWord(text, f))
     .reduce((a, m) => (m && (!a || m.score > a.score) ? m : a), null);
 }
+
 /**
  * Every word of the query, each hunted in *one* field — not necessarily the same one, so `wapi res` can take its
  * first word from the project and its second from the title, but neither may be spelled out of letters borrowed
@@ -124,52 +147,70 @@ function wordIn(text, w) {
  */
 function fuzzy(fields, q) {
   let total = 0;
+
   for (const w of q.split(/\s+/)) {
     if (!w) continue;
     let best = null;
+
     for (let i = 0; i < fields.length; i++) {
       const m = fields[i] && wordIn(fields[i].toLowerCase(), w);
+
       if (!m) continue;
       const score = Math.max(0, m.score) / (1 + i / 3);
+
       if (best === null || score > best) best = score;
     }
+
     if (best === null) return null;
     total += best;
   }
+
   return { score: total };
 }
+
 /** Where the query's words landed in one string, for the bolding; a word that matched some other field is simply
  *  not marked here. Runs come back merged by `mark`. */
 function fuzzMarks(text, q) {
   const hay = text.toLowerCase();
   let at = [];
+
   for (const w of q.split(/\s+/)) {
     if (!w) continue;
     const m = wordIn(hay, w);
+
     if (m) at = at.concat(m.at);
   }
+
   return [...new Set(at)].sort((a, b) => a - b);
 }
+
 /** The text, escaped, with the letters the query landed on in <b> — runs merged, so a word comes out as one <b> and
  *  not one per letter. The pickers' rows, and the cards under the magnifier's query. */
 function markHits(text, q) {
   text = String(text ?? '');
   const at = q ? fuzzMarks(text, q) : [];
+
   if (!at.length) return esc(text);
-  let out = '',
-    last = 0;
+
+  let out = '';
+  let last = 0;
+
   for (let k = 0; k < at.length; k++) {
     const from = at[k];
     let to = from + 1;
+
     while (k + 1 < at.length && at[k + 1] === to) {
       to++;
       k++;
     }
-    out += esc(text.slice(last, from)) + `<b>${esc(text.slice(from, to))}</b>`;
+
+    out += `${esc(text.slice(last, from))}<b>${esc(text.slice(from, to))}</b>`;
     last = to;
   }
+
   return out + esc(text.slice(last));
 }
+
 // gen: which opening of the picker; typed: the chats step's box just typed in; git: the chats step's folder's working
 // trees when it is one git checkout (wtOf), wt: its ＋ row on "new worktree", br: the branch typed, as the server found it,
 // asking: ⏎ on it waiting for that answer (wtEnter); named: ⌥⌘K's box holding a PR's link, and the chats that name it (namedAsk)
@@ -194,6 +235,7 @@ const pick = {
   agentTouched: false,
   unfold: new Set(),
 };
+
 const PICK_HINT = {
   project: 'Project — type to filter · ↑↓ · ⏎ opens · esc',
   pr: ctx =>
@@ -228,7 +270,9 @@ const PICK_HINT = {
       : `${ctx.ask} — type to filter · ↑↓ · ⏎ · esc`, // a chat to send to, fold into, merge (2026-10-31)
   agent: ctx => `${ctx.title} — which agent? type to filter · ↑↓ · ⏎ · esc`, // a PR's chat as an agent (2026-11-06)
 };
+
 const NO_FOLDER = '＋ new chat — no folder'; // ⌥⌘N's first row (2026-10-14)
+
 const PICK_NOUN = {
   pr: 'PR',
   prs: 'PR',
@@ -242,5 +286,6 @@ const PICK_NOUN = {
   base: 'branch',
   agent: 'agent',
 }; // for "no … matches"; the rest are projects
+
 const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
 const chatState = s => (s.done ? 'done' : bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready');

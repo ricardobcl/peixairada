@@ -9,11 +9,13 @@ import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
-  const now = Date.now(),
-    cwd = ctx.fixture.chats[0]?.cwd || process.cwd(),
-    out = {};
+  const now = Date.now();
+  const cwd = ctx.fixture.chats[0]?.cwd || process.cwd();
+  const out = {};
+
   const sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
   const ago = m => new Date(now - m * 60_000);
+
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
       {
@@ -62,26 +64,34 @@ export default async function (ctx) {
           }),
       },
     ]);
+
     const [asked, plain, busy] = chats;
+
     await ctx.waitFor(`window.peix.session('${busy.id}')?.status === 'working'`, {
       what: 'the clauding chat',
       timeout: 15000,
     });
+
     await ctx.reload(); // the home is drawn once the day is in: a page that loaded before the chats were made has no rows for them
+
     await ctx.waitFor(`document.querySelectorAll('#home .hrow').length >= 3`, {
       what: 'the day’s rows',
       timeout: 15000,
     });
+
     ctx.assert.match(
       await ctx.evaluate(`document.querySelector('#home .hkv').textContent`),
       /Chats.*1 live.*1 clauding.*Today.*Claude worked/s,
     );
+
     const row = id => `[...document.querySelectorAll('#home .hrow')].findIndex(r => r.dataset.id === '${id}')`;
     const track = id => `document.querySelectorAll('#home .htrack')[${row(id)}]`;
+
     ctx.assert.ok(
       await ctx.evaluate(`!!${track(asked.id)}.querySelector('i.a') && !!${track(asked.id)}.querySelector('i.w')`),
       'the question as a wait inside its turn',
     );
+
     ctx.assert.ok(await ctx.evaluate(`!!${track(busy.id)}.querySelector('i.w.now')`), 'the clauding one runs to now');
     ctx.assert.equal(await ctx.evaluate(`${row(busy.id)}`), 0, 'the most recent first');
     out.sum = await ctx.evaluate(`document.querySelector('#home .hsum').textContent`);
@@ -96,10 +106,13 @@ export default async function (ctx) {
     out.nodes = await ctx.evaluate(
       `(window.__home = [...document.querySelectorAll('#home .hrow, #home .hgo')]).length`,
     );
+
     await ctx.evaluate(`(real => { Date.now = () => real() + 300_000; })(Date.now)`); // five minutes on: the day's now moves
+
     const held = await ctx.evaluate(
       `(r => ({ x: r.left + 20, y: (r.top + r.bottom) / 2 }))(document.querySelectorAll('#home .hrow')[${await ctx.evaluate(row(asked.id))}].getBoundingClientRect())`,
     );
+
     const mouse = (type, x, y) =>
       ctx.send('Input.dispatchMouseEvent', {
         type,
@@ -109,6 +122,7 @@ export default async function (ctx) {
         buttons: type === 'mousePressed' ? 1 : 0,
         clickCount: 1,
       });
+
     await mouse('mouseMoved', held.x, held.y);
     await mouse('mousePressed', held.x, held.y);
     await ctx.sleep(3600);
@@ -119,16 +133,20 @@ export default async function (ctx) {
     ctx.assert.equal(out.kept, out.nodes, 'every row and link of the home kept its node');
     ctx.assert.match(out.now, /^\d+(\.\d+)?%$/, 'now is the day’s --now');
     await ctx.key('Digit0');
+
     await ctx.waitFor(`!window.peix.state().current && document.querySelectorAll('#home .hrow').length >= 3`, {
       what: 'home after the press',
     });
 
     // a row opens its chat; ⌥⌘0 comes back
     await ctx.evaluate(`document.querySelectorAll('#home .hrow')[${await ctx.evaluate(row(plain.id))}].click()`);
+
     await ctx.waitFor(`window.peix.state().current === '${plain.id}' && !document.querySelector('#home')`, {
       what: 'the row’s chat open',
     });
+
     await ctx.key('Digit0');
+
     await ctx.waitFor(`!window.peix.state().current && document.querySelectorAll('#home .hrow').length >= 3`, {
       what: 'home again',
     });
@@ -136,18 +154,22 @@ export default async function (ctx) {
     // the sea rests after a minute with nothing from the pointer, the keys or the wheel (2026-10-15), on the frame it drew
     // last, and a move of the pointer starts it again
     await ctx.waitFor(`window.peix.sea().running && window.peix.sea().frames > 0`, { what: 'the sea running' });
+
     await ctx.waitFor(`window.peix.sea().resting && !window.peix.sea().running`, {
       what: 'the sea at rest after a minute alone',
       timeout: 75_000,
       every: 1000,
     });
+
     out.still = await ctx.evaluate(`window.peix.sea().frames`);
     await ctx.sleep(1500);
     ctx.assert.equal(await ctx.evaluate(`window.peix.sea().frames`), out.still, 'no frame drawn at rest');
     await mouse('mouseMoved', 300, 300);
+
     await ctx.waitFor(`window.peix.sea().running && window.peix.sea().frames > ${out.still}`, {
       what: 'the sea again after a move',
     });
+
     return out;
   } finally {
     try {

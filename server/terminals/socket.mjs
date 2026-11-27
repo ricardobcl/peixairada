@@ -24,25 +24,32 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: 8 << 20 }); // a p
 // `typed` says which, by the page's `n`. Your own keys stay `in`.
 const TYPE_GAP_MS = 60;
 const ASKS = 'it is asking you something — answer it first';
+
 // No file is a claude still starting, which asks nothing; one that does not read is one being rewritten, read again,
 // and taken as asking if it still does not.
 function claudeWaits(t) {
   if (t.shell) return false;
   const file = join(SESSIONS_DIR, `${t.claudePid || t.pid}.json`);
-  for (let i = 0; i < 2; i++)
+
+  for (let i = 0; i < 2; i++) {
     try {
       return JSON.parse(readFileSync(file, 'utf8')).status === 'waiting';
     } catch (e) {
       if (e.code === 'ENOENT') return false;
     }
+  }
+
   return true;
 }
+
 function typeInto(t, ws, { d, send, n }) {
   const say = why => ws.readyState === 1 && ws.send(JSON.stringify({ t: 'typed', n, why }));
+
   if (claudeWaits(t)) return say(ASKS);
   holderSend(t, { t: 'in', d });
   setLastTouchAt(Date.now());
   if (!send) return say(null);
+
   setTimeout(() => {
     if (t.exited !== null) return say('its claude has ended — typed, not sent');
     if (claudeWaits(t)) return say(`${ASKS} — typed, not sent`);
@@ -50,62 +57,77 @@ function typeInto(t, ws, { d, send, n }) {
     say(null);
   }, TYPE_GAP_MS);
 }
+
 export function attachTermSocket(req, socket, head) {
   const why = foreign(req);
+
   if (why) {
     socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
     socket.destroy();
     return;
   }
+
   const url = new URL(req.url || '/', 'http://localhost');
+
   if (keyWant(req, url)) {
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     socket.destroy();
     return;
   }
+
   const m = url.pathname.match(/^\/api\/terminals\/([\w-]+)\/ws$/);
   const t = m && terms.get(m[1]);
+
   if (!t) {
     socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
     socket.destroy();
     return;
   }
+
   wss.handleUpgrade(req, socket, head, ws => {
     ws.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key'));
     t.clients.add(ws);
     ws.hold = [];
+
     requestSnap(t).then(snap => {
       if (ws.readyState !== 1) return;
       if (snap?.d) ws.send(Buffer.from(snap.d, 'utf8'));
       for (const h of ws.hold) if (!snap || h.seq > snap.upto) ws.send(h.buf);
       ws.hold = null;
       if (t.exited !== null) ws.send(JSON.stringify({ t: 'exit', code: t.exited }));
-      if (snap)
+
+      if (snap) {
         console.log(
           `[peixairada] terminal ${t.id}: a page attached — screen snapshot ${snap.d.length} chars, ${snap.cols}×${snap.rows}`,
         );
+      }
     });
+
     ws.on('message', data => {
       if (t.exited !== null) return;
       let msg;
+
       try {
         msg = JSON.parse(data.toString());
       } catch {
         return;
       }
+
       if (msg.t === 'in' && typeof msg.d === 'string') {
         holderSend(t, { t: 'in', d: msg.d });
         setLastTouchAt(Date.now());
       } // typing: no update until it rests
       else if (msg.t === 'type' && typeof msg.d === 'string') typeInto(t, ws, msg);
       else if (msg.t === 'resize' && msg.cols > 0 && msg.rows > 0) {
-        const cols = Math.min(500, msg.cols | 0),
-          rows = Math.min(200, msg.rows | 0);
+        const cols = Math.min(500, msg.cols | 0);
+        const rows = Math.min(200, msg.rows | 0);
+
         t.cols = cols;
         t.rows = rows;
         holderSend(t, { t: 'resize', cols, rows });
       } else if (msg.t === 'clear') holderSend(t, { t: 'clear' });
     });
+
     ws.on('close', () => t.clients.delete(ws));
     // a bad frame (unmasked, not UTF-8, over maxPayload) is an 'error' on the socket — and an 'error' nobody listens
     // for ends the server, every drawer's page and the board's stream with it (2026-10-03)

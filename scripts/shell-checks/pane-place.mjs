@@ -7,13 +7,16 @@
 import { paintStrips, placer } from '../../lib/paneplace.mjs';
 
 export const meta = {};
-const MAGENTA = 'ff00ff',
-  GREEN = '00ff00',
-  BLUE = '0000ff';
+
+const MAGENTA = 'ff00ff';
+const GREEN = '00ff00';
+const BLUE = '0000ff';
+
 export default async function (ctx) {
-  const [two, plain] = ctx.fixture.chats,
-    seen = {},
-    placed = placer(ctx);
+  const [two, plain] = ctx.fixture.chats;
+  const seen = {};
+  const placed = placer(ctx);
+
   // Each look a window, the fill, a window again: only two of them have a title bar over the page.
   const everyWay = async (label, ...pages) => {
     for (const [word, turn] of [
@@ -24,20 +27,26 @@ export default async function (ctx) {
       if (turn) await ctx.full();
       for (const [url, hex] of pages) seen[`${label}, ${word}`] = await placed(`${label}, ${word}`, url, hex);
     }
+
     const w = await ctx.win();
+
     ctx.assert.ok(w.titled && !w.fill, 'back to a normal window');
   };
+
   await ctx.board();
   await paintStrips(ctx);
   await ctx.openChat(plain.id);
   const one = ctx.solid(MAGENTA);
+
   await ctx.link(one);
   const first = await ctx.win();
+
   ctx.assert.ok(first.titled, 'it starts as a normal window');
   await everyWay('side by side', [one, MAGENTA]);
   await ctx.full();
   ctx.assert.equal((await ctx.win()).inset, 0, 'the fill has no title bar to go under');
   await ctx.full();
+
   ctx.assert.equal(
     (await ctx.win()).inset,
     seen['side by side, a window'].pageStarts,
@@ -46,6 +55,7 @@ export default async function (ctx) {
 
   // The window dragged smaller, and back.
   const { w, h } = await ctx.win();
+
   await ctx.size(1100, 700);
   await placed('a smaller window', one, MAGENTA);
   await ctx.size(w, h);
@@ -65,8 +75,10 @@ export default async function (ctx) {
 
   // A page's new window is a tab beside it, under the same strip.
   const next = ctx.solid(GREEN);
+
   await ctx.page((await ctx.halfOf(one)).key, `window.open(${JSON.stringify(next)}); return true`);
   await placed("a page's new window", next, GREEN);
+
   ctx.assert.equal(
     (await ctx.js(`return peix.state().tabs`)).filter(k => /^gh\d*:/.test(k)).length,
     2,
@@ -74,9 +86,10 @@ export default async function (ctx) {
   );
 
   // A page in each half: the one behind dragged across, as a hand does.
-  await ctx.js(`const k = ${JSON.stringify('gh:' + one)}, b = document.querySelector('#ptabsB .ptab[data-tab="' + k + '"]'), r = document.querySelector('#gbody').getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  await ctx.js(`const k = ${JSON.stringify(`gh:${one}`)}, b = document.querySelector('#ptabsB .ptab[data-tab="' + k + '"]'), r = document.querySelector('#gbody').getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
     window.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y })); window.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: y })); return true`);
+
   await ctx.until(`peix.state().halves[0]?.endsWith(${JSON.stringify(one)})`, 'the page dragged into the left half');
   await everyWay('a page in each half', [one, MAGENTA], [next, GREEN]);
 
@@ -84,10 +97,12 @@ export default async function (ctx) {
   await ctx.key('Comma', 'cmd');
   await ctx.until(`document.querySelector('#settings').open`, 'the settings up');
   const low = await ctx.win();
+
   ctx.assert.ok(
     Object.values(low.panes).every(p => !p.up),
     'no page over a dialog',
   );
+
   await ctx.js(`document.querySelector('#settings').close(); return true`);
   await placed('a dialog gone', one, MAGENTA);
 
@@ -95,19 +110,24 @@ export default async function (ctx) {
   // no address and no way back. It is a tab beside the editor, and the strip comes back with it.
   await ctx.openChat(two.id);
   await ctx.key('KeyE');
+
   const ide = await ctx.until(
     `peix.state().halves.find(k => (k || '').startsWith('ide:'))`,
     'the editor on a tab',
     20_000,
   );
+
   ctx.assert.equal(
     await ctx.js(`return document.querySelector(${JSON.stringify('#ptabsB')}).classList.contains('lone')`),
     true,
     'the editor alone has no strip',
   );
+
   const fromEditor = ctx.solid(BLUE);
+
   await ctx.page(ide, `window.open(${JSON.stringify(fromEditor)}); return true`);
   await everyWay("the editor's new window", [fromEditor, BLUE]);
+
   ctx.assert.equal(
     await ctx.page(ide, 'return location.port'),
     new URL(ide.slice(4)).port,
@@ -120,6 +140,7 @@ export default async function (ctx) {
   await everyWay('a page alone', [fromEditor, BLUE]);
 
   const last = await ctx.win();
+
   ctx.assert.equal(last.active, false, 'never in front, all the way through');
   return {
     steps: Object.keys(seen).length,

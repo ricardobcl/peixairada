@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
+
 process.env.STATE_FILE = join(tmp, 'state.json');
 process.env.CLAUDE_DIR = join(tmp, 'claude');
 process.env.USAGE = 'off';
@@ -15,18 +16,20 @@ const { fold, newSession, summary, notePr, prTitle, cleanPrompt, snippet, textOf
 const ts = (i = 0) => new Date(Date.UTC(2026, 8, 20, 12, 0, i)).toISOString();
 // Tasks are judged against the real clock — running or not running — so their tests date from a minute ago.
 const now = (i = 0) => new Date(Date.now() - 60_000 + i * 1000).toISOString();
+
 const user = (text, extra = {}) => ({
   type: 'user',
   message: { role: 'user', content: [{ type: 'text', text }] },
   timestamp: ts(extra.i || 0),
   cwd: '/tmp/repo',
   entrypoint: 'cli',
-  uuid: 'u' + (extra.i || 0),
+  uuid: `u${extra.i || 0}`,
   ...extra,
 });
+
 const assistant = (blocks, stop = 'end_turn', i = 1) => ({
   type: 'assistant',
-  message: { role: 'assistant', model: 'claude-opus-5', id: 'msg' + i, content: blocks, stop_reason: stop },
+  message: { role: 'assistant', model: 'claude-opus-5', id: `msg${i}`, content: blocks, stop_reason: stop },
   timestamp: ts(i),
   cwd: '/tmp/repo',
   entrypoint: 'cli',
@@ -34,6 +37,7 @@ const assistant = (blocks, stop = 'end_turn', i = 1) => ({
 
 test('a prompt then a reply: working → idle, snippets, model, cwd', () => {
   const s = newSession('s1', '/x/s1.jsonl');
+
   assert.equal(fold(s, user('what day is it?')), true);
   assert.equal(s.status, 'working');
   assert.equal(s.lastPrompt, 'what day is it?');
@@ -50,22 +54,26 @@ test('a prompt then a reply: working → idle, snippets, model, cwd', () => {
 
 test('tool use keeps working; a question waits on the user; the answer is the user acting', () => {
   const s = newSession('s2', '/x/s2.jsonl');
+
   fold(s, user('do it'));
   fold(s, assistant([{ type: 'tool_use', name: 'Bash', id: 't1', input: { command: 'ls' } }], 'tool_use'));
   assert.equal(s.status, 'working');
   fold(s, assistant([{ type: 'tool_use', name: 'AskUserQuestion', id: 't2', input: {} }], 'tool_use', 2));
   assert.equal(s.status, 'needs-input');
+
   fold(s, {
     type: 'user',
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't2', content: 'yes' }] },
     timestamp: ts(3),
   });
+
   assert.equal(s.status, 'working');
   assert.equal(s.lastUserAt, ts(3));
 });
 
 test('what is not a prompt: sidechains, meta lines, synthetic command lines, system reminders', () => {
   const s = newSession('s3', '/x/s3.jsonl');
+
   assert.equal(fold(s, user('hidden', { isSidechain: true })), false);
   assert.equal(fold(s, user('hidden', { isMeta: true })), false);
   assert.equal(fold(s, user('<local-command-stdout>ok</local-command-stdout>')), false);
@@ -78,6 +86,7 @@ test('what is not a prompt: sidechains, meta lines, synthetic command lines, sys
 
 test('an interrupt is you acting on the chat, and ends the turn', () => {
   const s = newSession('s4', '/x/s4.jsonl');
+
   fold(s, user('go'));
   fold(s, assistant([{ type: 'tool_use', name: 'Bash', id: 't', input: {} }], 'tool_use'));
   fold(s, user('[Request interrupted by user]', { i: 2 }));
@@ -87,6 +96,7 @@ test('an interrupt is you acting on the chat, and ends the turn', () => {
 
 test("titles: the board title beats the user's, which beats the PR's, which beats Claude's", () => {
   const s = newSession('s5', '/x/s5.jsonl');
+
   fold(s, { type: 'ai-title', aiTitle: 'Claude says' });
   assert.equal(summary(s).title, 'Claude says');
   notePr(s, 'https://github.com/acme/r/pull/1', ts(0), 'user');
@@ -102,7 +112,9 @@ test("titles: the board title beats the user's, which beats the PR's, which beat
 
 test("PRs: most recently mentioned first, mentions counted; the chat's own PR names it", () => {
   const s = newSession('s6', '/x/s6.jsonl');
+
   fold(s, user('see https://github.com/acme/r/pull/10 and https://github.com/acme/r/pull/11', { i: 0 }));
+
   fold(
     s,
     assistant(
@@ -116,18 +128,22 @@ test("PRs: most recently mentioned first, mentions counted; the chat's own PR na
       1,
     ),
   );
+
   assert.deepEqual(
     s.prs.map(p => p.number),
     [12, 10, 11],
   );
+
   assert.equal(s.prs.find(p => p.number === 10).count, 2);
   assert.equal(s.prs.find(p => p.number === 12).label, 'r#12');
   assert.equal(s.prs.find(p => p.number === 12).url, 'https://github.com/acme/r/pull/12'); // /files stripped
   assert.equal(prTitle(s), null); // nothing titled yet
+
   for (const p of s.prs) {
-    p.title = 'PR ' + p.number;
+    p.title = `PR ${p.number}`;
     p.state = p.number === 12 ? 'open' : 'merged';
   }
+
   assert.equal(prTitle(s), 'PR 10', 'the first you named, merged, over the open one Claude brought up');
   s.prs.find(p => p.number === 10).title = null;
   assert.equal(prTitle(s), null, "its title not in yet: none, not the next one's");
@@ -140,31 +156,40 @@ test("PRs: most recently mentioned first, mentions counted; the chat's own PR na
 
 test("PRs Claude only mentioned title nothing, and the cap puts them aside before the chat's own", () => {
   const s = newSession('s7', '/x/s7.jsonl');
+
   fold(s, user('review https://github.com/acme/r/pull/1', { i: 0 }));
   fold(s, assistant([{ type: 'text', text: 'Related: https://github.com/acme/r/pull/2' }], 'end_turn', 1));
+
   for (const p of s.prs) {
-    p.title = 'PR ' + p.number;
+    p.title = `PR ${p.number}`;
     p.state = p.number === 1 ? 'merged' : 'open';
   }
+
   assert.equal(prTitle(s), 'PR 1', 'merged, it still names the chat');
   const other = newSession('s8', '/x/s8.jsonl');
+
   fold(other, assistant([{ type: 'text', text: 'Related: https://github.com/acme/r/pull/2' }], 'end_turn', 1));
   other.prs[0].title = 'PR 2';
   other.prs[0].state = 'open';
   assert.equal(prTitle(other), null, "a PR Claude brought up is not the chat's");
 
   // forty more, one at a time: the oldest heard of goes first, the one you named stays
-  for (let n = 100; n < 140; n++)
+  for (let n = 100; n < 140; n++) {
     fold(s, assistant([{ type: 'text', text: `see https://github.com/acme/r/pull/${n}` }], 'end_turn', 2));
+  }
+
   assert.equal(s.prs.length, 40);
+
   assert.ok(
     s.prs.some(p => p.number === 1),
     "the chat's own is kept",
   );
+
   assert.ok(!s.prs.some(p => p.number === 2), 'the oldest it only heard of went');
   assert.equal(prTitle(s), 'PR 1');
   fold(s, user('and https://github.com/acme/r/pull/2 again?', { i: 9 }));
   const back = s.prs.find(p => p.number === 2);
+
   assert.deepEqual(
     [back.firstAt, back.count, back.named != null],
     [ts(1), 2, true],
@@ -175,16 +200,21 @@ test("PRs Claude only mentioned title nothing, and the cap puts them aside befor
 test('a listing of other PRs puts none on the chat; a report on its own, or your list, does', () => {
   const pulls = (from, n) =>
     Array.from({ length: n }, (_, i) => `https://github.com/acme/r/pull/${from + i}`).join(', ');
+
   const s = newSession('s9', '/x/s9.jsonl');
+
   fold(s, user('review https://github.com/acme/r/pull/1', { i: 0 }));
   fold(s, assistant([{ type: 'text', text: `Your open PRs: ${pulls(100, 10)}` }], 'end_turn', 1));
+
   assert.deepEqual(
     s.prs.map(p => p.number),
     [1],
     'ten at once, all new: a listing, none taken',
   );
+
   fold(s, assistant([{ type: 'text', text: `Related: ${pulls(200, 9)}` }], 'end_turn', 2));
   assert.equal(s.prs.length, 10, 'nine is no listing');
+
   fold(
     s,
     assistant(
@@ -198,6 +228,7 @@ test('a listing of other PRs puts none on the chat; a report on its own, or your
       3,
     ),
   );
+
   assert.equal(s.prs.length, 11, "eleven, most of them the chat's already: a report, the new one taken");
   assert.equal(s.prs[0].number, 300);
   fold(s, user(`these too: ${pulls(400, 12)}`, { i: 4 }));
@@ -209,14 +240,17 @@ test('a listing of other PRs puts none on the chat; a report on its own, or your
 
 test("a gh pr create the chat ran makes what it printed the chat's own, a loop's too; words about it do not", () => {
   const s = newSession('s10', '/x/s10.jsonl');
+
   const call = (id, command, i) =>
     assistant([{ type: 'tool_use', name: 'Bash', id, input: { command } }], 'tool_use', i);
+
   const result = (id, content, i, isError = false) => ({
     type: 'user',
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content, is_error: isError }] },
     timestamp: ts(i),
     cwd: '/tmp/repo',
   });
+
   fold(s, user('open the PRs', { i: 0 }));
   fold(s, call('t1', 'for r in a b; do gh pr create -R acme/$r --fill; done', 1));
   fold(s, result('t1', 'https://github.com/acme/a/pull/7\nhttps://github.com/acme/b/pull/9', 2));
@@ -224,6 +258,7 @@ test("a gh pr create the chat ran makes what it printed the chat's own, a loop's
   fold(s, result('t2', 'notes.md:3: gh pr create gave https://github.com/acme/c/pull/5', 4));
   fold(s, call('t3', 'gh pr create --fill', 5));
   fold(s, result('t3', 'failed, see https://github.com/acme/d/pull/2', 6, true));
+
   assert.deepEqual(
     s.prs.map(p => [p.label, p.linked != null, p.count]),
     [
@@ -231,10 +266,12 @@ test("a gh pr create the chat ran makes what it printed the chat's own, a loop's
       ['a#7', true, 0],
     ],
   );
+
   for (const p of s.prs) {
     p.title = p.label;
     p.state = 'open';
   }
+
   assert.equal(prTitle(s), 'a#7', 'the first it opened names it');
 });
 
@@ -243,14 +280,17 @@ test("a gh pr create the chat ran makes what it printed the chat's own, a loop's
 // its end. The summary only reports what a *live* claude could still be running (see runningTasks).
 test('a monitor runs from its tool result until the notification that ends it', () => {
   const s = newSession('s5', '/x/s5.jsonl');
+
   s.alive = true;
   s.live = { pid: 1, startedAt: Date.now() - 600_000 };
+
   const note = (body, i) => ({
     type: 'user',
     message: { role: 'user', content: [{ type: 'text', text: body }] },
     timestamp: now(i),
     cwd: '/tmp/repo',
   });
+
   const result = (id, text, i) => ({
     type: 'user',
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text }] },
@@ -259,6 +299,7 @@ test('a monitor runs from its tool result until the notification that ends it', 
   });
 
   fold(s, user('watch the CI'));
+
   fold(s, {
     ...assistant(
       [
@@ -274,11 +315,13 @@ test('a monitor runs from its tool result until the notification that ends it', 
     ),
     timestamp: now(1),
   });
+
   assert.deepEqual(summary(s).tasks, [], 'nothing runs until the harness has answered with a task id');
   fold(s, result('tm', 'Monitor started (task ab12cd34, expires in 30m unless the source ends first).', 2));
   fold(s, { ...assistant([{ type: 'text', text: 'watching' }], 'end_turn', 3), timestamp: now(3) });
   assert.equal(s.status, 'idle', 'the chat is ready: the turn ended');
-  let [t] = summary(s).tasks;
+  const [t] = summary(s).tasks;
+
   assert.equal(t.kind, 'monitor');
   assert.equal(t.what, 'CI on #382');
   assert.equal(t.events, 0);
@@ -294,6 +337,7 @@ test('a monitor runs from its tool result until the notification that ends it', 
     ),
     true,
   );
+
   assert.equal(summary(s).tasks[0].events, 1, 'an event is counted, and the line is still no prompt of yours');
   assert.equal(s.lastPrompt, 'watch the CI', '…the card keeps showing what you actually said');
 
@@ -304,13 +348,16 @@ test('a monitor runs from its tool result until the notification that ends it', 
       5,
     ),
   );
+
   assert.deepEqual(summary(s).tasks, [], 'a notification with a status is the end of it');
 });
 
 test('a task belongs to the claude that started it, and to no other', () => {
   const s = newSession('s6', '/x/s6.jsonl');
+
   s.alive = true;
   s.live = { pid: 1, startedAt: Date.now() - 600_000 };
+
   fold(s, {
     ...assistant(
       [
@@ -326,6 +373,7 @@ test('a task belongs to the claude that started it, and to no other', () => {
     ),
     timestamp: now(1),
   });
+
   fold(s, {
     type: 'user',
     message: {
@@ -341,10 +389,12 @@ test('a task belongs to the claude that started it, and to no other', () => {
     timestamp: now(2),
     cwd: '/tmp/repo',
   });
+
   assert.deepEqual(
     summary(s).tasks.map(t => [t.kind, t.what]),
     [['bash', 'the suite']],
   );
+
   s.live = { pid: 2, startedAt: Date.now() }; // the chat was resumed: a new claude, and the old task died with the old one
   assert.deepEqual(summary(s).tasks, []);
   s.live = { pid: 2, startedAt: Date.now() - 600_000 };
@@ -355,18 +405,24 @@ test('a task belongs to the claude that started it, and to no other', () => {
 // lsof's verdict lands on the chat as it is then (2026-10-14): a re-read while it ran replaced the object it started with.
 test('a background command nobody holds the output of is let go from the chat as it is now', async () => {
   const { writeFileSync } = await import('node:fs');
+
   process.env.LSOF_BIN = '/usr/bin/false'; // lsof's own "held by nobody": exit 1, nothing named
   const out = join(tmp, 'bg.output');
+
   writeFileSync(out, '');
+
   const task = () =>
     new Map([['bgdone1', { kind: 'bash', what: 'the build', at: now(0), until: null, events: 0, out }]]);
+
   const was = newSession('s-sweep', '/x/s-sweep.jsonl');
+
   was.alive = true;
   was.live = { pid: 1, startedAt: Date.now() - 600_000 };
   was.tasks = task();
   srv.sessions.set(was.id, was);
   const sweep = srv.sweepTasks();
   const s = newSession('s-sweep', '/x/s-sweep.jsonl');
+
   s.alive = true;
   s.live = was.live;
   s.tasks = task(); // read again meanwhile
@@ -381,10 +437,13 @@ test('a background command nobody holds the output of is let go from the chat as
 
 test('a task the poll let go stays gone when the chat is read again whole (2026-10-14)', async () => {
   const { writeFileSync } = await import('node:fs');
+
   process.env.LSOF_BIN = '/usr/bin/false';
   const out = join(tmp, 'bg2.output');
+
   writeFileSync(out, '');
   const file = join(tmp, 's-gone.jsonl');
+
   const call = {
     ...assistant(
       [
@@ -400,6 +459,7 @@ test('a task the poll let go stays gone when the chat is read again whole (2026-
     ),
     timestamp: now(1),
   };
+
   const res = {
     type: 'user',
     message: {
@@ -415,20 +475,26 @@ test('a task the poll let go stays gone when the chat is read again whole (2026-
     timestamp: now(2),
     cwd: '/tmp/repo',
   };
+
   writeFileSync(
     file,
-    [user('build it', { timestamp: now(0) }), call, res].map(l => JSON.stringify(l)).join('\n') + '\n',
+    `${[user('build it', { timestamp: now(0) }), call, res].map(l => JSON.stringify(l)).join('\n')}\n`,
   );
+
   const s = srv.indexFile(file);
+
   s.alive = true;
   s.live = { pid: 1, startedAt: Date.now() - 600_000 };
+
   assert.deepEqual(
     summary(s).tasks.map(t => t.id),
     ['bggone1'],
   );
+
   await srv.sweepTasks();
   assert.deepEqual(summary(srv.sessions.get(s.id)).tasks, [], 'nobody holds its output: let go');
   const again = srv.indexFile(file, { full: true });
+
   assert.deepEqual(summary(again).tasks, [], 'and its first line read again does not start it again');
   clearTimeout(s.pushTimer);
   clearTimeout(again.pushTimer);
@@ -437,9 +503,11 @@ test('a task the poll let go stays gone when the chat is read again whole (2026-
 
 test('the question on the card is the one still waiting for an answer', () => {
   const s = newSession('s7', '/x/s7.jsonl');
+
   s.alive = true;
   s.live = { pid: 1, startedAt: Date.now() - 600_000 };
   fold(s, user('set up the database'));
+
   fold(
     s,
     assistant(
@@ -455,20 +523,24 @@ test('the question on the card is the one still waiting for an answer', () => {
       1,
     ),
   );
+
   assert.deepEqual(summary(s).ask, {
     tool: 'AskUserQuestion',
     text: 'Which database?',
     options: 2,
     labels: ['Postgres', 'MySQL'],
   });
+
   fold(s, {
     type: 'user',
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tq', content: 'Postgres' }] },
     timestamp: ts(2),
     cwd: '/tmp/repo',
   });
+
   assert.equal(summary(s).ask, null, 'answered: the card has nothing to ask you');
   assert.equal(s.status, 'working');
+
   // options that are no list (2026-10-14): a question with no answers to offer, not a throw out of the fold
   fold(
     s,
@@ -485,6 +557,7 @@ test('the question on the card is the one still waiting for an answer', () => {
       3,
     ),
   );
+
   assert.deepEqual(summary(s).ask, { tool: 'AskUserQuestion', text: 'Which one?', options: 0, labels: [] });
 });
 
@@ -493,21 +566,26 @@ test('the question on the card is the one still waiting for an answer', () => {
 // transcript reads as work in flight is asking the moment its process says `status: "waiting"`.
 test('a process that says it is waiting is asking, whatever the transcript reads', () => {
   const s = newSession('s8', '/x/s8.jsonl');
+
   s.alive = true;
   s.live = { pid: 1, startedAt: Date.now() - 600_000, status: 'busy' };
   fold(s, user('clean up the branches'));
+
   fold(
     s,
     assistant([{ type: 'tool_use', name: 'Bash', id: 'tb', input: { command: 'git branch -D old' } }], 'tool_use', 1),
   );
+
   assert.equal(summary(s).status, 'working', 'busy, and a tool call in flight: work');
   s.live = { ...s.live, status: 'waiting', waitingFor: 'permission prompt' };
   assert.equal(summary(s).status, 'needs-input', 'the prompt is up: asking, though the transcript never heard of it');
+
   assert.deepEqual(
     summary(s).ask,
     { tool: null, text: null, options: 0, waitingFor: 'permission prompt' },
     'and the card says what it waits on',
   );
+
   s.agentsRunning = 2;
   assert.equal(summary(s).status, 'needs-input', 'a question beats the agents at work');
   s.agentsRunning = 0;
@@ -518,9 +596,11 @@ test('a process that says it is waiting is asking, whatever the transcript reads
 
 test('the registry is the word on asking when it says anything; the transcript is only the fallback', () => {
   const s = newSession('s9', '/x/s9.jsonl');
+
   s.alive = true;
   s.live = { pid: 1, startedAt: Date.now() - 600_000 };
   fold(s, user('set up the database'));
+
   fold(
     s,
     assistant(
@@ -536,17 +616,21 @@ test('the registry is the word on asking when it says anything; the transcript i
       1,
     ),
   );
+
   assert.equal(
     summary(s).status,
     'needs-input',
     'a claude that reports no status: the pending question in the transcript is the word',
   );
+
   s.live = { ...s.live, status: 'waiting', waitingFor: 'permission prompt' };
+
   assert.deepEqual(
     summary(s).ask,
     { tool: 'AskUserQuestion', text: 'Which database?', options: 2, labels: ['Postgres', 'MySQL'] },
     'both agree: the transcript has the question itself',
   );
+
   s.live = { ...s.live, status: 'busy', waitingFor: undefined };
   assert.equal(summary(s).status, 'working', 'the process says it is past the question: it is');
   s.live = { ...s.live, status: 'idle' };
@@ -562,39 +646,47 @@ test('the registry is the word on asking when it says anything; the transcript i
 
 test('a turn the transcript never closes ends when the process says idle — /compact (2026-09-29)', () => {
   const s = newSession('s10', '/x/s10.jsonl');
+
   s.alive = true;
+
   s.live = {
     pid: 1,
     startedAt: Date.now() - 600_000,
     status: 'busy',
     statusAt: Date.parse('2026-09-28T22:28:45.800Z'),
   };
+
   // Claude Code 2.1.283: the typed command as a plain prompt, then — compacted — the boundary, the summary and the
   // command's own tagged lines, and no assistant line at all
   fold(s, { type: 'user', message: { role: 'user', content: '/compact' }, timestamp: '2026-09-28T22:28:45.706Z' });
   assert.equal(summary(s).status, 'working', 'compacting: clauding, as the process says');
+
   fold(s, {
     type: 'system',
     subtype: 'compact_boundary',
     content: 'Conversation compacted',
     timestamp: '2026-09-28T22:30:14.325Z',
   });
+
   fold(s, {
     type: 'user',
     isCompactSummary: true,
     message: { role: 'user', content: 'This session is being continued…' },
     timestamp: '2026-09-28T22:30:14.285Z',
   });
+
   fold(s, {
     type: 'user',
     message: { role: 'user', content: '<command-name>/compact</command-name>' },
     timestamp: '2026-09-28T22:28:45.712Z',
   });
+
   fold(s, {
     type: 'user',
     message: { role: 'user', content: '<local-command-stdout>Compacted</local-command-stdout>' },
     timestamp: '2026-09-28T22:30:14.424Z',
   });
+
   assert.equal(s.status, 'idle', 'the boundary after the /compact you typed ends its turn (2026-10-14)');
   assert.equal(s.turnStart, null);
   s.status = 'working';
@@ -613,12 +705,14 @@ test('a turn the transcript never closes ends when the process says idle — /co
 
 test('a turn that ran out of tokens or was refused has ended; one cut off mid tool call has not', () => {
   const s = srv.newSession('t-ends', null);
+
   const say = (stop_reason, content = [{ type: 'text', text: 'partial answer' }]) =>
     srv.fold(s, {
       type: 'assistant',
       timestamp: '2026-10-03T10:00:00Z',
       message: { role: 'assistant', stop_reason, content },
     });
+
   srv.fold(s, { type: 'user', timestamp: '2026-10-03T09:59:00Z', message: { role: 'user', content: 'go' } });
   say('max_tokens');
   assert.equal(s.status, 'idle', 'max_tokens');
@@ -632,14 +726,17 @@ test('a turn that ran out of tokens or was refused has ended; one cut off mid to
 
 test('a tool call is summed up by what it was given: a notebook by its path, several edits by their file (2026-10-14)', () => {
   const { summarizeToolInput } = srv;
+
   assert.equal(
     summarizeToolInput('NotebookEdit', { notebook_path: '/tmp/repo/a.ipynb', cell_id: 'c1', new_source: 'x = 1' }),
     '/tmp/repo/a.ipynb',
   );
+
   assert.equal(
     summarizeToolInput('MultiEdit', { file_path: '/tmp/repo/b.js', edits: [{ old_string: 'a', new_string: 'b' }] }),
     '/tmp/repo/b.js',
   );
+
   assert.equal(
     summarizeToolInput('Edit', { file_path: '/tmp/repo/c.js', old_string: 'a', new_string: 'b' }),
     '/tmp/repo/c.js',
@@ -647,45 +744,57 @@ test('a tool call is summed up by what it was given: a notebook by its path, sev
 });
 
 test('a snippet never ends in half an emoji', () => {
-  const t = srv.snippet('x'.repeat(238) + '😀 and more', 240);
+  const t = srv.snippet(`${'x'.repeat(238)}😀 and more`, 240);
+
   assert.ok(t.isWellFormed(), JSON.stringify(t.slice(-4)));
   assert.ok(t.endsWith('…'));
 });
 
 test("a card's snippet is markdown as a sentence: links, headings, items, tables and GitHub URLs (2026-10-12)", () => {
   const { plain } = srv;
+
   assert.equal(
     plain('[Snapshot report](https://claude.ai/code/artifact/3f9c1e27-58aa-4c0b-9d1e-7b2f0c4a91d3) is up.'),
     'Snapshot report is up.',
   );
+
   assert.equal(
     plain('## What changed\n- Rebased onto `main`\n- **Updated** the goldens'),
     'What changed\n· Rebased onto `main`\n· Updated the goldens',
   );
+
   assert.equal(
     plain('review https://github.com/acme/storefront/pull/479/files and acme/storefront#12'),
     'review storefront#479 and acme/storefront#12',
   );
+
   assert.equal(
     plain('see https://example.com/a/very-long-segment-that-goes-on-and-on/x'),
     'see example.com/a/very-long-se…/x',
   );
+
   assert.equal(plain('| PR | Finding |\n|---|---|\n| #1 | a |'), 'PR · Finding\n\n#1 · a');
   assert.equal(plain('> quoted\n```js\nconst a = 1;\n```'), 'quoted\n\nconst a = 1;\n');
   assert.equal(plain('a * b * c and snake_case_name stay'), 'a * b * c and snake_case_name stay');
   assert.equal(plain('an *emphasis* here'), 'an emphasis here');
+
   assert.equal(
     plain('|:-:|---|\n---\n- - -\n|-|'),
     '\n\n· - -\n-',
     'a rule is two dashes running, in a line of nothing else',
   );
+
   const t0 = performance.now();
-  plain('-'.repeat(1999) + 'x\n' + '| -'.repeat(600) + '|x');
+
+  plain(`${'-'.repeat(1999)}x\n${'| -'.repeat(600)}|x`);
+
   assert.ok(
     performance.now() - t0 < 50,
     `a long run of dashes is read in linear time (2026-10-14): ${Math.round(performance.now() - t0)} ms`,
   );
+
   const s = newSession('md', '/x/md.jsonl');
+
   fold(s, user('review https://github.com/acme/widgets/pull/7'));
   assert.equal(s.lastPrompt, 'review widgets#7');
   fold(s, assistant([{ type: 'text', text: '## Done\n- [the doc](https://x.y/z) is up' }]));

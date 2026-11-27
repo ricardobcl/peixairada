@@ -10,12 +10,15 @@ import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
-  const out = {},
-    cwd = ctx.fixture.chats[0]?.cwd || process.cwd(),
-    mon = 'mon7wt3c4';
+  const out = {};
+  const cwd = ctx.fixture.chats[0]?.cwd || process.cwd();
+  const mon = 'mon7wt3c4';
+
   const sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
-  const now = Date.now(),
-    at = ms => new Date(now - ms);
+
+  const now = Date.now();
+  const at = ms => new Date(now - ms);
+
   try {
     const {
       chats: [w],
@@ -48,18 +51,22 @@ export default async function (ctx) {
         ],
       },
     ]);
-    const card = `document.querySelector('#slist > .card[data-id="${w.id}"]')`,
-      tip = `${card}?.querySelector('.chip.watch')?.title`;
+
+    const card = `document.querySelector('#slist > .card[data-id="${w.id}"]')`;
+    const tip = `${card}?.querySelector('.chip.watch')?.title`;
+
     const event = text =>
       appendFileSync(
         w.file,
-        JSON.stringify(
+        `${JSON.stringify(
           taskNoteLine({ id: w.id, cwd, taskId: mon, summary: 'Monitor event: "CI checks on PR #382"', event: text }),
-        ) + '\n',
+        )}\n`,
       );
+
     await ctx.waitFor(`${card}?.classList.contains('watching') && !!${tip}`, {
       what: 'the watching card and its chip',
     });
+
     // the status bar counts it by the card's mark, the word out of sight (2026-10-27)
     out.bar = await ctx
       .evaluate(
@@ -67,42 +74,54 @@ export default async function (ctx) {
       shown: [...b.childNodes].filter(n => !n.classList?.contains('vh')).map(n => n.textContent).join('').trim(), said: b.textContent.trim(), color: getComputedStyle(b).color === getComputedStyle(${card}.querySelector('.chip.watch')).color }))(document.querySelector('#sbLeft .mons'))`,
       )
       .then(JSON.parse);
+
     ctx.assert.deepEqual(
       out.bar,
       { mark: true, shown: '1', said: '1 watching', color: true },
       `the bar's watching: ${JSON.stringify(out.bar)}`,
     );
+
     await ctx.settle();
+
     await ctx.shot(
       'bar',
       await ctx.evaluate(
         `(r => ({ x: r.left, y: r.top - 6, width: Math.min(420, r.width + 8), height: r.height + 12, scale: 2 }))(document.querySelector('#sbLeft').getBoundingClientRect())`,
       ),
     );
+
     await ctx.settle();
     out.before = await ctx.evaluate(`(window.__wcard = ${card}, ${tip})`);
+
     ctx.assert.match(
       out.before,
       /^monitor: CI checks on PR #382 · \d+m left · 1 event$/,
       `the chip's tooltip: ${out.before}`,
     );
+
     event('Tests: 212 passed');
     await ctx.waitFor(`/ · 2 events$/.test(${tip} || '')`, { what: 'the tooltip counting the new event' });
     await ctx.settle();
     out.after = await ctx.evaluate(tip);
+
     ctx.assert.ok(
       await ctx.evaluate(`window.__wcard.isConnected && ${card} === window.__wcard`),
       'the card kept its node through the event',
     );
+
     // the header's chip, the open chat's
     await ctx.openChat(w.id);
+
     await ctx.waitFor(`/ · 2 events$/.test(document.querySelector('#shead .chip.watch')?.title || '')`, {
       what: "the header's chip and its tooltip",
     });
+
     event('Lint: clean');
+
     await ctx.waitFor(`/ · 3 events$/.test(document.querySelector('#shead .chip.watch')?.title || '')`, {
       what: "the header's tooltip counting the next",
     });
+
     out.head = await ctx.evaluate(`document.querySelector('#shead .chip.watch').title`);
     return out;
   } finally {

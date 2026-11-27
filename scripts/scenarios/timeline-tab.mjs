@@ -13,32 +13,39 @@ import { fileURLToPath } from 'node:url';
 import { tmpDir } from '../../lib/testserver.mjs';
 import { slugOf } from '../fixture.mjs';
 
-const root = tmpDir('peix-tv-'),
-  claudeDir = join(root, 'claude'),
-  cwd = join(root, 'storefront'),
-  file = join(root, 'prs.json');
+const root = tmpDir('peix-tv-');
+const claudeDir = join(root, 'claude');
+const cwd = join(root, 'storefront');
+const file = join(root, 'prs.json');
+
 mkdirSync(join(claudeDir, 'sessions'), { recursive: true });
 mkdirSync(cwd, { recursive: true });
-const now = Date.now(),
-  at = min => new Date(now - min * 60_000),
-  iso = min =>
-    at(min)
-      .toISOString()
-      .replace(/\.\d+Z$/, 'Z');
+
+const now = Date.now();
+const at = min => new Date(now - min * 60_000);
+
+const iso = min =>
+  at(min)
+    .toISOString()
+    .replace(/\.\d+Z$/, 'Z');
+
 const PR = n => `https://github.com/acme/storefront/pull/${n}`;
 
 // the chat, written as Claude Code writes it
-const id = randomUUID(),
-  base = {
-    isSidechain: false,
-    userType: 'external',
-    entrypoint: 'cli',
-    cwd,
-    sessionId: id,
-    version: 'fixture',
-    gitBranch: 'main',
-  };
+const id = randomUUID();
+
+const base = {
+  isSidechain: false,
+  userType: 'external',
+  entrypoint: 'cli',
+  cwd,
+  sessionId: id,
+  version: 'fixture',
+  gitBranch: 'main',
+};
+
 const lines = [];
+
 const you = (min, text) =>
   lines.push({
     ...base,
@@ -48,6 +55,7 @@ const you = (min, text) =>
     timestamp: at(min).toISOString(),
     message: { role: 'user', content: [{ type: 'text', text }] },
   });
+
 const said = (min, text, end = true) =>
   lines.push({
     ...base,
@@ -57,15 +65,17 @@ const said = (min, text, end = true) =>
     timestamp: at(min).toISOString(),
     message: {
       model: 'fixture-1',
-      id: 'msg_' + randomUUID().slice(0, 8),
+      id: `msg_${randomUUID().slice(0, 8)}`,
       type: 'message',
       role: 'assistant',
       content: [{ type: 'text', text }],
       stop_reason: end ? 'end_turn' : 'tool_use',
     },
   });
+
 const tool = (min, name, input, result) => {
-  const use = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+  const use = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+
   lines.push({
     ...base,
     parentUuid: null,
@@ -74,13 +84,14 @@ const tool = (min, name, input, result) => {
     timestamp: at(min).toISOString(),
     message: {
       model: 'fixture-1',
-      id: 'msg_' + use.slice(6, 14),
+      id: `msg_${use.slice(6, 14)}`,
       type: 'message',
       role: 'assistant',
       content: [{ type: 'tool_use', id: use, name, input }],
       stop_reason: 'tool_use',
     },
   });
+
   lines.push({
     ...base,
     parentUuid: null,
@@ -90,6 +101,7 @@ const tool = (min, name, input, result) => {
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: use, content: result }] },
   });
 };
+
 you(184, 'Declined cards should retry with backoff before we show the error.');
 tool(181, 'Edit', { file_path: `${cwd}/src/checkout/payments.ts` }, 'The file has been updated.');
 tool(180, 'Bash', { command: 'gh pr create --fill', description: 'Open the PR' }, PR(482));
@@ -97,6 +109,7 @@ said(179, `Opened ${PR(482)}: three tries, 200 ms doubling, then the error as be
 you(128, `joel reviewed ${PR(482)}, address his two comments`);
 tool(120, 'Edit', { file_path: `${cwd}/src/checkout/payments.ts` }, 'The file has been updated.');
 tool(118, 'Edit', { file_path: `${cwd}/src/checkout/retry.ts` }, 'The file has been updated.');
+
 tool(
   112,
   'Bash',
@@ -104,43 +117,49 @@ tool(
     command: `gh pr comment ${PR(482)} --body "Capped the jitter; the retry count is a setting now."`,
     description: 'Answer the review',
   },
-  PR(482) + '#issuecomment-1',
+  `${PR(482)}#issuecomment-1`,
 );
+
 said(111, 'Done: the jitter is capped and the retry count is a setting now. I answered both of joel’s threads.');
 you(82, `Now email a receipt after checkout, a separate PR, the way ${PR(470)} split the SDK bump`);
 tool(76, 'Edit', { file_path: `${cwd}/src/checkout/receipt.ts` }, 'The file has been updated.');
 tool(74, 'Bash', { command: 'gh pr create --fill', description: 'Open the PR' }, PR(486));
+
 said(
   73,
   `Opened ${PR(486)}: the receipt goes out from the order-completed handler, with the order’s lines and totals.`,
 );
+
 you(55, `kenji pushed to ${PR(479)}, review it again`);
+
 tool(
   23,
   'Bash',
   { command: `gh pr review ${PR(479)} --approve`, description: 'Approve it' },
   '✓ Approved pull request #479',
 );
+
 said(21, 'Approved #479: the two things you asked for are fixed, and the snapshots match.');
 const dir = join(claudeDir, 'projects', slugOf(cwd));
+
 mkdirSync(dir, { recursive: true });
-writeFileSync(join(dir, `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+writeFileSync(join(dir, `${id}.jsonl`), `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
 
 // GitHub's side, in three looks
 const face = (login, fill) => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`,
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`,
+  )}`,
 });
-const me = face('me', '#c96442'),
-  joel = face('joel', '#2e9e6a'),
-  mara = face('mara', '#d14d72'),
-  priya = face('priya', '#8a5cf6'),
-  kenji = face('kenji', '#e5892a');
+
+const me = face('me', '#c96442');
+const joel = face('joel', '#2e9e6a');
+const mara = face('mara', '#d14d72');
+const priya = face('priya', '#8a5cf6');
+const kenji = face('kenji', '#e5892a');
+
 const pr = o => ({
   state: 'OPEN',
   headRefOid: 'A',
@@ -152,11 +171,14 @@ const pr = o => ({
   asks: { nodes: [] },
   ...o,
 });
+
 const push = (who, min) => ({
   __typename: 'PullRequestCommit',
   commit: { committedDate: iso(min), author: { user: { login: who.login } } },
 });
+
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
+
 function look(step) {
   writeFileSync(
     file,
@@ -215,6 +237,7 @@ function look(step) {
     }),
   );
 }
+
 look(1);
 
 export const meta = {
@@ -230,12 +253,15 @@ export const meta = {
 };
 
 export default async function (ctx) {
-  const out = {},
-    a = ctx.assert;
+  const out = {};
+  const a = ctx.assert;
+
   const turn = n => `document.querySelector('#slist > .card[data-id="${id}"] .mxs[data-url$="/${n}"]')?.dataset.turn`;
   const T = (expr, what) => ctx.waitFor(expr, { timeout: 25_000, what });
+
   const round = (n, k) =>
     `(window.peix.session('${id}')?.prs || []).find(p => p.url.endsWith('/${n}'))?.rounds?.at(-1)?.${k}`;
+
   const rows = () =>
     ctx
       .evaluate(
@@ -264,54 +290,69 @@ export default async function (ctx) {
   await ctx.shot('0-hint');
   // ⌥⌘J: the timeline, beside the chat
   await ctx.key('KeyJ');
+
   await T(
     `!document.querySelector('#tv').hidden && document.querySelector('#tv').closest('#gbodyB') && document.querySelectorAll('#tv .tvr').length > 8`,
     'the timeline in the second half',
   );
+
   await ctx.settle();
+
   out.half = await ctx
     .evaluate(
       `JSON.stringify({ lone: document.querySelector('#ptabsB').classList.contains('lone'), keys: document.querySelector('#grpB').classList.contains('on') })`,
     )
     .then(JSON.parse);
+
   a.deepEqual(out.half, { lone: true, keys: true }, 'its own half, the keys in it, no strip for one tab');
   out.rows = await rows();
-  const yous = out.rows.filter(r => r.k === 'you'),
-    cls = out.rows.filter(r => r.k.startsWith('cl')),
-    evs = out.rows.filter(r => r.k.startsWith('ev'));
+
+  const yous = out.rows.filter(r => r.k === 'you');
+  const cls = out.rows.filter(r => r.k.startsWith('cl'));
+  const evs = out.rows.filter(r => r.k.startsWith('ev'));
+
   a.equal(yous.length, 4, 'every prompt a bubble');
   a.equal(cls.length, 4, 'every turn a line');
   a.match(cls[0].t, /^Claude worked \d+m · 1 edit · opened #482/, `a turn in one line: ${cls[0].t}`);
   a.match(cls[1].t, /2 edits · commented #482 ✓ answers/, `the push that answered the round: ${cls[1].t}`);
   a.match(cls[3].t, /reviewed #479 ✓ answers/, cls[3].t);
+
   a.ok(
     evs.some(r => /#482 joel reviewed/.test(r.t) && r.em.includes('move')),
     "joel's review: a move, ringed on its lane",
   );
+
   a.ok(
     evs.some(r => /#482 mara commented.*your move/i.test(r.t) && r.k.includes('live')),
     "mara's comment: the move at your move now",
   );
+
   a.ok(
     evs.some(r => /#486 you let this round go/.test(r.t)),
     'the round let go',
   );
+
   a.ok(
     evs.some(r => /#482 CI failed/.test(r.t) && r.em.includes('bad')),
     "CI turning red: the ledger's, its mark red",
   );
+
   a.ok(
     !out.rows.some(r => /#470/.test(r.t) && r.k.startsWith('ev')),
     'the merged PR, only mentioned, has no events in the narrow',
   );
+
   a.equal(out.rows[0].lanes, 4, 'a lane for the chat and each PR in play');
+
   a.ok(
     out.rows.every((r, i) => !i || !r.ms || r.ms >= out.rows[i - 1].ms),
     'in the order things happened, newest at the bottom',
   );
+
   out.now = await ctx.evaluate(
     `[...document.querySelectorAll('#tv .tvnow .tvnr')].map(r => r.dataset.k + ' ' + r.querySelector('.pchip').textContent)`,
   );
+
   a.deepEqual(out.now.sort(), ['let #486', 'ok #479', 'you #482'], `the Now bar: ${out.now}`);
   await ctx.shot('1-timeline');
 
@@ -323,13 +364,16 @@ export default async function (ctx) {
 
   // a turn clicked: the transcript beside it, at that turn
   await ctx.evaluate(`document.querySelectorAll('#tv .tvr.cl')[1].click()`);
+
   await T(
     `document.querySelector('#log .msg.tvhit') && !document.querySelector('#log').hidden`,
     'the turn lit in the transcript',
   );
+
   out.hit = await ctx.evaluate(
     `document.querySelector('#log .msg.tvhit').textContent.includes('address his two comments')`,
   );
+
   a.ok(out.hit, "the transcript at that turn's prompt");
 
   // "to the move" in the Now bar
@@ -339,35 +383,46 @@ export default async function (ctx) {
   // F1 — kenji's four pushes, one line at the last (the move); F2 and F3 — CI passing folds, failing stays
   out.folded = await rows();
   const run = out.folded.find(r => /#479 kenji pushed 4 commits \d+:\d\d\s?[AP]?M?–\d+:\d\d/.test(r.t));
+
   a.ok(
     run && run.em.includes('move') && /YOUR MOVE/i.test(run.t),
     `a run is one line, its move kept: ${out.folded.filter(r => /kenji/.test(r.t)).map(r => r.t)}`,
   );
+
   a.ok(!out.folded.some(r => /CI passed/.test(r.t)), 'CI passing folded');
   const fold = out.folded.find(r => r.k === 'fold' && /#482 CI/.test(r.t));
+
   a.ok(fold, `CI's line in a fold: ${out.folded.filter(r => r.k === 'fold').map(r => r.t)}`);
   await click(`#tv .tvr.fold`);
+
   await T(
     `document.querySelector('#tv .tvr.fold[aria-expanded="true"]') && [...document.querySelectorAll('#tv .tvr.ev')].some(r => r.textContent.includes('CI passed'))`,
     'the fold opened',
   );
+
   await click(`#tv .tvr.fold`);
+
   await T(
     `![...document.querySelectorAll('#tv .tvr.ev')].some(r => r.textContent.includes('CI passed'))`,
     'and folded again',
   );
+
   // N4's Everything: no runs, no folds, each turn's calls
   await click('#tv .tvseg [data-dens="all"]');
+
   await T(
     `location.hash.endsWith('/tl:d=all') && document.querySelectorAll('#tv .tvr.ev[data-url$="/479"]').length >= 5 && document.querySelector('#tv .tvr.cl .tools')`,
     'everything shown',
   );
+
   out.all = await rows();
   a.ok(out.all.some(r => /CI passed/.test(r.t)) && !out.all.some(r => r.k === 'fold'), 'no folds');
+
   a.ok(
     out.all.some(r => /^Claude .*Edit src\/checkout\/payments\.ts\s*Bash Open the PR/.test(r.t)),
     `a turn's calls listed: ${out.all.filter(r => r.k === 'cl').map(r => r.t)[0]}`,
   );
+
   await ctx.shot('2-everything');
   await click('#tv .tvseg [data-dens="fold"]');
   await T(`location.hash === '#${id}'`, 'folded again, the default');
@@ -380,52 +435,65 @@ export default async function (ctx) {
         `JSON.stringify([...document.querySelectorAll('${host} .tvtrk3 .tk3[data-row]')].filter(r => !r.hidden).map(r => r.querySelector('.tl3').textContent))`,
       )
       .then(JSON.parse);
+
   a.deepEqual(await tracks('#tv'), ['Chat', '#479', '#482', '#486'], 'the chat and each PR in play, a row each');
   await ctx.evaluate(`document.querySelector('#prToggle').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
+
   await T(
     `!document.querySelector('#prlist').hidden && document.querySelector('#prlist #prTl')`,
     'the PR list open, the timeline at its foot',
   );
+
   a.equal(
     await ctx.evaluate(`document.querySelectorAll('#prlist .tvtrk3, #prlist .prtrk').length`),
     0,
     'no tracks in the list',
   );
+
   a.deepEqual(
     await tracks('#tv'),
     ['Chat', '#479', '#482', '#486'],
     'the timeline keeps its own while the list is open',
   );
+
   a.equal(
     await ctx.evaluate(`document.querySelectorAll('#prlist .prround .rtrack').length`),
     0,
     'no strip of its own under a row',
   );
+
   a.ok(
     await ctx.evaluate(`document.querySelectorAll('#prlist .prround .pract').length >= 2`),
     "each row's words and buttons kept",
   );
+
   out.tlBtn = await ctx.evaluate(`document.querySelector('#prlist #prTl').textContent`);
   a.equal(out.tlBtn, 'Timeline⌥⌘J');
   await ctx.settle();
+
   await ctx.shot(
     '2-pr-list',
     await ctx.evaluate(
       `(r => ({ x: r.left - 4, y: r.top - 4, width: r.width + 8, height: r.height + 8 }))(document.querySelector('#prlist').getBoundingClientRect())`,
     ),
   );
+
   // the pointer on mara's move, in the timeline's tracks: the line through every row, and what happened then
   const mv = await ctx.evaluate(
     `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))([...document.querySelectorAll('#tv .tvtrk3 .tk3[data-row$="/482"] .td.mv')].at(-1).getBoundingClientRect())`,
   );
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: mv.x, y: mv.y });
+
   await T(
     `!document.querySelector('#tv .txh').hidden && /mara commented/.test(document.querySelector('#tv .tsay').textContent)`,
     'the crosshair saying what happened at that minute',
   );
+
   out.cross = await ctx.evaluate(`document.querySelector('#tv .tsay').textContent`);
   await ctx.shot('2-tracks');
   await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: mv.x, y: mv.y, button: 'left', clickCount: 1 });
+
   await ctx.send('Input.dispatchMouseEvent', {
     type: 'mouseReleased',
     x: mv.x,
@@ -433,19 +501,24 @@ export default async function (ctx) {
     button: 'left',
     clickCount: 1,
   });
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+
   await T(
     `/kept/.test(document.querySelector('#tv .tsay').textContent) && /mara/.test(document.querySelector('#tv .tsay').textContent)`,
     'a click keeps the line',
   );
+
   // the list's Timeline: the tab closed, a click brings it back in front
   await ctx.key('KeyW');
   await T(`!window.peix.state().tabs.includes('timeline')`, 'the timeline tab closed');
   await ctx.evaluate(`document.querySelector('#prlist #prTl').click()`);
+
   await T(
     `window.peix.state().tab === 'timeline' && !document.querySelector('#tv').hidden && document.querySelector('#tv .tvtrk3')`,
     'the timeline again, from the list',
   );
+
   await ctx.evaluate(`document.querySelector('#prlist #prFold').click()`);
 
   // N1 — the chips: the chat and each PR, the merged one only mentioned off
@@ -455,13 +528,17 @@ export default async function (ctx) {
         `JSON.stringify([...document.querySelectorAll('#tv .tvc')].map(c => (c.classList.contains('on') ? '+' : '-') + c.textContent.trim()))`,
       )
       .then(JSON.parse);
+
   const chip = n => `#tv .tvc[data-url$="/${n}"]`;
+
   out.chips = await chips();
+
   a.deepEqual(
     out.chips,
     ['+You', '+Claude', '-#470merged', '+#479answered', '+#482your move', '+#486let go'],
     `the chips: ${out.chips}`,
   );
+
   // #479 out: its events and its lane go
   await click(chip(479));
   await T(`!document.querySelector('#tv .tvr.ev[data-url$="/479"]')`, '#479 out of the timeline');
@@ -470,20 +547,24 @@ export default async function (ctx) {
   await click(chip(482), true);
   await T(`location.hash.endsWith('/tl:p=storefront.482')`, 'the narrow in the address');
   out.solo = await rows();
+
   a.ok(
     out.solo.every(r => !r.k.startsWith('ev') || /#482/.test(r.t)),
     "only #482's events",
   );
+
   a.equal(
     out.solo.filter(r => r.k === 'you').length,
     2,
     `the two prompts about #482: ${out.solo.filter(r => r.k === 'you').map(r => r.t)}`,
   );
+
   a.equal(
     await ctx.evaluate(`document.querySelector('#tv .tvseg [data-turns="about"]').getAttribute('aria-pressed')`),
     'true',
     'About these',
   );
+
   await ctx.shot('2-solo');
   // All turns: every prompt again, #482's events alone
   await click('#tv .tvseg [data-turns="all"]');
@@ -494,129 +575,170 @@ export default async function (ctx) {
   // You and Claude, each its own chip: Claude's out — your prompts stay, its turns go, and what the chat did on a PR
   // (said on Claude's line till now) is a row of its own
   const kinds = async () => (await rows()).map(r => r.k);
+
   await click('#tv .tvc[data-k="claude"]');
+
   await T(
     `!document.querySelector('#tv .tvr.cl') && document.querySelectorAll('#tv .tvr.you').length === 4`,
     "Claude's turns out, your prompts in",
   );
+
   out.noClaude = await rows();
+
   a.ok(
     out.noClaude.some(r => r.k.startsWith('ev') && /from this chat/.test(r.t)),
     `the chat's own acts as rows: ${out.noClaude.filter(r => r.k.startsWith('ev')).map(r => r.t)}`,
   );
+
   await T(`location.hash.endsWith('/tl:claude=0')`, 'Claude out in the address');
+
   await T(
     `document.querySelector('#tv .tvtrk3 [data-row="chat"] .tl3')?.textContent === 'You' && !document.querySelector('#tv .tvtrk3 .tw')`,
     "the chat's track is yours alone",
   );
+
   // ⌥-click You: your prompts alone — no PR, no turn of Claude's — and again everything in play
   await click('#tv .tvc[data-k="you"]', true);
+
   await T(
     `document.querySelectorAll('#tv .tvc.on').length === 1 && document.querySelector('#tv .tvc.on').dataset.k === 'you'`,
     'You alone',
   );
+
   a.ok(
     (await kinds()).every(k => k === 'you'),
     `only your prompts: ${await kinds()}`,
   );
+
   await click('#tv .tvc[data-k="you"]', true);
+
   await T(
     `location.hash === '#${id}' && document.querySelectorAll('#tv .tvr.cl').length > 0`,
     'everything in play again',
   );
+
   // ⌥-click Claude: its turns alone; its menu says so, and brings everything back
   await click('#tv .tvc[data-k="claude"]', true);
+
   await T(
     `!document.querySelector('#tv .tvr.you') && document.querySelectorAll('#tv .tvr.cl').length > 0 && !document.querySelector('#tv .tvr.ev')`,
     "Claude's turns alone",
   );
+
   out.ctxWho = await ctx.evaluate(
     `(() => { const b = document.querySelector('#tv .tvc[data-k="claude"]'), c = b.getBoundingClientRect(); b.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: c.left + 4, clientY: c.top + 4 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.textContent); })()`,
   );
+
   a.deepEqual(out.ctxWho, ['Everything in play again', 'Leave them out'], `Claude's chip's menu: ${out.ctxWho}`);
   await ctx.evaluate(`document.querySelector('#ctxm button').click()`);
   await T(`location.hash === '#${id}'`, 'everything in play from the menu');
   // the mentioned one in: its merge
   await click(chip(470));
+
   await T(
     `[...document.querySelectorAll('#tv .tvr.ev[data-url$="/470"]')].some(r => r.textContent.includes('merged'))`,
     "#470's merge in the timeline",
   );
+
   a.match(
     await ctx.evaluate(`document.querySelector('#tv .tvtrk3 .tnf').textContent`),
     /^#470 — nothing in the last \d+ h$/,
     'its track folded: nothing of it in the window',
   );
+
   // the right-click menu on a chip
   out.ctx = await ctx.evaluate(
     `(() => { const c = document.querySelector('${chip(486)}').getBoundingClientRect(); document.querySelector('${chip(486)}').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: c.left + 4, clientY: c.top + 4 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.textContent); })()`,
   );
+
   a.deepEqual(out.ctx, ['Only this one', 'Leave it out', 'Open it on GitHub'], `the chip's menu: ${out.ctx}`);
   await ctx.evaluate(`document.querySelector('#ctxm button').click()`);
   await T(`location.hash.endsWith('/tl:p=storefront.486')`, '#486 alone from the menu');
   // a reload keeps the narrow and the tab
   await ctx.reload();
   await ctx.openChat(id);
+
   await T(
     `!document.querySelector('#tv').hidden && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1 && document.querySelector('#tv .tvc.on[data-url]').dataset.url.endsWith('/486')`,
     'the narrow and the tab after a reload',
   );
+
   // N5 — the header's your-move tag: the timeline on that PR alone, at its move
   await ctx.evaluate(`document.querySelector('#shead .hmove').click()`);
+
   await T(
     `document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/482') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1 && document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`,
     "soloed on #482 and gone to mara's move",
   );
+
   // …and an alert's address: the same
   await click(chip(482), true); // everything in play first
   await ctx.evaluate(`location.hash = '${id}/tl:p=storefront.479'`);
+
   await T(
     `document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/479') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`,
     "the alert's address soloed on #479",
   );
+
   a.equal(
     await ctx.evaluate(`!document.querySelector('#tvHint') && window.peix.prefs().tvSeen`),
     true,
     'seen: the word gone, and for good',
   );
+
   // …and the card's move line, clicked as a hand would from home: the chat, its timeline on that PR, at the move
   await click(chip(479), true); // everything in play first
   await ctx.key('Digit0'); // ⌥⌘0, home
   await T(`!window.peix.state().current && !!document.querySelector('#home')`, 'home');
   await ctx.settle();
+
   const mvAt = await ctx
     .evaluate(
       `(() => { const r = document.querySelector('#slist > .card .prmove').getBoundingClientRect(); return JSON.stringify({ x: r.left + 12, y: r.top + r.height / 2 }); })()`,
     )
     .then(JSON.parse);
-  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased'])
+
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
     await ctx.send('Input.dispatchMouseEvent', { type, x: mvAt.x, y: mvAt.y, button: 'left', clickCount: 1 });
+  }
+
   await T(
     `!document.querySelector('#tv').hidden && document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/482') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1 && document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`,
     "the card's move line: soloed on #482, at mara's move",
   );
+
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+
   // a PR row's Timeline: that PR alone
-  if (!(await ctx.evaluate(`!!window.peix.prefs().prsOpen`)))
+  if (!(await ctx.evaluate(`!!window.peix.prefs().prsOpen`))) {
     await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  }
+
   await click('#prlist .pract[data-pract="timeline"][data-url$="/479"]');
+
   await T(
     `document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/479') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`,
     "the row's Timeline: #479 alone",
   );
+
   await ctx.evaluate(`document.querySelector('#prlist #prFold').click()`);
+
   // a card's right-click: Open its timeline — at the move it is on
   out.cardCtx = await ctx.evaluate(
     `(() => { const c = document.querySelector('#slist > .card'), r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 30, clientY: r.top + 10 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.firstChild.textContent); })()`,
   );
+
   a.ok(out.cardCtx.includes('Open its timeline'), `the card's menu: ${out.cardCtx}`);
+
   await ctx.evaluate(
     `[...document.querySelectorAll('#ctxm button')].find(b => b.firstChild.textContent === 'Open its timeline').click()`,
   );
+
   await T(
     `document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/482') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`,
     "the card's menu: #482 alone, at the move",
   );
+
   // narrow: the chips fold into one Scope button
   await ctx.send('Emulation.setDeviceMetricsOverride', {
     width: 860,
@@ -624,12 +746,15 @@ export default async function (ctx) {
     deviceScaleFactor: 2,
     mobile: false,
   });
+
   await ctx.settle();
+
   out.narrow = await ctx
     .evaluate(
       `JSON.stringify({ chips: getComputedStyle(document.querySelector('#tv .tvchips')).display, scope: document.querySelector('#tv .tvscope').textContent, shown: getComputedStyle(document.querySelector('#tv .tvscope')).display !== 'none' })`,
     )
     .then(JSON.parse);
+
   a.deepEqual(out.narrow, { chips: 'none', scope: 'Scope ▾ 3 of 6', shown: true }, JSON.stringify(out.narrow));
   await ctx.shot('3-narrow');
   await ctx.send('Emulation.clearDeviceMetricsOverride');

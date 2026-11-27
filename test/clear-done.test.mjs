@@ -24,6 +24,7 @@ const clearLines = (id, cwd, at = new Date()) => {
     gitBranch: 'main',
     timestamp: at.toISOString(),
   };
+
   return [
     {
       ...base,
@@ -58,26 +59,34 @@ const clearLines = (id, cwd, at = new Date()) => {
 };
 
 test('/clear ticks the chat it left done; a move into another chat does not', { timeout: 40_000 }, async () => {
-  const dir = tmpDir('peix-clear-'),
-    cwd = tmpDir('peix-cwd-'),
-    proj = join(dir, 'projects', slugOf(cwd));
+  const dir = tmpDir('peix-clear-');
+  const cwd = tmpDir('peix-cwd-');
+  const proj = join(dir, 'projects', slugOf(cwd));
+
   mkdirSync(proj, { recursive: true });
   mkdirSync(join(dir, 'sessions'), { recursive: true });
+
   const write = (id, lines) =>
-    writeFileSync(join(proj, `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+    writeFileSync(join(proj, `${id}.jsonl`), `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+
   const ago = ms => new Date(Date.now() - ms);
   const [a, b, c, d] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+
   write(a, chatLines({ id: a, cwd, prompt: 'the first chat', reply: 'done with it', at: ago(600_000) }));
+
   // b: a chat a /clear began a day ago, worked in since — resumed into, it is no fresh clear
   write(b, [
     ...clearLines(b, cwd, ago(86_400_000)),
     ...chatLines({ id: b, cwd, prompt: 'an older chat', reply: 'sure', at: ago(3_600_000) }),
   ]);
+
   const sleeper = spawn('sleep', ['60'], { stdio: 'ignore' });
+
   const procStart = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(sleeper.pid)], {
     encoding: 'utf8',
     env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' },
   }).trim(); // as Claude Code writes it: a start that is not the pid's is a dead claude's (2026-10-14)
+
   const on = id =>
     writeFileSync(
       join(dir, 'sessions', `${sleeper.pid}.json`),
@@ -94,16 +103,20 @@ test('/clear ticks the chat it left done; a move into another chat does not', { 
         statusUpdatedAt: Date.now(),
       }),
     );
+
   on(a);
   const srv = await startTestServer({ claudeDir: dir });
   const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+
   try {
     await waitFor(async () => (await chat(a))?.alive, { what: 'the first chat alive' });
 
     on(b); // the process into another chat with history: an in-app /resume
+
     await waitFor(async () => (await chat(b))?.alive && !(await chat(a)).alive, {
       what: 'the process on the older chat',
     });
+
     assert.equal((await chat(a)).done, false, 'a chat left for another one is not finished');
 
     write(c, clearLines(c, cwd)); // /clear: the transcript first, then the registry — the order the fake writes them

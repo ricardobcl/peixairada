@@ -3,22 +3,28 @@
 // PRs off, copy its link; on a PR chip — open it, take it off the chat; on the colour square — let go of the colour.
 // The same rows are the launcher's (actionRows), for the keyboard.
 const shownHere = pr => !!pr?.url;
+
 const unlinkUrl = (s, url) => {
   const el = document.querySelector(
     `#shead .mxs[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`,
   );
+
   if (el) return unlinkPr(s, el);
+
   api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err =>
     note($('#shead'), `Could not take it off: ${err.message}`, true),
   );
 };
+
 const moveFocused = s => {
-  const k = tabOf(s),
-    gs = groupsOf(s);
-  if (k && k !== 'chat')
+  const k = tabOf(s);
+  const gs = groupsOf(s);
+
+  if (k && k !== 'chat') {
     moveTab(s, k, isTiled(s) ? gs[(gs.indexOf(homeOf(s, k)) + 1) % gs.length] : placeOf(s)[0] === k ? 1 : 0);
-  else note($('#shead'), 'The chat stays in its half — pick a tab to move', true);
+  } else note($('#shead'), 'The chat stays in its half — pick a tab to move', true);
 };
+
 const clearColor = name => {
   colorAt = '#shead';
   colorWas.set(name, projCfg(name).color ?? null);
@@ -26,17 +32,22 @@ const clearColor = name => {
   previewColor(name, null);
   setColor(name, null);
 };
+
 /** A card's pin rows: Pin, or Unpin and a place up, down, to the top or the bottom — the way without a drag (WCAG 2.5.7). */
 function prioRows(s, card) {
   if (!prioOn()) return [];
-  if (!inPrio(s))
+
+  if (!inPrio(s)) {
     return [
       { hr: true },
       { t: 'Pin', sub: 'the section up top, in your order · ⌥⌘I', fn: () => prioPut(s, true, null, card) },
     ];
-  const list = secList(),
-    i = list.indexOf(s),
-    n = list.length;
+  }
+
+  const list = secList();
+  const i = list.indexOf(s);
+  const n = list.length;
+
   return [
     { hr: true },
     { t: 'Unpin', n: '⌥⌘I', fn: () => prioPut(s, false, null, card) },
@@ -46,11 +57,13 @@ function prioRows(s, card) {
     { t: 'To the bottom', off: i < 0 || i >= n - 1, fn: () => prioMove(s, Infinity, card) },
   ];
 }
+
 function ctxRows(e) {
   // the status bar: what else it says, ticked, and its settings (2026-10-16 — as the menu bar's and the Dock's are set
   // from a right-click on them)
   if (e.target.closest('#sbar')) {
     const has = k => (prefs.barStats || []).includes(k);
+
     return [
       ...BAR_STATS.map(([k, t]) => ({
         t,
@@ -66,22 +79,27 @@ function ctxRows(e) {
       { t: 'Status bar settings…', fn: () => settingsAt('look', '#sbarStats') },
     ];
   }
-  const tvc = e.target.closest('#tv .tvc[data-url]'),
-    tvw = e.target.closest('#tv .tvc[data-k="you"], #tv .tvc[data-k="claude"]'); // a chip in the timeline (2026-10-17): alone, in or out, a PR's page
+
+  const tvc = e.target.closest('#tv .tvc[data-url]');
+  const tvw = e.target.closest('#tv .tvc[data-k="you"], #tv .tvc[data-k="claude"]'); // a chip in the timeline (2026-10-17): alone, in or out, a PR's page
+
   if (tvw) {
-    const s = state.sessions.get(state.current),
-      w = tvw.dataset.k,
-      sc = s && tvScope(s, tvModel(s));
+    const s = state.sessions.get(state.current);
+    const w = tvw.dataset.k;
+    const sc = s && tvScope(s, tvModel(s));
+
     if (!s) return null;
     return [
       { t: sc[w] && !sc[TV_WHO[w]] && !sc.on.size ? 'Everything in play again' : 'Only these', fn: () => tvSolo(s, w) },
       { t: sc[w] ? 'Leave them out' : 'Bring them in', fn: () => tvSide(s, w) },
     ];
   }
+
   if (tvc) {
-    const s = state.sessions.get(state.current),
-      url = tvc.dataset.url,
-      sc = s && tvScope(s, tvModel(s));
+    const s = state.sessions.get(state.current);
+    const url = tvc.dataset.url;
+    const sc = s && tvScope(s, tvModel(s));
+
     if (!s) return null;
     return [
       { t: sc.solo === url ? 'Everything in play again' : 'Only this one', fn: () => tvSolo(s, url) },
@@ -90,18 +108,24 @@ function ctxRows(e) {
       { t: 'Open it on GitHub', fn: () => openExternal(url, { s }) },
     ];
   }
+
   const agRow = e.target.closest('.agr[data-ag]');
+
   if (agRow) {
-    const s = state.sessions.get(agRow.closest('.card, .ot')?.dataset.id || state.current),
-      r = s?.agentRows?.find(x => x.id === agRow.dataset.ag);
+    const s = state.sessions.get(agRow.closest('.card, .ot')?.dataset.id || state.current);
+    const r = s?.agentRows?.find(x => x.id === agRow.dataset.ag);
+
     return r ? agMenu(s, r, agRow) : null;
   }
-  const card = e.target.closest('#slist > .card'),
-    chip = e.target.closest('.tmx [data-url], .prrow[data-url]'),
-    sq = e.target.closest('.sq.pick[data-name]');
+
+  const card = e.target.closest('#slist > .card');
+  const chip = e.target.closest('.tmx [data-url], .prrow[data-url]');
+  const sq = e.target.closest('.sq.pick[data-name]');
+
   if (chip) {
-    const s = state.sessions.get(card?.dataset.id || state.current),
-      url = chip.dataset.url;
+    const s = state.sessions.get(card?.dataset.id || state.current);
+    const url = chip.dataset.url;
+
     if (!s || !url) return null;
     return [
       { t: 'Open the PR', fn: () => openExternal(url, { s }) },
@@ -120,40 +144,55 @@ function ctxRows(e) {
       { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) },
     ];
   }
+
   const hm = e.target.closest('#shead .hmove');
+
   if (hm) {
     const s = state.sessions.get(state.current);
+
     return s && [{ t: 'Let this round go — the next move tells you', fn: () => letGo(s, $('#shead .hmove')) }];
   }
-  if (sq)
+
+  if (sq) {
     return projCfg(sq.dataset.name).color
       ? [
           { t: 'Pick a colour…', fn: () => sq.click() },
           { t: 'Let go of the colour', fn: () => clearColor(sq.dataset.name) },
         ]
       : [{ t: 'Pick a colour…', fn: () => sq.click() }];
+  }
+
   // a node in Space (2026-11-24): the card's rows, what its state wants first — its question, its resume —, its tick
   // Space's own (the chat open beside it stays), its star; an agent's mark its agent's menu
   const spa = e.target.closest('#spgrid .spa[data-ag]');
+
   if (spa) {
-    const s = state.sessions.get(spa.dataset.sid),
-      r = s && spRows(s).find(x => x.id === spa.dataset.ag);
+    const s = state.sessions.get(spa.dataset.sid);
+    const r = s && spRows(s).find(x => x.id === spa.dataset.ag);
+
     return r ? agMenu(s, r, spa) : null;
   }
+
   const spt = e.target.closest('#spgrid .spt[data-id]');
+
   if (spt) {
     const s = state.sessions.get(spt.dataset.id);
+
     return s ? spMenu(s, spt) : null;
   }
+
   if (!card) return null;
   const s = state.sessions.get(card.dataset.id);
+
   if (!s) return null;
   return chatRows(s, card);
 }
+
 /** A chat's rows, the card's menu and a node's: `space` ticks it as Space does, the chat beside it left open. */
 function chatRows(s, card, space = false) {
   const tick = (done, forGood = false) =>
     space && !forGood ? spTick(s.id, card.querySelector('.spdone') || card) : tickDone(s.id, done, card, null, forGood);
+
   return [
     { t: 'Open', fn: () => openSession(s.id) },
     ...((s.prs || []).length
@@ -231,8 +270,10 @@ function chatRows(s, card, space = false) {
     },
   ];
 }
+
 function spMenu(s, node) {
   const pill = node.querySelector('.spask[data-tid]');
+
   const first = [
     ...(pill
       ? [
@@ -253,13 +294,16 @@ function spMenu(s, node) {
             fn: async () => {
               await openSession(s.id);
               const c = state.sessions.get(s.id);
+
               if (c) termAction(c);
             },
           },
         ]
       : []),
   ];
+
   const rows = chatRows(s, node, true);
+
   return [
     ...first,
     ...(first.length ? [{ hr: true }] : []),
@@ -270,13 +314,16 @@ function spMenu(s, node) {
     ...rows.slice(1),
   ];
 }
+
 document.addEventListener('contextmenu', e => {
   if (e.target.closest('input, textarea, .tbody, #log .text, #log pre')) return; // a box, a terminal, the words: the system's menu
   const rows = ctxRows(e);
+
   if (!rows) return;
   e.preventDefault();
   ctxShow(rows, e.clientX, e.clientY, 'ctx', !!e.target.closest('#sbar')); // the bar's menu ends at the pointer, above it
 });
+
 // The menu's rows at a point — or ending at it, `above` (a control at the window's foot) — and from what (`m._from`):
 // a row with `on` is a choice, ticked when on; `mark` and `n` a mark before it and a count after.
 // `sub` a second line — where a PR's branch is, why a row is `off` (disabled) — 2026-10-13
@@ -284,56 +331,75 @@ const ctxRow = (r, i) =>
   r.hr
     ? '<hr>'
     : `<button type="button" data-i="${i}"${r.warn || r.sub ? ` class="${r.warn ? 'warn' : ''}${r.warn && r.sub ? ' ' : ''}${r.sub ? 'two' : ''}"` : ''}${r.off ? ' disabled' : ''}${'on' in r ? ` role="${r.check ? 'menuitemcheckbox' : 'menuitemradio'}" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${r.sub ? `<span class="ct">${r.key ? `<kbd class="ck">${r.key}</kbd>` : ''}${esc(r.t)}</span>` : `${r.key ? `<kbd class="ck">${r.key}</kbd>` : ''}${esc(r.t)}`}${r.n != null ? `<span class="cn">${esc(String(r.n))}</span>` : ''}${r.sub ? `<span class="csub">${esc(r.sub)}</span>` : ''}</button>`;
+
 function ctxShow(rows, x, y, from, above = false) {
   const m = $('#ctxm');
+
   m.innerHTML = rows.map(ctxRow).join('');
+
   m.classList.toggle(
     'checks',
     rows.some(r => 'on' in r),
   );
+
   m.classList.toggle(
     'wide',
     rows.some(r => r.sub),
   );
+
   m._rows = rows;
   m._from = from;
   m._at = [x, y, above];
   if (!m.open) m.show();
-  const w = m.offsetWidth,
-    h = m.offsetHeight;
+
+  const w = m.offsetWidth;
+  const h = m.offsetHeight;
+
   m.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`;
   m.style.top = `${Math.max(8, Math.min(above ? y - h : y, innerHeight - h - 8))}px`;
   (m.querySelector('[aria-checked="true"]') || m.querySelector('button'))?.focus({ preventScroll: true });
   repostPane();
 }
+
 $('#ctxm').addEventListener('click', e => {
   const b = e.target.closest('button[data-i]');
+
   if (!b) return;
   const r = $('#ctxm')._rows[+b.dataset.i];
+
   $('#ctxm').close();
   r?.fn?.();
 });
+
 $('#ctxm').addEventListener('keydown', e => {
   // a row's digit picks it (2026-11-24, round XXX's S2: the snooze menu's times and things to wait for)
-  const k = /^Digit([1-9])$/.exec(e.code),
-    m = $('#ctxm'),
-    pick = k && !e.metaKey && !e.altKey && !e.ctrlKey ? (m._rows || []).findIndex(r => r.key === +k[1] && !r.off) : -1;
+  const k = /^Digit([1-9])$/.exec(e.code);
+  const m = $('#ctxm');
+
+  const pick =
+    k && !e.metaKey && !e.altKey && !e.ctrlKey ? (m._rows || []).findIndex(r => r.key === +k[1] && !r.off) : -1;
+
   if (pick >= 0) {
     e.preventDefault();
     m.close();
     m._rows[pick].fn?.();
     return;
   }
+
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
   e.preventDefault();
-  const bs = [...$('#ctxm').querySelectorAll('button')],
-    i = bs.indexOf(document.activeElement);
+
+  const bs = [...$('#ctxm').querySelectorAll('button')];
+  const i = bs.indexOf(document.activeElement);
+
   bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length]?.focus();
 });
+
 document.addEventListener(
   'pointerdown',
   e => {
     const m = $('#ctxm');
+
     if (m.open && !e.composedPath().includes(m)) {
       m.close();
       m._shut = performance.now();
@@ -341,13 +407,16 @@ document.addEventListener(
   },
   true,
 );
+
 // The list's filter (2026-10-12): the funnel's menu — every chat, or only the ones with a new reply, or the pinned —
 // counted in the project in view (fCounts, from drawFilter), as the list would show it: the query and the
 // face narrowing it too (2026-10-14; the project's alone before, a count the list did not show). A press on the funnel
 // that closed its own menu leaves it closed.
 let fCounts = {};
+
 function setFilter(k) {
   const was = prioFocus();
+
   prefs.listFilter = FILTERS[k] ? k : null;
   if (prioFocus() && !was) prefs.focusSince = Date.now(); // focus (2026-11-24, round XXX): from when its catch counts
   savePrefs();
@@ -356,36 +425,48 @@ function setFilter(k) {
   $('#slist').scrollTop = 0;
   if (was && !prioFocus()) focusCatch();
 }
+
 /** Out of focus: what came meanwhile in one line, as fishing's catch (F3) — unless fishing, whose catch will say it. */
 function focusCatch() {
   const since = prefs.focusSince;
+
   prefs.focusSince = 0;
   savePrefs();
   if (!since || fishing.until) return;
   const line = outLine(since);
+
   if (line) laneNews(`<b>While in focus:</b>${line}`);
 }
+
 function drawFilter(p, narrow = () => true) {
-  const f = listFilter(),
-    b = $('#fBtn'),
-    fl = b.querySelector('.fl');
+  const f = listFilter();
+  const b = $('#fBtn');
+  const fl = b.querySelector('.fl');
+
   fCounts = Object.fromEntries(
     filterList().map(([k, x]) => [k, p.sessions.filter(s => x.test(s) && narrow(s)).length]),
   );
+
   const label = f ? `${f.name} · ${fCounts[prefs.listFilter]}` : '';
+
   if (fl.textContent !== label) fl.textContent = label;
   b.classList.toggle('on', !!f);
   b.setAttribute('aria-pressed', String(!!f));
+
   b.title = f
     ? `Only the ${f.tip} — click for every chat, or the other filter`
     : `Show only some chats — those with a new reply${prioOn() ? ', or the pinned' : ''}`;
 }
+
 $('#fBtn').addEventListener('click', () => {
-  const m = $('#ctxm'),
-    b = $('#fBtn');
+  const m = $('#ctxm');
+  const b = $('#fBtn');
+
   if (m._from === 'filter' && performance.now() - (m._shut || 0) < 400) return;
-  const r = b.getBoundingClientRect(),
-    up = r.top > innerHeight / 2;
+
+  const r = b.getBoundingClientRect();
+  const up = r.top > innerHeight / 2;
+
   ctxShow(
     [
       { t: 'Every chat', on: !prefs.listFilter, fn: () => setFilter(null) },
@@ -405,12 +486,16 @@ $('#fBtn').addEventListener('click', () => {
     up,
   );
 });
+
 $('#ctxm').addEventListener('close', () => repostPane()); // an arrow: repostPane is a const further down
+
 function unlinkPr(s, el) {
   const url = el.dataset.url;
+
   if (!url || el.dataset.going) return;
   el.dataset.going = '1';
   noteMotion(s.id, 'unlink');
+
   const fold = REDUCED.matches
     ? null
     : el.animate(
@@ -420,6 +505,7 @@ function unlinkPr(s, el) {
         ],
         { duration: UNLINK_MS, easing: EASE_OUT, fill: 'forwards', id: 'unlink' },
       );
+
   setTimeout(
     () =>
       api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => {
@@ -430,6 +516,7 @@ function unlinkPr(s, el) {
     fold ? UNLINK_MS : 0,
   );
 }
+
 /** ⌥-click on a chat's "your move" (2026-10-12): its PRs at your move let go this round — not your move, nor counted,
  *  until the next move on one, which alerts as any other (the server's waiveTurn). The line fades, then the server is
  *  told; the chat's update takes the line away. */
@@ -437,6 +524,7 @@ function letGo(s, el = null) {
   if (!s || el?.dataset.going) return;
   if (el) el.dataset.going = '1';
   noteMotion(s.id, 'letgo');
+
   const fade =
     !el || REDUCED.matches
       ? null
@@ -446,6 +534,7 @@ function letGo(s, el = null) {
           fill: 'forwards',
           id: 'letgo',
         });
+
   setTimeout(
     () =>
       api('POST', `/api/sessions/${s.id}/waive`).catch(err => {
@@ -456,37 +545,46 @@ function letGo(s, el = null) {
     fade ? UNLINK_MS : 0,
   );
 }
+
 $('#shead').addEventListener(
   'click',
   e => {
     // ⌥ on the header's "your move": this round let go — a click, its PR's timeline (2026-10-17)
     const mv = e.target.closest('.hmove');
+
     if (!mv) return;
     e.preventDefault();
     e.stopPropagation();
     const s = state.sessions.get(state.current);
+
     if (e.altKey) letGo(s, mv);
     else tvOpenOn(s, movedPrs(s)[0]?.url);
   },
   true,
 );
+
 // A row's link copied (2026-10-21): its mark next to its name — the link not followed — and said on the mark itself, a
 // ✓ for COPIED_MS; a redraw of the rows takes it with it
 $('#prlist').addEventListener(
   'click',
   async e => {
     const c = e.target.closest('.prrow .prcopy');
+
     if (!c) return;
     e.preventDefault();
     e.stopPropagation();
-    const row = c.closest('.prrow'),
-      url = row.dataset.url || row.getAttribute('href') || '';
+
+    const row = c.closest('.prrow');
+    const url = row.dataset.url || row.getAttribute('href') || '';
+
     if (!/^https?:\/\//.test(url)) return;
     const ok = await copyText(url);
+
     if (!ok) return note(c, 'Could not copy it', true);
     c.classList.add('did');
     c.title = 'Link copied';
     clearTimeout(c._did);
+
     c._did = setTimeout(() => {
       c.classList.remove('did');
       c.title = 'Copy its link';
@@ -494,61 +592,77 @@ $('#prlist').addEventListener(
   },
   true,
 );
+
 $('#prlist').addEventListener(
   'click',
   e => {
     // before #chat's link handler, which would open the PR
     const r = e.altKey && e.target.closest('.prrow[data-url]');
+
     if (!r) return;
     e.preventDefault();
     e.stopPropagation();
     const s = state.sessions.get(state.current);
+
     if (s) unlinkPr(s, r);
   },
   true,
 );
+
 $('#shead').addEventListener('click', e => {
   // the branch moved under it (2026-10-13): you know — gone at the click, the server's word following
   if (!e.target.closest('#driftBtn')) return;
   const s = state.sessions.get(state.current);
+
   if (!s?.drift) return;
   s.drift = null;
   renderHead(s);
   renderBoard();
+
   api('POST', `/api/sessions/${s.id}/drift`).catch(err =>
     note($('#shead'), `Could not set the branch's move aside: ${err.message}`, true),
   );
 });
+
 // The PR list's ends (2026-10-21), as the chat list's (drawEdges): what is out of sight past each — a row is when its
 // middle is — counted on a pill, the accent's dot when one of them is at your move; a click scrolls a window's worth.
 // Read once a frame, after a draw, a scroll or a resize.
 function prEdgesSoon() {
-  if (!prEdgesSoon.raf)
+  if (!prEdgesSoon.raf) {
     prEdgesSoon.raf = requestAnimationFrame(() => {
       prEdgesSoon.raf = 0;
       prEdges();
     });
+  }
 }
+
 function prEdges() {
   const sc = $('#prScroll');
+
   if (!sc || $('#prlist').hidden) return;
-  const top = sc.scrollTop,
-    bottom = top + sc.clientHeight,
-    out = [
-      { n: 0, you: 0 },
-      { n: 0, you: 0 },
-    ];
+
+  const top = sc.scrollTop;
+  const bottom = top + sc.clientHeight;
+
+  const out = [
+    { n: 0, you: 0 },
+    { n: 0, you: 0 },
+  ];
+
   for (const r of sc.querySelectorAll(':scope > :is(.prline, .prrow.tk)')) {
-    const mid = r.offsetTop + r.offsetHeight / 2,
-      o = mid < top ? out[0] : mid > bottom ? out[1] : null;
+    const mid = r.offsetTop + r.offsetHeight / 2;
+    const o = mid < top ? out[0] : mid > bottom ? out[1] : null;
+
     if (!o) continue;
     o.n++;
     if (r.querySelector('.prrow[data-turn="you"]')) o.you++;
   }
+
   out.forEach((o, i) => {
-    const el = sc.parentElement.querySelector(i ? '.pedge.down' : '.pedge.up'),
-      b = el.firstElementChild,
-      key = `${o.n}/${o.you}`;
+    const el = sc.parentElement.querySelector(i ? '.pedge.down' : '.pedge.up');
+    const b = el.firstElementChild;
+    const key = `${o.n}/${o.you}`;
+
     el.classList.toggle('on', o.n > 0);
     if (b.dataset.key === key) return;
     b.dataset.key = key;
@@ -557,6 +671,7 @@ function prEdges() {
     b.title = `${o.n} more ${i ? 'below' : 'above'}${o.you ? ` — ${o.you} at your move` : ''} · click to scroll ${i ? 'down' : 'up'}`;
   });
 }
+
 $('#prlist').addEventListener(
   'scroll',
   e => {
@@ -564,43 +679,55 @@ $('#prlist').addEventListener(
   },
   { capture: true, passive: true },
 ); // a scroll does not bubble
+
 // The list's height (2026-10-21): its foot dragged up or down sizes the rows' window — the board's, kept in
 // prefs.prsHeight —, two rows' worth at least and most of the window at most; a double-click gives it its own again.
 // The arrow in the foot is still a click.
 $('#prlist').addEventListener('pointerdown', e => {
   const foot = e.target.closest('.pfoot');
+
   if (!foot || e.target.closest('button') || e.button !== 0) return;
   const sc = $('#prScroll');
+
   if (!sc) return;
   e.preventDefault();
   foot.setPointerCapture(e.pointerId);
-  const y0 = e.clientY,
-    h0 = sc.getBoundingClientRect().height,
-    max = Math.max(80, innerHeight * 0.75);
+
+  const y0 = e.clientY;
+  const h0 = sc.getBoundingClientRect().height;
+  const max = Math.max(80, innerHeight * 0.75);
+
   const was = prefs.prsHeight;
+
   foot.classList.add('drag');
   document.body.classList.add('prsizing');
+
   // the height is the pref while it moves (a redraw of the list mid-drag reads it), saved once let go
   const move = ev => {
     prefs.prsHeight = Math.round(Math.min(max, Math.max(44, h0 + ev.clientY - y0)));
     $('#prlist').style.setProperty('--prs-h', `${prefs.prsHeight}px`);
     prEdgesSoon();
   };
+
   const up = () => {
     for (const [t, f] of [
       ['pointermove', move],
       ['pointerup', up],
       ['lostpointercapture', up],
-    ])
+    ]) {
       foot.removeEventListener(t, f);
+    }
+
     foot.classList.remove('drag');
     document.body.classList.remove('prsizing');
     if (prefs.prsHeight !== was) savePrefs();
   };
+
   foot.addEventListener('pointermove', move);
   foot.addEventListener('pointerup', up);
   foot.addEventListener('lostpointercapture', up);
 });
+
 $('#prlist').addEventListener('dblclick', e => {
   if (!e.target.closest('.pfoot') || e.target.closest('button')) return;
   prefs.prsHeight = null;
@@ -608,76 +735,97 @@ $('#prlist').addEventListener('dblclick', e => {
   $('#prlist').style.setProperty('--prs-h', '');
   prEdgesSoon();
 });
+
 new ResizeObserver(() => prEdgesSoon()).observe($('#prlist'));
+
 $('#prlist').addEventListener('click', e => {
   const b = e.target.closest('.pedge button');
+
   if (!b) return;
   const sc = $('#prScroll');
+
   sc.scrollBy({
     top: +b.dataset.dir * Math.max(40, sc.clientHeight - 40),
     behavior: REDUCED.matches ? 'auto' : 'smooth',
   });
 });
+
 $('#prlist').addEventListener('click', e => {
   // a PR row's own controls (2026-10-13)
   const b = e.target.closest('.pract');
+
   if (!b) return;
   e.preventDefault();
   e.stopPropagation();
   const s = state.sessions.get(state.current);
+
   if (!s) return;
-  if (b.dataset.pract === 'letgo' || b.dataset.pract === 'undo')
+  if (b.dataset.pract === 'letgo' || b.dataset.pract === 'undo') {
     roundGo(s, b.dataset.url, b.dataset.pract === 'undo', b);
-  else if (b.dataset.pract === 'ask') askClaude(s, b.dataset.url, b);
+  } else if (b.dataset.pract === 'ask') askClaude(s, b.dataset.url, b);
   else if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
   else if (b.dataset.pract === 'timeline') tvOpenOn(s, b.dataset.url);
   else if (b.dataset.pract === 'editor') editorMenu(s, b.dataset.url, b);
   else if (b.dataset.pract === 'chat') prChatMenu(s, b.dataset.url, b);
 });
+
 /** One PR's round let go, or taken back (2026-10-15): the server's word redraws the row. */
 function roundGo(s, url, undo, at) {
   if (at.disabled) return;
   at.disabled = true;
+
   api('POST', `/api/sessions/${s.id}/waive`, undo ? { url, undo: true } : { url }).catch(err => {
     at.disabled = false;
     note(at, `Could not ${undo ? 'take it back' : 'let it go'}: ${err.message}`, true);
   });
 }
+
 /** What came round on a PR, typed into the chat's Claude unsent — the drawer's, else copied. */
 async function askClaude(s, url, at) {
   const pr = s.prs?.find(p => p.url === url);
+
   if (!pr?.turn) return;
-  const text = `${pr.turn.why} on ${pr.url} — read it and address it`,
-    tm = claudeTm(s);
+
+  const text = `${pr.turn.why} on ${pr.url} — read it and address it`;
+  const tm = claudeTm(s);
+
   if (!tm) {
     const ok = await copyText(text);
+
     return note(
       at,
       `No claude of this chat in a drawer here${ok ? ' — the prompt is copied' : ''} · ⌥⌘C starts one`,
       true,
     );
   }
+
   showChat(s);
   const no = await drawerType(s, text, false);
+
   if (no) return note(at, `Not typed: ${no}`, true);
   focusTerm();
   note(at, 'Typed into Claude — ⏎ sends it');
 }
+
 /** A new chat on a PR's branch (2026-10-13): in the tree that has it out, else in a worktree made for it — the chat's
  *  folder is then its branch, and its changes, its editor and its zsh are the branch's by construction. */
 const prChatting = new Set(); // the PRs a chat is being started on (2026-11-04): a second press meanwhile is the same press
+
 async function chatOnPr(s, url, at, agent) {
   // `agent` (2026-11-06): its Chat ▾'s, prChatMenu
   if (prChatting.has(url)) return;
   prChatting.add(url);
   note(at, 'Finding its tree…');
+
   try {
     let t;
+
     try {
       t = await api('POST', '/api/worktrees', { cwd: s.cwd, pr: url });
     } catch (e) {
       return note(at, e.message, true);
     }
+
     document.querySelectorAll('.note').forEach(n => n.remove());
     wtData.delete(s.cwd);
     $('#pick').open && $('#pick').close();
@@ -686,16 +834,19 @@ async function chatOnPr(s, url, at, agent) {
     prChatting.delete(url);
   }
 }
+
 /** A PR row's Chat ▾ (2026-11-06, round XXVIII's E1): a chat on its branch, plain or as an agent — the one you last took
  *  for a PR first, then the folder's and yours, or any of them (the agent picker). */
 async function prChatMenu(s, url, at) {
-  const v = s.cwd ? await agentsOf(s.cwd) : null,
-    pr = (s.prs || []).find(p => p.url === url);
+  const v = s.cwd ? await agentsOf(s.cwd) : null;
+  const pr = (s.prs || []).find(p => p.url === url);
+
   const go = a => {
     prefs.prAgent = a;
     savePrefs();
     chatOnPr(s, url, at, a);
   };
+
   const rows = [
     {
       t: 'A chat on its branch',
@@ -703,11 +854,14 @@ async function prChatMenu(s, url, at) {
       fn: () => chatOnPr(s, url, at),
     },
   ];
+
   if (v && !v.launchers) {
     const last = v.agents.find(a => a.name === prefs.prAgent);
+
     const offer = [
       ...new Set([last, ...v.agents.filter(a => a.source === 'folder' || a.source === 'user')].filter(Boolean)),
     ].slice(0, 4);
+
     rows.push(
       { hr: true },
       ...offer.map(a => ({
@@ -724,6 +878,8 @@ async function prChatMenu(s, url, at) {
       },
     );
   }
+
   const rc = at.getBoundingClientRect();
+
   ctxShow(rows, rc.right - 360, rc.bottom + 4, 'prchat');
 }

@@ -15,6 +15,7 @@ const fifo = path => {
   execFileSync('/usr/bin/mkfifo', ['-m', '600', path]);
   return path;
 };
+
 /** Whether anyone has the FIFO open to read: a non-blocking open for writing succeeds only then. */
 function readBy(path) {
   try {
@@ -30,8 +31,9 @@ test(
   'the peer keys, the shell snapshots, the prompt history and the team mailboxes are never opened',
   { timeout: 40_000 },
   async () => {
-    const p = spawn('sleep', ['120'], { stdio: 'ignore' }),
-      dir = tmpDir('peix-fx-');
+    const p = spawn('sleep', ['120'], { stdio: 'ignore' });
+    const dir = tmpDir('peix-fx-');
+
     const fx = makeFixture(dir, [
       {
         cwd: '/tmp/acme/storefront',
@@ -42,36 +44,47 @@ test(
         live: { pid: p.pid, name: 'storefront-1' },
       },
     ]);
+
     const [chat] = fx.chats;
+
     const { team } = teamFiles({
       dir,
       lead: chat,
       mates: [{ name: 'reviewer', summary: 'Review it', work: 'Read the diff' }],
     });
+
     mkdirSync(join(dir, 'shell-snapshots'));
     mkdirSync(join(dir, 'teams', team, 'inboxes'));
+
     const wires = [
       fifo(join(dir, 'sessions', `${p.pid}.${'ab'.repeat(32)}.key`)),
       fifo(join(dir, 'shell-snapshots', 'snapshot-zsh-1761900000000-abcdef.sh')),
       fifo(join(dir, 'history.jsonl')),
       fifo(join(dir, 'teams', team, 'inboxes', 'team-lead.json')),
     ];
+
     const srv = await startTestServer({ claudeDir: fx.dir });
+
     try {
       const sum = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+
       await waitFor(async () => (await sum())?.alive && (await sum())?.agentRows, {
         what: 'the chat alive, read from the .json beside the key, and its team',
       });
+
       // the registry read on an event as well as on the poll: another file beside them
       writeFileSync(join(dir, 'sessions', '1.json'), JSON.stringify({ pid: 1, sessionId: 'nobody', cwd: '/tmp' }));
       await await srv.api(`api/sessions/${chat.id}/messages`);
       const polls = Date.now();
+
       await waitFor(() => Date.now() - polls > 3000, { what: 'two registry polls' });
+
       assert.equal(
         (await srv.api('api/sessions')).status,
         200,
         'the server answers: nothing of it is stuck opening a FIFO',
       );
+
       for (const w of wires) assert.equal(readBy(w), false, `never opened: ${w.slice(dir.length)}`);
     } finally {
       await srv.stop();

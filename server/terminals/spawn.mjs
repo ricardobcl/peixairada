@@ -46,6 +46,7 @@ let termSeq = 0;
 export const LOGIN_SHELL = (() => {
   try {
     const sh = userInfo().shell;
+
     return sh && existsSync(sh) ? sh : '/bin/zsh';
   } catch {
     return '/bin/zsh';
@@ -62,6 +63,7 @@ const VIM_BIN = process.env.VIM_BIN || 'vim';
 // folder, once per source; no developer tools, none — a drawer starts as before. DISCLAIM=off for none.
 const DISCLAIM_SRC = join(ROOT, 'lib', 'disclaim.c');
 let disclaimAt = null;
+
 function disclaimBin() {
   if (process.platform !== 'darwin' || process.env.DISCLAIM === 'off') return Promise.resolve(null);
   return (disclaimAt ??= buildDisclaim().catch(e => {
@@ -69,32 +71,44 @@ function disclaimBin() {
     return null;
   }));
 }
+
 async function buildDisclaim() {
   const src = readFileSync(DISCLAIM_SRC);
   const dir = privateDir(join(dirname(STATE_FILE), 'bin'));
   const out = join(dir, `disclaim-${createHash('sha256').update(src).digest('hex').slice(0, 12)}`);
+
   if (!canRun(out)) {
     const cc = findBin('cc', "a drawer's claude cannot ask macOS for the microphone");
+
     if (!cc) return null;
+
     // /usr/bin/cc with no developer tools asks to install them, in a dialog: not a server's to raise, unasked
     if (cc === '/usr/bin/cc') {
       const dev = await execFileP('/usr/bin/xcode-select', ['-p'], { timeout: 10_000 }).then(
         r => r.stdout.trim(),
         () => '',
       );
-      if (!dev || !existsSync(dev))
+
+      if (!dev || !existsSync(dev)) {
         throw new Error('no developer tools to build lib/disclaim.c (xcode-select --install)');
+      }
     }
+
     const tmp = `${out}.${process.pid}`;
+
     await execFileP(cc, ['-O2', '-o', tmp, DISCLAIM_SRC], { timeout: 120_000 });
     renameSync(tmp, out);
   }
+
   // the build an older source made: a claude it started has exec'd past it
-  for (const f of readdirSync(dir))
-    if (/^disclaim-[0-9a-f]{12}$/.test(f) && join(dir, f) !== out)
+  for (const f of readdirSync(dir)) {
+    if (/^disclaim-[0-9a-f]{12}$/.test(f) && join(dir, f) !== out) {
       try {
         unlinkSync(join(dir, f));
       } catch {}
+    }
+  }
+
   return out;
 }
 
@@ -110,6 +124,7 @@ async function buildDisclaim() {
  * Only the words you wrote in the board's Send box; never logged.
  */
 const PROMPT_MAX = 100_000;
+
 export async function spawnTerm({
   cwd,
   sessionId = null,
@@ -125,8 +140,10 @@ export async function spawnTerm({
   claudePid = null,
   agent = null,
 }) {
-  if (!termsAvailable())
+  if (!termsAvailable()) {
     return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
+  }
+
   const bin = editor
     ? VIM_BIN
     : shell
@@ -134,33 +151,44 @@ export async function spawnTerm({
       : task
         ? findBin('task', 'Taskfile launchers are disabled')
         : claudeBin(); // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
-  if (!bin)
+
+  if (!bin) {
     return {
       code: 503,
       error: task
         ? 'task binary not found — set TASK_BIN to its path'
         : 'claude binary not found — set CLAUDE_BIN to its path',
     };
+  }
+
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
-  if (cwd === SCRATCH_DIR)
+
+  if (cwd === SCRATCH_DIR) {
     try {
       mkdirSync(SCRATCH_DIR, { recursive: true });
-    } catch {} // the no-folder chats' own: made on the first, and again after it was deleted
+    } catch {}
+  } // the no-folder chats' own: made on the first, and again after it was deleted
+
   // not there — or being cloned: the page clones it (`clone`, the repo it was a checkout of) and asks again (2026-10-09);
   // a chat's own folder gone from a repo that is there is put back, or the chat starts in what is left of it (2026-10-19)
   let back = null;
+
   if (sessionId && !existsSync(cwd) && !cloneUnder(cwd) && !cloneFor(cwd)) {
     back = await putBack(cwd, sessions.get(sessionId));
+
     if (back) {
       console.log(
         `[peixairada] ${tildePath(cwd)} is gone — ${back.made ? `its worktree made again, ${back.branch ? `on ${back.branch}` : 'detached'}` : back.tree ? `${back.branch} is out in ${tildePath(back.tree)}` : `started in ${tildePath(back.cwd)}${back.why ? `: ${back.why}` : ''}`}`,
       );
+
       back = { from: cwd, ...back };
       cwd = back.cwd;
     }
   }
+
   if (!existsSync(cwd) || cloneUnder(cwd)) {
     const clone = cloneFor(cwd);
+
     return {
       code: 409,
       missing: cwd,
@@ -172,12 +200,15 @@ export async function spawnTerm({
           : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Projects)`,
     };
   }
+
   // `newId` (2026-10-31): a new chat under an id the board picked — `--session-id` — so it is known before claude registers;
   // with `fork`, a copy of that chat under it (Claude Code's --fork-session: the chat itself is not written to)
   // `attach` (2026-11-04): a background session in this drawer, its worker's pid `claudePid`: the client registers nothing, and ending it leaves the session running
   // a chat's id is a file's name, and one that began with - would be read as an option of claude's (2026-11-06)
-  if ([sessionId, fork, newId].some(id => id != null && !/^[\w][\w-]{0,127}$/.test(String(id))))
+  if ([sessionId, fork, newId].some(id => id != null && !/^[\w][\w-]{0,127}$/.test(String(id)))) {
     return { code: 400, error: 'not a chat id' };
+  }
+
   const args = editor
     ? ['.']
     : task
@@ -193,14 +224,18 @@ export async function spawnTerm({
               : newId
                 ? ['--session-id', newId]
                 : [];
+
   // `agent` (2026-11-06): a new chat as that agent, '' as no agent over a folder's own; a resume never — Claude Code puts the
   // transcript's back itself, and a flag beside --resume would override it
-  if (typeof agent === 'string' && !editor && !task && !shell && !attach && !sessionId && !fork)
+  if (typeof agent === 'string' && !editor && !task && !shell && !attach && !sessionId && !fork) {
     args.push('--agent', agent);
+  }
+
   const said = args.map(a => (a === '' ? "''" : a)).join(' '); // the log's: the prompt is yours, and not the log's to keep
+
   // the words alone (2026-11-06): a handoff quotes Claude's replies and PR titles, and a control character in them is
   // nobody's to send — a carriage return, an escape — so only tabs and newlines stay
-  if (prompt && !editor && !task && !shell)
+  if (prompt && !editor && !task && !shell) {
     args.push(
       '--',
       String(prompt)
@@ -208,21 +243,28 @@ export async function spawnTerm({
         .replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '')
         .slice(0, PROMPT_MAX),
     );
+  }
+
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
   const sock = join(TERMS_DIR, `${id}.sock`);
-  if (Buffer.byteLength(sock) > SOCK_MAX)
+
+  if (Buffer.byteLength(sock) > SOCK_MAX) {
     return {
       code: 500,
       error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder`,
     };
+  }
+
   try {
     privateDir(TERMS_DIR);
   } catch (e) {
     return { code: 500, error: e.message };
   }
+
   // claude itself, never a zsh, vim or a launcher: what they run answers to this server as before (see disclaimBin)
   const disclaim = !shell && !editor && !task ? await disclaimBin() : null;
+
   const spec = {
     id,
     sessionId: sessionId || (!shell && !editor && !task && newId) || null,
@@ -241,22 +283,27 @@ export async function spawnTerm({
     ...(disclaim && { disclaim }),
     startedAt: new Date().toISOString(),
   };
+
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
+
   try {
     writeFileSync(join(TERMS_DIR, `${id}.json`), JSON.stringify(spec));
     const log = openSync(logFile, 'a');
+
     child = spawn(process.execPath, [HOLDER, TERMS_DIR, id], {
       cwd,
       env: drawerEnv(),
       detached: true,
       stdio: ['ignore', log, log],
     });
+
     child.unref();
     closeSync(log);
   } catch (e) {
     return { code: 500, error: `could not start a terminal holder: ${e.message}` };
   }
+
   const t = {
     ...spec,
     pid: null,
@@ -267,7 +314,9 @@ export async function spawnTerm({
     snapQ: [],
     lastSnap: null,
   };
+
   const t0 = Date.now();
+
   for (;;) {
     try {
       await connectHolder(t);
@@ -275,30 +324,39 @@ export async function spawnTerm({
     } catch (e) {
       if (child.exitCode !== null) {
         let why = '';
+
         try {
           why = JSON.parse(readFileSync(join(TERMS_DIR, `${id}.json`), 'utf8')).error || '';
         } catch {}
+
         return { code: 500, error: why || `the terminal holder exited (${child.exitCode}) — see ${logFile}` };
       }
+
       if (Date.now() - t0 > HOLDER_START_MS) {
         // given up on, it is ended — or it comes up late with a claude in it that nothing tracks until the next boot
         try {
           process.kill(child.pid, 'SIGTERM');
         } catch {}
+
         return {
           code: 500,
           error: `the terminal holder did not answer in ${HOLDER_START_MS / 1000} s (${e.message}) — see ${logFile}`,
         };
       }
+
       await new Promise(r => setTimeout(r, 100));
     }
   }
+
   terms.set(id, t);
+
   console.log(
-    `[peixairada] terminal ${id}: ${editor || (shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (said ? ' ' + said : '') + (args.includes('--') ? ' -- <a prompt of yours>' : ''))} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`,
+    `[peixairada] terminal ${id}: ${editor || (shell ? basename(LOGIN_SHELL) : task ? `task ${task}` : `claude${said ? ` ${said}` : ''}${args.includes('--') ? ' -- <a prompt of yours>' : ''}`)} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`,
   );
+
   broadcast('terminal', termSummary(t));
   const s = spec.sessionId && sessions.get(spec.sessionId);
+
   if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t), ...(back && { back }) };
 }
@@ -307,6 +365,7 @@ export async function spawnTerm({
  *  one after another, every holder that does not answer cost its whole wait before the board could start. */
 export async function adoptHolders() {
   if (!existsSync(TERMS_DIR)) return;
+
   // a folder not this user's alone is nobody's drawers to adopt (2026-11-06): its specs would name sockets of anyone's
   try {
     privateDir(TERMS_DIR);
@@ -314,22 +373,28 @@ export async function adoptHolders() {
     console.error(`[peixairada] no drawers adopted: ${e.message}`);
     return;
   }
+
   await Promise.allSettled(
     readdirSync(TERMS_DIR)
       .filter(f => f.endsWith('.json'))
       .map(adoptHolder),
   );
 }
+
 async function adoptHolder(f) {
   let meta;
+
   try {
     meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8'));
   } catch {
     return;
   }
+
   const id = meta.id || f.slice(0, -5);
   const n = Number((id.match(/^t(\d+)-/) || [])[1]);
+
   if (n > termSeq) termSeq = n;
+
   const t = {
     id,
     sessionId: meta.sessionId ?? null,
@@ -354,28 +419,36 @@ async function adoptHolder(f) {
     snapQ: [],
     lastSnap: null,
   };
+
   try {
     await connectHolder(t);
     terms.set(id, t);
     noteEnv(t.sessionId, t.task); // a launcher's drawer from before the record existed, or from before a restart
-    if (t.exited !== null)
+
+    if (t.exited !== null) {
       setTimeout(() => {
         if (terms.get(id) === t) terms.delete(id);
       }, TERM_LINGER_MS).unref();
+    }
+
     console.log(
-      `[peixairada] terminal ${id}: adopted — pid ${t.pid}, holder ${t.holderPid}${t.exited !== null ? ', exited ' + t.exited : ''}${t.sessionId ? ', chat ' + t.sessionId : ''}`,
+      `[peixairada] terminal ${id}: adopted — pid ${t.pid}, holder ${t.holderPid}${t.exited !== null ? `, exited ${t.exited}` : ''}${t.sessionId ? `, chat ${t.sessionId}` : ''}`,
     );
   } catch (e) {
     if (meta.holderPid && pidAlive(meta.holderPid)) {
       console.log(
         `[peixairada] terminal ${id}: holder ${meta.holderPid} is alive but not answering (${e.message}) — left alone`,
       );
+
       return;
     }
-    for (const ext of ['.json', '.sock', '.log'])
+
+    for (const ext of ['.json', '.sock', '.log']) {
       try {
         unlinkSync(join(TERMS_DIR, id + ext));
       } catch {}
+    }
+
     console.log(`[peixairada] terminal ${id}: its holder is gone — cleaned up`);
   }
 }
@@ -384,28 +457,35 @@ async function adoptHolder(f) {
  *  and only when a process in the registry is not in the last table (2026-10-03: a `ps` blocked the server ~20 ms on
  *  every registry write by any claude, for as long as a launcher sat at an SSO prompt). Parents do not change. */
 let ppidTable = null;
+
 export function parentPids(need = []) {
   if (ppidTable && need.every(p => ppidTable.has(p))) return ppidTable;
   const m = new Map();
+
   try {
     for (const l of execFileSync('/bin/ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' }).split('\n')) {
       const [p, pp] = l.trim().split(/\s+/).map(Number);
+
       if (p) m.set(p, pp);
     }
   } catch (e) {
     console.error(`[peixairada] ps: ${e.message}`);
   }
+
   return (ppidTable = m);
 }
+
 /** A drawer whose claude is not known yet: its PTY's process is in no registry file, and it has none tied. Behind a launcher, or
  *  a `claude` that does not exec (2026-11-04: a wrapper script's drawer stayed on the chat it began when /clear moved its claude on,
  *  showing the new chat under the old card, the new card with no drawer). An attach's is the worker it was given. */
 export const untied = (t, regPids) => !t.shell && t.exited === null && !t.claudePid && !regPids.has(t.pid);
+
 const descends = (pid, from, ppids) => {
   if (!ppids) return false;
   for (let p = ppids.get(pid), i = 0; p > 1 && i < 64; p = ppids.get(p), i++) if (p === from) return true;
   return false;
 };
+
 /**
  * A new chat has no session id until claude registers; the pid ties the two together, and the holder is told. The PTY's
  * process *is* claude (`exec`) — except behind a launcher, where it is `task` and claude a descendant (task → sh →
@@ -424,26 +504,31 @@ function noteEnv(sessionId, task) {
   if (!indexing) for (const id of Object.keys(envs)) if (!sessions.has(id)) delete envs[id];
   saveState();
 }
+
 export function linkTermToRegistry(pid, s, ppids = null, regPids = new Set()) {
   for (const t of terms.values()) {
     if (t.shell) continue;
     const below = untied(t, regPids) && descends(pid, t.pid, ppids);
+
     if (below && t.sessionId === s.id) {
       t.claudePid = pid;
       holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
     } // a resume's, on the chat it was started for: known now, for its /clear
+
     // a branch's drawer is not the chat it copied while it starts (2026-10-31); once on its own id, a /resume of that chat
     // is a move as any other (2026-11-04: the drawer stayed on the branch and its claude showed on the chat, with no way to it)
     if (t.fork && t.sessionId === s.id && (t.pid === pid || t.claudePid === pid)) {
       t.fork = null;
       holderSend(t, { t: 'meta', sessionId: s.id, fork: null });
     }
+
     if (t.sessionId === s.id || t.fork === s.id) continue;
     // the PTY's own process; the claude it was tied to (behind a launcher that is not the PTY's — /clear there gives
     // that claude a new id, and the drawer has to follow it as it does any other, 2026-10-03); or, not yet tied, a
     // claude below it
     if (t.pid !== pid && !(t.exited === null && t.claudePid === pid) && !below) continue;
     const was = sessions.get(t.sessionId); // the chat it is leaving — /clear gave this pid a new id
+
     t.sessionId = s.id;
     t.claudePid = pid;
     holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
@@ -453,28 +538,36 @@ export function linkTermToRegistry(pid, s, ppids = null, regPids = new Set()) {
     // The chat it left has to be told too, or its card keeps a drawer that is somewhere else now and only
     // something unrelated happening to it ever clears that (2026-09-22, found through drawer-clear's flake).
     if (!was || was === s) continue;
+
     // Its zsh tabs go with the drawer (2026-10-14): left on a chat /clear ticks done, they were out of reach of the
     // chat the drawer runs, and nothing ends a zsh — each ⌥⌘T after a /clear made another. Not while the chat left
     // still has a claude drawer of its own.
-    if (![...terms.values()].some(o => o.sessionId === was.id && !o.shell && o.exited === null))
-      for (const z of terms.values())
+    if (![...terms.values()].some(o => o.sessionId === was.id && !o.shell && o.exited === null)) {
+      for (const z of terms.values()) {
         if (z.shell && z.sessionId === was.id && z.exited === null) {
           z.sessionId = s.id;
           holderSend(z, { t: 'meta', sessionId: s.id });
           broadcast('terminal', termSummary(z));
         }
+      }
+    }
+
     schedulePush(was);
   }
 }
+
 /** One spawn per chat and kind at a time: a drawer is in `terms` only once its holder has answered, a few hundred ms
  *  in, and a second ⌥⌘C meanwhile started a second `claude --resume` on the same transcript (2026-10-03). The second
  *  ask gets the first one's answer. */
 const spawning = new Map(); // `<chat>:claude` | `<chat>:shell` -> the spawn under way
+
 export const spawnOnce = (key, run) => {
   let p = spawning.get(key);
+
   if (!p) spawning.set(key, (p = run().finally(() => spawning.delete(key))));
   return p;
 };
+
 /** End the process in a drawer; an exited one is let go at once instead of lingering. Vim is asked to quit, as you would
  *  (2026-10-21): with nothing unsaved it does, and its tab goes; with something, it stays and says so — never killed
  *  over your edits. */

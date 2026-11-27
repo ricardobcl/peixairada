@@ -17,26 +17,33 @@ const refitted = (t, cols, rows) => new Promise(r => refit(t, rows, () => t.resi
 /** A screen with scrollback behind it and a live region at the bottom whose cursor is two rows above the end. */
 async function screen({ rows = 24, lines = 100 } = {}) {
   const t = new Terminal({ cols: 80, rows, scrollback: 5000, allowProposedApi: true });
+
   for (let i = 0; i < lines; i++) await write(t, `L${i}\r\n`);
   await write(t, 'PROMPT\r\nstatus1\r\nstatus2\x1b[2A\x1b[3C');
   return t;
 }
+
 const view = t => {
-  const b = t.buffer.active,
-    out = [];
+  const b = t.buffer.active;
+  const out = [];
+
   for (let i = 0; i < t.rows; i++) out.push((b.getLine(b.viewportY + i)?.translateToString(true) || '').trim());
   return out;
 };
+
 const lastFilled = t => {
   let last = -1;
+
   view(t).forEach((r, i) => {
     if (r) last = i;
   });
+
   return last;
 };
 
 test('a grow pulls the scrollback down: the bottom row still has the live region on it', async () => {
   const t = await screen();
+
   assert.equal(lastFilled(t), 23, 'the screen starts full');
   await refitted(t, 80, 60);
   assert.equal(lastFilled(t), 59, 'still full after growing by 36 rows');
@@ -46,6 +53,7 @@ test('a grow pulls the scrollback down: the bottom row still has the live region
 
 test('without it xterm appends blank rows instead — the bug, so the test means something', async () => {
   const t = await screen();
+
   t.resize(80, 60);
   await write(t, '');
   assert.equal(lastFilled(t), 23, 'the session is stuck at the top');
@@ -54,6 +62,7 @@ test('without it xterm appends blank rows instead — the bug, so the test means
 
 test('a shrink is left alone: xterm drops the rows below the cursor, the screen stays full', async () => {
   const t = await screen({ rows: 60, lines: 200 });
+
   await refitted(t, 80, 20);
   assert.equal(lastFilled(t), 19, 'nothing blank at the bottom');
   // the two status rows below the cursor are what a shrink trims; the SIGWINCH repaint draws them again
@@ -62,6 +71,7 @@ test('a shrink is left alone: xterm drops the rows below the cursor, the screen 
 
 test('nothing to pull — no scrollback yet — is a plain resize', async () => {
   const t = new Terminal({ cols: 80, rows: 24, scrollback: 5000, allowProposedApi: true });
+
   await write(t, 'hello\r\nthere\x1b[1A');
   await refitted(t, 80, 40);
   assert.equal(t.rows, 40);
@@ -70,6 +80,7 @@ test('nothing to pull — no scrollback yet — is a plain resize', async () => 
 
 test('grown twice over, the way a window that opens small and then restores does it', async () => {
   const t = await screen({ rows: 20 });
+
   for (const rows of [30, 45, 71]) await refitted(t, 80, rows);
   assert.equal(t.rows, 71);
   assert.equal(lastFilled(t), 70, 'no blank tail has built up');
@@ -80,6 +91,7 @@ test('done comes once the parked resize has landed, so a shrink that follows a g
   // the holder's order (lib/termhold.mjs, resizeScreen): the next resize waits for the last one's done (2026-10-03)
   const t = await screen();
   const sizes = [];
+
   await new Promise(done =>
     refit(
       t,
@@ -91,6 +103,7 @@ test('done comes once the parked resize has landed, so a shrink that follows a g
       },
     ),
   );
+
   await write(t, '');
   assert.deepEqual(sizes, [[80, 30]], 'the grow was applied before done');
   assert.deepEqual([t.cols, t.rows], [70, 8], 'the shrink after it is what the screen ends at');
@@ -100,12 +113,16 @@ test('done comes once the parked resize has landed, so a shrink that follows a g
 const page = await import('node:fs').then(({ readFileSync }) =>
   readFileSync(new URL('../public/js/chat/xterm.js', import.meta.url), 'utf8'),
 );
+
 const refitTerm = new Function(
   `return ${page.match(/function refitTerm\(xt, rows, resize, done = \(\) => \{\}\) \{\n[\s\S]*?\n\}\n/)[0]}`,
 )();
+
 const pageRefitted = (t, cols, rows) => new Promise(r => refitTerm(t, rows, () => t.resize(cols, rows), r));
+
 const cursorLine = t => {
   const b = t.buffer.active;
+
   return b
     .getLine(b.baseY + b.cursorY)
     .translateToString(true)
@@ -118,9 +135,12 @@ test('a scroll region stops the park at its bottom margin: the cursor comes back
     ["the page's refitTerm", pageRefitted],
   ]) {
     const t = await screen({ rows: 20, lines: 60 });
+
     await write(t, '\x1b[1;15r\x1b[8;1H'); // a DECSTBM renderer's region over the top 15 rows, the cursor on row 8 in it
     const before = cursorLine(t);
+
     await grow(t, 80, 30);
+
     assert.equal(
       cursorLine(t),
       before,
@@ -131,15 +151,19 @@ test('a scroll region stops the park at its bottom margin: the cursor comes back
 
 test("the page's copy parks from where the cursor is once what was written before has landed (2026-10-14)", async () => {
   const t = await screen({ rows: 20, lines: 60 });
+
   t.write('\x1b[5A'); // queued, not parsed yet: the cursor read at the call is 5 rows too low
   await pageRefitted(t, 80, 30);
   const ref = await screen({ rows: 20, lines: 60 });
+
   await write(ref, '\x1b[5A');
   await refitted(ref, 80, 30);
+
   assert.equal(
     cursorLine(t),
     cursorLine(ref),
     "on the same line as the holder's screen, which reads it behind the queue",
   );
+
   assert.deepEqual(view(t), view(ref), 'and the same screen');
 });

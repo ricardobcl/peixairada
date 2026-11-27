@@ -10,10 +10,11 @@ export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact', 
 const MIN = 60_000;
 
 export default async function (ctx) {
-  const now = Date.now(),
-    root = realpathSync(tmpDir('peix-agc-')),
-    cwd = join(root, 'infra'),
-    at = ms => new Date(now - ms);
+  const now = Date.now();
+  const root = realpathSync(tmpDir('peix-agc-'));
+  const cwd = join(root, 'infra');
+  const at = ms => new Date(now - ms);
+
   const launched = (agentId, description, extra = {}) => ({
     status: 'async_launched',
     isAsync: true,
@@ -22,7 +23,9 @@ export default async function (ctx) {
     prompt: 'go',
     ...extra,
   });
+
   const NOTE = 'Async agent launched successfully. (This tool result is internal metadata.)';
+
   const { chats } = makeFixture(ctx.fixture.dir, [
     {
       cwd,
@@ -120,8 +123,10 @@ export default async function (ctx) {
       ],
     },
   ]);
-  const lead = chats[0],
-    log = sel => `#log ${sel}`;
+
+  const lead = chats[0];
+  const log = sel => `#log ${sel}`;
+
   agentFiles({
     dir: ctx.fixture.dir,
     lead,
@@ -163,16 +168,20 @@ export default async function (ctx) {
     what: 'its card',
     timeout: 20000,
   });
+
   ctx.assert.equal(
     await ctx.evaluate(`window.peix.session('${lead.id}').agentRows`),
     null,
     'no claude runs on it: its card has no rows',
   );
+
   await ctx.openChat(lead.id);
   await ctx.waitFor(`document.querySelectorAll('${log('.agcall')}').length === 5`, { what: 'the calls’ lines' });
+
   const lines = await ctx.evaluate(
     `[...document.querySelectorAll('${log('.agcall')}')].map(b => ({ who: b.querySelector('b').textContent, said: b.querySelector('span').textContent, ag: b.dataset.ag || null, off: b.disabled, folded: !!b.closest('details') }))`,
   );
+
   ctx.assert.deepEqual(
     lines,
     [
@@ -184,56 +193,69 @@ export default async function (ctx) {
     ],
     'a line each, in order, out of the folds; the failed call opens nothing',
   );
+
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelectorAll('${log('.agcall')}')[4].querySelector('.tst').className`),
     'tst err',
     'and says so',
   );
+
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelectorAll('${log('.agcall')}')[4].title`),
     'Could not start it',
     'why',
   );
+
   const folds = await ctx.evaluate(
     `[...document.querySelectorAll('${log('.toolgroup > summary')}')].map(s => s.textContent)`,
   );
+
   ctx.assert.deepEqual(
     folds.filter(t => /Agent/.test(t)),
     [],
     'no Agent left in a fold',
   );
+
   ctx.assert.equal(folds.filter(t => /Skill/.test(t)).length, 2, 'a Skill’s call stays in its run');
+
   ctx.assert.equal(
     await ctx.evaluate(`[...document.querySelectorAll('${log('.tool')}')].some(t => /launched/.test(t.textContent))`),
     false,
     'the launch’s words are nobody’s',
   );
+
   await ctx.settle();
   await ctx.shot('agent-call-dark');
 
   // a click: that agent's transcript beside the chat; by name where it has one
   await ctx.evaluate(`document.querySelectorAll('${log('.agcall')}')[1].click()`);
+
   await ctx.waitFor(
     `!document.querySelector('#agv').hidden && /Three gateways/.test(document.querySelector('#agv .agvlog').textContent)`,
     { what: 'its transcript, from its call' },
   );
+
   ctx.assert.match(
     await ctx.evaluate(`document.querySelector('#agv .agvh').textContent`),
     /pricing.*done · read-only/,
     'named, ended, read-only',
   );
+
   ctx.assert.deepEqual(
     await ctx.evaluate(`[...document.querySelectorAll('#agv .toolgroup > summary')].map(s => s.textContent)`),
     ['1 tool call · Bash'],
     'its report is words, and nothing is left of the call that handed it back',
   );
+
   await ctx.settle();
   await ctx.shot('agent-call-tab');
   // the skill's, by its name, in the same place
   await ctx.evaluate(`document.querySelectorAll('${log('.agcall')}')[2].click()`);
+
   await ctx.waitFor(`/Twelve findings/.test(document.querySelector('#agv .agvlog').textContent)`, {
     what: 'the skill’s agent',
   });
+
   ctx.assert.equal(
     await ctx.evaluate(
       `[...document.querySelectorAll('.ptab[data-tab^="agent:"]')].map(t => t.textContent.trim()).join()`,
@@ -241,14 +263,18 @@ export default async function (ctx) {
     'pricing,code-review',
     'a tab each',
   );
+
   // again: the tab it has
   await ctx.evaluate(`document.querySelectorAll('${log('.agcall')}')[1].click()`);
+
   await ctx.waitFor(`/Three gateways/.test(document.querySelector('#agv .agvlog').textContent)`, {
     what: 'back on the first',
   });
+
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('.ptab[data-tab^="agent:"]').length`), 2, 'no third');
   // one whose file has gone
   await ctx.evaluate(`document.querySelectorAll('${log('.agcall')}')[3].click()`);
+
   await ctx.waitFor(`document.querySelector('#agv .agvlog').textContent === 'Its transcript is gone.'`, {
     what: 'says so',
   });
@@ -260,6 +286,7 @@ export default async function (ctx) {
 
   // live: the line first, the result ties it, in place; a fold after it is a new one
   const before = await ctx.evaluate(`document.querySelectorAll('${log('.toolgroup')}').length`);
+
   const [use, res] = toolLines({
     id: lead.id,
     cwd,
@@ -268,32 +295,40 @@ export default async function (ctx) {
     result: NOTE,
     toolUseResult: launched('sec', 'One more look'),
   });
-  appendFileSync(lead.file, JSON.stringify(use) + '\n');
+
+  appendFileSync(lead.file, `${JSON.stringify(use)}\n`);
+
   await ctx.waitFor(
     `[...document.querySelectorAll('${log('.agcall')}')].at(-1)?.querySelector('span').textContent === 'One more look'`,
     { what: 'the line, at once', timeout: 8000 },
   );
+
   ctx.assert.equal(
     await ctx.evaluate(`[...document.querySelectorAll('${log('.agcall')}')].at(-1).disabled`),
     true,
     'nothing to open yet',
   );
+
   await ctx.evaluate(`[...document.querySelectorAll('${log('.agcall')}')].at(-1)._mark = 1`);
-  appendFileSync(lead.file, JSON.stringify(res) + '\n');
+  appendFileSync(lead.file, `${JSON.stringify(res)}\n`);
+
   await ctx.waitFor(`[...document.querySelectorAll('${log('.agcall')}')].at(-1).dataset.ag === 'sec'`, {
     what: 'tied by its result',
     timeout: 8000,
   });
+
   ctx.assert.equal(
     await ctx.evaluate(`[...document.querySelectorAll('${log('.agcall')}')].at(-1)._mark`),
     1,
     'in place',
   );
+
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelectorAll('${log('.toolgroup')}').length`),
     before,
     'no fold for it',
   );
+
   await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
   await ctx.settle();
   await ctx.shot('agent-call-light');

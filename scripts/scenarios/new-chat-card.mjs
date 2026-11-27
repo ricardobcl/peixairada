@@ -23,44 +23,59 @@ export default async function (ctx) {
   const out = {};
   const [a, b] = ctx.fixture.chats; // b's folder is the temp dir: no Taskfile, so ⌥⌘N ⏎ ⏎ starts claude without a question
   const known = [a.id, b.id];
+
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the two fixture cards' });
+
   // ⌥⌘N opens on the project in view (＋ went on 2026-09-28): select b's folder the way the page remembers it, and load again
   await ctx.evaluate(
     `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(b.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
   );
+
   await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: "b's folder in view" });
+
   // ⌥⌘N, ⏎ on the project it opened on, ⏎ on ＋ new chat
   const newChat = async () => {
     await ctx.key('KeyN');
+
     await ctx.waitFor(
       `document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel .cur')?.textContent === 'current'`,
       { what: 'the project step on the project in view' },
     );
+
     const enter = () =>
       ctx.evaluate(
         `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`,
       );
+
     await enter();
+
     await ctx.waitFor(`document.querySelector('#picklist .pkrow.sel')?.textContent.includes('new chat')`, {
       what: 'the chats step, ＋ new chat selected',
     });
+
     await enter();
   };
+
   out.ready0 = Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`));
 
   await newChat();
+
   await ctx.waitFor(
     `(s => s.current && !${JSON.stringify(known)}.includes(s.current) && s.termSession === s.current)(window.peix.state())`,
     { what: 'the board on the new chat, its drawer running it', timeout: 20_000 },
   );
+
   const id = (await ctx.peix('state()')).current;
+
   // The card, before anything was typed: the session push follows the terminal event by a beat, so wait for it.
   await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id=${JSON.stringify(id)}]')`, {
     what: 'a card for the new chat',
     timeout: 5000,
   });
+
   out.fresh = await cardOf(ctx, id);
+
   out.session = await ctx.peix(`session(${JSON.stringify(id)})`).then(s => ({
     title: s.title,
     startedAt: s.startedAt,
@@ -69,6 +84,7 @@ export default async function (ctx) {
     status: s.status,
     file: s.file,
   }));
+
   out.ready1 = Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`));
   await ctx.waitPrompt();
   await ctx.shot('fresh', { x: 0, y: 0, width: 1270, height: 600 });
@@ -82,24 +98,31 @@ export default async function (ctx) {
   ctx.assert.equal(out.fresh.snips, 0, 'no words on it yet');
   ctx.assert.equal(out.fresh.tick, true, 'the ✓ is there to clean it up');
   ctx.assert.equal(out.ready1, out.ready0 + 1, 'the ready count took it in');
+
   ctx.assert.ok(
     out.session.startedAt && !out.session.lastActivity && out.session.alive && !out.session.file,
     `the summary: a live chat with a start and no transcript — ${JSON.stringify(out.session)}`,
   );
+
   ctx.assert.equal(out.session.status, 'idle');
 
   // The first prompt titles the card, which stays where it was — the same card, not a second one.
   const type = text => ctx.type(text);
+
   await type('hello from the board');
+
   await ctx.waitFor(`window.peix.session(${JSON.stringify(id)})?.lastPrompt === 'hello from the board'`, {
     what: 'the prompt on the summary',
     timeout: 15_000,
   });
+
   await ctx.sleep(300);
   out.spoken = await cardOf(ctx, id);
+
   out.after = await ctx
     .peix(`session(${JSON.stringify(id)})`)
     .then(s => ({ title: s.title, startedAt: s.startedAt, lastActivity: s.lastActivity, file: s.file }));
+
   await ctx.shot('spoken', { x: 0, y: 0, width: 1270, height: 600 });
   ctx.assert.equal(out.spoken.n, 1, 'still one card');
   ctx.assert.equal(out.spoken.title, 'hello from the board', 'the prompt is its title now');
@@ -115,33 +138,44 @@ export default async function (ctx) {
     `window.peix.session(${JSON.stringify(id)})?.status === 'idle' && !document.querySelector('#slist > .gsep.lane.working')`,
     { what: "the first chat's reply landed", timeout: 10_000 },
   );
+
   const ready2 = Number(
     await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`),
   );
+
   await newChat();
+
   await ctx.waitFor(
     `(s => s.current && !${JSON.stringify([...known, id])}.includes(s.current) && s.termSession === s.current)(window.peix.state())`,
     { what: 'the board on a second new chat', timeout: 20_000 },
   );
+
   const id2 = (await ctx.peix('state()')).current;
+
   await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}] .act[data-act=done]')`, {
     what: "the second chat's card, with its ✓",
     timeout: 5000,
   });
+
   await ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}] .act').click()`);
+
   await ctx.waitFor(`!document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}]')`, {
     what: 'the ticked empty card gone',
     timeout: 5000,
   });
+
   await waitFor(async () => (await ctx.server.terminals()).every(t => t.sessionId !== id2 || t.exited !== null), {
     what: "the ticked chat's drawer ended",
     timeout: 10_000,
   });
+
   await ctx.waitFor(`(s => s && !s.alive && s.done)(window.peix.session(${JSON.stringify(id2)}))`, {
     what: 'its claude gone, the chat done',
     timeout: 10_000,
   });
+
   await ctx.sleep(300);
+
   out.ticked = {
     card: await cardOf(ctx, id2),
     first: await cardOf(ctx, id),
@@ -153,18 +187,22 @@ export default async function (ctx) {
       ),
     ),
   };
+
   await ctx.shot('ticked', { x: 0, y: 0, width: 1270, height: 600 });
   ctx.assert.equal(out.ticked.card, null, 'no card for the ticked empty chat, not even a dimmed one');
   ctx.assert.ok(out.ticked.first, 'the first new chat keeps its card');
   ctx.assert.equal(out.ticked.ready, ready2, 'the ready count is back where it was');
   ctx.assert.equal(out.ticked.done, 0, 'and done did not take it in');
+
   ctx.assert.deepEqual(
     { current: out.ticked.column.current, hash: out.ticked.column.hash },
-    { current: id, hash: '#' + id },
+    { current: id, hash: `#${id}` },
     'the column moved on to the card below the ticked one: the first new chat',
   );
+
   await ctx.waitFor(`document.querySelector('#shead').textContent.includes('hello from the board')`, {
     what: "the first chat's header drawn",
   });
+
   return out;
 }

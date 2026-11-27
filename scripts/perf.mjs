@@ -31,40 +31,54 @@ import { makeFixture, toolLines } from './fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
+
 const flag = name => {
   const i = argv.indexOf(name);
+
   if (i < 0) return false;
   argv.splice(i, 1);
   return true;
 };
+
 const value = name => {
   const i = argv.indexOf(name);
+
   if (i < 0) return null;
   const v = argv[i + 1];
+
   argv.splice(i, 2);
   return v;
 };
-const JSON_OUT = flag('--json'),
-  SAMPLE = flag('--sample'),
-  RUNS = Math.max(1, Number(value('--runs') || 1)),
-  AGAINST = value('--against'),
-  PREFS = value('--prefs');
+
+const JSON_OUT = flag('--json');
+const SAMPLE = flag('--sample');
+const RUNS = Math.max(1, Number(value('--runs') || 1));
+const AGAINST = value('--against');
+const PREFS = value('--prefs');
+
 let APP = null;
+
 {
   const i = argv.indexOf('--app');
+
   if (i >= 0) {
     const s = Number(argv[i + 1]);
+
     APP = s > 0 ? s : 10;
     argv.splice(i, s > 0 ? 2 : 1);
   }
 }
+
 if (argv.length) {
   console.error(
     'usage: npm run perf -- [--runs n] [--against <ref>] [--prefs <json>] [--sample] [--json] | --app [seconds]',
   );
+
   process.exit(2);
 }
+
 const env = process.env;
+
 const CEIL = {
   rest: +(env.CEIL_REST || 15),
   pointer: +(env.CEIL_POINTER || 25),
@@ -73,12 +87,14 @@ const CEIL = {
   open: +(env.CEIL_OPEN || 400),
   layers: +(env.CEIL_LAYERS || 600),
 };
+
 const PHASES = ['rest', 'pointer', 'scroll', 'home'];
-const N = 400,
-  DONE = 300,
-  WORK = 5,
-  IDLE = 18,
-  WIN = 6000;
+
+const N = 400;
+const DONE = 300;
+const WORK = 5;
+const IDLE = 18;
+const WIN = 6000;
 
 // ---- the web process: its CPU time, its memory, where its time goes ----
 const ps = (field, pid) =>
@@ -86,25 +102,34 @@ const ps = (field, pid) =>
     encoding: 'utf8',
     env: { ...env, TZ: 'UTC' },
   }).stdout.trim();
+
 const cpuTime = pid => {
   // [[dd-]hh:]mm:ss.cc
   const r = ps('time', pid);
+
   if (!r) return null;
-  const [d, t] = r.includes('-') ? r.split('-') : [0, r],
-    p = t.split(':').map(Number);
+
+  const [d, t] = r.includes('-') ? r.split('-') : [0, r];
+  const p = t.split(':').map(Number);
+
   while (p.length < 3) p.unshift(0);
   return +d * 86400 + p[0] * 3600 + p[1] * 60 + p[2];
 };
+
 const footprintMb = pid => {
   const m = spawnSync('footprint', [String(pid)], { encoding: 'utf8' }).stdout.match(/Footprint: ([\d.]+) (KB|MB|GB)/);
+
   return m ? +m[1] * { KB: 1 / 1024, MB: 1, GB: 1024 }[m[2]] : null;
 };
+
 // `sample`'s "top of stack" section: the functions the process was in, the waits of idle threads left out
 const IDLE_FN =
   /^(__psynch_cvwait|__psynch_mutexwait|__workq_kernreturn|mach_msg2?_trap|__semwait_signal|semaphore_\w+_trap|kevent\w*|__select|__ulock_wait2?|start_wqthread|thread_start|_pthread_start|__sigsuspend)$/;
+
 const shortFn = f => {
   // WebCore::Foo::bar<…>(args…) const → Foo::bar
   let s = f.replace(/\(anonymous namespace\)::/g, '');
+
   for (let k = 0; k < 12 && /<[^<>]*>/.test(s); k++) s = s.replace(/<[^<>]*>/g, '');
   return (
     s
@@ -114,24 +139,33 @@ const shortFn = f => {
       .slice(0, 90) || f.slice(0, 90)
   );
 };
+
 function topOfStack(file, n = 6) {
   let text;
+
   try {
     text = readFileSync(file, 'utf8');
   } catch {
     return [];
   }
+
   const at = text.indexOf('Sort by top of stack');
+
   if (at < 0) return [];
   const rows = [];
+
   for (const line of text.slice(at).split('\n').slice(1)) {
     if (!line.trim()) break;
     const m = line.match(/^\s+(.+?)\s+\(in ([^)]+)\)\s+(\d+)$/);
+
     if (m && !IDLE_FN.test(m[1])) rows.push({ fn: shortFn(m[1]), lib: m[2], n: +m[3] });
   }
+
   const total = rows.reduce((a, r) => a + r.n, 0) || 1;
+
   return rows.slice(0, n).map(r => ({ pct: Math.round((r.n / total) * 100), fn: r.fn, lib: r.lib }));
 }
+
 const stackLines = top => top.map(r => `    ${String(r.pct).padStart(3)} %  ${r.fn}  (${r.lib})`).join('\n');
 
 // ---- --app: the board as it runs ----
@@ -139,62 +173,81 @@ if (APP) {
   // the board's web process: the app logs it (BoardView.swift, 2026-10-13); else the first one the app started, which is the
   // board's unless its process was ever loaded again
   const isWeb = pid => /WebContent/.test(ps('comm', pid));
-  let pid = null,
-    how = '';
+
+  let pid = null;
+  let how = '';
+
   try {
     const last = [
       ...readFileSync(env.APP_LOG || join(homedir(), 'Library/Logs/peixairada-app.log'), 'utf8').matchAll(
         /board: web process (\d+)/g,
       ),
     ].at(-1)?.[1];
+
     if (last && isWeb(last)) {
       pid = +last;
       how = 'named in the app log';
     }
   } catch {}
+
   if (!pid) {
     const app = spawnSync('pgrep', ['-x', 'peixAIrada'], { encoding: 'utf8' }).stdout.trim().split('\n')[0];
+
     if (!app) {
       console.error('the app is not running');
       process.exit(1);
     }
-    const since = Date.parse(ps('lstart', app) + ' UTC');
+
+    const since = Date.parse(`${ps('lstart', app)} UTC`);
+
     const webs = spawnSync('pgrep', ['-f', 'com.apple.WebKit.WebContent'], { encoding: 'utf8' })
       .stdout.trim()
       .split('\n')
       .filter(Boolean)
-      .map(p => [+p, Date.parse(ps('lstart', p) + ' UTC')])
+      .map(p => [+p, Date.parse(`${ps('lstart', p)} UTC`)])
       .filter(([, t]) => t >= since)
       .sort((a, b) => a[1] - b[1]);
+
     if (!webs.length) {
       console.error('no web process started after the app');
       process.exit(1);
     }
+
     pid = webs[0][0];
     how = 'the first web process the app started (a build from 2026-10-13 on names it in its log)';
   }
-  const a = cpuTime(pid),
-    t0 = Date.now();
+
+  const a = cpuTime(pid);
+  const t0 = Date.now();
+
   await sleep(APP * 1000);
-  const cpu = ((cpuTime(pid) - a) / ((Date.now() - t0) / 1000)) * 100,
-    mb = footprintMb(pid);
+
+  const cpu = ((cpuTime(pid) - a) / ((Date.now() - t0) / 1000)) * 100;
+  const mb = footprintMb(pid);
+
   const file = join(tmpDir('pxperf-'), 'app.sample.txt');
+
   spawnSync('sample', [String(pid), String(Math.min(APP, 5)), '-file', file], { stdio: 'ignore' });
   const top = topOfStack(file, 8);
+
   console.log(`the app's board: web process ${pid}, ${how}`);
   console.log(`cpu      ${cpu.toFixed(1)} % of a core over ${APP} s`);
-  console.log(`memory   ${mb === null ? '?' : Math.round(mb) + ' MB'} (its footprint, as Activity Monitor counts it)`);
+  console.log(`memory   ${mb === null ? '?' : `${Math.round(mb)} MB`} (its footprint, as Activity Monitor counts it)`);
+
   console.log(
     `where its time went (sample, ${Math.min(APP, 5)} s, idle waits left out):\n${stackLines(top) || '    nothing but waiting'}`,
   );
+
   if (JSON_OUT) console.log(JSON.stringify({ pid, cpu, mb, top }));
   process.exit(0);
 }
 
 // ---- the board ----
-const base = tmpDir('pxperf-'),
-  claude = join(base, 'c');
+const base = tmpDir('pxperf-');
+const claude = join(base, 'c');
+
 mkdirSync(claude);
+
 const names = [
   'wallet',
   'ledger',
@@ -212,6 +265,7 @@ const names = [
   'feeds',
   'web',
 ];
+
 const colors = [
   '#1f6feb',
   '#2f9e5b',
@@ -229,49 +283,59 @@ const colors = [
   '#0969da',
   '#6e7781',
 ];
+
 // each project's colour in the setup, and as Peacock's for a board from before 2026-10-15 (--against)
 const cwds = names.map((n, i) => {
   const d = join(base, 'r', n);
+
   mkdirSync(join(d, '.vscode'), { recursive: true });
   writeFileSync(join(d, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': colors[i] }));
   return d;
 });
+
 const setup = JSON.stringify({ projects: Object.fromEntries(names.map((n, i) => [n, { color: colors[i] }])) });
+
 const face = (login, fill) => ({
   login,
   __typename: 'User',
-  avatarUrl:
-    'data:image/svg+xml,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`,
-    ),
+  avatarUrl: `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`,
+  )}`,
 });
-const people = ['ana', 'rui', 'eva', 'joao', 'marta', 'tiago', 'ines', 'pedro'].map((l, i) => face(l, colors[i])),
-  me = face('me', '#888');
-const ago = min => new Date(Date.now() - min * 60_000),
-  iso = d => d.toISOString().replace(/\.\d+Z$/, 'Z');
-const prs = {},
-  sleeps = [],
-  chats = [];
+
+const people = ['ana', 'rui', 'eva', 'joao', 'marta', 'tiago', 'ines', 'pedro'].map((l, i) => face(l, colors[i]));
+const me = face('me', '#888');
+
+const ago = min => new Date(Date.now() - min * 60_000);
+const iso = d => d.toISOString().replace(/\.\d+Z$/, 'Z');
+
+const prs = {};
+const sleeps = [];
+const chats = [];
+
 let prn = 100;
+
 for (let i = 0; i < N; i++) {
-  const k = i % names.length,
-    cwd = cwds[k],
-    repo = names[k],
-    working = i < WORK,
-    alive = i < WORK + IDLE,
-    done = i >= N - DONE;
+  const k = i % names.length;
+  const cwd = cwds[k];
+  const repo = names[k];
+  const working = i < WORK;
+  const alive = i < WORK + IDLE;
+  const done = i >= N - DONE;
+
   const at = alive ? ago(5 + i * 7) : done ? ago(2880 + (i - (N - DONE)) * 130) : ago(30 + i * 40);
   const urls = [];
+
   for (let j = 0; j < (done ? 1 : 1 + (i % 3)); j++) {
-    const n = prn++,
-      a = people[(i + j) % people.length],
-      r = people[(i + j + 3) % people.length];
+    const n = prn++;
+    const a = people[(i + j) % people.length];
+    const r = people[(i + j + 3) % people.length];
+
     prs[`acme/${repo}#${n}`] = {
       state: done ? (j % 2 ? 'CLOSED' : 'MERGED') : j === 2 ? 'MERGED' : 'OPEN',
       title: `Change ${n} in ${repo}, a title of a few words`,
       createdAt: iso(ago(3000)),
-      headRefOid: 'H' + n,
+      headRefOid: `H${n}`,
       author: j % 2 ? me : a,
       reviews: {
         nodes: [
@@ -284,14 +348,19 @@ for (let i = 0; i < N; i++) {
       asks: { nodes: [] },
       reviewRequests: { nodes: [] },
     };
+
     urls.push(`https://github.com/acme/${repo}/pull/${n}`);
   }
+
   let live;
+
   if (alive) {
     const s = spawn('sleep', ['900'], { stdio: 'ignore' });
+
     sleeps.push(s);
     live = { pid: s.pid, status: working ? 'busy' : 'idle' };
   }
+
   chats.push({
     cwd,
     at,
@@ -305,23 +374,29 @@ for (let i = 0; i < N; i++) {
       : undefined,
   });
 }
+
 const fx = makeFixture(claude, chats);
+
 writeFileSync(join(base, 'prs.json'), JSON.stringify(prs));
+
 const doneMarks = JSON.stringify({
   done: Object.fromEntries(fx.chats.filter((c, i) => chats[i].done).map(c => [c.id, new Date().toISOString()])),
 });
 
 // One server per tree, each over the same made-up ~/.claude with a state dir of its own; the other tree's from a
 // detached worktree of the ref, with this checkout's node_modules.
-const boards = [],
-  worktrees = [],
-  harnesses = new Set();
+const boards = [];
+const worktrees = [];
+const harnesses = new Set();
+
 async function startBoard(root, label) {
-  const dir = join(base, 's' + boards.length);
+  const dir = join(base, `s${boards.length}`);
+
   mkdirSync(dir);
   writeFileSync(join(dir, 'state.json'), doneMarks);
   writeFileSync(join(dir, 'config.json'), setup);
   const { startTestServer } = await import(pathToFileURL(join(root, 'lib', 'testserver.mjs')).href);
+
   const server = await startTestServer({
     claudeDir: claude,
     fake: true,
@@ -334,20 +409,27 @@ async function startBoard(root, label) {
       TASK_GRACE_MS: '3000',
     },
   });
+
   const open = (await server.api('api/sessions')).body.sessions.find(s => s.status === 'stale' && !s.done)?.id;
   const b = { label, server, open };
+
   boards.push(b);
   return b;
 }
+
 let stopping = null;
+
 const stop = () =>
   (stopping ||= (async () => {
     for (const s of sleeps) s.kill();
     for (const h of harnesses) h.kill();
     for (const b of boards) await b.server.stop().catch(() => {});
-    for (const wt of worktrees)
+
+    for (const wt of worktrees) {
       spawnSync('git', ['-C', ROOT, 'worktree', 'remove', '--force', wt], { stdio: 'ignore' });
+    }
   })());
+
 // Every way out stops the boards and removes the --against worktree, as scripts/scenario.mjs does (2026-10-14: SIGINT
 // alone before — a Bash tool's timeout is a SIGTERM, a closed terminal a SIGHUP), and never waits on them over 15 s.
 const finish = async code => {
@@ -355,17 +437,21 @@ const finish = async code => {
   await stop();
   process.exit(code);
 };
+
 for (const [sig, code] of [
   ['SIGINT', 130],
   ['SIGTERM', 143],
   ['SIGHUP', 129],
-])
+]) {
   process.on(sig, () => finish(code));
-for (const ev of ['uncaughtException', 'unhandledRejection'])
+}
+
+for (const ev of ['uncaughtException', 'unhandledRejection']) {
   process.on(ev, e => {
     console.error(`${ev}: ${e?.stack || e}`);
     finish(1);
   });
+}
 
 // ---- one run: the page in WebKit, its phases, and the web process's CPU time sampled beside it ----
 const prefs = {
@@ -376,6 +462,7 @@ const prefs = {
   skinFollow: false,
   look: 'dark',
 };
+
 if (PREFS) {
   try {
     Object.assign(prefs, JSON.parse(PREFS));
@@ -384,6 +471,7 @@ if (PREFS) {
     process.exit(2);
   }
 }
+
 const body = `await sleep(3000);
   const rules = ${ANIM_RULES}, list = document.querySelector('#slist'), out = { phases: [], opens: [] };
   // a phase with nothing to do each frame sleeps (2026-10-15): a frame asked for every frame is a style pass and a walk of
@@ -410,26 +498,33 @@ const body = `await sleep(3000);
   if (await until(() => !peix.state().current, 3000).catch(() => false)) { await sleep(1000); await phase('home'); }
   out.footprint = await footprint();
   return { ...out, rules, cards: list.querySelectorAll(':scope > .card').length };`;
+
 const median = xs => {
   const s = xs.filter(x => Number.isFinite(x)).sort((a, b) => a - b);
+
   return s.length ? (s.length % 2 ? s[s.length >> 1] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : NaN;
 };
 
 async function measure(b, tag) {
-  const pidFile = join(base, 'pid-' + tag),
-    samples = [],
-    sampling = [];
+  const pidFile = join(base, `pid-${tag}`);
+  const samples = [];
+  const sampling = [];
+
   rmSync(pidFile, { force: true });
+
   const startSample = (name, secs) => {
     if (!existsSync(pidFile)) return;
     const file = join(base, `${tag}-${name}.sample.txt`);
+
     const p = spawn(
       'sample',
       [readFileSync(pidFile, 'utf8').trim(), String(Math.max(1, Math.floor(secs) - 1)), '-file', file],
       { stdio: 'ignore' },
     );
+
     sampling.push(new Promise(res => p.on('close', () => res([name, file]))));
   };
+
   const harness = spawn(process.execPath, [join(ROOT, 'scripts', 'webkit.mjs'), '--hash', b.open, body], {
     env: {
       ...env,
@@ -442,62 +537,83 @@ async function measure(b, tag) {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  let output = '',
-    err = '';
+
+  let output = '';
+  let err = '';
+
   harness.stdout.on('data', d => {
     output += d;
   });
+
   harness.stderr.on('data', d => {
     // the body's `say('phase …')` lines start a sample; the rest is the harness's to say
     err += d;
     let k;
+
     while ((k = err.indexOf('\n')) >= 0) {
-      const line = err.slice(0, k),
-        m = line.match(/^phase (\w+) ([\d.]+)$/);
+      const line = err.slice(0, k);
+      const m = line.match(/^phase (\w+) ([\d.]+)$/);
+
       err = err.slice(k + 1);
-      if (!m) process.stderr.write(line + '\n');
+      if (!m) process.stderr.write(`${line}\n`);
       else if (SAMPLE) startSample(m[1], +m[2]);
     }
   });
+
   harnesses.add(harness);
+
   const exited = new Promise(res =>
     harness.on('close', c => {
       harnesses.delete(harness);
       res(c);
     }),
   );
+
   let running = true;
+
   exited.then(() => {
     running = false;
   });
+
   (async () => {
     while (running) {
       if (existsSync(pidFile)) {
         const t = cpuTime(+readFileSync(pidFile, 'utf8'));
+
         if (t !== null) samples.push([Date.now(), t]);
       }
+
       await sleep(250);
     }
   })();
+
   const code = await exited;
+
   if (code !== 0) throw new Error(`the WebKit harness failed on ${b.label} (exit ${code})`);
   const res = JSON.parse(output.trim().split('\n').pop());
+
   const at = ms => {
     let best = null;
+
     for (const s of samples) if (!best || Math.abs(s[0] - ms) < Math.abs(best[0] - ms)) best = s;
     return best;
   };
+
   const phases = {};
+
   for (const p of res.phases) {
-    const a = at(p.t0),
-      z = at(p.t1);
+    const a = at(p.t0);
+    const z = at(p.t1);
+
     phases[p.name] = {
       cpu: a && z && z[0] > a[0] ? ((z[1] - a[1]) / ((z[0] - a[0]) / 1000)) * 100 : NaN,
       dropped: p.dropped,
       frames: p.frames,
     };
   }
+
   const stacks = Object.fromEntries((await Promise.all(sampling)).map(([name, file]) => [name, topOfStack(file)]));
+
   return {
     cards: res.cards,
     rules: res.rules,
@@ -512,22 +628,30 @@ async function measure(b, tag) {
 
 // ---- the runs, interleaved when there are two trees: A B, B A, … so a drift in this Mac's load falls on both ----
 const results = new Map();
+
 try {
   await startBoard(ROOT, 'this tree');
+
   if (AGAINST) {
     const sha = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short', AGAINST], { encoding: 'utf8' }).stdout.trim();
+
     if (!sha) throw new Error(`no such commit: ${AGAINST}`);
     const wt = join(base, 'against');
+
     worktrees.push(wt);
     const add = spawnSync('git', ['-C', ROOT, 'worktree', 'add', '--detach', wt, sha], { encoding: 'utf8' });
+
     if (add.status !== 0) throw new Error(`git worktree add: ${add.stderr}`);
     // the nearest node_modules up the folders, as Node finds it (2026-10-14): a worktree inside the repo has none of its own
     let nm = ROOT;
+
     while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname(nm);
     symlinkSync(join(nm, 'node_modules'), join(wt, 'node_modules'));
     await startBoard(wt, `${sha} (${AGAINST})`);
   }
+
   for (const b of boards) results.set(b, []);
+
   for (let r = 0; r < RUNS; r++) {
     for (const b of r % 2 ? [...boards].reverse() : boards) {
       if (RUNS > 1 || boards.length > 1) console.error(`› run ${r + 1} of ${RUNS}: ${b.label}`);
@@ -538,11 +662,13 @@ try {
   console.error(e.message);
   await finish(1);
 }
+
 await stop();
 
 // ---- what came out: the medians, side by side; the ceilings and the rules held against this tree ----
 const sum = runs => {
   const m = f => median(runs.map(f));
+
   return {
     cards: m(r => r.cards),
     layers: m(r => r.layers),
@@ -559,19 +685,24 @@ const sum = runs => {
     stacks: runs.at(-1).stacks,
   };
 };
-const sums = boards.map(b => ({ label: b.label, ...sum(results.get(b)) })),
-  mine = sums[0];
+
+const sums = boards.map(b => ({ label: b.label, ...sum(results.get(b)) }));
+const mine = sums[0];
+
 const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '—');
 const col = (s, w = 22) => String(s).padEnd(w);
 const over = [];
+
 console.log(`a made-up board of ${N} chats in WebKit; ${RUNS > 1 ? `the median of ${RUNS} runs` : 'one run'}`);
-console.log(col('') + sums.map(s => col(s.label)).join('') + 'ceiling');
+console.log(`${col('') + sums.map(s => col(s.label)).join('')}ceiling`);
 console.log(col('cards in the list') + sums.map(s => col(fmt(s.cards, 0))).join(''));
+
 for (const p of PHASES) {
   if (!sums.some(s => Number.isFinite(s.phases[p].cpu))) continue;
   if (!(mine.phases[p].cpu <= CEIL[p])) over.push(p);
+
   console.log(
-    col(p + ' (% of a core)') +
+    col(`${p} (% of a core)`) +
       sums
         .map(s =>
           col(
@@ -583,34 +714,48 @@ for (const p of PHASES) {
       (over.at(-1) === p ? '  ← over' : ''),
   );
 }
+
 if (!(mine.open <= CEIL.open)) over.push('open');
+
 console.log(
   col('a chat opened (ms)') +
     sums.map(s => col(fmt(s.open, 0))).join('') +
     CEIL.open +
     (over.at(-1) === 'open' ? '  ← over' : ''),
 );
+
 if (!(mine.layers <= CEIL.layers)) over.push('layers');
+
 console.log(
   col('layers') +
     sums.map(s => col(fmt(s.layers, 0))).join('') +
     CEIL.layers +
     (over.at(-1) === 'layers' ? '  ← over' : ''),
 );
+
 console.log(col('memory (MB, peak)') + sums.map(s => col(`${fmt(s.memory, 0)} (${fmt(s.peak, 0)})`)).join(''));
+
 console.log(
   '(slow: frames over 20 ms of all drawn in the phase, where it moves something each frame; rest and home sleep)',
 );
+
 for (const s of sums) if (s.rules.length) console.log(`rules broken on ${s.label}:\n  ${s.rules.join('\n  ')}`);
 if (!mine.rules.length) console.log('rules: none broken on this tree (lib/animcheck.mjs)');
-if (SAMPLE)
-  for (const s of sums)
-    for (const [p, top] of Object.entries(s.stacks))
+
+if (SAMPLE) {
+  for (const s of sums) {
+    for (const [p, top] of Object.entries(s.stacks)) {
       console.log(`where ${s.label}'s time went, ${p}:\n${stackLines(top) || '    nothing but waiting'}`);
-if (JSON_OUT)
+    }
+  }
+}
+
+if (JSON_OUT) {
   console.log(
     JSON.stringify(
       Object.fromEntries(sums.map((s, i) => [i ? 'against' : 'tree', { ...s, runs: results.get(boards[i]) }])),
     ),
   );
+}
+
 process.exit(over.length || mine.rules.length ? 1 : 0);

@@ -12,18 +12,23 @@ import { makeFixture } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto', csp: false };
 
 export default async function (ctx) {
-  const out = {},
-    cwd = '/Users/me/proj/remote-repo';
+  const out = {};
+  const cwd = '/Users/me/proj/remote-repo';
+
   const hits = [];
+
   const probe = createServer((req, res) => {
     hits.push(req.url);
     res.writeHead(404);
     res.end();
   });
+
   await new Promise(r => probe.listen(0, '127.0.0.1', r));
+
   try {
     const P = `http://127.0.0.1:${probe.address().port}`;
     const GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
     const reply = [
       'The vectors, one a paragraph:',
       '',
@@ -54,14 +59,17 @@ export default async function (ctx) {
       '- [x] a task done',
       '- [ ] a task to do',
     ].join('\n');
+
     const { chats } = makeFixture(ctx.fixture.dir, [
       { cwd, title: 'Remote', prompt: 'show me', reply, at: new Date() },
     ]);
+
     await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id="${chats[0].id}"]')`, { what: 'the card' });
     await ctx.openChat(chats[0].id);
     await ctx.waitFor(`!!document.querySelector('#log .msg.assistant')`, { what: 'the reply drawn' });
     await ctx.sleep(1500); // whatever loads on sight has asked by now
     out.hits = hits;
+
     out.left = await ctx
       .evaluate(
         `JSON.stringify((log => ({
@@ -73,6 +81,7 @@ export default async function (ctx) {
     }))(document.querySelector('#log')))`,
       )
       .then(JSON.parse);
+
     ctx.assert.deepEqual(out.hits, [], 'the probe heard nothing: no part of the reply was fetched from elsewhere');
     ctx.assert.deepEqual(out.left.tags, [], 'no media, picture, SVG image or image input left in the log');
     ctx.assert.deepEqual(out.left.attrs, [], 'no srcset, poster, background or url() to elsewhere left in the log');
@@ -80,10 +89,12 @@ export default async function (ctx) {
     ctx.assert.equal(out.left.boxes, 2, "a task list's checkboxes stay");
     ctx.assert.ok(out.left.links >= 1, 'the markdown image is a link to it');
     out.refused = ctx.console.filter(l => /CSP violation/.test(l));
+
     ctx.assert.ok(
       out.refused.every(l => l.includes(P)),
       "what the page's policy refused was the probe's alone",
     );
+
     return out;
   } finally {
     probe.close();

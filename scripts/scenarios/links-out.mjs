@@ -11,15 +11,20 @@ export const meta = { server: true, fixture: 'auto', prefs: { linksMoved: false 
 export default async function (ctx) {
   const [chat] = ctx.fixture.chats; // the one with two PRs
   const out = {};
+
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };`,
   });
+
   await ctx.reload();
   await ctx.openChat(chat.id);
+
   const outs = () =>
     ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'external').map(m => m.url))`).then(JSON.parse);
+
   const asks = urls =>
     ctx.evaluate(`JSON.stringify(${JSON.stringify(urls)}.map(u => window.peixLinkOut(u)))`).then(JSON.parse);
+
   const urls = [
     'https://example.com/a',
     'https://github.com/acme/repo-a/pull/12',
@@ -38,6 +43,7 @@ export default async function (ctx) {
     off: document.querySelector('#sitesRow').classList.contains('off'), say: document.querySelector('#sitesRow small').textContent, box: document.querySelector('#boardSites').value, disabled: document.querySelector('#boardSites').disabled })`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(out.row, {
     shown: true,
     checked: ['false', 'true'],
@@ -46,6 +52,7 @@ export default async function (ctx) {
     box: 'github.com',
     disabled: false,
   });
+
   ctx.assert.deepEqual(
     await asks(urls),
     [true, false, false, true, true, true, true, true],
@@ -54,6 +61,7 @@ export default async function (ctx) {
 
   // in the board: every link out stays, the box off and saying why
   await ctx.evaluate(`document.querySelector('#pagesPick [data-out="0"]').click()`);
+
   ctx.assert.deepEqual(
     await ctx
       .evaluate(
@@ -62,6 +70,7 @@ export default async function (ctx) {
       .then(JSON.parse),
     [false, 'Every page opens in the board', true],
   );
+
   ctx.assert.deepEqual(
     await asks(urls),
     urls.map(() => false),
@@ -70,6 +79,7 @@ export default async function (ctx) {
 
   // in the browser again: a link in the transcript to another site goes out; a PR stays a tab
   await ctx.evaluate(`document.querySelector('#pagesPick [data-out="1"]').click()`);
+
   ctx.assert.deepEqual(
     await ctx
       .evaluate(
@@ -78,14 +88,17 @@ export default async function (ctx) {
       .then(JSON.parse),
     [true, false, false],
   );
+
   ctx.assert.deepEqual(
     await asks(urls),
     [true, false, false, true, true, true, true, true],
     'github.com kept, whole: not github.company.com, nor gist',
   );
+
   await ctx.evaluate(
     `(() => { const a = document.createElement('a'); a.href = 'https://example.com/a'; a.textContent = 'x'; document.querySelector('#log .msg').appendChild(a); a.click(); a.remove(); })()`,
   );
+
   ctx.assert.deepEqual(await outs(), ['https://example.com/a'], 'the browser');
   await ctx.evaluate(`document.querySelector('#shead > .tmx .mxs[data-url$="/pull/12"]').click()`);
   await ctx.waitFor(`window.peix.state().tab?.startsWith('gh:')`, { what: 'the PR on a tab' });
@@ -95,16 +108,19 @@ export default async function (ctx) {
   await ctx.evaluate(
     `(b => { b.value = 'github.com,  example.com/docs localhost:3000'; b.dispatchEvent(new Event('change')); })(document.querySelector('#boardSites'))`,
   );
+
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.peix.prefs().boardSites)`).then(JSON.parse), [
     'github.com',
     'example.com/docs',
     'localhost:3000',
   ]);
+
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelector('#boardSites').value`),
     'github.com, example.com/docs, localhost:3000',
     'said back tidied',
   );
+
   ctx.assert.deepEqual(
     await asks(urls),
     [true, false, false, true, true, false, false, true],
@@ -113,27 +129,34 @@ export default async function (ctx) {
 
   // a page's new window follows the same rule (peixPaneOpen → openExternal)
   const key = await ctx.evaluate(`window.peix.state().tab`);
+
   await ctx.evaluate(`window.peixPaneOpen(${JSON.stringify(key)}, 'https://news.example.org/story')`);
+
   ctx.assert.deepEqual(
     (await outs()).slice(-1),
     ['https://news.example.org/story'],
     'a new window to another site, the browser',
   );
+
   await ctx.evaluate(`document.querySelector('#settings').showModal(); window.peix.prefs().settingsPane = 'general'`);
   await ctx.settle();
+
   const g = await ctx
     .evaluate(
       `JSON.stringify((r => ({ x: r.left, y: r.top, w: r.width, h: r.height }))(document.querySelector('#linksRow').getBoundingClientRect()))`,
     )
     .then(JSON.parse);
+
   if (g.w) await ctx.shot('links-row', { x: g.x - 10, y: g.y - 10, width: g.w + 20, height: g.h + 20, scale: 2 });
   await ctx.evaluate(`document.querySelector('#settings').close()`);
 
   // back in the board: nothing goes out
   await ctx.evaluate(`document.querySelector('#pagesPick [data-out="0"]').click()`);
+
   ctx.assert.deepEqual(
     await asks(urls),
     urls.map(() => false),
   );
+
   return out;
 }

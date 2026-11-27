@@ -14,6 +14,7 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const out = {};
   const cwd = '/Users/me/proj/links-repo'; // a string in the transcript: nothing runs in it
+
   const reply = [
     'See https://example.com/docs/page?x=1&y=2, then src/app.js:42 and ./lib/x.mjs, /Users/me/proj/notes.md:7:3, ~/notes/todo.txt, plus .github/workflows/ci.yml and @/Users/me/a.txt.',
     'Not links: and/or, km/h, 12/09/2026, v2.1/api, /api/sessions, e.g. this, node 20.11.1, github.com/acme/x.js. A [file:3](src/y.ts#L3) too.',
@@ -22,19 +23,24 @@ export default async function (ctx) {
     'cat /tmp/out/report.json',
     '```',
   ].join('\n');
+
   const { chats } = makeFixture(ctx.fixture.dir, [
     { cwd, title: 'Links', prompt: 'where is it?', reply, at: new Date() },
   ]);
+
   await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id="${chats[0].id}"]')`, {
     what: 'the card of the chat just written',
   });
+
   await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${chats[0].id}"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#log .msg').length >= 2`, { what: 'the transcript' });
+
   out.anchors = await ctx
     .evaluate(
       `JSON.stringify([...document.querySelectorAll('#log a[href]')].map(a => [a.textContent, a.getAttribute('href'), a.target]))`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.anchors,
     [
@@ -50,13 +56,16 @@ export default async function (ctx) {
     ],
     'every file and page an anchor, in order, and nothing that only looks like one',
   );
+
   await ctx.shot('transcript');
 
   // Zed: the radio in the settings, the transcript's links drawn again for it, ··· with a row for Zed's own window
   await ctx.evaluate(`document.querySelector('#edPick [data-ed="zed"]').click()`);
+
   await ctx.waitFor(`!!window.peix.state().editors?.zed?.app`, {
     what: "Zed installed — the test server's fake brew, into its own apps folder",
   });
+
   out.zed = await ctx
     .evaluate(
       `JSON.stringify({
@@ -68,25 +77,31 @@ export default async function (ctx) {
   })`,
     )
     .then(JSON.parse);
+
   ctx.assert.equal(out.zed.pref, 'zed');
   ctx.assert.deepEqual(out.zed.checked, ['vscode:false', 'zed:true']);
+
   ctx.assert.deepEqual(
     out.zed.anchors.map(a => a[1]),
     out.anchors.map(a => a[1].replace(/^vscode:/, 'zed:')),
     'the same links, each a zed://file one',
   );
+
   ctx.assert.equal(out.zed.anchors[1][2], `Open ${cwd}/src/app.js:42 in Zed`);
   ctx.assert.equal(out.zed.anchors[7][2], `Open ${cwd}/src/y.ts:3 in Zed`, 'the [file:3](…#L3) one too');
+
   ctx.assert.deepEqual(
     out.zed.rows,
     ['VS Code Web', 'its folder in Zed'],
     '··· keeps VS Code Web and adds the folder in Zed',
   );
+
   ctx.assert.match(
     out.zed.said,
     /^Zed opens in its own window, outside the board .* ⌥⌘E is the in-app editor/,
     'the settings say what Zed is not',
   );
+
   // what each opens, the browser's ways out caught: the folder in Zed followed as a link (the app hands it to the system),
   // ⌥⌘E still VS Code Web (its server asked, then its page)
   out.zed.opened = await ctx
@@ -106,6 +121,7 @@ export default async function (ctx) {
   })()`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.zed.opened,
     [`zed://file${cwd}`, `zed://file${cwd}`, `window.open http://127.0.0.1:1/?folder=${encodeURIComponent(cwd)}`],
@@ -114,15 +130,19 @@ export default async function (ctx) {
 
   // in the drawer: the path on the line the fake echoes is a link with the same href, on the cells it occupies
   const live = ctx.fixture.chats[0];
+
   await ctx.openChat(live.id);
   await ctx.evaluate(`document.querySelector('#termBtn').click()`);
   await ctx.waitPrompt();
+
   await ctx.evaluate(
     `document.querySelector('#termBody textarea').dispatchEvent(new InputEvent('input', { data: 'look at src/app.js:42 please', inputType: 'insertText', bubbles: true }))`,
   );
+
   await ctx.waitFor(`window.peix.buffer().some(l => l.includes('src/app.js:42'))`, {
     what: 'the path echoed on the screen',
   });
+
   out.drawer = await ctx
     .evaluate(
       `(() => {
@@ -132,6 +152,7 @@ export default async function (ctx) {
   })()`,
     )
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.drawer.links,
     [
@@ -146,16 +167,20 @@ export default async function (ctx) {
     ],
     "the path on the screen is a link on its own cells, into the chat's folder — in Zed while it is the editor",
   );
+
   ctx.assert.deepEqual(out.drawer.blank, [], 'a line without one has none');
   await ctx.evaluate(`document.querySelector('#edPick [data-ed="vscode"]').click()`);
+
   out.drawer.back = await ctx
     .evaluate(`JSON.stringify(window.peix.links(${out.drawer.y}).map(l => l.href))`)
     .then(JSON.parse);
+
   ctx.assert.deepEqual(
     out.drawer.back,
     [`vscode://file${out.drawer.cwd}/src/app.js:42`],
     'and VS Code again once it is picked back',
   );
+
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#webBtn .lbl').textContent`), 'VS Code Web');
   return out;
 }

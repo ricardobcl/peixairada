@@ -28,46 +28,62 @@ import { FRAME_WATCH } from '../lib/framewatch.mjs';
 const argv = process.argv.slice(2);
 const dd = argv.indexOf('--');
 const scenarioArgs = dd >= 0 ? argv.splice(dd).slice(1) : [];
+
 const opt = (name, dflt = null) => {
   const i = argv.indexOf(name);
+
   if (i < 0) return dflt;
   const v = argv[i + 1];
+
   argv.splice(i, 2);
   return v;
 };
+
 const flag = name => {
   const i = argv.indexOf(name);
+
   if (i < 0) return false;
   argv.splice(i, 1);
   return true;
 };
-const url = opt('--url'),
-  wantServer = flag('--server'),
-  fake = flag('--fake'),
-  fixtureOpt = opt('--fixture'),
-  hash = opt('--hash');
-const shotsDir = opt('--shots'),
-  keep = flag('--keep'),
-  timeout = Number(opt('--timeout', 120_000));
+
+const url = opt('--url');
+const wantServer = flag('--server');
+const fake = flag('--fake');
+const fixtureOpt = opt('--fixture');
+const hash = opt('--hash');
+
+const shotsDir = opt('--shots');
+const keep = flag('--keep');
+const timeout = Number(opt('--timeout', 120_000));
+
 const file = argv.find(a => !a.startsWith('--'));
+
 if (!(timeout > 0)) {
   console.error('--timeout wants a number of ms');
   process.exit(2);
 } // NaN was a bail 1 ms in
+
 if (!file) {
   console.error(
     'usage: node scripts/scenario.mjs <scenario.mjs> [--server] [--fake] [--fixture auto|dir] [--url URL] [--hash id] [--shots dir] [--keep] [--timeout ms] [-- args]',
   );
+
   process.exit(2);
 }
+
 const macTz = process.env.TZ;
+
 {
-  const now = new Date(),
-    o = Math.round(12 - now.getUTCHours() - now.getUTCMinutes() / 60);
+  const now = new Date();
+  const o = Math.round(12 - now.getUTCHours() - now.getUTCMinutes() / 60);
+
   process.env.TZ = o ? `Etc/GMT${o > 0 ? '-' : '+'}${Math.abs(o)}` : 'Etc/GMT';
 } // Etc's signs are POSIX's: GMT-5 is five hours ahead
+
 const mod = await import(pathToFileURL(resolve(file)).href);
 const meta = { server: wantServer, fake, fixture: fixtureOpt, ...(mod.meta || {}) };
+
 if (fixtureOpt) meta.fixture = fixtureOpt;
 if (wantServer) meta.server = true;
 if (fake) meta.fake = true;
@@ -77,11 +93,14 @@ if (meta.tz === false) {
 } else if (meta.tz) process.env.TZ = meta.tz;
 const tz = meta.tz === false ? null : process.env.TZ;
 const name = basename(file, '.mjs');
+
 if (meta.newHeadless && HEADLESS_SHELL) {
   console.error(`[${name}] SKIPPED: needs Chrome's newer headless mode (CHROME is chrome-headless-shell)`);
   process.exit(77);
 }
+
 const shots = shotsDir || join(tmpdir(), 'peixairada-shots');
+
 mkdirSync(shots, { recursive: true });
 const log = (...a) => console.error(`[${name}]`, ...a);
 
@@ -90,6 +109,7 @@ const cleanups = [];
 // Chrome first, the dead socket failed the scenario's own wait, its catch finished again and exited while the first
 // cleanup was still in Chrome's close, and the server was never stopped (three left running since 2026-10-03).
 let cleaning = null;
+
 const cleanup = () =>
   (cleaning ||= (async () => {
     for (const c of cleanups.reverse()) {
@@ -100,62 +120,76 @@ const cleanup = () =>
       }
     }
   })());
+
 /** End with `code`, cleaning up first — but never wait on a wedged server or Chrome for longer than 15 s. */
 const finish = async code => {
   setTimeout(() => process.exit(code), 15_000).unref();
   await cleanup();
   process.exit(code);
 };
+
 // Every way out cleans up (2026-10-03; SIGINT alone before: a Bash tool's timeout is a SIGTERM, a closed terminal a
 // SIGHUP, and a scenario's stray promise an unhandled rejection — each left Chrome, the server and its holders running).
 for (const [sig, code] of [
   ['SIGINT', 130],
   ['SIGTERM', 143],
   ['SIGHUP', 129],
-])
+]) {
   process.on(sig, () => finish(code));
-for (const ev of ['uncaughtException', 'unhandledRejection'])
+}
+
+for (const ev of ['uncaughtException', 'unhandledRejection']) {
   process.on(ev, e => {
     log(`${ev}: ${e?.stack || e}`);
     finish(1);
   });
+}
+
 const bail = setTimeout(() => {
   log(`timed out after ${timeout} ms`);
   finish(1);
 }, timeout);
 
-let fixture = null,
-  server = null,
-  boardUrl = url,
-  cdp;
+let fixture = null;
+let server = null;
+let boardUrl = url;
+let cdp;
+
 try {
   // a server or a Chrome that does not come up: what did come up is ended, or it ran on after this exited (2026-09-27)
   if (meta.fixture) {
     const dir = meta.fixture === 'auto' ? mkdtempSync(join(tmpdir(), 'peix-fixture-')) : resolve(meta.fixture);
+
     if (meta.fixture === 'auto' && !keep) cleanups.push(() => rmSync(dir, { recursive: true, force: true })); // 1359 of them in $TMPDIR before this
     // The temp dir as claude reports it (/private/var/…, not /var/…): a fake started there registers its real path, and a
     // fixture chat under the other spelling would be another folder to the board — a second project named T.
     // Chat A's folder is a temp one of its own too, repo-a (2026-10-14): it was this checkout, so the board read its
     // colour, branch and changes, and a resume, a zsh or a worktree made from chat A acted on the real repo.
     let cwdA = null;
+
     if (meta.fixture === 'auto') {
       const repos = realpathSync(mkdtempSync(join(tmpdir(), 'peix-repo-')));
+
       cwdA = join(repos, 'repo-a');
       mkdirSync(cwdA);
       if (!keep) cleanups.push(() => rmSync(repos, { recursive: true, force: true }));
     }
+
     fixture =
       meta.fixture === 'auto' ? defaultFixture(dir, { cwdA, cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
+
     log(
-      `fixture ${dir}${fixture.chats.length ? ' — chats ' + fixture.chats.map(c => c.id.slice(0, 8)).join(', ') : ''}`,
+      `fixture ${dir}${fixture.chats.length ? ` — chats ${fixture.chats.map(c => c.id.slice(0, 8)).join(', ')}` : ''}`,
     );
   }
+
   if (meta.server || !boardUrl) {
     server = await startTestServer({ claudeDir: fixture?.dir || null, fake: !!meta.fake, env: meta.env || {}, keep });
     cleanups.push(() => server.stop());
     boardUrl = server.url;
     log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);
   }
+
   // the board's key as the app hands it (2026-10-16): the test server's, the live board's from its file; `key: false`, none
   cdp = await launchChrome({
     dark: !!process.env.DARK,
@@ -164,12 +198,15 @@ try {
     key: meta.key === false ? null : server ? server.key : liveKey(),
     args: meta.gl ? SOFT_GL : [],
   });
+
   cleanups.push(() => cdp.close());
   log(`chrome profile ${cdp.profile}`); // what scripts/scenarios.mjs looks for leftovers by, with the server's state dir
+
   // the page's policy holds every scenario (2026-11-06): a violation is a console line, and the run fails on one
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
     source: `document.addEventListener('securitypolicyviolation', e => console.error('CSP violation: ' + e.effectiveDirective + ' ' + (e.blockedURI || '') + ' at ' + (e.sourceFile || '') + ':' + e.lineNumber + ' ' + (e.sample || '')));`,
   });
+
   await openBoard(cdp, boardUrl, { hash: hash || null });
 } catch (e) {
   log(`setup failed: ${e.stack || e}`);
@@ -180,6 +217,7 @@ try {
 // The rows of a half's terminal. The left half keeps the plain ids — it is the whole column while nothing is
 // split — so `ROWS(0)` is what every scenario written before the split already asked for.
 const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
+
 const ctx = {
   url: boardUrl,
   server,
@@ -217,6 +255,7 @@ const ctx = {
   console: cdp.console,
   shot: async (label, clip) => {
     const f = join(shots, `${name}-${label}.png`);
+
     await cdp.shot(f, clip);
     log(`screenshot → ${f}`);
     return f;
@@ -239,9 +278,11 @@ const ctx = {
       what the drawer sends on as keystrokes (four scenarios each spelled this out until 2026-09-27). */
   type: async (text, g = 0) => {
     const box = `document.querySelector('#termBody${g ? 'B' : ''} textarea')`;
+
     await cdp.evaluate(
       `${box}.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`,
     );
+
     await cdp.evaluate(
       `${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`,
     );
@@ -268,15 +309,22 @@ const ctx = {
         : cdp.evaluate(
             `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(t)}).getBoundingClientRect())`,
           );
-    const a = await at(from),
-      b = await at(to),
-      mouse = (type, x, y, buttons) =>
-        cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+
+    const a = await at(from);
+    const b = await at(to);
+
+    const mouse = (type, x, y, buttons) =>
+      cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+
     await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y });
     await mouse('mousePressed', a.x, a.y, 1);
-    for (let i = 1; i <= 8; i++)
+
+    for (let i = 1; i <= 8; i++) {
       await mouse('mouseMoved', Math.round(a.x + ((b.x - a.x) * i) / 8), Math.round(a.y + ((b.y - a.y) * i) / 8), 1);
+    }
+
     const seen = mid ? await mid() : undefined;
+
     await mouse('mouseReleased', b.x, b.y, 0);
     return seen;
   },
@@ -286,26 +334,34 @@ const ctx = {
   /** A read-only look into the page's closure (window.peix). */
   peix: what => cdp.evaluate(`JSON.stringify(window.peix.${what})`).then(v => JSON.parse(v)),
 };
+
 let code = 0;
+
 try {
   const result = await mod.default(ctx);
+
   if (cdp.exceptions.length) {
     log('page JS exceptions:', cdp.exceptions);
     code = 1;
   }
+
   const csp = cdp.console.filter(l => /CSP violation/.test(l));
+
   if (csp.length && meta.csp !== false) {
     log("the page's policy refused:", csp);
     code = 1;
   }
+
   console.log(JSON.stringify(result ?? { ok: true }, null, 1));
 } catch (e) {
   code = 1;
   console.error(`[${name}] FAILED: ${e.stack || e}`);
   if (server) console.error(`[${name}] server log tail:\n${server.logText().slice(-1500)}`);
+
   try {
     await ctx.shot('failed');
   } catch {}
 }
+
 clearTimeout(bail);
 await finish(code);

@@ -19,6 +19,7 @@ export const slugOf = cwd => cwd.replace(/[/.]/g, '-');
 /** This time yesterday, by the calendar (2026-10-14): a day of 86 400 000 ms is an hour off across a DST change. */
 export const yesterday = () => {
   const d = new Date();
+
   d.setDate(d.getDate() - 1);
   return d;
 };
@@ -36,8 +37,10 @@ export function chatLines({
   branch = 'main',
 }) {
   const ts = ms => new Date(at.getTime() + ms).toISOString();
-  const u = randomUUID(),
-    a = randomUUID();
+
+  const u = randomUUID();
+  const a = randomUUID();
+
   const base = {
     isSidechain: false,
     userType: 'external',
@@ -47,6 +50,7 @@ export function chatLines({
     version: 'fixture',
     gitBranch: branch,
   };
+
   const lines = [
     {
       ...base,
@@ -62,7 +66,7 @@ export function chatLines({
       type: 'assistant',
       message: {
         model,
-        id: 'msg_' + a.slice(0, 8),
+        id: `msg_${a.slice(0, 8)}`,
         type: 'message',
         role: 'assistant',
         content: [{ type: 'text', text: reply }],
@@ -72,6 +76,7 @@ export function chatLines({
       timestamp: ts(0),
     },
   ];
+
   if (title) lines.push({ type: 'ai-title', sessionId: id, aiTitle: title });
   return lines;
 }
@@ -92,7 +97,8 @@ const lineBase = (id, cwd, entrypoint = 'cli') => ({
  *  status (AskUserQuestion, ExitPlanMode); a real one writes that line only with its answer — see `live.status`. */
 export function toolLines({ id, cwd, name, input, result = null, toolUseResult = null, at = new Date() }) {
   const base = lineBase(id, cwd);
-  const useId = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+  const useId = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+
   const lines = [
     {
       ...base,
@@ -102,7 +108,7 @@ export function toolLines({ id, cwd, name, input, result = null, toolUseResult =
       timestamp: at.toISOString(),
       message: {
         model: 'fixture-1',
-        id: 'msg_' + useId.slice(6, 14),
+        id: `msg_${useId.slice(6, 14)}`,
         type: 'message',
         role: 'assistant',
         content: [{ type: 'tool_use', id: useId, name, input }],
@@ -110,7 +116,8 @@ export function toolLines({ id, cwd, name, input, result = null, toolUseResult =
       },
     },
   ];
-  if (result !== null)
+
+  if (result !== null) {
     lines.push({
       ...base,
       parentUuid: null,
@@ -120,6 +127,8 @@ export function toolLines({ id, cwd, name, input, result = null, toolUseResult =
       message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: useId, content: result }] },
       ...(toolUseResult && { toolUseResult }),
     });
+  }
+
   return lines;
 }
 
@@ -157,7 +166,7 @@ export function apiErrorLines({
       isApiErrorMessage: true,
       message: {
         model: '<synthetic>',
-        id: 'msg_' + randomUUID().slice(0, 8),
+        id: `msg_${randomUUID().slice(0, 8)}`,
         type: 'message',
         role: 'assistant',
         content: [{ type: 'text', text }],
@@ -170,6 +179,7 @@ export function apiErrorLines({
 /** A `<task-notification>` line: an event of a running task, or — with a status — the end of one. */
 export function taskNoteLine({ id, cwd, taskId, summary = '', event = '', status = null, at = new Date() }) {
   const body = `<task-notification>\n<task-id>${taskId}</task-id>\n${status ? `<status>${status}</status>\n` : ''}<summary>${summary}</summary>\n${event ? `<event>${event}</event>\n` : ''}</task-notification>`;
+
   return {
     ...lineBase(id, cwd),
     parentUuid: null,
@@ -183,6 +193,7 @@ export function taskNoteLine({ id, cwd, taskId, summary = '', event = '', status
 /** The `pr-link` line Claude Code writes once the chat has opened or pushed to a PR — what makes it the chat's own. */
 export function prLinkLine({ id, url, at = new Date() }) {
   const m = /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/.exec(url);
+
   return {
     type: 'pr-link',
     sessionId: id,
@@ -204,7 +215,7 @@ export function replyLines({ id, cwd, text, at = new Date(), model = 'fixture-1'
       timestamp: at.toISOString(),
       message: {
         model,
-        id: 'msg_' + randomUUID().slice(0, 8),
+        id: `msg_${randomUUID().slice(0, 8)}`,
         type: 'message',
         role: 'assistant',
         content: [{ type: 'text', text }],
@@ -229,10 +240,12 @@ export function peerLines({
   at = new Date(),
   mode = 'prompting',
 }) {
-  const ts = ms => new Date(at.getTime() + ms).toISOString(),
-    sock = `uds:/tmp/cc-socks/${pid}.sock`;
+  const ts = ms => new Date(at.getTime() + ms).toISOString();
+  const sock = `uds:/tmp/cc-socks/${pid}.sock`;
+
   const xml = t => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const envelope = `<cross-session-message from="${sock}" from-name="${xml(fromName)}" from-mode="${mode}">\n${body}\n</cross-session-message>`;
+
   const origin = {
     kind: 'peer',
     from: sock,
@@ -242,9 +255,11 @@ export function peerLines({
     verifiedPeerPid: pid,
     body,
   };
-  const useId = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20),
-    sb = lineBase(from.id, from.cwd),
-    rb = lineBase(to.id, to.cwd);
+
+  const useId = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+  const sb = lineBase(from.id, from.cwd);
+  const rb = lineBase(to.id, to.cwd);
+
   return {
     sent: [
       {
@@ -255,7 +270,7 @@ export function peerLines({
         timestamp: ts(0),
         message: {
           model: 'fixture-1',
-          id: 'msg_' + useId.slice(6, 14),
+          id: `msg_${useId.slice(6, 14)}`,
           type: 'message',
           role: 'assistant',
           content: [
@@ -351,7 +366,9 @@ export function peerLines({
  *  them; `quiet`: its file last written that many ms before `at`. */
 export function agentFiles({ dir, lead, agents = [], at = new Date() }) {
   const sub = join(dir, 'projects', slugOf(lead.cwd), lead.id, 'subagents');
+
   mkdirSync(sub, { recursive: true });
+
   const base = {
     isSidechain: true,
     userType: 'external',
@@ -361,58 +378,75 @@ export function agentFiles({ dir, lead, agents = [], at = new Date() }) {
     version: 'fixture',
     gitBranch: 'main',
   };
+
   const msg = (content, stop) => ({
     model: 'fixture-1',
-    id: 'msg_' + randomUUID().slice(0, 8),
+    id: `msg_${randomUUID().slice(0, 8)}`,
     type: 'message',
     role: 'assistant',
     content,
     stop_reason: stop,
     usage: { input_tokens: 10, cache_read_input_tokens: 1000, output_tokens: 20 },
   });
+
   const files = {};
+
   for (const a of agents) {
-    const from = at.getTime() - (a.ago || 0),
-      step = i => new Date(from + 1000 * (i + 1)).toISOString(),
-      agentId = a.id,
-      ls = [];
+    const from = at.getTime() - (a.ago || 0);
+    const step = i => new Date(from + 1000 * (i + 1)).toISOString();
+    const agentId = a.id;
+    const ls = [];
+
     const line = o => ls.push({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...o });
+
     line({
       type: 'user',
       timestamp: new Date(from).toISOString(),
       message: { role: 'user', content: a.prompt || a.asked || 'go' },
     });
+
     (a.steps || []).forEach((d, i) => {
-      const id = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+      const id = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+
       line({
         type: 'assistant',
         timestamp: step(i),
         message: msg([{ type: 'tool_use', id, name: 'Bash', input: { command: 'true', description: d } }], 'tool_use'),
       });
-      if (i < a.steps.length - 1 || a.report || a.said)
+
+      if (i < a.steps.length - 1 || a.report || a.said) {
         line({
           type: 'user',
           timestamp: step(i),
           message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] },
         });
+      }
     });
+
     const tail = (a.steps || []).length;
+
     if (a.report) {
-      const id = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+      const id = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+
       line({
         type: 'assistant',
         timestamp: step(tail),
         message: msg([{ type: 'tool_use', id, name: 'SubagentHandback', input: { message: a.report } }], 'tool_use'),
       });
+
       line({
         type: 'user',
         timestamp: step(tail),
         message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'Handed back.' }] },
       });
-    } else if (a.said)
+    } else if (a.said) {
       line({ type: 'assistant', timestamp: step(tail), message: msg([{ type: 'text', text: a.said }], 'end_turn') });
+    }
+
     const f = join(sub, `agent-${agentId}.jsonl`);
-    writeFileSync(f, ls.map(l => JSON.stringify(l)).join('\n') + '\n');
+
+    writeFileSync(f, `${ls.map(l => JSON.stringify(l)).join('\n')}\n`);
+
     writeFileSync(
       join(sub, `agent-${agentId}.meta.json`),
       JSON.stringify({
@@ -430,15 +464,20 @@ export function agentFiles({ dir, lead, agents = [], at = new Date() }) {
         ...(a.tree ? { worktreePath: a.tree, spawnedWithWorktree: true } : {}),
       }),
     );
+
     if (a.quiet != null) {
       const t = new Date(at.getTime() - a.quiet);
+
       utimesSync(f, t, t);
       utimesSync(join(sub, `agent-${agentId}.meta.json`), t, t);
     }
+
     files[agentId] = f;
   }
+
   return { sub, files };
 }
+
 /** An agent's notice in its chat's transcript (2026-11-02): how it stopped, as Claude Code tells the chat. */
 export function agentNoteLine({ id, cwd, tool, asked, status = 'completed', said = 'finished', at }) {
   return {
@@ -477,11 +516,14 @@ export function teamFiles({
   spawned = {},
   at = new Date(),
 }) {
-  const id8 = lead.id.slice(0, 8),
-    team = `session-${id8}`,
-    ts = ms => new Date(at.getTime() + ms).toISOString();
+  const id8 = lead.id.slice(0, 8);
+  const team = `session-${id8}`;
+  const ts = ms => new Date(at.getTime() + ms).toISOString();
+
   const sub = join(dir, 'projects', slugOf(lead.cwd), lead.id, 'subagents');
+
   mkdirSync(sub, { recursive: true });
+
   const base = {
     isSidechain: true,
     userType: 'external',
@@ -491,28 +533,33 @@ export function teamFiles({
     version: 'fixture',
     gitBranch: 'main',
   };
+
   const agent = (name, meta, ls) => {
-    const hash = randomUUID().replace(/-/g, '').slice(0, 16),
-      agentId = `a${name}-${hash}`;
+    const hash = randomUUID().replace(/-/g, '').slice(0, 16);
+    const agentId = `a${name}-${hash}`;
+
     writeFileSync(join(sub, `agent-${agentId}.meta.json`), JSON.stringify(meta));
+
     writeFileSync(
       join(sub, `agent-${agentId}.jsonl`),
-      ls.map(l => JSON.stringify({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...l })).join('\n') + '\n',
+      `${ls.map(l => JSON.stringify({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...l })).join('\n')}\n`,
     );
   };
+
   const said = (text, i) => ({
     type: 'assistant',
     timestamp: ts(i),
     message: {
       model: 'fixture-1',
-      id: 'msg_' + randomUUID().slice(0, 8),
+      id: `msg_${randomUUID().slice(0, 8)}`,
       type: 'message',
       role: 'assistant',
       content: [{ type: 'text', text }],
       stop_reason: 'end_turn',
     },
   });
-  for (const m of mates)
+
+  for (const m of mates) {
     agent(
       m.name,
       {
@@ -546,13 +593,13 @@ export function teamFiles({
               timestamp: ts(1000),
               message: {
                 model: 'fixture-1',
-                id: 'msg_' + randomUUID().slice(0, 8),
+                id: `msg_${randomUUID().slice(0, 8)}`,
                 type: 'message',
                 role: 'assistant',
                 content: [
                   {
                     type: 'tool_use',
-                    id: 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20),
+                    id: `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`,
                     name: 'Bash',
                     input: { command: 'npm test', description: m.work },
                   },
@@ -563,7 +610,9 @@ export function teamFiles({
           : said(m.said || 'Done.', 1000),
       ],
     );
-  if (plain)
+  }
+
+  if (plain) {
     agent(
       'explore',
       {
@@ -576,11 +625,14 @@ export function teamFiles({
       },
       [{ type: 'user', timestamp: ts(0), message: { role: 'user', content: 'look around' } }, said('Looked.', 500)],
     );
+  }
+
   for (const [name, said] of Object.entries(spawned)) {
     const { type, tool = 'Agent' } = said && typeof said === 'object' ? said : { type: said };
+
     appendFileSync(
       lead.file,
-      JSON.stringify({
+      `${JSON.stringify({
         type: 'assistant',
         uuid: randomUUID(),
         parentUuid: null,
@@ -594,13 +646,13 @@ export function teamFiles({
         timestamp: ts(-1000),
         message: {
           model: 'fixture-1',
-          id: 'msg_' + randomUUID().slice(0, 8),
+          id: `msg_${randomUUID().slice(0, 8)}`,
           type: 'message',
           role: 'assistant',
           content: [
             {
               type: 'tool_use',
-              id: 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20),
+              id: `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`,
               name: tool,
               input: {
                 name,
@@ -613,11 +665,14 @@ export function teamFiles({
           ],
           stop_reason: 'tool_use',
         },
-      }) + '\n',
+      })}\n`,
     );
   }
+
   const tdir = join(dir, 'teams', team);
+
   mkdirSync(tdir, { recursive: true });
+
   const member = (name, extra) => ({
     agentId: `${name}@${team}`,
     name,
@@ -629,6 +684,7 @@ export function teamFiles({
     backendType: 'in-process',
     ...extra,
   });
+
   writeFileSync(
     join(tdir, 'config.json'),
     JSON.stringify({
@@ -644,6 +700,7 @@ export function teamFiles({
       ],
     }),
   );
+
   return { sub, team };
 }
 
@@ -664,18 +721,23 @@ export function procStartOf(pid) {
 
 export function makeFixture(dir, chats) {
   const sessDir = join(dir, 'sessions');
+
   mkdirSync(sessDir, { recursive: true });
   const made = [];
+
   for (const c of chats) {
     const id = c.id || randomUUID();
     const projDir = join(dir, 'projects', slugOf(c.cwd));
+
     mkdirSync(projDir, { recursive: true });
     const file = join(projDir, `${id}.jsonl`);
     const lines = [...chatLines({ ...c, id }), ...(typeof c.lines === 'function' ? c.lines(id) : c.lines || [])];
-    writeFileSync(file, lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+
+    writeFileSync(file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
     // The registry, for a chat that has to look alive: one file per pid, as Claude Code writes it.
     const procStart = c.live && (c.live.procStart !== undefined ? c.live.procStart : procStartOf(c.live.pid));
-    if (c.live)
+
+    if (c.live) {
       writeFileSync(
         join(sessDir, `${c.live.pid}.json`),
         JSON.stringify({
@@ -698,8 +760,11 @@ export function makeFixture(dir, chats) {
           ...(c.live.agent && { agent: c.live.agent }), // `claude --agent <name>` (2026-11-18)
         }),
       );
+    }
+
     made.push({ id, cwd: c.cwd, file, title: c.title || null, pid: c.live?.pid || null });
   }
+
   return { dir, chats: made };
 }
 
@@ -708,6 +773,7 @@ export function makeFixture(dir, chats) {
  *  millisecond now and then, and the board's order between them was then the readdir's (card-signals, 2026-09-27). */
 export function defaultFixture(dir, { cwdA = '/Users/test/repo-a', cwdB = '/Users/test/repo-b' } = {}) {
   const at = yesterday();
+
   return makeFixture(dir, [
     {
       cwd: cwdA,
@@ -728,9 +794,11 @@ export function defaultFixture(dir, { cwdA = '/Users/test/repo-a', cwdB = '/User
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
   const dir = process.argv[2];
+
   if (!dir) {
     console.error('usage: node scripts/fixture.mjs <dir>');
     process.exit(2);
   }
+
   console.log(JSON.stringify(defaultFixture(dir), null, 1));
 }
