@@ -13,8 +13,8 @@ NM=$PWD; while [ ! -d "$NM/node_modules" ] && [ "$NM" != / ]; do NM=$(dirname "$
 # Prettier's layout — `npm run format` writes it, `npm run lint` says what is left.
 [ -x "$NM/.bin/eslint" ] && [ -x "$NM/.bin/prettier" ] || { echo "ESLint or Prettier is missing from $NM — npm install" >&2; exit 1; }
 echo "› lint"
-"$NM/.bin/eslint" .
-node scripts/lint-page.mjs
+"$NM/.bin/eslint" . || { echo "npm run format fixes what ESLint can" >&2; exit 1; }
+node scripts/lint-page.mjs || { echo "npm run format fixes what ESLint can" >&2; exit 1; }
 echo "› format"
 "$NM/.bin/prettier" --check --log-level warn . || { echo "not formatted: npm run format" >&2; exit 1; }
 echo "› the page's script"

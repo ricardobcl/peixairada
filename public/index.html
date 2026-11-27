@@ -9,10 +9,19 @@
   // The board's appearance before its first paint (2026-10-12): the one picked (prefs.look), unless it follows macOS —
   // then, as with no prefs at all, the system's —, and its frame's (2026-11-01, prefs.darkFrame: dark round a light
   // chat). The page's script below takes over.
-  (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
-    const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  (() => {
+    let prefs = {};
+
+    try {
+      prefs = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {};
+    } catch {}
+
+    const picked = !prefs.skinFollow && (prefs.look === 'dark' || prefs.look === 'light');
+    const look = picked ? prefs.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
     document.documentElement.dataset.theme = look;
-    document.documentElement.dataset.frame = look === 'light' && p.darkFrame ? 'dark' : look; })();
+    document.documentElement.dataset.frame = look === 'light' && prefs.darkFrame ? 'dark' : look;
+  })();
 </script>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <style>
