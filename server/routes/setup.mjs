@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { CONFIG_FILE } from '../env.mjs';
+import { CONFIG_FILE, inClaudeDir } from '../env.mjs';
 import { chatReset, chatRoute } from '../chat.mjs';
 import { chatPicRoute } from '../chat-pics.mjs';
 import { folderCache, suggestRoots } from '../folders.mjs';
@@ -50,20 +50,29 @@ export async function setupRoutes(req, res, url, p) {
     reloadConfig(); // a hand edit since the last poll first: merged into, not saved over — nor a broken one written over
     if (configError) return json(res, 409, { error: `${configError} — fix it by hand, or delete it to start over` });
     const body = await jsonBody(req);
-    // `create`: the welcome's "make it" — a root under the home that is not there yet is made first, so a new Mac's
-    // ~/code can be the answer before anything is cloned into it. Nowhere else: a typo in the Setup stays a refusal.
+    // `create`: the welcome's "make it" — a root under the home that is not there yet is made, so a new Mac's ~/code can
+    // be the answer before anything is cloned into it. Nowhere else: a typo in the Setup stays a refusal. Made once the
+    // whole PUT holds, never in Claude Code's folder (2026-11-27, an outside audit's note: a refused PUT left its folders,
+    // and ~/.claude/x was made — the board writes nothing there).
+    const toMake = new Set();
     if (body.create === true && Array.isArray(body.roots))
       for (const r of body.roots) {
         const dir = typeof r?.dir === 'string' && r.dir.trim() ? resolve(expandHome(r.dir)) : '';
-        if (dir.startsWith(homedir() + '/') && !existsSync(dir))
-          try {
-            mkdirSync(dir, { recursive: true });
-          } catch (e) {
-            return json(res, 400, { error: `${tildePath(dir)}: ${e.message}` });
-          }
+        if (!dir.startsWith(homedir() + '/') || existsSync(dir)) continue;
+        if (inClaudeDir(dir))
+          return json(res, 400, {
+            error: `${tildePath(dir)} is in Claude Code's own folder — the board makes nothing there`,
+          });
+        toMake.add(dir);
       }
-    const r = cleanSetup(body, true);
+    const r = cleanSetup(body, true, toMake);
     if (r.error) return json(res, 400, { error: r.error });
+    for (const dir of toMake)
+      try {
+        mkdirSync(dir, { recursive: true });
+      } catch (e) {
+        return json(res, 400, { error: `${tildePath(dir)}: ${e.message}` });
+      }
     const jiraWas = JSON.stringify(setup.jira ?? null),
       chatWas = setup.chat?.repo ?? null,
       lunchWas = JSON.stringify(setup.lunch ?? null);

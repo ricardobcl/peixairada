@@ -45,8 +45,9 @@ export const expandHome = p => p.trim().replace(/^~(?=\/|$)/, homedir());
  * The setup as the state file or a PUT hands it over, down to what the board uses. `strict` (a PUT) says what is wrong
  * instead of dropping it, and asks whether each root is a folder here; the state file's are only shaped, so a folder
  * gone for a while (an unplugged disk) is not forgotten. Only the keys given come back: a PUT replaces those alone.
+ * `toMake`: folders a PUT is to make (`create`), taken for there — made only once the whole of it holds (2026-11-27).
  */
-export function cleanSetup(c, strict = false) {
+export function cleanSetup(c, strict = false, toMake = new Set()) {
   const out = {},
     fail = error => ({ setup: null, error });
   if (!c || typeof c !== 'object') return strict ? fail('expected {roots?, quick?, projects?, jira?}') : { setup: out };
@@ -62,7 +63,7 @@ export function cleanSetup(c, strict = false) {
           ? `"${r?.dir ?? ''}" is not a path — /… or ~/…`
           : org && !ORG_NAME.test(org)
             ? `"${org}" is not a GitHub org`
-            : strict && !isDir(dir)
+            : strict && !isDir(dir) && !toMake.has(resolve(dir))
               ? `${dir} is not a folder here`
               : '';
         if (bad) {
@@ -212,7 +213,10 @@ export function saveConfig() {
   if ('jira' in setup) out.jira = setup.jira;
   if ('chat' in setup) out.chat = setup.chat;
   if ('lunch' in setup) out.lunch = setup.lunch;
-  const was = readConfigFile().setup || {};
+  const read = readConfigFile();
+  // a file that broke since it was read (a hand edit) is never written over (2026-11-27): its keys would go with it
+  if (read.error) return read.error;
+  const was = read.setup || {};
   let real = CONFIG_FILE; // a symlink's target, a dangling one's too
   try {
     real = realpathSync(CONFIG_FILE);

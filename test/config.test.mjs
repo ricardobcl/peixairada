@@ -231,6 +231,28 @@ test(
         },
         { what: 'the fixed file, read', timeout: 8000 },
       );
+      // …nor one that breaks while a PUT's body is on its way (2026-11-27): read at its start, written at its end
+      const { request } = await import('node:http');
+      const slow = await new Promise((res, rej) => {
+        const rq = request(
+          `${srv.url}api/config`,
+          { method: 'PUT', headers: { 'content-type': 'application/json', 'x-peix-key': srv.key } },
+          r => {
+            let b = '';
+            r.on('data', d => (b += d));
+            r.on('end', () => res({ status: r.statusCode, body: JSON.parse(b || '{}') }));
+          },
+        );
+        rq.on('error', rej);
+        rq.write('{"quick": ');
+        setTimeout(() => {
+          writeFileSync(file, '{ "quick": [ oops');
+          rq.end('"beta"}');
+        }, 300);
+      });
+      assert.equal(slow.status, 500, JSON.stringify(slow.body));
+      assert.match(slow.body.error, /not saved.*does not parse/);
+      assert.equal(readFileSync(file, 'utf8'), '{ "quick": [ oops', 'the file untouched');
     } finally {
       await srv.stop();
       rmSync(home, { recursive: true, force: true });
@@ -356,6 +378,17 @@ test(
         400,
         'and made only under the home',
       );
+      // made only once the whole PUT holds, and never in Claude Code's folder (2026-11-27)
+      assert.equal(
+        (await put(srv, { roots: [{ dir: '~/never/made', org: 'not an org' }], create: true })).status,
+        400,
+        'a PUT refused',
+      );
+      assert.equal(existsSync(join(home, 'never')), false, '…makes nothing');
+      const inClaude = await put(srv, { roots: [{ dir: '~/.claude/x', org: '' }], create: true });
+      assert.equal(inClaude.status, 400);
+      assert.match(inClaude.body.error, /Claude Code's own folder/);
+      assert.equal(existsSync(join(home, '.claude', 'x')), false, "nothing made in Claude Code's folder");
       const made = await put(srv, { roots: [{ dir: '~/fresh/place', org: 'acme' }], create: true });
       assert.equal(made.status, 200);
       assert.deepEqual(

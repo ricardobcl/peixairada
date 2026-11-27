@@ -68,6 +68,11 @@ verdicts: *"fix everything"*. One commit each:
   `sameProcess` again, since the pid may be another's by then. `chat-remove.test`: a file named for one process that
   names another, its start as ps gives it — what `sameProcess` checks, so only the name tells — is no claude, and
   deleting the chat signals nobody (the old loader killed it). The -1 case is the same check and is not run.
+* **A config PUT made its folders before it was judged** (a hardening note). `create: true` made every root under the
+  home first, so a PUT refused for another reason left them, and `~/.claude/x` was made — the board writes nothing
+  there. Now cleanSetup takes the folders to make as there (`toMake`), and they are made only once the whole PUT holds,
+  none in Claude Code's folder (`inClaudeDir`). And `saveConfig` read the file again and wrote over it even when it had
+  broken since the route's look (a hand edit while the body came): it refuses now, as the 409 does.
 
 ## Decisions of 2026-11-27 — make install, make update
 
