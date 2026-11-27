@@ -301,8 +301,10 @@ the *Claude Code-credentials* keychain item (your plan usage — *Always Allow*)
 | [Zed](https://zed.dev) | file links in Zed instead (Settings › General) | none: picking it installs it |
 | [Task](https://taskfile.dev) | new chats in folders whose Taskfile starts Claude (folders Claude Code trusts) | `brew install go-task` |
 
-**Updating**: the status bar says when new commits have come; click it and it pulls them — a fast-forward that leaves
-your own changes as they are — and restarts only what they changed: the packages, the server (your chats stay open),
+**Updating**: the board follows **releases** (Settings › Updates › Follow): the status bar says *0.2 is out*, Settings
+shows what it brings, and What's new shows the notes once you have it (⌥⌘L › Release notes, again). *Every commit*
+follows `main` as it lands instead. Click the status bar's word and it takes what came — a fast-forward that leaves
+your own changes as they are — and restarts only what changed: the packages, the server (your chats stay open),
 the page, the app. When a file you changed is one the commits change too, or your branch has commits of its own,
 Settings › Updates & access says so, with the command that clears the way under Details. *Update automatically* pulls on its own once you've left the
 board be for two minutes, and never while a file is changed here. **Only signed commits are taken**: the newest one
@@ -359,8 +361,8 @@ or *key* to find a setting wherever it is):
   project ⌥⌘O starts a chat in, a colour per project, and the projects you hid.
 - **Jira** — your site, email and API token (the token goes to your keychain, never into the file).
 - **Chat** — the chat's repo: a new one, one you're in, an invitation to join; or leaving it (see below).
-- **Updates & access** — where the board's update stands and whether it updates itself (off to begin with: the status
-  bar says when new commits came, and *Update now* takes them), whether the board's key is required yet and a new key
+- **Updates & access** — where the board's update stands, what it follows (releases, or every commit) and whether it
+  updates itself (off to begin with: the status bar says when a release came, and *Update now* takes it), whether the board's key is required yet and a new key
   (every browser then asks for it again), and where the setup file is.
 
 The sidebar's foot has the keyboard shortcuts and the tour.

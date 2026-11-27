@@ -34,7 +34,8 @@ scripts/launchd.sh open        # …or the board in your browser (make server in
 ```
 
 `make install` is `npm ci` (the packages exactly as the lockfile pins them), `scripts/launchd.sh install` and
-`mac/build.sh install`; `make update`, later, takes what came — the board's own *Update now*, from the terminal.
+`mac/build.sh install`; `make update`, later, takes the newest release and prints its notes — the board's own *Update
+now*, from the terminal. What each release brought is in [CHANGELOG.md](CHANGELOG.md).
 
 On first open it asks where your repos live (its guess from your chats already filled in) and shows you round in a
 couple of minutes. Updating, removing, the optional extras and every setting: **[the guide](docs/GUIDE.md)**.

@@ -50,7 +50,7 @@ npm run scenarios                   # all of them, one at a time, with a verdict
 * **Parallel work goes in a worktree, `scripts/worktree.sh`** (2026-10-14): `new <name>` is `.claude/worktrees/<name>`
   on its branch from the local main, no node_modules link (Node and `npm run check` find the checkout's). Land it on
   main (a fast-forward, else a cherry-pick), then `done <name>`: the worktree and its branch go only when every commit
-  is on main (by patch), nothing is uncommitted and no process is inside, never by force; `prune` does it for every
+  is on main (by patch), nothing is uncommitted and no process is inside; `prune` does it for every
   finished one left an hour. → `worktree-script.test.mjs`.
 
 ## Layout
@@ -187,20 +187,21 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   default**: what came is said, *update now* takes it; Settings › Updates, `GET/PUT/POST /api/update`, an `update`
   event): only the agent looks by the clock (`UNDER_AGENT`, `UPDATE_EVERY_MS`), fetching its upstream alone (no
   FETCH_HEAD, no tags), **fast-forward only, to a tip a key in `.github/allowed_signers` signed** (2026-11-06;
-  `signedBy`, HEAD's list, never the new commits', a signer named, in a `mkdtemp` folder, 2026-11-27; else `unsigned`,
-  not even *update now*; `commits` named) — a rewritten history whose tip names every commit here (`.github/rewritten`,
+  `signedBy`: HEAD's list, a signer named; else `unsigned`, not even *update now*) — a rewritten history whose tip names every commit here (`.github/rewritten`,
   `rewrittenHere`) by `reset --keep` — not over a tracked change (`dirty`), a branch moved on its own (`diverged`), a
   held commit, or within `UPDATE_QUIET_MS` of a touch (`lastTouchAt`); *check now* (`asked`) skips that wait, *update
   now* (`apply`) the switch, the hold and a change the commits do not touch too (`clash`; `whyNot`, `updWord`). What
   they touched restarts (`updateParts`): `npm ci --ignore-scripts`, the agent (`launchd.sh restart`) and, when behind,
-  the app (`mac/build.sh install`), both detached; the page reloads once left be (`takeUpdate`, `reloadBusy`; never
-  mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `watchBuild`), a click
+  the app (`mac/build.sh install`), both detached; the page reloads once left be (`takeUpdate`, `reloadBusy`; not
+  before the new server is back). **Its progress is the status bar's** (`updSeg`, `watchBuild`), a click
   on news taking it (`data-take`, `updNow`). **First the new page compiles and the new server starts on a spare port**
   (`preflight`); one that does not is undone (`git reset --keep`, only while HEAD is the commit pulled) and held
   (`updateHeld`). **The app is held against the checkout** (2026-10-14; `readApp`, `appWhyNot` → `app`, `lookApp`):
   build.sh stamps `PeixSource`, mac/'s tree (its notes out); one not HEAD's (`macSource`) is behind — rebuilt with a
-  pull, else by *update now* or the switch once quiet, by the clock never twice for one source (`appBuild`), never over
-  work in mac/. → `update.test.mjs`, `auto-update.mjs`.
+  pull, by *update now*, or once quiet by the switch, never twice for one source (`appBuild`) nor over work in mac/. → `update.test.mjs`, `auto-update.mjs`.
+* **What it takes is a release** (2026-11-27; `newestRelease`): the newest commit past HEAD's setting `package.json`'s
+  version, its notes `CHANGELOG.md`'s, What's new's once (`releaseSeen`); *Every commit* (`updateChannel`) the tip.
+  `/release` cuts one. → `update-release.test.mjs`, `release-notes.mjs`.
 * **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` carries `<meta name="peix-page">` (file
   stamp, boot `SINCE`); a snapshot names the page on disk (`page`): from a server started since, with another
   page, a reload (`reload.want`); a reconnect to the same server, none. → `update.test.mjs`, `restart-page.mjs`.
@@ -567,7 +568,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 ## Hotkeys and the pane
 
 * **The shell's own workings are [mac/CLAUDE.md](mac/CLAUDE.md)'s** (2026-10-28): the fill, the menus, the pane's
-  views, the server it adopts, Swift's traps. Here: what the page does across the bridge.
+  views, the server it adopts, Swift's traps.
 * **`HOTKEYS` is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press,
   its group, one line, its codes in a map of `KEYMAPS` — the ? sheet is drawn from it (`keyNotes`),
   and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
@@ -1003,7 +1004,7 @@ to the page, load it**: `check-page` only compiles, and a `const` read before it
   inherited registered property transitioned over a big subtree) — Chrome checks them too (`compositor-rules.mjs`) but
   the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
   change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
-  on that commit beside it; `--app` the app as it runs, the rest at its head.
+  on that commit beside it; `--app` and the rest at its head.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `gl` a software WebGL, `prefs` — what the page starts from;
   **without it a page starts with every lane open, large cards, the theme the emulated scheme's, the tour taken, the
@@ -1044,10 +1045,8 @@ to the page, load it**: `check-page` only compiles, and a `const` read before it
 
 ## Deliberately not done
 
-* **The title bar as one surface with the head row** — round the traffic lights, with something to drag the window
-  by: a design for in front of the app. → Decisions 2026-09-27.
+* **The title bar as one surface with the head row** — a design for in front of the app. → Decisions 2026-09-27.
 * **Making VS Code's tab follow a chat continued elsewhere** — the extension watches only `~/.claude/sessions/`.
-* **Attaching to a *live* session from the board** — its socket cannot answer a permission prompt for you, and only its
-  auth line is documented (2026-10-31).
+* **Attaching to a *live* session from the board** — its socket cannot answer a permission prompt (2026-10-31).
 * **The app is signed for this machine only**, not for distribution.
 

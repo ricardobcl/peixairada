@@ -5,6 +5,48 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-27, latest — releases, with notes people can read (round XXXII)
+
+Ricardo: *"I want to explore having releases with clear update notes vs just updating from main. the update on the app
+currently just list the commits, which given the agentic nature of dev, it's not very human readable"*. The study, round
+XXXII (https://claude.ai/artifact/2w44ZoofNo95hmoWfajhRi), measured what a colleague's board says: 87 commits in 23–27
+November, 75 of them touching the page, the server or the app — hiding docs and tests would drop 12 —, Settings naming
+the newest 20 subjects, which that week were the audit's hardening and the tiles' fixes: Space, Pinned and Snooze, the
+three things people would notice, landed on the 24th and were in none of them. Beside it, the same five days drafted from
+`DECISIONS.md`'s 33 entries as notes: about ten lines. His line: `F3 · R1 G · W1 · S1 S2 S4 · C1 · V1`, the suggestion.
+
+* **A release is the commit that sets `package.json`'s version** (R1): the next minor, its notes a section at the top of
+  `CHANGELOG.md` (`## 0.2 — 27 November 2026`, read by `lib/changelog.mjs`), signed as every commit here is. No new
+  trust: the updater checks the release's signature as it checked the tip, the fetch stays one branch with no tags, and
+  `lib/version.mjs` already counts the patch from that commit (0.2.14: fourteen commits past 0.2). A commit that touches a
+  line naming `"version"` and leaves the version be is none; on a rewritten history only a release with the rewrite in it.
+* **Follow: Releases or Every commit** (F3; `updateChannel` in the state file, `PUT /api/update {channel}`, Settings ›
+  Updates). Releases is the default (`UPDATE_CHANNEL` for a board that never picked; the update tests' project is on
+  `main`, their stories being a tip's): a board takes the newest release past the one HEAD is on and stops there, the
+  commits main has past it are `past` — a line in Settings, no news. A board already past the newest release, as every
+  board following main is on the day this lands, waits for the next. Ricardo's own board is his checkout and never waits.
+* **The release said by its name** (S1, S2): *0.2 is out · update* in the status bar and the Updates row, its notes
+  drawn under it from `CHANGELOG.md` as the release has it, by `md()` as a reply is; the commits it brings under Details.
+* **What's new after it** (S4): once the board's code is on a release the page has not shown (`prefs.releaseSeen`, 0.1
+  until then, the last before any), What's new opens on a quiet board with a page for each release since, newest first,
+  from `GET /api/update/notes?since=` — whatever moved the board, its update, `make update` or a pull. A tour naming its
+  release (`NEWS.release`) comes first in the same dialog. ⌥⌘L › Release notes opens the newest again. `make update`
+  names the release it took and prints its notes.
+* **Cutting one** (W1, G, C1): when Ricardo says so, the `/release` skill (`.claude/skills/release/SKILL.md`,
+  force-added past the global ignore of `.claude`). `node scripts/release.mjs` prints the last release, the next minor,
+  the decision entries and the commits since with the part each touches; Claude drafts the notes for the people who use
+  the board — a line a feature, where it is, nothing of the code —, Ricardo edits them in the chat; `cut <notes.md>`
+  makes the commit and a signed tag `v0.N.0`; `publish` pushes main and the tag and makes the GitHub release from the
+  same notes, never for a release no key in `.github/allowed_signers` signed.
+* **Numbers** (V1): a release is a minor, and a fix that cannot wait is the next one; `version.mjs` unchanged.
+* Not picked: a sheet with the notes before updating (S3), About naming the release (S5), a weekly release Claude
+  proposes (C2), fragments of notes written as changes land (W2), a summary each board writes with `claude -p` (W3).
+* Checked: `update-release.test.mjs` — no release, a release among later commits taken and no further, its notes, a
+  version line that is no release, two at once, every commit and back across a restart, a release a stranger signed
+  refused, `make update` on releases; `release-script.test.mjs` — the draft, the cut, a cut refused over a changed
+  `package.json`, the publish, an unsigned release kept back; `release-notes.mjs` — the row, the bar, Update now, What's
+  new once, Every commit, ⌥⌘L's Release notes.
+
 ## Decisions of 2026-11-27, later — an outside audit's leads, checked and fixed
 
 A security audit of the board from outside (a source-only review of the public repo at a commit of 2026-11-14) came over
