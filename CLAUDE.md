@@ -39,16 +39,17 @@ npm run scenarios                   # all of them, one at a time, with a verdict
   `public/`); a change to `server/` or `lib/` needs `restart`. The app's bundled server is the fallback for a Mac without the
   agent. → Findings: *launchd agent*.
 * **Node ≥ 22** (the harness uses the global WebSocket), **`npm install` first.** Runtime deps: `node-pty` (native),
-  `ws`, `@xterm/headless` 5.5.0 and `@xterm/addon-serialize` 0.13.0 (the vendored xterm's, checked). Dev-only and
+  `ws`, `@xterm/headless` and `@xterm/addon-serialize` (the vendored xterm's, checked). Dev-only and
   pruned from the app: the xterm client, marked, DOMPurify, highlight.js (`public/vendor/`'s sources byte for byte),
   ESLint, Prettier; every version exact. Rebuild the app after `npm install` or a node switch (it bundles both).
-* **Prettier lays the code out, ESLint lints it** (2026-11-25): `npm run format` before a commit, `npm run check`
-  fails the rest; the page's script is linted whole (`lint-page.mjs`), a table kept a row a line `// prettier-ignore`.
+* **`npm run format` before a commit** (2026-11-27: Prettier, then ESLint's fixes), `npm run check` fails
+  the rest, the page's script linted whole (`lint-page.mjs`). **No one-letter names** (`_`, `$` aside); `s` `t` `g`
+  `e` here are the code's `session` `term` `half` `event`/`error`.
 * **A session that runs in a drawer**: finish the work, write the notes and the recap first, and run
   `restart --after 20` last. `scripts/board.sh /api/terminals` says which chats are in drawers. `launchd.sh` and
   `build.sh` detach themselves when run from a drawer (`PEIXAIRADA_DRAWER`). → Findings: *build.sh from a drawer*.
 * **Parallel work goes in a worktree, `scripts/worktree.sh`** (2026-10-14): `new <name>` is `.claude/worktrees/<name>`
-  on its branch from the local main, no node_modules link (Node and `npm run check` find the checkout's). Land it on
+  on its branch from the local main, no node_modules link (Node finds the checkout's). Land it on
   main (a fast-forward, else a cherry-pick), then `done <name>`: the worktree and its branch go only when every commit
   is on main (by patch), nothing is uncommitted and no process is inside; `prune` does it for every
   finished one left an hour. → `worktree-script.test.mjs`.
@@ -76,7 +77,7 @@ npm run scenarios                   # all of them, one at a time, with a verdict
 | `scripts/shell.mjs`, `shell-probe.swift`, `shell-checks/` | `mac/Sources/` itself, driven |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView`, the app's engine |
 | `scripts/fixture.mjs` | A `~/.claude` look-alike |
-| `scripts/fakes/` | The test servers' stand-ins for every CLI and service (`fakeclaude.mjs` the CLI); each head says its knobs |
+| `scripts/fakes/` | The test servers' stand-ins for every CLI and service; each head says its knobs |
 | `scripts/readme/` | The README's pictures, from a made-up board: stills and clips → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `lint-page.mjs` | Static checks |
 | `test/` | `node:test` files (`npm test`) |
@@ -279,7 +280,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   dips by the `scale` property** (the FLIP's `transform` and the ring's stay theirs): a card 99 % unless the press is on
   a control in it (`:has`), small controls 97 % — never the address, nor a tab
   pressed on its ×. → `small-motions.mjs`, `pane-tabs.mjs`.
-* **Counts roll** (`rn(key, n)`, `rollSoon`): a count is plain text in `.rn[data-rk]`; after a draw, one whose key
+* **Counts roll** (`rn(key, count)`, `rollSoon`): a count is plain text in `.rn[data-rk]`; after a draw, one whose key
   showed another number becomes a digit strip, plain text again `ROLL_MS` later — so `setHtml` and the reconciles
   compare the same strings, and `textContent` reads the number mid-roll (`.rv`). Each strip rolls by an animation of
   its own from the old digit — never a transition after a forced layout (2026-10-13).
@@ -430,7 +431,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   default (`prefs.peopleCompact`). A face clicked narrows the list to that person's chats (`prefs.person`,
   `hasPerson`); the same face, or the person leaving the view, lets go. Drawn only when its markup changed
   (`peopleDrawn`). → `people-row.mjs`.
-* **A card comes in four sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and Claude's last reply —, *medium* the last word, *compact* neither, *one line* (2026-11-03; `'line'` → `data-line` beside `data-cards="compact"` and `data-even`): same height's third row is the first of the question, the move (`.rowmove`), the agents (`.agrows`, which still grow it), the live line, the last word. `cardHtml` always writes both `.snip`s (the older `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane* (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height*** (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. **Its words on one line** (2026-11-03; `prefs.cardsSnipOne` → `data-snipone`): each `.snip` clamped to one. → `card-sizes.mjs`, `card-one-line.mjs`, `card-words-line.mjs`.
+* **A card comes in four sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* your last prompt and Claude's reply, *medium* the last word, *compact* neither, *one line* (2026-11-03; `'line'` → `data-line` beside `data-cards="compact"` and `data-even`): same height's third row is the first of the question, the move (`.rowmove`), the agents (`.agrows`, which still grow it), the live line, the last word. `cardHtml` always writes both `.snip`s (the older `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane* (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height*** (`prefs.cardsEven` → `#sessions[data-even]`): rows of a fixed height: one title line, the question left to the red edge, the move line or `.moveslot`, never `.prmove`, which the harness reads. **Its words on one line** (2026-11-03; `prefs.cardsSnipOne` → `data-snipone`): each `.snip` clamped to one. → `card-sizes.mjs`, `card-one-line.mjs`, `card-words-line.mjs`.
 * **Every part of a card can go** (2026-11-03; `CARD_PART`, `prefs.cardParts` → `#sessions[data-hide]`, CSS alone; the age and the ✓ are *at rest*, off by default): a click on the real card in Settings › Chat list (`#cardPanel`, `cardLabMake`). **The list's rules reach it by a copy while the pane shows** (`clabCss`: `#slist`, `#sessions` for `.clab`, `.clabs` at the same weight). → `card-parts.mjs`.
 * **A card is raised** (2026-11-03): the ground `--step` (towards the ink on a dark frame), `--lo`; under the pointer `translate` and `--hi`, `::before` 2 px lower or the card drops off the pointer. A card's `--side` is its ground, for its chips. A state keeps its edge; a question keeps still. The list's inks are fitted to `--step` (`raisedInks`, by hand for the board's own; INK_CHECK's `step`). → `card-raised.mjs`.
 * **A card's title row reads title · chips · time · F · unread; its top row ends ✓ · PRs** (every card has it, 18 px
@@ -529,7 +530,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   the fish out (`lunchOut`), ⌥⌘M's `#lunchd` and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **⌥⌘Z is Zé's game** (2026-10-30; `#zeGame`, `zeOpen`, `peix.ze()`, `.lab` the harness's): frames only while open,
   unpaused, uncalled; its own Web Audio (`zeRadio`), made by a press, closed with it or M. **What falls is the day's**
-  (`zeSeed`; the demo, `g.demo`, chance's, silent). **It hears the board**: a chat that starts asking stops it
+  (`zeSeed`; the demo, `game.demo`, chance's, silent). **It hears the board**: a chat that starts asking stops it
   (`zeHeard`), today's lunch falls, a score reaches the room only by a K.O. button (`zePost`). **A stage on the GPU**
   (2026-11-01; `zg`): WebGL2 made and let go with the dialog **by hand** (`zgLetGo`), else 2D (`zeDraw`); what moves
   on a batcher (`zgBatch`), **never a canvas handed to WebGL a frame**; blur by layer. Calm under reduced motion

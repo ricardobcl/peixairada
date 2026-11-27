@@ -1,4 +1,8 @@
-# Commits that changed only the code's layout: `git blame --ignore-revs-file .git-blame-ignore-revs`, and GitHub's blame,
-# step over them to a line's last real change.
+# Commits that changed the code wholesale and nothing it does: `git blame --ignore-revs-file .git-blame-ignore-revs`,
+# and GitHub's blame, step over them to a line's last real change.
 # The code formatted by Prettier (2026-11-25)
 bd0ffaaa81f044c27d9034036f3f8519d29f8ef7
+# The code laid out by ESLint's new rules (2026-11-27)
+41a06f6ac634015a4ec40dfa4a8df031f0287b65
+# One-letter names given words (2026-11-27)
+3d29bba95d73be2ecda391e0d264a8c4250bcb76

@@ -5,7 +5,61 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-11-27, latest — releases, with notes people can read (round XXXII)
+## Decisions of 2026-11-27, latest — the house rules: names in words, a blank line round a block
+
+Ricardo: *"pull latest main and work on linting errors, best code pratices, etc. e.g, seach for linting/rules that
+accomplish: no 1 letter variables, prefer self-describing var names; add a whiteline between funcions of if/blocks;
+prefer grouping variables up top; prefer imports up top"*.
+
+* **The rules** (`eslint.config.mjs`), each over every file and the page's script put together:
+  * *No one-letter names*: core `id-length` (min 2), `_` (unused) and the page's `$` (its querySelector, 1 266 uses)
+    aside; an object's keys are not checked — they are the wire's (`{t: 'clear'}` to a holder), the state file's and
+    the API's, renamed only with both ends.
+  * *A blank line round a block*: `@stylistic/padding-line-between-statements` (6.0.1; core's is deprecated) — before
+    and after any statement over more than one line (a function, a class, an `if`/loop/`try` with braces, a declaration
+    or call that runs on), after the imports, and after a run of declarations: the declarations of a block are grouped,
+    then a blank line. Classes: `lines-between-class-members`.
+  * *Grouped declarations*: `one-var: never`, a declaration a statement. Nothing puts every `let`/`const` at the top of
+    its function: `vars-on-top` is for `var` alone (none here), and a `const` is declared where its value is first
+    known; grouping them, the blank line after, is what is checked.
+  * *Imports first*: `eslint-plugin-import-lite` (0.6.0, no dependencies — `import-x` brings a native resolver)
+    `first` and `no-duplicates`. Nothing broke them: they hold it.
+  * *Besides*, the cheap ones: `curly: multi-line`, `prefer-template`, `prefer-const` (destructuring all),
+    `object-shorthand`, `prefer-exponentiation-operator`, `eqeqeq` (null aside), `no-var`. Measured and left out:
+    `no-use-before-define` (1 733 — the page's parts call what later parts declare), `func-style` (1 424 both ways),
+    `no-nested-ternary` (509), `no-implicit-coercion` (414), `consistent-return` (259), `no-shadow` (162),
+    `no-multi-assign` (84, mostly `const t = (s.x ||= new Map())`), `no-promise-executor-return` (102, `r =>
+    setTimeout(r, ms)`).
+* **`npm run format` makes all but the names** (`scripts/format.mjs`): Prettier, ESLint's fixes, Prettier again over
+  what ESLint changed, till neither moves a thing — a line Prettier breaks may want a blank line round it. The page's
+  parts are fixed each alone, by the rules that read nothing past the part (`PART_RULES`: not `prefer-const`, whose
+  `let` another part may set); `lint-page.mjs` lints them put together and lets a part's first statement go without a
+  blank line above it (the statement before is another file's). Done once over the code: 454 files, 29 300 lines in and
+  7 100 out; each file's tree the same once a declaration of several names is one per name, a braced body of one
+  statement that statement, a `+` chain of strings a template, and `Math.pow` `**`.
+* **The names were given, not made up by a rule**: 9 887 one-letter bindings in 438 files, each named for what it holds
+  by a reading of the code around it (thirteen agents, a batch each, one vocabulary: a chat's summary `session`, a
+  drawer's record `term`, a half of the chat column `half` — `group` where a tile can be a third —, a listener's
+  argument `event`, a caught one `error`, a regex's `match`, a comparator's `left`/`right`, a constant `WIDTH`). A
+  tool renamed them by scope (eslint-scope), never by text: a name that would sit beside another, shadow a use or
+  capture an outer one was refused, a shorthand kept its key (`{ s: session }`: 430 such keys remain, the wire's and
+  the helpers' own), and every file — and the page's script put together — was checked the same program renamed:
+  every variable named by its order of declaration, the trees equal. The one change of interface:
+  `scripts/readme/board.mjs` exports `WIDTH`/`HEIGHT`. 67 comments that named a variable by its letter say its word.
+* **What read a name and was told**: `check-tests.mjs` finds the routes by `path ===` (`p` before); the chat test's
+  guard against a message's body as markup is a pattern, not `m.body`. CLAUDE.md's `s`, `t`, `g`, `e` (a summary, a
+  drawer, a half, an event) stay its shorthand, said once at the lint bullet.
+* **Checked**: `npm test` 341/341 after each step; `npm run scenarios` 166/169, three skipped (chrome-headless-shell),
+  `lane-heads` flaky, and `drawer-repaint-real`, `project-colors`, `watch-lane` failing on 6699d3f the same way (the
+  last only under load: it passed once there and failed three times on every commit of this, base included, at a load
+  of ten). `npm run perf --runs 3 --against
+  6699d3f`, the median: rest 4.0 % of a core against 3.8, pointer 7.0 against 7.1, scroll 20.2 against 20.6, home 22.3
+  against 22.4, a chat opened in 83 ms both, 248 layers both, memory 221 MB both — the same board.
+* **The cost**: the code is 153 000 lines against 128 000 (the blank lines, a declaration a line); the page served
+  2.12 MB against 2.00. `.git-blame-ignore-revs` names both commits. Every branch from before conflicts on most lines it
+  touches: rebase it after `npm run format` on both sides, and its new one-letter names are its own to give.
+
+## Decisions of 2026-11-27, after the audit — releases, with notes people can read (round XXXII)
 
 Ricardo: *"I want to explore having releases with clear update notes vs just updating from main. the update on the app
 currently just list the commits, which given the agentic nature of dev, it's not very human readable"*. The study, round
