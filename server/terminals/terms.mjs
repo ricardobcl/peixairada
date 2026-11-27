@@ -209,6 +209,9 @@ export const jobOf = l => (l?.kind === 'bg' && /^[0-9a-f]{8}$/.test(l.jobId || '
 export function endClaude(entry) {
   const { pid } = entry;
   return new Promise(resolve => {
+    // a pid as a registry file could hold it (2026-11-27, an outside audit's note): -1 signals every process of yours, 0
+    // this server's group — never one that is not a process's own
+    if (!Number.isInteger(pid) || pid <= 1) return resolve({ code: 400, error: `${pid} is no process's id` });
     if (!sameProcess(entry))
       return resolve({ code: 409, error: `pid ${pid} is no longer that claude — its registry file outlived it` });
     // A background session is the daemon's (2026-11-04): one SIGTERMed reads *crashed*, and the daemon may start it again
@@ -236,6 +239,7 @@ export function endClaude(entry) {
       if (Date.now() - t0 > TAKEOVER_WAIT_MS) return resolve({ code: 504, error: `pid ${pid} is still running` });
       if (!hard && Date.now() - t0 > 5000) {
         hard = true;
+        if (!sameProcess(entry)) return resolve({ ok: true }); // it ended, and the pid is another's now: not that one
         try {
           process.kill(pid, 'SIGKILL');
         } catch {}

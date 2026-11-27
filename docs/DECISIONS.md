@@ -61,6 +61,13 @@ verdicts: *"fix everything"*. One commit each:
   port loads the stranger's page, which reads the key from this origin's storage — the app's key is injected, not
   stored. `key-proof.mjs`: the server ends, a listener takes the port, the page shows the lock and sends it nothing
   keyed, the board comes back and the page is the board again; the old page timed out on the lock.
+* **A registry file could have Done signal every process you own** (a hardening note; same account only). `endClaude`
+  sent SIGTERM, then SIGKILL, to the pid a `sessions/<pid>.json` named, unchecked: `"pid": -1` with no `procStart` is
+  every process of the user's (`sameProcess` takes an entry with no start at its word). The registry is read only for a
+  pid that is an integer over 1 and its file's name, and `endClaude` refuses any other; the SIGKILL 5 s on asks
+  `sameProcess` again, since the pid may be another's by then. `chat-remove.test`: a file named for one process that
+  names another, its start as ps gives it — what `sameProcess` checks, so only the name tells — is no claude, and
+  deleting the chat signals nobody (the old loader killed it). The -1 case is the same check and is not run.
 
 ## Decisions of 2026-11-27 — make install, make update
 

@@ -157,7 +157,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   writes no `key=`, `tkn=`, `ticket=`.
 * **One spawn per chat and kind at a time** (`spawnOnce`, `<chat>:claude` / `:shell`). **Nothing is signalled that
   is not the registry's process**: `endClaude(entry)` compares `procStart` with `ps -o lstart=` in UTC
-  (`sameProcess`) — a dead claude's file lingers and its pid can be anyone's. → `terminals.test.mjs`.
+  (`sameProcess`), again before a SIGKILL — a dead claude's file lingers and its pid can be anyone's; a file's pid is its
+  name's, over 1 (2026-11-27). → `terminals.test.mjs`, `chat-remove.test.mjs`.
 * **The open chat's entries are numbered on the wire**: `/messages` and every `entries` event carry `gen` (which
   reading of the file, `newSession` numbering each) and `upto` (`entryCount`); another `gen` or a gap is a fetch.
 * **The holder socket is `setEncoding('utf8')` on both ends.**
@@ -310,18 +311,17 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (`drawCards` reads `REDUCED`), and in `reduced-motion.mjs` if it is a state's.
 * **The card's edge is one ring with four readings**: `--lit` what runs, `--seg` how much of the edge one light owns
   (`100% / --lights`, one per sub-agent), `--spins` how fast. **Clauding**: the project's colour lifted towards white
-  (`--glow`, OKLCH), a lap in 4 s (2026-11-25). **Watching** (`s.tasks`): one light in `--watch`, slowly — on a ready card too. **Asking**
-  (`needs-input` while alive): no ring — a red border and pings (`sonar`, the card `overflow: visible`), the question on
-  the card (`askHtml`); answered while alive, `heard` (`heardAt`,
-  `flareLanded`). **The three CSS rules are in priority order — work beats a monitor, a question beats both — and each
-  sets every variable.** **The ring is a conic gradient on a square turned by a `transform`** (`.rg::before`,
-  masked to a band): no border; `--track` on the open card only. **The live line** (`liveSlot`, `fillLive`) is a slot filled after the render, its memo in
-  properties, so a tool call keeps the card's node: the last tool call (`doing`, `doingOf`; `pathTail`), a watching
-  card's newest event. **`phaseAnims()`** (once a frame; `true` at once) puts every `ring`, `sonar`,
-  `pulse`, `pix` and `pixhop` at start 0 on the document clock — only when
-  something new may have started (2026-10-13). **While Claude works** (Settings ›
-  Chat list, 2026-11-25; `prefs.clauding` → `#sessions[data-clauding]`, CSS alone): the ring, an arc beside the project
-  (`.wkarc`) or a still edge; a monitor keeps its light. → `card-signals.mjs`.
+  (`--glow`, OKLCH), a lap in 4 s (2026-11-25). **Watching** (`s.tasks`): one light in `--watch`, slowly — on a ready
+  card too. **Asking** (`needs-input` while alive): no ring — a red border and pings (`sonar`, the card `overflow:
+  visible`), the question on the card (`askHtml`); answered while alive, `heard` (`heardAt`, `flareLanded`). **The
+  three CSS rules are in priority order — work beats a monitor, a question beats both — and each sets every
+  variable.** **The ring is a conic gradient on a square turned by a `transform`** (`.rg::before`, masked to a band): no
+  border; `--track` on the open card only. **The live line** (`liveSlot`, `fillLive`) is a slot filled after the
+  render, its memo in properties, so a tool call keeps the card's node: the last tool call (`doing`, `doingOf`;
+  `pathTail`), a watching card's newest event. **`phaseAnims()`** (once a frame; `true` at once) puts every `ring`,
+  `sonar`, `pulse`, `pix` and `pixhop` at start 0 on the document clock — only when something new may have started.
+  **While Claude works** (Settings › Chat list, 2026-11-25; `prefs.clauding` → `#sessions[data-clauding]`, CSS alone):
+  the ring, an arc beside the project (`.wkarc`) or a still edge; a monitor keeps its light. → `card-signals.mjs`.
 * **A card opens to its agents while they work** (2026-11-02; `fillAgents`, `agPlan`, `.agl`): asked, doing (`agNow`), age (`agLabel`), `AG_SHOW` rows then `+N`; one ended ticks, then a done row of results; a failure first, the chip red, until the chat is opened (`seenAt`), a summary once the last ended; nothing leaves under the pointer (`agHover`). **Chip, rows and `--lights` are out of the markup**: a new node filled before `drawCards` measures (`agFresh`). The chip folds them (`prefs.agentCards`), the live line naming who stepped last (`.agwho`). At same height too, in `.moveslot`'s place; folded, one height unless a move wants the line. `data-hide~="agents"`: none. Its card `#mxtip`'s (`agCardHtml`), its menu `agMenu`; rows too under the transcript (`renderPresence`) and on ⌥⌘A's tile. → `agent-rows.mjs`, `agent-even.mjs`, `agent-menu.mjs`.
 * **Hidden (⌥⌘B, `#sbList`), the list is out of the layout** (2026-10-25; `prefs.listHidden` →
   `main.lhide`, `applyList`): `#sessions` and `#splitter` `display: none` — no card runs a thing —, the chat the whole
@@ -342,18 +342,16 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): tokens under
   `:root:root[data-skin=…]`, beside its own appearance; **a family of two halves** (2026-11-01; `FAMILIES`,
   `#themePick`, `setTheme`), one with a single half the board's own for the other. **The appearance is the board's,
-  whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`, set before the first paint, which every dark
-  rule reads — **never `prefers-color-scheme`**. Worn (`wornKey()`, `skinOn()`): the family's half of `darkNow()` —
-  Appearance › Auto (`prefs.skinFollow`, the default; `setLook`) the system's, else `prefs.look`; the app's window wears
-  it (`appearance` → `window.appearance`), the pane's pages too; a theme's `titlebar` paints its bar
-  (2026-11-16, `titlebar-posts.mjs`). The blacks read `--crust`,
-  `--bar`, `--hd-*`; a project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; not under the
-  board's own, `asSet`); the drawer's sixteen are the theme's (`xtTheme`, `ANSI`). **Every theme lays the chat in a
-  frame** (2026-11-01): `--frame` (`:root`'s, a theme's `crust`) the window's ground, the sidebar (`--side`) and the
-  status bar. **`data-frame` is the frame's appearance** — dark round a light chat under *Dark frame*
-  (`prefs.darkFrame`; skinCss's `[data-frame="dark"]` blocks) —, which `#sessions` and `#sbar` read, never
-  `data-theme`. **Every small ink holds 4.5:1** (a theme's by `themeInks`; amber text is `--working-ink`).
-  → `themes.mjs`, `frame-themes.mjs`, `inks.test.mjs`.
+  whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`, set before the first paint, read by every dark
+  rule — **never `prefers-color-scheme`**. Worn (`wornKey()`, `skinOn()`): the family's half of `darkNow()` — Auto
+  (`prefs.skinFollow`, the default; `setLook`) the system's, else `prefs.look`; the app's window and the pane's pages
+  wear it (`appearance`); a theme's `titlebar` paints its bar (2026-11-16, `titlebar-posts.mjs`). The blacks read
+  `--crust`, `--bar`, `--hd-*`; a project's colour moves to the theme's nearest hue (`skinColor` in `repoColor`; not
+  under the board's own, `asSet`); the drawer's sixteen are the theme's (`xtTheme`, `ANSI`). **Every theme lays the chat
+  in a frame** (2026-11-01): `--frame` (a theme's `crust`) the window's ground, the sidebar (`--side`), the status bar.
+  **`data-frame` is the frame's appearance** — dark round a light chat under *Dark frame* (`prefs.darkFrame`; skinCss's
+  `[data-frame="dark"]`) —, read by `#sessions` and `#sbar`, never `data-theme`. **Every small ink holds 4.5:1** (a
+  theme's by `themeInks`; amber text is `--working-ink`). → `themes.mjs`, `frame-themes.mjs`, `inks.test.mjs`.
 * **The header floats** (2026-10-09; `<html data-head="float">` in the markup, never toggled): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of
   `#chat` placed in column 1). A half with a strip pads down by `--float-h` (`floatH`); one without

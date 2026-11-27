@@ -139,13 +139,16 @@ export function loadRegistry() {
   const regPids = new Set(); // every pid with a file, by its name: one being rewritten still says the process is claude
   for (const name of readdirSync(SESSIONS_DIR)) {
     if (!name.endsWith('.json')) continue; // the registry's own files only: never the `<pid>.<hash>.key` beside each (2026-10-31, see inClaudeDir's section)
-    regPids.add(Number(name.slice(0, -5)));
+    const named = Number(name.slice(0, -5));
+    regPids.add(named);
     let reg;
     try {
       reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8'));
     } catch {
       continue;
     }
+    // its pid a process's own, and its file's (2026-11-27): a signal may follow it (endClaude), and -1 is every process
+    if (!Number.isInteger(reg.pid) || reg.pid <= 1 || (Number.isInteger(named) && reg.pid !== named)) continue;
     if (!reg.sessionId || reg.spare || ownReader(reg)) continue; // a lunch menu's reader (2026-10-18): the board's own claude, no chat; a spare (2026-11-04): the daemon's, waiting to be given one
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
     found.get(reg.sessionId).push({

@@ -197,3 +197,43 @@ test('vim with unsaved work is not killed over them: the chat stays, and says wh
     await srv.stop();
   }
 });
+
+test(
+  "a registry file whose pid is not its own name's is no claude (2026-11-27): the chat is not live, and deleting it signals no one",
+  { timeout: 40_000 },
+  async () => {
+    const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+    const [first] = fx.chats;
+    const host = spawn('sleep', ['60'], { stdio: 'ignore' }),
+      other = spawn('sleep', ['60'], { stdio: 'ignore' });
+    // <host>.json naming another process, its start as ps gives it: what endClaude checks, so only the name can tell.
+    // -1 the same way (every process of yours), which is not run here: it is the same check
+    writeFileSync(
+      join(fx.dir, 'sessions', `${host.pid}.json`),
+      JSON.stringify({
+        pid: other.pid,
+        sessionId: first.id,
+        cwd: first.cwd,
+        startedAt: Date.now(),
+        procStart: start(other.pid),
+        kind: 'interactive',
+        entrypoint: 'cli',
+        status: 'idle',
+        statusUpdatedAt: Date.now(),
+      }),
+    );
+    const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+    try {
+      await new Promise(r => setTimeout(r, 3000)); // two registry polls
+      assert.equal((await chatOf(srv, first.id)).alive, false, 'no claude of the chat');
+      const r = await srv.post(`api/sessions/${first.id}/remove`, {});
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      await new Promise(res => setTimeout(res, 1000));
+      assert.equal(other.exitCode ?? other.signalCode, null, 'the process it named lives on');
+    } finally {
+      host.kill();
+      other.kill();
+      await srv.stop();
+    }
+  },
+);
