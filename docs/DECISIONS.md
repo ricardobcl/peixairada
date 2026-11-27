@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-11-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-11-27, later — an outside audit's leads, checked and fixed
+
+A security audit of the board from outside (a source-only review of the public repo at a commit of 2026-11-14) came over
+Slack as five leads to validate and some forty hardening notes. Each lead was checked against main as it stood; two in
+the real-CLI lab (Claude Code 2.1.332, its own config dir, a stand-in API on loopback, no cost). Ricardo, on the
+verdicts: *"fix everything"*. One commit each:
+
+* **A banner's Reply… could approve a tool call** (lead 5, proved). At a permission dialog Claude Code 2.1.332 takes
+  ⏎ as the highlighted *Yes*: typed *thanks* then ⏎ ran the Bash call, as did *1* ⏎ and the ◎ row's `/focus` ⏎; words
+  with no ⏎ did not. Reply… on a banner from before (Notification Center keeps them; with the board in front no
+  question's banner replaces it), the review's Submit and the ◎ row all typed with no look at the chat. Now what the
+  board types into a claude is the socket's `type` (`typeIn`): the server types the words, and ⏎ after them, only while
+  that claude's registry file — read then, not the last poll's: it says `waiting` on a `permission prompt` while the
+  dialog is up — waits on nothing; one come up between the words and the ⏎ leaves them unsent. The page asks `asking(s)`
+  first, so it can say why. A banner's reply is for its alert's turn alone (`at`, the alert's `ts`, in the banner's
+  userInfo): a word of yours or another reply since, and it sends nothing — said by a banner in its place (`unsent`, no
+  actions) and a note. A chat that starts asking takes back its delivered reply banners. The fake claude has the dialog
+  (`/permission`). Ask Claude on a PR and an agent's Stop, typed unsent, go the same way; the overview's and Space's
+  answers to a question are yours, and stay keys.
+
 ## Decisions of 2026-11-27 — make install, make update
 
 Ricardo, after landing a PR whose update wanted the app rebuilt: *"we should have a easier way to update in the

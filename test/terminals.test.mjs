@@ -182,6 +182,48 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
 });
 
 test(
+  "what the board types (2026-11-27): never into a claude's permission dialog — the words refused, a ⏎ after them withheld",
+  { timeout: 40_000 },
+  async () => {
+    const srv = await startTestServer({ fake: true });
+    try {
+      const r = await srv.post('api/terminals', { cwd: tmpDir('peix-type-'), cols: 90, rows: 24 });
+      assert.equal(r.status, 201, JSON.stringify(r.body));
+      const id = r.body.terminal.id;
+      await waitFor(async () => (await srv.terminals()).find(x => x.id === id)?.sessionId || null, {
+        what: 'the chat registered',
+      });
+      const p = attach(srv, id, { timeout: 30_000 });
+      await p.opened;
+      const answers = new Map();
+      p.ws.addEventListener('message', e => {
+        if (typeof e.data !== 'string') return;
+        const m = JSON.parse(e.data);
+        if (m.t === 'typed') answers.set(m.n, m.why);
+      });
+      const type = async (n, d, send) => {
+        p.ws.send2({ t: 'type', d, send, n });
+        return waitFor(() => (answers.has(n) ? { why: answers.get(n) } : null), { what: `the answer to ${n}` });
+      };
+      p.ws.send2({ t: 'in', d: '/permission\r' }); // your own keys: the dialog comes up
+      await waitFor(() => p.text().includes('Do you want to proceed?'), { what: 'the dialog' });
+      assert.match((await type(1, 'thanks', true)).why, /asking you/, 'a reply with its ⏎ refused');
+      assert.match((await type(2, '1', false)).why, /asking you/, 'a digit, unsent, refused too: it is an option');
+      await sleep(400);
+      assert.ok(!p.text().includes('permission:'), 'the dialog answered nothing');
+      p.ws.send2({ t: 'in', d: '2' }); // you answer it
+      await waitFor(() => p.text().includes('permission: refused'), { what: 'your answer' });
+      assert.equal((await type(3, 'a word from the board', true)).why, null, 'nothing asking: typed and sent');
+      await waitFor(() => p.text().includes('a word from the board'), { what: 'the words on the screen' });
+      assert.ok(!p.text().includes('permission: approved'), 'and never an approval');
+      p.ws.close();
+    } finally {
+      await srv.stop();
+    }
+  },
+);
+
+test(
   "a chat in no folder (2026-10-14): the board's own folder, made for the first chat and again for a resume after it was deleted",
   { timeout: 40_000 },
   async () => {

@@ -61,7 +61,8 @@ async function sendTo(s0, text) {
     why = sendWhy(s);
   if (why) throw new Error(`Not sent: ${why}`);
   if (drawerOf(s)) {
-    if (!(await drawerType(s, text, true))) throw new Error('Its drawer did not answer — not sent');
+    const no = await drawerType(s, text, true);
+    if (no) throw new Error(`Not sent: ${no}`);
     return;
   }
   const r = await withCheckout(s.id, () =>
@@ -71,7 +72,9 @@ async function sendTo(s0, text) {
   saidBack(r.back);
   if (r.prompted) return;
   const up = await drawerReady(s.id); // a drawer another ask had started: the words go in once its Claude is up
-  if (!up || !(await drawerType(up, text, true))) throw new Error('Its drawer did not come up — not sent');
+  if (!up) throw new Error('Its drawer did not come up — not sent');
+  const no = await drawerType(up, text, true);
+  if (no) throw new Error(`Not sent: ${no}`);
 }
 async function hoGo() {
   if (ho.busy || $('#hoText').disabled) return;

@@ -209,8 +209,8 @@ function agMenu(s, r, at) {
               if (state.current !== s.id) await openSession(s.id);
               showChat(s);
               syncTerm(s);
-              const ok = await drawerType(s, `Stop the agent “${r.name || r.asked || r.id}”.`, false);
-              if (!ok) note(at, 'Its drawer did not answer', true);
+              const no = await drawerType(s, `Stop the agent “${r.name || r.asked || r.id}”.`, false);
+              if (no) note(at, `Not typed: ${no}`, true);
             },
           },
   ];

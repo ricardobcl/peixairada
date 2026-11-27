@@ -273,7 +273,7 @@ const procStart = (() => {
     return undefined;
   }
 })();
-const register = (status = 'idle') =>
+const register = (status = 'idle', waitingFor) =>
   attached ||
   writeFileSync(
     regFile,
@@ -288,6 +288,7 @@ const register = (status = 'idle') =>
       entrypoint: 'cli',
       name: 'fake-' + basename(cwd),
       status,
+      ...(waitingFor && { waitingFor }),
       statusUpdatedAt: Date.now(),
       ...(agentFlag && { agent: agentFlag }),
     }),
@@ -742,7 +743,8 @@ const wordAhead = () => {
 };
 // every parameter byte (2026-11-25): an SGR mouse report, ESC [ < b ; x ; y M, is one sequence, not ESC [ and text typed
 const CSI = /^\x1b\[([0-9:;<=>?]*)[\x20-\x2f]*([\x40-\x7e])/;
-let pasting = false;
+let pasting = false,
+  dialog = false;
 async function submit() {
   const text = input.trim();
   input = '';
@@ -758,6 +760,16 @@ async function submit() {
   }
   // /focus, the view toggle the board's header button types in (2026-09-20): the real one answers with exactly
   // this line, and the board reads it back off the screen to know which way it went.
+  // /permission (2026-11-27): a permission dialog, as Claude Code's — the registry `waiting` on a `permission prompt`, and
+  // the next ⏎ or digit its answer, said as `permission: approved` or `permission: refused` (the board's typed text
+  // must never reach one: typed-text.mjs, terminals.test)
+  if (text === '/permission') {
+    dialog = true;
+    register('waiting', 'permission prompt');
+    say(['Do you want to proceed?', '\u276f 1. Yes', '  2. No', '']);
+    commit();
+    return;
+  }
   if (text === '/focus') {
     focusView = !focusView;
     say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']);
@@ -829,6 +841,15 @@ process.stdin.on('data', async d => {
       continue; // a lone ESC, or Meta with any other key: nothing
     }
     i += ch.length;
+    if (dialog) {
+      // the dialog has the keys: ⏎ takes the highlighted Yes, a digit its option, any other key nothing
+      if (ch !== '\r' && !/^[12]$/.test(ch)) continue;
+      dialog = false;
+      register('idle');
+      say([`permission: ${ch === '2' ? 'refused' : 'approved'}`, '']);
+      commit();
+      continue;
+    }
     if (ch === '\x03') {
       if (++ctrlC >= 2) bye(0);
       continue;

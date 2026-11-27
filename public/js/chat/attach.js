@@ -109,35 +109,52 @@ window.peixDone = id => {
   if (watchEnds(s) && !armedOn(id)) openSession(id, { locate: true });
   tickDone(id, true, $('#shead'));
 }; // a watching chat's: shown, and asked once more
-window.peixReply = async (id, text) => {
-  const s = state.sessions.get(id);
-  return !!s && drawerType(s, text, true);
+// A banner's reply is for the turn it was about (2026-11-27, the external audit's lead 5): `at` is its alert's time, and a
+// chat that has moved on since — a word of yours, another reply — or that is asking takes none. Refused, it says so:
+// a banner of its own with the app behind (`unsent`), a note on the board.
+window.peixReply = async (id, text, at) => {
+  const s = state.sessions.get(id),
+    since = w => w && at && String(w) > String(at);
+  const no = !s
+    ? 'it is not on the board'
+    : asking(s)
+      ? ASKS_FIRST
+      : since(s.lastUserAt) || since(s.lastReplyAt)
+        ? 'the chat has moved on since that banner — read it first'
+        : await drawerType(s, text, true);
+  if (!no) return true;
+  note($('#shead'), `Reply not sent${s ? ` to “${s.title}”` : ''}: ${no}`, true);
+  if (inApp && s)
+    post({
+      type: 'alert',
+      kind: 'unsent',
+      heading: `Reply not sent · ${s.project || ''}`,
+      project: s.project || '',
+      title: s.title || '',
+      snippet: no,
+      sessionId: id,
+    });
+  return false;
 };
 /** Words typed into the chat's Claude in its drawer here, as you would type them — newlines as Claude Code's own
  *  (ESC CR), then ⏎ when `send` (unsent: there for you to read and send): over the page's own socket to it when it is
- *  attached, else one opened for the words and closed after them, which sends no size, so the drawer is not resized. */
+ *  attached, else one opened for the words and closed after them, which sends no size, so the drawer is not resized.
+ *  Never while it asks (typeIn): null once typed, else why not. */
 async function drawerType(s, text, send) {
   const d = drawerOf(s),
     body = forClaude(text);
-  if (!d || !body) return false;
+  if (!d) return 'it has no drawer here';
+  if (!body) return 'there are no words to type';
+  if (asking(s)) return ASKS_FIRST;
   const tm = claudeTm(s);
-  if (tm) {
-    termSend(tm, body);
-    if (send) setTimeout(() => termSend(tm, '\r'), 60);
-    return true;
-  }
+  if (tm) return typeIn(tm.ws, body, send);
   const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`));
   return new Promise(res => {
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ t: 'in', d: body }));
-      setTimeout(() => {
-        if (send) ws.send(JSON.stringify({ t: 'in', d: '\r' }));
-        setTimeout(() => {
-          ws.close();
-          res(true);
-        }, 200);
-      }, 80);
+    ws.onopen = async () => {
+      const no = await typeIn(ws, body, send);
+      setTimeout(() => ws.close(), 200);
+      res(no);
     };
-    ws.onerror = () => res(false);
+    ws.onerror = () => res('its drawer did not answer');
   });
 }

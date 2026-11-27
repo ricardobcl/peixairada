@@ -693,8 +693,9 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply or a chat back
   *Reply… · Done · In an hour* (Reply… with a drawer here), a question *In 15 minutes* (the banner again), the rest *In an
   hour* — the chat snoozed by the page (`peixSnooze`, 2026-11-24). Reply… and Done go to the page
-  (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
-  `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`; *Mute this chat* on any, `peixMute`. → `notify-actions.mjs`.
+  (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; for its alert's turn alone, `at`, and
+  not while it asks — refused, a banner, `unsent`; `window.peixDone`: `tickDone` where `canTick`); the alert says if a
+  drawer runs here (`drawer`); lunch's, `peixLunch`; *Mute this chat*, `peixMute`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
   `pageZoom`, and the shell turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root**. A browser zooms itself.
@@ -880,9 +881,10 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (`exactGlyphs`, 2026-10-20), **and the fit by the device cell** (`exactFit`, 2026-10-29). → `drawer-fit.mjs`.
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), which clears the screen *it*
   serializes and echoes it to every page on that drawer. A nudge follows. ⌃L is the shell's own.
-* **What the board types is text, never keys** (2026-11-06; `typable`, `forClaude`, `forShell`): every string it
-  composes reaches a drawer through them — line breaks kept (ESC CR for claude), a tab two spaces, every other control
-  gone; a dropped name with a control character is refused. Your own keys never pass there. → `typed-text.mjs`.
+* **What the board types is text, never keys** (2026-11-06; `typable`, `forClaude`, `forShell`): all it composes goes
+  through them — line breaks kept (ESC CR for claude), a tab two spaces, every other control gone; a dropped name with
+  one is refused. **Never into a dialog** (2026-11-27; `typeIn` → the socket's `type`): the server types it, and ⏎, only
+  while the claude's registry file, read then, waits on nothing. Your own keys are `in`. → `typed-text.mjs`, `terminals.test`.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is
   *⌥ is Meta* (`prefs.optMeta`, on). → Findings: *Shift+Enter*.
 * **The Mac's line-editing keys are iTerm's Natural Text Editing** (`MAC_EDIT` / `macEdit`): ⌘← ⌘→ ⌃A ⌃E, ⌘⌫ ⌃U,
@@ -890,10 +892,8 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   is none of them. ⌘Z is the app's Edit menu. → `drawer-mackeys.mjs`.
 * **⌥ over a digit or punctuation types what macOS composed**: with ⌥ as Meta, the handler sends `e.key` for the
   codes in `ALT_COMPOSES`, and over any key when it is ASCII and no letter (`ALT_ASCII`: German ⌥L @), else Meta. → Findings: *⌥ is a compose key too*.
-* **The ◎ row types `/focus`** into the chat's holder — Claude Code's focus view has no key and no API:
-  `toggleFocusView()` sends it, then reads the newest `Focus view enabled|disabled` off the screen (`focusSaid()`) and
-  lights `#viewBtn` from that; every attach reads it too (`readFocusFromScreen()`).
-  → `focus-view.mjs`.
+* **The ◎ row types `/focus`** (Claude Code's focus view has no key or API; `toggleFocusView`), then lights `#viewBtn`
+  from the newest `Focus view enabled|disabled` on the screen (`focusSaid`), as every attach does. → `focus-view.mjs`.
 * **Paths and pages in the chat are links**: a file path in the transcript or a drawer — `/absolute`, `./relative`,
   `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens in the editor at that line (`fileUrl`,
   against the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not after a `+` or an in-word `@`); a web URL on a
@@ -915,20 +915,18 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `links` ties chats (`addLink`). **A fork writes no line until its first word** (2026-11-04): closed before it, no card, no link, no resume (`noneLeft`, `leaveEmpty`, `linksShown`). → `handoffs.test.mjs`, `branch-chat.mjs`. **A card dragged onto another** (2026-11-02; `cdLift`, `cdHit`, `cdEnd`, `#cdghost`) is Fold
   into…: the list held still (`renderBoard.held`), and the box asks. → `card-drag-fold.mjs`.
 * **A drawer's claude answers to macOS for itself** (2026-11-23; `disclaimBin`, `spec.disclaim`, `lib/disclaim.c`):
-  the microphone, camera and Automation are asked of the *responsible* process, inherited down the spawns — this
-  server's node, with no audio-input entitlement. Claude Code has it: exec'd through the launcher (SETEXEC, the same
-  pid) it asks for *claude*. Built by `cc` into `<state dir>/bin` per source; no developer tools, none; never a zsh,
-  vim or a launcher; `DISCLAIM=off`. → `disclaim.test.mjs`.
+  the microphone, camera and Automation are asked of the *responsible* process — else this server's node, with no
+  audio-input entitlement; exec'd through the launcher (SETEXEC, the same pid) claude asks. Built by `cc` into
+  `<state dir>/bin` per source (no developer tools, none); never a zsh, vim or launcher; `DISCLAIM=off`. → `disclaim.test.mjs`.
 * **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.
-* **Take-over**: a chat live in iTerm or VS Code can be resumed here — SIGTERM the other processes, wait, spawn.
-  Nothing respawns a CLI claude; VS Code's tab goes dead. → Findings: *VS Code chats can be taken over*.
-* **Live chats are never written to** from the board (a second writer on one transcript); stale ones are resumed in
-  a drawer.
+* **Take-over**: a chat live in iTerm or VS Code resumed here — SIGTERM the others, wait, spawn. Nothing respawns a
+  CLI claude; VS Code's tab goes dead. → Findings: *VS Code chats can be taken over*.
+* **Live chats are never written to** (a second writer on one transcript); a stale one is resumed in a drawer.
 * **A chat whose claude has ended is its transcript with the resume bar under it** (2026-10-07; `#resume`, row 5,
-  `renderResume` from `renderHead` while `resumable(s)`: no process, a file, no drawer). Resume is `termAction`, and
-  only the button (or ⌥⌘C) starts it — nothing resumes a chat by itself. **One running outside the board has the bar too**
+  `renderResume` from `renderHead` while `resumable(s)`: no process, a file, no drawer); only its button or ⌥⌘C
+  resumes it (`termAction`). **One running outside the board has the bar too**
   (2026-11-04; `elsewhereBar`, `renderElsewhere`): where, its pid, `#takeGo` pressed twice. → `resume-bar.mjs`.
 
 ## Invariants that bit us — one line each, the story in Findings

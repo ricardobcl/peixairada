@@ -124,7 +124,8 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   → `scheme-out.mjs`, `pane-gesture.mjs`.
 * **Hardened runtime, no entitlements** (`build.sh`'s codesign; the bundled node keeps its own signature).
   `PEIXAIRADA_PORT` and `PEIXAIRADA_NODE` only under `PEIX_PROBE`; the bundled server's environment drops `DYLD_*` and
-  `NODE_OPTIONS`. Reply…, Done and Mute are `.authenticationRequired`. `logLine` writes through `redacted()` (no
+  `NODE_OPTIONS`. Reply…, Done and Mute are `.authenticationRequired`; a reply is for its banner's turn (`at`), and a
+  chat that starts asking takes its reply banners back (`state`, 2026-11-27). `logLine` writes through `redacted()` (no
   `tkn=`, `key=`, `token=`, `ticket=` value). build.sh's lock, log and index and launchd.sh's detached log live in
   `getconf DARWIN_USER_TEMP_DIR` (else `~/Library/Caches/peixairada`, 0700), never `/tmp`. → `log-secrets.mjs`.
 

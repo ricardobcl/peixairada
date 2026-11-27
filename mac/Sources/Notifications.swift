@@ -49,7 +49,8 @@ extension AppDelegate {
 
   /// `heading` is the server's own when it has one (a PR come round to you: "Your move · repo#n"), else the kind's.
   /// `hash` is where a click lands when it is not the chat alone — a PR's alert, its timeline on that PR (2026-10-17).
-  func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String, drawer: Bool = false, hash: String = "") {
+  /// `at` is the alert's time: a reply from its banner is for that turn alone (2026-11-27, `peixReply`).
+  func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String, drawer: Bool = false, hash: String = "", at: String = "") {
     let heading = !given.isEmpty ? given : (kind == "reply" ? "Claude replied" : "Claude is asking you") + (project.isEmpty ? "" : " · \(project)")
     let body = [title, snippet].filter { !$0.isEmpty }.joined(separator: "\n")
     guard useUN else {
@@ -60,8 +61,9 @@ extension AppDelegate {
     content.title = heading
     content.body = body
     content.sound = .default
-    content.userInfo = ["sessionId": sessionId, "hash": hash, "kind": kind]
-    content.categoryIdentifier = kind == "lunch" ? "lunch" : sessionId.isEmpty ? "" : kind == "reply" || kind == "back" ? (drawer ? "reply-drawer" : "reply") : kind == "needs-input" ? "later" : "hour"
+    content.userInfo = ["sessionId": sessionId, "hash": hash, "kind": kind, "at": at]
+    // a reply the page refused (`unsent`, 2026-11-27) takes the banner's place, with nothing to answer it with
+    content.categoryIdentifier = kind == "lunch" ? "lunch" : sessionId.isEmpty || kind == "unsent" ? "" : kind == "reply" || kind == "back" ? (drawer ? "reply-drawer" : "reply") : kind == "needs-input" ? "later" : "hour"
     let req = UNNotificationRequest(identifier: kind == "lunch" ? "lunch" : sessionId.isEmpty ? UUID().uuidString : sessionId,
                                     content: content, trigger: nil)
     UNUserNotificationCenter.current().add(req) { [weak self] err in
@@ -86,6 +88,7 @@ extension AppDelegate {
     let id = response.notification.request.content.userInfo["sessionId"] as? String ?? ""
     let hash = response.notification.request.content.userInfo["hash"] as? String ?? ""
     let kind = response.notification.request.content.userInfo["kind"] as? String ?? ""
+    let at = response.notification.request.content.userInfo["at"] as? String ?? ""
     switch response.actionIdentifier {
     case "lunch-going", "lunch-snooze":
       logLine("notify: lunch \(response.actionIdentifier)")
@@ -97,7 +100,7 @@ extension AppDelegate {
     case "reply" where !id.isEmpty:   // into the chat's Claude, by the page (peixReply): the drawer's socket is the page's to speak
       let text = (response as? UNTextInputNotificationResponse)?.userText ?? ""
       logLine("notify: reply to \(id.prefix(8)) (\(text.count) chars)")
-      if !text.isEmpty { toBoard("window.peixReply?.(\(jsLit(id)), \(jsLit(text)))", completionHandler: nil) }
+      if !text.isEmpty { toBoard("window.peixReply?.(\(jsLit(id)), \(jsLit(text)), \(jsLit(at)))", completionHandler: nil) }
     case "done" where !id.isEmpty:
       logLine("notify: done \(id.prefix(8))")
       toBoard("window.peixDone?.(\(jsLit(id)))", completionHandler: nil)

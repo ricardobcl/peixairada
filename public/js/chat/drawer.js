@@ -145,6 +145,38 @@ function xtTheme() {
 const termSend = (tm, d) => {
   if (tm.ws?.readyState === 1 && tm.exited === null) tm.ws.send(JSON.stringify({ t: 'in', d }));
 };
+// What the board types into a claude for you goes as `type` (2026-11-27): the server types it, and ⏎ after it when
+// `send`, only while that claude asks nothing — a permission dialog takes keys as its answer, and a stale banner's
+// reply approved the tool call it was asking about. Null once typed, else why not.
+const ASKS_FIRST = 'it is asking you something — answer it first';
+let typeN = 0;
+function typeIn(ws, d, send) {
+  if (ws?.readyState !== 1) return Promise.resolve('its drawer is not attached yet — try again in a moment');
+  return new Promise(res => {
+    const n = ++typeN;
+    const hear = e => {
+      if (typeof e.data !== 'string') return;
+      let m;
+      try {
+        m = JSON.parse(e.data);
+      } catch {
+        return;
+      }
+      if (m.t === 'typed' && m.n === n) done(m.why || null);
+    };
+    const done = why => {
+      clearTimeout(timer);
+      ws.removeEventListener('message', hear);
+      ws.removeEventListener('close', gone);
+      res(why);
+    };
+    const gone = () => done('its drawer went away — check what reached it');
+    const timer = setTimeout(() => done('its drawer did not answer — check what reached it'), 3000);
+    ws.addEventListener('message', hear);
+    ws.addEventListener('close', gone);
+    ws.send(JSON.stringify({ t: 'type', d, send: !!send, n }));
+  });
+}
 // What the board types for you (2026-11-06) — a review's quoted lines and paths, a PR's words, a handoff, a banner's
 // reply, a command left unrun — goes through one of these, never straight to termSend: a PTY reads every byte as a key,
 // and a carriage return in a stranger's diff line submitted the prompt there and then, an ESC [Z cycled the permission
@@ -230,8 +262,10 @@ async function toggleFocusView(s) {
     syncTerm(s);
     return note(at(), 'Showing the claude session first — press again', true);
   }
-  const before = focusSaid(tm);
-  termSend(tm, '/focus\r');
+  if (asking(s)) return note(at(), `Not now: ${ASKS_FIRST}`, true); // /focus⏎ in a dialog is its Yes
+  const before = focusSaid(tm),
+    no = await typeIn(tm.ws, '/focus', true);
+  if (no) return note(at(), `/focus not sent: ${no}`, true);
   for (let i = 0; i < 20; i++) {
     // ~2.4 s: the command runs at once, but it has a menu to close and a frame to paint
     await new Promise(r => setTimeout(r, 120));

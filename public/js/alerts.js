@@ -133,6 +133,7 @@ function onAlert(a) {
       hash: a.kind === 'pr' && a.url && a.sessionId ? tvSoloHash(a.sessionId, a.url) : '',
       serverNotify: !!state.serverNotify,
       quiet: !!a.quiet,
+      at: a.ts || '', // a reply from its banner is for this turn alone (peixReply)
       drawer: !!(a.sessionId && state.sessions.get(a.sessionId) && drawerOf(state.sessions.get(a.sessionId))),
     }); // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
   if (a.quiet) return; // notifications off (the cog): the unread count above, nothing else

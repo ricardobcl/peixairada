@@ -37,6 +37,17 @@ extension AppDelegate {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
       }
+      // A chat that starts asking takes back its reply banners (2026-11-27, the external audit's lead 5): Reply… on one
+      // types into a claude that has a dialog up — with the board in front no banner of the question replaces it.
+      let nowAsking = Set(needsInput.map { $0["id"] ?? "" }).subtracting(asked).subtracting([""])
+      if useUN, !nowAsking.isEmpty {
+        let center = UNUserNotificationCenter.current()
+        center.getDeliveredNotifications { list in
+          let stale = list.filter { nowAsking.contains($0.request.identifier) && $0.request.content.categoryIdentifier.hasPrefix("reply") }
+            .map { $0.request.identifier }
+          if !stale.isEmpty { center.removeDeliveredNotifications(withIdentifiers: stale) }
+        }
+      }
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,
@@ -57,7 +68,8 @@ extension AppDelegate {
                snippet: body["snippet"] as? String ?? "",
                sessionId: body["sessionId"] as? String ?? "",
                drawer: body["drawer"] as? Bool ?? false,
-               hash: body["hash"] as? String ?? "")
+               hash: body["hash"] as? String ?? "",
+               at: body["at"] as? String ?? "")
       }
     case "pane":
       let places: [PanePlace] = (body["panes"] as? [[String: Any]] ?? []).compactMap { r in

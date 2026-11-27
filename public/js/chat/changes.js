@@ -359,16 +359,20 @@ async function copyText(text) {
     return false;
   }
 }
-/** A prompt into the chat's claude, as typed: newlines as Claude Code's own (ESC CR), then ⏎. */
+/** A prompt into the chat's claude, as typed: newlines as Claude Code's own (ESC CR), then ⏎ — never while it asks
+ *  (typeIn, 2026-11-27). Not sent, the text is copied. */
 async function sendToClaude(s, text, at) {
-  const tm = claudeTm(s);
-  if (!tm) {
+  const tm = claudeTm(s),
+    no = !tm
+      ? `no claude of this chat in a drawer here · ⌥⌘C starts one`
+      : asking(s)
+        ? ASKS_FIRST
+        : await typeIn(tm.ws, forClaude(text), true);
+  if (no) {
     const ok = await copyText(text);
-    note(at, `No claude of this chat in a drawer here${ok ? ' — the text is copied' : ''} · ⌥⌘C starts one`, true);
+    note(at, `Not sent: ${no}${ok ? ' — the text is copied' : ''}`, true);
     return false;
   }
-  termSend(tm, forClaude(text));
-  setTimeout(() => termSend(tm, '\r'), 60);
   note(at, 'Sent to Claude');
   return true;
 }

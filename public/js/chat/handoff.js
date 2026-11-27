@@ -221,8 +221,8 @@ async function foldGo(a0, b0, text) {
       throw new Error(`“${b.title}” did not come up — nothing typed, “${a.title}” as it was`);
   }
   for (let i = 0; i < 40 && !claudeTm(state.sessions.get(b.id) || b); i++) await new Promise(r => setTimeout(r, 100)); // the page's own socket to it
-  if (!(await drawerType(state.sessions.get(b.id) || b, text, false)))
-    throw new Error(`“${b.title}”'s drawer did not answer — nothing typed, “${a.title}” as it was`);
+  const unt = await drawerType(state.sessions.get(b.id) || b, text, false);
+  if (unt) throw new Error(`Not typed into “${b.title}”: ${unt} — “${a.title}” as it was`);
   if (state.current === b.id) focusTerm();
   await api('POST', `/api/sessions/${a.id}/fold`, { into: b.id });
   tickDone(a.id, true, $('#shead'));

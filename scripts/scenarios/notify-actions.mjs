@@ -34,6 +34,46 @@ export default async function (ctx) {
     false,
     'no drawer, no reply',
   );
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(two.id)})?.status === 'idle'`, {
+    timeout: 10_000,
+    what: 'the fake done replying',
+  });
+  // A banner is for its turn alone (2026-11-27, the external audit's lead 5): one from before the chat moved on — your
+  // reply above is a word after it — sends nothing
+  const said = () => ctx.evaluate(`document.querySelector('.note')?.textContent || ''`);
+  ctx.assert.equal(
+    await ctx.evaluate(`window.peixReply(${JSON.stringify(two.id)}, 'a stale banner', '2000-01-01T00:00:00.000Z')`),
+    false,
+    'a stale banner sends nothing',
+  );
+  out.stale = await said();
+  ctx.assert.match(out.stale, /moved on/);
+  // …nor one while the chat asks: a permission dialog takes ⏎ as its Yes
+  const tid = (await ctx.server.terminals()).find(t => t.sessionId === two.id && t.exited === null).id;
+  const keys = d =>
+    ctx.evaluate(`new Promise(res => {
+      const ws = new WebSocket(location.origin.replace(/^http/, 'ws') + '/api/terminals/${tid}/ws?key=' + encodeURIComponent(window.PEIX_KEY));
+      ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: ${JSON.stringify(d)} })); setTimeout(() => { ws.close(); res(true); }, 300); };
+    })`); // your own keys, in its drawer
+  await keys('/permission\r');
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(two.id)})?.status === 'needs-input'`, {
+    timeout: 10_000,
+    what: 'its permission dialog',
+  });
+  ctx.assert.equal(
+    await ctx.evaluate(`window.peixReply(${JSON.stringify(two.id)}, 'thanks', new Date().toISOString())`),
+    false,
+    'a reply into a dialog sends nothing',
+  );
+  out.asking = await said();
+  ctx.assert.match(out.asking, /asking you/);
+  await ctx.sleep(800);
+  ctx.assert.equal(
+    await ctx.evaluate(`window.peix.session(${JSON.stringify(two.id)})?.status`),
+    'needs-input',
+    'the dialog still up: nothing answered it',
+  );
+  await keys('2'); // you answer it
   // Done: the card's ✓, once Claude is done with the reply
   await ctx.waitFor(`window.peix.session(${JSON.stringify(two.id)})?.status === 'idle'`, {
     timeout: 10_000,

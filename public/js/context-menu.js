@@ -658,7 +658,8 @@ async function askClaude(s, url, at) {
     );
   }
   showChat(s);
-  termSend(tm, forClaude(text));
+  const no = await drawerType(s, text, false);
+  if (no) return note(at, `Not typed: ${no}`, true);
   focusTerm();
   note(at, 'Typed into Claude — ⏎ sends it');
 }
