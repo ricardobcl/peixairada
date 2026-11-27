@@ -159,13 +159,12 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **The open chat's entries are numbered on the wire**: `/messages` and every `entries` event carry `gen` (which
   reading of the file, `newSession` numbering each) and `upto` (`entryCount`); another `gen` or a gap is a fetch.
 * **The holder socket is `setEncoding('utf8')` on both ends.**
-* **Keeping the Mac awake is two switches, and only one is the board's** (2026-10-08, `keepAwake`, `setLid`,
-  `/api/awake`, an `awake` event): *awake* is a `caffeinate -i -w <server pid>` held while `awake` is on in the state
-  file (one that ends on its own turns the switch off); *lid closed* is `/usr/bin/pmset -a disablesleep 1|0` as root
-  (`lidRuns`) — through `sudo` first, then osascript's dialog (a cancel is a 409); `AWAKE_ADMIN` is `sudo` ·
-  `osascript` · `none` (the tests). **The lid's setting is the system's, never kept here**: `readPower` reads
-  `pmset -g` (`POWER_POLL_MS`), with the idle sleep in use and the power source (`idleSleep`, `power`); the cup is
-  muted while it has nothing to hold off (`cupMoot`, `cupTip`). → `awake.test.mjs`, `keep-awake.mjs`.
+* **Keeping the Mac awake is two switches, one the board's** (2026-10-08, `keepAwake`, `setLid`, `/api/awake`, an
+  `awake` event): *awake* a `caffeinate -i -w <server pid>` while `awake` is on in the state file (one ending on its own
+  turns it off); *lid closed* `/usr/bin/pmset -a disablesleep 1|0` as root (`lidRuns`) — `sudo`, else osascript's dialog
+  (a cancel a 409); `AWAKE_ADMIN` `sudo` · `osascript` · `none` (tests). **The lid's setting is the system's**, never
+  kept: `readPower` reads `pmset -g` (`POWER_POLL_MS`; `idleSleep`, `power`); the cup muted with nothing to hold off
+  (`cupMoot`, `cupTip`). → `awake.test.mjs`, `keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
@@ -174,8 +173,9 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   chat (and GIF hosts), Instagram and `claude -p` for lunch, VS Code's update service, and Homebrew when Zed is picked and missing.
 * **VS Code Web wants the board's token** (2026-10-16; `vsweb-token` in the state folder, 0600): the page gets it from
   `POST /api/vscode-web` and opens `?tkn=` (`vswebAt`), traded by serve-web for its cookie; one on the port the board
-  did not start, serving without it, is refused, and nothing is sent the token before its listener is the serve-web this
-  server started or this user's VS Code (2026-11-06; `vswebWhyNot`, `portListener`). **Kept on its newest build** (2026-10-11,
+  did not start, serving without it, is refused, and no look carries the token unless its listener, asked just before,
+  is the serve-web this server started or this user's VS Code (2026-11-06, every look 2026-11-27; `vswebWhyNot`,
+  `portListener`). **Kept on its newest build** (2026-10-11,
   `freshenVsWeb`, `VSWEB_FRESH_MS`; 0 in tests): the newest, when serve-web's cache lacks it, asked of serve-web **by
   name, `/<quality>-<commit>/`** — never its root, which starts a server. Read only under `~/.vscode`.
   → `vsweb.test.mjs`.
@@ -921,8 +921,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
   serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.
-* **Take-over**: a chat live in iTerm or VS Code resumed here — SIGTERM the others, wait, spawn. Nothing respawns a
-  CLI claude; VS Code's tab goes dead. → Findings: *VS Code chats can be taken over*.
+* **Take-over**: a chat live in iTerm or VS Code resumed here — SIGTERM the others, wait, spawn; VS Code's tab dies. → Findings: *VS Code chats can be taken over*.
 * **Live chats are never written to** (a second writer on one transcript); a stale one is resumed in a drawer.
 * **A chat whose claude has ended is its transcript with the resume bar under it** (2026-10-07; `#resume`, row 5,
   `renderResume` from `renderHead` while `resumable(s)`: no process, a file, no drawer); only its button or ⌥⌘C

@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { constants, copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,8 +62,8 @@ test(
       });
       assert.deepEqual(
         requests().slice(1),
-        [`GET /stable-${'a'.repeat(40)}/`, `GET /stable-${'b'.repeat(40)}/`],
-        "the next one fetched the same way, from the serve-web already running — shown the board's already",
+        [`GET /stable-${'a'.repeat(40)}/`, `GET /stable-${'b'.repeat(40)}/ → 403`, `GET /stable-${'b'.repeat(40)}/`],
+        "the next one fetched the same way, from the serve-web already running — shown the board's again before the token goes (2026-11-27)",
       );
     } finally {
       await srv.stop();
@@ -167,6 +167,57 @@ test(
     } finally {
       await srv.stop();
       old.kill();
+    }
+  },
+);
+
+test(
+  'a serve-web the board adopted that ends leaves the port trusted no more: what holds it next is asked again, and handed nothing (2026-11-27)',
+  { timeout: 60_000 },
+  async () => {
+    const port = await freePort(),
+      bin = join(tmpDir('peix-code-'), 'code'),
+      up = () =>
+        fetch(`http://127.0.0.1:${port}/`).then(
+          r => r.status,
+          () => 0,
+        );
+    copyFileSync(process.execPath, bin, constants.COPYFILE_FICLONE); // a process named code: this user's VS Code CLI, to lsof
+    const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
+    const tokenFile = join(srv.dir, 'vsweb-token'),
+      token = 'ab'.repeat(32);
+    writeFileSync(tokenFile, token, { mode: 0o600 });
+    const fake = fileURLToPath(new URL('../scripts/fakes/fakecode.mjs', import.meta.url));
+    const adopted = spawn(
+      bin,
+      [fake, 'serve-web', '--host', '127.0.0.1', '--port', String(port), '--connection-token-file', tokenFile],
+      { stdio: 'ignore' },
+    );
+    const got = [];
+    const squat = createServer((req, res) => {
+      got.push(req.headers.cookie || '');
+      res.writeHead(403);
+      res.end();
+    }); // wants a token, as serve-web does, and keeps what it is sent
+    try {
+      await waitFor(async () => (await up()) === 403, { what: 'a serve-web the board did not start' });
+      const r = await srv.post('api/vscode-web', {});
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(r.body.started, false, 'adopted, not started');
+      adopted.kill();
+      await waitFor(async () => (await up()) === 0, { what: 'the adopted one gone' });
+      await new Promise(res => squat.listen(port, '127.0.0.1', res));
+      const again = await srv.post('api/vscode-web', {});
+      assert.equal(again.status, 409, JSON.stringify(again.body));
+      assert.match(again.body.error, /not VS Code Web/);
+      assert.ok(
+        got.length >= 1 && got.every(c => !c.includes(token)),
+        `the token went nowhere: ${JSON.stringify(got)}`,
+      );
+    } finally {
+      adopted.kill();
+      squat.close();
+      await srv.stop();
     }
   },
 );

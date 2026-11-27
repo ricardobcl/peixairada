@@ -33,6 +33,12 @@ verdicts: *"fix everything"*. One commit each:
   denies each server they name, by name — deny beats allow, and the denied tool is not even offered —, and a Slack
   rule that is not one of the reader's reads; a rule naming servers by a pattern (`mcp__*`, `mcp__claude_ai_*`) cannot
   be undone that way, so under one no reader runs, and the run says why. Slack's list comments joined its writes.
+* **VS Code Web's token could go to whoever took port 7332 next** (lead 3, proved in a test). Its listener was asked
+  once (`vswebSure`): a serve-web the board adopted rather than started that ended left the port trusted, and the next
+  open — or the hourly `freshenVsWeb` — sent the cookie to whatever listened there, another account's process too. Now
+  every look that carries the token is preceded by the bare one and `vswebWhyNot`'s lsof; what is left is the
+  milliseconds between the two. `vsweb.test`: an adopted serve-web (a process named `code`, node cloned) ends, a
+  listener of the test's takes the port, and the next open is a 409 that sent it nothing.
 
 ## Decisions of 2026-11-27 — make install, make update
 
