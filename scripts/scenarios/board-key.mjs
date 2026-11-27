@@ -55,14 +55,22 @@ export default async ctx => {
     ['Required', 'Every page and request carries the board’s key'],
     'Settings say it is required',
   );
-  // a key that is not the board's any more (a new one made elsewhere): the lock again, saying why, and the stale one gone
-  await ctx.evaluate(`localStorage.setItem('peixairada-key', '0'.repeat(64))`);
+  // a key that is not the board's any more (a new one made elsewhere): the lock again, saying why. The server cannot
+  // prove it holds that key, and a server that cannot is never sent it (2026-11-27): a stranger on the port reads the
+  // same, so the key stays till a new one is traded — the lock's button still asks for one
+  const stale = '0'.repeat(64);
+  await ctx.evaluate(`localStorage.setItem('peixairada-key', '${stale}')`);
   await ctx.send('Page.reload');
   await ctx.waitFor(`document.querySelector('#lock')?.open`, 8000);
   out.wrong = await ctx.evaluate(
     `({ why: document.querySelector('#lockWhy').textContent, kept: localStorage.getItem('peixairada-key') })`,
   );
-  ctx.assert.match(out.wrong.why, /not the board's any more/);
-  ctx.assert.equal(out.wrong.kept, null, 'the stale key dropped');
+  ctx.assert.match(out.wrong.why, /cannot show it holds this page's key — a new key was made/);
+  ctx.assert.equal(out.wrong.kept, stale, 'kept: nothing tells a new key from a stranger');
+  await ctx.evaluate(`document.querySelector('#lockGo').click()`); // asked with no key, so no proof to wait for
+  await ctx.waitFor(
+    `/opening in this Mac's browser|opened a moment ago/.test(document.querySelector('#lockSay').textContent)`,
+    5000,
+  );
   return out;
 };

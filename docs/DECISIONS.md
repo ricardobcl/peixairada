@@ -47,6 +47,20 @@ verdicts: *"fix everything"*. One commit each:
   `/usr/bin`'s — the comment said *never the PATH's*, and `findBin` looked up `SSH-KEYGEN_BIN`, then the PATH —; git
   is asked for `gpg.minTrustLevel=fully`, and a good signature that names no signer of the list is none: git 2.55
   already says *No principal matched* and fails for a key off the list (checked), so this is a second lock.
+* **The page sent its key to whatever answered on 7331** (lead 2; real, wider than the report had it). The app proves
+  the server before it loads the page; the page itself never did. A restart leaves the port free a moment, another
+  account can take it, and the stream's own retry (EventSource reconnects by itself, its `?key=` with it), every ask and
+  a drawer's socket went to that listener with the key — in the app's page as in a browser tab. Now the page proves the
+  server too (`serverProven`): `/api/alive` with a nonce and no key, the HMAC checked by WebCrypto (WebKit has it on
+  127.0.0.1, a secure context — checked in a WKWebView). Nothing keyed goes out before the proof, nor after a drop
+  of the stream, a drawer's socket or an ask till it holds again (`doubtServer`), one proof at a time; the stream is
+  closed on an error and opened again by hand, backing off (`keySafe`), and a drawer's socket waits for the proof;
+  something that answers unproven is the lock, and is sent nothing. A key that is not
+  the board's any more reads the same as a stranger on the port, so the lock says both, and the page keeps the key
+  till a new one is traded (the lock's own asks go keyless). Left: a browser tab reloaded while a stranger holds the
+  port loads the stranger's page, which reads the key from this origin's storage — the app's key is injected, not
+  stored. `key-proof.mjs`: the server ends, a listener takes the port, the page shows the lock and sends it nothing
+  keyed, the board comes back and the page is the board again; the old page timed out on the lock.
 
 ## Decisions of 2026-11-27 — make install, make update
 

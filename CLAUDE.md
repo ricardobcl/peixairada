@@ -124,9 +124,11 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   trades a ticket on a tab the server opens (`/api/key/open`, on osascript's stdin; `keyTicket` → `localStorage`, never a
   cookie), else the lock (`#lock`). A wrong key is refused always, none too (2026-11-06) but under `KEY_MODE=lax`
   (till `keyEnforced`: the app's page with it, no app, Settings). `/api/alive` with `x-peix-nonce` answers its HMAC
-  under the key (`aliveProof`): the app trusts no listener before it (mac/CLAUDE.md). **A new route is keyed unless in `KEY_OPEN`; a new client
-  sends the key** (`keyed()`, `keyHeaders()`; a test's `srv.api` · `srv.ws` · `srv.key`; `window.PEIX_KEY` in a
-  scenario's page). → `key.test.mjs`, `board-key.mjs`.
+  under the key (`aliveProof`): the app trusts no listener before it (mac/CLAUDE.md), **nor the page** (2026-11-27;
+  `serverProven`): nothing keyed goes out till proven, nor after a drop till again (`doubtServer`, `keySafe`; the
+  stream reopened by hand); unproven is the lock. **A new route is keyed unless in
+  `KEY_OPEN`; a new client sends the key** (`keyed()`, `keyHeaders()`, after `keySafe()`; a test's `srv.api` ·
+  `srv.ws` · `srv.key`; `window.PEIX_KEY` in a scenario's page). → `key.test.mjs`, `board-key.mjs`, `key-proof.mjs`.
 * **The port first, then the boot**: `main()` waits for `listen` before it reads the state file (`loadState`; an
   import neither reads nor saves it), adopts holders, reads the registry, polls or saves state; every request and
   upgrade waits for `booted`. **A route writes its head only once its body is in hand**, and the handler's catch
@@ -180,23 +182,23 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   name, `/<quality>-<commit>/`** — never its root, which starts a server. Read only under `~/.vscode`.
   → `vsweb.test.mjs`.
 * **The board updates itself from its checkout** (2026-10-12; `checkUpdate`; `selfUpdate` in the state file, **off by
-  default** (2026-10-13): what came is said, *update now* takes it; Settings › Updates, `GET/PUT/POST /api/update`, an
-  `update` event): only the agent looks by the clock (`UNDER_AGENT`, `UPDATE_EVERY_MS`), fetching its branch's upstream
-  alone (no FETCH_HEAD, no tags), **fast-forward only, to a tip a key in `.github/allowed_signers` signed** (2026-11-06;
-  `signedBy`, HEAD's list, never the new commits', a signer named, in a `mkdtemp` folder, 2026-11-27; else `unsigned`, not even *update now*; named, `commits`) — a
-  rewritten history whose tip names every commit here (`.github/rewritten`, `rewrittenHere`) by `reset --keep` — not
-  over a tracked change (`dirty`), a branch moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a
-  touch (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`) the switch, the hold and a change
-  the commits do not touch too (`clash`, 2026-10-15; `whyNot`, `updWord`). What they touched restarts (`updateParts`):
-  `npm ci --ignore-scripts` (2026-11-06), the agent (`launchd.sh restart`) and, when behind, the app (`mac/build.sh
-  install`), both detached; the page reloads once left be (`takeUpdate`, `reloadBusy`; never mid-update nor before the
-  new server is back). **Its progress is the status bar's** (`updSeg`, `watchBuild`), a click on news taking it
-  (2026-10-14; `data-take`, `updNow`). **First the new page compiles and the new server starts
-  on a spare port** (`preflight`); one that does not is undone (`git reset --keep`, only while HEAD is the commit pulled)
-  and held (`updateHeld`). **The app is held against the checkout** (2026-10-14; `readApp`, `appWhyNot` → `app`,
-  `lookApp`): build.sh stamps `PeixSource`, mac/'s tree as built (its notes out), and one not
-  HEAD's (`macSource`) is behind — rebuilt with a pull, else by *update now* or the switch once quiet, by the clock never
-  twice for one source (`appBuild`), never over work in mac/. → `update.test.mjs`, `auto-update.mjs`.
+  default**: what came is said, *update now* takes it; Settings › Updates, `GET/PUT/POST /api/update`, an `update`
+  event): only the agent looks by the clock (`UNDER_AGENT`, `UPDATE_EVERY_MS`), fetching its upstream alone (no
+  FETCH_HEAD, no tags), **fast-forward only, to a tip a key in `.github/allowed_signers` signed** (2026-11-06;
+  `signedBy`, HEAD's list, never the new commits', a signer named, in a `mkdtemp` folder, 2026-11-27; else `unsigned`,
+  not even *update now*; `commits` named) — a rewritten history whose tip names every commit here (`.github/rewritten`,
+  `rewrittenHere`) by `reset --keep` — not over a tracked change (`dirty`), a branch moved on its own (`diverged`), a
+  held commit, or within `UPDATE_QUIET_MS` of a touch (`lastTouchAt`); *check now* (`asked`) skips that wait, *update
+  now* (`apply`) the switch, the hold and a change the commits do not touch too (`clash`; `whyNot`, `updWord`). What
+  they touched restarts (`updateParts`): `npm ci --ignore-scripts`, the agent (`launchd.sh restart`) and, when behind,
+  the app (`mac/build.sh install`), both detached; the page reloads once left be (`takeUpdate`, `reloadBusy`; never
+  mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `watchBuild`), a click
+  on news taking it (`data-take`, `updNow`). **First the new page compiles and the new server starts on a spare port**
+  (`preflight`); one that does not is undone (`git reset --keep`, only while HEAD is the commit pulled) and held
+  (`updateHeld`). **The app is held against the checkout** (2026-10-14; `readApp`, `appWhyNot` → `app`, `lookApp`):
+  build.sh stamps `PeixSource`, mac/'s tree (its notes out); one not HEAD's (`macSource`) is behind — rebuilt with a
+  pull, else by *update now* or the switch once quiet, by the clock never twice for one source (`appBuild`), never over
+  work in mac/. → `update.test.mjs`, `auto-update.mjs`.
 * **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` carries `<meta name="peix-page">` (file
   stamp, boot `SINCE`); a snapshot names the page on disk (`page`): from a server started since, with another
   page, a reload (`reload.want`); a reconnect to the same server, none. → `update.test.mjs`, `restart-page.mjs`.
@@ -614,9 +616,9 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   (`SWITCHES`), so its handler runs. **`?` is the sheet of every key** (`keysOpen`, `#keysheet`) outside a box or a
   terminal. → `launcher.mjs`.
 * **The last step of the new-chat flow is a list of chats** (`scopeChats()`, `chatsStep()`, `newFromChats()`): the
-  scope's ready and clauding chats by `byWord` under ＋ *new chat* — **shown even when the scope has none**, so ⏎ starts
-  one. ⌥⌘N scopes it to the project, ⌥⌘O to one environment (`then: 'chats'` rides `folder` and `env`). Typing filters
-  the chats only, the selection on the first match (`pick.typed`), else ＋. **A git checkout gives ＋ a switch, *this
+  scope's ready and clauding chats by `byWord` under ＋ *new chat* — **shown when the scope has none**, so ⏎ starts one.
+  ⌥⌘N scopes it to the project, ⌥⌘O to one environment (`then: 'chats'` rides `folder` and `env`). Typing filters the
+  chats only, selecting the first match (`pick.typed`), else ＋. **A git checkout gives ＋ a switch, *this
   folder | new worktree*** (2026-10-13; `pick.git`, `pick.wt`, `pickWt`): on *new worktree* the text is the branch's
   name, and ＋ says what ⏎ would do (`wtSay` from `brAsk` → `branchWhere`: a new branch, one here or on origin, or **one
   out in a tree already — said in red, and only then `share`d**, else refused, `out`). **A new branch asks its base**
@@ -799,14 +801,14 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   `--no-track` from origin's default; one making per repo and branch (`wtAsking`); a tree not ignored goes in
   `info/exclude`. **Nothing is installed**: `GET /api/worktrees` says each tree's `modules` (`here` · `same` · `differ`);
   *Link node_modules* is `POST /api/worktrees/modules`, else `npm ci` typed into the zsh, unrun. **Only the trees it
-  made are removed** (`worktreesMade`; `sweepWorktrees`, every `WT_SWEEP_MS`): their PR merged or closed after it was
-  seen open (`prState`) — a new branch's, its PR (`prOfBranch`) or its commits (`ownCommits`) on origin's default
-  (`landed`) —, nothing in them (`busyIn`), on its branch, clean, no commit no remote has (`keepWorktree`) — `git
-  worktree remove`, never `--force`. *Switch this folder…* types `git switch <branch>` into the zsh, unrun, only when
-  `switchGuard` (`GET …/switch?branch=`) finds the tree (`treeOf`) free — no other chat or drawer, none mid-turn, nothing
-  uncommitted, no merge or rebase, the branch out nowhere else —, else its row says why. In the in-app editor
-  (`openEditorAt`): VS Code Web on a tab (`state.paneWt`, `ideLabels`) or vim. **Chat ▾**
-  (`prChatMenu`) is `chatOnPr`: `newChat` in that tree. → `worktrees.test.mjs`, `editor-branch.mjs`, `chat-worktree.mjs`.
+  made are removed** (`worktreesMade`; `sweepWorktrees`, `WT_SWEEP_MS`): their PR merged or closed after it was seen
+  open (`prState`) — a new branch's, its PR (`prOfBranch`) or its commits (`ownCommits`) on origin's default
+  (`landed`) —, none in them (`busyIn`), on its branch, clean, no commit no remote has (`keepWorktree`) — `git worktree
+  remove`, never `--force`. *Switch this folder…* types `git switch <branch>` into the zsh, unrun, only when
+  `switchGuard` (`GET …/switch?branch=`) finds the tree (`treeOf`) free — no other chat or drawer, none mid-turn, clean,
+  no merge or rebase, the branch out nowhere else —, else its row says why. In-app (`openEditorAt`): VS Code Web on a
+  tab (`state.paneWt`, `ideLabels`) or vim. **Chat ▾** (`prChatMenu`) is `chatOnPr`: `newChat` in that tree.
+  → `worktrees.test.mjs`, `editor-branch.mjs`, `chat-worktree.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
   the card's live line and the tiles; the raw name its tooltip.
 * **A tool call wears its state** (`toolRes`, `toolMark`): `.tst[data-tu]` — `run` (turning while `#log.working`),
@@ -820,18 +822,17 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   scroll carried by hand), hidden under a live drawer, parked in the left half when none shows it. **It is appended to,
   not rebuilt**: `renderLog` keeps `logView` (the array, the entries drawn, the trailing run of tool calls) and
   renders what arrived; another chat or array starts over. A reconnect is `refetchCurrent()`, in place, no pill lit.
-  **The fetch and the stream are reconciled** (`logOf`, `awaitEntries` / `takeEntries` / `mergeEntries`):
-  while a fetch is out the stream's entries wait in `pending`, and only those past `upto` are taken; a summary older
-  than a `session` event is not (`sessionSeen`). `#log` has no `scroll-behavior`. Nothing in it fetches from elsewhere
-  (2026-10-14): images only from `data:`; DOMPurify forbids `<style>`, `style=`, form controls but the checkbox, media,
-  `picture`, SVG `image`/`use`, `srcset`/`poster`/`background`, an SVG `url()` not `#`. **A reply borrows nothing of the board's**
+  **The fetch and the stream are reconciled** (`logOf`, `awaitEntries` / `takeEntries` / `mergeEntries`): while a
+  fetch is out the stream's entries wait in `pending`, only those past `upto` taken; a summary older than a `session`
+  event is not (`sessionSeen`). `#log` has no `scroll-behavior`. Nothing in it fetches from elsewhere (2026-10-14):
+  images only from `data:`; DOMPurify forbids `<style>`, `style=`, form controls but the checkbox, media, `picture`, SVG
+  `image`/`use`, `srcset`/`poster`/`background`, an SVG `url()` not `#`. **A reply borrows nothing of the board's**
   (2026-11-06; `MD_PURIFY`, `MD_URI`): no id, name, class (but a code's `language-*`), data-\*, dialog, open, popover,
   hidden; links http(s), mailto, relative (`normPath`); handlers answer their own boxes; copy is `innerText`.
-  → `transcript-markup.mjs`. **The log ends with the presence
-  line** (`renderPresence()`, while clauding or asking; `shim()`, `VERBS`) **and the new-reply pill** (`.lognew`,
-  `logNew()`): new nodes go before that tail, marked `.in` (not on the first fill), or come up part by part when a reply
-  lands at the end (`reveal`, `REVEAL_GAP`) — **anything appended goes before the tail**, and "the last message" is
-  `:scope > .msg:last-of-type`. → `transcript-live.mjs`.
+  → `transcript-markup.mjs`. **The log ends with the presence line** (`renderPresence()`, while clauding or asking;
+  `shim()`, `VERBS`) **and the new-reply pill** (`.lognew`, `logNew()`): new nodes go before that tail, `.in` (not on
+  the first fill), or come up part by part when a reply lands at the end (`reveal`, `REVEAL_GAP`) — **anything appended
+  goes before the tail**; "the last message" is `:scope > .msg:last-of-type`. → `transcript-live.mjs`.
 * **Split or not is the chat's** (`splits`, beside `tabs`); `syncTerm` calls `applySplit()` on every open; each
   strip's ⨯ closes its own half (`closeHalf(g)`). The per-chat maps (`tabs`, `splits`, `state.paneGh`… — the
   snapshot's list) are pruned on every snapshot to its chats, carried to the new id across a /clear
@@ -1031,9 +1032,9 @@ to the page, load it**: `check-page` only compiles, and a `const` read before it
 * **Test against the fake claude, not real chats**: `scripts/fakes/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
   instant and touches nothing; the real CLI, at no cost: `lib/reallab.mjs`. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.
-* **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — a headless page's
-  `focus()` is no focus without `Emulation.setFocusEmulationEnabled`; and **every re-attach that moves the drawer
-  resizes it** — the clean re-attach is a reload of the page, then `openChat`.
+* **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — headless, `focus()`
+  is none without `Emulation.setFocusEmulationEnabled`; and **a re-attach that moves the drawer resizes it** — the
+  clean one is a reload, then `openChat`.
 * **The fake claude scrolls before it repaints on a shrink** (`drawLive`): a red drawer scenario can be its geometry.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`, `motion()`) or the DOM.

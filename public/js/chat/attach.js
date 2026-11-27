@@ -43,6 +43,7 @@ function attachPaths(paths) {
 }
 async function uploadFiles(files) {
   const paths = [];
+  await keySafe();
   for (const f of files) {
     const r = await fetch(
       `/api/attach?session=${encodeURIComponent(state.current || 'new')}&name=${encodeURIComponent(f.name || 'pasted.png')}`,
@@ -148,6 +149,7 @@ async function drawerType(s, text, send) {
   if (asking(s)) return ASKS_FIRST;
   const tm = claudeTm(s);
   if (tm) return typeIn(tm.ws, body, send);
+  await keySafe();
   const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`));
   return new Promise(res => {
     ws.onopen = async () => {

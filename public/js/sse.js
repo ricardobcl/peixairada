@@ -190,9 +190,16 @@ async function refetchCurrent() {
   renderLog();
   syncTerm(s);
 }
-function connect() {
-  const es = new EventSource(keyed('/events'));
+// The stream is opened again by hand, never by the browser's own retry (2026-11-27): that sends its keyed address to
+// whatever answers next on the port. A drop doubts the server, and the next stream waits for its proof (keySafe).
+let stream = null,
+  streamTries = 0;
+const connectSoon = () => setTimeout(connect, Math.min(5000, 250 * 2 ** streamTries++)); // a stream that keeps failing waits longer
+async function connect() {
+  await keySafe();
+  const es = (stream = new EventSource(keyed('/events')));
   es.onopen = () => {
+    streamTries = 0;
     const was = !bar.conn;
     bar.conn = true;
     bar.lost = false;
@@ -208,12 +215,18 @@ function connect() {
     }
   };
   es.onerror = () => {
+    if (stream !== es) return;
     bar.conn = false;
     bar.back = false;
     bar.lost = es.readyState === EventSource.CLOSED;
     renderBar();
-    if (bar.lost) api('GET', '/api/key').catch(() => {});
-  }; // a stream turned away: for want of the key, the lock
+    es.close();
+    stream = null;
+    doubtServer();
+    if (bar.lost)
+      api('GET', '/api/key').then(connectSoon, () => {}); // turned away: for want of the key, the lock; else again
+    else connectSoon();
+  };
   es.addEventListener('snapshot', e => {
     const d = JSON.parse(e.data);
     state.snapshots++;
@@ -444,4 +457,4 @@ function connect() {
   });
   es.addEventListener('chatmsgs', e => chatMsgs(JSON.parse(e.data)));
 }
-keyReady.then(connect); // a ticket in the address first: the stream wants the key it is traded for
+connect(); // a ticket in the address first, and the server proven: the stream wants the key

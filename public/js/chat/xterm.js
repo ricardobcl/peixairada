@@ -710,6 +710,12 @@ function attachTerm(tm, t) {
   setUnder(tm, underOf.get(t.id) ?? !t.resume); // before the first fit: as it was left, a new one under the header
   drawer.err = null;
   showDrawer(tm, true);
+  // its socket once the server is proven (2026-11-27, key.js): never keyless meanwhile, which the server turns away
+  const gen = (tm.attachGen = (tm.attachGen || 0) + 1);
+  if (keyTrusted) openTermSocket(tm, t);
+  else keySafe().then(() => tm.attachGen === gen && tm.id === t.id && !tm.ws && openTermSocket(tm, t));
+}
+function openTermSocket(tm, t) {
   const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`));
   ws.binaryType = 'arraybuffer';
   tm.ws = ws;
@@ -747,6 +753,7 @@ function attachTerm(tm, t) {
     tm.ws = null;
     dropHold(tm);
     if (tm.exited !== null || !tm.id) return;
+    doubtServer(); // whatever answers next on the port proves itself before the key goes to it
     tm.lost = true;
     tm.retry = (tm.retry || 0) + 1;
     clearTimeout(tm.retryTimer);

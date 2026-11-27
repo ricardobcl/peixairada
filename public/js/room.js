@@ -244,7 +244,7 @@ function chatPicPump() {
     const { url, ok } = chatPicQ.shift();
     chatPicRun++;
     (async () => {
-      await keyReady;
+      await keySafe();
       const r = await fetch(`/api/chat/pic?u=${encodeURIComponent(url)}`, { headers: keyHeaders() });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -376,7 +376,7 @@ function chatPicUp(p) {
       chatTrayDraw();
       chatDraw();
     }
-    await keyReady;
+    await keySafe();
     const r = await fetch(
       `/api/chat/upload?${p.path ? `path=${encodeURIComponent(p.path)}` : `name=${encodeURIComponent(p.file.name || 'pasted.png')}`}`,
       { method: 'POST', body: p.file || undefined, headers: keyHeaders() },
