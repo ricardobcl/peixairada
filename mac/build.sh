@@ -96,8 +96,11 @@ node -e 'const fs = require("fs"), [f, v] = process.argv.slice(1), p = JSON.pars
 cp -R "$ROOT/public" "$APP/Contents/Resources/public"
 # The server imports ws and node-pty, so the bundle carries node_modules — installed here first if
 # it is missing. The xterm packages are dev-only (vendored copies live in public/vendor) and are
-# pruned from the copy; node-pty's spawn-helper keeps its executable bit through cp -R.
-[ -d "$ROOT/node_modules/node-pty" ] || (cd "$ROOT" && npm install --no-audit --no-fund)
+# pruned from the copy; node-pty's spawn-helper keeps its executable bit through cp -R. Installed as the updater does
+# (2026-11-27): `npm ci`, the lockfile's packages and nothing else, no install scripts — node-pty runs from its prebuilt
+# binaries, and package.json's postinstall, the helper's bit, is done here.
+[ -d "$ROOT/node_modules/node-pty" ] || (cd "$ROOT" && npm ci --ignore-scripts --no-audit --no-fund &&
+  { chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true; })
 cp -R "$ROOT/node_modules" "$APP/Contents/Resources/node_modules"
 # Nothing dev-only travels (2026-11-25): the linters, the formatter and the vendored builds' sources are pruned by the
 # lockfile, offline. A prune that fails leaves them in, a bigger app and nothing else.

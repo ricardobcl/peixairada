@@ -73,6 +73,10 @@ verdicts: *"fix everything"*. One commit each:
   there. Now cleanSetup takes the folders to make as there (`toMake`), and they are made only once the whole PUT holds,
   none in Claude Code's folder (`inClaudeDir`). And `saveConfig` read the file again and wrote over it even when it had
   broken since the route's look (a hand edit while the body came): it refuses now, as the 409 does.
+* **build.sh installed with install scripts on** (a hardening note): with no `node_modules/node-pty` it ran `npm
+  install`, which can move past the lockfile and runs every package's scripts, where the updater has run `npm ci
+  --ignore-scripts` since 2026-11-06. It does the same now, and package.json's postinstall (spawn-helper's bit) by hand;
+  checked in a scratch copy: the packages in, node-pty spawning from its prebuilt binary.
 
 ## Decisions of 2026-11-27 — make install, make update
 
