@@ -19,7 +19,7 @@ extension AppDelegate {
   func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
     // The board's page, its main frame, and no one else: the bridge opens any URL in the system (`external`).
     let origin = message.frameInfo.securityOrigin
-    guard message.frameInfo.isMainFrame, origin.host == "127.0.0.1", origin.port == kPort,
+    guard message.frameInfo.isMainFrame, origin.protocol == "http", origin.host == "127.0.0.1", origin.port == kPort,
           let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
     switch type {
     case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
@@ -119,7 +119,7 @@ extension AppDelegate {
       }
       NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     case "external":
-      if let s = body["url"] as? String, let url = URL(string: s) { handOn(url, from: "the board") }
+      if let s = body["url"] as? String, let url = URL(string: s) { handOn(url, from: "the board", board: true) }
     case "chooseFolder":   // the first run's Choose… (2026-10-01): the system's folder panel, its path back to the page
       let panel = NSOpenPanel()
       panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false

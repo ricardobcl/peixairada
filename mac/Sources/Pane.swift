@@ -193,11 +193,30 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   /// web's is cancelled: every one went to NSWorkspace, file: included, with no click at all. A script's click() is a
   /// link clicked to WebKit, so the click must be the user's (2026-11-06): a press or a key in that view a moment before.
   static let outSchemes = kHandOn.subtracting(["http", "https"])
+  /// …and asked about first (2026-11-27, an outside audit's note), as a browser asks before it hands a link to an app: a
+  /// sheet naming the app and the whole link. A page can lay a link over its whole view, and one click was enough.
+  static func askOut(_ url: URL, from webView: WKWebView) {
+    let scheme = url.scheme?.lowercased() ?? "", site = webView.url?.host ?? "this page"
+    let app = NSWorkspace.shared.urlForApplication(toOpen: url).map { FileManager.default.displayName(atPath: $0.path) }
+    let alert = NSAlert()
+    alert.messageText = app.map { "Open \($0)?" } ?? "Open a link to another app?"
+    var link = url.absoluteString
+    if link.count > 400 { link = String(link.prefix(400)) + "…" }
+    alert.informativeText = "\(site) wants to open this in \(app ?? "an app for \(scheme):"):\n\n\(link)"
+    alert.addButton(withTitle: "Open")
+    alert.addButton(withTitle: "Cancel")
+    logLine("pane: \(scheme): asked before it is handed on, from \(site)")
+    let then = { (r: NSApplication.ModalResponse) in
+      if r == .alertFirstButtonReturn { handOn(url, from: "a page in the pane") } else { logLine("pane: \(scheme): not opened — cancelled") }
+    }
+    if let w = webView.window, w.attachedSheet == nil { alert.beginSheetModal(for: w, completionHandler: then) }
+    else { logLine("pane: \(scheme): not opened — a sheet is up already") }
+  }
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, let scheme = url.scheme?.lowercased(), !["http", "https", "about", "blob", "data"].contains(scheme) {
       let clicked = action.navigationType == .linkActivated && action.sourceFrame.isMainFrame, yours = gestured?(webView) ?? false
-      if clicked && yours && PaneDelegate.outSchemes.contains(scheme) { handOn(url, from: "a page in the pane") }
+      if clicked && yours && PaneDelegate.outSchemes.contains(scheme) { PaneDelegate.askOut(url, from: webView) }
       else { logLine("pane: \(scheme): not opened, from \(webView.url?.host ?? "?") — \(!clicked ? "no link clicked in the page" : !yours ? "no click or key of yours there" : "not a scheme handed on")") }
       return decisionHandler(.cancel)
     }

@@ -172,6 +172,9 @@ extension AppDelegate {
                                      context: nil, characters: chars, charactersIgnoringModifiers: chars, isARepeat: false,
                                      keyCode: UInt16(o["code"] as? Int ?? 0)) else { return reply(nil, "no such key event") }
       if let h = AppDelegate.hotkeyCode(e) { reply([h.code, h.mods], nil) } else { reply(nil, nil) }
+    case "gesture":   // a press of the user's in a pane page's view, as the event monitors mark one (2026-11-27)
+      guard let v = paneViews[o["key"] as? String ?? ""] else { return reply(nil, "no view for \(o["key"] ?? "?")") }
+      gestureAt[ObjectIdentifier(v)] = Date(); reply(true, nil)
     case "quit": exit(0)
     default: reply(nil, "no such thing to do: \(o["do"] ?? "?")")
     }

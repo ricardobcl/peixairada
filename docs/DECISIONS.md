@@ -77,6 +77,16 @@ verdicts: *"fix everything"*. One commit each:
   install`, which can move past the lockfile and runs every package's scripts, where the updater has run `npm ci
   --ignore-scripts` since 2026-11-06. It does the same now, and package.json's postinstall (spawn-helper's bit) by hand;
   checked in a scratch copy: the packages in, node-pty spawning from its prebuilt binary.
+* **The shell's hand-on, its hub and its fallback banner** (hardening notes). `handOn` let the board's own asks open
+  any `vscode://`, `zed://` or `x-github-client://` link, where its page sends only an editor at a file (`OUT_OK`):
+  an extension's handler (`vscode://<publisher.extension>/…`) was a renderer slip away. Asks from the board (`board`)
+  now hold to `://file/` for the editors and never hand on GitHub Desktop; a page in the pane still may, as a site's
+  *Open in GitHub Desktop* does. A pane page's link to another app went on one click of yours — a page can lay a link
+  over the whole view — where a browser asks first: now a sheet names the app and the whole link (`askOut`), Open or
+  Cancel. The hub checks the origin's scheme beside its host and port (navigation already kept the board's view on its
+  origin; now the check holds by itself). The fallback banner's osascript takes its words after `--`, as the server's
+  does. `npm run shell`: `pane-ask-out` (a new probe command, `gesture`, marks a press in a view; the check failed on the
+  old sources, which never asked), `scheme-out` the board's editor and Desktop links, every other check as before.
 
 ## Decisions of 2026-11-27 — make install, make update
 

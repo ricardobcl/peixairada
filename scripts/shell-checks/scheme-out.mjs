@@ -26,6 +26,19 @@ export default async function (ctx) {
   ctx.assert.ok(await heard(/open: x-apple\.systempreferences: refused/), 'a scheme not on the list is refused');
   await ctx.link(prefs);
   ctx.assert.ok(await heard(/open: x-apple\.systempreferences: refused/, 2), 'a link on the board to it is refused');
+  // the board's own asks are its page's (2026-11-27): an editor at a file, never an extension's handler, no GitHub Desktop
+  for (const url of ['vscode-insiders://peix.nothing/run?x=1', 'x-github-client://openRepo/https://example.com/peix'])
+    await ctx.js(
+      `window.webkit.messageHandlers.hub.postMessage({ type: 'external', url: ${JSON.stringify(url)} }); return true`,
+    );
+  ctx.assert.ok(
+    await heard(/open: vscode-insiders: but at a file refused — from the board/),
+    "an editor's link not to a file",
+  );
+  ctx.assert.ok(
+    await heard(/open: x-github-client: but at a file refused — from the board/),
+    'GitHub Desktop, from the board',
+  );
   // a pane named with a key that is no web page is not loaded
   await ctx.js(
     `window.webkit.messageHandlers.hub.postMessage({ type: 'pane', id: null, keys: ['gh:${gone}'], panes: [{ key: 'gh:${gone}', left: 10, top: 10, width: 100, height: 100 }], focus: null }); return true`,

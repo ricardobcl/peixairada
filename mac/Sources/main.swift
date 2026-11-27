@@ -104,12 +104,18 @@ func jsLit(_ s: String) -> String {
 /// What the app hands to another app, from anywhere — the board's `external`, a link off the board, the strip's ↗, a page
 /// in the pane (2026-11-06): the web, mail, the editors and GitHub Desktop, nothing else. Every one went to NSWorkspace
 /// as it came from the board's side — file:, an .app, a .command, x-apple.systempreferences:, ssh: — and the pane had
-/// the only list (2026-10-14). `from` names the asker in the log; a refusal is logged and nothing opens.
+/// the only list (2026-10-14). `from` names the asker in the log; a refusal is logged and nothing opens. The board's own
+/// asks (`board`) are what its page sends, `OUT_OK`'s (2026-11-27, an outside audit's note): an editor only at a file
+/// (`<scheme>://file/…`), never an extension's handler (`vscode://<publisher.extension>/…`), and no GitHub Desktop.
 let kHandOn: Set<String> = ["http", "https", "mailto", "vscode", "vscode-insiders", "zed", "x-github-client"]
+let kEditors: Set<String> = ["vscode", "vscode-insiders", "zed"]
 @discardableResult
-func handOn(_ url: URL, from: String) -> Bool {
+func handOn(_ url: URL, from: String, board: Bool = false) -> Bool {
   let scheme = url.scheme?.lowercased() ?? ""
-  guard kHandOn.contains(scheme) else { logLine("open: \(scheme.isEmpty ? "no scheme" : scheme + ":") refused — from \(from)"); return false }
+  let boardNo = board && (scheme == "x-github-client" || (kEditors.contains(scheme) && url.host?.lowercased() != "file"))
+  guard kHandOn.contains(scheme), !boardNo else {
+    logLine("open: \(scheme.isEmpty ? "no scheme" : scheme + ":")\(boardNo ? " but at a file" : "") refused — from \(from)"); return false
+  }
   NSWorkspace.shared.open(url)
   return true
 }

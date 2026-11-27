@@ -76,9 +76,10 @@ extension AppDelegate {
   private func notifyViaAppleScript(_ heading: String, _ subtitle: String, _ body: String) {
     let p = Process()
     p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+    // its words after `--` (2026-11-27), as the server's own: a heading that starts with a dash is no option to osascript
     p.arguments = ["-e", "on run argv",
                    "-e", "display notification (item 3 of argv) with title (item 1 of argv) subtitle (item 2 of argv) sound name \"Glass\"",
-                   "-e", "end run", heading, subtitle, body]
+                   "-e", "end run", "--", heading, subtitle, body]
     try? p.run()
   }
 

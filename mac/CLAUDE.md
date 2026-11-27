@@ -119,9 +119,11 @@ under the title bar (2026-11-04; `paneTop`, a KVO on `contentLayoutRect`, by its
   → `board-stays.mjs`.
 * **Everything handed to another app goes through `handOn`** (`kHandOn`: http, https, mailto, vscode, vscode-insiders,
   zed, x-github-client) — `external`, a link on the board, the strip's ↗, a pane page; a refusal is logged
-  `open: <scheme>: refused`. `setPane` loads http(s) keys only. A pane page hands one on only within 1 s of a press or
-  key of yours in that view (`gestureAt`, `PaneDelegate.gestured`): WebKit calls a script's `click()` `.linkActivated`.
-  → `scheme-out.mjs`, `pane-gesture.mjs`.
+  `open: <scheme>: refused`. `setPane` loads http(s) keys only. The board's own (`board`, 2026-11-27) as its `OUT_OK`:
+  an editor only at a file (`kEditors`, `://file/`), no GitHub Desktop. A pane page hands one on only within 1 s of a
+  press or key of yours in that view (`gestureAt`, `PaneDelegate.gestured`: WebKit calls a script's `click()`
+  `.linkActivated`), and after a sheet naming the app and the link (`askOut`, 2026-11-27). The hub checks the origin's
+  scheme too. → `scheme-out.mjs`, `pane-gesture.mjs`, `pane-ask-out.mjs` (the probe's `gesture`).
 * **Hardened runtime, no entitlements** (`build.sh`'s codesign; the bundled node keeps its own signature).
   `PEIXAIRADA_PORT` and `PEIXAIRADA_NODE` only under `PEIX_PROBE`; the bundled server's environment drops `DYLD_*` and
   `NODE_OPTIONS`. Reply…, Done and Mute are `.authenticationRequired`; a reply is for its banner's turn (`at`), and a

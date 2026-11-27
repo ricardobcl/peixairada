@@ -59,7 +59,7 @@ extension AppDelegate {
       return
     }
     if url.absoluteString == "about:blank" && action.targetFrame?.isMainFrame != false { return decisionHandler(.allow) }
-    if action.navigationType == .linkActivated { handOn(url, from: "a link on the board") }
+    if action.navigationType == .linkActivated { handOn(url, from: "a link on the board", board: true) }
     else { logLine("board: a navigation to \(url.scheme ?? "?")://\(url.host ?? "") refused — the board's view shows the board") }
     decisionHandler(.cancel)
   }
