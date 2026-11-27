@@ -90,6 +90,7 @@ const MD_PURIFY = {
     'color',
     'bgcolor',
     'face',
+    'xlink:href', // an SVG link's (2026-11-27): no handler of the board's reads it, and clicked it took the board's frame away
   ],
   ALLOW_DATA_ATTR: false,
   ALLOWED_URI_REGEXP: MD_URI,

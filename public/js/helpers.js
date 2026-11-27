@@ -1,6 +1,15 @@
 // ---- helpers -----------------------------------------------------------------------
 const esc = s =>
-  String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  ); // ' too (2026-11-27): no attribute is single-quoted today, and none can be one's undoing
+/** esc()'s text again, for markup whose tags are stripped and the rest escaped anew (a tooltip). */
+const unesc = s =>
+  String(s ?? '').replace(
+    /&(amp|lt|gt|quot|#39);/g,
+    (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" })[e],
+  );
 // Backticks in a title or a snippet are code (2026-10-12): the server keeps them when it turns a prompt or a reply into a
 // sentence (plain), and a title like Add `deleteUserForm` read its ticks aloud. Over escaped markup, a run with no tag
 // in it — a match marked inside one keeps its ticks.

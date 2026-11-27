@@ -225,12 +225,13 @@ function updSeg() {
     `<button class="seg upg ${cls}"${take ? ' data-take="1"' : ''} title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : take || 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
   const run = updRun(u),
     w = updateSay(u),
-    tip = [w.say, w.more]
-      .filter(Boolean)
-      .join(' · ')
-      .replace(/<br>/g, ' · ')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&(amp|lt|gt|quot);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"' })[e]); // text again, which seg escapes once
+    tip = unesc(
+      [w.say, w.more]
+        .filter(Boolean)
+        .join(' · ')
+        .replace(/<br>/g, ' · ')
+        .replace(/<[^>]+>/g, ''),
+    ); // text again, which seg escapes once
   if (run) return seg('run', ICON.reload, `${esc(run.say)}…`, tip, run.p);
   if (reload.want)
     return seg(

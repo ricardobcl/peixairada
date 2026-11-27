@@ -30,6 +30,8 @@ export default async function (ctx) {
   const links = [
     'See [up](../other/x.ts#L3), [here](./lib/y.mjs), <a href="tel:123">call</a>, <a href="//evil.example/z">host</a>, [prefs](x-apple.systempreferences:x), [web](https://example.com/a) and [mail](mailto:a@example.com).',
     '',
+    `<svg width="80" height="20"><a xlink:href="./lib/y.mjs"><text x="0" y="15">svg link</text></a></svg> and [the board's?](${ctx.server.url.replace(/\/$/, '')}@evil.example/x).`,
+    '',
     '- [x] done',
     '- [ ] not yet',
     '',
@@ -140,9 +142,24 @@ export default async function (ctx) {
       ['prefs', null],
       ['web', 'https://example.com/a'],
       ['mail', 'mailto:a@example.com'],
+      ['svg link', null],
+      ["the board's?", `${ctx.server.url.replace(/\/$/, '')}@evil.example/x`],
     ],
     "links: a path with its .. resolved, the web's, mail — no tel:, no //host, no system scheme",
   );
+  // an SVG link keeps no xlink:href (2026-11-27), and a link that starts as the board's origin and is not is handled as
+  // the web's: the board's own frame never follows it
+  out.svgLink = await ctx.evaluate(
+    `document.querySelector('#log .msg.assistant svg a')?.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ?? null`,
+  );
+  ctx.assert.equal(out.svgLink, null, 'an SVG link has nowhere to go');
+  out.notOurs = await ctx.evaluate(`(() => {
+    const a = [...document.querySelectorAll('#log .msg.assistant .text a')].find(x => x.textContent === "the board's?");
+    const ev = new MouseEvent('click', { bubbles: true, cancelable: true });
+    a.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  })()`);
+  ctx.assert.equal(out.notOurs, true, "a userinfo link is not the board's: handled, not followed");
   out.render = await ctx
     .evaluate(
       `JSON.stringify({ code: document.querySelector('#log .codebox code')?.className, spans: document.querySelectorAll('#log .codebox code [class^="hljs-"]').length, boxes: document.querySelectorAll('#log .msg .text input[type="checkbox"]').length, table: document.querySelectorAll('#log .msg .text table td').length })`,

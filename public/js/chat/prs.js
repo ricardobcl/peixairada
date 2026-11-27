@@ -249,6 +249,13 @@ $('#log').addEventListener('click', e => {
   if (state.sessions.has(b.dataset.sid)) openSession(b.dataset.sid, { locate: true });
   else note(b, 'That chat is not on the board');
 });
+const sameOrigin = href => {
+  try {
+    return new URL(href, location.href).origin === location.origin;
+  } catch {
+    return false;
+  }
+};
 $('#chat').addEventListener('click', e => {
   const a = e.target.closest('a[href]');
   if (!a) return;
@@ -263,7 +270,8 @@ $('#chat').addEventListener('click', e => {
     showPr(href.match(GH_PR)[0]);
     return;
   }
-  if (inApp && /^https?:/.test(href) && !href.startsWith(location.origin)) {
+  // the board's own origin by its parts, never a prefix (2026-11-27): http://127.0.0.1:7331@elsewhere.example/ is elsewhere
+  if (inApp && /^https?:/.test(href) && !sameOrigin(href)) {
     e.preventDefault();
     openExternal(href);
   }

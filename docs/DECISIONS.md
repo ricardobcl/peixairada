@@ -87,6 +87,12 @@ verdicts: *"fix everything"*. One commit each:
   origin; now the check holds by itself). The fallback banner's osascript takes its words after `--`, as the server's
   does. `npm run shell`: `pane-ask-out` (a new probe command, `gesture`, marks a press in a view; the check failed on the
   old sources, which never asked), `scheme-out` the board's editor and Desktop links, every other check as before.
+* **Three small things on the page** (hardening notes). An SVG `<a xlink:href>` in a reply kept its link — `md()`
+  rewrites only `href`, the `#chat` handler reads only `href` — and a click took the board's own frame to that path:
+  `xlink:href` is forbidden now. The handler let any link that *starts* with the board's origin follow its default:
+  `http://127.0.0.1:7331@elsewhere.example/` is elsewhere, so origins are compared parsed (`sameOrigin`). `esc()`
+  escapes `'` too; no attribute is single-quoted today. `transcript-markup.mjs` has both links (the old parts failed
+  on the SVG one).
 
 ## Decisions of 2026-11-27 — make install, make update
 

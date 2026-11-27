@@ -826,7 +826,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   images only from `data:`; DOMPurify forbids `<style>`, `style=`, form controls but the checkbox, media, `picture`, SVG
   `image`/`use`, `srcset`/`poster`/`background`, an SVG `url()` not `#`. **A reply borrows nothing of the board's**
   (2026-11-06; `MD_PURIFY`, `MD_URI`): no id, name, class (but a code's `language-*`), data-\*, dialog, open, popover,
-  hidden; links http(s), mailto, relative (`normPath`); handlers answer their own boxes; copy is `innerText`.
+  hidden, `xlink:href`; links http(s), mailto, relative (`normPath`); handlers answer their own boxes; copy is `innerText`.
   → `transcript-markup.mjs`. **The log ends with the presence line** (`renderPresence()`, while clauding or asking;
   `shim()`, `VERBS`) **and the new-reply pill** (`.lognew`, `logNew()`): new nodes go before that tail, `.in` (not on
   the first fill), or come up part by part when a reply lands at the end (`reveal`, `REVEAL_GAP`) — **anything appended

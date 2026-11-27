@@ -275,7 +275,7 @@ function renderChanges(s) {
       <div class="r1"><span class="br">${ICON.branch}${esc(dp.headName || `#${dp.n}`)}</span>${d.base ? `<span class="arrow">→</span><span class="br base">${esc(d.base)}</span>` : ''}
         <span class="acts"><button class="cbtn pr" data-act="pr" title="${esc(dp.url || '')}">#${dp.n} ↗</button></span></div>
       <div class="r2">${seg}<span class="sum"><span class="a">+${d.add}</span> <span class="d">−${d.del}</span> in ${d.files.length} file${d.files.length === 1 ? '' : 's'}</span><button class="cbtn" data-act="reload" title="Read it again">↻</button></div>
-      <div class="r3 csrc" title="${esc(src.replace(/<[^>]+>/g, ''))}">${src}</div></div>
+      <div class="r3 csrc" title="${esc(unesc(src.replace(/<[^>]+>/g, '')))}">${src}</div></div>
       ${
         d.files.length
           ? `<div class="cbody"><div class="cfiles">${files}</div><div class="cdiff">${body}${d.truncated ? '<div class="cempty sm">…the rest is too long to show here</div>' : ''}</div></div>`
