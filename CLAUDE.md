@@ -882,7 +882,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), which clears the screen *it*
   serializes and echoes it to every page on that drawer. A nudge follows. ⌃L is the shell's own.
 * **What the board types is text, never keys** (2026-11-06; `typable`, `forClaude`, `forShell`): all it composes goes
-  through them — line breaks kept (ESC CR for claude), a tab two spaces, every other control gone; a
+  through them — line breaks kept (ESC CR for claude), a tab two spaces, every other control and bidi mark gone; a
   dropped name with one is refused. **Never into a dialog** (2026-11-27; `typeIn` → the socket's `type`): typed, ⏎ too,
   only while the claude's registry file, read then, waits on nothing; your keys are `in`. → `typed-text.mjs`, `terminals.test`.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is

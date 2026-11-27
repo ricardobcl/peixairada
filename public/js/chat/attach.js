@@ -13,7 +13,7 @@ function attachPaths(paths) {
   if (!paths.length) return false;
   // a name with a control character in it would be keys, not a name (2026-11-06): refused whole, said where the drop went
   if (paths.some(p => hasCtl(String(p)))) {
-    note($('#shead'), 'Not typed: a dropped file\u2019s name has a control character in it', true);
+    note($('#shead'), 'Not typed: a dropped file\u2019s name has a control character or a bidi mark in it', true);
     return false;
   }
   const text = paths.map(atMention).join(' ') + ' ';

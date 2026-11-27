@@ -96,6 +96,10 @@ verdicts: *"fix everything"*. One commit each:
 * **A task's or an agent's name could start with a dash** (a hardening note): `TASK_NAME` and `AGENT_NAME` took one,
   and `task -x` is an option, as an agent's name after `--agent` is one CLI parser away from one. Both want a word's
   character first now, as a chat id does.
+* **Board-typed text kept its bidi marks** (a hardening note): `typable` dropped every control but not U+202A–202E,
+  U+2066–2069 and their kin, so a line typed for you to read and send could read otherwise than what it sent; a line
+  or paragraph separator (U+2028, U+2029) went as is. The marks go now, the separators are line breaks, and a dropped
+  file whose name has one is refused as a control character is. `typed-text.mjs`.
 
 ## Decisions of 2026-11-27 — make install, make update
 

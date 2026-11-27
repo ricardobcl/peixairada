@@ -20,7 +20,9 @@ export default async function (ctx) {
       .then(JSON.parse);
   const before = (await prompts()).length;
   ctx.assert.equal(
-    await ctx.evaluate(`window.peixReply(${JSON.stringify(two.id)}, 'first\\rsecond\\x15third\\x1b[Z end')`),
+    await ctx.evaluate(
+      `window.peixReply(${JSON.stringify(two.id)}, 'first\\rsecond\\x15third\\x1b[Z end \\u202Eevil\\u2028fourth')`,
+    ),
     true,
     'the reply went',
   );
@@ -33,11 +35,17 @@ export default async function (ctx) {
   ctx.assert.equal(out.prompts.length, 1, 'one prompt: the CR inside it was a line break, not a send');
   ctx.assert.ok(/first[\s\S]*second[\s\S]*third/.test(out.prompts[0]), 'every word is in it: no ⌃U wiped one');
   ctx.assert.ok(!/[\x00-\x08\x0b-\x1f\x7f-\x9f]/.test(out.prompts[0]), 'and no control character reached it');
+  ctx.assert.ok(/end evil\nfourth/.test(out.prompts[0]), 'no bidi mark (2026-11-27), a line separator a line break');
   // a drop: a name with a control character is refused, a plain one typed
   out.dropBad = await ctx.evaluate(`window.peixDrop(['/tmp/evil\\rname.txt'])`);
   ctx.assert.equal(out.dropBad, false, 'a dropped name with a CR in it is not typed');
   out.said = await ctx.evaluate(`[...document.querySelectorAll('.note')].map(n => n.textContent).join(' | ')`);
   ctx.assert.match(out.said, /control character/, 'and the board says why');
+  ctx.assert.equal(
+    await ctx.evaluate(`window.peixDrop(['/tmp/evil\\u202Etxt.exe'])`),
+    false,
+    'nor one with a bidi mark',
+  );
   out.dropOk = await ctx.evaluate(`window.peixDrop(['/tmp/plain name.txt'])`);
   ctx.assert.equal(out.dropOk, true, 'a plain name is typed');
   await ctx.waitFor(`(window.peix.screen() || []).join(' ').includes('@/tmp/plain\\\\ name.txt')`, {

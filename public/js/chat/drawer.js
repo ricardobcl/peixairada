@@ -182,17 +182,21 @@ function typeIn(ws, d, send) {
 // and a carriage return in a stranger's diff line submitted the prompt there and then, an ESC [Z cycled the permission
 // mode, a ⌃U wiped what came before. Text as a person could type it: line breaks kept (a lone CR is one), a tab two
 // spaces (Tab is a key to Claude Code and to zsh), every other C0 control, DEL and C1 gone. Your own keys never pass here.
-const CTL = /[\x00-\x08\x0b-\x1f\x7f-\x9f]/g;
+// Nor what reorders text (2026-11-27, an outside audit's note): a bidi mark made a line typed for you to read and send
+// read otherwise than what it sent; a line or paragraph separator is a line break.
+const CTL = /[\x00-\x08\x0b-\x1f\x7f-\x9f]/g,
+  BIDI = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 const typable = t =>
   String(t ?? '')
-    .replace(/\r\n?/g, '\n')
+    .replace(/\r\n?|[\u2028\u2029]/g, '\n')
     .replace(/\t/g, '  ')
-    .replace(CTL, '');
+    .replace(CTL, '')
+    .replace(BIDI, '');
 /** For Claude's prompt: its newlines as Claude Code's own (ESC CR), so nothing is sent before the ⏎ the caller adds. */
 const forClaude = t => typable(t).replace(/\n/g, '\x1b\r');
 /** For a shell's line, left unrun: one line. */
 const forShell = t => typable(t).replace(/\n+/g, ' ');
-const hasCtl = t => /[\x00-\x1f\x7f-\x9f]/.test(t);
+const hasCtl = t => /[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\u2028\u2029]/.test(t);
 // ⌘K clears the terminal, as Terminal.app and iTerm do — a key xterm.js does not ship and zsh cannot bind
 // (⌃L is the shell's own, and keeps the scrollback). The holder clears its screen too and echoes the clear
 // back, which is what wipes the page: every attached page drops the same rows, and a re-attach or a server
