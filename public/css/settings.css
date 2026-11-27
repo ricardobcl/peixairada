@@ -600,6 +600,51 @@
   font-size: var(--fs-xs);
   overflow-wrap: anywhere;
 }
+/* a release's notes (2026-11-27): what Update now would bring, as CHANGELOG.md has them — md(), as a reply is shown */
+.pop .unotes {
+  margin-top: 6px;
+  max-height: 280px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 8px 12px;
+  border-radius: var(--r-3);
+  background: var(--ctl);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--ink);
+}
+.pop .unotes[hidden] {
+  display: none;
+}
+.pop .unotes .unote + .unote {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.pop .unotes .unh {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-weight: 600;
+}
+.pop .unotes .unh small {
+  font-weight: 400;
+  color: var(--muted);
+}
+.pop .unotes .md h3 {
+  margin: 8px 0 2px;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pop .unotes .md ul {
+  margin: 2px 0 6px;
+  padding-left: 18px;
+}
+.pop .unotes .md li {
+  margin: 3px 0;
+}
 /* a switch: a checkbox drawn as one, role=switch */
 .pop input.sw {
   flex: none;

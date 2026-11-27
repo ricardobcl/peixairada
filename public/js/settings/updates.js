@@ -27,6 +27,24 @@ const UPD_STEPS = {
   build: 'rebuilding the app',
 };
 const many = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+// What a board follows (2026-11-27, Settings › Updates › Follow): releases — the newest one past the release it is on,
+// said by its name and its notes (CHANGELOG.md's, `u.notes`) — or every commit, said as commits.
+/** A release as people say it: 0.2 for 0.2.0 (lib/changelog.mjs' relName). */
+const relName = v => {
+  const m = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/.exec(String(v || ''));
+  return m ? (Number(m[3]) ? `${m[1]}.${m[2]}.${m[3]}` : `${m[1]}.${m[2]}`) : String(v || '');
+};
+const onReleases = u => u?.channel !== 'main';
+/** `0.2 is out` while one is to be taken on releases, else null. */
+const relOut = u => (onReleases(u) && u?.release && u.behind > 0 ? `${relName(u.release)} is out` : null);
+/** The notes of what Update now would bring, newest release first, as a reply's markdown is drawn. */
+const notesHtml = notes =>
+  (notes || [])
+    .map(
+      n =>
+        `<div class="unote"><div class="unh">${esc(relName(n.version))}${n.title ? ` <small>${esc(n.title)}</small>` : ''}</div><div class="md">${md(n.md).html}</div></div>`,
+    )
+    .join('');
 /** The update's run as words: the step it is at and how far that is (`p`, 0–1), or null while nothing runs. A restart
  *  or a page waiting on one is said for a minute at most — a restart that never came is not for ever. */
 function updRun(u) {
@@ -99,7 +117,9 @@ function updateSay(u) {
   const up = esc(u.upstream || 'the remote'),
     fresh = u.rewritten
       ? `${up}'s history rewritten, ${many(u.fresh || 0, 'new commit')} besides`
-      : `${many(u.behind, 'new commit')} on ${up}`,
+      : relOut(u)
+        ? `${esc(relName(u.release))}, ${many(u.behind, 'commit')} on ${up}`
+        : `${many(u.behind, 'new commit')} on ${up}`,
     run = updRun(u),
     more = [],
     them = n => (n === 1 ? 'it' : 'them');
@@ -139,7 +159,9 @@ function updateSay(u) {
         'no-upstream': `<b>${esc(u.branch)}</b> follows no remote branch — nothing to pull`,
         current: u.ahead
           ? `<code>${shortSha(u.head)}</code> is ${many(u.ahead, 'commit')} ahead of ${up} — nothing to pull`
-          : `up to date · <code>${shortSha(u.head)}</code>`,
+          : onReleases(u)
+            ? `${u.running ? `on ${esc(relName(u.running))}, the newest release` : 'no release yet'}${u.past ? ` · ${many(u.past, 'commit')} on ${up} since, which <b>Every commit</b> takes` : ''}`
+            : `up to date · <code>${shortSha(u.head)}</code>`,
         changes: `${fresh} — <b>Update now</b> takes them and leaves ${filesSay(u.changed, u.dirty)} changed here as ${u.dirty === 1 ? 'it is' : 'they are'}${u.on ? '; by itself it never pulls over a change' : ''}`,
         off: `${fresh} — <b>Update now</b> ${u.rewritten ? 'follows it' : 'takes them'}`,
         busy: `${fresh} — pulled once nothing has been done on the board for ${Math.round(u.quiet / 60_000)} min`,
@@ -160,11 +182,11 @@ function updateSay(u) {
   }
   if (u.behind > 0 && u.commits?.length)
     more.push(
-      `${u.behind === 1 ? 'the new commit' : `the new commits${u.behind > u.commits.length ? `, the newest ${u.commits.length}` : ''}`}${u.sign?.ok && u.sign.by ? `, the newest signed by ${esc(u.sign.by)}` : ''}: ${u.commits.map(c => `<code>${esc(c.h)}</code> ${esc(c.s)} — ${esc(c.a)}`).join('<br>')}`,
+      `${relOut(u) ? `the commits ${esc(relName(u.release))} brings` : u.behind === 1 ? 'the new commit' : 'the new commits'}${u.behind > 1 && u.behind > u.commits.length ? `, the newest ${u.commits.length}` : ''}${u.sign?.ok && u.sign.by ? `, the newest signed by ${esc(u.sign.by)}` : ''}: ${u.commits.map(c => `<code>${esc(c.h)}</code> ${esc(c.s)} — ${esc(c.a)}`).join('<br>')}`,
     ); // what Update now takes, named first (2026-11-06)
   if (u.last)
     more.push(
-      `last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${
+      `last update ${rel(u.last.at)} ago: ${u.last.release ? `to ${esc(relName(u.last.release))}, ` : ''}${many(u.last.count, 'commit')}${
         u.last.parts.length
           ? `, touching ${u.last.parts
               .map(k => UPD_PARTS[k])
@@ -176,6 +198,7 @@ function updateSay(u) {
   return {
     word: updWord(u),
     say,
+    notes: u.behind > 0 && !u.busy ? notesHtml(u.notes) : '',
     more: more.join('<br>'),
     apply: canPull(u) || canBuild(u) || canRestart(u),
     restart: !canPull(u) && !canBuild(u) && canRestart(u),
@@ -202,7 +225,7 @@ const updWord = u =>
                   : u.behind > 0
                     ? u.rewritten
                       ? 'History rewritten'
-                      : many(u.behind, 'new commit')
+                      : relOut(u) || many(u.behind, 'new commit')
                     : u.why === 'detached'
                       ? 'On no branch'
                       : u.why === 'no-upstream'
@@ -254,7 +277,7 @@ function updSeg() {
     return seg(
       'new',
       ICON.download,
-      `${u.rewritten ? 'history rewritten' : many(u.behind, 'new commit')}${why || (canPull(u) ? ' · update' : '')}`,
+      `${u.rewritten ? 'history rewritten' : relOut(u) || many(u.behind, 'new commit')}${why || (canPull(u) ? ' · update' : '')}`,
       tip,
       null,
       canPull(u) ? 'to update now' : '',
@@ -279,7 +302,12 @@ function updSeg() {
       canRestart(u) ? 'to restart it now (the chats in drawers stay)' : '',
     ); // 2026-11-25
   if (u.last && Date.now() - Date.parse(u.last.at) < 60_000)
-    return seg('done', ICON.reload, `updated · ${many(u.last.count, 'commit')}`, tip);
+    return seg(
+      'done',
+      ICON.reload,
+      u.last.release ? `updated to ${esc(relName(u.last.release))}` : `updated · ${many(u.last.count, 'commit')}`,
+      tip,
+    );
   return '';
 }
 const updatesOpen = () => settingsAt('system', '#updRow');
@@ -291,11 +319,24 @@ function showUpdate() {
   $('#autoUpdate').disabled = !!w.none;
   $('#autoUpdateSay').textContent = w.none
     ? 'Only for a board run from a git checkout'
-    : u?.on
-      ? 'Pulls new commits after two idle minutes, never over your changes'
-      : 'The status bar says when new commits come';
+    : onReleases(u)
+      ? u?.on
+        ? 'Takes a new release after two idle minutes, never over your changes'
+        : 'The status bar says when a release comes'
+      : u?.on
+        ? 'Pulls new commits after two idle minutes, never over your changes'
+        : 'The status bar says when new commits come';
+  for (const b of document.querySelectorAll('#updFollow [data-ch]')) {
+    b.setAttribute('aria-checked', String(b.dataset.ch === (onReleases(u) ? 'releases' : 'main')));
+    b.disabled = !!(w.none || u?.busy);
+  }
+  $('#updFollowSay').textContent = onReleases(u)
+    ? 'The newest release, with notes on what it brings'
+    : 'Every commit on the main branch, the day it lands';
   $('#updWord').textContent = w.word;
   setHtml($('#updSay'), w.say);
+  $('#updNotes').hidden = !w.notes;
+  setHtml($('#updNotes'), w.notes || '');
   $('#updMore').hidden = !w.more;
   setHtml($('#updMore div'), w.more || '');
   b.textContent = w.restart ? 'Restart now' : w.apply ? 'Update now' : 'Check now';
@@ -358,6 +399,20 @@ function reloadSoon() {
   if (was !== reload.why) renderBar();
   reload.t = setTimeout(reloadSoon, 1000);
 }
+// Follow (2026-11-27): the server's, as the switch is; the checkout looked at again against it
+for (const b of document.querySelectorAll('#updFollow [data-ch]'))
+  b.addEventListener('click', () => {
+    const was = state.update?.channel;
+    if (b.dataset.ch === (onReleases(state.update) ? 'releases' : 'main')) return;
+    b.parentElement.querySelectorAll('[data-ch]').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+    api('PUT', '/api/update', { channel: b.dataset.ch })
+      .then(takeUpdate)
+      .catch(err => {
+        if (state.update) state.update.channel = was;
+        showUpdate();
+        note(b, `Could not save it: ${err.message}`, true);
+      });
+  });
 $('#autoUpdate').addEventListener('change', e => {
   const on = e.target.checked;
   api('PUT', '/api/update', { on })

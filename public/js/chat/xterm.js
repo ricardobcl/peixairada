@@ -476,6 +476,7 @@ function checkRoom(tm) {
 window.peix = {
   alert: a => onAlert(a), // the harness's: an alert as the stream would bring it (2026-11-01)
   priority: () => [...state.priority], // the pinned chats' order as this page holds it (2026-11-24)
+  update: () => state.update ?? null, // the updater's word as this page last heard it (2026-11-27: the releases' scenario)
   details: () => detailsText(), // About's Copy details (2026-11-04), its text with no clipboard touched
   skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]), // the picker's themes, each with its appearance (2026-11-01: the inks' check)
   spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length), // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
