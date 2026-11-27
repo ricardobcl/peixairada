@@ -2,8 +2,31 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-26. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-27. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-27 — make install, make update
+
+Ricardo, after landing a PR whose update wanted the app rebuilt: *"we should have a easier way to update in the
+terminal... maybe make update/install?"*
+
+* **A `Makefile` at the root**, `make` alone listing it: `install` is the README's three lines (`npm ci`,
+  `scripts/launchd.sh install`, `mac/build.sh install`), `server` and `app` its two halves, for a board in a browser or
+  an app rebuilt alone. make comes with the Command Line Tools the install needs already.
+* **`make update` asks the running board for *Update now*** (`scripts/update.mjs` → `POST /api/update {apply: true}`),
+  rather than pulling itself: the updater's checks are the point of it — a tip a key in `.github/allowed_signers`
+  signed, a fast-forward, a clash said by name, the new page and server tried on a spare port before they are kept,
+  only what the commits touched started again — and a second copy of them in the shell would drift. It says the steps as
+  the board reports them, then where it ended (updated, up to date, or why not with what clears the way), and waits out
+  what the update started: the agent's restart (till a process with no restart under way answers) and the app's
+  rebuild (by `build`, which the new server reads from the state file — the two run side by side, so the rebuild may be
+  over by the time the server is back). Exit 0 only for updated or up to date. Run from a worktree it updates the
+  board's checkout, and its first line names which.
+* **Nothing answering, nothing is pulled**: it says so, with the pull by hand. Done for you, that pull would take a tip
+  no one signed — the one thing the updater refuses even its own button.
+* Checked: `update-cli.test.mjs` — against the update tests' throwaway checkout: up to date; a page pulled; a clash
+  named and not pulled over; the server and the app, the restart followed through a new process on the same port and the
+  rebuild's end reported; a tip a stranger signed left; no board; a wrong key.
 
 ## Decisions of 2026-11-26 — Auto-tiling, after its review
 

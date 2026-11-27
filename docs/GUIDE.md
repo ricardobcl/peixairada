@@ -281,7 +281,8 @@ same for the open chat.
 
 **You need** macOS 13 or later, the Xcode Command Line Tools (`xcode-select --install`), Node ≥ 22 (`brew install node`,
 or mise, nvm, asdf) and Claude Code, signed in. Install from the shell you use every day — the server takes its `PATH`
-and its `node`, which is how it finds `claude`, `gh` and the rest (the commands are the [README's](../README.md#-install)).
+and its `node`, which is how it finds `claude`, `gh` and the rest (the commands are the [README's](../README.md#-install):
+`make install`, or its parts — `make server` the packages and the login agent, `make app` the app).
 
 **The board has a key**: only a page that holds it reads your chats or types into a terminal — a container, another
 account or anything else that reaches the port gets nothing. The app has it; a browser gets it once, from
@@ -306,8 +307,11 @@ the page, the app. When a file you changed is one the commits change too, or you
 Settings › Updates & access says so, with the command that clears the way under Details. *Update automatically* pulls on its own once you've left the
 board be for two minutes, and never while a file is changed here. **Only signed commits are taken**: the newest one
 must be signed by a key in `.github/allowed_signers`, as your checkout has it — anything else is said (*not signed*)
-and left, *Update now* too. By hand: `git pull --ff-only && npm ci && scripts/launchd.sh restart` — the board's page
-follows —, and `mac/build.sh install` when `mac/` changed. A pull by hand without the restart leaves the server on its
+and left, *Update now* too. **From a terminal**, `make update` in the checkout is *Update now*: the same checks and
+restarts, each step said as it comes, the server's restart and the app's rebuild waited out, and why not when it takes
+nothing, with what clears the way. With no board answering it pulls nothing. By hand — any tip, signed or not:
+`git pull --ff-only && npm ci && scripts/launchd.sh restart` — the board's page follows —, and `mac/build.sh install`
+when `mac/` changed. A pull by hand without the restart leaves the server on its
 old code under the new page: the status bar says *the server is behind · restart*, and a click restarts it. Settings
 saying *Not a git checkout* while you run the board from your clone is the app's own server holding the port: quit and
 reopen peixAIrada and the login agent takes it (since 2026-11-25 the app hands it over by itself). Still saying it, a

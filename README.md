@@ -29,11 +29,12 @@ use every day (the server takes its `PATH`, which is how it finds `claude`, `gh`
 
 ```sh
 git clone https://github.com/ricardobcl/peixairada.git && cd peixairada
-npm ci                         # the packages exactly as the lockfile pins them
-scripts/launchd.sh install     # the server, started at login, on 127.0.0.1:7331
-mac/build.sh install           # the Mac app, in /Applications (optional — any browser works)
-scripts/launchd.sh open        # …or the board in your browser
+make install                   # the packages, the server started at login on 127.0.0.1:7331, the Mac app
+scripts/launchd.sh open        # …or the board in your browser (make server installs it without the app)
 ```
+
+`make install` is `npm ci` (the packages exactly as the lockfile pins them), `scripts/launchd.sh install` and
+`mac/build.sh install`; `make update`, later, takes what came — the board's own *Update now*, from the terminal.
 
 On first open it asks where your repos live (its guess from your chats already filled in) and shows you round in a
 couple of minutes. Updating, removing, the optional extras and every setting: **[the guide](docs/GUIDE.md)**.

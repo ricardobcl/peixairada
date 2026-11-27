@@ -19,7 +19,7 @@ GitHub's noreply address (this repo's `user.email`). **A commit's message is a s
 ## Run, build, check
 
 ```sh
-scripts/launchd.sh install          # the server as a login agent, run from this checkout — the recommended setup
+make install | update               # npm ci, the login agent, the app; the board's update now, asked (scripts/update.mjs)
 scripts/launchd.sh restart [--after N]   # after a server change; the drawers stay (holders); N s first, so a recap lands
 scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions
 mac/build.sh install                # the native app into /Applications — Swift changes
